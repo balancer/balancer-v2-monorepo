@@ -297,7 +297,7 @@ abstract contract AssetManager is IAssetManager {
      */
     function capitalOut(bytes32 poolId, uint256 amount) public {
         uint256 aum = readAUM();
-        uint256 sharesToBurn = totalSupply.mul(amount).divDown(aum);
+        uint256 sharesToBurn = totalSupply.mul(amount).divUp(aum);
         _redeemShares(poolId, sharesToBurn, aum);
     }
 
