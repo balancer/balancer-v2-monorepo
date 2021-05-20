@@ -206,28 +206,33 @@ abstract contract AssetManager is IAssetManager {
         }
     }
 
+    struct BatchSwap {
+        IVault.BatchSwapStep[] swaps;
+        IAsset[] assets;
+        IVault.FundManagement funds;
+        int256[] limits;
+        uint256 deadline;
+    }
+
     /**
      * @notice Rebalances funds between pool and asset manager to maintain target investment percentage.
      * Any reward from rebalancing the pool is immediately used in the provided batch swap.
      */
-    function rebalanceAndSwap(
-        bytes32 poolId,
-        IVault.BatchSwapStep[] calldata swaps,
-        IAsset[] calldata assets,
-        IVault.FundManagement calldata funds,
-        int256[] calldata limits,
-        uint256 deadline
-    ) external {
+    function rebalanceAndSwap(bytes32 poolId, BatchSwap memory swap) external {
         uint256 rebalancerFee = _rebalance(poolId);
 
         if (rebalancerFee > 0) {
             _removeFeesFromVault(poolId, rebalancerFee);
 
-            // TODO: ensure that full reward is used to swap without causing a stack-too-deep error
-            require(funds.sender == address(this), "Asset Manager must be sender");
-            require(!funds.fromInternalBalance, "Can't use Asset Manager's internal balance");
-            require(address(assets[swaps[0].assetInIndex]) == address(token), "Must swap asset manager's token");
-            vault.batchSwap(IVault.SwapKind.GIVEN_IN, swaps, assets, funds, limits, deadline);
+            // Ensure that we use the full fee as input to the swap
+            swap.swaps[0].amount = rebalancerFee;
+            require(swap.funds.sender == address(this), "Asset Manager must be sender");
+            require(!swap.funds.fromInternalBalance, "Can't use Asset Manager's internal balance");
+            require(
+                address(swap.assets[swap.swaps[0].assetInIndex]) == address(token),
+                "Must swap asset manager's token"
+            );
+            vault.batchSwap(IVault.SwapKind.GIVEN_IN, swap.swaps, swap.assets, swap.funds, swap.limits, swap.deadline);
         }
     }
 
