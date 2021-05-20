@@ -1,5 +1,5 @@
 import { BigNumber, Contract } from 'ethers';
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';

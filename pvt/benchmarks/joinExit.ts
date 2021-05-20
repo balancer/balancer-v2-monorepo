@@ -1,5 +1,4 @@
 import { assert } from 'console';
-import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -12,6 +11,7 @@ import {
   encodeJoinWeightedPool,
   encodeExitWeightedPool,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
+import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
 // setup environment
 const BPTAmount = bn(5e18);
@@ -173,7 +173,7 @@ async function joinAndExitPool(
 ) {
   const poolId: string = await getPoolId();
   const [poolAddress] = await vault.getPool(poolId);
-  const pool: Contract = await ethers.getContractAt('WeightedPool', poolAddress);
+  const pool: Contract = await deployedAt('v2-core/WeightedPool', poolAddress);
   const joinRequest = {
     assets: pickTokenAddresses(tokens, numTokens),
     maxAmountsIn: Array(numTokens).fill(MAX_UINT256),

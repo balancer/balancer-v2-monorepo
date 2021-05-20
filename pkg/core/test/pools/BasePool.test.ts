@@ -7,7 +7,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -32,8 +32,8 @@ describe('BasePool', function () {
   });
 
   sharedBeforeEach(async () => {
-    authorizer = await deploy('@balancer-labs/v2-vault/Authorizer', { args: [admin.address] });
-    vault = await deploy('@balancer-labs/v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
+    authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
+    vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
   });
 

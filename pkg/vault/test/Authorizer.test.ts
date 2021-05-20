@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 

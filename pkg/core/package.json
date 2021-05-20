@@ -19,11 +19,6 @@
     "Nicolás Venturo <nico@balancer.finance>"
   ],
   "scripts": {
-    "benchmark-deployment": "hardhat run benchmark/deployment.ts",
-    "benchmark-single-pair": "hardhat run benchmark/singlePair.ts",
-    "benchmark-multihop": "hardhat run benchmark/multihop.ts",
-    "benchmark-join-exit": "hardhat run benchmark/joinExit.ts",
-    "benchmark": "yarn benchmark-deployment && yarn benchmark-single-pair && yarn benchmark-multihop && yarn benchmark-join-exit",
     "build": "yarn compile",
     "compile": "hardhat compile && rm -rf artifacts/build-info",
     "compile:watch": "nodemon --ext sol --exec yarn compile",

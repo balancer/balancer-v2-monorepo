@@ -11,7 +11,7 @@ let vault: Contract;
 let tokens: TokenList;
 let trader: SignerWithAddress;
 
-const MAX_HOPS = 6;
+const MAX_HOPS = 3;
 
 async function main() {
   ({ vault, tokens, trader } = await setupEnvironment());

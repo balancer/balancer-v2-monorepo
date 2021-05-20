@@ -1,4 +1,4 @@
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import {
   calculateAnalyticalInvariantForTwoTokens,
   calculateInvariant,

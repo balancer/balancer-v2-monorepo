@@ -9,7 +9,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { fromNow, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { FundManagement, Swap, SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';

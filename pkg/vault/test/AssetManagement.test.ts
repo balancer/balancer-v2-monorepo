@@ -9,7 +9,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import { encodeExit, encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import {
   GeneralPool,
@@ -185,7 +185,7 @@ describe('Asset Management', function () {
             );
 
             const [poolAddress] = await vault.getPool(poolId);
-            const pool = await ethers.getContractAt('MockPool', poolAddress);
+            const pool = await deployedAt('MockPool', poolAddress);
 
             const { tokens: poolTokens, balances } = await vault.getPoolTokens(poolId);
 

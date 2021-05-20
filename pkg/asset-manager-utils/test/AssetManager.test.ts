@@ -8,7 +8,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
@@ -25,8 +25,8 @@ const setup = async () => {
   const tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
 
   // Deploy Balancer Vault
-  const authorizer = await deploy('@balancer-labs/v2-vault/Authorizer', { args: [admin.address] });
-  const vault = await deploy('@balancer-labs/v2-vault/Vault', { args: [authorizer.address, tokens.DAI.address, 0, 0] });
+  const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
+  const vault = await deploy('v2-vault/Vault', { args: [authorizer.address, tokens.DAI.address, 0, 0] });
 
   // Deploy Asset manager
   const assetManager = await deploy('TestAssetManager', {
@@ -34,7 +34,7 @@ const setup = async () => {
   });
 
   // Deploy Pool
-  const pool = await deploy('@balancer-labs/v2-vault/test/MockPool', { args: [vault.address, GeneralPool] });
+  const pool = await deploy('v2-vault/MockPool', { args: [vault.address, GeneralPool] });
   const poolId = await pool.getPoolId();
 
   await tokens.mint({ to: lp, amount: tokenInitialBalance });

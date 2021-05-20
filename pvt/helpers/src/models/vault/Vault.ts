@@ -11,6 +11,7 @@ import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
 import { BigNumberish } from '../../numbers';
 import { Account, NAry, TxParams } from '../types/types';
 import { ExitPool, JoinPool, RawVaultDeployment, Swap } from './types';
+import { deployedAt } from '../../contract';
 
 export default class Vault {
   mocked: boolean;
@@ -147,7 +148,7 @@ export default class Vault {
   async getFeesCollector(): Promise<Contract> {
     if (!this.feesCollector) {
       const instance = await this.instance.getProtocolFeesCollector();
-      this.feesCollector = await ethers.getContractAt('ProtocolFeesCollector', instance);
+      this.feesCollector = await deployedAt('v2-vault/ProtocolFeesCollector', instance);
     }
     return this.feesCollector;
   }

@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract } from 'ethers';
 import { Dictionary, fromPairs } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { deploy } from './deploy';
+import { deploy } from './contract';
 
 export type TokenList = Dictionary<Contract>;
 
@@ -23,7 +23,7 @@ export async function deploySortedTokens(
 export async function deployToken(symbol: string, decimals?: number, from?: SignerWithAddress): Promise<Contract> {
   const [defaultDeployer] = await ethers.getSigners();
   const deployer = from || defaultDeployer;
-  return deploy('@balancer-labs/v2-solidity-utils/misc/TestToken', {
+  return deploy('v2-solidity-utils/TestToken', {
     from: deployer,
     args: [deployer.address, symbol, symbol, decimals],
   });

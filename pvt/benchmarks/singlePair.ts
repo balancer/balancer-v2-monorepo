@@ -13,7 +13,7 @@ let tokens: TokenList;
 
 let trader: SignerWithAddress;
 
-const MAX_POOLS = 8;
+const MAX_POOLS = 3;
 
 async function main() {
   ({ vault, tokens, trader } = await setupEnvironment());

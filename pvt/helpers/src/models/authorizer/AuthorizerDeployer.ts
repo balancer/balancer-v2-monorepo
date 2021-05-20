@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 
-import { deploy } from '../../deploy';
+import { deploy } from '../../contract';
 
 import { AuthorizerDeployment } from './types';
 import TypesConverter from '../types/TypesConverter';

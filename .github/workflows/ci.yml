@@ -136,7 +136,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-asset-manager-utils test
 
-  benchmark-core:
+  benchmark:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -156,7 +156,7 @@ jobs:
       - name: Compile
         run: yarn build
       - name: Benchmark
-        run: yarn workspace @balancer-labs/v2-core benchmark
+        run: yarn workspace @balancer-labs/v2-benchmarks benchmark
 
   local-deploy:
     runs-on: ubuntu-latest
