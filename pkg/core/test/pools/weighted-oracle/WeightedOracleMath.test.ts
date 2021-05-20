@@ -1,7 +1,7 @@
 import { Contract } from 'ethers';
 
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { range } from 'lodash';
 import { toNormalizedWeights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/misc';

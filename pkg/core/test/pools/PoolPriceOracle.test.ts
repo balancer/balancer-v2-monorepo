@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_UINT31, MIN_INT22, MAX_INT22, MIN_INT53, MAX_INT53 } from '@balancer-labs/v2-helpers/src/constants';

@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 
-import { deploy } from '../../deploy';
+import { deploy } from '../../contract';
 
 import Token from './Token';
 import TokenList from './TokenList';
@@ -23,12 +23,12 @@ class TokensDeployer {
 
     let instance;
     if (symbol !== 'WETH') {
-      instance = await deploy('@balancer-labs/v2-solidity-utils/misc/TestToken', {
+      instance = await deploy('v2-solidity-utils/TestToken', {
         from: sender,
         args: [sender.address, 'Token', 'TKN', decimals],
       });
     } else {
-      instance = await deploy('@balancer-labs/v2-solidity-utils/misc/TestWETH', {
+      instance = await deploy('v2-solidity-utils/TestWETH', {
         from: sender,
         args: [sender.address],
       });

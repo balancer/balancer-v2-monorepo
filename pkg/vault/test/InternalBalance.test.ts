@@ -12,7 +12,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { forceSendEth } from './helpers/eth';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 

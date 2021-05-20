@@ -1,4 +1,4 @@
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';

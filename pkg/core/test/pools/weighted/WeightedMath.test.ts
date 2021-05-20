@@ -1,7 +1,7 @@
 import { Contract } from 'ethers';
 
 import { bn, decimal, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import {
   calculateInvariant,

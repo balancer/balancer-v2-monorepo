@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
 describe('BalancerErrors', function () {
   let errors: Contract;

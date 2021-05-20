@@ -1,8 +1,7 @@
-import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 
 import * as expectEvent from '../../../test/expectEvent';
-import { deploy } from '../../../deploy';
+import { deploy, deployedAt } from '../../../contract';
 
 import Vault from '../../vault/Vault';
 import WeightedPool from './WeightedPool';
@@ -36,7 +35,7 @@ export default {
       from,
     } = params;
     return params.twoTokens
-      ? deploy('WeightedPool2TokensMock', {
+      ? deploy('v2-core/WeightedPool2TokensMock', {
           args: [
             {
               vault: vault.address,
@@ -55,7 +54,7 @@ export default {
           ],
           from,
         })
-      : deploy('WeightedPool', {
+      : deploy('v2-core/WeightedPool', {
           args: [
             vault.address,
             NAME,
@@ -75,7 +74,7 @@ export default {
     const { tokens, weights, swapFeePercentage, oracleEnabled, owner, from } = params;
 
     if (params.twoTokens) {
-      const factory = await deploy('WeightedPool2TokensFactory', { args: [vault.address], from });
+      const factory = await deploy('v2-core/WeightedPool2TokensFactory', { args: [vault.address], from });
       const tx = await factory.create(
         NAME,
         SYMBOL,
@@ -87,9 +86,9 @@ export default {
       );
       const receipt = await tx.wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-      return ethers.getContractAt('WeightedPool2Tokens', event.args.pool);
+      return deployedAt('v2-core/WeightedPool2Tokens', event.args.pool);
     } else {
-      const factory = await deploy('WeightedPoolFactory', { args: [vault.address], from });
+      const factory = await deploy('v2-core/WeightedPoolFactory', { args: [vault.address], from });
       const tx = await factory.create(
         NAME,
         SYMBOL,
@@ -100,7 +99,7 @@ export default {
       );
       const receipt = await tx.wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-      return ethers.getContractAt('WeightedPool', event.args.pool);
+      return deployedAt('v2-core/WeightedPool', event.args.pool);
     }
   },
 };

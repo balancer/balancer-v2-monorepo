@@ -1,32 +1,29 @@
 import { ethers } from 'hardhat';
-import { printGas } from './misc';
 import { Contract } from 'ethers';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 async function main() {
   const [, admin] = await ethers.getSigners();
 
-  const authorizer = await deploy('@balancer-labs/v2-vault/Authorizer', { args: [admin.address] });
+  console.log('== Deployment measurements ==');
 
-  const vault = await measureDeployment('@balancer-labs/v2-vault/Vault', [authorizer.address, ZERO_ADDRESS, 0, 0]);
+  const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
 
-  await measureDeployment('WeightedPoolFactory', [vault.address]);
+  const vault = await measureDeployment('v2-vault/Vault', [authorizer.address, ZERO_ADDRESS, 0, 0]);
 
-  await measureDeployment('WeightedPool2TokensFactory', [vault.address]);
+  await measureDeployment('v2-core/WeightedPoolFactory', [vault.address]);
 
-  await measureDeployment('StablePoolFactory', [vault.address]);
+  await measureDeployment('v2-core/WeightedPool2TokensFactory', [vault.address]);
+
+  await measureDeployment('v2-core/StablePoolFactory', [vault.address]);
 }
 
 async function measureDeployment(name: string, args: Array<unknown>): Promise<Contract> {
   console.log(`\n# ${name}`);
 
   const contract = await deploy(name, { args });
-
-  const deployReceipt = await ethers.provider.getTransactionReceipt(contract.deployTransaction.hash);
-  console.log(`Deployment costs ${printGas(deployReceipt.gasUsed.toNumber())}`);
-
   const deployedBytecode = await ethers.provider.getCode(contract.address);
   const bytecodeSizeKb = (deployedBytecode.slice(2).length / 2 / 1024).toFixed(3);
 

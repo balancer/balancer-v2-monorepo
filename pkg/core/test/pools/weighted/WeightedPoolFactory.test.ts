@@ -1,4 +1,3 @@
-import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
@@ -6,7 +5,7 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -41,7 +40,7 @@ describe('WeightedPoolFactory', function () {
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-    return ethers.getContractAt('WeightedPool', event.args.pool);
+    return deployedAt('WeightedPool', event.args.pool);
   }
 
   describe('temporarily pausable', () => {

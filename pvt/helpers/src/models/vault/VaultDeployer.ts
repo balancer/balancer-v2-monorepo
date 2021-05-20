@@ -4,7 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import Vault from './Vault';
 import TypesConverter from '../types/TypesConverter';
-import { deploy } from '../..//deploy';
+import { deploy } from '../../contract';
 import { RawVaultDeployment, VaultDeployment } from './types';
 import TokensDeployer from '../tokens/TokensDeployer';
 
@@ -25,7 +25,7 @@ export default {
     const { from, pauseWindowDuration, bufferPeriodDuration } = deployment;
     const weth = await TokensDeployer.deployToken({ symbol: 'WETH' });
     const args = [authorizer.address, weth.address, pauseWindowDuration, bufferPeriodDuration];
-    return deploy('@balancer-labs/v2-vault/Vault', { args, from });
+    return deploy('v2-vault/Vault', { args, from });
   },
 
   async _deployMocked({ from }: VaultDeployment, authorizer: Contract): Promise<Contract> {
@@ -33,6 +33,6 @@ export default {
   },
 
   async _deployAuthorizer(admin: SignerWithAddress, from?: SignerWithAddress): Promise<Contract> {
-    return deploy('@balancer-labs/v2-vault/Authorizer', { args: [admin.address], from });
+    return deploy('v2-vault/Authorizer', { args: [admin.address], from });
   },
 };

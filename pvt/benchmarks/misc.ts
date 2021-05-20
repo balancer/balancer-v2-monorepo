@@ -4,7 +4,7 @@ import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { toNormalizedWeights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/misc';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { encodeJoinStablePool } from '@balancer-labs/v2-helpers/src/models/pools/stable/encoding';
@@ -22,11 +22,11 @@ export async function setupEnvironment(): Promise<{
 }> {
   const { admin, creator, trader } = await getSigners();
 
-  const weth = await deploy('@balancer-labs/v2-solidity-utils/misc/TestWETH', { args: [admin.address] });
+  const weth = await deploy('v2-solidity-utils/TestWETH', { args: [admin.address] });
 
-  const authorizer = await deploy('@balancer-labs/v2-vault/Authorizer', { args: [admin.address] });
+  const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
 
-  const vault = await deploy('@balancer-labs/v2-vault/Vault', { args: [authorizer.address, weth.address, 0, 0] });
+  const vault = await deploy('v2-vault/Vault', { args: [authorizer.address, weth.address, 0, 0] });
 
   const tokens = await deploySortedTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
 
@@ -167,7 +167,8 @@ async function deployPoolFromFactory(
   poolName: PoolName,
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
-  const factory = await deploy(`${poolName}Factory`, { args: [vault.address] });
+  const fullName = `v2-core/${poolName}`;
+  const factory = await deploy(`${fullName}Factory`, { args: [vault.address] });
   // We could reuse this factory if we saved it across pool deployments
 
   const name = 'Balancer Pool Token';
@@ -183,5 +184,5 @@ async function deployPoolFromFactory(
     throw new Error('Could not find PoolCreated event');
   }
 
-  return ethers.getContractAt(poolName, event.args?.pool);
+  return deployedAt(fullName, event.args?.pool);
 }

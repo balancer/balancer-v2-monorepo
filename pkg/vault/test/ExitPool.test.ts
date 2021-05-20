@@ -12,7 +12,7 @@ import { encodeExit } from '@balancer-labs/v2-helpers/src/models/pools/mockPool'
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { arrayAdd, arraySub, BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
@@ -45,7 +45,7 @@ describe('Exit Pool', () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
     vault = vault.connect(lp);
-    feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
+    feesCollector = await deployedAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
     const action = await actionId(feesCollector, 'setSwapFeePercentage');
     await authorizer.connect(admin).grantRole(action, admin.address);

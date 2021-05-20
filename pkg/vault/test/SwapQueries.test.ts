@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 
 import { fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MinimalSwapInfoPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { FundManagement, Swap, SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
 import { MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';

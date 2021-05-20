@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, fromNow, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
 

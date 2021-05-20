@@ -1,8 +1,7 @@
-import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 
 import * as expectEvent from '../../../test/expectEvent';
-import { deploy } from '../../../deploy';
+import { deploy, deployedAt } from '../../../contract';
 
 import Vault from '../../vault/Vault';
 import StablePool from './StablePool';
@@ -35,7 +34,7 @@ export default {
       from,
     } = params;
 
-    return deploy('StablePool', {
+    return deploy('v2-core/StablePool', {
       args: [
         vault.address,
         NAME,
@@ -54,7 +53,7 @@ export default {
   async _deployFromFactory(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
     const { tokens, amplificationParameter, swapFeePercentage, owner, from } = params;
 
-    const factory = await deploy('StablePoolFactory', { args: [vault.address], from });
+    const factory = await deploy('v2-core/StablePoolFactory', { args: [vault.address], from });
     const tx = await factory.create(
       NAME,
       SYMBOL,
@@ -65,6 +64,6 @@ export default {
     );
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-    return ethers.getContractAt('StablePool', event.args.pool);
+    return deployedAt('v2-core/StablePool', event.args.pool);
   },
 };

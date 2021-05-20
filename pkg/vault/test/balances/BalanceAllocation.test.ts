@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, MAX_UINT32 } from '@balancer-labs/v2-helpers/src/constants';
 import { lastBlockNumber } from '@balancer-labs/v2-helpers/src/time';

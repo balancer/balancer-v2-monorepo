@@ -10,7 +10,7 @@ import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool'
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { Comparison, expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
+import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { FundManagement, Swap, SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
 import {
@@ -769,7 +769,7 @@ describe('Swaps', () => {
                   context('when pools do not offer same price', () => {
                     sharedBeforeEach('tweak the main pool to give back as much as it receives', async () => {
                       const [poolAddress] = (await vault.getPool(mainPoolId)) as [string, unknown];
-                      const pool = await ethers.getContractAt('MockPool', poolAddress);
+                      const pool = await deployedAt('MockPool', poolAddress);
                       await pool.setMultiplier(fp(1));
                     });
 
@@ -1254,7 +1254,7 @@ describe('Swaps', () => {
                   context('when pools do not offer same price', () => {
                     beforeEach('tweak the main pool to give back as much as it receives', async () => {
                       const [poolAddress] = (await vault.getPool(mainPoolId)) as [string, unknown];
-                      const pool = await ethers.getContractAt('MockPool', poolAddress);
+                      const pool = await deployedAt('MockPool', poolAddress);
                       await pool.setMultiplier(fp(1));
                     });
 
