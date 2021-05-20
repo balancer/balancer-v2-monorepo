@@ -231,6 +231,7 @@ abstract contract AssetManager is IAssetManager {
                 _poolManaged(poolId, readAUM()).sub(rebalancerFee)
             );
 
+            // TODO: ensure that full reward is used to swap without causing a stack-too-deep error
             require(funds.sender == address(this), "Asset Manager must be sender");
             require(!funds.fromInternalBalance, "Can't use Asset Manager's internal balance");
             require(address(assets[swaps[0].assetInIndex]) == address(token), "Must swap asset manager's token");
