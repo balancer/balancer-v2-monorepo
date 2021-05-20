@@ -356,7 +356,8 @@ describe('Asset manager', function () {
 
         it('returns the pool to its target allocation', async () => {
           await assetManager.rebalance(poolId);
-          expect(await assetManager.maxInvestableBalance(poolId)).to.be.eq(0);
+          const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
+          expect(differenceFromTarget.abs()).to.be.lte(1);
         });
       });
 
@@ -385,7 +386,8 @@ describe('Asset manager', function () {
 
           it('returns the pool to its target allocation', async () => {
             await assetManager.rebalance(poolId);
-            expect(await assetManager.maxInvestableBalance(poolId)).to.be.eq(0);
+            const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
+            expect(differenceFromTarget.abs()).to.be.lte(1);
           });
         });
 
@@ -422,7 +424,8 @@ describe('Asset manager', function () {
 
           it('returns the pool to its target allocation', async () => {
             await assetManager.rebalance(poolId);
-            expect(await assetManager.maxInvestableBalance(poolId)).to.be.eq(0);
+            const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
+            expect(differenceFromTarget.abs()).to.be.lte(1);
           });
         });
       });
