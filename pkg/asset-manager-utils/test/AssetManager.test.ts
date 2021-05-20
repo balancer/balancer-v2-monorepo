@@ -343,7 +343,10 @@ describe('Asset manager', function () {
         });
 
         it('transfers the expected number of tokens from the Vault', async () => {
-          const expectedRebalanceAmount = await assetManager.maxInvestableBalance(poolId);
+          const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+          const poolTVL = cash.add(managed);
+          const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
+          const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
 
           await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
             { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
@@ -369,7 +372,10 @@ describe('Asset manager', function () {
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
-            const expectedRebalanceAmount = await assetManager.maxInvestableBalance(poolId);
+            const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+            const poolTVL = cash.add(managed);
+            const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
+            const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
 
             await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
               { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
