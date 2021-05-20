@@ -504,6 +504,7 @@ describe('Aave Asset manager', function () {
       });
     });
   });
+
   describe('rebalanceAndSwap', () => {
     describe('when pool is below target investment level', () => {
       describe('when pool is safely above critical investment level', () => {
@@ -525,40 +526,53 @@ describe('Aave Asset manager', function () {
           const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
           const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
 
-          await expectBalanceChange(
-            () =>
-              assetManager.rebalanceAndSwap(
+          const swap = {
+            swaps: [
+              {
                 poolId,
-                [],
-                [],
-                {
-                  sender: assetManager.address,
-                  fromInternalBalance: false,
-                  recipient: lp.address,
-                  toInternalBalance: false,
-                },
-                [],
-                MAX_UINT256
-              ),
-            tokens,
-            [{ account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } }]
-          );
-        });
-
-        it('returns the pool to its target allocation', async () => {
-          await assetManager.rebalanceAndSwap(
-            poolId,
-            [],
-            [],
-            {
+                assetInIndex: 0,
+                assetOutIndex: 1,
+                amount: 100,
+                userData: '0x',
+              },
+            ],
+            assets: [tokens.DAI.address, tokens.MKR.address],
+            funds: {
               sender: assetManager.address,
               fromInternalBalance: false,
               recipient: lp.address,
               toInternalBalance: false,
             },
-            [],
-            MAX_UINT256
-          );
+            limits: [],
+            deadline: MAX_UINT256,
+          };
+          await expectBalanceChange(() => assetManager.rebalanceAndSwap(poolId, swap), tokens, [
+            { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+          ]);
+        });
+
+        it('returns the pool to its target allocation', async () => {
+          const swap = {
+            swaps: [
+              {
+                poolId,
+                assetInIndex: 0,
+                assetOutIndex: 1,
+                amount: 100,
+                userData: '0x',
+              },
+            ],
+            assets: [tokens.DAI.address, tokens.MKR.address],
+            funds: {
+              sender: assetManager.address,
+              fromInternalBalance: false,
+              recipient: lp.address,
+              toInternalBalance: false,
+            },
+            limits: [],
+            deadline: MAX_UINT256,
+          };
+          await assetManager.rebalanceAndSwap(poolId, swap);
           expect(await assetManager.maxInvestableBalance(poolId)).to.be.eq(0);
         });
 
@@ -582,43 +596,54 @@ describe('Aave Asset manager', function () {
             const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
             const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
 
-            await expectBalanceChange(
-              () =>
-                assetManager.rebalanceAndSwap(
+            const swap = {
+              swaps: [
+                {
                   poolId,
-                  [],
-                  [],
-                  {
-                    sender: assetManager.address,
-                    fromInternalBalance: false,
-                    recipient: lp.address,
-                    toInternalBalance: false,
-                  },
-                  [],
-                  MAX_UINT256
-                ),
-              tokens,
-              [
-                { account: lendingPool.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
-                { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
-              ]
-            );
-          });
-
-          it('returns the pool to its target allocation', async () => {
-            await assetManager.rebalanceAndSwap(
-              poolId,
-              [],
-              [],
-              {
+                  assetInIndex: 0,
+                  assetOutIndex: 1,
+                  amount: 100,
+                  userData: '0x',
+                },
+              ],
+              assets: [tokens.DAI.address, tokens.MKR.address],
+              funds: {
                 sender: assetManager.address,
                 fromInternalBalance: false,
                 recipient: lp.address,
                 toInternalBalance: false,
               },
-              [],
-              MAX_UINT256
-            );
+              limits: [],
+              deadline: MAX_UINT256,
+            };
+            await expectBalanceChange(() => assetManager.rebalanceAndSwap(poolId, swap), tokens, [
+              { account: lendingPool.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
+              { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+            ]);
+          });
+
+          it('returns the pool to its target allocation', async () => {
+            const swap = {
+              swaps: [
+                {
+                  poolId,
+                  assetInIndex: 0,
+                  assetOutIndex: 1,
+                  amount: 100,
+                  userData: '0x',
+                },
+              ],
+              assets: [tokens.DAI.address, tokens.MKR.address],
+              funds: {
+                sender: assetManager.address,
+                fromInternalBalance: false,
+                recipient: lp.address,
+                toInternalBalance: false,
+              },
+              limits: [],
+              deadline: MAX_UINT256,
+            };
+            await assetManager.rebalanceAndSwap(poolId, swap);
             expect(await assetManager.maxInvestableBalance(poolId)).to.be.eq(0);
           });
 
@@ -633,68 +658,84 @@ describe('Aave Asset manager', function () {
             await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
           });
 
-          it.skip('transfers the expected number of tokens from the Vault');
+          it('transfers the expected number of tokens from the Vault');
 
           it("reverts if the funds aren't taken from the asset manager", async () => {
-            await expect(
-              assetManager.connect(lp).rebalanceAndSwap(
-                poolId,
-                [],
-                [],
+            const badSwap = {
+              swaps: [
                 {
-                  sender: lp.address,
-                  fromInternalBalance: false,
-                  recipient: lp.address,
-                  toInternalBalance: false,
+                  poolId,
+                  assetInIndex: 0,
+                  assetOutIndex: 1,
+                  amount: 100,
+                  userData: '0x',
                 },
-                [],
-                MAX_UINT256
-              )
-            ).to.be.revertedWith('Asset Manager must be sender');
+              ],
+              assets: [tokens.DAI.address, tokens.MKR.address],
+              funds: {
+                sender: lp.address,
+                fromInternalBalance: false,
+                recipient: lp.address,
+                toInternalBalance: false,
+              },
+              limits: [],
+              deadline: MAX_UINT256,
+            };
+            await expect(assetManager.connect(lp).rebalanceAndSwap(poolId, badSwap)).to.be.revertedWith(
+              'Asset Manager must be sender'
+            );
           });
 
           it('reverts if the swap attempts to use a token other what is paid as a fee as a swap input', async () => {
-            await expect(
-              assetManager.connect(lp).rebalanceAndSwap(
-                poolId,
-                [
-                  {
-                    poolId,
-                    assetInIndex: 0,
-                    assetOutIndex: 1,
-                    amount: 100,
-                    userData: '0x',
-                  },
-                ],
-                [tokens.MKR.address, tokens.DAI.address],
+            const badSwap = {
+              swaps: [
                 {
-                  sender: assetManager.address,
-                  fromInternalBalance: false,
-                  recipient: lp.address,
-                  toInternalBalance: false,
+                  poolId,
+                  assetInIndex: 0,
+                  assetOutIndex: 1,
+                  amount: 100,
+                  userData: '0x',
                 },
-                [],
-                MAX_UINT256
-              )
-            ).to.be.revertedWith("Must swap asset manager's token");
+              ],
+              assets: [tokens.MKR.address, tokens.DAI.address],
+              funds: {
+                sender: assetManager.address,
+                fromInternalBalance: false,
+                recipient: lp.address,
+                toInternalBalance: false,
+              },
+              limits: [],
+              deadline: MAX_UINT256,
+            };
+            await expect(assetManager.connect(lp).rebalanceAndSwap(poolId, badSwap)).to.be.revertedWith(
+              "Must swap asset manager's token"
+            );
           });
 
           it("reverts if the swap attempts to use the asset manager's internal balance", async () => {
-            await expect(
-              assetManager.connect(lp).rebalanceAndSwap(
-                poolId,
-                [],
-                [],
+            const badSwap = {
+              swaps: [
                 {
-                  sender: assetManager.address,
-                  fromInternalBalance: true,
-                  recipient: lp.address,
-                  toInternalBalance: false,
+                  poolId,
+                  assetInIndex: 0,
+                  assetOutIndex: 1,
+                  amount: 100,
+                  userData: '0x',
                 },
-                [],
-                MAX_UINT256
-              )
-            ).to.be.revertedWith("Can't use Asset Manager's internal balance");
+              ],
+              assets: [tokens.DAI.address, tokens.MKR.address],
+              funds: {
+                sender: assetManager.address,
+                fromInternalBalance: true,
+                recipient: lp.address,
+                toInternalBalance: false,
+              },
+              limits: [],
+              deadline: MAX_UINT256,
+            };
+            await expect(assetManager.connect(lp).rebalanceAndSwap(poolId, badSwap)).to.be.revertedWith(
+              "Can't use Asset Manager's internal balance"
+            );
           });
 
           it('uses the entire received fee as the input to a swap');
