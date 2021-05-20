@@ -165,12 +165,8 @@ abstract contract AssetManager is IAssetManager {
     function updateBalanceOfPool(bytes32 poolId) public {
         uint256 managedBalance = balanceOf(poolId);
 
-        IVault.PoolBalanceOp memory transfer = IVault.PoolBalanceOp(
-            IVault.PoolBalanceOpKind.UPDATE,
-            poolId,
-            token,
-            managedBalance
-        );
+        IVault.PoolBalanceOp memory transfer =
+            IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, poolId, token, managedBalance);
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
         ops[0] = (transfer);
 
