@@ -220,7 +220,6 @@ describe('Asset manager', function () {
         // Simulate a return on asset manager's investment
         const amountReturned = amountToDeposit.div(10);
         await assetManager.connect(lp).setUnrealisedAUM(amountToDeposit.add(amountReturned));
-        await assetManager.connect(lp).realizeGains();
 
         await assetManager.connect(lp).updateBalanceOfPool(poolId);
       });
