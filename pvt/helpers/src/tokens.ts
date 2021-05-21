@@ -23,7 +23,7 @@ export async function deploySortedTokens(
 export async function deployToken(symbol: string, decimals?: number, from?: SignerWithAddress): Promise<Contract> {
   const [defaultDeployer] = await ethers.getSigners();
   const deployer = from || defaultDeployer;
-  return deploy('v2-solidity-utils/TestToken', {
+  return deploy('v2-standalone-utils/TestToken', {
     from: deployer,
     args: [deployer.address, symbol, symbol, decimals],
   });

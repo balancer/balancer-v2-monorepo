@@ -11,11 +11,11 @@ const contractSettings: ContractSettings = {
     version: '0.7.1',
     runs: 1500,
   },
-  '@balancer-labs/v2-core/contracts/pools/weighted/WeightedPoolFactory.sol': {
+  '@balancer-labs/v2-pool-weighted/contracts/WeightedPoolFactory.sol': {
     version: '0.7.1',
     runs: 800,
   },
-  '@balancer-labs/v2-core/contracts/pools/weighted/WeightedPool2TokensFactory.sol': {
+  '@balancer-labs/v2-pool-weighted/contracts/WeightedPool2TokensFactory.sol': {
     version: '0.7.1',
     runs: 200,
   },
