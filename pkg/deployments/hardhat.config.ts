@@ -18,7 +18,7 @@ task(TASK_DEPLOY).setAction(async (_, hre, runSuper) => {
   await hre.run('compile');
 
   exec(
-    'mkdir --parents artifacts && cp --recursive --target-directory artifacts ../solidity-utils/artifacts/* ../vault/artifacts/* ../core/artifacts/* '
+    'mkdir --parents artifacts && cp --recursive --target-directory artifacts ../solidity-utils/artifacts/* ../vault/artifacts/* ../pool-weighted/artifacts/* ../pool-stable/artifacts/* ../standalone-utils/artifacts/* '
   );
 
   return runSuper({ noCompile: true });

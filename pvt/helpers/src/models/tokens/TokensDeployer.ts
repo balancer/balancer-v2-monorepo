@@ -23,12 +23,12 @@ class TokensDeployer {
 
     let instance;
     if (symbol !== 'WETH') {
-      instance = await deploy('v2-solidity-utils/TestToken', {
+      instance = await deploy('v2-standalone-utils/TestToken', {
         from: sender,
         args: [sender.address, 'Token', 'TKN', decimals],
       });
     } else {
-      instance = await deploy('v2-solidity-utils/TestWETH', {
+      instance = await deploy('v2-standalone-utils/TestWETH', {
         from: sender,
         args: [sender.address],
       });

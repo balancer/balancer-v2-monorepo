@@ -22,7 +22,7 @@ export async function setupEnvironment(): Promise<{
 }> {
   const { admin, creator, trader } = await getSigners();
 
-  const weth = await deploy('v2-solidity-utils/TestWETH', { args: [admin.address] });
+  const weth = await deploy('v2-standalone-utils/TestWETH', { args: [admin.address] });
 
   const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
 
@@ -167,7 +167,7 @@ async function deployPoolFromFactory(
   poolName: PoolName,
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
-  const fullName = `v2-core/${poolName}`;
+  const fullName = `${poolName == 'StablePool' ? 'v2-pool-stable' : 'v2-pool-weighted'}/${poolName}`;
   const factory = await deploy(`${fullName}Factory`, { args: [vault.address] });
   // We could reuse this factory if we saved it across pool deployments
 

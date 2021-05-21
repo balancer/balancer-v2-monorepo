@@ -35,7 +35,7 @@ export default {
       from,
     } = params;
     return params.twoTokens
-      ? deploy('v2-core/WeightedPool2TokensMock', {
+      ? deploy('v2-pool-weighted/WeightedPool2TokensMock', {
           args: [
             {
               vault: vault.address,
@@ -54,7 +54,7 @@ export default {
           ],
           from,
         })
-      : deploy('v2-core/WeightedPool', {
+      : deploy('v2-pool-weighted/WeightedPool', {
           args: [
             vault.address,
             NAME,
@@ -74,7 +74,7 @@ export default {
     const { tokens, weights, swapFeePercentage, oracleEnabled, owner, from } = params;
 
     if (params.twoTokens) {
-      const factory = await deploy('v2-core/WeightedPool2TokensFactory', { args: [vault.address], from });
+      const factory = await deploy('v2-pool-weighted/WeightedPool2TokensFactory', { args: [vault.address], from });
       const tx = await factory.create(
         NAME,
         SYMBOL,
@@ -86,9 +86,9 @@ export default {
       );
       const receipt = await tx.wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-      return deployedAt('v2-core/WeightedPool2Tokens', event.args.pool);
+      return deployedAt('v2-pool-weighted/WeightedPool2Tokens', event.args.pool);
     } else {
-      const factory = await deploy('v2-core/WeightedPoolFactory', { args: [vault.address], from });
+      const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address], from });
       const tx = await factory.create(
         NAME,
         SYMBOL,
@@ -99,7 +99,7 @@ export default {
       );
       const receipt = await tx.wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-      return deployedAt('v2-core/WeightedPool', event.args.pool);
+      return deployedAt('v2-pool-weighted/WeightedPool', event.args.pool);
     }
   },
 };

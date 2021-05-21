@@ -1,7 +1,7 @@
 {
-  "name": "@balancer-labs/v2-vault",
+  "name": "@balancer-labs/v2-pool-weighted",
   "version": "0.1.0",
-  "description": "Contracts of the Balancer v2 Vault",
+  "description": "Balancer v2 Weighted Pools",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-core-v2#readme",
   "repository": "git@github.com:balancer-labs/balancer-core-v2.git",
@@ -30,10 +30,12 @@
     "test:watch": "nodemon --ext js,ts --watch test --watch lib --exec 'clear && yarn test --no-compile'"
   },
   "devDependencies": {
+    "@balancer-labs/v2-asset-manager-utils": "workspace:*",
     "@balancer-labs/v2-common": "workspace:*",
     "@balancer-labs/v2-helpers": "workspace:*",
+    "@balancer-labs/v2-pool-utils": "workspace:*",
     "@balancer-labs/v2-solidity-utils": "workspace:*",
-    "@balancer-labs/v2-standalone-utils": "workspace:*",
+    "@balancer-labs/v2-vault": "workspace:*",
     "@nomiclabs/hardhat-ethers": "^2.0.1",
     "@nomiclabs/hardhat-waffle": "^2.0.0",
     "@types/chai": "^4.2.12",

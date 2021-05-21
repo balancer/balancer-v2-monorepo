@@ -13,11 +13,11 @@ async function main() {
 
   const vault = await measureDeployment('v2-vault/Vault', [authorizer.address, ZERO_ADDRESS, 0, 0]);
 
-  await measureDeployment('v2-core/WeightedPoolFactory', [vault.address]);
+  await measureDeployment('v2-pool-weighted/WeightedPoolFactory', [vault.address]);
 
-  await measureDeployment('v2-core/WeightedPool2TokensFactory', [vault.address]);
+  await measureDeployment('v2-pool-weighted/WeightedPool2TokensFactory', [vault.address]);
 
-  await measureDeployment('v2-core/StablePoolFactory', [vault.address]);
+  await measureDeployment('v2-pool-stable/StablePoolFactory', [vault.address]);
 }
 
 async function measureDeployment(name: string, args: Array<unknown>): Promise<Contract> {

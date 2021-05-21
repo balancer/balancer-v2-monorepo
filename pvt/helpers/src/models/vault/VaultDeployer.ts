@@ -29,7 +29,7 @@ export default {
   },
 
   async _deployMocked({ from }: VaultDeployment, authorizer: Contract): Promise<Contract> {
-    return deploy('MockVault', { from, args: [authorizer.address] });
+    return deploy('v2-pool-utils/MockVault', { from, args: [authorizer.address] });
   },
 
   async _deployAuthorizer(admin: SignerWithAddress, from?: SignerWithAddress): Promise<Contract> {
