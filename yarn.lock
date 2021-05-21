@@ -132,7 +132,11 @@ __metadata:
   resolution: "@balancer-labs/v2-deployments@workspace:pkg/deployments"
   dependencies:
     "@balancer-labs/v2-common": "workspace:*"
+    "@balancer-labs/v2-pool-stable": "workspace:*"
+    "@balancer-labs/v2-pool-weighted": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
+    "@balancer-labs/v2-standalone-utils": "workspace:*"
+    "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@tenderly/hardhat-tenderly": 1.1.0-beta.5
     "@types/lodash": ^4.14.161
@@ -186,7 +190,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v2-pool-stable@workspace:pkg/pool-stable":
+"@balancer-labs/v2-pool-stable@workspace:*, @balancer-labs/v2-pool-stable@workspace:pkg/pool-stable":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-pool-stable@workspace:pkg/pool-stable"
   dependencies:
@@ -268,7 +272,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v2-pool-weighted@workspace:pkg/pool-weighted":
+"@balancer-labs/v2-pool-weighted@workspace:*, @balancer-labs/v2-pool-weighted@workspace:pkg/pool-weighted":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-pool-weighted@workspace:pkg/pool-weighted"
   dependencies:
