@@ -6,12 +6,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 const OVER_INVESTMENT_REVERT_REASON = 'investment amount exceeds target';
 const UNDER_INVESTMENT_REVERT_REASON = 'withdrawal leaves insufficient balance invested';
@@ -37,7 +38,7 @@ const setup = async () => {
   const pool = await deploy('v2-vault/MockPool', { args: [vault.address, GeneralPool] });
   const poolId = await pool.getPoolId();
 
-  await tokens.mint({ to: lp, amount: tokenInitialBalance });
+  await tokens.mint({ to: lp, amount: tokenInitialBalance.mul(2) });
   await tokens.approve({ to: vault.address, from: [lp] });
 
   // Assign assetManager to the DAI token, and other to the other token
@@ -55,14 +56,30 @@ const setup = async () => {
     ),
   });
 
+  // Deploy Pool for liquidating fees
+  const swapPool = await deploy('@balancer-labs/v2-vault/test/MockPool', { args: [vault.address, GeneralPool] });
+  const swapPoolId = await swapPool.getPoolId();
+
+  await swapPool.registerTokens(tokens.addresses, [ZERO_ADDRESS, ZERO_ADDRESS]);
+
+  await vault.connect(lp).joinPool(swapPoolId, lp.address, lp.address, {
+    assets: tokens.addresses,
+    maxAmountsIn: tokens.addresses.map(() => MAX_UINT256),
+    fromInternalBalance: false,
+    userData: encodeJoin(
+      tokens.addresses.map(() => tokenInitialBalance),
+      tokens.addresses.map(() => 0)
+    ),
+  });
+
   return {
     data: {
       poolId,
+      swapPoolId,
     },
     contracts: {
       assetManager,
       tokens,
-      pool,
       vault,
     },
   };
@@ -72,7 +89,7 @@ describe('Asset manager', function () {
   let tokens: TokenList, vault: Contract, assetManager: Contract;
 
   let lp: SignerWithAddress, other: SignerWithAddress;
-  let poolId: string;
+  let poolId: string, swapPoolId: string;
 
   before('deploy base contracts', async () => {
     [, , lp, other] = await ethers.getSigners();
@@ -81,6 +98,7 @@ describe('Asset manager', function () {
   sharedBeforeEach('set up asset manager', async () => {
     const { data, contracts } = await setup();
     poolId = data.poolId;
+    swapPoolId = data.swapPoolId;
 
     assetManager = contracts.assetManager;
     tokens = contracts.tokens;
@@ -473,6 +491,30 @@ describe('Asset manager', function () {
   });
 
   describe('rebalanceAndSwap', () => {
+    let swap: any;
+    sharedBeforeEach(async () => {
+      swap = {
+        swaps: [
+          {
+            poolId: swapPoolId,
+            assetInIndex: 0,
+            assetOutIndex: 1,
+            amount: 0,
+            userData: '0x',
+          },
+        ],
+        assets: [tokens.DAI.address, tokens.MKR.address],
+        funds: {
+          sender: assetManager.address,
+          fromInternalBalance: false,
+          recipient: lp.address,
+          toInternalBalance: false,
+        },
+        limits: [MAX_INT256, -1],
+        deadline: MAX_UINT256,
+      };
+    });
+
     describe('when pool is below target investment level', () => {
       describe('when pool is safely above critical investment level', () => {
         let poolController: SignerWithAddress; // TODO
@@ -493,57 +535,20 @@ describe('Asset manager', function () {
           const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
           const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
 
-          const swap = {
-            swaps: [
-              {
-                poolId,
-                assetInIndex: 0,
-                assetOutIndex: 1,
-                amount: 100,
-                userData: '0x',
-              },
-            ],
-            assets: [tokens.DAI.address, tokens.MKR.address],
-            funds: {
-              sender: assetManager.address,
-              fromInternalBalance: false,
-              recipient: lp.address,
-              toInternalBalance: false,
-            },
-            limits: [],
-            deadline: MAX_UINT256,
-          };
           await expectBalanceChange(() => assetManager.rebalanceAndSwap(poolId, swap), tokens, [
             { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
           ]);
         });
 
         it('returns the pool to its target allocation', async () => {
-          const swap = {
-            swaps: [
-              {
-                poolId,
-                assetInIndex: 0,
-                assetOutIndex: 1,
-                amount: 100,
-                userData: '0x',
-              },
-            ],
-            assets: [tokens.DAI.address, tokens.MKR.address],
-            funds: {
-              sender: assetManager.address,
-              fromInternalBalance: false,
-              recipient: lp.address,
-              toInternalBalance: false,
-            },
-            limits: [],
-            deadline: MAX_UINT256,
-          };
           await assetManager.rebalanceAndSwap(poolId, swap);
           expect(await assetManager.maxInvestableBalance(poolId)).to.be.eq(0);
         });
 
-        it("doesn't perform the swap");
+        it("doesn't perform the swap", async () => {
+          const receipt = await (await assetManager.rebalanceAndSwap(poolId, swap)).wait();
+          expectEvent.notEmitted(receipt, 'Swap');
+        });
       });
 
       describe('when pool is below critical investment level', () => {
@@ -563,26 +568,6 @@ describe('Asset manager', function () {
             const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
             const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
 
-            const swap = {
-              swaps: [
-                {
-                  poolId,
-                  assetInIndex: 0,
-                  assetOutIndex: 1,
-                  amount: 100,
-                  userData: '0x',
-                },
-              ],
-              assets: [tokens.DAI.address, tokens.MKR.address],
-              funds: {
-                sender: assetManager.address,
-                fromInternalBalance: false,
-                recipient: lp.address,
-                toInternalBalance: false,
-              },
-              limits: [],
-              deadline: MAX_UINT256,
-            };
             await expectBalanceChange(() => assetManager.rebalanceAndSwap(poolId, swap), tokens, [
               { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
               { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
@@ -590,31 +575,14 @@ describe('Asset manager', function () {
           });
 
           it('returns the pool to its target allocation', async () => {
-            const swap = {
-              swaps: [
-                {
-                  poolId,
-                  assetInIndex: 0,
-                  assetOutIndex: 1,
-                  amount: 100,
-                  userData: '0x',
-                },
-              ],
-              assets: [tokens.DAI.address, tokens.MKR.address],
-              funds: {
-                sender: assetManager.address,
-                fromInternalBalance: false,
-                recipient: lp.address,
-                toInternalBalance: false,
-              },
-              limits: [],
-              deadline: MAX_UINT256,
-            };
             await assetManager.rebalanceAndSwap(poolId, swap);
             expect(await assetManager.maxInvestableBalance(poolId)).to.be.eq(0);
           });
 
-          it("doesn't perform the swap");
+          it("doesn't perform the swap", async () => {
+            const receipt = await (await assetManager.rebalanceAndSwap(poolId, swap)).wait();
+            expectEvent.notEmitted(receipt, 'Swap');
+          });
         });
 
         describe('when fee percentage is non-zero', () => {
@@ -627,60 +595,15 @@ describe('Asset manager', function () {
             zeroFeeRebalanceAmount = await assetManager.maxInvestableBalance(poolId);
           });
 
-          it.skip('transfers the expected number of tokens from the Vault', async () => {
-            const expectedFeeAmount = await assetManager.getRebalanceFee(poolId);
-
-            const investmentFeeAdjustment = expectedFeeAmount.mul(poolConfig.targetPercentage).div(fp(1));
-            const expectedInvestmentAmount = zeroFeeRebalanceAmount.sub(investmentFeeAdjustment);
-
-            const expectedVaultRemovedAmount = expectedInvestmentAmount.add(expectedFeeAmount);
-
-            const swap = {
-              swaps: [
-                {
-                  poolId,
-                  assetInIndex: 0,
-                  assetOutIndex: 1,
-                  amount: 100,
-                  userData: '0x',
-                },
-              ],
-              assets: [tokens.DAI.address, tokens.MKR.address],
-              funds: {
-                sender: assetManager.address,
-                fromInternalBalance: false,
-                recipient: lp.address,
-                toInternalBalance: false,
-              },
-              limits: [],
-              deadline: MAX_UINT256,
-            };
-            await expectBalanceChange(() => assetManager.connect(lp).rebalanceAndSwap(poolId, swap), tokens, [
-              { account: assetManager.address, changes: { DAI: ['very-near', expectedInvestmentAmount] } },
-              { account: vault.address, changes: { DAI: ['very-near', -expectedVaultRemovedAmount] } },
-            ]);
-          });
-
           it("reverts if the funds aren't taken from the asset manager", async () => {
             const badSwap = {
-              swaps: [
-                {
-                  poolId,
-                  assetInIndex: 0,
-                  assetOutIndex: 1,
-                  amount: 100,
-                  userData: '0x',
-                },
-              ],
-              assets: [tokens.DAI.address, tokens.MKR.address],
+              ...swap,
               funds: {
                 sender: lp.address,
                 fromInternalBalance: false,
                 recipient: lp.address,
                 toInternalBalance: false,
               },
-              limits: [],
-              deadline: MAX_UINT256,
             };
             await expect(assetManager.connect(lp).rebalanceAndSwap(poolId, badSwap)).to.be.revertedWith(
               'Asset Manager must be sender'
@@ -689,24 +612,8 @@ describe('Asset manager', function () {
 
           it('reverts if the swap attempts to use a token other what is paid as a fee as a swap input', async () => {
             const badSwap = {
-              swaps: [
-                {
-                  poolId,
-                  assetInIndex: 0,
-                  assetOutIndex: 1,
-                  amount: 100,
-                  userData: '0x',
-                },
-              ],
+              ...swap,
               assets: [tokens.MKR.address, tokens.DAI.address],
-              funds: {
-                sender: assetManager.address,
-                fromInternalBalance: false,
-                recipient: lp.address,
-                toInternalBalance: false,
-              },
-              limits: [],
-              deadline: MAX_UINT256,
             };
             await expect(assetManager.connect(lp).rebalanceAndSwap(poolId, badSwap)).to.be.revertedWith(
               "Must swap asset manager's token"
@@ -715,55 +622,55 @@ describe('Asset manager', function () {
 
           it("reverts if the swap attempts to use the asset manager's internal balance", async () => {
             const badSwap = {
-              swaps: [
-                {
-                  poolId,
-                  assetInIndex: 0,
-                  assetOutIndex: 1,
-                  amount: 100,
-                  userData: '0x',
-                },
-              ],
-              assets: [tokens.DAI.address, tokens.MKR.address],
+              ...swap,
               funds: {
                 sender: assetManager.address,
                 fromInternalBalance: true,
                 recipient: lp.address,
                 toInternalBalance: false,
               },
-              limits: [],
-              deadline: MAX_UINT256,
             };
             await expect(assetManager.connect(lp).rebalanceAndSwap(poolId, badSwap)).to.be.revertedWith(
               "Can't use Asset Manager's internal balance"
             );
           });
 
-          it('uses the entire received fee as the input to a swap');
+          it('transfers the expected number of tokens from the Vault', async () => {
+            const expectedFeeAmount = await assetManager.getRebalanceFee(poolId);
 
-          it.skip('returns the pool to its target allocation', async () => {
-            const swap = {
-              swaps: [
-                {
-                  poolId,
-                  assetInIndex: 0,
-                  assetOutIndex: 1,
-                  amount: 100,
-                  userData: '0x',
-                },
-              ],
-              assets: [tokens.DAI.address, tokens.MKR.address],
-              funds: {
-                sender: assetManager.address,
-                fromInternalBalance: false,
-                recipient: lp.address,
-                toInternalBalance: false,
+            const investmentFeeAdjustment = expectedFeeAmount.mul(poolConfig.targetPercentage).div(fp(1));
+            const expectedInvestmentAmount = zeroFeeRebalanceAmount.sub(investmentFeeAdjustment);
+
+            // The fee does not feature in the DAI balance change of the vault as it is replaced during the swap
+            await expectBalanceChange(() => assetManager.connect(lp).rebalanceAndSwap(poolId, swap), tokens, [
+              { account: assetManager.address, changes: { DAI: ['very-near', expectedInvestmentAmount] } },
+              {
+                account: vault.address,
+                changes: { DAI: ['very-near', -expectedInvestmentAmount], MKR: ['very-near', -expectedFeeAmount] },
               },
-              limits: [],
-              deadline: MAX_UINT256,
-            };
+            ]);
+          });
+
+          it('returns the pool to its target allocation', async () => {
             await assetManager.rebalanceAndSwap(poolId, swap);
             expect(await assetManager.maxInvestableBalance(poolId)).to.be.eq(0);
+          });
+
+          it('performs the expected swap', async () => {
+            const expectedFee: BigNumber = await assetManager.getRebalanceFee(poolId);
+
+            // Check that the expected swap occurs
+            const receipt = await (await assetManager.rebalanceAndSwap(poolId, swap)).wait();
+            expectEvent.inIndirectReceipt(receipt, vault.interface, 'Swap', {
+              poolId: swapPoolId,
+              tokenIn: tokens.DAI.address,
+              tokenOut: tokens.MKR.address,
+              amountIn: expectedFee,
+              amountOut: expectedFee,
+            });
+
+            // Check that keeper holds expected number of tokens after swap
+            expect(await tokens.MKR.balanceOf(lp.address)).to.be.eq(expectedFee);
           });
         });
       });
