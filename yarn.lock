@@ -88,8 +88,8 @@ __metadata:
     "@balancer-labs/v2-asset-manager-utils": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
-    "@balancer-labs/v2-pool-utils": "workspace:*"
-    "@balancer-labs/v2-solidity-utils": "workspace:*"
+    "@balancer-labs/v2-pool-stable": "workspace:*"
+    "@balancer-labs/v2-pool-weighted": "workspace:*"
     "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@types/lodash": ^4.14.161
