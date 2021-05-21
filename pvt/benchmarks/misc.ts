@@ -167,7 +167,7 @@ async function deployPoolFromFactory(
   poolName: PoolName,
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
-  const fullName = `v2-core/${poolName}`;
+  const fullName = `${poolName == 'StablePool' ? 'v2-pool-stable' : 'v2-pool-weighted'}/${poolName}`;
   const factory = await deploy(`${fullName}Factory`, { args: [vault.address] });
   // We could reuse this factory if we saved it across pool deployments
 
