@@ -134,7 +134,7 @@ jobs:
       - name: Compile
         run: yarn build
       - name: Test
-        run: workspaces foreach --verbose --include @balancer-labs/v2-pool-* run test
+        run: yarn workspaces foreach --verbose --include @balancer-labs/v2-pool-* run test
 
   test-asset-managers:
     runs-on: ubuntu-latest
@@ -156,7 +156,7 @@ jobs:
       - name: Compile
         run: yarn build
       - name: Test
-        run: workspaces foreach --verbose --include @balancer-labs/v2-asset-manager-* run test
+        run: yarn workspaces foreach --verbose --include @balancer-labs/v2-asset-manager-* run test
 
   benchmark:
     runs-on: ubuntu-latest
