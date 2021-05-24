@@ -31,10 +31,8 @@ interface BalanceChange {
   changes?: Dictionary<BigNumberish | Comparison>;
 }
 
-class ERC20BalanceTracker {
+abstract class BalanceTracker {
   private prev: BigNumber | undefined;
-
-  constructor(private address: string, private token: Token) {}
 
   // returns the current token balance
   async get(): Promise<BigNumber> {
@@ -57,8 +55,27 @@ class ERC20BalanceTracker {
     return delta;
   }
 
+  abstract currentBalance(): Promise<BigNumber>;
+}
+
+class ERC20BalanceTracker extends BalanceTracker {
+  constructor(private address: string, private token: Token) {
+    super();
+  }
+
   async currentBalance(): Promise<BigNumber> {
     return this.token.balanceOf(this.address);
+  }
+}
+
+class InternalBalanceTracker extends BalanceTracker {
+  constructor(private vault: Contract, private address: string, private token: Token) {
+    super();
+  }
+
+  async currentBalance(): Promise<BigNumber> {
+    const result = await this.vault.getInternalBalance(this.address, [this.token.address]);
+    return result[0];
   }
 }
 
@@ -70,6 +87,16 @@ function accountToAddress(account: Account): string {
 // be called there), so we have this helper method.
 export async function balanceTracker(address: string, token: Token): Promise<ERC20BalanceTracker> {
   const tracker = new ERC20BalanceTracker(address, token);
+  await tracker.get();
+  return tracker;
+}
+
+export async function internalBalanceTracker(
+  vault: Contract,
+  address: string,
+  token: Token
+): Promise<InternalBalanceTracker> {
+  const tracker = new InternalBalanceTracker(vault, address, token);
   await tracker.get();
   return tracker;
 }
@@ -95,14 +122,24 @@ export async function balanceTracker(address: string, token: Token): Promise<ERC
 //   { account, changes: { 'DAI': 50, 'USDC': -50, 'UNI': ['gt', 0] } } // Earn an unknown amount of UNI
 // });
 //
+// You can also track *internal* balance changes by passing an optional vault parameter
+//
+// await expectBalanceChange(
+//   balancer.joinSwap(...),
+//   tokens,
+//   { account, changes: { 'DAI': 50, 'USDC': -50 } },
+//   balancerVaultContract
+// });
+//
 // Returns the result of calling `promise`.
 export async function expectBalanceChange(
   promise: () => Promise<unknown>,
   tokens: TokenList,
-  balanceChange: BalanceChange | Array<BalanceChange>
+  balanceChange: BalanceChange | Array<BalanceChange>,
+  vault?: Contract
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
-  const trackers: Dictionary<Dictionary<ERC20BalanceTracker>> = {};
+  const trackers: Dictionary<Dictionary<ERC20BalanceTracker | InternalBalanceTracker>> = {};
   const balanceChanges: Array<BalanceChange> = Array.isArray(balanceChange) ? balanceChange : [balanceChange];
 
   for (const { account } of balanceChanges) {
@@ -110,7 +147,9 @@ export async function expectBalanceChange(
     trackers[address] = {};
 
     await tokens.asyncEach(async (token) => {
-      trackers[address][token.symbol] = await balanceTracker(address, token);
+      trackers[address][token.symbol] = vault
+        ? await internalBalanceTracker(vault, address, token)
+        : await balanceTracker(address, token);
     });
   }
 
