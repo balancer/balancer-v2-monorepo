@@ -123,6 +123,10 @@ abstract contract AssetManager is IAssetManager {
         return (cash + managed).mul(investablePercent).divDown(ONE);
     }
 
+    function getPoolBalances(bytes32 poolId) public view returns (uint256 poolCash, uint256 poolManaged) {
+        return _getPoolBalances(poolId, readAUM());
+    }
+
     function _getPoolBalances(bytes32 poolId, uint256 aum)
         internal
         view
