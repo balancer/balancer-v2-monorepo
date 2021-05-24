@@ -101,8 +101,15 @@ abstract contract AssetManager is IAssetManager {
 
     //function setInvestablePercent(bytes32 poolId, uint256 investmentPercent) external onlyPoolController(poolId) {
     function setPoolConfig(bytes32 poolId, PoolConfig calldata config) external override {
-        require(config.targetPercentage <= ONE, "Investment target must be less than 100%");
-        require(config.criticalPercentage <= config.targetPercentage, "Critical level must be less than target");
+        require(config.upperCriticalPercentage <= ONE, "Upper critical level must be less than 100%");
+        require(
+            config.targetPercentage <= config.upperCriticalPercentage,
+            "Target must be less than upper critical level"
+        );
+        require(
+            config.lowerCriticalPercentage <= config.targetPercentage,
+            "Lower critical level must be less than target"
+        );
         require(config.feePercentage <= ONE / 10, "Fee on critical rebalances must be less than 10%");
 
         _poolConfig[poolId] = config;
@@ -154,11 +161,15 @@ abstract contract AssetManager is IAssetManager {
         uint256 poolManaged,
         PoolConfig memory config
     ) internal pure returns (uint256) {
-        uint256 criticalManagedBalance = (poolCash + poolManaged).mul(config.criticalPercentage).divDown(ONE);
-        if (poolManaged >= criticalManagedBalance) {
-            return 0;
+        uint256 upperCriticalManagedBalance = (poolCash + poolManaged).mul(config.upperCriticalPercentage).divDown(ONE);
+        if (poolManaged > upperCriticalManagedBalance) {
+            return poolManaged.sub(upperCriticalManagedBalance).mul(config.feePercentage).divDown(ONE);
         }
-        return criticalManagedBalance.sub(poolManaged).mul(config.feePercentage).divDown(ONE);
+        uint256 lowerCriticalManagedBalance = (poolCash + poolManaged).mul(config.lowerCriticalPercentage).divDown(ONE);
+        if (poolManaged < lowerCriticalManagedBalance) {
+            return lowerCriticalManagedBalance.sub(poolManaged).mul(config.feePercentage).divDown(ONE);
+        }
+        return 0;
     }
 
     // Reporting
@@ -258,9 +269,13 @@ abstract contract AssetManager is IAssetManager {
             capitalIn(poolId, rebalanceAmount.sub(feeAmount.mul(config.targetPercentage).divDown(ONE)));
         } else {
             // Pool is over-invested so remove some funds
-            // Incentivising rebalancer is unneccessary as removing capital
-            // will expose an arb opportunity if it is limiting trading.
-            capitalOut(poolId, poolManaged.sub(targetInvestment));
+            uint256 rebalanceAmount = poolManaged.sub(targetInvestment);
+
+            // If pool is below critical threshold then we want to pay a fee to rebalancer
+            // The fee is paid on the portion of managed funds which are below the critical threshold
+            feeAmount = _getRebalanceFee(poolCash, poolManaged, config);
+
+            capitalOut(poolId, rebalanceAmount.sub(feeAmount.mul(config.targetPercentage).divDown(ONE)));
         }
     }
 
