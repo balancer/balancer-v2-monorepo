@@ -8,6 +8,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
@@ -132,6 +133,25 @@ contract MultiRewards is IRewardsContract, ReentrancyGuard, TemporarilyPausable,
         _balances[receiver] = _balances[receiver].add(amount);
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
         emit Staked(receiver, amount);
+    }
+
+    /**
+     * @notice Stake tokens using a permit signature for approval
+     * @param amount    Amount of allowance
+     * @param deadline  The time at which this expires (unix time)
+     * @param v         v of the signature
+     * @param r         r of the signature
+     * @param s         s of the signature
+     */
+    function stakeWithPermit(
+        uint256 amount,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public {
+        IERC20Permit(address(stakingToken)).permit(msg.sender, address(this), amount, deadline, v, r, s);
+        stake(amount, msg.sender);
     }
 
     function withdraw(uint256 amount) public nonReentrant updateReward(msg.sender) {

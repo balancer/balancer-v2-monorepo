@@ -1,6 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
+import { splitSignature } from '@ethersproject/bytes';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -100,6 +101,59 @@ describe('Staking contract', () => {
 
   before(async () => {
     [, , lp, other] = await ethers.getSigners();
+  });
+
+  describe('stakeWithPermit', () => {
+    it('successfully stakes with a permit signature', async () => {
+      const bptBalance = await pool.balanceOf(lp.address);
+
+      const { chainId } = await ethers.provider.getNetwork();
+      const permitSig = await lp._signTypedData(
+        {
+          name: await pool.name(),
+          version: '1',
+          chainId,
+          verifyingContract: pool.address,
+        },
+        {
+          Permit: [
+            {
+              name: 'owner',
+              type: 'address',
+            },
+            {
+              name: 'spender',
+              type: 'address',
+            },
+            {
+              name: 'value',
+              type: 'uint256',
+            },
+            {
+              name: 'nonce',
+              type: 'uint256',
+            },
+            {
+              name: 'deadline',
+              type: 'uint256',
+            },
+          ],
+        },
+        {
+          owner: lp.address,
+          spender: stakingContract.address,
+          value: bptBalance,
+          nonce: 0,
+          deadline: MAX_UINT256,
+        }
+      );
+
+      const { v, r, s } = splitSignature(permitSig);
+      await stakingContract.connect(lp).stakeWithPermit(bptBalance, MAX_UINT256, v, r, s);
+
+      const stakedBalance = await stakingContract.balanceOf(lp.address);
+      expect(stakedBalance).to.be.eq(bptBalance);
+    });
   });
 
   describe('with two stakes', () => {
