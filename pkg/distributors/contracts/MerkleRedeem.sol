@@ -1,18 +1,23 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/MerkleProof.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
+import "./interfaces/IDistributor.sol";
+
 pragma solidity ^0.7.0;
 
-contract MerkleRedeem is Ownable {
-    IERC20 public rewardToken;
+contract MerkleRedeem is IDistributor, Ownable {
+    using SafeERC20 for IERC20;
 
-    event Claimed(address _claimant, uint256 _balance);
+    IERC20 public rewardToken;
 
     // Recorded weeks
     mapping(uint256 => bytes32) public weekMerkleRoots;
@@ -28,7 +33,7 @@ contract MerkleRedeem is Ownable {
 
     function _disburse(address _recipient, uint256 _balance) private {
         if (_balance > 0) {
-            emit Claimed(_recipient, _balance);
+            emit RewardPaid(_recipient, address(rewardToken), _balance);
             require(rewardToken.transfer(_recipient, _balance), "ERR_TRANSFER_FAILED");
         }
     }
@@ -45,9 +50,8 @@ contract MerkleRedeem is Ownable {
                 kind: IVault.UserBalanceOpKind.DEPOSIT_INTERNAL
             });
 
+            emit RewardPaid(_recipient, address(rewardToken), _balance);
             vault.manageUserBalance(ops);
-
-            emit Claimed(_recipient, _balance);
         }
     }
 
@@ -144,8 +148,20 @@ contract MerkleRedeem is Ownable {
         return MerkleProof.verify(_merkleProof, weekMerkleRoots[_week], leaf);
     }
 
-    function seedAllocations(uint256 _week, bytes32 _merkleRoot) external onlyOwner {
+    /**
+     * @notice
+     * Allows the owner to add funds to the contract as a merkle tree, These tokens will
+     * be withdrawn from the sender
+     * These will be pulled from the user
+     */
+    function seedAllocations(
+        uint256 _week,
+        bytes32 _merkleRoot,
+        uint256 amount
+    ) external onlyOwner {
         require(weekMerkleRoots[_week] == bytes32(0), "cannot rewrite merkle root");
+        rewardToken.safeTransferFrom(msg.sender, address(this), amount);
         weekMerkleRoots[_week] = _merkleRoot;
+        emit RewardAdded(address(rewardToken), amount);
     }
 }

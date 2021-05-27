@@ -54,7 +54,8 @@ describe('MerkleRedeem', () => {
     merkleRedeem = await deploy('MerkleRedeem', {
       args: [vault.address, rewardToken.address],
     });
-    await rewardTokens.mint({ to: merkleRedeem.address, amount: rewardTokenInitialBalance });
+    await rewardTokens.mint({ to: admin.address, amount: rewardTokenInitialBalance });
+    await rewardTokens.approve({ to: merkleRedeem.address, from: [admin] });
 
     // deploy pool and add liquidity
     const specialization = GeneralPool;
@@ -86,7 +87,7 @@ describe('MerkleRedeem', () => {
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
-    await merkleRedeem.connect(admin).seedAllocations(bn(1), root);
+    await merkleRedeem.connect(admin).seedAllocations(bn(1), root, claimBalance);
 
     const proof = merkleTree.getHexProof(elements[0]);
 
@@ -101,7 +102,7 @@ describe('MerkleRedeem', () => {
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
-    await merkleRedeem.seedAllocations(1, root);
+    await merkleRedeem.seedAllocations(1, root, claimBalance);
 
     // construct tree to attempt to override the allocation
     const elements2 = [encodeElement(lp1.address, claimBalance), encodeElement(lp2.address, claimBalance)];
@@ -109,7 +110,7 @@ describe('MerkleRedeem', () => {
     const root2 = merkleTree2.getHexRoot();
 
     const errorMsg = 'cannot rewrite merkle root';
-    expect(merkleRedeem.seedAllocations(1, root2)).to.be.revertedWith(errorMsg);
+    expect(merkleRedeem.seedAllocations(1, root2, claimBalance.mul(2))).to.be.revertedWith(errorMsg);
   });
 
   it('stores multiple allocations', async () => {
@@ -120,7 +121,7 @@ describe('MerkleRedeem', () => {
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
-    await merkleRedeem.seedAllocations(1, root);
+    await merkleRedeem.seedAllocations(1, root, bn('3000'));
 
     const proof0 = merkleTree.getHexProof(elements[0]);
     let result = await merkleRedeem.verifyClaim(lp1.address, 1, claimBalance0, proof0);
@@ -141,7 +142,7 @@ describe('MerkleRedeem', () => {
       merkleTree = new MerkleTree(elements);
       const root = merkleTree.getHexRoot();
 
-      await merkleRedeem.seedAllocations(1, root);
+      await merkleRedeem.seedAllocations(1, root, claimBalance);
     });
 
     it('Allows the user to claimWeek', async () => {
@@ -224,9 +225,9 @@ describe('MerkleRedeem', () => {
       merkleTree2 = new MerkleTree(elements2);
       root2 = merkleTree2.getHexRoot();
 
-      await merkleRedeem.seedAllocations(bn(1), root1);
+      await merkleRedeem.seedAllocations(bn(1), root1, claimBalance1);
 
-      await merkleRedeem.seedAllocations(bn(2), root2);
+      await merkleRedeem.seedAllocations(bn(2), root2, claimBalance2);
     });
 
     it('Allows the user to claim multiple weeks at once', async () => {
