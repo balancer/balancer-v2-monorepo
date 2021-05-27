@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "description": "Balancer v2 deployment information",
   "license": "GPL-3.0-only",
+  "files": [
+    "deployed/**/*",
+    "!deployed/solcInputs"
+  ],
   "homepage": "https://github.com/balancer-labs/balancer-core-v2#readme",
   "repository": "git@github.com:balancer-labs/balancer-core-v2.git",
   "bugs": {
