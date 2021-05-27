@@ -40,8 +40,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         uint256 lastUpdateTime;
         uint256 rewardPerTokenStored;
     }
-    IVault public vault;
-    IERC20 public stakingToken;
+    IVault public immutable vault;
+    IERC20 public immutable stakingToken;
     mapping(IERC20 => Reward) public rewardData;
     IERC20[] public rewardTokens;
 
