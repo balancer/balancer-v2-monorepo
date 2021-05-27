@@ -10,7 +10,7 @@ import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants
 
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { setup, tokenInitialBalance } from '../helpers/setup';
+import { amount, setup, tokenInitialBalance } from '../helpers/setup';
 import { calcRebalanceFee } from '../helpers/rebalanceFee';
 
 describe('Rebalancing', function () {
@@ -34,6 +34,11 @@ describe('Rebalancing', function () {
   });
 
   describe('getRebalanceFee', () => {
+    let poolController: SignerWithAddress; // TODO
+    sharedBeforeEach(async () => {
+      poolController = lp; // TODO
+    });
+
     describe('when pool is in the non-critical range', () => {
       const poolConfig = {
         targetPercentage: fp(0.5),
@@ -43,8 +48,6 @@ describe('Rebalancing', function () {
       };
 
       sharedBeforeEach(async () => {
-        const poolController = lp; // TODO
-
         await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
         // Ensure that the pool is invested below its target level but above than critical level
         const targetInvestmentAmount = await assetManager.maxInvestableBalance(poolId);
@@ -57,7 +60,6 @@ describe('Rebalancing', function () {
     });
 
     describe('when pool is above upper critical investment level', () => {
-      let poolController: SignerWithAddress; // TODO
       const poolConfig = {
         targetPercentage: fp(0.5),
         upperCriticalPercentage: fp(0.6),
@@ -66,8 +68,6 @@ describe('Rebalancing', function () {
       };
 
       sharedBeforeEach(async () => {
-        poolController = lp; // TODO
-
         // Bump up the target percentage and invest
         await assetManager
           .connect(poolController)
@@ -77,21 +77,31 @@ describe('Rebalancing', function () {
         await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
       });
 
-      describe('when fee percentage is zero', () => {
-        it('returns 0', async () => {
-          await assetManager.connect(poolController).setPoolConfig(poolId, { ...poolConfig, feePercentage: 0 });
-          const expectedFee = 0;
-          expect(await assetManager.getRebalanceFee(poolId)).to.be.eq(expectedFee);
-        });
+      it('returns 0 when fee percentage is zero', async () => {
+        await assetManager.connect(poolController).setPoolConfig(poolId, { ...poolConfig, feePercentage: 0 });
+        const expectedFee = 0;
+        expect(await assetManager.getRebalanceFee(poolId)).to.be.eq(expectedFee);
       });
 
-      describe('when fee percentage is non-zero', () => {
-        it('returns the expected fee', async () => {
-          const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
-          const expectedFee = calcRebalanceFee(poolCash, poolManaged, poolConfig);
-          expect(expectedFee).to.be.gt(0);
-          expect(await assetManager.getRebalanceFee(poolId)).to.be.eq(expectedFee);
+      it('returns the expected fee when fee percentage is non-zero', async () => {
+        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+        const expectedFee = calcRebalanceFee(poolCash, poolManaged, poolConfig);
+        expect(expectedFee).to.be.gt(0);
+        expect(await assetManager.getRebalanceFee(poolId)).to.be.eq(expectedFee);
+      });
+
+      it('returns 0 when pool is recently rebalanced', async () => {
+        await assetManager.rebalance(poolId);
+        // Reduce the target percentage to ensure that we're over the critical threshold
+        await assetManager.connect(poolController).setPoolConfig(poolId, {
+          targetPercentage: 0,
+          upperCriticalPercentage: 0,
+          lowerCriticalPercentage: 0,
+          feePercentage: fp(0.1),
         });
+
+        const expectedFee = 0;
+        expect(await assetManager.getRebalanceFee(poolId)).to.be.eq(expectedFee);
       });
     });
 
@@ -103,32 +113,34 @@ describe('Rebalancing', function () {
         feePercentage: fp(0.1),
       };
 
-      describe('when fee percentage is zero', () => {
-        sharedBeforeEach(async () => {
-          const poolController = lp; // TODO
-
-          await assetManager.connect(poolController).setPoolConfig(poolId, { ...poolConfig, feePercentage: bn(0) });
-        });
-
-        it('returns 0', async () => {
-          const expectedFee = 0;
-          expect(await assetManager.getRebalanceFee(poolId)).to.be.eq(expectedFee);
-        });
+      it('returns 0 when fee percentage is zero', async () => {
+        await assetManager.connect(poolController).setPoolConfig(poolId, { ...poolConfig, feePercentage: bn(0) });
+        const expectedFee = 0;
+        expect(await assetManager.getRebalanceFee(poolId)).to.be.eq(expectedFee);
       });
 
-      describe('when fee percentage is non-zero', () => {
-        sharedBeforeEach(async () => {
-          const poolController = lp; // TODO
+      it('returns the expected fee when fee percentage is non-zero', async () => {
+        await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
 
-          await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
+        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+        const expectedFee = calcRebalanceFee(poolCash, poolManaged, poolConfig);
+        expect(expectedFee).to.be.gt(0);
+        expect(await assetManager.getRebalanceFee(poolId)).to.be.eq(expectedFee);
+      });
+
+      it('returns 0 when pool is recently rebalanced', async () => {
+        await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
+        await assetManager.rebalance(poolId);
+        // Increase the target percentage to ensure that we're under the critical threshold
+        await assetManager.connect(poolController).setPoolConfig(poolId, {
+          targetPercentage: fp(1),
+          upperCriticalPercentage: fp(1),
+          lowerCriticalPercentage: fp(0.9),
+          feePercentage: fp(0.1),
         });
 
-        it('returns the expected fee', async () => {
-          const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
-          const expectedFee = calcRebalanceFee(poolCash, poolManaged, poolConfig);
-          expect(expectedFee).to.be.gt(0);
-          expect(await assetManager.getRebalanceFee(poolId)).to.be.eq(expectedFee);
-        });
+        const expectedFee = 0;
+        expect(await assetManager.getRebalanceFee(poolId)).to.be.eq(expectedFee);
       });
     });
   });
