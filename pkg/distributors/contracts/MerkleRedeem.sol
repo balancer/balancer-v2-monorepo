@@ -31,40 +31,40 @@ contract MerkleRedeem is IDistributor, Ownable {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
-    IERC20 public rewardToken;
+    IERC20 public immutable rewardToken;
 
     // Recorded weeks
     mapping(uint256 => bytes32) public weekMerkleRoots;
     mapping(uint256 => mapping(address => bool)) public claimed;
 
-    IVault public vault;
+    IVault public immutable vault;
 
-    constructor(address _vault, address _rewardToken) {
-        vault = IVault(_vault);
-        rewardToken = IERC20(_rewardToken);
-        rewardToken.approve(address(vault), type(uint256).max);
+    constructor(IVault _vault, IERC20 _rewardToken) {
+        vault = _vault;
+        rewardToken = _rewardToken;
+        IERC20(_rewardToken).approve(address(_vault), type(uint256).max);
     }
 
-    function _disburse(address _recipient, uint256 _balance) private {
-        if (_balance > 0) {
-            emit RewardPaid(_recipient, address(rewardToken), _balance);
-            rewardToken.safeTransfer(_recipient, _balance);
+    function _disburse(address recipient, uint256 balance) private {
+        if (balance > 0) {
+            emit RewardPaid(recipient, address(rewardToken), balance);
+            rewardToken.safeTransfer(recipient, balance);
         }
     }
 
-    function _disburseToInternalBalance(address payable _recipient, uint256 _balance) private {
-        if (_balance > 0) {
+    function _disburseToInternalBalance(address payable recipient, uint256 balance) private {
+        if (balance > 0) {
             IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
 
             ops[0] = IVault.UserBalanceOp({
                 asset: IAsset(address(rewardToken)),
-                amount: _balance,
+                amount: balance,
                 sender: address(this),
-                recipient: _recipient,
+                recipient: recipient,
                 kind: IVault.UserBalanceOpKind.DEPOSIT_INTERNAL
             });
 
-            emit RewardPaid(_recipient, address(rewardToken), _balance);
+            emit RewardPaid(recipient, address(rewardToken), balance);
             vault.manageUserBalance(ops);
         }
     }
@@ -73,21 +73,21 @@ contract MerkleRedeem is IDistributor, Ownable {
      * @notice Allows a user to claim a particular weeks worth of rewards
      */
     function claimWeek(
-        address payable _liquidityProvider,
-        uint256 _week,
-        uint256 _claimedBalance,
-        bytes32[] memory _merkleProof,
+        address payable liquidityProvider,
+        uint256 week,
+        uint256 claimedBalance,
+        bytes32[] memory merkleProof,
         bool internalBalance
     ) public {
-        require(msg.sender == _liquidityProvider, "user must claim own balance");
-        require(!claimed[_week][_liquidityProvider], "cannot claim twice");
-        require(verifyClaim(_liquidityProvider, _week, _claimedBalance, _merkleProof), "Incorrect merkle proof");
+        require(msg.sender == liquidityProvider, "user must claim own balance");
+        require(!claimed[week][liquidityProvider], "cannot claim twice");
+        require(verifyClaim(liquidityProvider, week, claimedBalance, merkleProof), "Incorrect merkle proof");
 
-        claimed[_week][_liquidityProvider] = true;
+        claimed[week][liquidityProvider] = true;
         if (internalBalance) {
-            _disburseToInternalBalance(_liquidityProvider, _claimedBalance);
+            _disburseToInternalBalance(liquidityProvider, claimedBalance);
         } else {
-            _disburse(_liquidityProvider, _claimedBalance);
+            _disburse(liquidityProvider, claimedBalance);
         }
     }
 
@@ -101,65 +101,65 @@ contract MerkleRedeem is IDistributor, Ownable {
      * @notice Allows a user to claim a particular weeks worth of rewards
      */
     function claimWeeks(
-        address payable _liquidityProvider,
+        address payable liquidityProvider,
         Claim[] memory claims,
         bool useInternalBalance
     ) public {
-        require(msg.sender == _liquidityProvider, "user must claim own balance");
+        require(msg.sender == liquidityProvider, "user must claim own balance");
         uint256 totalBalance = 0;
         Claim memory claim;
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
 
-            require(!claimed[claim.week][_liquidityProvider], "cannot claim twice");
+            require(!claimed[claim.week][liquidityProvider], "cannot claim twice");
             require(
-                verifyClaim(_liquidityProvider, claim.week, claim.balance, claim.merkleProof),
+                verifyClaim(liquidityProvider, claim.week, claim.balance, claim.merkleProof),
                 "Incorrect merkle proof"
             );
 
             totalBalance = totalBalance.add(claim.balance);
-            claimed[claim.week][_liquidityProvider] = true;
+            claimed[claim.week][liquidityProvider] = true;
         }
 
         if (useInternalBalance) {
-            _disburseToInternalBalance(_liquidityProvider, totalBalance);
+            _disburseToInternalBalance(liquidityProvider, totalBalance);
         } else {
-            _disburse(_liquidityProvider, totalBalance);
+            _disburse(liquidityProvider, totalBalance);
         }
     }
 
     function claimStatus(
-        address _liquidityProvider,
-        uint256 _begin,
-        uint256 _end
+        address liquidityProvider,
+        uint256 begin,
+        uint256 end
     ) external view returns (bool[] memory) {
-        require(_begin <= _end, "weeks must be specified in ascending order");
-        uint256 size = 1 + _end - _begin;
+        require(begin <= end, "weeks must be specified in ascending order");
+        uint256 size = 1 + end - begin;
         bool[] memory arr = new bool[](size);
         for (uint256 i = 0; i < size; i++) {
-            arr[i] = claimed[_begin + i][_liquidityProvider];
+            arr[i] = claimed[begin + i][liquidityProvider];
         }
         return arr;
     }
 
-    function merkleRoots(uint256 _begin, uint256 _end) external view returns (bytes32[] memory) {
-        require(_begin <= _end, "weeks must be specified in ascending order");
-        uint256 size = 1 + _end - _begin;
+    function merkleRoots(uint256 begin, uint256 end) external view returns (bytes32[] memory) {
+        require(begin <= end, "weeks must be specified in ascending order");
+        uint256 size = 1 + end - begin;
         bytes32[] memory arr = new bytes32[](size);
         for (uint256 i = 0; i < size; i++) {
-            arr[i] = weekMerkleRoots[_begin + i];
+            arr[i] = weekMerkleRoots[begin + i];
         }
         return arr;
     }
 
     function verifyClaim(
-        address _liquidityProvider,
-        uint256 _week,
-        uint256 _claimedBalance,
-        bytes32[] memory _merkleProof
+        address liquidityProvider,
+        uint256 week,
+        uint256 claimedBalance,
+        bytes32[] memory merkleProof
     ) public view returns (bool valid) {
-        bytes32 leaf = keccak256(abi.encodePacked(_liquidityProvider, _claimedBalance));
-        return MerkleProof.verify(_merkleProof, weekMerkleRoots[_week], leaf);
+        bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
+        return MerkleProof.verify(merkleProof, weekMerkleRoots[week], leaf);
     }
 
     /**
@@ -169,13 +169,13 @@ contract MerkleRedeem is IDistributor, Ownable {
      * These will be pulled from the user
      */
     function seedAllocations(
-        uint256 _week,
+        uint256 week,
         bytes32 _merkleRoot,
         uint256 amount
     ) external onlyOwner {
-        require(weekMerkleRoots[_week] == bytes32(0), "cannot rewrite merkle root");
+        require(weekMerkleRoots[week] == bytes32(0), "cannot rewrite merkle root");
         rewardToken.safeTransferFrom(msg.sender, address(this), amount);
-        weekMerkleRoots[_week] = _merkleRoot;
+        weekMerkleRoots[week] = _merkleRoot;
         emit RewardAdded(address(rewardToken), amount);
     }
 }

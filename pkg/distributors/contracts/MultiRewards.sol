@@ -66,27 +66,27 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _vault, address _stakingToken) Ownable() TemporarilyPausable(3600, 3600) {
-        vault = IVault(_vault);
-        stakingToken = IERC20(_stakingToken);
+    constructor(IVault _vault, IERC20 _stakingToken) Ownable() TemporarilyPausable(3600, 3600) {
+        vault = _vault;
+        stakingToken = _stakingToken;
     }
 
     /**
      * @notice Adds a new reward token to be distributed
-     * @param _rewardsToken - The new token to be distributed to stakers
-     * @param _rewardsDistributor - The address which is designated to add `_rewardsToken` to be distributed
-     * @param _rewardsDuration - The duration over which each distribution is spread
+     * @param rewardsToken - The new token to be distributed to stakers
+     * @param rewardsDistributor - The address which is designated to add `rewardsToken` to be distributed
+     * @param rewardsDuration - The duration over which each distribution is spread
      */
     function addReward(
-        IERC20 _rewardsToken,
-        address _rewardsDistributor,
-        uint256 _rewardsDuration
+        IERC20 rewardsToken,
+        address rewardsDistributor,
+        uint256 rewardsDuration
     ) public onlyOwner {
-        require(rewardData[_rewardsToken].rewardsDuration == 0, "Duplicate rewards token");
-        rewardTokens.push(_rewardsToken);
-        rewardData[_rewardsToken].rewardsDistributor = _rewardsDistributor;
-        rewardData[_rewardsToken].rewardsDuration = _rewardsDuration;
-        IERC20(_rewardsToken).approve(address(vault), type(uint256).max);
+        require(rewardData[rewardsToken].rewardsDuration == 0, "Duplicate rewards token");
+        rewardTokens.push(rewardsToken);
+        rewardData[rewardsToken].rewardsDistributor = rewardsDistributor;
+        rewardData[rewardsToken].rewardsDuration = rewardsDuration;
+        IERC20(rewardsToken).approve(address(vault), type(uint256).max);
     }
 
     /* ========== VIEWS ========== */
@@ -99,43 +99,43 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         return _balances[account];
     }
 
-    function lastTimeRewardApplicable(IERC20 _rewardsToken) public view returns (uint256) {
-        return Math.min(block.timestamp, rewardData[_rewardsToken].periodFinish);
+    function lastTimeRewardApplicable(IERC20 rewardsToken) public view returns (uint256) {
+        return Math.min(block.timestamp, rewardData[rewardsToken].periodFinish);
     }
 
-    function rewardPerToken(IERC20 _rewardsToken) public view returns (uint256) {
+    function rewardPerToken(IERC20 rewardsToken) public view returns (uint256) {
         if (_totalSupply == 0) {
-            return rewardData[_rewardsToken].rewardPerTokenStored;
+            return rewardData[rewardsToken].rewardPerTokenStored;
         }
         return
-            rewardData[_rewardsToken].rewardPerTokenStored.add(
-                lastTimeRewardApplicable(_rewardsToken)
-                    .sub(rewardData[_rewardsToken].lastUpdateTime)
-                    .mulDown(rewardData[_rewardsToken].rewardRate)
+            rewardData[rewardsToken].rewardPerTokenStored.add(
+                lastTimeRewardApplicable(rewardsToken)
+                    .sub(rewardData[rewardsToken].lastUpdateTime)
+                    .mulDown(rewardData[rewardsToken].rewardRate)
                     .mulDown(1e18)
                     .divDown(_totalSupply)
             );
     }
 
     /**
-     * @notice Calculates the amount of `_rewardsToken` that `account` is able to claim
+     * @notice Calculates the amount of `rewardsToken` that `account` is able to claim
      */
-    function earned(address account, IERC20 _rewardsToken) public view returns (uint256) {
+    function earned(address account, IERC20 rewardsToken) public view returns (uint256) {
         return
             _balances[account]
-                .mulDown(rewardPerToken(_rewardsToken).sub(userRewardPerTokenPaid[account][_rewardsToken]))
+                .mulDown(rewardPerToken(rewardsToken).sub(userRewardPerTokenPaid[account][rewardsToken]))
                 .divDown(1e18)
-                .add(rewards[account][_rewardsToken]);
+                .add(rewards[account][rewardsToken]);
     }
 
-    function getRewardForDuration(IERC20 _rewardsToken) external view returns (uint256) {
-        return rewardData[_rewardsToken].rewardRate.mulDown(rewardData[_rewardsToken].rewardsDuration);
+    function getRewardForDuration(IERC20 rewardsToken) external view returns (uint256) {
+        return rewardData[rewardsToken].rewardRate.mulDown(rewardData[rewardsToken].rewardsDuration);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    function setRewardsDistributor(IERC20 _rewardsToken, address _rewardsDistributor) external onlyOwner {
-        rewardData[_rewardsToken].rewardsDistributor = _rewardsDistributor;
+    function setRewardsDistributor(IERC20 rewardsToken, address rewardsDistributor) external onlyOwner {
+        rewardData[rewardsToken].rewardsDistributor = rewardsDistributor;
     }
 
     function stake(uint256 amount) external {
@@ -182,12 +182,12 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
      */
     function getReward() public nonReentrant updateReward(msg.sender) {
         for (uint256 i; i < rewardTokens.length; i++) {
-            IERC20 _rewardsToken = rewardTokens[i];
-            uint256 reward = rewards[msg.sender][_rewardsToken];
+            IERC20 rewardsToken = rewardTokens[i];
+            uint256 reward = rewards[msg.sender][rewardsToken];
             if (reward > 0) {
-                rewards[msg.sender][_rewardsToken] = 0;
-                IERC20(_rewardsToken).safeTransfer(msg.sender, reward);
-                emit RewardPaid(msg.sender, address(_rewardsToken), reward);
+                rewards[msg.sender][rewardsToken] = 0;
+                IERC20(rewardsToken).safeTransfer(msg.sender, reward);
+                emit RewardPaid(msg.sender, address(rewardsToken), reward);
             }
         }
     }
@@ -199,17 +199,17 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](rewardTokens.length);
 
         for (uint256 i; i < rewardTokens.length; i++) {
-            IERC20 _rewardsToken = rewardTokens[i];
-            uint256 reward = rewards[msg.sender][_rewardsToken];
+            IERC20 rewardsToken = rewardTokens[i];
+            uint256 reward = rewards[msg.sender][rewardsToken];
 
             if (reward > 0) {
-                rewards[msg.sender][_rewardsToken] = 0;
+                rewards[msg.sender][rewardsToken] = 0;
 
-                emit RewardPaid(msg.sender, address(_rewardsToken), reward);
+                emit RewardPaid(msg.sender, address(rewardsToken), reward);
             }
 
             ops[i] = IVault.UserBalanceOp({
-                asset: IAsset(address(_rewardsToken)),
+                asset: IAsset(address(rewardsToken)),
                 amount: reward,
                 sender: address(this),
                 recipient: msg.sender,
@@ -228,28 +228,28 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
 
     /**
      * @notice Allows a rewards distributor to deposit more tokens to be distributed as rewards
-     * @param _rewardsToken - the token to deposit into staking contract for distribution
+     * @param rewardsToken - the token to deposit into staking contract for distribution
      * @param reward - the amount of tokens to deposit
      */
-    function notifyRewardAmount(IERC20 _rewardsToken, uint256 reward) external override updateReward(address(0)) {
-        require(rewardData[_rewardsToken].rewardsDistributor == msg.sender, "Callable only by distributor");
+    function notifyRewardAmount(IERC20 rewardsToken, uint256 reward) external override updateReward(address(0)) {
+        require(rewardData[rewardsToken].rewardsDistributor == msg.sender, "Callable only by distributor");
         // handle the transfer of reward tokens via `transferFrom` to reduce the number
         // of transactions required and ensure correctness of the reward amount
-        IERC20(_rewardsToken).safeTransferFrom(msg.sender, address(this), reward);
+        IERC20(rewardsToken).safeTransferFrom(msg.sender, address(this), reward);
 
-        if (block.timestamp >= rewardData[_rewardsToken].periodFinish) {
-            rewardData[_rewardsToken].rewardRate = reward.divDown(rewardData[_rewardsToken].rewardsDuration);
+        if (block.timestamp >= rewardData[rewardsToken].periodFinish) {
+            rewardData[rewardsToken].rewardRate = reward.divDown(rewardData[rewardsToken].rewardsDuration);
         } else {
-            uint256 remaining = rewardData[_rewardsToken].periodFinish.sub(block.timestamp);
-            uint256 leftover = remaining.mulDown(rewardData[_rewardsToken].rewardRate);
-            rewardData[_rewardsToken].rewardRate = reward.add(leftover).divDown(
-                rewardData[_rewardsToken].rewardsDuration
+            uint256 remaining = rewardData[rewardsToken].periodFinish.sub(block.timestamp);
+            uint256 leftover = remaining.mulDown(rewardData[rewardsToken].rewardRate);
+            rewardData[rewardsToken].rewardRate = reward.add(leftover).divDown(
+                rewardData[rewardsToken].rewardsDuration
             );
         }
 
-        rewardData[_rewardsToken].lastUpdateTime = block.timestamp;
-        rewardData[_rewardsToken].periodFinish = block.timestamp.add(rewardData[_rewardsToken].rewardsDuration);
-        emit RewardAdded(address(_rewardsToken), reward);
+        rewardData[rewardsToken].lastUpdateTime = block.timestamp;
+        rewardData[rewardsToken].periodFinish = block.timestamp.add(rewardData[rewardsToken].rewardsDuration);
+        emit RewardAdded(address(rewardsToken), reward);
     }
 
     /**
@@ -266,12 +266,12 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         emit Recovered(address(token), tokenAmount);
     }
 
-    function setRewardsDuration(IERC20 _rewardsToken, uint256 _rewardsDuration) external {
-        require(block.timestamp > rewardData[_rewardsToken].periodFinish, "Reward period still active");
-        require(rewardData[_rewardsToken].rewardsDistributor == msg.sender, "Callable only by distributor");
-        require(_rewardsDuration > 0, "Reward duration must be non-zero");
-        rewardData[_rewardsToken].rewardsDuration = _rewardsDuration;
-        emit RewardsDurationUpdated(address(_rewardsToken), rewardData[_rewardsToken].rewardsDuration);
+    function setRewardsDuration(IERC20 rewardsToken, uint256 rewardsDuration) external {
+        require(block.timestamp > rewardData[rewardsToken].periodFinish, "Reward period still active");
+        require(rewardData[rewardsToken].rewardsDistributor == msg.sender, "Callable only by distributor");
+        require(rewardsDuration > 0, "Reward duration must be non-zero");
+        rewardData[rewardsToken].rewardsDuration = rewardsDuration;
+        emit RewardsDurationUpdated(address(rewardsToken), rewardData[rewardsToken].rewardsDuration);
     }
 
     /* ========== MODIFIERS ========== */
