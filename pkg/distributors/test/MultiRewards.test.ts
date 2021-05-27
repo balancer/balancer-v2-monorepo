@@ -1,7 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
-import { splitSignature } from '@ethersproject/bytes';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -11,7 +10,10 @@ import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { signPermit } from '@balancer-labs/v2-helpers/src/models/misc/signatures';
 import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 
@@ -25,8 +27,8 @@ const setup = async () => {
   const rewardTokens = await TokenList.create(['DAI'], { sorted: true });
 
   // Deploy Balancer Vault
-  const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
-  const vault = await deploy('v2-vault/Vault', { args: [authorizer.address, tokens.SNX.address, 0, 0] });
+  const vaultHelper = await Vault.create({ admin });
+  const vault = vaultHelper.instance;
 
   const pool = await deploy('v2-pool-weighted/WeightedPool', {
     args: [vault.address, 'Test Pool', 'TEST', tokens.addresses, [fp(0.5), fp(0.5)], fp(0.0001), 0, 0, admin.address],
@@ -107,48 +109,7 @@ describe('Staking contract', () => {
     it('successfully stakes with a permit signature', async () => {
       const bptBalance = await pool.balanceOf(lp.address);
 
-      const { chainId } = await ethers.provider.getNetwork();
-      const permitSig = await lp._signTypedData(
-        {
-          name: await pool.name(),
-          version: '1',
-          chainId,
-          verifyingContract: pool.address,
-        },
-        {
-          Permit: [
-            {
-              name: 'owner',
-              type: 'address',
-            },
-            {
-              name: 'spender',
-              type: 'address',
-            },
-            {
-              name: 'value',
-              type: 'uint256',
-            },
-            {
-              name: 'nonce',
-              type: 'uint256',
-            },
-            {
-              name: 'deadline',
-              type: 'uint256',
-            },
-          ],
-        },
-        {
-          owner: lp.address,
-          spender: stakingContract.address,
-          value: bptBalance,
-          nonce: 0,
-          deadline: MAX_UINT256,
-        }
-      );
-
-      const { v, r, s } = splitSignature(permitSig);
+      const { v, r, s } = await signPermit(pool, lp, stakingContract, bptBalance);
       await stakingContract.connect(lp).stakeWithPermit(bptBalance, MAX_UINT256, v, r, s);
 
       const stakedBalance = await stakingContract.balanceOf(lp.address);
@@ -170,16 +131,22 @@ describe('Staking contract', () => {
     });
 
     it('sends expected amount of reward token to the rewards contract', async () => {
-      const rewardsBefore = await rewardToken.balanceOf(stakingContract.address);
-
       await expectBalanceChange(
         () => stakingContract.connect(mockAssetManager).notifyRewardAmount(rewardToken.address, rewardAmount),
         rewardTokens,
         [{ account: stakingContract, changes: { DAI: rewardAmount } }]
       );
+    });
 
-      const rewardsAfter = await rewardToken.balanceOf(stakingContract.address);
-      expect(rewardsAfter).to.be.eq(rewardsBefore.add(rewardAmount));
+    it('emits RewardAdded when an allocation is stored', async () => {
+      const receipt = await (
+        await stakingContract.connect(mockAssetManager).notifyRewardAmount(rewardToken.address, rewardAmount)
+      ).wait();
+
+      expectEvent.inReceipt(receipt, 'RewardAdded', {
+        token: rewardToken.address,
+        amount: rewardAmount,
+      });
     });
 
     it('distributes the reward according to the fraction of staked LP tokens', async () => {
@@ -222,6 +189,21 @@ describe('Staking contract', () => {
         [{ account: lp, changes: { DAI: ['very-near', expectedReward] } }],
         vault
       );
+    });
+
+    it('emits RewardPaid when an allocation is claimed', async () => {
+      await stakingContract.connect(mockAssetManager).notifyRewardAmount(rewardToken.address, rewardAmount);
+      await advanceTime(10);
+
+      const expectedReward = bn('749999999999999923');
+
+      const receipt = await (await stakingContract.connect(lp).getReward()).wait();
+
+      expectEvent.inReceipt(receipt, 'RewardPaid', {
+        user: lp.address,
+        rewardToken: rewardToken.address,
+        amount: expectedReward,
+      });
     });
 
     describe('with a second distribution', () => {

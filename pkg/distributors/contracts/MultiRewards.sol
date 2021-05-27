@@ -87,7 +87,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         rewardTokens.push(rewardsToken);
         rewardData[rewardsToken].rewardsDistributor = rewardsDistributor;
         rewardData[rewardsToken].rewardsDuration = rewardsDuration;
-        IERC20(rewardsToken).approve(address(vault), type(uint256).max);
+        rewardsToken.approve(address(vault), type(uint256).max);
     }
 
     /* ========== VIEWS ========== */
@@ -187,7 +187,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
             uint256 reward = rewards[msg.sender][rewardsToken];
             if (reward > 0) {
                 rewards[msg.sender][rewardsToken] = 0;
-                IERC20(rewardsToken).safeTransfer(msg.sender, reward);
+                rewardsToken.safeTransfer(msg.sender, reward);
                 emit RewardPaid(msg.sender, address(rewardsToken), reward);
             }
         }
@@ -236,7 +236,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         require(rewardData[rewardsToken].rewardsDistributor == msg.sender, "Callable only by distributor");
         // handle the transfer of reward tokens via `transferFrom` to reduce the number
         // of transactions required and ensure correctness of the reward amount
-        IERC20(rewardsToken).safeTransferFrom(msg.sender, address(this), reward);
+        rewardsToken.safeTransferFrom(msg.sender, address(this), reward);
 
         if (block.timestamp >= rewardData[rewardsToken].periodFinish) {
             rewardData[rewardsToken].rewardRate = reward.divDown(rewardData[rewardsToken].rewardsDuration);

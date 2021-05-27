@@ -125,7 +125,7 @@ export async function signAuthorizationFor(
 export async function signPermit(
   token: Contract,
   owner: SignerWithAddress,
-  spender: SignerWithAddress,
+  spender: SignerWithAddress | Contract,
   amount: BigNumberish,
   nonce?: BigNumberish,
   deadline?: BigNumberish
