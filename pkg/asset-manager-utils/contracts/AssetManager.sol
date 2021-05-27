@@ -41,6 +41,10 @@ abstract contract AssetManager is IAssetManager {
     // mapping from poolIds to the number of owned shares
     mapping(bytes32 => uint256) private _balances;
 
+    /// @notice Unix timestamp of last time the pool was rebalanced
+    mapping(bytes32 => uint256) public lastRebalanced;
+    uint256 private constant FEE_COOLDOWN = 1 days;
+
     uint64 private constant ONE = 1e18;
 
     // mapping from poolIds to the fraction of that pool's assets which may be invested
@@ -154,7 +158,7 @@ abstract contract AssetManager is IAssetManager {
     function getRebalanceFee(bytes32 poolId) external view returns (uint256) {
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(poolId, readAUM());
         PoolConfig memory config = _poolConfig[poolId];
-        return _getRebalanceFee(poolCash, poolManaged, config);
+        return _getRebalanceFee(poolCash, poolManaged, poolId, config);
     }
 
     /**
@@ -163,8 +167,14 @@ abstract contract AssetManager is IAssetManager {
     function _getRebalanceFee(
         uint256 poolCash,
         uint256 poolManaged,
+        bytes32 poolId,
         PoolConfig memory config
-    ) internal pure returns (uint256) {
+    ) internal view returns (uint256) {
+        // As a protection to prevent gaming the rebalance mechanism, we only pay a fee once per day
+        if (lastRebalanced[poolId] > block.timestamp.sub(FEE_COOLDOWN)) {
+            return 0;
+        }
+
         uint256 upperCriticalManagedBalance = (poolCash + poolManaged).mul(config.upperCriticalPercentage).divDown(ONE);
         if (poolManaged > upperCriticalManagedBalance) {
             return poolManaged.sub(upperCriticalManagedBalance).mul(config.feePercentage).divDown(ONE);
@@ -267,7 +277,7 @@ abstract contract AssetManager is IAssetManager {
 
             // If pool is above critical threshold then we want to pay a fee to rebalancer
             // The fee is paid on the portion of managed funds which are above the critical threshold
-            feeAmount = _getRebalanceFee(poolCash, poolManaged, config);
+            feeAmount = _getRebalanceFee(poolCash, poolManaged, poolId, config);
 
             // As paying out fees reduces the TVL of the pool, we must correct the amount invested to account for this
             capitalIn(poolId, rebalanceAmount.sub(feeAmount.mul(config.targetPercentage).divDown(ONE)));
@@ -277,10 +287,13 @@ abstract contract AssetManager is IAssetManager {
 
             // If pool is below critical threshold then we want to pay a fee to rebalancer
             // The fee is paid on the portion of managed funds which are below the critical threshold
-            feeAmount = _getRebalanceFee(poolCash, poolManaged, config);
+            feeAmount = _getRebalanceFee(poolCash, poolManaged, poolId, config);
 
             capitalOut(poolId, rebalanceAmount.sub(feeAmount.mul(config.targetPercentage).divDown(ONE)));
         }
+
+        // Finally update the last time we rebalanced the pool
+        lastRebalanced[poolId] = block.timestamp;
     }
 
     /**
