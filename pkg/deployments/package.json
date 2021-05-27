@@ -5,7 +5,8 @@
   "license": "GPL-3.0-only",
   "files": [
     "deployed/**/*",
-    "!deployed/solcInputs"
+    "!deployed/solcInputs",
+    "interfaces/**/*"
   ],
   "homepage": "https://github.com/balancer-labs/balancer-core-v2#readme",
   "repository": "git@github.com:balancer-labs/balancer-core-v2.git",
