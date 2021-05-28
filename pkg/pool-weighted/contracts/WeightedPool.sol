@@ -54,7 +54,6 @@ contract WeightedPool is BaseWeightedPool {
             name,
             symbol,
             tokens,
-            normalizedWeights,
             assetManagers,
             swapFeePercentage,
             pauseWindowDuration,

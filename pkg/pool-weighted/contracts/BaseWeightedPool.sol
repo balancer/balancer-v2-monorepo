@@ -40,7 +40,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256[] memory normalizedWeights,
         address[] memory assetManagers,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
