@@ -8,16 +8,6 @@ export default {
     hardhat: {
       allowUnlimitedContractSize: true,
     },
-    mainnet: {
-      chainId: 1,
-      url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
-      accounts: {
-        mnemonic: process.env.MNEMONIC,
-      },
-      gasLimit: 12450000,
-      gas: 8000000,
-      //gasMultiplier: 2,
-    },
   },
   solidity: {
     compilers: hardhatBaseConfig.compilers,
