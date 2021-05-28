@@ -1,3 +1,4 @@
+import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
@@ -10,13 +11,14 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { toNormalizedWeights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/misc';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 describe('WeightedPoolFactory', function () {
   let tokens: TokenList;
   let factory: Contract;
   let vault: Vault;
-  let assetManager: Contract;
   let assetManagers: string[];
+  let assetManager: SignerWithAddress;
 
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
@@ -35,10 +37,9 @@ describe('WeightedPoolFactory', function () {
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
-    // Deploy Asset manager
-    assetManager = await deploy('v2-asset-manager-utils/TestAssetManager', {
-      args: [vault.address, tokens.DAI.address],
-    });
+
+    [, assetManager] = await ethers.getSigners();
+
     assetManagers = Array(tokens.length).fill(assetManager.address);
   });
 

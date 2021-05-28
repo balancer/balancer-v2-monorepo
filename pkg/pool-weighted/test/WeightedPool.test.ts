@@ -1,8 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MinimalSwapInfoPool, TwoTokenPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { BigNumberish, bn, decimal, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
@@ -30,13 +29,14 @@ describe('WeightedPool', function () {
   let allTokens: TokenList;
   let trader: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
   let other: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
+  let assetManagerContract: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
 
   before('setup signers', async () => {
-    [, lp, trader, recipient, other, owner, admin] = await ethers.getSigners();
+    [, lp, trader, recipient, other, owner, admin, assetManagerContract] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -609,20 +609,9 @@ describe('WeightedPool', function () {
     const ZEROS = Array(numberOfTokens).fill(bn(0));
     const weights: BigNumberish[] = WEIGHTS.slice(0, numberOfTokens);
     const initialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
-    let vault: Contract;
-    let assetManagerContract: Contract;
-    let assetManagers: Array<string>;
 
     async function deployPool(params: RawWeightedPoolDeployment = {}): Promise<void> {
-      // Deploy Balancer Vault
-      const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
-      vault = await deploy('v2-vault/Vault', { args: [authorizer.address, allTokens.DAI.address, 0, 0] });
-
-      // Deploy Asset manager
-      assetManagerContract = await deploy('v2-asset-manager-utils/TestAssetManager', {
-        args: [vault.address, allTokens.DAI.address],
-      });
-      assetManagers = Array(numberOfTokens).fill(assetManagerContract.address);
+      const assetManagers = Array(numberOfTokens).fill(assetManagerContract.address);
 
       params = Object.assign(
         {},
