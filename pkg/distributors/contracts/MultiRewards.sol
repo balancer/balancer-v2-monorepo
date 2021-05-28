@@ -82,6 +82,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         address rewardsDistributor,
         uint256 rewardsDuration
     ) public onlyOwner {
+        require(rewardsDuration > 0, "reward rate must be nonzero");
         require(rewardData[rewardsToken].rewardsDuration == 0, "Duplicate rewards token");
         rewardTokens.push(rewardsToken);
         rewardData[rewardsToken].rewardsDistributor = rewardsDistributor;
