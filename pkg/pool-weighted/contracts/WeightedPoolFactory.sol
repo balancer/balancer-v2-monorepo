@@ -35,6 +35,7 @@ contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         string memory symbol,
         IERC20[] memory tokens,
         uint256[] memory weights,
+        address[] memory assetManagers,
         uint256 swapFeePercentage,
         address owner
     ) external returns (address) {
@@ -47,6 +48,7 @@ contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
                 symbol,
                 tokens,
                 weights,
+                assetManagers,
                 swapFeePercentage,
                 pauseWindowDuration,
                 bufferPeriodDuration,
