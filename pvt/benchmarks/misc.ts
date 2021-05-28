@@ -80,7 +80,10 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
     const weights = toNormalizedWeights(symbols.map(() => fp(1))); // Equal weights for all tokens
     const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
 
-    const params = poolName == 'WeightedPool2Tokens' ? [tokenAddresses, weights, swapFeePercentage, true] : [tokenAddresses, weights, assetManagers, swapFeePercentage];
+    const params =
+      poolName == 'WeightedPool2Tokens'
+        ? [tokenAddresses, weights, swapFeePercentage, true]
+        : [tokenAddresses, weights, assetManagers, swapFeePercentage];
     pool = await deployPoolFromFactory(vault, poolName, {
       from: creator,
       parameters: params,
