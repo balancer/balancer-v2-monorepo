@@ -3,10 +3,10 @@
   "private": true,
   "description": "Balancer v2 Monorepo",
   "license": "GPL-3.0-only",
-  "homepage": "https://github.com/balancer-labs/balancer-core-v2#readme",
-  "repository": "git@github.com:balancer-labs/balancer-core-v2.git",
+  "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo#readme",
+  "repository": "git@github.com:balancer-labs/balancer-v2-monorepo.git",
   "bugs": {
-    "url": "https://github.com/balancer-labs/balancer-core-v2/issues"
+    "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },
   "engines": {
     "node": ">=12.10"
