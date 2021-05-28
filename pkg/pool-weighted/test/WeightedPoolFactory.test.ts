@@ -30,6 +30,10 @@ describe('WeightedPoolFactory', function () {
 
   let createTime: BigNumber;
 
+  before('setup signers', async () => {
+    [, assetManager] = await ethers.getSigners();
+  });
+
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
 
@@ -37,8 +41,6 @@ describe('WeightedPoolFactory', function () {
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
-
-    [, assetManager] = await ethers.getSigners();
 
     assetManagers = Array(tokens.length).fill(assetManager.address);
   });
