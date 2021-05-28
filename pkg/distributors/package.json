@@ -8,10 +8,6 @@
   "bugs": {
     "url": "https://github.com/balancer-labs/balancer-core-v2/issues"
   },
-  "contributors": [
-    "Greg Taschuk <greg@balancer.finance>",
-    "Tom French <tom@balancer.finance>"
-  ],
   "scripts": {
     "build": "yarn compile",
     "compile": "hardhat compile && rm -rf artifacts/build-info",
