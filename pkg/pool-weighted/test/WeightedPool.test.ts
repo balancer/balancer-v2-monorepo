@@ -2,11 +2,17 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MinimalSwapInfoPool, TwoTokenPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { BigNumberish, bn, decimal, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_INT22, MAX_UINT10, MAX_UINT31, MAX_UINT64, MIN_INT22 } from '@balancer-labs/v2-helpers/src/constants';
+import {
+  MAX_INT22,
+  MAX_UINT10,
+  MAX_UINT31,
+  MAX_UINT64,
+  MIN_INT22,
+  ZERO_ADDRESS,
+} from '@balancer-labs/v2-helpers/src/constants';
 import {
   MINUTE,
   advanceTime,
@@ -23,13 +29,14 @@ describe('WeightedPool', function () {
   let allTokens: TokenList;
   let trader: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
   let other: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
+  let assetManagerContract: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
 
   before('setup signers', async () => {
-    [, lp, trader, recipient, other, owner, admin] = await ethers.getSigners();
+    [, lp, trader, recipient, other, owner, admin, assetManagerContract] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -604,7 +611,13 @@ describe('WeightedPool', function () {
     const initialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
     async function deployPool(params: RawWeightedPoolDeployment = {}): Promise<void> {
-      params = Object.assign({}, { tokens, weights, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, twoTokens }, params);
+      const assetManagers = Array(numberOfTokens).fill(assetManagerContract.address);
+
+      params = Object.assign(
+        {},
+        { tokens, weights, assetManagers, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, twoTokens },
+        params
+      );
       pool = await WeightedPool.create(params);
     }
 
@@ -644,7 +657,7 @@ describe('WeightedPool', function () {
         it('sets the asset managers', async () => {
           await tokens.asyncEach(async (token) => {
             const { assetManager } = await pool.getTokenInfo(token);
-            expect(assetManager).to.be.zeroAddress;
+            expect(assetManager).to.equal(useCustomTwoTokenPool ? ZERO_ADDRESS : assetManagerContract.address);
           });
         });
 
