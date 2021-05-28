@@ -19,7 +19,8 @@
     "Jeffrey Bennett <jeff@balancer.finance>",
     "John Grant <john@balancer.finance>",
     "Mike McDonald <mike@balancer.finance>",
-    "Nicolás Venturo <nico@balancer.finance>"
+    "Nicolás Venturo <nico@balancer.finance>",
+    "Tom French <tom@balancer.finance"
   ],
   "scripts": {
     "build": "yarn workspaces foreach --verbose run build",
