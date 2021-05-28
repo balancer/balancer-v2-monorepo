@@ -58,7 +58,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             owner
         )
     {
-        // Nothing to do in the base class
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function _normalizedWeight(IERC20 token) internal view virtual returns (uint256);

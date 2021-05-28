@@ -92,7 +92,7 @@ contract WeightedPool is BaseWeightedPool {
         _normalizedWeight7 = numTokens > 7 ? normalizedWeights[7] : 0;
     }
 
-    function _normalizedWeight(IERC20 token) internal view override returns (uint256) {
+    function _normalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
         // prettier-ignore
         if (token == _token0) { return _normalizedWeight0; }
         else if (token == _token1) { return _normalizedWeight1; }
@@ -107,7 +107,7 @@ contract WeightedPool is BaseWeightedPool {
         }
     }
 
-    function _normalizedWeights() internal view override returns (uint256[] memory) {
+    function _normalizedWeights() internal view virtual override returns (uint256[] memory) {
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory normalizedWeights = new uint256[](totalTokens);
 
@@ -126,7 +126,7 @@ contract WeightedPool is BaseWeightedPool {
         return normalizedWeights;
     }
 
-    function _getMaxWeightTokenIndex() internal view override returns (uint256) {
-      return _maxWeightTokenIndex;
+    function _getMaxWeightTokenIndex() internal view virtual override returns (uint256) {
+        return _maxWeightTokenIndex;
     }
 }
