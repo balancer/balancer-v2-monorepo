@@ -18,15 +18,16 @@ export default {
     const vault = await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
-    const { tokens, weights, swapFeePercentage, twoTokens } = deployment;
+    const { tokens, weights, assetManagers, swapFeePercentage, twoTokens } = deployment;
     const poolId = await pool.getPoolId();
-    return new WeightedPool(pool, poolId, vault, tokens, weights, swapFeePercentage, twoTokens);
+    return new WeightedPool(pool, poolId, vault, tokens, weights, assetManagers, swapFeePercentage, twoTokens);
   },
 
   async _deployStandalone(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
     const {
       tokens,
       weights,
+      assetManagers,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
@@ -61,6 +62,7 @@ export default {
             SYMBOL,
             tokens.addresses,
             weights,
+            assetManagers,
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -71,7 +73,7 @@ export default {
   },
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, weights, swapFeePercentage, oracleEnabled, owner, from } = params;
+    const { tokens, weights, assetManagers, swapFeePercentage, oracleEnabled, owner, from } = params;
 
     if (params.twoTokens) {
       const factory = await deploy('v2-pool-weighted/WeightedPool2TokensFactory', { args: [vault.address], from });
@@ -94,6 +96,7 @@ export default {
         SYMBOL,
         tokens.addresses,
         weights,
+        assetManagers,
         swapFeePercentage,
         TypesConverter.toAddress(owner)
       );

@@ -14,6 +14,9 @@ import { toNormalizedWeights } from '@balancer-labs/v2-helpers/src/models/pools/
 describe('WeightedPoolFactory', function () {
   let tokens: TokenList;
   let factory: Contract;
+  let vault: Vault;
+  let assetManager: Contract;
+  let assetManagers: string[];
 
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
@@ -26,17 +29,30 @@ describe('WeightedPoolFactory', function () {
   let createTime: BigNumber;
 
   sharedBeforeEach('deploy factory & tokens', async () => {
-    const vault = await Vault.create();
+    vault = await Vault.create();
 
     factory = await deploy('WeightedPoolFactory', { args: [vault.address] });
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
+    // Deploy Asset manager
+    assetManager = await deploy('v2-asset-manager-utils/TestAssetManager', {
+      args: [vault.address, tokens.DAI.address],
+    });
+    assetManagers = Array(tokens.length).fill(assetManager.address);
   });
 
   async function createPool(): Promise<Contract> {
     const receipt = await (
-      await factory.create(NAME, SYMBOL, tokens.addresses, WEIGHTS, POOL_SWAP_FEE_PERCENTAGE, ZERO_ADDRESS)
+      await factory.create(
+        NAME,
+        SYMBOL,
+        tokens.addresses,
+        WEIGHTS,
+        assetManagers,
+        POOL_SWAP_FEE_PERCENTAGE,
+        ZERO_ADDRESS
+      )
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -73,6 +89,16 @@ describe('WeightedPoolFactory', function () {
 
       expect(pauseWindowEndTime).to.equal(now);
       expect(bufferPeriodEndTime).to.equal(now);
+    });
+
+    it('has asset managers', async () => {
+      const pool = await createPool();
+      const poolId = await pool.getPoolId();
+
+      await tokens.asyncEach(async (token) => {
+        const info = await vault.getPoolTokenInfo(poolId, token);
+        expect(info.assetManager).to.equal(assetManager.address);
+      });
     });
   });
 });

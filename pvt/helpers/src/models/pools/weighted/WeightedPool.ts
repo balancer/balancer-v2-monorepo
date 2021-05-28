@@ -55,6 +55,7 @@ export default class WeightedPool {
   poolId: string;
   tokens: TokenList;
   weights: BigNumberish[];
+  assetManagers: string[];
   swapFeePercentage: BigNumberish;
   vault: Vault;
   twoTokens: boolean;
@@ -69,6 +70,7 @@ export default class WeightedPool {
     vault: Vault,
     tokens: TokenList,
     weights: BigNumberish[],
+    assetManagers: string[],
     swapFeePercentage: BigNumberish,
     twoTokens: boolean
   ) {
@@ -77,6 +79,7 @@ export default class WeightedPool {
     this.vault = vault;
     this.tokens = tokens;
     this.weights = weights;
+    this.assetManagers = assetManagers;
     this.swapFeePercentage = swapFeePercentage;
     this.twoTokens = twoTokens;
   }
