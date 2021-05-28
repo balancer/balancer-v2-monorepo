@@ -29,9 +29,21 @@ const setup = async () => {
   // Deploy Balancer Vault
   const vaultHelper = await Vault.create({ admin });
   const vault = vaultHelper.instance;
+  const assetManagers = Array(tokens.length).fill(mockAssetManager.address);
 
   const pool = await deploy('v2-pool-weighted/WeightedPool', {
-    args: [vault.address, 'Test Pool', 'TEST', tokens.addresses, [fp(0.5), fp(0.5)], fp(0.0001), 0, 0, admin.address],
+    args: [
+      vault.address,
+      'Test Pool',
+      'TEST',
+      tokens.addresses,
+      [fp(0.5), fp(0.5)],
+      assetManagers,
+      fp(0.0001),
+      0,
+      0,
+      admin.address,
+    ],
   });
 
   const poolId = await pool.getPoolId();

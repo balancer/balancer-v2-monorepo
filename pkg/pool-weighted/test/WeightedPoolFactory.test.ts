@@ -1,3 +1,4 @@
+import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
@@ -10,10 +11,14 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { toNormalizedWeights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/misc';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 describe('WeightedPoolFactory', function () {
   let tokens: TokenList;
   let factory: Contract;
+  let vault: Vault;
+  let assetManagers: string[];
+  let assetManager: SignerWithAddress;
 
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
@@ -25,18 +30,32 @@ describe('WeightedPoolFactory', function () {
 
   let createTime: BigNumber;
 
+  before('setup signers', async () => {
+    [, assetManager] = await ethers.getSigners();
+  });
+
   sharedBeforeEach('deploy factory & tokens', async () => {
-    const vault = await Vault.create();
+    vault = await Vault.create();
 
     factory = await deploy('WeightedPoolFactory', { args: [vault.address] });
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
+
+    assetManagers = Array(tokens.length).fill(assetManager.address);
   });
 
   async function createPool(): Promise<Contract> {
     const receipt = await (
-      await factory.create(NAME, SYMBOL, tokens.addresses, WEIGHTS, POOL_SWAP_FEE_PERCENTAGE, ZERO_ADDRESS)
+      await factory.create(
+        NAME,
+        SYMBOL,
+        tokens.addresses,
+        WEIGHTS,
+        assetManagers,
+        POOL_SWAP_FEE_PERCENTAGE,
+        ZERO_ADDRESS
+      )
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -73,6 +92,16 @@ describe('WeightedPoolFactory', function () {
 
       expect(pauseWindowEndTime).to.equal(now);
       expect(bufferPeriodEndTime).to.equal(now);
+    });
+
+    it('has asset managers', async () => {
+      const pool = await createPool();
+      const poolId = await pool.getPoolId();
+
+      await tokens.asyncEach(async (token) => {
+        const info = await vault.getPoolTokenInfo(poolId, token);
+        expect(info.assetManager).to.equal(assetManager.address);
+      });
     });
   });
 });

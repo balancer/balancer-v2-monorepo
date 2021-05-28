@@ -55,6 +55,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         string memory symbol,
         IERC20[] memory tokens,
         uint256[] memory normalizedWeights,
+        address[] memory assetManagers,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
@@ -65,7 +66,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             name,
             symbol,
             tokens,
-            new address[](tokens.length),
+            assetManagers,
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -93,14 +94,14 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
         _maxWeightTokenIndex = maxWeightTokenIndex;
-        _normalizedWeight0 = normalizedWeights.length > 0 ? normalizedWeights[0] : 0;
-        _normalizedWeight1 = normalizedWeights.length > 1 ? normalizedWeights[1] : 0;
-        _normalizedWeight2 = normalizedWeights.length > 2 ? normalizedWeights[2] : 0;
-        _normalizedWeight3 = normalizedWeights.length > 3 ? normalizedWeights[3] : 0;
-        _normalizedWeight4 = normalizedWeights.length > 4 ? normalizedWeights[4] : 0;
-        _normalizedWeight5 = normalizedWeights.length > 5 ? normalizedWeights[5] : 0;
-        _normalizedWeight6 = normalizedWeights.length > 6 ? normalizedWeights[6] : 0;
-        _normalizedWeight7 = normalizedWeights.length > 7 ? normalizedWeights[7] : 0;
+        _normalizedWeight0 = numTokens > 0 ? normalizedWeights[0] : 0;
+        _normalizedWeight1 = numTokens > 1 ? normalizedWeights[1] : 0;
+        _normalizedWeight2 = numTokens > 2 ? normalizedWeights[2] : 0;
+        _normalizedWeight3 = numTokens > 3 ? normalizedWeights[3] : 0;
+        _normalizedWeight4 = numTokens > 4 ? normalizedWeights[4] : 0;
+        _normalizedWeight5 = numTokens > 5 ? normalizedWeights[5] : 0;
+        _normalizedWeight6 = numTokens > 6 ? normalizedWeights[6] : 0;
+        _normalizedWeight7 = numTokens > 7 ? normalizedWeights[7] : 0;
     }
 
     function _normalizedWeight(IERC20 token) internal view virtual returns (uint256) {
