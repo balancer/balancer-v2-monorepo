@@ -1,6 +1,6 @@
 {
   "name": "@balancer-labs/v2-deployments",
-  "version": "0.1.0-rc.0",
+  "version": "0.1.0",
   "description": "Artifacts and interfaces of deployed Balancer v2 contracts",
   "license": "GPL-3.0-only",
   "files": [
