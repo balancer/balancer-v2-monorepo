@@ -46,6 +46,7 @@ __metadata:
   resolution: "@balancer-labs/v2-asset-manager-utils@workspace:pkg/asset-manager-utils"
   dependencies:
     "@balancer-labs/v2-common": "workspace:*"
+    "@balancer-labs/v2-distributors": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@balancer-labs/v2-vault": "workspace:*"
@@ -163,7 +164,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v2-distributors@workspace:pkg/distributors":
+"@balancer-labs/v2-distributors@workspace:*, @balancer-labs/v2-distributors@workspace:pkg/distributors":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-distributors@workspace:pkg/distributors"
   dependencies:

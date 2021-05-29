@@ -22,5 +22,25 @@ interface IAssetManager {
         uint64 feePercentage;
     }
 
+    function getPoolConfig(bytes32 poolId) external view returns (PoolConfig memory);
+
     function setPoolConfig(bytes32 poolId, PoolConfig calldata config) external;
+
+    function balanceOf(bytes32 poolId) external view returns (uint256);
+
+    function readAUM() external view returns (uint256);
+
+    function realizeGains() external;
+
+    function maxInvestableBalance(bytes32 poolId) external view returns (int256);
+
+    function getRebalanceFee(bytes32 poolId) external view returns (uint256);
+
+    function updateBalanceOfPool(bytes32 poolId) external;
+
+    function capitalIn(bytes32 poolId, uint256 amount) external;
+
+    function capitalOut(bytes32 poolId, uint256 amount) external;
+
+    function rebalance(bytes32 poolId) external;
 }
