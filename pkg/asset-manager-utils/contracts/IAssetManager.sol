@@ -80,6 +80,5 @@ interface IAssetManager {
      * @notice Rebalances funds between pool and asset manager to maintain target investment percentage.
      * If the pool is below it's critical threshold for the amount invested then calling this will send a small reward
      */
-
     function rebalance(bytes32 poolId) external;
 }

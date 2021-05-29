@@ -14,8 +14,8 @@
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeCast.sol";
 
 import "./IAssetManager.sol";
@@ -25,7 +25,7 @@ pragma experimental ABIEncoderV2;
 
 // solhint-disable private-vars-leading-underscore
 abstract contract SinglePoolAssetManager is IAssetManager {
-    using Math for uint256;
+    using FixedPoint for uint256;
     using SafeCast for uint256;
 
     uint64 private constant ONE = 1e18;
@@ -55,7 +55,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         token = IERC20(_token);
     }
 
-    modifier onlyPoolController() {
+    modifier onlyPool() {
         address poolAddress = address((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
         require(msg.sender == poolAddress, "Only callable by pool controller");
         _;
@@ -72,7 +72,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         uint256 managed,
         uint256 investablePercent
     ) private pure returns (uint256) {
-        return (cash + managed).mul(investablePercent).divDown(1e18);
+        return (cash + managed).mulDown(investablePercent).divDown(1e18);
     }
 
     function maxInvestableBalance(bytes32 pId) public view override correctPool(pId) returns (int256) {
@@ -161,7 +161,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
 
     function readAUM() public view virtual override returns (uint256);
 
-    // TODO restrict access with onlyPoolController
+    // TODO restrict access with onlyPool
     function setPoolConfig(bytes32 pId, PoolConfig calldata config) external override correctPool(pId) {
         require(pId == poolId, "poolId mismatch");
         require(config.targetPercentage <= ONE, "Investment target must be less than 100%");
@@ -191,11 +191,11 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         uint256 poolManaged,
         PoolConfig memory config
     ) internal pure returns (uint256) {
-        uint256 criticalManagedBalance = (poolCash + poolManaged).mul(config.criticalPercentage).divDown(ONE);
+        uint256 criticalManagedBalance = (poolCash + poolManaged).mulDown(config.criticalPercentage).divDown(ONE);
         if (poolManaged >= criticalManagedBalance) {
             return 0;
         }
-        return criticalManagedBalance.sub(poolManaged).mul(config.feePercentage).divDown(ONE);
+        return criticalManagedBalance.sub(poolManaged).mulDown(config.feePercentage).divDown(ONE);
     }
 
     /**
@@ -207,7 +207,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
         PoolConfig memory config = _poolConfig;
 
-        uint256 targetInvestment = (poolCash + poolManaged).mul(config.targetPercentage).divDown(ONE);
+        uint256 targetInvestment = (poolCash + poolManaged).mulDown(config.targetPercentage).divDown(ONE);
         if (targetInvestment > poolManaged) {
             // Pool is under-invested so add more funds
             uint256 rebalanceAmount = targetInvestment.sub(poolManaged);
@@ -217,7 +217,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
             feeAmount = _getRebalanceFee(poolCash, poolManaged, config);
 
             // As paying out fees reduces the TVL of the pool, we must correct the amount invested to account for this
-            capitalIn(poolId, rebalanceAmount.sub(feeAmount.mul(config.targetPercentage).divDown(ONE)));
+            capitalIn(poolId, rebalanceAmount.sub(feeAmount.mulDown(config.targetPercentage).divDown(ONE)));
         } else {
             // Pool is over-invested so remove some funds
             // Incentivising rebalancer is unneccessary as removing capital
