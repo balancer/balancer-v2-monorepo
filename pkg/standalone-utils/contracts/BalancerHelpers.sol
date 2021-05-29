@@ -23,7 +23,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/misc/IWETH.sol";
 
-import "@balancer-labs/v2-vault/contracts/ProtocolFeesCollector.sol";
 import "@balancer-labs/v2-vault/contracts/AssetHelpers.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/balances/BalanceAllocation.sol";
@@ -54,7 +53,7 @@ contract BalancerHelpers is AssetHelpers {
     ) external returns (uint256 bptOut, uint256[] memory amountsIn) {
         (address pool, ) = vault.getPool(poolId);
         (uint256[] memory balances, uint256 lastChangeBlock) = _validateAssetsAndGetBalances(poolId, request.assets);
-        ProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
+        IProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
 
         (bptOut, amountsIn) = BasePool(pool).queryJoin(
             poolId,
@@ -75,7 +74,7 @@ contract BalancerHelpers is AssetHelpers {
     ) external returns (uint256 bptIn, uint256[] memory amountsOut) {
         (address pool, ) = vault.getPool(poolId);
         (uint256[] memory balances, uint256 lastChangeBlock) = _validateAssetsAndGetBalances(poolId, request.assets);
-        ProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
+        IProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
 
         (bptIn, amountsOut) = BasePool(pool).queryExit(
             poolId,
