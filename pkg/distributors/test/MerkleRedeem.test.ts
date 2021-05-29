@@ -99,8 +99,9 @@ describe('MerkleRedeem', () => {
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
-    const errorMsg = 'Ownable: caller is not the owner';
-    await expect(merkleRedeem.connect(other).seedAllocations(week1, root, claimBalance)).to.be.revertedWith(errorMsg);
+    await expect(merkleRedeem.connect(other).seedAllocations(week1, root, claimBalance)).to.be.revertedWith(
+      'CALLER_IS_NOT_OWNER'
+    );
   });
 
   it('stores multiple allocations', async () => {
