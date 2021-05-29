@@ -38,7 +38,7 @@ abstract contract Fees is IVault {
         _protocolFeesCollector = new ProtocolFeesCollector(IVault(this));
     }
 
-    function getProtocolFeesCollector() public view override returns (ProtocolFeesCollector) {
+    function getProtocolFeesCollector() public view override returns (IProtocolFeesCollector) {
         return _protocolFeesCollector;
     }
 
