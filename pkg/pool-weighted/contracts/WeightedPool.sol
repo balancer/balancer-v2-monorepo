@@ -17,10 +17,9 @@ pragma experimental ABIEncoderV2;
 
 import "./BaseWeightedPool.sol";
 
-// This contract relies on tons of immutable state variables to perform efficient lookup, without resorting to storage
-// reads. Because immutable arrays are not supported, we instead declare a fixed set of state variables plus total
-// count, resulting in a large number of state variables.
-
+/**
+ * @dev Basic Weighted Pool with immutable weights.
+ */
 contract WeightedPool is BaseWeightedPool {
     using FixedPoint for uint256;
 
@@ -92,7 +91,7 @@ contract WeightedPool is BaseWeightedPool {
         _normalizedWeight7 = numTokens > 7 ? normalizedWeights[7] : 0;
     }
 
-    function _normalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
+    function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
         // prettier-ignore
         if (token == _token0) { return _normalizedWeight0; }
         else if (token == _token1) { return _normalizedWeight1; }
@@ -107,7 +106,7 @@ contract WeightedPool is BaseWeightedPool {
         }
     }
 
-    function _normalizedWeights() internal view virtual override returns (uint256[] memory) {
+    function _getNormalizedWeights() internal view virtual override returns (uint256[] memory) {
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory normalizedWeights = new uint256[](totalTokens);
 

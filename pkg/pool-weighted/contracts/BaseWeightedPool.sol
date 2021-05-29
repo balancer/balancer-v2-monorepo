@@ -23,9 +23,11 @@ import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
 import "./WeightedMath.sol";
 import "./WeightedPoolUserDataHelpers.sol";
 
-// Base class containing WeightedPool logic, but deferring handling of weights (e.g., fixed or mutable)
-// to subclasses
-
+/**
+ * @dev Base class for WeightedPools containing swap, join and exit logic, but leaving storage and management of
+ * the weights to subclasses. Derived contracts can choose to make weights immutable, mutable, or even dynamic
+ *  based on local or external logic.
+ */
 abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     using FixedPoint for uint256;
     using WeightedPoolUserDataHelpers for bytes;
@@ -61,10 +63,21 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function _normalizedWeight(IERC20 token) internal view virtual returns (uint256);
+    // Virtual functions
 
-    function _normalizedWeights() internal view virtual returns (uint256[] memory);
+    /**
+     * @dev Returns the normalized weight of `token`. Weights are fixed point numbers that sum to FixedPoint.ONE.
+     */
+    function _getNormalizedWeight(IERC20 token) internal view virtual returns (uint256);
 
+    /**
+     * @dev Returns all normalized weights, in the same order as the Pool's tokens.
+     */
+    function _getNormalizedWeights() internal view virtual returns (uint256[] memory);
+
+    /**
+     * @dev Returns the index of the token with the largest weight.
+     */
     function _getMaxWeightTokenIndex() internal view virtual returns (uint256);
 
     function getLastInvariant() external view returns (uint256) {
@@ -81,12 +94,12 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // upscale here for consistency
         _upscaleArray(balances, _scalingFactors());
 
-        uint256[] memory normalizedWeights = _normalizedWeights();
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
 
     function getNormalizedWeights() external view returns (uint256[] memory) {
-        return _normalizedWeights();
+        return _getNormalizedWeights();
     }
 
     // Base Pool handlers
@@ -103,9 +116,9 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         return
             WeightedMath._calcOutGivenIn(
                 currentBalanceTokenIn,
-                _normalizedWeight(swapRequest.tokenIn),
+                _getNormalizedWeight(swapRequest.tokenIn),
                 currentBalanceTokenOut,
-                _normalizedWeight(swapRequest.tokenOut),
+                _getNormalizedWeight(swapRequest.tokenOut),
                 swapRequest.amount
             );
     }
@@ -120,9 +133,9 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         return
             WeightedMath._calcInGivenOut(
                 currentBalanceTokenIn,
-                _normalizedWeight(swapRequest.tokenIn),
+                _getNormalizedWeight(swapRequest.tokenIn),
                 currentBalanceTokenOut,
-                _normalizedWeight(swapRequest.tokenOut),
+                _getNormalizedWeight(swapRequest.tokenOut),
                 swapRequest.amount
             );
     }
@@ -145,7 +158,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), amountsIn.length);
         _upscaleArray(amountsIn, _scalingFactors());
 
-        uint256[] memory normalizedWeights = _normalizedWeights();
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
 
         uint256 invariantAfterJoin = WeightedMath._calculateInvariant(normalizedWeights, amountsIn);
 
@@ -181,7 +194,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     {
         // All joins are disabled while the contract is paused.
 
-        uint256[] memory normalizedWeights = _normalizedWeights();
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
 
         // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous join
         // or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids spending gas
@@ -291,7 +304,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
         // out) remain functional.
 
-        uint256[] memory normalizedWeights = _normalizedWeights();
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
 
         if (_isNotPaused()) {
             // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
