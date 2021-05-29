@@ -13,6 +13,8 @@ export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
 
   if (chainId == '1') {
     WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+  } else if (chainId == '137') {
+    WETH = '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270';
   } else {
     WETH = await (await deployments.get('WETH')).address;
   }

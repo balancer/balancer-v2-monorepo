@@ -23,6 +23,8 @@ const CHAIN_IDS = {
   kovan: 42,
   goerli: 5,
   mainnet: 1,
+  polygon: 137,
+  polygonMumbai: 80001,
   rinkeby: 4,
   ropsten: 3,
   dockerParity: 17,
@@ -81,6 +83,18 @@ export default {
       accounts: [`0x${DEPLOYER_PRIVATE_KEY}`, `0x${CONTROLLER_PRIVATE_KEY}`], // Using private key instead of mnemonic for vanity deploy
       saveDeployments: true,
     },
+    polygon: {
+      chainId: CHAIN_IDS.polygon,
+      url: `https://polygon-mainnet.infura.io/v3/${INFURA_KEY}`,
+      accounts: [`0x${DEPLOYER_PRIVATE_KEY}`, `0x${CONTROLLER_PRIVATE_KEY}`], // Using private key instead of mnemonic for vanity deploy
+      saveDeployments: true,
+    },
+    polygonMumbai: {
+      chainId: CHAIN_IDS.polygonMumbai,
+      url: `https://polygon-mumbai.infura.io/v3/${INFURA_KEY}`,
+      accounts: [`0x${DEPLOYER_PRIVATE_KEY}`, `0x${CONTROLLER_PRIVATE_KEY}`], // Using private key instead of mnemonic for vanity deploy
+      saveDeployments: true,
+    },
   },
   namedAccounts: {
     deployer: {
@@ -90,6 +104,8 @@ export default {
       [CHAIN_IDS.ropsten]: 0,
       [CHAIN_IDS.goerli]: 0,
       [CHAIN_IDS.rinkeby]: 0,
+      [CHAIN_IDS.polygon]: 0,
+      [CHAIN_IDS.polygonMumbai]: 0,
       [CHAIN_IDS.dockerParity]: 0,
     },
     admin: {
@@ -100,6 +116,8 @@ export default {
       [CHAIN_IDS.ropsten]: 1,
       [CHAIN_IDS.goerli]: 1,
       [CHAIN_IDS.rinkeby]: '0x44DDF1D6292F36B25230a72aBdc7159D37d317Cf',
+      [CHAIN_IDS.polygon]: 1,
+      [CHAIN_IDS.polygonMumbai]: 1,
       [CHAIN_IDS.dockerParity]: 1,
     },
   },
