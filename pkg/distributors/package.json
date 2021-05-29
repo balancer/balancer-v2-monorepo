@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "description": "Utilities for distributing tokens from internal balance",
   "license": "GPL-3.0-only",
-  "homepage": "https://github.com/balancer-labs/balancer-core-v2#readme",
-  "repository": "git@github.com:balancer-labs/balancer-core-v2.git",
+  "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/pkg/distributors#readme",
+  "repository": "git@github.com:balancer-labs/balancer-v2-monorepo.git",
   "bugs": {
-    "url": "https://github.com/balancer-labs/balancer-core-v2/issues"
+    "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },
   "scripts": {
     "build": "yarn compile",
