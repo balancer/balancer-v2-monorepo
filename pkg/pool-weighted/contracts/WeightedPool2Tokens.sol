@@ -437,8 +437,8 @@ contract WeightedPool2Tokens is
         address,
         bytes memory userData
     ) private returns (uint256, uint256[] memory) {
-        WeightedPool.JoinKind kind = userData.joinKind();
-        _require(kind == WeightedPool.JoinKind.INIT, Errors.UNINITIALIZED);
+        BaseWeightedPool.JoinKind kind = userData.joinKind();
+        _require(kind == BaseWeightedPool.JoinKind.INIT, Errors.UNINITIALIZED);
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, 2);
@@ -522,11 +522,11 @@ contract WeightedPool2Tokens is
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        WeightedPool.JoinKind kind = userData.joinKind();
+        BaseWeightedPool.JoinKind kind = userData.joinKind();
 
-        if (kind == WeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+        if (kind == BaseWeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(balances, normalizedWeights, userData);
-        } else if (kind == WeightedPool.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+        } else if (kind == BaseWeightedPool.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(balances, normalizedWeights, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
@@ -695,11 +695,11 @@ contract WeightedPool2Tokens is
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        WeightedPool.ExitKind kind = userData.exitKind();
+        BaseWeightedPool.ExitKind kind = userData.exitKind();
 
-        if (kind == WeightedPool.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+        if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(balances, normalizedWeights, userData);
-        } else if (kind == WeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        } else if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(balances, userData);
         } else {
             // ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT
