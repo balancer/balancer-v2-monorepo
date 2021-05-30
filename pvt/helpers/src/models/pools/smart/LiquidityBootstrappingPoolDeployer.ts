@@ -24,29 +24,21 @@ export default {
   },
 
   async _deployStandalone(params: LiquidityBootstrappingPoolDeployment, vault: Vault): Promise<Contract> {
-    const {
-      tokens,
-      weights,
-      swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-      owner,
-      from,
-    } = params;
+    const { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner, from } = params;
     return deploy('v2-pool-smart/LiquidityBootstrappingPool', {
-          args: [
-            vault.address,
-            NAME,
-            SYMBOL,
-            tokens.addresses,
-            weights,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            TypesConverter.toAddress(owner),
-          ],
-          from,
-        });
+      args: [
+        vault.address,
+        NAME,
+        SYMBOL,
+        tokens.addresses,
+        weights,
+        swapFeePercentage,
+        pauseWindowDuration,
+        bufferPeriodDuration,
+        TypesConverter.toAddress(owner),
+      ],
+      from,
+    });
   },
 
   async _deployFromFactory(params: LiquidityBootstrappingPoolDeployment, vault: Vault): Promise<Contract> {
