@@ -28,9 +28,11 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
     uint256 private constant _MAX_LBP_TOKENS = 4;
 
-    // For gas optimization, store the 4 weights as uint64's in a single uint256 state variable
+    // For gas optimization, store the 4 weights as uint64's in a single state variable
     bytes32 private _normalizedWeights;
 
+    // The protocol fees will always be charged using the token associated with the max weight in the pool.
+    // Not worth packing - only referenced on join/exits
     uint256 private _maxWeightTokenIndex;
 
     constructor(
@@ -49,7 +51,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             name,
             symbol,
             tokens,
-            new address[](tokens.length),
+            new address[](tokens.length), // LBPs can't have asset managers
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -80,11 +82,11 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        // Initial value; can change later
+        // Initial value; can change later if weights change
         _maxWeightTokenIndex = maxWeightTokenIndex;
     }
 
-    function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
+    function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
         // prettier-ignore
         if (token == _token0) { return _getNormalizedWeight(0); }
         else if (token == _token1) { return _getNormalizedWeight(1); }
@@ -95,7 +97,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
-    function _getNormalizedWeights() internal view virtual override returns (uint256[] memory) {
+    function _getNormalizedWeights() internal view override returns (uint256[] memory) {
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory normalizedWeights = new uint256[](totalTokens);
 
@@ -110,17 +112,18 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         return normalizedWeights;
     }
 
-    function _getMaxWeightTokenIndex() internal view virtual override returns (uint256) {
+    function _getMaxWeightTokenIndex() internal view override returns (uint256) {
         return _maxWeightTokenIndex;
     }
 
     // Private functions
 
+    // Assumes i is in range
     function _setNormalizedWeight(uint256 weight, uint8 i) private {
         _normalizedWeights = _normalizedWeights.insertUint64(weight, i * 64);
     }
 
-    // Assumes i is in range (only called internally)
+    // Assumes i is in range
     function _getNormalizedWeight(uint8 i) private view returns (uint256) {
         return _normalizedWeights.decodeUint64(i * 64);
     }
