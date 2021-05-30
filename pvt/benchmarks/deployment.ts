@@ -18,6 +18,8 @@ async function main() {
   await measureDeployment('v2-pool-weighted/WeightedPool2TokensFactory', [vault.address]);
 
   await measureDeployment('v2-pool-stable/StablePoolFactory', [vault.address]);
+
+  await measureDeployment('v2-pool-smart/LiquidityBootstrappingPoolFactory', [vault.address]);
 }
 
 async function measureDeployment(name: string, args: Array<unknown>): Promise<Contract> {

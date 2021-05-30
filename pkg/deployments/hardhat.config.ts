@@ -18,7 +18,7 @@ task(TASK_DEPLOY).setAction(async (_, hre, runSuper) => {
   await hre.run('compile');
 
   exec(
-    'mkdir -p artifacts && cp -R ../solidity-utils/artifacts/* ../vault/artifacts/* ../pool-weighted/artifacts/* ../pool-stable/artifacts/* ../standalone-utils/artifacts/* artifacts'
+    'mkdir -p artifacts && cp -R ../solidity-utils/artifacts/* ../vault/artifacts/* ../pool-weighted/artifacts/* ../pool-stable/artifacts/* ../pool-smart/artifacts/* ../standalone-utils/artifacts/* artifacts'
   );
 
   return runSuper({ noCompile: true });
