@@ -112,6 +112,10 @@ export default class LiquidityBootstrappingPool {
     return this.instance.getVault();
   }
 
+  async getOwner(): Promise<string> {
+    return this.instance.getOwner();
+  }
+
   async getRegisteredInfo(): Promise<{ address: string; specialization: BigNumber }> {
     return this.vault.getPool(this.poolId);
   }

@@ -12,7 +12,7 @@ import { RawLiquidityBootstrappingPoolDeployment } from '@balancer-labs/v2-helpe
 
 describe('LiquidityBootstrappingPool', function () {
   let allTokens: TokenList;
-  let trader: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
+  let trader: SignerWithAddress, recipient: SignerWithAddress;
   let other: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -20,7 +20,7 @@ describe('LiquidityBootstrappingPool', function () {
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
 
   before('setup signers', async () => {
-    [, lp, trader, recipient, other, owner, admin] = await ethers.getSigners();
+    [, lp, trader, recipient, other, owner] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -48,7 +48,7 @@ describe('LiquidityBootstrappingPool', function () {
   context('for a too-many token pool', () => {
     it('reverts if there are too many tokens', async () => {
       // The maximum number of tokens is 4
-      const tokens = await TokenList.create(5, {sorted: true});
+      const tokens = await TokenList.create(5, { sorted: true });
       const weights = new Array(5).fill(fp(1));
 
       await expect(LiquidityBootstrappingPool.create({ tokens, weights })).to.be.revertedWith('MAX_TOKENS');
@@ -63,11 +63,7 @@ describe('LiquidityBootstrappingPool', function () {
     const initialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
     async function deployPool(params: RawLiquidityBootstrappingPoolDeployment = {}): Promise<void> {
-      params = Object.assign(
-        {},
-        { tokens, weights, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE },
-        params
-      );
+      params = Object.assign({}, { tokens, weights, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, owner }, params);
       pool = await LiquidityBootstrappingPool.create(params);
     }
 
@@ -83,6 +79,12 @@ describe('LiquidityBootstrappingPool', function () {
 
         it('sets the vault', async () => {
           expect(await pool.getVault()).to.equal(pool.vault.address);
+        });
+
+        it('it sets the owner', async () => {
+          const poolOwner = await pool.getOwner();
+
+          expect(poolOwner).to.equal(owner.address);
         });
 
         it('uses the corresponding specialization', async () => {
@@ -541,15 +543,11 @@ describe('LiquidityBootstrappingPool', function () {
         });
 
         it('reverts if token in is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith(
-            'INVALID_TOKEN'
-          );
+          await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith(
-            'INVALID_TOKEN'
-          );
+          await expect(pool.swapGivenIn({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if paused', async () => {
@@ -585,15 +583,11 @@ describe('LiquidityBootstrappingPool', function () {
         });
 
         it('reverts if token in is not in the pool when given out', async () => {
-          await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith(
-            'INVALID_TOKEN'
-          );
+          await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenOut({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith(
-            'INVALID_TOKEN'
-          );
+          await expect(pool.swapGivenOut({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if paused', async () => {

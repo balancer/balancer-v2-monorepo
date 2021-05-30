@@ -37,14 +37,7 @@ describe('LiquidityBootstrappingPoolFactory', function () {
 
   async function createPool(): Promise<Contract> {
     const receipt = await (
-      await factory.create(
-        NAME,
-        SYMBOL,
-        tokens.addresses,
-        WEIGHTS,
-        POOL_SWAP_FEE_PERCENTAGE,
-        ZERO_ADDRESS
-      )
+      await factory.create(NAME, SYMBOL, tokens.addresses, WEIGHTS, POOL_SWAP_FEE_PERCENTAGE, ZERO_ADDRESS)
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
