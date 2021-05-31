@@ -25,7 +25,7 @@ $ npm install @balancer-labs/v2-vault
 
 The main purpose of this package is to provide the Solidity interfaces of core components, which are found in the [`/contracts/interfaces`](./contracts/interfaces] directory. The Vault contract itself is also useful for testing.
 
-To get the address of deployed contracts in both main and test networks, see [`v2-deployments`](../deployments).
+To get the address of deployed contracts in both mainnet and various test networks, see [`v2-deployments`](../deployments).
 
 Sample contract that performs Internal Balance deposits:
 
