@@ -20,7 +20,7 @@ $ npm install @balancer-labs/v2-pool-weighted
 
 ### Usage
 
-This package can be used in multiple ways, including interacting with already deployed Pools, performing local testing, or even create new Pool types that also use the Constant Weighted Product invariant.
+This package can be used in multiple ways, including interacting with already deployed Pools, performing local testing, or even creating new Pool types that also use the Constant Weighted Product invariant.
 
 To get the address of deployed contracts in both mainnet and various test networks, see [`v2-deployments`](../deployments).
 
