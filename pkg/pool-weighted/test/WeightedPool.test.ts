@@ -32,7 +32,7 @@ describe('WeightedPool', function () {
   let assetManagerContract: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-  const WEIGHTS = [fp(30), fp(65), fp(10), fp(5)];
+  const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
 
   before('setup signers', async () => {

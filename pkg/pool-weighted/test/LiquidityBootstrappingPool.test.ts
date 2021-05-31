@@ -16,16 +16,16 @@ describe('LiquidityBootstrappingPool', function () {
   let other: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-  const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
-  const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
+  const WEIGHTS = [fp(30), fp(65), fp(10), fp(5)];
+  const INITIAL_BALANCES = [fp(0.9), fp(1.67), fp(5.4), fp(3.6)];
 
   before('setup signers', async () => {
     [, lp, trader, recipient, other, owner] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy tokens', async () => {
-    allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
-    await allTokens.mint({ to: [lp, trader], amount: fp(100) });
+    allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT', 'GRT'], { sorted: true });
+    await allTokens.mint({ to: [lp, trader], amount: fp(200) });
   });
 
   context('for a 1 token pool', () => {
@@ -396,7 +396,7 @@ describe('LiquidityBootstrappingPool', function () {
           // Calculate bpt amount in so that the invariant ratio
           // ((bptTotalSupply - bptAmountIn / bptTotalSupply))
           // is more than 0.7
-          const bptIn = (await pool.getMaxInvariantDecrease()).add(5);
+          const bptIn = (await pool.getMaxInvariantDecrease()).add(50);
           await expect(pool.singleExitGivenIn({ bptIn, token })).to.be.revertedWith('MIN_BPT_IN_FOR_TOKEN_OUT');
         });
 
@@ -547,11 +547,11 @@ describe('LiquidityBootstrappingPool', function () {
         });
 
         it('reverts if token in is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+          await expect(pool.swapGivenIn({ in: allTokens.GRT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+          await expect(pool.swapGivenIn({ in: 1, out: allTokens.GRT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if paused', async () => {
@@ -587,11 +587,11 @@ describe('LiquidityBootstrappingPool', function () {
         });
 
         it('reverts if token in is not in the pool when given out', async () => {
-          await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+          await expect(pool.swapGivenOut({ in: allTokens.GRT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenOut({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+          await expect(pool.swapGivenOut({ in: 1, out: allTokens.GRT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if paused', async () => {

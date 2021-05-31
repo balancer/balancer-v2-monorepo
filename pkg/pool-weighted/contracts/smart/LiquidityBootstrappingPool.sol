@@ -17,7 +17,8 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
-import "@balancer-labs/v2-pool-weighted/contracts/BaseWeightedPool.sol";
+
+import "../BaseWeightedPool.sol";
 
 /**
  * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping
