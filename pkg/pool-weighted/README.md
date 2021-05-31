@@ -37,7 +37,7 @@ contract SimpleOracleQuery {
     function performAction() external {
       IPriceOracle.OracleAverageQuery[] memory queries = new IPriceOracle.OracleAverageQuery[](1);
 
-      // Average price over the last hour
+      // Average price over the last hour - note that the oracle must be fully initialized
       queries[0] = IPriceOracle.OracleAverageQuery({
         variable: IPriceOracle.Variable.PAIR_PRICE,
         secs: 3600,
