@@ -7,7 +7,7 @@
 
 # 🚧 UNDER CONSTRUCTION 🚧
 
-Files in this directory **are not** production-ready, have not been audited by a security firm, and **could contain soundness issues**. Use at your own risk.
+Files in this directory **are not** production-ready, have not been audited by a security firm, and **could contain security issues or logic errors**. Use at your own risk.
 
 ---
 

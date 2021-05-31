@@ -7,7 +7,7 @@
 
 This package contains the source code of Balancer V2's main contract, the [`Vault`](./contracts/Vault.sol), as well as all [core interfaces](./contracts/interfaces).
 
-The [Vault interface](./contracts/interfaces/IVault.sol) itself is required for multiple tasks, including swaps, joins and exits, but some scenario require using a few additional ones. Particularly useful interfaces include:
+The [Vault interface](./contracts/interfaces/IVault.sol) itself is required for multiple tasks, including swaps, joins and exits, but some scenarios require functionality provided through other contracts. Particularly useful interfaces include:
 
 - [`IBasePool`](./contracts/interfaces/IBasePool.sol), [`IGeneralPool`](./contracts/interfaces/IGeneralPool.sol) and [`IMinimalSwapInfoPool`](./contracts/interfaces/IMinimalSwapInfoPool.sol) for developing Pools
 - [`IFlashLoanRecipient`](./contracts/interfaces/IFlashLoanRecipient.sol) for performing Flash Loans
@@ -23,7 +23,7 @@ $ npm install @balancer-labs/v2-vault
 
 ### Usage
 
-The main purpose if this package is to provide the Solidity interfaces of core components, which are found in the [`/contracts/interfaces`](./contracts/interfaces] directory. The Vault contract itself however is still useful for testing.
+The main purpose of this package is to provide the Solidity interfaces of core components, which are found in the [`/contracts/interfaces`](./contracts/interfaces] directory. The Vault contract itself is also useful for testing.
 
 To get the address of deployed contracts in both main and test networks, see [`v2-deployments`](../deployments).
 
