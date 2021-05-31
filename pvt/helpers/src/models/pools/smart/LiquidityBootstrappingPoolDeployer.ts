@@ -43,7 +43,10 @@ export default {
 
   async _deployFromFactory(params: LiquidityBootstrappingPoolDeployment, vault: Vault): Promise<Contract> {
     const { tokens, weights, swapFeePercentage, owner, from } = params;
-    const factory = await deploy('v2-pool-weighted/smart/LiquidityBootstrappingPoolFactory', { args: [vault.address], from });
+    const factory = await deploy('v2-pool-weighted/smart/LiquidityBootstrappingPoolFactory', {
+      args: [vault.address],
+      from,
+    });
 
     const tx = await factory.create(
       NAME,
