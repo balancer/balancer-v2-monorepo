@@ -45,6 +45,10 @@ describe('LiquidityBootstrappingPool', function () {
     itBehavesAsWeightedPool(3);
   });
 
+  context('for a 4 token pool', () => {
+    itBehavesAsWeightedPool(4);
+  });
+
   context('for a too-many token pool', () => {
     it('reverts if there are too many tokens', async () => {
       // The maximum number of tokens is 4
