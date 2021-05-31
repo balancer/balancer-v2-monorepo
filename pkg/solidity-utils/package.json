@@ -1,13 +1,17 @@
 {
   "name": "@balancer-labs/v2-solidity-utils",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Solidity libraries and utilities",
   "license": "GPL-3.0-only",
-  "homepage": "https://github.com/balancer-labs/balancer-core-v2#readme",
-  "repository": "git@github.com:balancer-labs/balancer-core-v2.git",
+  "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/solidity-utils#readme",
+  "repository": "git@github.com:balancer-labs/balancer-v2-monorepo.git",
   "bugs": {
-    "url": "https://github.com/balancer-labs/balancer-core-v2/issues"
+    "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },
+  "files": [
+    "contracts/**/*",
+    "!contracts/test"
+  ],
   "scripts": {
     "build": "yarn compile",
     "compile": "hardhat compile && rm -rf artifacts/build-info",
