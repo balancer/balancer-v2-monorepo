@@ -54,14 +54,37 @@ contract SimpleOracleQuery {
 }
 ```
 
-Sample Pool that computes Pool weights dynamically:
+Sample Weighted Pool that computes weights dynamically on every swap, join and exit:
 
 ```solidity
 pragma solidity ^0.7.0;
 
-import '@balancer-labs/v2-pool-weighted/contracts/WeightedPool.sol';
+import '@balancer-labs/v2-pool-weighted/contracts/BaseWeightedPool.sol';
 
-contract DynamicWeightedPool is WeightedPool {}
+contract DynamicWeightedPool is BaseWeightedPool {
+    uint256 private immutable _creationTime;
+
+    constructor() {
+        _creationTime = block.timestamp;
+    }
+
+    function _getNormalizedWeights() internal view override returns (uint256[] memory);
+        uint256[] memory weights = new uint256[](2);
+
+        // Change weights from 50-50 to 30-70 one month after deployment
+        if (block.timestamp < (_creationTime + 1 month)) {
+          weights[0] = 0.5e18;
+          weights[1] = 0.5e18;
+        } else {
+          weights[0] = 0.3e18;
+          weights[1] = 0.7e18;
+        }
+
+        return weights;
+    }
+
+    ...
+}
 
 ```
 
