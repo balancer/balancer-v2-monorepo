@@ -10,3 +10,21 @@ This package contains Solidity utilities for developing Balancer V2 Pools, imple
 The most useful contracts are [`BaseGeneralPool`](./contracts/BaseGeneralPool.sol) and [`BaseMinimalSwapInfoPool`](./contracts/BaseMinimalSwapInfoPool.sol), used as base contracts for Pools with the General and MinimalSwapInfo/TwoTokens specializations respectively.
 
 The recommended pattern is to create new Pools from factory contracts, as that lets other systems reason about Pool logic by checking if a Pool was deployed from a given factory. [`BasePoolFactory`](./contracts/factories/BasePoolFactory.sol) can be used for this purpose.
+
+## Overview
+
+### Installation
+
+```console
+$ npm install @balancer-labs/v2-pool-utils
+```
+
+### Usage
+
+Contracts in this package are meant to be used via inheritance to develop new Pools. The [`BaseGeneralPool`](./contracts/BaseGeneralPool.sol) and [`BaseMinimalSwapInfoPool`](./contracts/BaseMinimalSwapInfoPool.sol) contracts are `abstract`, meaning some `virtual` functions (such as `_onJoinPool` or `_onSwapGivenIn`) are not defined: derived contracts must `override` them and provide an implementation.
+
+See [`v2-pool-weighted`](../pool-weighted) for the implementation of Pools with a Constant Weighted Product invariant using these base contracts.
+
+## Licensing
+
+[GNU General Public License Version 3 (GPL v3)](../../LICENSE).
