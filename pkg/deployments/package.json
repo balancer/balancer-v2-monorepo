@@ -1,16 +1,16 @@
 {
   "name": "@balancer-labs/v2-deployments",
-  "version": "0.1.0",
-  "description": "Artifacts and interfaces of deployed Balancer v2 contracts",
+  "version": "1.0.0",
+  "description": "Addresses and ABIs of all Balancer V2 deployed contracts",
   "license": "GPL-3.0-only",
   "files": [
     "deployed/**/*",
     "!deployed/solcInputs"
   ],
-  "homepage": "https://github.com/balancer-labs/balancer-core-v2#readme",
-  "repository": "git@github.com:balancer-labs/balancer-core-v2.git",
+  "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/deployments#readme",
+  "repository": "git@github.com:balancer-labs/balancer-v2-monorepo.git",
   "bugs": {
-    "url": "https://github.com/balancer-labs/balancer-core-v2/issues"
+    "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },
   "scripts": {
     "deploy:hardhat": "hardhat --network hardhat deploy",
