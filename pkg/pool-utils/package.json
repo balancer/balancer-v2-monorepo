@@ -4,13 +4,17 @@
   "description": "Utilities for creating Balancer V2 Pools",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/pool-utils#readme",
-  "repository": "git@github.com:balancer-labs/balancer-v2-monorepo.git",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/balancer-labs/balancer-v2-monorepo.git",
+    "directory": "pkg/pool-utils"
+  },
   "bugs": {
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },
   "files": [
     "contracts/**/*",
-    "!contracts/test"
+    "!contracts/test/*"
   ],
   "scripts": {
     "build": "yarn compile",

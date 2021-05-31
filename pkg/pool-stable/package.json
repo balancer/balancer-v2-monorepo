@@ -4,13 +4,17 @@
   "description": "Balancer V2 Stable Pools",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/pool-stable#readme",
-  "repository": "git@github.com:balancer-labs/balancer-v2-monorepo.git",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/balancer-labs/balancer-v2-monorepo.git",
+    "directory": "pkg/pool-stable"
+  },
   "bugs": {
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },
   "files": [
     "contracts/**/*",
-    "!contracts/test"
+    "!contracts/test/*"
   ],
   "scripts": {
     "build": "yarn compile",

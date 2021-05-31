@@ -4,7 +4,11 @@
   "description": "Utilities for distributing tokens from internal balance",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/pkg/distributors#readme",
-  "repository": "git@github.com:balancer-labs/balancer-v2-monorepo.git",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/balancer-labs/balancer-v2-monorepo.git",
+    "directory": "pkg/distributors"
+  },
   "bugs": {
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },

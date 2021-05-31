@@ -25,8 +25,14 @@ import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 
 // Creates an ethers Contract object from a contract deployed at a network
-export function getBalancerContract(contract: string, network: string): Promise<Contract> {
-  const { abi, address } = require(`@balancer-labs/v2-deployments/deployed/${network}/${contract}.json`);
+export function getBalancerContract(
+  contract: string,
+  network: string
+): Promise<Contract> {
+  const {
+    abi,
+    address,
+  } = require(`@balancer-labs/v2-deployments/deployed/${network}/${contract}.json`);
   return ethers.getContractAt(abi, address);
 }
 ```
