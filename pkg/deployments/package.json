@@ -5,10 +5,14 @@
   "license": "GPL-3.0-only",
   "files": [
     "deployed/**/*",
-    "!deployed/solcInputs"
+    "!deployed/solcInputs/*"
   ],
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/deployments#readme",
-  "repository": "git@github.com:balancer-labs/balancer-v2-monorepo.git",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/balancer-labs/balancer-v2-monorepo.git",
+    "directory": "pkg/deployments"
+  },
   "bugs": {
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },
