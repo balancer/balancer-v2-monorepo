@@ -19,7 +19,7 @@ const contractSettings: ContractSettings = {
     version: '0.7.1',
     runs: 200,
   },
-  '@balancer-labs/v2-pool-weighted/contracts/smart/LiquidityBootstrappingPoolFactory.sol': {
+  '@balancer-labs/v2-pool-weighted/contracts/LiquidityBootstrappingPoolFactory.sol': {
     version: '0.7.1',
     runs: 200,
   },
