@@ -25,7 +25,7 @@ export default {
 
   async _deployStandalone(params: LiquidityBootstrappingPoolDeployment, vault: Vault): Promise<Contract> {
     const { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner, from } = params;
-    return deploy('v2-pool-smart/LiquidityBootstrappingPool', {
+    return deploy('v2-pool-weighted/smart/LiquidityBootstrappingPool', {
       args: [
         vault.address,
         NAME,
@@ -43,7 +43,7 @@ export default {
 
   async _deployFromFactory(params: LiquidityBootstrappingPoolDeployment, vault: Vault): Promise<Contract> {
     const { tokens, weights, swapFeePercentage, owner, from } = params;
-    const factory = await deploy('v2-pool-smart/LiquidityBootstrappingPoolFactory', { args: [vault.address], from });
+    const factory = await deploy('v2-pool-weighted/smart/LiquidityBootstrappingPoolFactory', { args: [vault.address], from });
 
     const tx = await factory.create(
       NAME,
@@ -55,6 +55,6 @@ export default {
     );
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-    return deployedAt('v2-pool-smart/LiquidityBootstrappingPool', event.args.pool);
+    return deployedAt('v2-pool-weighted/smart/LiquidityBootstrappingPool', event.args.pool);
   },
 };

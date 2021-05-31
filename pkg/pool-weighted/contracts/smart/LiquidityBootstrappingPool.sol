@@ -51,7 +51,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             name,
             symbol,
             tokens,
-            new address[](tokens.length), // LBPs can't have asset managers
+            new address[](tokens.length), // Pass the zero address: LBPs can't have asset managers
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -63,7 +63,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
 
-        // Ensure  each normalized weight is above them minimum and find the token index of the maximum weight
+        // Ensure each normalized weight is above the minimum and find the token index of the maximum weight
         uint256 normalizedSum = 0;
         uint256 maxWeightTokenIndex = 0;
         uint256 maxNormalizedWeight = 0;

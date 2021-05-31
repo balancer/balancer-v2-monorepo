@@ -19,7 +19,7 @@ async function main() {
 
   await measureDeployment('v2-pool-stable/StablePoolFactory', [vault.address]);
 
-  await measureDeployment('v2-pool-smart/LiquidityBootstrappingPoolFactory', [vault.address]);
+  await measureDeployment('v2-pool-weighted/smart/LiquidityBootstrappingPoolFactory', [vault.address]);
 }
 
 async function measureDeployment(name: string, args: Array<unknown>): Promise<Contract> {

@@ -26,7 +26,6 @@
   },
   "devDependencies": {
     "@balancer-labs/v2-common": "workspace:*",
-    "@balancer-labs/v2-pool-smart": "workspace:*",
     "@balancer-labs/v2-pool-stable": "workspace:*",
     "@balancer-labs/v2-pool-weighted": "workspace:*",
     "@balancer-labs/v2-solidity-utils": "workspace:*",
