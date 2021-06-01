@@ -21,7 +21,7 @@ export function encodeCalldataAuthorization(calldata: string, deadline: BigNumbe
 export async function signJoinAuthorization(
   validator: Contract,
   user: SignerWithAddress,
-  allowedSender: SignerWithAddress,
+  allowedSender: SignerWithAddress | Contract,
   allowedCalldata: string,
   nonce?: BigNumberish,
   deadline?: BigNumberish
@@ -32,7 +32,7 @@ export async function signJoinAuthorization(
 export async function signExitAuthorization(
   validator: Contract,
   user: SignerWithAddress,
-  allowedSender: SignerWithAddress,
+  allowedSender: SignerWithAddress | Contract,
   allowedCalldata: string,
   nonce?: BigNumberish,
   deadline?: BigNumberish
@@ -43,7 +43,7 @@ export async function signExitAuthorization(
 export async function signSwapAuthorization(
   validator: Contract,
   user: SignerWithAddress,
-  allowedSender: SignerWithAddress,
+  allowedSender: SignerWithAddress | Contract,
   allowedCalldata: string,
   nonce?: BigNumberish,
   deadline?: BigNumberish
@@ -54,7 +54,7 @@ export async function signSwapAuthorization(
 export async function signBatchSwapAuthorization(
   validator: Contract,
   user: SignerWithAddress,
-  allowedSender: SignerWithAddress,
+  allowedSender: SignerWithAddress | Contract,
   allowedCalldata: string,
   nonce?: BigNumberish,
   deadline?: BigNumberish
@@ -65,7 +65,7 @@ export async function signBatchSwapAuthorization(
 export async function signSetRelayerApprovalAuthorization(
   validator: Contract,
   user: SignerWithAddress,
-  allowedSender: SignerWithAddress,
+  allowedSender: SignerWithAddress | Contract,
   allowedCalldata: string,
   nonce?: BigNumberish,
   deadline?: BigNumberish
@@ -76,7 +76,7 @@ export async function signSetRelayerApprovalAuthorization(
 export async function signAuthorization(
   validator: Contract,
   user: SignerWithAddress,
-  allowedSender: SignerWithAddress,
+  allowedSender: SignerWithAddress | Contract,
   allowedCalldata: string,
   nonce?: BigNumberish,
   deadline?: BigNumberish
@@ -88,7 +88,7 @@ export async function signAuthorizationFor(
   type: string,
   validator: Contract,
   user: SignerWithAddress,
-  allowedSender: SignerWithAddress,
+  allowedSender: SignerWithAddress | Contract,
   allowedCalldata: string,
   nonce?: BigNumberish,
   deadline?: BigNumberish
@@ -129,7 +129,7 @@ export async function signPermit(
   amount: BigNumberish,
   nonce?: BigNumberish,
   deadline?: BigNumberish
-): Promise<{ v: number; r: string; s: string; deadline: BigNumber }> {
+): Promise<{ v: number; r: string; s: string; nonce: BigNumber; deadline: BigNumber }> {
   if (!deadline) deadline = MAX_DEADLINE;
   if (!nonce) nonce = (await token.nonces(owner.address)) as BigNumberish;
 
@@ -159,5 +159,5 @@ export async function signPermit(
   };
 
   const signature = await owner._signTypedData(domain, types, value);
-  return { ...splitSignature(signature), deadline: bn(deadline) };
+  return { ...splitSignature(signature), nonce: bn(nonce), deadline: bn(deadline) };
 }
