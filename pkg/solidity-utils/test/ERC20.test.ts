@@ -1,16 +1,14 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { BigNumber, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { MAX_DEADLINE, signPermit } from '@balancer-labs/v2-helpers/src/models/misc/signatures';
-import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 
-describe('BalancerPoolToken', () => {
+describe('ERC20', () => {
   let token: Contract;
   let holder: SignerWithAddress, spender: SignerWithAddress, recipient: SignerWithAddress, other: SignerWithAddress;
 
@@ -19,7 +17,7 @@ describe('BalancerPoolToken', () => {
   });
 
   sharedBeforeEach('deploy token', async () => {
-    token = await deploy('MockBalancerPoolToken', { args: ['Token', 'TKN'] });
+    token = await deploy('ERC20Mock', { args: ['Token', 'TKN'] });
   });
 
   describe('info', () => {
@@ -128,7 +126,7 @@ describe('BalancerPoolToken', () => {
           it('reverts', async () => {
             await expect(
               token.connect(holder).transfer(recipientAddress || recipient.address, amount)
-            ).to.be.revertedWith('INSUFFICIENT_BALANCE');
+            ).to.be.revertedWith('ERC20_TRANSFER_EXCEEDS_BALANCE');
           });
         });
 
@@ -238,7 +236,7 @@ describe('BalancerPoolToken', () => {
           describe('when the token holder does not have enough balance', () => {
             it('reverts', async () => {
               await expect(token.connect(spender).transferFrom(holder.address, to, amount)).to.be.revertedWith(
-                'INSUFFICIENT_BALANCE'
+                'ERC20_TRANSFER_EXCEEDS_BALANCE'
               );
             });
           });
@@ -256,7 +254,7 @@ describe('BalancerPoolToken', () => {
 
             it('reverts', async () => {
               await expect(token.connect(spender).transferFrom(holder.address, to, amount)).to.be.revertedWith(
-                'INSUFFICIENT_ALLOWANCE'
+                'ERC20_TRANSFER_EXCEEDS_ALLOWANCE'
               );
             });
           });
@@ -264,7 +262,7 @@ describe('BalancerPoolToken', () => {
           describe('when the token holder does not have enough balance', () => {
             it('reverts', async () => {
               await expect(token.connect(spender).transferFrom(holder.address, to, amount)).to.be.revertedWith(
-                'INSUFFICIENT_ALLOWANCE'
+                'ERC20_TRANSFER_EXCEEDS_BALANCE'
               );
             });
           });
@@ -292,7 +290,7 @@ describe('BalancerPoolToken', () => {
     describe('when the token holder is the zero address', () => {
       it('reverts', async () => {
         await expect(token.connect(spender).transferFrom(ZERO_ADDRESS, recipient.address, amount)).to.be.revertedWith(
-          'INSUFFICIENT_ALLOWANCE'
+          'ERC20_TRANSFER_FROM_ZERO_ADDRESS'
         );
       });
     });
@@ -366,101 +364,6 @@ describe('BalancerPoolToken', () => {
 
     describe('when the spender is the zero address', () => {
       itHandlesApprovalsProperly(ZERO_ADDRESS);
-    });
-  });
-
-  describe('permit', () => {
-    it('initial nonce is zero', async () => {
-      expect(await token.nonces(holder.address)).to.equal(0);
-    });
-
-    const amount = bn(42);
-
-    it('accepts holder signature', async function () {
-      const previousNonce = await token.nonces(holder.address);
-      const { v, r, s } = await signPermit(token, holder, spender, amount);
-
-      const receipt = await (await token.permit(holder.address, spender.address, amount, MAX_DEADLINE, v, r, s)).wait();
-      expectEvent.inReceipt(receipt, 'Approval', { owner: holder.address, spender: spender.address, value: amount });
-
-      expect(await token.nonces(holder.address)).to.equal(previousNonce.add(1));
-      expect(await token.allowance(holder.address, spender.address)).to.equal(amount);
-    });
-
-    context('with invalid signature', () => {
-      let v: number, r: string, s: string, deadline: BigNumber;
-
-      context('with reused signature', () => {
-        beforeEach(async () => {
-          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount));
-          await token.permit(holder.address, spender.address, amount, deadline, v, r, s);
-        });
-
-        itRevertsWithInvalidSignature();
-      });
-
-      context('with signature for other holder', () => {
-        beforeEach(async () => {
-          ({ v, r, s, deadline } = await signPermit(token, spender, spender, amount));
-        });
-
-        itRevertsWithInvalidSignature();
-      });
-
-      context('with signature for other spender', () => {
-        beforeEach(async () => {
-          ({ v, r, s, deadline } = await signPermit(token, holder, holder, amount));
-        });
-
-        itRevertsWithInvalidSignature();
-      });
-
-      context('with signature for other amount', () => {
-        beforeEach(async () => {
-          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount.add(1)));
-        });
-
-        itRevertsWithInvalidSignature();
-      });
-
-      context('with signature for other token', () => {
-        beforeEach(async () => {
-          const currentNonce = await token.nonces(holder.address);
-          const otherToken = await deploy('MockBalancerPoolToken', { args: ['Token', 'TKN'] });
-
-          ({ v, r, s, deadline } = await signPermit(otherToken, holder, spender, amount, currentNonce));
-        });
-
-        itRevertsWithInvalidSignature();
-      });
-
-      context('with signature with invalid nonce', () => {
-        beforeEach(async () => {
-          const currentNonce = await token.nonces(holder.address);
-          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount, currentNonce.add(1)));
-        });
-
-        itRevertsWithInvalidSignature();
-      });
-
-      context('with expired deadline', () => {
-        beforeEach(async () => {
-          const nonce = await token.nonces(holder.address);
-          const now = await currentTimestamp();
-
-          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount, nonce, now.sub(1)));
-        });
-
-        itRevertsWithInvalidSignature('EXPIRED_PERMIT');
-      });
-
-      function itRevertsWithInvalidSignature(reason?: string) {
-        it('reverts', async () => {
-          await expect(token.permit(holder.address, spender.address, amount, deadline, v, r, s)).to.be.revertedWith(
-            reason ?? 'INVALID_SIGNATURE'
-          );
-        });
-      }
     });
   });
 
@@ -558,7 +461,7 @@ describe('BalancerPoolToken', () => {
 
       context('when the sender does not have enough balance', () => {
         it('reverts', async () => {
-          await expect(token.burn(holder.address, amount)).be.revertedWith('INSUFFICIENT_BALANCE');
+          await expect(token.burn(holder.address, amount)).be.revertedWith('ERC20_BURN_EXCEEDS_ALLOWANCE');
         });
       });
 
