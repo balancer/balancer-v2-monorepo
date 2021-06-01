@@ -14,27 +14,33 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20Burnable.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20Permit.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/AccessControl.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20PermitDAI.sol";
+import "./TestToken.sol";
 
-contract TestToken is AccessControl, ERC20, ERC20Burnable, ERC20Permit {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-
+/**
+ * @notice An implementation of an ERC20 token with DAI's nonstandard permit interface
+ */
+contract TestDAI is TestToken, IERC20PermitDAI {
     constructor(
         address admin,
         string memory name,
         string memory symbol,
         uint8 decimals
-    ) ERC20(name, symbol) ERC20Permit(name) {
-        _setupDecimals(decimals);
-        _setupRole(DEFAULT_ADMIN_ROLE, admin);
-        _setupRole(MINTER_ROLE, admin);
+    ) TestToken(admin, name, symbol, decimals) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
-    function mint(address recipient, uint256 amount) external {
-        require(hasRole(MINTER_ROLE, msg.sender), "NOT_MINTER");
-        _mint(recipient, amount);
+    function permit(
+        address holder,
+        address spender,
+        uint256 nonce,
+        uint256 expiry,
+        bool allowed,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external override {
+        require(this.nonces(holder) == nonce, "wrong nonce");
+        permit(holder, spender, allowed ? type(uint256).max : 0, expiry, v, r, s);
     }
 }
