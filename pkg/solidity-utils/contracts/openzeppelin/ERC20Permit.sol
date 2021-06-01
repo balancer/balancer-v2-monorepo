@@ -4,7 +4,6 @@ pragma solidity ^0.7.0;
 
 import "./ERC20.sol";
 import "./IERC20Permit.sol";
-import "./Counters.sol";
 import "./EIP712.sol";
 
 /**
@@ -18,9 +17,7 @@ import "./EIP712.sol";
  * _Available since v3.4._
  */
 abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712 {
-    using Counters for Counters.Counter;
-
-    mapping(address => Counters.Counter) private _nonces;
+    mapping(address => uint256) private _nonces;
 
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _PERMIT_TYPEHASH =
@@ -48,15 +45,13 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712 {
         // solhint-disable-next-line not-rely-on-time
         _require(block.timestamp <= deadline, Errors.EXPIRED_PERMIT);
 
-        bytes32 structHash =
-            keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _nonces[owner].current(), deadline));
+        bytes32 structHash = keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _nonces[owner]++, deadline));
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
         address signer = ecrecover(hash, v, r, s);
         _require((signer != address(0)) && (signer == owner), Errors.INVALID_SIGNATURE);
 
-        _nonces[owner].increment();
         _approve(owner, spender, value);
     }
 
@@ -64,7 +59,7 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712 {
      * @dev See {IERC20Permit-nonces}.
      */
     function nonces(address owner) public view override returns (uint256) {
-        return _nonces[owner].current();
+        return _nonces[owner];
     }
 
     /**
