@@ -74,7 +74,7 @@ abstract contract AssetManager is IAssetManager {
      * @param poolId - The id of the pool of interest
      * @return The amount of the underlying tokens which are owned by the specified pool
      */
-    function _poolManaged(bytes32 poolId, uint256 aum) public view returns (uint256) {
+    function _poolManaged(bytes32 poolId, uint256 aum) internal view returns (uint256) {
         if (totalSupply == 0) return 0;
         return _balances[poolId].mul(aum).divDown(totalSupply);
     }
