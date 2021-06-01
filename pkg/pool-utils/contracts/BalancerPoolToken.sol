@@ -37,8 +37,11 @@ contract BalancerPoolToken is ERC20, ERC20Permit {
         ERC20Permit(tokenName)
     {}
 
-    // Public functions
+    // Overrides
 
+    /**
+     * @dev Override to allow for 'infinite allowance' and let the token owner use `transferFrom` with no self-allowance
+     */
     function transferFrom(
         address sender,
         address recipient,
@@ -57,6 +60,9 @@ contract BalancerPoolToken is ERC20, ERC20Permit {
         return true;
     }
 
+    /**
+     * @dev Override to allow decreasing allowance by more than the current amount (setting it to zero)
+     */
     function decreaseAllowance(address spender, uint256 amount) public override returns (bool) {
         uint256 currentAllowance = allowance(msg.sender, spender);
 
