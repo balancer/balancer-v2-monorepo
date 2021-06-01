@@ -64,14 +64,6 @@ const setup = async () => {
 
   const relayer = await deploy('PermitRelayer', { args: [vault.address] });
 
-  // Authorise relayer to perform actions.
-  const single = await actionId(vault.instance, 'swap');
-  const batch = await actionId(vault.instance, 'batchSwap');
-  const manageUserBalance = await actionId(vault.instance, 'manageUserBalance');
-  const joinPool = await actionId(vault.instance, 'joinPool');
-  const exitPool = await actionId(vault.instance, 'exitPool');
-  await vault.authorizer?.grantRoles([single, batch, manageUserBalance, joinPool, exitPool], relayer.address);
-
   return {
     data: {
       poolId,
@@ -130,213 +122,34 @@ describe('PermitRelayer', function () {
     ]);
   });
 
-  describe('multicall', () => {
-    it('allows calling permit on multiple tokens', async () => {
-      await relayer.connect(signer).multicall([daiPermit, mkrPermit]);
-
-      expect(await dai.instance.allowance(signer.address, vault.address)).to.be.eq(MAX_UINT256);
-      expect(await mkr.instance.allowance(signer.address, vault.address)).to.be.eq(MAX_UINT256);
+  context('when relayer is authorised by governance', () => {
+    sharedBeforeEach('authorise relayer', async () => {
+      const single = await actionId(vault.instance, 'swap');
+      const batch = await actionId(vault.instance, 'batchSwap');
+      const manageUserBalance = await actionId(vault.instance, 'manageUserBalance');
+      const joinPool = await actionId(vault.instance, 'joinPool');
+      const exitPool = await actionId(vault.instance, 'exitPool');
+      return await vault.authorizer?.grantRoles(
+        [single, batch, manageUserBalance, joinPool, exitPool],
+        relayer.address
+      );
     });
 
-    it('allows performing a swap using permit', async () => {
-      const singleSwap = {
-        poolId,
-        kind: 0,
-        assetIn: dai.address,
-        assetOut: mkr.address,
-        amount: 100,
-        userData: '0x',
-      };
-      const funds = {
-        sender: signer.address,
-        fromInternalBalance: false,
-        recipient: signer.address,
-        toInitialBalance: false,
-      };
+    describe('multicall', () => {
+      it('allows calling permit on multiple tokens', async () => {
+        await relayer.connect(signer).multicall([daiPermit, mkrPermit]);
 
-      const swapArgs = [singleSwap, funds, 1, MAX_UINT256];
-      const vaultSwap = vault.instance.interface.encodeFunctionData('swap', swapArgs);
-      const signature = await signSwapAuthorization(vault.instance, signer, relayer, vaultSwap);
-      const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
-
-      const swap = relayer.interface.encodeFunctionData('swap', [...swapArgs, 0, callAuthorisation]);
-
-      const tx = await relayer.connect(signer).multicall([daiPermit, swap]);
-      const receipt = await tx.wait();
-
-      expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
-        poolId,
-        tokenIn: singleSwap.assetIn,
-        tokenOut: singleSwap.assetOut,
-        amountIn: singleSwap.amount,
-        amountOut: singleSwap.amount,
-      });
-    });
-
-    it('allows performing a batch swap using permit', async () => {
-      const singleSwap = {
-        poolId,
-        assetInIndex: 0,
-        assetOutIndex: 1,
-        amount: 100,
-        userData: '0x',
-      };
-      const funds = {
-        sender: signer.address,
-        fromInternalBalance: false,
-        recipient: signer.address,
-        toInitialBalance: false,
-      };
-
-      const batchSwapArgs = [0, [singleSwap], [dai.address, mkr.address], funds, [100, -100], MAX_UINT256];
-      const vaultSwap = vault.instance.interface.encodeFunctionData('batchSwap', batchSwapArgs);
-      const signature = await signBatchSwapAuthorization(vault.instance, signer, relayer, vaultSwap);
-      const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
-
-      const batchSwap = relayer.interface.encodeFunctionData('batchSwap', [...batchSwapArgs, 0, callAuthorisation]);
-
-      const tx = await relayer.connect(signer).multicall([daiPermit, batchSwap]);
-      const receipt = await tx.wait();
-
-      expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
-        poolId,
-        tokenIn: dai.address,
-        tokenOut: mkr.address,
-        amountIn: singleSwap.amount,
-        amountOut: singleSwap.amount,
-      });
-    });
-
-    it('allows performing a join using permit', async () => {
-      const joinPoolRequest = {
-        assets: [dai.address, ZERO_ADDRESS, mkr.address],
-        maxAmountsIn: [100, 0, 100],
-        userData: encodeJoin(
-          [100, 0, 100],
-          tokens.addresses.map(() => 0)
-        ),
-        fromInternalBalance: false,
-      };
-
-      const joinArgs = [poolId, signer.address, signer.address, joinPoolRequest];
-      const vaultJoin = vault.instance.interface.encodeFunctionData('joinPool', joinArgs);
-      const signature = await signJoinAuthorization(vault.instance, signer, relayer, vaultJoin);
-      const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
-
-      const join = relayer.interface.encodeFunctionData('joinPool', [
-        joinArgs[0],
-        joinArgs[2],
-        joinArgs[3],
-        0,
-        callAuthorisation,
-      ]);
-
-      const tx = await relayer.connect(signer).multicall([daiPermit, mkrPermit, join]);
-      const receipt = await tx.wait();
-
-      expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
-        poolId,
-        liquidityProvider: signer.address,
-        tokens: [dai.address, weth.address, mkr.address],
-        deltas: [100, 0, 100],
-        protocolFeeAmounts: [0, 0, 0],
-      });
-    });
-
-    it('allows performing a exit', async () => {
-      const exitPoolRequest = {
-        assets: [dai.address, weth.address, mkr.address],
-        minAmountsOut: [100, 100, 100],
-        userData: encodeExit(
-          tokens.addresses.map(() => 100),
-          tokens.addresses.map(() => 0)
-        ),
-        toInternalBalance: false,
-      };
-
-      const exitArgs = [poolId, signer.address, signer.address, exitPoolRequest];
-      const vaultJoin = vault.instance.interface.encodeFunctionData('exitPool', exitArgs);
-      const signature = await signExitAuthorization(vault.instance, signer, relayer, vaultJoin);
-      const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
-
-      const exit = relayer.interface.encodeFunctionData('exitPool', [
-        exitArgs[0],
-        exitArgs[2],
-        exitArgs[3],
-        callAuthorisation,
-      ]);
-
-      const tx = await relayer.connect(signer).multicall([exit]);
-      const receipt = await tx.wait();
-
-      expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
-        poolId,
-        liquidityProvider: signer.address,
-        tokens: [dai.address, weth.address, mkr.address],
-        deltas: [-100, -100, -100],
-        protocolFeeAmounts: [0, 0, 0],
-      });
-    });
-
-    describe('when sending ETH', () => {
-      it('allows performing a join using ETH', async () => {
-        const value = 100;
-
-        const joinPoolRequest = {
-          assets: [dai.address, ZERO_ADDRESS, mkr.address],
-          maxAmountsIn: [0, value, 0],
-          userData: encodeJoin(
-            [0, value, 0],
-            tokens.addresses.map(() => 0)
-          ),
-          fromInternalBalance: false,
-        };
-
-        const joinArgs = [poolId, signer.address, signer.address, joinPoolRequest];
-        const vaultJoin = vault.instance.interface.encodeFunctionData('joinPool', joinArgs);
-        const signature = await signJoinAuthorization(vault.instance, signer, relayer, vaultJoin);
-        const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
-
-        const join = relayer.interface.encodeFunctionData('joinPool', [
-          joinArgs[0],
-          joinArgs[2],
-          joinArgs[3],
-          value,
-          callAuthorisation,
-        ]);
-
-        const userBalanceBefore = await ethers.provider.getBalance(signer.address);
-
-        const tx = await relayer.connect(signer).multicall([join], { value });
-        const receipt = await tx.wait();
-
-        const txCost = tx.gasPrice.mul(receipt.gasUsed);
-        const expectedBalanceAfter = userBalanceBefore.sub(txCost).sub(value);
-        const userBalanceAfter = await ethers.provider.getBalance(signer.address);
-        expect(userBalanceAfter).to.be.eq(expectedBalanceAfter);
-
-        // The relayer and vault should have zero balances
-
-        expect(await ethers.provider.getBalance(vault.address)).to.be.eq(0);
-        expect(await ethers.provider.getBalance(relayer.address)).to.be.eq(0);
-
-        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
-          poolId,
-          liquidityProvider: signer.address,
-          tokens: [dai.address, weth.address, mkr.address],
-          deltas: [0, 100, 0],
-          protocolFeeAmounts: [0, 0, 0],
-        });
+        expect(await dai.instance.allowance(signer.address, vault.address)).to.be.eq(MAX_UINT256);
+        expect(await mkr.instance.allowance(signer.address, vault.address)).to.be.eq(MAX_UINT256);
       });
 
-      it('refunds the unused ETH', async () => {
-        const value = 100;
+      it('allows performing a swap using permit', async () => {
         const singleSwap = {
           poolId,
           kind: 0,
-          assetIn: ZERO_ADDRESS,
+          assetIn: dai.address,
           assetOut: mkr.address,
-          amount: value,
+          amount: 100,
           userData: '0x',
         };
         const funds = {
@@ -351,21 +164,214 @@ describe('PermitRelayer', function () {
         const signature = await signSwapAuthorization(vault.instance, signer, relayer, vaultSwap);
         const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
 
-        const swap = relayer.interface.encodeFunctionData('swap', [...swapArgs, 20000, callAuthorisation]);
+        const swap = relayer.interface.encodeFunctionData('swap', [...swapArgs, 0, callAuthorisation]);
 
-        const userBalanceBefore = await ethers.provider.getBalance(signer.address);
-
-        const tx = await relayer.connect(signer).multicall([swap], { value: value + 20000 });
+        const tx = await relayer.connect(signer).multicall([daiPermit, swap]);
         const receipt = await tx.wait();
 
-        const txCost = tx.gasPrice.mul(receipt.gasUsed);
-        const expectedBalanceAfter = userBalanceBefore.sub(txCost).sub(value);
-        const userBalanceAfter = await ethers.provider.getBalance(signer.address);
+        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+          poolId,
+          tokenIn: singleSwap.assetIn,
+          tokenOut: singleSwap.assetOut,
+          amountIn: singleSwap.amount,
+          amountOut: singleSwap.amount,
+        });
+      });
 
-        // The relayer and vault should have zero balances
-        expect(userBalanceAfter).to.be.eq(expectedBalanceAfter);
-        expect(await ethers.provider.getBalance(vault.address)).to.be.eq(0);
-        expect(await ethers.provider.getBalance(relayer.address)).to.be.eq(0);
+      it('allows performing a batch swap using permit', async () => {
+        const singleSwap = {
+          poolId,
+          assetInIndex: 0,
+          assetOutIndex: 1,
+          amount: 100,
+          userData: '0x',
+        };
+        const funds = {
+          sender: signer.address,
+          fromInternalBalance: false,
+          recipient: signer.address,
+          toInitialBalance: false,
+        };
+
+        const batchSwapArgs = [0, [singleSwap], [dai.address, mkr.address], funds, [100, -100], MAX_UINT256];
+        const vaultSwap = vault.instance.interface.encodeFunctionData('batchSwap', batchSwapArgs);
+        const signature = await signBatchSwapAuthorization(vault.instance, signer, relayer, vaultSwap);
+        const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
+
+        const batchSwap = relayer.interface.encodeFunctionData('batchSwap', [...batchSwapArgs, 0, callAuthorisation]);
+
+        const tx = await relayer.connect(signer).multicall([daiPermit, batchSwap]);
+        const receipt = await tx.wait();
+
+        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+          poolId,
+          tokenIn: dai.address,
+          tokenOut: mkr.address,
+          amountIn: singleSwap.amount,
+          amountOut: singleSwap.amount,
+        });
+      });
+
+      it('allows performing a join using permit', async () => {
+        const joinPoolRequest = {
+          assets: [dai.address, ZERO_ADDRESS, mkr.address],
+          maxAmountsIn: [100, 0, 100],
+          userData: encodeJoin(
+            [100, 0, 100],
+            tokens.addresses.map(() => 0)
+          ),
+          fromInternalBalance: false,
+        };
+
+        const joinArgs = [poolId, signer.address, signer.address, joinPoolRequest];
+        const vaultJoin = vault.instance.interface.encodeFunctionData('joinPool', joinArgs);
+        const signature = await signJoinAuthorization(vault.instance, signer, relayer, vaultJoin);
+        const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
+
+        const join = relayer.interface.encodeFunctionData('joinPool', [
+          joinArgs[0],
+          joinArgs[2],
+          joinArgs[3],
+          0,
+          callAuthorisation,
+        ]);
+
+        const tx = await relayer.connect(signer).multicall([daiPermit, mkrPermit, join]);
+        const receipt = await tx.wait();
+
+        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+          poolId,
+          liquidityProvider: signer.address,
+          tokens: [dai.address, weth.address, mkr.address],
+          deltas: [100, 0, 100],
+          protocolFeeAmounts: [0, 0, 0],
+        });
+      });
+
+      it('allows performing a exit', async () => {
+        const exitPoolRequest = {
+          assets: [dai.address, weth.address, mkr.address],
+          minAmountsOut: [100, 100, 100],
+          userData: encodeExit(
+            tokens.addresses.map(() => 100),
+            tokens.addresses.map(() => 0)
+          ),
+          toInternalBalance: false,
+        };
+
+        const exitArgs = [poolId, signer.address, signer.address, exitPoolRequest];
+        const vaultJoin = vault.instance.interface.encodeFunctionData('exitPool', exitArgs);
+        const signature = await signExitAuthorization(vault.instance, signer, relayer, vaultJoin);
+        const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
+
+        const exit = relayer.interface.encodeFunctionData('exitPool', [
+          exitArgs[0],
+          exitArgs[2],
+          exitArgs[3],
+          callAuthorisation,
+        ]);
+
+        const tx = await relayer.connect(signer).multicall([exit]);
+        const receipt = await tx.wait();
+
+        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+          poolId,
+          liquidityProvider: signer.address,
+          tokens: [dai.address, weth.address, mkr.address],
+          deltas: [-100, -100, -100],
+          protocolFeeAmounts: [0, 0, 0],
+        });
+      });
+
+      context('when sending ETH', () => {
+        it('allows performing a join using ETH', async () => {
+          const value = 100;
+
+          const joinPoolRequest = {
+            assets: [dai.address, ZERO_ADDRESS, mkr.address],
+            maxAmountsIn: [0, value, 0],
+            userData: encodeJoin(
+              [0, value, 0],
+              tokens.addresses.map(() => 0)
+            ),
+            fromInternalBalance: false,
+          };
+
+          const joinArgs = [poolId, signer.address, signer.address, joinPoolRequest];
+          const vaultJoin = vault.instance.interface.encodeFunctionData('joinPool', joinArgs);
+          const signature = await signJoinAuthorization(vault.instance, signer, relayer, vaultJoin);
+          const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
+
+          const join = relayer.interface.encodeFunctionData('joinPool', [
+            joinArgs[0],
+            joinArgs[2],
+            joinArgs[3],
+            value,
+            callAuthorisation,
+          ]);
+
+          const userBalanceBefore = await ethers.provider.getBalance(signer.address);
+
+          const tx = await relayer.connect(signer).multicall([join], { value });
+          const receipt = await tx.wait();
+
+          const txCost = tx.gasPrice.mul(receipt.gasUsed);
+          const expectedBalanceAfter = userBalanceBefore.sub(txCost).sub(value);
+          const userBalanceAfter = await ethers.provider.getBalance(signer.address);
+          expect(userBalanceAfter).to.be.eq(expectedBalanceAfter);
+
+          // The relayer and vault should have zero balances
+
+          expect(await ethers.provider.getBalance(vault.address)).to.be.eq(0);
+          expect(await ethers.provider.getBalance(relayer.address)).to.be.eq(0);
+
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+            poolId,
+            liquidityProvider: signer.address,
+            tokens: [dai.address, weth.address, mkr.address],
+            deltas: [0, 100, 0],
+            protocolFeeAmounts: [0, 0, 0],
+          });
+        });
+
+        it('refunds the unused ETH', async () => {
+          const value = 100;
+          const singleSwap = {
+            poolId,
+            kind: 0,
+            assetIn: ZERO_ADDRESS,
+            assetOut: mkr.address,
+            amount: value,
+            userData: '0x',
+          };
+          const funds = {
+            sender: signer.address,
+            fromInternalBalance: false,
+            recipient: signer.address,
+            toInitialBalance: false,
+          };
+
+          const swapArgs = [singleSwap, funds, 1, MAX_UINT256];
+          const vaultSwap = vault.instance.interface.encodeFunctionData('swap', swapArgs);
+          const signature = await signSwapAuthorization(vault.instance, signer, relayer, vaultSwap);
+          const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
+
+          const swap = relayer.interface.encodeFunctionData('swap', [...swapArgs, 20000, callAuthorisation]);
+
+          const userBalanceBefore = await ethers.provider.getBalance(signer.address);
+
+          const tx = await relayer.connect(signer).multicall([swap], { value: value + 20000 });
+          const receipt = await tx.wait();
+
+          const txCost = tx.gasPrice.mul(receipt.gasUsed);
+          const expectedBalanceAfter = userBalanceBefore.sub(txCost).sub(value);
+          const userBalanceAfter = await ethers.provider.getBalance(signer.address);
+
+          // The relayer and vault should have zero balances
+          expect(userBalanceAfter).to.be.eq(expectedBalanceAfter);
+          expect(await ethers.provider.getBalance(vault.address)).to.be.eq(0);
+          expect(await ethers.provider.getBalance(relayer.address)).to.be.eq(0);
+        });
       });
     });
   });
