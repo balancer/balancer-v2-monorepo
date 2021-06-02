@@ -47,7 +47,7 @@ contract BalancerPoolToken is ERC20, ERC20Permit {
         uint256 amount
     ) public override returns (bool) {
         uint256 currentAllowance = allowance(sender, msg.sender);
-        _require(msg.sender == sender || currentAllowance >= amount, Errors.INSUFFICIENT_ALLOWANCE);
+        _require(msg.sender == sender || currentAllowance >= amount, Errors.ERC20_TRANSFER_EXCEEDS_ALLOWANCE);
 
         _transfer(sender, recipient, amount);
 
