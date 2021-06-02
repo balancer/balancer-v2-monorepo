@@ -30,7 +30,13 @@ describe.only('BalancerPoolToken', () => {
         to = recipientAddress || recipient.address;
       });
 
-      describe('when the spender is the token holder', () => {
+      const itTransfersTokensProperly = (sendFromHolder?: boolean) => {
+        let signer: SignerWithAddress;
+
+        beforeEach('define spender address', () => {
+          signer = sendFromHolder ? holder : spender;
+        });
+
         describe('when the token holder has enough balance', () => {
           sharedBeforeEach('mint tokens', async () => {
             await token.mint(holder.address, amount);
@@ -40,7 +46,7 @@ describe.only('BalancerPoolToken', () => {
             const previousSenderBalance = await token.balanceOf(holder.address);
             const previousRecipientBalance = await token.balanceOf(to);
 
-            await token.connect(holder).transferFrom(holder.address, to, amount);
+            await token.connect(signer).transferFrom(holder.address, to, amount);
 
             const currentSenderBalance = await token.balanceOf(holder.address);
             expect(currentSenderBalance).to.equal(previousSenderBalance.sub(amount));
@@ -52,7 +58,7 @@ describe.only('BalancerPoolToken', () => {
           it('does not affect the supply', async () => {
             const previousSupply = await token.totalSupply();
 
-            await token.connect(holder).transferFrom(holder.address, to, amount);
+            await token.connect(signer).transferFrom(holder.address, to, amount);
 
             const currentSupply = await token.totalSupply();
             expect(currentSupply).to.equal(previousSupply);
@@ -61,17 +67,35 @@ describe.only('BalancerPoolToken', () => {
           it('does not affect the spender balance', async () => {
             const previousSpenderBalance = await token.balanceOf(spender.address);
 
-            await token.connect(holder).transferFrom(holder.address, to, amount);
+            await token.connect(signer).transferFrom(holder.address, to, amount);
 
             const currentSpenderBalance = await token.balanceOf(spender.address);
             expect(currentSpenderBalance).to.equal(previousSpenderBalance);
           });
 
           it('emits a transfer event', async () => {
-            const tx = await token.connect(holder).transferFrom(holder.address, to, amount);
+            const tx = await token.connect(signer).transferFrom(holder.address, to, amount);
             const receipt = await tx.wait();
 
             expectEvent.inReceipt(receipt, 'Transfer', { from: holder.address, to, value: amount });
+          });
+        });
+
+        describe('when the token holder does not have enough balance', () => {
+          it('reverts', async () => {
+            await expect(token.connect(signer).transferFrom(holder.address, to, amount)).to.be.revertedWith(
+              'ERC20_TRANSFER_EXCEEDS_BALANCE'
+            );
+          });
+        });
+      };
+
+      describe('when the spender is the token holder', () => {
+        itTransfersTokensProperly(true);
+
+        describe('when the token holder has enough balance', () => {
+          sharedBeforeEach('mint tokens', async () => {
+            await token.mint(holder.address, amount);
           });
 
           it('does not decrease the spender allowance', async () => {
@@ -90,14 +114,6 @@ describe.only('BalancerPoolToken', () => {
             expectEvent.notEmitted(receipt, 'Approval');
           });
         });
-
-        describe('when the token holder does not have enough balance', () => {
-          it('reverts', async () => {
-            await expect(token.connect(holder).transferFrom(holder.address, to, amount)).to.be.revertedWith(
-              'ERC20_TRANSFER_EXCEEDS_BALANCE'
-            );
-          });
-        });
       });
 
       describe('when the spender has enough approved balance', () => {
@@ -105,47 +121,11 @@ describe.only('BalancerPoolToken', () => {
           await token.connect(holder).approve(spender.address, amount);
         });
 
+        itTransfersTokensProperly(false);
+
         describe('when the token holder has enough balance', () => {
           sharedBeforeEach('mint tokens', async () => {
             await token.mint(holder.address, amount);
-          });
-
-          it('transfers the requested amount', async () => {
-            const previousSenderBalance = await token.balanceOf(holder.address);
-            const previousRecipientBalance = await token.balanceOf(to);
-
-            await token.connect(spender).transferFrom(holder.address, to, amount);
-
-            const currentSenderBalance = await token.balanceOf(holder.address);
-            expect(currentSenderBalance).to.equal(previousSenderBalance.sub(amount));
-
-            const currentRecipientBalance = await token.balanceOf(to);
-            expect(currentRecipientBalance).to.equal(previousRecipientBalance.add(amount));
-          });
-
-          it('does not affect the supply', async () => {
-            const previousSupply = await token.totalSupply();
-
-            await token.connect(spender).transferFrom(holder.address, to, amount);
-
-            const currentSupply = await token.totalSupply();
-            expect(currentSupply).to.equal(previousSupply);
-          });
-
-          it('does not affect the spender balance', async () => {
-            const previousSpenderBalance = await token.balanceOf(spender.address);
-
-            await token.connect(spender).transferFrom(holder.address, to, amount);
-
-            const currentSpenderBalance = await token.balanceOf(spender.address);
-            expect(currentSpenderBalance).to.equal(previousSpenderBalance);
-          });
-
-          it('emits a transfer event', async () => {
-            const tx = await token.connect(spender).transferFrom(holder.address, to, amount);
-            const receipt = await tx.wait();
-
-            expectEvent.inReceipt(receipt, 'Transfer', { from: holder.address, to, value: amount });
           });
 
           it('decreases the spender allowance', async () => {
@@ -168,14 +148,6 @@ describe.only('BalancerPoolToken', () => {
             });
           });
         });
-
-        describe('when the token holder does not have enough balance', () => {
-          it('reverts', async () => {
-            await expect(token.connect(spender).transferFrom(holder.address, to, amount)).to.be.revertedWith(
-              'ERC20_TRANSFER_EXCEEDS_BALANCE'
-            );
-          });
-        });
       });
 
       describe('when the spender has an infinite approved balance', () => {
@@ -183,47 +155,11 @@ describe.only('BalancerPoolToken', () => {
           await token.connect(holder).approve(spender.address, MAX_UINT256);
         });
 
+        itTransfersTokensProperly(false);
+
         describe('when the token holder has enough balance', () => {
           sharedBeforeEach('mint tokens', async () => {
             await token.mint(holder.address, amount);
-          });
-
-          it('transfers the requested amount', async () => {
-            const previousSenderBalance = await token.balanceOf(holder.address);
-            const previousRecipientBalance = await token.balanceOf(to);
-
-            await token.connect(spender).transferFrom(holder.address, to, amount);
-
-            const currentSenderBalance = await token.balanceOf(holder.address);
-            expect(currentSenderBalance).to.equal(previousSenderBalance.sub(amount));
-
-            const currentRecipientBalance = await token.balanceOf(to);
-            expect(currentRecipientBalance).to.equal(previousRecipientBalance.add(amount));
-          });
-
-          it('does not affect the supply', async () => {
-            const previousSupply = await token.totalSupply();
-
-            await token.connect(spender).transferFrom(holder.address, to, amount);
-
-            const currentSupply = await token.totalSupply();
-            expect(currentSupply).to.equal(previousSupply);
-          });
-
-          it('does not affect the spender balance', async () => {
-            const previousSpenderBalance = await token.balanceOf(spender.address);
-
-            await token.connect(spender).transferFrom(holder.address, to, amount);
-
-            const currentSpenderBalance = await token.balanceOf(spender.address);
-            expect(currentSpenderBalance).to.equal(previousSpenderBalance);
-          });
-
-          it('emits a transfer event', async () => {
-            const tx = await token.connect(spender).transferFrom(holder.address, to, amount);
-            const receipt = await tx.wait();
-
-            expectEvent.inReceipt(receipt, 'Transfer', { from: holder.address, to, value: amount });
           });
 
           it('does not decrease the spender allowance', async () => {
