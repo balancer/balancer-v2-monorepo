@@ -45,13 +45,15 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712 {
         // solhint-disable-next-line not-rely-on-time
         _require(block.timestamp <= deadline, Errors.EXPIRED_PERMIT);
 
-        bytes32 structHash = keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _nonces[owner]++, deadline));
+        uint256 nonce = _nonces[owner];
+        bytes32 structHash = keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, nonce, deadline));
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
         address signer = ecrecover(hash, v, r, s);
         _require((signer != address(0)) && (signer == owner), Errors.INVALID_SIGNATURE);
 
+        _nonces[owner] = nonce + 1;
         _approve(owner, spender, value);
     }
 
