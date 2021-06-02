@@ -20,97 +20,6 @@ const UNDER_INVESTMENT_REVERT_REASON = 'withdrawal leaves insufficient balance i
 const tokenInitialBalance = bn(200e18);
 const amount = bn(100e18);
 
-const setup = async () => {
-  const [, admin, lp, other] = await ethers.getSigners();
-
-  const tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
-
-  // Deploy Balancer Vault
-  const vaultHelper = await Vault.create({ admin });
-  const vault = vaultHelper.instance;
-
-  // Deploy mocked Aave
-  const lendingPool = await deploy('MockAaveLendingPool', { args: [] });
-  const aaveRewardsController = await deploy('MockAaveRewards');
-  const stkAave = aaveRewardsController;
-
-  const daiAToken = await deploy('MockAToken', { args: [lendingPool.address, 'aDai', 'aDai', 18] });
-  await lendingPool.registerAToken(tokens.DAI.address, daiAToken.address);
-
-  // Deploy Asset manager
-  const assetManager = await deploy('SinglePoolAaveATokenAssetManager', {
-    args: [
-      vault.address,
-      tokens.DAI.address,
-      lendingPool.address,
-      daiAToken.address,
-      aaveRewardsController.address,
-      stkAave.address,
-    ],
-  });
-  const assetManagers = [assetManager.address, other.address];
-
-  // Deploy Pool
-  const args = [
-    vault.address,
-    'Test Pool',
-    'TEST',
-    tokens.addresses,
-    [fp(0.5), fp(0.5)],
-    assetManagers,
-    fp(0.0001),
-    0,
-    0,
-    admin.address,
-  ];
-
-  const pool = await deploy('v2-pool-weighted/WeightedPool', {
-    args,
-  });
-
-  const poolId = await pool.getPoolId();
-
-  // Deploy staking contract for pool
-  const distributor = await deploy('v2-distributors/MultiRewards', {
-    args: [vault.address, pool.address],
-  });
-
-  await assetManager.initialise(poolId, distributor.address);
-
-  const rewardsDuration = 1; // Have a neglibile duration so that rewards are distributed instantaneously
-  await distributor.addReward(stkAave.address, assetManager.address, rewardsDuration);
-
-  await tokens.mint({ to: lp, amount: tokenInitialBalance });
-  await tokens.approve({ to: vault.address, from: [lp] });
-
-  const assets = tokens.addresses;
-
-  await vault.connect(lp).joinPool(poolId, lp.address, lp.address, {
-    assets: tokens.addresses,
-    maxAmountsIn: Array(assets.length).fill(MAX_UINT256),
-    fromInternalBalance: false,
-    userData: encodeJoinWeightedPool({
-      kind: 'Init',
-      amountsIn: Array(assets.length).fill(tokenInitialBalance),
-    }),
-  });
-
-  return {
-    data: {
-      poolId,
-    },
-    contracts: {
-      assetManager,
-      lendingPool,
-      tokens,
-      pool,
-      distributor,
-      stkAave,
-      vault,
-    },
-  };
-};
-
 describe('Single Pool Aave AToken asset manager', function () {
   let tokens: TokenList,
     pool: Contract,
@@ -119,24 +28,85 @@ describe('Single Pool Aave AToken asset manager', function () {
     assetManager: Contract,
     distributor: Contract,
     stkAave: Contract;
-  let lp: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress;
   let poolId: string;
 
   before('deploy base contracts', async () => {
-    [, , lp, other] = await ethers.getSigners();
+    [, admin, lp, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('set up asset manager', async () => {
-    const { data, contracts } = await setup();
-    poolId = data.poolId;
+    tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
 
-    pool = contracts.pool;
-    assetManager = contracts.assetManager;
-    lendingPool = contracts.lendingPool;
-    distributor = contracts.distributor;
-    stkAave = contracts.stkAave;
-    tokens = contracts.tokens;
-    vault = contracts.vault;
+    // Deploy Balancer Vault
+    const vaultHelper = await Vault.create({ admin });
+    vault = vaultHelper.instance;
+
+    // Deploy mocked Aave
+    lendingPool = await deploy('MockAaveLendingPool', { args: [] });
+    const aaveRewardsController = await deploy('MockAaveRewards');
+    stkAave = aaveRewardsController;
+
+    const daiAToken = await deploy('MockAToken', { args: [lendingPool.address, 'aDai', 'aDai', 18] });
+    await lendingPool.registerAToken(tokens.DAI.address, daiAToken.address);
+
+    // Deploy Asset manager
+    assetManager = await deploy('SinglePoolAaveATokenAssetManager', {
+      args: [
+        vault.address,
+        tokens.DAI.address,
+        lendingPool.address,
+        daiAToken.address,
+        aaveRewardsController.address,
+        stkAave.address,
+      ],
+    });
+    const assetManagers = [assetManager.address, other.address];
+
+    // Deploy Pool
+    const args = [
+      vault.address,
+      'Test Pool',
+      'TEST',
+      tokens.addresses,
+      [fp(0.5), fp(0.5)],
+      assetManagers,
+      fp(0.0001),
+      0,
+      0,
+      admin.address,
+    ];
+
+    pool = await deploy('v2-pool-weighted/WeightedPool', {
+      args,
+    });
+
+    poolId = await pool.getPoolId();
+
+    // Deploy staking contract for pool
+    distributor = await deploy('v2-distributors/MultiRewards', {
+      args: [vault.address, pool.address],
+    });
+
+    await assetManager.initialise(poolId, distributor.address);
+
+    const rewardsDuration = 1; // Have a neglibile duration so that rewards are distributed instantaneously
+    await distributor.addReward(stkAave.address, assetManager.address, rewardsDuration);
+
+    await tokens.mint({ to: lp, amount: tokenInitialBalance });
+    await tokens.approve({ to: vault.address, from: [lp] });
+
+    const assets = tokens.addresses;
+
+    await vault.connect(lp).joinPool(poolId, lp.address, lp.address, {
+      assets: tokens.addresses,
+      maxAmountsIn: Array(assets.length).fill(MAX_UINT256),
+      fromInternalBalance: false,
+      userData: encodeJoinWeightedPool({
+        kind: 'Init',
+        amountsIn: Array(assets.length).fill(tokenInitialBalance),
+      }),
+    });
   });
 
   describe('deployment', () => {
