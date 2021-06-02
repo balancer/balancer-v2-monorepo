@@ -98,15 +98,6 @@ describe('BalancerPoolToken', () => {
             await token.mint(holder.address, amount);
           });
 
-          it('does not decrease the spender allowance', async () => {
-            const previousAllowance = await token.allowance(holder.address, spender.address);
-
-            await token.connect(holder).transferFrom(holder.address, to, amount);
-
-            const currentAllowance = await token.allowance(holder.address, spender.address);
-            expect(currentAllowance).to.be.equal(previousAllowance);
-          });
-
           it('does not emit an approval event', async () => {
             const tx = await token.connect(holder).transferFrom(holder.address, to, amount);
             const receipt = await tx.wait();
