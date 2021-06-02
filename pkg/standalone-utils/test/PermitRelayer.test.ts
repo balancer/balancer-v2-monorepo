@@ -12,6 +12,7 @@ import {
   signExitAuthorization,
   signJoinAuthorization,
   signPermit,
+  signSetRelayerApprovalAuthorization,
   signSwapAuthorization,
 } from '@balancer-labs/v2-helpers/src/models/misc/signatures';
 
@@ -129,13 +130,66 @@ describe('PermitRelayer', function () {
       const manageUserBalance = await actionId(vault.instance, 'manageUserBalance');
       const joinPool = await actionId(vault.instance, 'joinPool');
       const exitPool = await actionId(vault.instance, 'exitPool');
+      const setApproval = await actionId(vault.instance, 'setRelayerApproval');
       return await vault.authorizer?.grantRoles(
-        [single, batch, manageUserBalance, joinPool, exitPool],
+        [single, batch, manageUserBalance, joinPool, exitPool, setApproval],
         relayer.address
       );
     });
 
     describe('multicall', () => {
+      context('when the first call gives permanent approval', () => {
+        let setApproval: string;
+
+        sharedBeforeEach('sign relayer approval', async () => {
+          const approval = vault.instance.interface.encodeFunctionData('setRelayerApproval', [
+            signer.address,
+            relayer.address,
+            true,
+          ]);
+          const signature = await signSetRelayerApprovalAuthorization(vault.instance, signer, relayer, approval);
+          const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
+
+          setApproval = relayer.interface.encodeFunctionData('setRelayerApproval', [
+            relayer.address,
+            true,
+            callAuthorisation,
+          ]);
+        });
+        it("doesn't require signatures on further calls", async () => {
+          const value = 100;
+
+          const joinPoolRequest = {
+            assets: [dai.address, ZERO_ADDRESS, mkr.address],
+            maxAmountsIn: [0, value, 0],
+            userData: encodeJoin(
+              [0, value, 0],
+              tokens.addresses.map(() => 0)
+            ),
+            fromInternalBalance: false,
+          };
+
+          const join = relayer.interface.encodeFunctionData('joinPool', [
+            poolId,
+            signer.address,
+            joinPoolRequest,
+            value,
+            '0x',
+          ]);
+
+          const tx = await relayer.connect(signer).multicall([setApproval, join], { value });
+          const receipt = await tx.wait();
+
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+            poolId,
+            liquidityProvider: signer.address,
+            tokens: [dai.address, weth.address, mkr.address],
+            deltas: [0, 100, 0],
+            protocolFeeAmounts: [0, 0, 0],
+          });
+        });
+      });
+
       it('allows calling permit on multiple tokens', async () => {
         await relayer.connect(signer).multicall([daiPermit, mkrPermit]);
 

@@ -79,6 +79,19 @@ contract PermitRelayer is MultiDelegatecall {
         token.permit(msg.sender, address(vault), nonce, expiry, allowed, v, r, s);
     }
 
+    function setRelayerApproval(
+        address relayer,
+        bool approved,
+        bytes calldata authorisation
+    ) external payable {
+        bytes memory data =
+            abi.encodePacked(
+                abi.encodeWithSelector(vault.setRelayerApproval.selector, msg.sender, relayer, approved),
+                authorisation
+            );
+        _vaultAction(0, data);
+    }
+
     function swap(
         IVault.SingleSwap calldata singleSwap,
         IVault.FundManagement calldata funds,
