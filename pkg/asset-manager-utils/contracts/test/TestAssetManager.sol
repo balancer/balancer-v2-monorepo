@@ -22,40 +22,39 @@ pragma solidity ^0.7.0;
 // solhint-disable var-name-mixedcase
 // solhint-disable private-vars-leading-underscore
 contract TestAssetManager is AssetManager {
+    using Math for uint256;
     uint256 public nextAUM;
 
-    constructor(IVault _vault, address _token) AssetManager(_vault, _token) {}
+    constructor(
+        IVault _vault,
+        bytes32 _poolId,
+        IERC20 _token
+    ) AssetManager(_vault, _poolId, _token) {}
+
+    /**
+     * @dev Should be called in same transaction as deployment through a factory contract
+     */
+    function initialise(bytes32 pId) public {
+        _initialise(pId);
+    }
 
     /**
      * @param amount - the amount of tokens being deposited
      * @param aum - the current assets under management of this asset manager
      * @return the number of shares to mint for the pool
      */
-    function _invest(
-        bytes32, /*poolId*/
-        uint256 amount,
-        uint256 aum
-    ) internal override returns (uint256) {
+    function _invest(uint256 amount, uint256 aum) internal override returns (uint256) {
         nextAUM = aum + amount;
-        if (aum == 0) {
-            return amount;
-        }
-        return amount / aum;
+        return amount;
     }
 
     /**
-     * @param shares - the amount of shares being burned
-     * @param aum - the current assets under management of this asset manager
+     * @param amount - the amount of tokens being divested
      * @return the number of tokens to return to the vault
      */
-    function _divest(
-        bytes32, /*poolId*/
-        uint256 shares,
-        uint256 aum
-    ) internal override returns (uint256) {
-        uint256 tokensRemoved = (shares * aum) / totalSupply;
-        nextAUM = aum - tokensRemoved;
-        return tokensRemoved;
+    function _divest(uint256 amount, uint256 aum) internal override returns (uint256) {
+        nextAUM = aum - amount;
+        return amount;
     }
 
     /**
@@ -68,7 +67,7 @@ contract TestAssetManager is AssetManager {
     /**
      * @dev Sets the next value to be read by `readAUM`
      */
-    function setUnrealisedAUM(uint256 _nextAUM) external {
-        nextAUM = _nextAUM;
+    function setUnrealisedAUM(uint256 aum) external {
+        nextAUM = aum;
     }
 }

@@ -10,6 +10,7 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 
@@ -25,17 +26,16 @@ const setup = async () => {
   const tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
 
   // Deploy Balancer Vault
-  const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
-  const vault = await deploy('v2-vault/Vault', { args: [authorizer.address, tokens.DAI.address, 0, 0] });
-
-  // Deploy Asset manager
-  const assetManager = await deploy('TestAssetManager', {
-    args: [vault.address, tokens.DAI.address],
-  });
+  const vault = await Vault.create();
 
   // Deploy Pool
   const pool = await deploy('v2-vault/MockPool', { args: [vault.address, GeneralPool] });
   const poolId = await pool.getPoolId();
+
+  // Deploy Asset manager
+  const assetManager = await deploy('TestAssetManager', {
+    args: [vault.address, poolId, tokens.DAI.address],
+  });
 
   await tokens.mint({ to: lp, amount: tokenInitialBalance });
   await tokens.approve({ to: vault.address, from: [lp] });
@@ -45,7 +45,7 @@ const setup = async () => {
 
   await pool.registerTokens(tokens.addresses, assetManagers);
 
-  await vault.connect(lp).joinPool(poolId, lp.address, lp.address, {
+  await vault.instance.connect(lp).joinPool(poolId, lp.address, lp.address, {
     assets: tokens.addresses,
     maxAmountsIn: tokens.addresses.map(() => MAX_UINT256),
     fromInternalBalance: false,
@@ -63,7 +63,7 @@ const setup = async () => {
       assetManager,
       tokens,
       pool,
-      vault,
+      vault: vault.instance,
     },
   };
 };
@@ -189,7 +189,7 @@ describe('Asset manager', function () {
           await assetManager.connect(poolController).capitalIn(poolId, maxInvestableBalance.div(2));
 
           // should be under invested
-          expect(maxInvestableBalance).to.gt(bn(0));
+          expect(maxInvestableBalance).to.gt(0);
         });
 
         it('reverts', async () => {
