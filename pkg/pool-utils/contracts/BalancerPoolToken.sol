@@ -14,7 +14,6 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20Permit.sol";
 
