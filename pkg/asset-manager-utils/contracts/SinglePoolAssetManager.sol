@@ -47,12 +47,12 @@ abstract contract SinglePoolAssetManager is IAssetManager {
     constructor(
         IVault _vault,
         bytes32 _poolId,
-        address _token
+        IERC20 _token
     ) {
-        IERC20(_token).approve(address(_vault), type(uint256).max);
         vault = _vault;
         poolId = _poolId;
-        token = IERC20(_token);
+        token = _token;
+        _token.approve(address(_vault), type(uint256).max);
     }
 
     modifier onlyPool() {

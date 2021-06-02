@@ -28,7 +28,7 @@ contract SinglePoolTestAssetManager is SinglePoolAssetManager {
     constructor(
         IVault _vault,
         bytes32 _poolId,
-        address _token
+        IERC20 _token
     ) SinglePoolAssetManager(_vault, _poolId, _token) {}
 
     /**

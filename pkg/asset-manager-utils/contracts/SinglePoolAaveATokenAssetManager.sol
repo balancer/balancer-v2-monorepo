@@ -38,20 +38,20 @@ contract SinglePoolAaveATokenAssetManager is SinglePoolAssetManager {
 
     constructor(
         IVault _vault,
-        address _token,
-        address _lendingPool,
-        address _aToken,
-        address _aaveIncentives,
-        address _stkAave
+        IERC20 _token,
+        ILendingPool _lendingPool,
+        IERC20 _aToken,
+        IAaveIncentivesController _aaveIncentives,
+        IERC20 _stkAave
     ) SinglePoolAssetManager(_vault, bytes32(0), _token) {
         // TODO: pull these from Aave addresses provider
-        lendingPool = ILendingPool(_lendingPool);
-        aToken = IERC20(_aToken);
+        lendingPool = _lendingPool;
+        aToken = _aToken;
 
-        aaveIncentives = IAaveIncentivesController(_aaveIncentives);
-        stkAave = IERC20(_stkAave);
+        aaveIncentives = _aaveIncentives;
+        stkAave = _stkAave;
 
-        IERC20(_token).approve(_lendingPool, type(uint256).max);
+        _token.approve(address(_lendingPool), type(uint256).max);
     }
 
     /**
