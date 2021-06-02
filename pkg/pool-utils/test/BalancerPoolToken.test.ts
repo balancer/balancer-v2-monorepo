@@ -8,12 +8,12 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-describe.only('BalancerPoolToken', () => {
+describe('BalancerPoolToken', () => {
   let token: Contract;
-  let holder: SignerWithAddress, spender: SignerWithAddress, recipient: SignerWithAddress, other: SignerWithAddress;
+  let holder: SignerWithAddress, spender: SignerWithAddress, recipient: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, holder, spender, recipient, other] = await ethers.getSigners();
+    [, holder, spender, recipient] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy token', async () => {
