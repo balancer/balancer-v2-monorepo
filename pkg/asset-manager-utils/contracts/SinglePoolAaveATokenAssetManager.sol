@@ -57,24 +57,13 @@ contract SinglePoolAaveATokenAssetManager is SinglePoolAssetManager {
     /**
      * @dev Should be called in same transaction as deployment through a factory contract
      * @param pId - the id of the pool
-     * @param rewardsContract - the address of the rewards contract (to distribut stkAAVE)
+     * @param distributor - the address of the rewards contract (to distribute stkAAVE)
      */
-    function initialise(bytes32 pId, address rewardsContract) public {
+    function initialise(bytes32 pId, address rewardsDistributor) public {
         require(poolId == bytes32(0), "Already initialised");
         poolId = pId;
-        distributor = IMultiRewards(rewardsContract);
-        IERC20(stkAave).approve(rewardsContract, type(uint256).max);
-    }
-
-    /**
-     * @dev To be used in the case of a staking contract migration
-     */
-    function updateStakingContract(address rewardsContract) external {
-        require(msg.sender == address(distributor), "Must be called by current staking contract");
-        IERC20(stkAave).approve(address(distributor), 0);
-
-        distributor = IMultiRewards(rewardsContract);
-        IERC20(stkAave).approve(rewardsContract, type(uint256).max);
+        distributor = IMultiRewards(rewardsDistributor);
+        IERC20(stkAave).approve(rewardsDistributor, type(uint256).max);
     }
 
     /**
