@@ -71,14 +71,14 @@ const setup = async () => {
   const poolId = await pool.getPoolId();
 
   // Deploy staking contract for pool
-  const stakingContract = await deploy('v2-distributors/MultiRewards', {
+  const distributor = await deploy('v2-distributors/MultiRewards', {
     args: [vault.address, pool.address],
   });
 
-  await assetManager.initialise(poolId, stakingContract.address);
+  await assetManager.initialise(poolId, distributor.address);
 
   const rewardsDuration = 1; // Have a neglibile duration so that rewards are distributed instantaneously
-  await stakingContract.addReward(stkAave.address, assetManager.address, rewardsDuration);
+  await distributor.addReward(stkAave.address, assetManager.address, rewardsDuration);
 
   await tokens.mint({ to: lp, amount: tokenInitialBalance });
   await tokens.approve({ to: vault.address, from: [lp] });
@@ -104,7 +104,7 @@ const setup = async () => {
       lendingPool,
       tokens,
       pool,
-      stakingContract,
+      distributor,
       stkAave,
       vault,
     },
@@ -117,7 +117,7 @@ describe('Single Pool Aave AToken asset manager', function () {
     vault: Contract,
     lendingPool: Contract,
     assetManager: Contract,
-    stakingContract: Contract,
+    distributor: Contract,
     stkAave: Contract;
   let lp: SignerWithAddress, other: SignerWithAddress;
   let poolId: string;
@@ -133,7 +133,7 @@ describe('Single Pool Aave AToken asset manager', function () {
     pool = contracts.pool;
     assetManager = contracts.assetManager;
     lendingPool = contracts.lendingPool;
-    stakingContract = contracts.stakingContract;
+    distributor = contracts.distributor;
     stkAave = contracts.stkAave;
     tokens = contracts.tokens;
     vault = contracts.vault;
@@ -304,17 +304,17 @@ describe('Single Pool Aave AToken asset manager', function () {
 
     beforeEach(async () => {
       const bptBalance = await pool.balanceOf(lp.address);
-      await pool.connect(lp).approve(stakingContract.address, bptBalance);
-      await stakingContract.connect(lp)['stake(uint256)'](bptBalance.mul(3).div(4));
+      await pool.connect(lp).approve(distributor.address, bptBalance);
+      await distributor.connect(lp)['stake(uint256)'](bptBalance.mul(3).div(4));
 
       // Stake half of the BPT to another address
-      await stakingContract.connect(lp)['stake(uint256,address)'](bptBalance.div(4), other.address);
+      await distributor.connect(lp)['stake(uint256,address)'](bptBalance.div(4), other.address);
     });
 
     it('sends expected amount of stkAave to the rewards contract', async () => {
-      const rewardsBefore = await stkAave.balanceOf(stakingContract.address);
+      const rewardsBefore = await stkAave.balanceOf(distributor.address);
       await assetManager.claimRewards();
-      const rewardsAfter = await stkAave.balanceOf(stakingContract.address);
+      const rewardsAfter = await stkAave.balanceOf(distributor.address);
       expect(rewardsAfter).to.be.eq(rewardsBefore.add(rewardAmount));
     });
 
@@ -323,7 +323,7 @@ describe('Single Pool Aave AToken asset manager', function () {
       await advanceTime(10);
 
       const expectedReward = fp(0.75);
-      const actualReward = await stakingContract.earned(lp.address, stkAave.address);
+      const actualReward = await distributor.earned(lp.address, stkAave.address);
       expect(expectedReward.sub(actualReward).abs()).to.be.lte(100);
     });
   });
