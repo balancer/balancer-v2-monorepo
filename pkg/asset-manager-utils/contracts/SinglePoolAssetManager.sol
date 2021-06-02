@@ -75,18 +75,10 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         return (cash + managed).mul(investablePercent).divDown(1e18);
     }
 
-    /**
-     * @return The difference in token between the target investment
-     * and the currently invested amount (i.e. the amount that can be invested)
-     */
     function maxInvestableBalance(bytes32 pId) public view override correctPool(pId) returns (int256) {
         return _maxInvestableBalance(readAUM());
     }
 
-    /**
-     * @return The difference in token between the target investment
-     * and the currently invested amount (i.e. the amount that can be invested)
-     */
     function _maxInvestableBalance(uint256 aum) internal view returns (int256) {
         (uint256 poolCash, , , ) = vault.getPoolTokenInfo(poolId, token);
         // Calculate the managed portion of funds locally as the Vault is unaware of returns
@@ -95,10 +87,6 @@ abstract contract SinglePoolAssetManager is IAssetManager {
 
     // Reporting
 
-    /**
-     * @notice Updates the Vault on the value of the pool's investment returns
-     * @dev To be called following a call to realizeGains
-     */
     function updateBalanceOfPool(bytes32 pId) public override correctPool(pId) {
         uint256 managedBalance = readAUM();
 
@@ -116,10 +104,6 @@ abstract contract SinglePoolAssetManager is IAssetManager {
 
     // Deposit / Withdraw
 
-    /**
-     * @dev Transfers capital into the asset manager, and then invests it
-     * @param amount - the amount of tokens being deposited
-     */
     function capitalIn(bytes32 pId, uint256 amount) public override correctPool(pId) {
         uint256 aum = readAUM();
 
@@ -140,10 +124,6 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         totalAUM = aum.add(amount);
     }
 
-    /**
-     * @notice Divests capital back to the asset manager and then sends it to the vault
-     * @param amount - the amount of tokens to withdraw to the vault
-     */
     function capitalOut(bytes32 pId, uint256 amount) public override correctPool(pId) {
         uint256 aum = readAUM();
 
@@ -179,9 +159,6 @@ abstract contract SinglePoolAssetManager is IAssetManager {
      */
     function _divest(uint256 amount, uint256 aum) internal virtual returns (uint256);
 
-    /**
-     * @return the current assets under management of this asset manager
-     */
     function readAUM() public view virtual override returns (uint256);
 
     // TODO restrict access with onlyPoolController
@@ -204,17 +181,11 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         poolManaged = aum;
     }
 
-    /**
-     * @return the target investment percent for the pool
-     */
     function getRebalanceFee(bytes32 pId) external view override correctPool(pId) returns (uint256) {
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(readAUM());
         return _getRebalanceFee(poolCash, poolManaged, _poolConfig);
     }
 
-    /**
-     * @return the target investment percent for the pool
-     */
     function _getRebalanceFee(
         uint256 poolCash,
         uint256 poolManaged,
@@ -255,10 +226,6 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         }
     }
 
-    /**
-     * @notice Rebalances funds between pool and asset manager to maintain target investment percentage.
-     * If the pool is below it's critical threshold for the amount invested then calling this will send a small reward
-     */
     function rebalance(bytes32 pId) external override correctPool(pId) {
         uint256 rebalancerFee = _rebalance();
 
@@ -273,16 +240,10 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         }
     }
 
-    /**
-     * @notice Checks invested balance and updates AUM appropriately
-     */
     function realizeGains() public override {
         totalAUM = readAUM();
     }
 
-    /**
-     * @notice Returns invested balance
-     */
     function balanceOf(bytes32 pId) public view override correctPool(pId) returns (uint256) {
         return totalAUM;
     }
