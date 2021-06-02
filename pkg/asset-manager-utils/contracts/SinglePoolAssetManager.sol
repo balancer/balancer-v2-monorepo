@@ -72,7 +72,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         uint256 managed,
         uint256 investablePercent
     ) private pure returns (uint256) {
-        return (cash + managed).mulDown(investablePercent).divDown(1e18);
+        return (cash + managed).mulDown(investablePercent);
     }
 
     function maxInvestableBalance(bytes32 pId) public view override correctPool(pId) returns (int256) {
@@ -191,11 +191,11 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         uint256 poolManaged,
         PoolConfig memory config
     ) internal pure returns (uint256) {
-        uint256 criticalManagedBalance = (poolCash + poolManaged).mulDown(config.criticalPercentage).divDown(ONE);
+        uint256 criticalManagedBalance = (poolCash + poolManaged).mulDown(config.criticalPercentage);
         if (poolManaged >= criticalManagedBalance) {
             return 0;
         }
-        return criticalManagedBalance.sub(poolManaged).mulDown(config.feePercentage).divDown(ONE);
+        return criticalManagedBalance.sub(poolManaged).mulDown(config.feePercentage);
     }
 
     /**
@@ -207,7 +207,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
         PoolConfig memory config = _poolConfig;
 
-        uint256 targetInvestment = (poolCash + poolManaged).mulDown(config.targetPercentage).divDown(ONE);
+        uint256 targetInvestment = (poolCash + poolManaged).mulDown(config.targetPercentage);
         if (targetInvestment > poolManaged) {
             // Pool is under-invested so add more funds
             uint256 rebalanceAmount = targetInvestment.sub(poolManaged);
@@ -217,7 +217,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
             feeAmount = _getRebalanceFee(poolCash, poolManaged, config);
 
             // As paying out fees reduces the TVL of the pool, we must correct the amount invested to account for this
-            capitalIn(poolId, rebalanceAmount.sub(feeAmount.mulDown(config.targetPercentage).divDown(ONE)));
+            capitalIn(poolId, rebalanceAmount.sub(feeAmount.mulDown(config.targetPercentage)));
         } else {
             // Pool is over-invested so remove some funds
             // Incentivising rebalancer is unneccessary as removing capital
