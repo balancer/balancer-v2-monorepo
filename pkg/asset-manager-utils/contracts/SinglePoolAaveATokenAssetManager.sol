@@ -57,7 +57,7 @@ contract SinglePoolAaveATokenAssetManager is SinglePoolAssetManager {
     /**
      * @dev Should be called in same transaction as deployment through a factory contract
      * @param pId - the id of the pool
-     * @param distributor - the address of the rewards contract (to distribute stkAAVE)
+     * @param rewardsDistributor - the address of the rewards contract (to distribute stkAAVE)
      */
     function initialise(bytes32 pId, address rewardsDistributor) public {
         require(poolId == bytes32(0), "Already initialised");
