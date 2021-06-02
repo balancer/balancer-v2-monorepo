@@ -22,18 +22,15 @@ import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-// solhint-disable no-empty-blocks
-// solhint-disable var-name-mixedcase
-// solhint-disable private-vars-leading-underscore
 contract SinglePoolAaveATokenAssetManager is SinglePoolAssetManager {
-    uint16 private constant REFERRAL_CODE = 0;
+    uint16 public constant REFERRAL_CODE = 0;
 
     IAaveIncentivesController public immutable aaveIncentives;
     ILendingPool public immutable lendingPool;
     IERC20 public immutable aToken;
     IERC20 public immutable stkAave;
 
-    /// @notice staking contract for pool which owns this asset manager
+    // @notice rewards distributor for pool which owns this asset manager
     IMultiRewards public distributor;
 
     constructor(
