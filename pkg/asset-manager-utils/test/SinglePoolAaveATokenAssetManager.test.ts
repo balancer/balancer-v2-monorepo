@@ -147,7 +147,7 @@ describe('Single Pool Aave AToken asset manager', function () {
   });
 
   describe('setPoolConfig', () => {
-    it('allows a pool controller to set the desired target investable %', async () => {
+    it('allows a pool controller to set the pool config', async () => {
       const targetPercentage = fp(0.8);
       const poolController = lp; // TODO
       await assetManager
@@ -157,6 +157,8 @@ describe('Single Pool Aave AToken asset manager', function () {
       const result = await assetManager.getPoolConfig(poolId);
       expect(result.targetPercentage).to.equal(targetPercentage);
     });
+
+    xit('prevents an unauthorized user from setting the pool config');
   });
 
   describe('when a token is below its investment target', () => {
