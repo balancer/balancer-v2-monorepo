@@ -20,26 +20,10 @@ import "../../aave/IAaveIncentivesController.sol";
 
 // solhint-disable no-unused-vars
 contract MockAaveRewards is IAaveIncentivesController, ERC20("Staked Aave", "stkAAVE") {
-    function handleAction(
-        address, /* asset */
-        uint256, /* userBalance */
-        uint256 /* totalSupply */
-    ) external pure override {
-        revert("unused");
-    }
-
-    function getRewardsBalance(
-        address[] calldata, /* assets */
-        address /* user */
-    ) external pure override returns (uint256) {
-        revert("unused");
-    }
-
     function claimRewards(
         address[] calldata, /* assets */
         uint256, /* amount */
-        address to,
-        bool /* stake */
+        address to
     ) external override returns (uint256) {
         _mint(to, 1e18);
     }
