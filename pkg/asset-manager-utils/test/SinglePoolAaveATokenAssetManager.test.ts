@@ -174,7 +174,7 @@ describe('Single Pool Aave AToken asset manager', function () {
       it('transfers only the requested token from the vault to the lending pool via the manager', async () => {
         await expectBalanceChange(() => assetManager.connect(lp).capitalIn(poolId, amount), tokens, [
           { account: lendingPool.address, changes: { DAI: amount } },
-          { account: vault.address, changes: { DAI: -amount } },
+          { account: vault.address, changes: { DAI: amount.mul(-1) } },
         ]);
       });
 
@@ -183,7 +183,7 @@ describe('Single Pool Aave AToken asset manager', function () {
 
         await expectBalanceChange(() => assetManager.connect(lp).capitalIn(poolId, amountToDeposit), tokens, [
           { account: lendingPool.address, changes: { DAI: amountToDeposit } },
-          { account: vault.address, changes: { DAI: -amountToDeposit } },
+          { account: vault.address, changes: { DAI: amountToDeposit.mul(-1) } },
         ]);
       });
 
@@ -266,7 +266,7 @@ describe('Single Pool Aave AToken asset manager', function () {
         // await assetManager.connect(poolController).setInvestablePercent(poolId, fp(0));
 
         await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
-          { account: lendingPool.address, changes: { DAI: ['near', -amountToWithdraw] } },
+          { account: lendingPool.address, changes: { DAI: ['near', amountToWithdraw.mul(-1)] } },
           { account: vault.address, changes: { DAI: ['near', amountToWithdraw] } },
         ]);
       });
