@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
-import "./IAaveIncentivesController.sol";
+import "../../aave/IAaveIncentivesController.sol";
 
 // solhint-disable no-unused-vars
 contract MockAaveRewards is IAaveIncentivesController, ERC20("Staked Aave", "stkAAVE") {

@@ -12,11 +12,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import "./ILendingPoolAddressesProvider.sol";
-import "./ILendingPool.sol";
-import "./IAaveIncentivesController.sol";
+import "./aave/ILendingPoolAddressesProvider.sol";
+import "./aave/ILendingPool.sol";
+import "./aave/IAaveIncentivesController.sol";
 
-import "../SinglePoolAssetManager.sol";
+import "./SinglePoolAssetManager.sol";
 import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
 
 pragma solidity ^0.7.0;
