@@ -474,7 +474,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(_swapFeePercentage.complement());
+        return amount.divUp(FixedPoint.ONE.sub(_swapFeePercentage));
     }
 
     /**

@@ -303,10 +303,10 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
+        (uint256[] memory normalizedWeights, uint256 maxWeightTokenIndex) = _getNormalizedWeightsAndMaxWeightIndex();
+
         // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
         // out) remain functional.
-
-        (uint256[] memory normalizedWeights, uint256 maxWeightTokenIndex) = _getNormalizedWeightsAndMaxWeightIndex();
 
         if (_isNotPaused()) {
             // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
