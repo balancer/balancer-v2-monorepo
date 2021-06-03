@@ -6,7 +6,7 @@
 
 This package contains the addresses and ABIs of all Balancer V2 deployed contracts, for mainnet and various test networks. Artifacts are found in the [`deployed`](./deployed) directory, where each subdirectory represents a network.
 
-Note that some protocol contracts are created dynamically: for example, `WeightedPool` contracts are deployed by the canonical `WeightedPoolFactory`. The ABIs of these contracts are stored in the [`extra-abis`](./extra-abis) directory, but their addresses are not. Those should be instead retrieved by querying the on-chain state, or processing emitted events.
+Note that some protocol contracts are created dynamically: for example, `WeightedPool` contracts are deployed by the canonical `WeightedPoolFactory`. The ABIs of these contracts are stored in the [`extra-abis`](./extra-abis) directory, but their addresses are not. Those can be retrieved by querying the on-chain state, or processing emitted events.
 
 ## Overview
 
@@ -24,7 +24,7 @@ Using [Hardhat](https://hardhat.org/):
 import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 
-// Creates an ethers Contract object for a canonical contract deployed at a network
+// Creates an ethers Contract object for a canonical contract deployed on a specific network
 export function getBalancerDeployedContract(
   contract: string,
   network: string
