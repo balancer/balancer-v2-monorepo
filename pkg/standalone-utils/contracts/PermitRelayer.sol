@@ -50,48 +50,6 @@ contract PermitRelayer is MultiDelegatecall {
         return result;
     }
 
-    /**
-     * @dev Must be payable so that it can be called as part of a multicall involving ETH
-     */
-    function vaultPermit(
-        IERC20Permit token,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) public payable {
-        token.permit(msg.sender, address(vault), value, deadline, v, r, s);
-    }
-
-    /**
-     * @dev Must be payable so that it can be called as part of a multicall involving ETH
-     */
-    function vaultPermitDAI(
-        IERC20PermitDAI token,
-        uint256 nonce,
-        uint256 expiry,
-        bool allowed,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) public payable {
-        token.permit(msg.sender, address(vault), nonce, expiry, allowed, v, r, s);
-    }
-
-    function setRelayerApproval(
-        address relayer,
-        bool approved,
-        bytes calldata authorisation
-    ) external payable {
-        bytes memory data =
-            abi.encodePacked(
-                abi.encodeWithSelector(vault.setRelayerApproval.selector, msg.sender, relayer, approved),
-                authorisation
-            );
-        _vaultAction(0, data);
-    }
-
     function swap(
         IVault.SingleSwap calldata singleSwap,
         IVault.FundManagement calldata funds,
@@ -157,10 +115,52 @@ contract PermitRelayer is MultiDelegatecall {
         _vaultAction(0, data);
     }
 
+    function setRelayerApproval(
+        address relayer,
+        bool approved,
+        bytes calldata authorisation
+    ) external payable {
+        bytes memory data =
+            abi.encodePacked(
+                abi.encodeWithSelector(vault.setRelayerApproval.selector, msg.sender, relayer, approved),
+                authorisation
+            );
+        _vaultAction(0, data);
+    }
+
     /**
      * @dev Used to receive refunds from the Vault
      */
     receive() external payable {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    /**
+     * @dev Must be payable so that it can be called as part of a multicall involving ETH
+     */
+    function vaultPermit(
+        IERC20Permit token,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public payable {
+        token.permit(msg.sender, address(vault), value, deadline, v, r, s);
+    }
+
+    /**
+     * @dev Must be payable so that it can be called as part of a multicall involving ETH
+     */
+    function vaultPermitDAI(
+        IERC20PermitDAI token,
+        uint256 nonce,
+        uint256 expiry,
+        bool allowed,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public payable {
+        token.permit(msg.sender, address(vault), nonce, expiry, allowed, v, r, s);
     }
 }
