@@ -131,7 +131,7 @@ describe('PermitRelayer', function () {
       const joinPool = await actionId(vault.instance, 'joinPool');
       const exitPool = await actionId(vault.instance, 'exitPool');
       const setApproval = await actionId(vault.instance, 'setRelayerApproval');
-      return await vault.authorizer?.grantRoles(
+      await vault.authorizer?.grantRoles(
         [single, batch, manageUserBalance, joinPool, exitPool, setApproval],
         relayer.address
       );
