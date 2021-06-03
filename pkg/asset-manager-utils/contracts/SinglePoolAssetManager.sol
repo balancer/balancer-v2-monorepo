@@ -63,7 +63,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
 
     modifier withCorrectPool(bytes32 pId) {
         require(pId == poolId, "SinglePoolAssetManager called with incorrect poolId");
-        require(pId != bytes32(0));
+        require(pId != bytes32(0), "Pool Id cannot be empty");
         _;
     }
 
