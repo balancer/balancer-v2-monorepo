@@ -91,7 +91,7 @@ describe('PermitRelayer', function () {
     [, signer] = await ethers.getSigners();
   });
 
-  sharedBeforeEach('set up asset manager', async () => {
+  sharedBeforeEach('set up relayer', async () => {
     const { data, contracts } = await setup();
     poolId = data.poolId;
 
