@@ -59,11 +59,10 @@ contract PermitRelayer is MultiDelegatecall {
         bytes calldata authorisation
     ) external payable returns (uint256) {
         require(funds.sender == msg.sender, "Incorrect sender");
-        bytes memory data =
-            abi.encodePacked(
-                abi.encodeWithSelector(vault.swap.selector, singleSwap, funds, limit, deadline),
-                authorisation
-            );
+        bytes memory data = abi.encodePacked(
+            abi.encodeWithSelector(vault.swap.selector, singleSwap, funds, limit, deadline),
+            authorisation
+        );
         return abi.decode(_vaultAction(value, data), (uint256));
     }
 
@@ -78,11 +77,10 @@ contract PermitRelayer is MultiDelegatecall {
         bytes calldata authorisation
     ) external payable returns (uint256) {
         require(funds.sender == msg.sender, "Incorrect sender");
-        bytes memory data =
-            abi.encodePacked(
-                abi.encodeWithSelector(vault.batchSwap.selector, kind, swaps, assets, funds, limits, deadline),
-                authorisation
-            );
+        bytes memory data = abi.encodePacked(
+            abi.encodeWithSelector(vault.batchSwap.selector, kind, swaps, assets, funds, limits, deadline),
+            authorisation
+        );
         return abi.decode(_vaultAction(value, data), (uint256));
     }
 
@@ -93,11 +91,10 @@ contract PermitRelayer is MultiDelegatecall {
         uint256 value,
         bytes calldata authorisation
     ) external payable {
-        bytes memory data =
-            abi.encodePacked(
-                abi.encodeWithSelector(vault.joinPool.selector, poolId, msg.sender, recipient, request),
-                authorisation
-            );
+        bytes memory data = abi.encodePacked(
+            abi.encodeWithSelector(vault.joinPool.selector, poolId, msg.sender, recipient, request),
+            authorisation
+        );
         _vaultAction(value, data);
     }
 
@@ -107,11 +104,10 @@ contract PermitRelayer is MultiDelegatecall {
         IVault.ExitPoolRequest calldata request,
         bytes calldata authorisation
     ) external payable {
-        bytes memory data =
-            abi.encodePacked(
-                abi.encodeWithSelector(vault.exitPool.selector, poolId, msg.sender, recipient, request),
-                authorisation
-            );
+        bytes memory data = abi.encodePacked(
+            abi.encodeWithSelector(vault.exitPool.selector, poolId, msg.sender, recipient, request),
+            authorisation
+        );
         _vaultAction(0, data);
     }
 
@@ -120,11 +116,10 @@ contract PermitRelayer is MultiDelegatecall {
         bool approved,
         bytes calldata authorisation
     ) external payable {
-        bytes memory data =
-            abi.encodePacked(
-                abi.encodeWithSelector(vault.setRelayerApproval.selector, msg.sender, relayer, approved),
-                authorisation
-            );
+        bytes memory data = abi.encodePacked(
+            abi.encodeWithSelector(vault.setRelayerApproval.selector, msg.sender, relayer, approved),
+            authorisation
+        );
         _vaultAction(0, data);
     }
 
