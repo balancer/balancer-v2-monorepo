@@ -58,6 +58,7 @@ contract SinglePoolAaveATokenAssetManager is SinglePoolAssetManager {
      */
     function initialise(bytes32 pId, address rewardsDistributor) public {
         require(poolId == bytes32(0), "Already initialised");
+        require(pId != bytes32(0), "Pool id cannot be empty");
         poolId = pId;
         distributor = IMultiRewards(rewardsDistributor);
         IERC20(stkAave).approve(rewardsDistributor, type(uint256).max);
