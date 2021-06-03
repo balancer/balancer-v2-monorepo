@@ -95,6 +95,7 @@ contract SinglePoolAaveATokenAssetManager is SinglePoolAssetManager {
         aaveIncentives.claimRewards(assets, type(uint256).max, address(this));
 
         // Forward to distributor
-        distributor.notifyRewardAmount(stkAave, stkAave.balanceOf(address(this)));
+        IERC20 poolAddress = IERC20((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
+        distributor.notifyRewardAmount(poolAddress, stkAave, stkAave.balanceOf(address(this)));
     }
 }
