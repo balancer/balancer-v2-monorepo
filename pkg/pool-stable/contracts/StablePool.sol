@@ -115,6 +115,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         address,
         bytes memory userData
     ) internal virtual override whenNotPaused returns (uint256, uint256[] memory) {
+        // It would be strange for the Pool to be paused before it is initialized, but for consistency we prevent
+        // initialization in this case.
+
         StablePool.JoinKind kind = userData.joinKind();
         _require(kind == StablePool.JoinKind.INIT, Errors.UNINITIALIZED);
 
@@ -122,7 +125,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         InputHelpers.ensureInputLengthMatch(amountsIn.length, _getTotalTokens());
         _upscaleArray(amountsIn, _scalingFactors());
 
-        uint256 invariantAfterJoin = StableMath._calculateInvariant(_amplificationParameter, amountsIn);
+        uint256 invariantAfterJoin = StableMath._calculateInvariant(_amplificationParameter, amountsIn, true);
+
+        // Set the initial BPT to the value of the invariant.
         uint256 bptAmountOut = invariantAfterJoin;
 
         _lastInvariant = invariantAfterJoin;
@@ -160,12 +165,8 @@ contract StablePool is BaseGeneralPool, StableMath {
             protocolSwapFeePercentage
         );
 
-        // Update the balances by subtracting the protocol fee amounts that will be charged by the Vault once this
-        // function returns.
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
-        }
-
+        // Update current balances by subtracting the protocol fee amounts
+        _mutateAmounts(balances, dueProtocolFeeAmounts, FixedPoint.sub);
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(balances, userData);
 
         // Update the invariant with the balances the Pool will have after the join, in order to compute the
@@ -198,6 +199,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), amountsIn.length);
+
         _upscaleArray(amountsIn, _scalingFactors());
 
         uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
@@ -219,8 +221,12 @@ contract StablePool is BaseGeneralPool, StableMath {
         returns (uint256, uint256[] memory)
     {
         (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
+        // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
 
-        uint256 amountIn = StableMath._calcTokenInGivenExactBptOut(
+        _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
+
+        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
+        amountsIn[tokenIndex] = StableMath._calcTokenInGivenExactBptOut(
             _amplificationParameter,
             balances,
             tokenIndex,
@@ -229,12 +235,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             _swapFeePercentage
         );
 
-        // We are joining with a single token, so initialize downscaledAmountsIn with zeros, and
-        // only set downscaledAmountsIn[tokenIndex]
-        uint256[] memory downscaledAmountsIn = new uint256[](_getTotalTokens());
-        downscaledAmountsIn[tokenIndex] = amountIn;
-
-        return (bptAmountOut, downscaledAmountsIn);
+        return (bptAmountOut, amountsIn);
     }
 
     // Exit
@@ -257,19 +258,20 @@ contract StablePool is BaseGeneralPool, StableMath {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
+        // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
+        // out) remain functional.
+
         if (_isNotPaused()) {
             // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
             // spending gas calculating fee amounts during each individual swap
             dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(balances, _lastInvariant, protocolSwapFeePercentage);
 
-            // Update the balances by subtracting the protocol fee amounts that will be charged by the Vault once this
-            // function returns.
-            for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-                balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
-            }
+            // Update current balances by subtracting the protocol fee amounts
+            _mutateAmounts(balances, dueProtocolFeeAmounts, FixedPoint.sub);
         } else {
-            // To avoid extra calculations, swap protocol fee amounts are not charged when the contract is paused.
+            // If the contract is paused, swap protocol fee amounts are not charged to avoid extra calculations and
+            // reduce the potential for errors.
             dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
         }
 
@@ -306,13 +308,16 @@ contract StablePool is BaseGeneralPool, StableMath {
         returns (uint256, uint256[] memory)
     {
         // This exit function is disabled if the contract is paused.
-        uint256 totalTokens = _getTotalTokens();
+
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
-        _require(tokenIndex < totalTokens, Errors.OUT_OF_BOUNDS);
+        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
-        // We exit in a single token, so initialize amountsOut with zeros and only set amountsOut[tokenIndex]
-        uint256[] memory amountsOut = new uint256[](totalTokens);
+        _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
 
+        // We exit in a single token, so initialize amountsOut with zeros
+        uint256[] memory amountsOut = new uint256[](_getTotalTokens());
+
+        // And then assign the result to the selected token
         amountsOut[tokenIndex] = StableMath._calcTokenOutGivenExactBptIn(
             _amplificationParameter,
             balances,
@@ -334,10 +339,11 @@ contract StablePool is BaseGeneralPool, StableMath {
         // in an attempt to provide users with a mechanism to retrieve their tokens in case of an emergency.
         // This particular exit function is the only one that remains available because it is the simplest one, and
         // therefore the one with the lowest likelihood of errors.
+
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
+        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
         uint256[] memory amountsOut = StableMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply());
-
         return (bptAmountIn, amountsOut);
     }
 
@@ -351,7 +357,6 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens());
-
         _upscaleArray(amountsOut, _scalingFactors());
 
         uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
@@ -361,7 +366,6 @@ contract StablePool is BaseGeneralPool, StableMath {
             totalSupply(),
             _swapFeePercentage
         );
-
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
         return (bptAmountIn, amountsOut);
@@ -377,7 +381,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Initialize with zeros
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
 
-        // Early exit if there is no protocol swap fee
+        // Early return if the protocol swap fee percentage is zero, saving gas.
         if (protocolSwapFeePercentage == 0) {
             return dueProtocolFeeAmounts;
         }
@@ -410,11 +414,9 @@ contract StablePool is BaseGeneralPool, StableMath {
     }
 
     function _invariantAfterJoin(uint256[] memory balances, uint256[] memory amountsIn) private view returns (uint256) {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            balances[i] = balances[i].add(amountsIn[i]);
-        }
-
-        return StableMath._calculateInvariant(_amplificationParameter, balances);
+        _mutateAmounts(balances, amountsIn, FixedPoint.add);
+        // This invariant is used only to calculate the due protocol fees, then we round up
+        return StableMath._calculateInvariant(_amplificationParameter, balances, true);
     }
 
     function _invariantAfterExit(uint256[] memory balances, uint256[] memory amountsOut)
@@ -422,11 +424,24 @@ contract StablePool is BaseGeneralPool, StableMath {
         view
         returns (uint256)
     {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            balances[i] = balances[i].sub(amountsOut[i]);
-        }
+        _mutateAmounts(balances, amountsOut, FixedPoint.sub);
+        // This invariant is used only to calculate the due protocol fees, then we round up
+        return StableMath._calculateInvariant(_amplificationParameter, balances, true);
+    }
 
-        return StableMath._calculateInvariant(_amplificationParameter, balances);
+    /**
+     * @dev Mutates `amounts` by applying `mutation` with each entry in `arguments`.
+     *
+     * Equivalent to `amounts = amounts.map(mutation)`.
+     */
+    function _mutateAmounts(
+        uint256[] memory toMutate,
+        uint256[] memory arguments,
+        function(uint256, uint256) pure returns (uint256) mutation
+    ) private view {
+        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
+            toMutate[i] = mutation(toMutate[i], arguments[i]);
+        }
     }
 
     /**
@@ -435,6 +450,10 @@ contract StablePool is BaseGeneralPool, StableMath {
      */
     function getRate() public view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
-        return StableMath._calculateInvariant(_amplificationParameter, balances).divDown(totalSupply());
+
+        // When calculating the current BPT rate, we may not have paid the protocol fees, therefore
+        // the invariant should be smaller than it's current value. Then, we round down overall.
+        uint256 invariant = StableMath._calculateInvariant(_amplificationParameter, balances, false);
+        return invariant.divDown(totalSupply());
     }
 }
