@@ -99,7 +99,7 @@ contract SinglePoolAaveATokenAssetManager is SinglePoolAssetManager {
         assets[0] = address(aToken);
         aaveIncentives.claimRewards(assets, type(uint256).max, address(this));
 
-        // Forward to staking contract
+        // Forward to distributor
         distributor.notifyRewardAmount(stkAave, stkAave.balanceOf(address(this)));
     }
 }
