@@ -14,14 +14,14 @@
 
 pragma experimental ABIEncoderV2;
 
-import "../AssetManager.sol";
+import "../RewardsAssetManager.sol";
 
 pragma solidity ^0.7.0;
 
 // solhint-disable no-empty-blocks
 // solhint-disable var-name-mixedcase
 // solhint-disable private-vars-leading-underscore
-contract TestAssetManager is AssetManager {
+contract TestAssetManager is RewardsAssetManager {
     using Math for uint256;
     uint256 public nextAUM;
 
@@ -29,7 +29,7 @@ contract TestAssetManager is AssetManager {
         IVault _vault,
         bytes32 _poolId,
         IERC20 _token
-    ) AssetManager(_vault, _poolId, _token) {}
+    ) RewardsAssetManager(_vault, _poolId, _token) {}
 
     /**
      * @dev Should be called in same transaction as deployment through a factory contract

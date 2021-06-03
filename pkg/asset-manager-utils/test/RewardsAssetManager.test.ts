@@ -68,7 +68,7 @@ const setup = async () => {
   };
 };
 
-describe('Asset manager', function () {
+describe('Rewards Asset manager', function () {
   let tokens: TokenList, vault: Contract, assetManager: Contract;
 
   let lp: SignerWithAddress, other: SignerWithAddress;
@@ -200,7 +200,6 @@ describe('Asset manager', function () {
         // Simulate a return on asset manager's investment
         const amountReturned = amountToDeposit.div(10);
         await assetManager.connect(lp).setUnrealisedAUM(amountToDeposit.add(amountReturned));
-        await assetManager.connect(lp).realizeGains();
 
         await assetManager.connect(lp).updateBalanceOfPool(poolId);
       });

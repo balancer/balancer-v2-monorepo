@@ -24,8 +24,14 @@ import "./IAssetManager.sol";
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-// solhint-disable private-vars-leading-underscore
-abstract contract AssetManager is IAssetManager {
+/**
+ * @title RewardsAssetManager
+ * @dev RewardsAssetManager is owned by a single pool such that any
+ * rewards received by the Asset Manager may be distributed to LPs
+ *
+ * Note: any behaviour to claim these rewards must be implemented in a derived contract
+ */
+abstract contract RewardsAssetManager is IAssetManager {
     using Math for uint256;
 
     /// @notice The Balancer Vault contract

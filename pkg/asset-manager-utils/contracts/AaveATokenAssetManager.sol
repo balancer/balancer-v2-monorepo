@@ -16,13 +16,13 @@ import "./aave/ILendingPoolAddressesProvider.sol";
 import "./aave/ILendingPool.sol";
 import "./aave/IAaveIncentivesController.sol";
 
-import "./AssetManager.sol";
+import "./RewardsAssetManager.sol";
 import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-contract AaveATokenAssetManager is AssetManager {
+contract AaveATokenAssetManager is RewardsAssetManager {
     uint16 public constant REFERRAL_CODE = 0;
 
     IAaveIncentivesController public immutable aaveIncentives;
@@ -40,7 +40,7 @@ contract AaveATokenAssetManager is AssetManager {
         IERC20 _aToken,
         IAaveIncentivesController _aaveIncentives,
         IERC20 _stkAave
-    ) AssetManager(_vault, bytes32(0), _token) {
+    ) RewardsAssetManager(_vault, bytes32(0), _token) {
         // TODO: pull these from Aave addresses provider
         lendingPool = _lendingPool;
         aToken = _aToken;
