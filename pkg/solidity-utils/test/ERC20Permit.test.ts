@@ -11,10 +11,10 @@ import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 
 describe('ERC20Permit', () => {
   let token: Contract;
-  let holder: SignerWithAddress, spender: SignerWithAddress, recipient: SignerWithAddress, other: SignerWithAddress;
+  let holder: SignerWithAddress, spender: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, holder, spender, recipient, other] = await ethers.getSigners();
+    [, holder, spender] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy token', async () => {

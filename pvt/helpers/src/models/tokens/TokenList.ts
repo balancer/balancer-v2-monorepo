@@ -60,6 +60,10 @@ export default class TokenList {
     return this.findBySymbol('BAT');
   }
 
+  get GRT(): Token {
+    return this.findBySymbol('GRT');
+  }
+
   get(index: number | Token): Token {
     if (typeof index !== 'number') return index;
     if (index >= this.length) throw Error('Accessing invalid token list index');

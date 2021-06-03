@@ -34,7 +34,9 @@ contract BalancerPoolToken is ERC20, ERC20Permit {
     constructor(string memory tokenName, string memory tokenSymbol)
         ERC20(tokenName, tokenSymbol)
         ERC20Permit(tokenName)
-    {}
+    {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     // Overrides
 
