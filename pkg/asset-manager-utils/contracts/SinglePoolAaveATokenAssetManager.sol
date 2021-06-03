@@ -66,14 +66,11 @@ contract SinglePoolAaveATokenAssetManager is SinglePoolAssetManager {
      * @dev Deposits capital into Aave
      * @param amount - the amount of tokens being deposited
      * @param aum - the current assets under management of this asset manager
-     * @return the number of shares to mint for the pool
+     * @return the amount deposited
      */
     function _invest(uint256 amount, uint256 aum) internal override returns (uint256) {
         lendingPool.deposit(address(token), amount, address(this), REFERRAL_CODE);
-        if (aum == 0) {
-            return amount;
-        }
-        return amount / aum;
+        return amount;
     }
 
     /**
