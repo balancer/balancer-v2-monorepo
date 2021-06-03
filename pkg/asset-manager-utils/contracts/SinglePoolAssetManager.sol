@@ -14,8 +14,8 @@
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeCast.sol";
 
 import "./IAssetManager.sol";
@@ -25,7 +25,7 @@ pragma experimental ABIEncoderV2;
 
 // solhint-disable private-vars-leading-underscore
 abstract contract SinglePoolAssetManager is IAssetManager {
-    using Math for uint256;
+    using FixedPoint for uint256;
     using SafeCast for uint256;
 
     uint64 private constant ONE = 1e18;
@@ -47,23 +47,30 @@ abstract contract SinglePoolAssetManager is IAssetManager {
     constructor(
         IVault _vault,
         bytes32 _poolId,
-        address _token
+        IERC20 _token
     ) {
-        IERC20(_token).approve(address(_vault), type(uint256).max);
         vault = _vault;
         poolId = _poolId;
-        token = IERC20(_token);
+        token = _token;
+        _token.approve(address(_vault), type(uint256).max);
     }
 
-    modifier onlyPoolController() {
+    modifier onlyPool() {
         address poolAddress = address((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
         require(msg.sender == poolAddress, "Only callable by pool controller");
         _;
     }
 
-    modifier correctPool(bytes32 pId) {
+    modifier withCorrectPool(bytes32 pId) {
         require(pId == poolId, "SinglePoolAssetManager called with incorrect poolId");
+        require(pId != bytes32(0), "Pool Id cannot be empty");
         _;
+    }
+
+    function _initialise(bytes32 pId) internal {
+        require(poolId == bytes32(0), "Already initialised");
+        require(pId != bytes32(0), "Pool id cannot be empty");
+        poolId = pId;
     }
 
     // Investment configuration
@@ -72,10 +79,10 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         uint256 managed,
         uint256 investablePercent
     ) private pure returns (uint256) {
-        return (cash + managed).mul(investablePercent).divDown(1e18);
+        return (cash + managed).mulDown(investablePercent);
     }
 
-    function maxInvestableBalance(bytes32 pId) public view override correctPool(pId) returns (int256) {
+    function maxInvestableBalance(bytes32 pId) public view override withCorrectPool(pId) returns (int256) {
         return _maxInvestableBalance(readAUM());
     }
 
@@ -87,7 +94,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
 
     // Reporting
 
-    function updateBalanceOfPool(bytes32 pId) public override correctPool(pId) {
+    function updateBalanceOfPool(bytes32 pId) public override withCorrectPool(pId) {
         uint256 managedBalance = readAUM();
 
         IVault.PoolBalanceOp memory transfer = IVault.PoolBalanceOp(
@@ -104,7 +111,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
 
     // Deposit / Withdraw
 
-    function capitalIn(bytes32 pId, uint256 amount) public override correctPool(pId) {
+    function capitalIn(bytes32 pId, uint256 amount) public override withCorrectPool(pId) {
         uint256 aum = readAUM();
 
         int256 maxAmountIn = _maxInvestableBalance(aum);
@@ -124,7 +131,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         totalAUM = aum.add(amount);
     }
 
-    function capitalOut(bytes32 pId, uint256 amount) public override correctPool(pId) {
+    function capitalOut(bytes32 pId, uint256 amount) public override withCorrectPool(pId) {
         uint256 aum = readAUM();
 
         _divest(amount, aum);
@@ -161,8 +168,8 @@ abstract contract SinglePoolAssetManager is IAssetManager {
 
     function readAUM() public view virtual override returns (uint256);
 
-    // TODO restrict access with onlyPoolController
-    function setPoolConfig(bytes32 pId, PoolConfig calldata config) external override correctPool(pId) {
+    // TODO restrict access with onlyPool
+    function setPoolConfig(bytes32 pId, PoolConfig calldata config) external override withCorrectPool(pId) {
         require(pId == poolId, "poolId mismatch");
         require(config.targetPercentage <= ONE, "Investment target must be less than 100%");
         require(config.criticalPercentage <= config.targetPercentage, "Critical level must be less than target");
@@ -171,7 +178,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         _poolConfig = config;
     }
 
-    function getPoolConfig(bytes32 pId) external view override correctPool(pId) returns (PoolConfig memory) {
+    function getPoolConfig(bytes32 pId) external view override withCorrectPool(pId) returns (PoolConfig memory) {
         return _poolConfig;
     }
 
@@ -181,7 +188,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         poolManaged = aum;
     }
 
-    function getRebalanceFee(bytes32 pId) external view override correctPool(pId) returns (uint256) {
+    function getRebalanceFee(bytes32 pId) external view override withCorrectPool(pId) returns (uint256) {
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(readAUM());
         return _getRebalanceFee(poolCash, poolManaged, _poolConfig);
     }
@@ -191,11 +198,11 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         uint256 poolManaged,
         PoolConfig memory config
     ) internal pure returns (uint256) {
-        uint256 criticalManagedBalance = (poolCash + poolManaged).mul(config.criticalPercentage).divDown(ONE);
+        uint256 criticalManagedBalance = (poolCash + poolManaged).mulDown(config.criticalPercentage);
         if (poolManaged >= criticalManagedBalance) {
             return 0;
         }
-        return criticalManagedBalance.sub(poolManaged).mul(config.feePercentage).divDown(ONE);
+        return criticalManagedBalance.sub(poolManaged).mulDown(config.feePercentage);
     }
 
     /**
@@ -207,7 +214,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
         PoolConfig memory config = _poolConfig;
 
-        uint256 targetInvestment = (poolCash + poolManaged).mul(config.targetPercentage).divDown(ONE);
+        uint256 targetInvestment = (poolCash + poolManaged).mulDown(config.targetPercentage);
         if (targetInvestment > poolManaged) {
             // Pool is under-invested so add more funds
             uint256 rebalanceAmount = targetInvestment.sub(poolManaged);
@@ -217,7 +224,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
             feeAmount = _getRebalanceFee(poolCash, poolManaged, config);
 
             // As paying out fees reduces the TVL of the pool, we must correct the amount invested to account for this
-            capitalIn(poolId, rebalanceAmount.sub(feeAmount.mul(config.targetPercentage).divDown(ONE)));
+            capitalIn(poolId, rebalanceAmount.sub(feeAmount.mulDown(config.targetPercentage)));
         } else {
             // Pool is over-invested so remove some funds
             // Incentivising rebalancer is unneccessary as removing capital
@@ -226,7 +233,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         }
     }
 
-    function rebalance(bytes32 pId) external override correctPool(pId) {
+    function rebalance(bytes32 pId) external override withCorrectPool(pId) {
         uint256 rebalancerFee = _rebalance();
 
         if (rebalancerFee > 0) {
@@ -244,7 +251,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         totalAUM = readAUM();
     }
 
-    function balanceOf(bytes32 pId) public view override correctPool(pId) returns (uint256) {
+    function balanceOf(bytes32 pId) public view override withCorrectPool(pId) returns (uint256) {
         return totalAUM;
     }
 }

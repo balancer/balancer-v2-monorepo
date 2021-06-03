@@ -22,13 +22,13 @@ pragma solidity ^0.7.0;
 // solhint-disable var-name-mixedcase
 // solhint-disable private-vars-leading-underscore
 contract SinglePoolTestAssetManager is SinglePoolAssetManager {
-    using Math for uint256;
+    using FixedPoint for uint256;
     uint256 public nextAUM;
 
     constructor(
         IVault _vault,
         bytes32 _poolId,
-        address _token
+        IERC20 _token
     ) SinglePoolAssetManager(_vault, _poolId, _token) {}
 
     /**
