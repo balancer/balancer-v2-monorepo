@@ -120,11 +120,12 @@ library WordCodec {
     // Unsigned
 
     /**
-     * @dev Encodes a 31 bit unsigned integer shifted by an offset.
+     * @dev Encodes an unsigned integer shifted by an offset. This performs no size checks: it is up to the caller to
+     * ensure that the values are bounded.
      *
      * The return value can be logically ORed with other encoded values to form a 256 bit word.
      */
-    function encodeUint31(uint256 value, uint256 offset) internal pure returns (bytes32) {
+    function encodeUint(uint256 value, uint256 offset) internal pure returns (bytes32) {
         return bytes32(value << offset);
     }
 
@@ -203,6 +204,7 @@ library WordCodec {
         // In case the decoded value is greater than the max positive integer that can be represented with 53 bits,
         // we know it was originally a negative integer. Therefore, we mask it to restore the sign in the 256 bit
         // representation.
+
         return value > _MAX_INT_53 ? (value | int256(~_MASK_53)) : value;
     }
 }
