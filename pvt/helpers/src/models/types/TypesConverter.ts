@@ -8,7 +8,6 @@ import TokenList from '../tokens/TokenList';
 import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawWeightedPoolDeployment, WeightedPoolDeployment } from '../pools/weighted/types';
-import { RawLiquidityBootstrappingPoolDeployment, LiquidityBootstrappingPoolDeployment } from '../pools/smart/types';
 import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
 import {
   RawTokenApproval,
@@ -74,27 +73,6 @@ export default {
       oracleEnabled,
       owner,
       twoTokens,
-    };
-  },
-
-  toLiquidityBootstrappingPoolDeployment(
-    params: RawLiquidityBootstrappingPoolDeployment
-  ): LiquidityBootstrappingPoolDeployment {
-    let { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner } = params;
-    if (!tokens) tokens = new TokenList();
-    if (!weights) weights = Array(tokens.length).fill(fp(1));
-    weights = toNormalizedWeights(weights.map(bn));
-    if (!swapFeePercentage) swapFeePercentage = bn(1e16);
-    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
-    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    if (!owner) owner = ZERO_ADDRESS;
-    return {
-      tokens,
-      weights,
-      swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-      owner,
     };
   },
 
