@@ -22,7 +22,8 @@ import "./base/MultiDelegatecall.sol";
 
 /**
  * @title PermitRelayer
- * @notice Allows users to atomically perform multiple Balancer Vault actions in sequence including token approvals using permit
+ * @notice Allows users to atomically perform multiple Balancer Vault actions in sequence
+ * including token approvals using permit (where supported)
  */
 contract PermitRelayer is MultiDelegatecall {
     IVault public immutable vault;
