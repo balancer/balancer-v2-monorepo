@@ -243,8 +243,6 @@ contract ERC20 is IERC20 {
      * - `to` cannot be the zero address.
      */
     function _mint(address account, uint256 amount) internal virtual {
-        _require(account != address(0), Errors.ERC20_MINT_TO_ZERO_ADDRESS);
-
         _beforeTokenTransfer(address(0), account, amount);
 
         _totalSupply = _totalSupply.add(amount);
@@ -291,9 +289,6 @@ contract ERC20 is IERC20 {
         address spender,
         uint256 amount
     ) internal virtual {
-        _require(owner != address(0), Errors.ERC20_APPROVE_FROM_ZERO_ADDRESS);
-        _require(spender != address(0), Errors.ERC20_APPROVE_TO_ZERO_ADDRESS);
-
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
     }

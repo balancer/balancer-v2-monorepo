@@ -64,7 +64,7 @@ abstract contract AssetManager is IAssetManager {
      * @param poolId - The id of the pool of interest
      * @return The amount of the underlying tokens which are owned by the specified pool
      */
-    function balanceOf(bytes32 poolId) public view returns (uint256) {
+    function balanceOf(bytes32 poolId) public view override returns (uint256) {
         if (totalSupply == 0) return 0;
         return _balances[poolId].mul(totalAUM).divDown(totalSupply);
     }
@@ -89,11 +89,11 @@ abstract contract AssetManager is IAssetManager {
 
     // Investment configuration
 
-    function getPoolConfig(bytes32 poolId) external view returns (PoolConfig memory) {
+    function getPoolConfig(bytes32 poolId) external view override returns (PoolConfig memory) {
         return _poolConfig[poolId];
     }
 
-    //function setInvestablePercent(bytes32 poolId, uint256 investmentPercent) external onlyPoolController(poolId) {
+    // TODO restrict access with onlyPoolController
     function setPoolConfig(bytes32 poolId, PoolConfig calldata config) external override {
         require(config.targetPercentage <= ONE, "Investment target must be less than 100%");
         require(config.criticalPercentage <= config.targetPercentage, "Critical level must be less than target");
@@ -124,7 +124,7 @@ abstract contract AssetManager is IAssetManager {
      * @return The difference in token between the target investment
      * and the currently invested amount (i.e. the amount that can be invested)
      */
-    function maxInvestableBalance(bytes32 poolId) public view returns (int256) {
+    function maxInvestableBalance(bytes32 poolId) public view override returns (int256) {
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(poolId, readAUM());
         return
             int256((poolCash + poolManaged).mul(_poolConfig[poolId].targetPercentage).divDown(ONE)) -
@@ -134,7 +134,7 @@ abstract contract AssetManager is IAssetManager {
     /**
      * @return the target investment percent for the pool
      */
-    function getRebalanceFee(bytes32 poolId) external view returns (uint256) {
+    function getRebalanceFee(bytes32 poolId) external view override returns (uint256) {
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(poolId, readAUM());
         PoolConfig memory config = _poolConfig[poolId];
         return _getRebalanceFee(poolCash, poolManaged, config);
@@ -162,7 +162,7 @@ abstract contract AssetManager is IAssetManager {
      * @dev To be called following a call to realizeGains
      * @param poolId - the id of the pool for which to update the balance
      */
-    function updateBalanceOfPool(bytes32 poolId) public {
+    function updateBalanceOfPool(bytes32 poolId) public override {
         uint256 managedBalance = balanceOf(poolId);
 
         IVault.PoolBalanceOp memory transfer = IVault.PoolBalanceOp(
@@ -183,7 +183,7 @@ abstract contract AssetManager is IAssetManager {
      * @notice Rebalances funds between pool and asset manager to maintain target investment percentage.
      * If the pool is below it's critical threshold for the amount invested then calling this will send a small reward
      */
-    function rebalance(bytes32 poolId) external {
+    function rebalance(bytes32 poolId) external override {
         uint256 rebalancerFee = _rebalance(poolId);
 
         if (rebalancerFee > 0) {
@@ -257,7 +257,7 @@ abstract contract AssetManager is IAssetManager {
      * @param poolId - the id of the pool depositing funds into this asset manager
      * @param amount - the amount of tokens being deposited
      */
-    function capitalIn(bytes32 poolId, uint256 amount) public {
+    function capitalIn(bytes32 poolId, uint256 amount) public override {
         uint256 aum = readAUM();
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(poolId, aum);
         uint256 targetInvestment = (poolCash + poolManaged).mul(_poolConfig[poolId].targetPercentage).divDown(ONE);
@@ -285,7 +285,7 @@ abstract contract AssetManager is IAssetManager {
      * @param poolId - the id of the pool withdrawing funds from this asset manager
      * @param amount - the amount of tokens to withdraw to the vault
      */
-    function capitalOut(bytes32 poolId, uint256 amount) public {
+    function capitalOut(bytes32 poolId, uint256 amount) public override {
         uint256 aum = readAUM();
         uint256 sharesToBurn = totalSupply.mul(amount).divDown(aum);
         _redeemShares(poolId, sharesToBurn, aum);
@@ -335,7 +335,7 @@ abstract contract AssetManager is IAssetManager {
     /**
      * @notice Checks invested balance and updates AUM appropriately
      */
-    function realizeGains() public {
+    function realizeGains() public override {
         totalAUM = readAUM();
     }
 
@@ -366,5 +366,5 @@ abstract contract AssetManager is IAssetManager {
     /**
      * @return the current assets under management of this asset manager
      */
-    function readAUM() public view virtual returns (uint256);
+    function readAUM() public view virtual override returns (uint256);
 }
