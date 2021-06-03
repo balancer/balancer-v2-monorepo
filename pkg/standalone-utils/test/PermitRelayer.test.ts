@@ -8,12 +8,8 @@ import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { encodeExit, encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 import {
   encodeCalldataAuthorization,
-  signBatchSwapAuthorization,
-  signExitAuthorization,
-  signJoinAuthorization,
   signPermit,
   signSetRelayerApprovalAuthorization,
-  signSwapAuthorization,
 } from '@balancer-labs/v2-helpers/src/models/misc/signatures';
 
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
