@@ -84,8 +84,12 @@ abstract contract SinglePoolAssetManager is IAssetManager {
     function updateBalanceOfPool(bytes32 pId) public override withCorrectPool(pId) {
         uint256 managedBalance = readAUM();
 
-        IVault.PoolBalanceOp memory transfer =
-            IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, poolId, token, managedBalance);
+        IVault.PoolBalanceOp memory transfer = IVault.PoolBalanceOp(
+            IVault.PoolBalanceOpKind.UPDATE,
+            poolId,
+            token,
+            managedBalance
+        );
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
         ops[0] = (transfer);
 
