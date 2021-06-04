@@ -178,12 +178,12 @@ export default class WeightedPool {
 
   // Valid on Oracle pools
   async getNormalizedWeights(): Promise<BigNumber[]> {
-    return this.instance.getNormalizedWeights()
+    return this.instance.getNormalizedWeights();
   }
 
   // Valid on BaseWeightedPool subclasses
   async getNormalizedWeightsAndMaxWeightIndex(): Promise<[BigNumber[], BigNumber]> {
-    return this.instance.getNormalizedWeightsAndMaxWeightIndex()
+    return this.instance.getNormalizedWeightsAndMaxWeightIndex();
   }
 
   async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
