@@ -160,6 +160,18 @@ describe('PermitRelayer', function () {
       });
     });
 
+    describe('swap', () => {
+      it('reverts when supplying a different address as sender');
+    });
+
+    describe('batchSwap', () => {
+      it('reverts when supplying a different address as sender');
+    });
+
+    describe('manageUserBalance', () => {
+      it('reverts when supplying a different address as sender');
+    });
+
     describe('multicall', () => {
       context('when approved by sender', () => {
         sharedBeforeEach('approve relayer for sender', async () => {
