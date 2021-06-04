@@ -19,43 +19,39 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 const tokenInitialBalance = bn(200e18);
 
 const setup = async () => {
-  const [minter, lp] = await ethers.getSigners();
-
-  // Deploy Balancer Vault
-  const vault = await Vault.create();
+  const [, minter, lp] = await ethers.getSigners();
 
   const daiInstance = await deploy('TestDAI', { args: [minter.address, 'DAI', 'DAI', 18] });
   const dai = new Token('DAI', 'DAI', 18, daiInstance);
-  const weth = new Token('WETH', 'WETH', 18, await deployedAt('TestWETH', await vault.instance.WETH()));
-  const mkr = await Token.create('MKR');
-  const tokens = new TokenList([dai, weth, mkr]);
+  let tokens = await TokenList.create(['WETH', 'MKR'], { from: minter });
+  tokens = new TokenList([dai, ...tokens.tokens]);
+
+  // Deploy Balancer Vault
+  const authorizer = await deploy('v2-vault/Authorizer', { args: [minter.address] });
+  const vault = await deploy('v2-vault/Vault', { args: [authorizer.address, tokens.WETH.address, 0, 0] });
 
   // Deploy Pool
   const pool = await deploy('v2-vault/test/MockPool', { args: [vault.address, GeneralPool] });
   const poolId = await pool.getPoolId();
 
-  await tokens.mint({ to: lp, amount: tokenInitialBalance.mul(2) });
+  await tokens.mint({ to: lp, amount: tokenInitialBalance.mul(2), from: minter });
   await tokens.approve({ to: vault.address, from: [lp] });
 
   await pool.registerTokens(tokens.addresses, [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]);
 
-  await vault.joinPool({
-    poolId,
-    from: lp,
-    recipient: lp.address,
-    tokens: tokens.addresses,
+  await vault.connect(lp).joinPool(poolId, lp.address, lp.address, {
+    assets: tokens.addresses,
     maxAmountsIn: tokens.addresses.map(() => MAX_UINT256),
-    fromInternalBalance: false,
-    data: encodeJoin(
+    userData: encodeJoin(
       tokens.addresses.map(() => tokenInitialBalance),
       tokens.addresses.map(() => 0)
     ),
-  } as any);
+    fromInternalBalance: false,
+  });
 
   await tokens.approve({ to: vault.address, from: [lp], amount: 0 });
 
@@ -75,16 +71,16 @@ const setup = async () => {
 };
 
 describe('PermitRelayer', function () {
-  let tokens: TokenList, relayer: Contract, vault: Vault;
+  let tokens: TokenList, relayer: Contract, vault: Contract;
 
-  let signer: SignerWithAddress;
+  let admin: SignerWithAddress, signer: SignerWithAddress;
   let poolId: string;
 
   let daiPermit: string, mkrPermit: string;
   let dai: Token, weth: Token, mkr: Token;
 
   before('deploy base contracts', async () => {
-    [, signer] = await ethers.getSigners();
+    [, admin, signer] = await ethers.getSigners();
   });
 
   sharedBeforeEach('set up relayer', async () => {
@@ -97,8 +93,8 @@ describe('PermitRelayer', function () {
 
     [dai, weth, mkr] = tokens.tokens;
 
-    const daiSig = await signPermit(dai.instance, signer, vault.instance, MAX_UINT256);
-    const mkrSig = await signPermit(mkr.instance, signer, vault.instance, MAX_UINT256);
+    const daiSig = await signPermit(dai.instance, signer, vault, MAX_UINT256);
+    const mkrSig = await signPermit(mkr.instance, signer, vault, MAX_UINT256);
 
     daiPermit = relayer.interface.encodeFunctionData('vaultPermitDAI', [
       dai.address,
@@ -121,32 +117,33 @@ describe('PermitRelayer', function () {
 
   context('when relayer is authorised by governance', () => {
     sharedBeforeEach('authorise relayer', async () => {
-      const single = await actionId(vault.instance, 'swap');
-      const batch = await actionId(vault.instance, 'batchSwap');
-      const manageUserBalance = await actionId(vault.instance, 'manageUserBalance');
-      const joinPool = await actionId(vault.instance, 'joinPool');
-      const exitPool = await actionId(vault.instance, 'exitPool');
-      const setApproval = await actionId(vault.instance, 'setRelayerApproval');
-      await vault.authorizer?.grantRoles(
-        [single, batch, manageUserBalance, joinPool, exitPool, setApproval],
-        relayer.address
-      );
+      const single = await actionId(vault, 'swap');
+      const batch = await actionId(vault, 'batchSwap');
+      const manageUserBalance = await actionId(vault, 'manageUserBalance');
+      const joinPool = await actionId(vault, 'joinPool');
+      const exitPool = await actionId(vault, 'exitPool');
+      const setApproval = await actionId(vault, 'setRelayerApproval');
+
+      const authorizer = await deployedAt('v2-vault/Authorizer', await vault.getAuthorizer());
+      await authorizer
+        .connect(admin)
+        .grantRoles([single, batch, manageUserBalance, joinPool, exitPool, setApproval], relayer.address);
     });
 
     describe('setRelayerApproval', () => {
       it('approves the relayer to act for sender', async () => {
-        const approval = vault.instance.interface.encodeFunctionData('setRelayerApproval', [
+        const approval = vault.interface.encodeFunctionData('setRelayerApproval', [
           signer.address,
           relayer.address,
           true,
         ]);
-        const signature = await signSetRelayerApprovalAuthorization(vault.instance, signer, relayer, approval);
+        const signature = await signSetRelayerApprovalAuthorization(vault, signer, relayer, approval);
         const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
 
         const tx = await relayer.connect(signer).setRelayerApproval(relayer.address, true, callAuthorisation);
         const receipt = await tx.wait();
 
-        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'RelayerApprovalChanged', {
+        expectEvent.inIndirectReceipt(receipt, vault.interface, 'RelayerApprovalChanged', {
           relayer: relayer.address,
           sender: signer.address,
           approved: true,
@@ -157,12 +154,12 @@ describe('PermitRelayer', function () {
     describe('multicall', () => {
       context('when approved by sender', () => {
         sharedBeforeEach('approve relayer for sender', async () => {
-          const approval = vault.instance.interface.encodeFunctionData('setRelayerApproval', [
+          const approval = vault.interface.encodeFunctionData('setRelayerApproval', [
             signer.address,
             relayer.address,
             true,
           ]);
-          const signature = await signSetRelayerApprovalAuthorization(vault.instance, signer, relayer, approval);
+          const signature = await signSetRelayerApprovalAuthorization(vault, signer, relayer, approval);
           const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
 
           await relayer.connect(signer).setRelayerApproval(relayer.address, true, callAuthorisation);
@@ -196,7 +193,7 @@ describe('PermitRelayer', function () {
           const tx = await relayer.connect(signer).multicall([daiPermit, swap]);
           const receipt = await tx.wait();
 
-          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+          expectEvent.inIndirectReceipt(receipt, vault.interface, 'Swap', {
             poolId,
             tokenIn: singleSwap.assetIn,
             tokenOut: singleSwap.assetOut,
@@ -233,7 +230,7 @@ describe('PermitRelayer', function () {
           const tx = await relayer.connect(signer).multicall([daiPermit, batchSwap]);
           const receipt = await tx.wait();
 
-          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+          expectEvent.inIndirectReceipt(receipt, vault.interface, 'Swap', {
             poolId,
             tokenIn: dai.address,
             tokenOut: mkr.address,
@@ -258,7 +255,7 @@ describe('PermitRelayer', function () {
           const tx = await relayer.connect(signer).multicall([daiPermit, mkrPermit, join]);
           const receipt = await tx.wait();
 
-          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+          expectEvent.inIndirectReceipt(receipt, vault.interface, 'PoolBalanceChanged', {
             poolId,
             liquidityProvider: signer.address,
             tokens: [dai.address, weth.address, mkr.address],
@@ -283,7 +280,7 @@ describe('PermitRelayer', function () {
           const tx = await relayer.connect(signer).multicall([exit]);
           const receipt = await tx.wait();
 
-          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+          expectEvent.inIndirectReceipt(receipt, vault.interface, 'PoolBalanceChanged', {
             poolId,
             liquidityProvider: signer.address,
             tokens: [dai.address, weth.address, mkr.address],
@@ -328,7 +325,7 @@ describe('PermitRelayer', function () {
             expect(await ethers.provider.getBalance(vault.address)).to.be.eq(0);
             expect(await ethers.provider.getBalance(relayer.address)).to.be.eq(0);
 
-            expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+            expectEvent.inIndirectReceipt(receipt, vault.interface, 'PoolBalanceChanged', {
               poolId,
               liquidityProvider: signer.address,
               tokens: [dai.address, weth.address, mkr.address],
@@ -377,12 +374,12 @@ describe('PermitRelayer', function () {
         let setApproval: string;
 
         sharedBeforeEach('sign relayer approval', async () => {
-          const approval = vault.instance.interface.encodeFunctionData('setRelayerApproval', [
+          const approval = vault.interface.encodeFunctionData('setRelayerApproval', [
             signer.address,
             relayer.address,
             true,
           ]);
-          const signature = await signSetRelayerApprovalAuthorization(vault.instance, signer, relayer, approval);
+          const signature = await signSetRelayerApprovalAuthorization(vault, signer, relayer, approval);
           const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
 
           setApproval = relayer.interface.encodeFunctionData('setRelayerApproval', [
@@ -415,7 +412,7 @@ describe('PermitRelayer', function () {
           const tx = await relayer.connect(signer).multicall([setApproval, join], { value });
           const receipt = await tx.wait();
 
-          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+          expectEvent.inIndirectReceipt(receipt, vault.interface, 'PoolBalanceChanged', {
             poolId,
             liquidityProvider: signer.address,
             tokens: [dai.address, weth.address, mkr.address],
