@@ -207,10 +207,11 @@ abstract contract RewardsAssetManager is IAssetManager {
     }
 
     /**
+     * @notice withdraw `amount` of cash from the Vault, reducing the pool's TVL
      * @dev When withdrawing `amount` will be moved from the pool's cash to managed balance
      * As these funds are to be paid as fees (and so lost) we cache the previous managed balance and restore it.
      */
-    function _removeFeesFromVault(uint256 amount) private {
+    function _withdrawCashFromVault(uint256 amount) private {
         // Pull funds from the vault and update balance to reflect that the fee is no longer part of managed funds
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
         ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, poolId, token, amount);
@@ -253,7 +254,7 @@ abstract contract RewardsAssetManager is IAssetManager {
         uint256 rebalancerFee = _rebalance(pId);
 
         if (rebalancerFee > 0) {
-            _removeFeesFromVault(rebalancerFee);
+            _withdrawCashFromVault(rebalancerFee);
 
             // Send fee to rebalancer
             token.transfer(msg.sender, rebalancerFee);
@@ -275,7 +276,7 @@ abstract contract RewardsAssetManager is IAssetManager {
         uint256 rebalancerFee = _rebalance(pId);
 
         if (rebalancerFee > 0) {
-            _removeFeesFromVault(rebalancerFee);
+            _withdrawCashFromVault(rebalancerFee);
 
             require(funds.sender == address(this), "Asset Manager must be sender");
             require(!funds.fromInternalBalance, "Can't use Asset Manager's internal balance");
