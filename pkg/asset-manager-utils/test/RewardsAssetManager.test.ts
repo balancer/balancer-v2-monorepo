@@ -357,6 +357,46 @@ describe('Rewards Asset manager', function () {
   });
 
   describe('rebalance', () => {
+    context('when pool is above target investment level', () => {
+      let poolController: SignerWithAddress; // TODO
+      const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
+
+      sharedBeforeEach(async () => {
+        poolController = lp; // TODO
+        await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
+        const amountToDeposit = tokenInitialBalance.mul(poolConfig.targetPercentage).div(fp(1));
+        await assetManager.connect(poolController).capitalIn(poolId, amountToDeposit);
+
+        // should be perfectly balanced
+        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+        expect(maxInvestableBalance).to.equal(bn(0));
+
+        // Simulate a return on asset manager's investment
+        const amountReturned = amountToDeposit.div(10);
+        await assetManager.connect(lp).setUnrealisedAUM(amountToDeposit.add(amountReturned));
+
+        await assetManager.connect(lp).updateBalanceOfPool(poolId);
+      });
+
+      it('transfers the expected number of tokens to the Vault', async () => {
+        const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+        const poolTVL = cash.add(managed);
+        const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
+        const expectedRebalanceAmount = managed.sub(targetInvestmentAmount);
+
+        await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
+          { account: assetManager.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+          { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
+        ]);
+      });
+
+      it('returns the pool to its target allocation', async () => {
+        await assetManager.rebalance(poolId);
+        const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
+        expect(differenceFromTarget.abs()).to.be.lte(1);
+      });
+    });
+
     context('when pool is below target investment level', () => {
       context('when pool is safely above critical investment level', () => {
         let poolController: SignerWithAddress; // TODO
