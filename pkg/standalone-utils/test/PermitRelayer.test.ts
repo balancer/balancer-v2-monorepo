@@ -131,7 +131,7 @@ describe('PermitRelayer', function () {
     });
 
     describe('setRelayerApproval', () => {
-      it('approves the relayer to act for sender', async () => {
+      it('sets the desired approval for the relayer to act for sender', async () => {
         const approval = vault.interface.encodeFunctionData('setRelayerApproval', [
           signer.address,
           relayer.address,
@@ -140,13 +140,22 @@ describe('PermitRelayer', function () {
         const signature = await signSetRelayerApprovalAuthorization(vault, signer, relayer, approval);
         const callAuthorisation = encodeCalldataAuthorization('0x', MAX_UINT256, signature);
 
-        const tx = await relayer.connect(signer).setRelayerApproval(relayer.address, true, callAuthorisation);
-        const receipt = await tx.wait();
+        const approveTx = await relayer.connect(signer).setRelayerApproval(relayer.address, true, callAuthorisation);
+        const approveReceipt = await approveTx.wait();
 
-        expectEvent.inIndirectReceipt(receipt, vault.interface, 'RelayerApprovalChanged', {
+        expectEvent.inIndirectReceipt(approveReceipt, vault.interface, 'RelayerApprovalChanged', {
           relayer: relayer.address,
           sender: signer.address,
           approved: true,
+        });
+
+        const revokeTx = await relayer.connect(signer).setRelayerApproval(relayer.address, false, '0x');
+        const revokeReceipt = await revokeTx.wait();
+
+        expectEvent.inIndirectReceipt(revokeReceipt, vault.interface, 'RelayerApprovalChanged', {
+          relayer: relayer.address,
+          sender: signer.address,
+          approved: false,
         });
       });
     });
