@@ -165,20 +165,6 @@ contract StableMath {
         return finalBalanceIn.sub(balances[tokenIndexIn]).add(1);
     }
 
-    /*
-    TODO: document it correctly
-    Flow of calculations:
-    amountsTokenIn -> amountsInProportional ->
-    amountsInPercentageExcess -> amountsInAfterFee -> newInvariant -> amountBPTOut
-    TODO: remove equations below and save them to Notion documentation
-    amountInPercentageExcess = 1 - amountInProportional/amountIn (if amountIn>amountInProportional)
-    amountInAfterFee = amountIn * (1 - swapFeePercentage * amountInPercentageExcess)
-    amountInAfterFee = amountIn - fee amount
-    fee amount = (amountIn - amountInProportional) * swapFeePercentage
-    amountInAfterFee = amountIn - (amountIn - amountInProportional) * swapFeePercentage
-    amountInAfterFee = amountIn * (1 - (1 - amountInProportional/amountIn) * swapFeePercentage)
-    amountInAfterFee = amountIn * (1 - amountInPercentageExcess * swapFeePercentage)
-    */
     function _calcBptOutGivenExactTokensIn(
         uint256 amp,
         uint256[] memory balances,
@@ -235,12 +221,6 @@ contract StableMath {
         }
     }
 
-    /*
-    TODO: document it correctly
-    Flow of calculations:
-    amountBPTOut -> newInvariant -> (amountInProportional, amountInAfterFee) ->
-    amountInPercentageExcess -> amountIn
-    */
     function _calcTokenInGivenExactBptOut(
         uint256 amp,
         uint256[] memory balances,
@@ -340,12 +320,6 @@ contract StableMath {
         return bptTotalSupply.mulUp(invariantRatio.complement());
     }
 
-    /*
-    TODO: document it correctly
-    Flow of calculations:
-    amountBPTin -> newInvariant -> (amountOutProportional, amountOutBeforeFee) ->
-    amountOutPercentageExcess -> amountOut
-    */
     function _calcTokenOutGivenExactBptIn(
         uint256 amp,
         uint256[] memory balances,

@@ -195,6 +195,12 @@ contract WeightedPool2Tokens is
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
+    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
+        return
+            (actionId == getActionId(BasePool.setSwapFeePercentage.selector)) ||
+            (actionId == getActionId(BasePool.setAssetManagerPoolConfig.selector));
+    }
+
     /**
      * @dev Balancer Governance can always enable the Oracle, even if it was originally not enabled. This allows for
      * Pools that unexpectedly drive much more volume and liquidity than expected to serve as Price Oracles.

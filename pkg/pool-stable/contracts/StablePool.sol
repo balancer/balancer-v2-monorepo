@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 
@@ -26,8 +27,21 @@ import "./StablePoolUserDataHelpers.sol";
 contract StablePool is BaseGeneralPool, StableMath {
     using FixedPoint for uint256;
     using StablePoolUserDataHelpers for bytes;
+    using WordCodec for bytes32;
 
-    uint256 private immutable _amplificationParameter;
+    // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
+    // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
+    // solhint-disable not-rely-on-time
+
+    // Amplication factor changes must happen over a minimum period of one day, and can at most divide or multiple the
+    // current value by 10.
+    uint256 private constant _MIN_UPDATE_TIME = 1 days;
+    uint256 private constant _MAX_AMP_UPDATE_FACTOR = 10;
+
+    bytes32 private _packedAmplificationData;
+
+    event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
+    event AmpUpdateStopped(uint256 currentValue);
 
     uint256 private _lastInvariant;
 
@@ -62,11 +76,12 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         _require(tokens.length <= _MAX_STABLE_TOKENS, Errors.MAX_STABLE_TOKENS);
 
-        _amplificationParameter = amplificationParameter;
-    }
-
-    function getAmplificationParameter() external view returns (uint256) {
-        return _amplificationParameter;
+        _setAmplificationData(
+            uint64(amplificationParameter),
+            uint64(amplificationParameter),
+            uint64(block.timestamp),
+            uint64(block.timestamp)
+        );
     }
 
     // Base Pool handlers
@@ -79,13 +94,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 indexIn,
         uint256 indexOut
     ) internal view virtual override whenNotPaused returns (uint256) {
-        uint256 amountOut = StableMath._calcOutGivenIn(
-            _amplificationParameter,
-            balances,
-            indexIn,
-            indexOut,
-            swapRequest.amount
-        );
+        (uint256 currentAmp, ) = getAmplificationParameter();
+
+        uint256 amountOut = StableMath._calcOutGivenIn(currentAmp, balances, indexIn, indexOut, swapRequest.amount);
 
         return amountOut;
     }
@@ -96,13 +107,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 indexIn,
         uint256 indexOut
     ) internal view virtual override whenNotPaused returns (uint256) {
-        uint256 amountIn = StableMath._calcInGivenOut(
-            _amplificationParameter,
-            balances,
-            indexIn,
-            indexOut,
-            swapRequest.amount
-        );
+        (uint256 currentAmp, ) = getAmplificationParameter();
+        uint256 amountIn = StableMath._calcInGivenOut(currentAmp, balances, indexIn, indexOut, swapRequest.amount);
 
         return amountIn;
     }
@@ -125,7 +131,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         InputHelpers.ensureInputLengthMatch(amountsIn.length, _getTotalTokens());
         _upscaleArray(amountsIn, _scalingFactors());
 
-        uint256 invariantAfterJoin = StableMath._calculateInvariant(_amplificationParameter, amountsIn, true);
+        (uint256 currentAmp, ) = getAmplificationParameter();
+        uint256 invariantAfterJoin = StableMath._calculateInvariant(currentAmp, amountsIn, true);
 
         // Set the initial BPT to the value of the invariant.
         uint256 bptAmountOut = invariantAfterJoin;
@@ -202,8 +209,9 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         _upscaleArray(amountsIn, _scalingFactors());
 
+        (uint256 currentAmp, ) = getAmplificationParameter();
         uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
-            _amplificationParameter,
+            currentAmp,
             balances,
             amountsIn,
             totalSupply(),
@@ -226,8 +234,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
 
         uint256[] memory amountsIn = new uint256[](_getTotalTokens());
+        (uint256 currentAmp, ) = getAmplificationParameter();
         amountsIn[tokenIndex] = StableMath._calcTokenInGivenExactBptOut(
-            _amplificationParameter,
+            currentAmp,
             balances,
             tokenIndex,
             bptAmountOut,
@@ -318,8 +327,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory amountsOut = new uint256[](_getTotalTokens());
 
         // And then assign the result to the selected token
+        (uint256 currentAmp, ) = getAmplificationParameter();
         amountsOut[tokenIndex] = StableMath._calcTokenOutGivenExactBptIn(
-            _amplificationParameter,
+            currentAmp,
             balances,
             tokenIndex,
             bptAmountIn,
@@ -359,8 +369,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens());
         _upscaleArray(amountsOut, _scalingFactors());
 
+        (uint256 currentAmp, ) = getAmplificationParameter();
         uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
-            _amplificationParameter,
+            currentAmp,
             balances,
             amountsOut,
             totalSupply(),
@@ -401,9 +412,10 @@ contract StablePool is BaseGeneralPool, StableMath {
             }
         }
 
+        (uint256 currentAmp, ) = getAmplificationParameter();
         // Set the fee amount to pay in the selected token
         dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenProtocolSwapFeeAmount(
-            _amplificationParameter,
+            currentAmp,
             balances,
             previousInvariant,
             chosenTokenIndex,
@@ -417,7 +429,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         _mutateAmounts(balances, amountsIn, FixedPoint.add);
         // This invariant is used only to compute the final balance when calculating the protocol fees. These are
         // rounded down, so we round the invariant up.
-        return StableMath._calculateInvariant(_amplificationParameter, balances, true);
+        (uint256 currentAmp, ) = getAmplificationParameter();
+        return StableMath._calculateInvariant(currentAmp, balances, true);
     }
 
     function _invariantAfterExit(uint256[] memory balances, uint256[] memory amountsOut)
@@ -428,7 +441,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         _mutateAmounts(balances, amountsOut, FixedPoint.sub);
         // This invariant is used only to compute the final balance when calculating the protocol fees. These are
         // rounded down, so we round the invariant up.
-        return StableMath._calculateInvariant(_amplificationParameter, balances, true);
+        (uint256 currentAmp, ) = getAmplificationParameter();
+        return StableMath._calculateInvariant(currentAmp, balances, true);
     }
 
     /**
@@ -455,7 +469,97 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         // When calculating the current BPT rate, we may not have paid the protocol fees, therefore
         // the invariant should be smaller than its current value. Then, we round down overall.
-        uint256 invariant = StableMath._calculateInvariant(_amplificationParameter, balances, false);
+        (uint256 currentAmp, ) = getAmplificationParameter();
+        uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, false);
         return invariant.divDown(totalSupply());
+    }
+
+    // Amplification
+
+    function startAmplificationParameterUpdate(uint256 endValue, uint256 endTime) external authenticate {
+        _require(endValue >= _MIN_AMP, Errors.MIN_AMP);
+        _require(endValue <= _MAX_AMP, Errors.MAX_AMP);
+
+        _require(endTime >= block.timestamp + _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
+
+        (uint256 currentValue, bool isUpdating) = getAmplificationParameter();
+        _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
+
+        if (endValue > currentValue) {
+            _require(endValue <= currentValue * _MAX_AMP_UPDATE_FACTOR, Errors.AMP_FACTOR);
+        } else {
+            _require(endValue >= currentValue / _MAX_AMP_UPDATE_FACTOR, Errors.AMP_FACTOR);
+        }
+
+        _setAmplificationData(uint64(currentValue), uint64(endValue), uint64(block.timestamp), uint64(endTime));
+
+        emit AmpUpdateStarted(currentValue, endValue, block.timestamp, endTime);
+    }
+
+    function stopAmplificationParameterUpdate() external authenticate {
+        (uint256 currentValue, bool isUpdating) = getAmplificationParameter();
+        _require(isUpdating, Errors.AMP_NO_ONGOING_UPDATE);
+
+        _setAmplificationData(
+            uint64(currentValue),
+            uint64(currentValue),
+            uint64(block.timestamp),
+            uint64(block.timestamp)
+        );
+        emit AmpUpdateStopped(currentValue);
+    }
+
+    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
+        return
+            (actionId == getActionId(StablePool.startAmplificationParameterUpdate.selector)) ||
+            (actionId == getActionId(StablePool.stopAmplificationParameterUpdate.selector)) ||
+            super._isOwnerOnlyAction(actionId);
+    }
+
+    function getAmplificationParameter() public view returns (uint256 value, bool isUpdating) {
+        (uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) = _getAmplificationData();
+
+        // Note that block.timestamp >= startTime, since startTime is set to the current time when an update starts
+
+        if (block.timestamp < endTime) {
+            isUpdating = true;
+            if (endValue > startValue) {
+                value = startValue + ((endValue - startValue) * (block.timestamp - startTime)) / (endTime - startTime);
+            } else {
+                value = startValue - ((startValue - endValue) * (block.timestamp - startTime)) / (endTime - startTime);
+            }
+        } else {
+            isUpdating = false;
+            value = endValue;
+        }
+    }
+
+    function _setAmplificationData(
+        uint64 startValue,
+        uint64 endValue,
+        uint64 startTime,
+        uint64 endTime
+    ) private {
+        _packedAmplificationData =
+            WordCodec.encodeUint(startValue, 0) |
+            WordCodec.encodeUint(endValue, 64) |
+            WordCodec.encodeUint(startTime, 64 * 2) |
+            WordCodec.encodeUint(endTime, 64 * 3);
+    }
+
+    function _getAmplificationData()
+        private
+        view
+        returns (
+            uint256 startValue,
+            uint256 endValue,
+            uint256 startTime,
+            uint256 endTime
+        )
+    {
+        startValue = _packedAmplificationData.decodeUint64(0);
+        endValue = _packedAmplificationData.decodeUint64(64);
+        startTime = _packedAmplificationData.decodeUint64(64 * 2);
+        endTime = _packedAmplificationData.decodeUint64(64 * 3);
     }
 }

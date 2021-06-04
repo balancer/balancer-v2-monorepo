@@ -130,6 +130,10 @@ library Errors {
     uint256 internal constant ORACLE_QUERY_TOO_OLD = 314;
     uint256 internal constant ORACLE_INVALID_INDEX = 315;
     uint256 internal constant ORACLE_BAD_SECS = 316;
+    uint256 internal constant AMP_END_TIME_TOO_CLOSE = 317;
+    uint256 internal constant AMP_ONGOING_UPDATE = 318;
+    uint256 internal constant AMP_FACTOR = 319;
+    uint256 internal constant AMP_NO_ONGOING_UPDATE = 320;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

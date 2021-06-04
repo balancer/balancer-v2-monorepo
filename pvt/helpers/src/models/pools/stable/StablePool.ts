@@ -113,7 +113,13 @@ export default class StablePool {
   }
 
   async getAmplificationParameter(): Promise<BigNumber> {
-    return this.instance.getAmplificationParameter();
+    const { value } = await this.instance.getAmplificationParameter();
+    return value;
+  }
+
+  async isAmplificationUpdating(): Promise<boolean> {
+    const { isUpdating } = await this.instance.getAmplificationParameter();
+    return isUpdating;
   }
 
   async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {

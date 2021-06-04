@@ -1,0 +1,6 @@
+releases:
+  "@balancer-labs/v2-solidity-utils": major
+
+undecided:
+  - "@balancer-labs/v2-pool-stable"
+  - "@balancer-labs/v2-pool-weighted"
