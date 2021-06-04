@@ -207,6 +207,19 @@ abstract contract RewardsAssetManager is IAssetManager {
     }
 
     /**
+     * @dev When withdrawing `amount` will be moved from the pool's cash to managed balance
+     * As these funds are to be paid as fees (and so lost) we cache the previous managed balance and restore it.
+     */
+    function _removeFeesFromVault(uint256 amount) private {
+        // Pull funds from the vault and update balance to reflect that the fee is no longer part of managed funds
+        IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
+        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, poolId, token, amount);
+        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, poolId, token, readAUM().sub(amount));
+
+        vault.managePoolBalance(ops);
+    }
+
+    /**
      * @notice Rebalances funds between pool and asset manager to maintain target investment percentage.
      * @return feeAmount - the amount of tokens to be made available to msg.sender as a fee
      */
@@ -240,16 +253,7 @@ abstract contract RewardsAssetManager is IAssetManager {
         uint256 rebalancerFee = _rebalance(pId);
 
         if (rebalancerFee > 0) {
-            // Pull funds from the vault and update balance to reflect that the fee is no longer part of managed funds
-            IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
-            ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, pId, token, rebalancerFee);
-            ops[1] = IVault.PoolBalanceOp(
-                IVault.PoolBalanceOpKind.UPDATE,
-                pId,
-                token,
-                readAUM().sub(rebalancerFee)
-            );
-            vault.managePoolBalance(ops);
+            _removeFeesFromVault(rebalancerFee);
 
             // Send fee to rebalancer
             token.transfer(msg.sender, rebalancerFee);
@@ -271,16 +275,7 @@ abstract contract RewardsAssetManager is IAssetManager {
         uint256 rebalancerFee = _rebalance(pId);
 
         if (rebalancerFee > 0) {
-            // Pull funds from the vault and update balance to reflect that the fee is no longer part of managed funds
-            IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
-            ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, pId, token, rebalancerFee);
-            ops[1] = IVault.PoolBalanceOp(
-                IVault.PoolBalanceOpKind.UPDATE,
-                pId,
-                token,
-                readAUM().sub(rebalancerFee)
-            );
-            vault.managePoolBalance(ops);
+            _removeFeesFromVault(rebalancerFee);
 
             require(funds.sender == address(this), "Asset Manager must be sender");
             require(!funds.fromInternalBalance, "Can't use Asset Manager's internal balance");
