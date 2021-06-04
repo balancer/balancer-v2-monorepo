@@ -29,6 +29,10 @@ contract StablePool is BaseGeneralPool, StableMath {
     using StablePoolUserDataHelpers for bytes;
     using WordCodec for bytes32;
 
+    // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
+    // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
+    // solhint-disable not-rely-on-time
+
     // Amplication factor changes must happen over a minimum period of one day, and can at most divide or multiple the
     // current value by 10.
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
