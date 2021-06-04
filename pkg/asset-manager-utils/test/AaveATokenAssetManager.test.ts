@@ -20,7 +20,7 @@ const UNDER_INVESTMENT_REVERT_REASON = 'withdrawal leaves insufficient balance i
 const tokenInitialBalance = bn(200e18);
 const amount = bn(100e18);
 
-describe('Single Pool Aave AToken asset manager', function () {
+describe('Aave AToken asset manager', function () {
   let tokens: TokenList,
     pool: Contract,
     vault: Contract,
@@ -51,7 +51,7 @@ describe('Single Pool Aave AToken asset manager', function () {
     await lendingPool.registerAToken(tokens.DAI.address, daiAToken.address);
 
     // Deploy Asset manager
-    assetManager = await deploy('SinglePoolAaveATokenAssetManager', {
+    assetManager = await deploy('AaveATokenAssetManager', {
       args: [
         vault.address,
         tokens.DAI.address,
