@@ -96,6 +96,11 @@ export default class WeightedPool {
     return this.weights;
   }
 
+  get maxWeightIndex(): BigNumberish {
+    const maxIdx = this.weights.indexOf(this.maxWeight);
+    return bn(maxIdx);
+  }
+
   async name(): Promise<string> {
     return this.instance.name();
   }
@@ -171,8 +176,8 @@ export default class WeightedPool {
     return this.instance.getSwapFeePercentage();
   }
 
-  async getNormalizedWeights(): Promise<BigNumber[]> {
-    return this.instance.getNormalizedWeights();
+  async getNormalizedWeightsAndMaxWeightIndex(): Promise<[BigNumber[], BigNumber]> {
+    return this.instance.getNormalizedWeightsAndMaxWeightIndex()
   }
 
   async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {

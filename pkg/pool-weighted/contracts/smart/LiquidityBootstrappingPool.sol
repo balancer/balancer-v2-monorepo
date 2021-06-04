@@ -98,23 +98,23 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
-    function _getNormalizedWeights() internal view override returns (uint256[] memory) {
+    function _getNormalizedWeightsAndMaxWeightIndex() internal view override returns (uint256[] memory, uint256) {
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory normalizedWeights = new uint256[](totalTokens);
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { normalizedWeights[0] = _getNormalizedWeight(0); } else { return normalizedWeights; }
-            if (totalTokens > 1) { normalizedWeights[1] = _getNormalizedWeight(1); } else { return normalizedWeights; }
-            if (totalTokens > 2) { normalizedWeights[2] = _getNormalizedWeight(2); } else { return normalizedWeights; }
-            if (totalTokens > 3) { normalizedWeights[3] = _getNormalizedWeight(3); } else { return normalizedWeights; }
+            if (totalTokens > 0) { normalizedWeights[0] = _getNormalizedWeight(0); }
+            else { return (normalizedWeights, _maxWeightTokenIndex); }
+            if (totalTokens > 1) { normalizedWeights[1] = _getNormalizedWeight(1); }
+            else { return (normalizedWeights, _maxWeightTokenIndex); }
+            if (totalTokens > 2) { normalizedWeights[2] = _getNormalizedWeight(2); }
+            else { return (normalizedWeights, _maxWeightTokenIndex); }
+            if (totalTokens > 3) { normalizedWeights[3] = _getNormalizedWeight(3); }
+            else { return (normalizedWeights, _maxWeightTokenIndex); }
         }
 
-        return normalizedWeights;
-    }
-
-    function _getMaxWeightTokenIndex() internal view override returns (uint256) {
-        return _maxWeightTokenIndex;
+        return (normalizedWeights, _maxWeightTokenIndex);
     }
 
     // Private functions

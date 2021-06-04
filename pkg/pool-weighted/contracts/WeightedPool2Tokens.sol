@@ -224,6 +224,10 @@ contract WeightedPool2Tokens is
         return _normalizedWeights();
     }
 
+    function getNormalizedWeightsAndMaxWeightIndex() external view returns (uint256[] memory, uint256) {
+        return (_normalizedWeights(), _maxWeightTokenIndex);
+    }
+
     function _normalizedWeights() internal view virtual returns (uint256[] memory) {
         uint256[] memory normalizedWeights = new uint256[](2);
         normalizedWeights[0] = _normalizedWeights(true);
