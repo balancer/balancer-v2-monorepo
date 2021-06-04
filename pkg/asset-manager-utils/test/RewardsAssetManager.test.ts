@@ -21,7 +21,7 @@ const tokenInitialBalance = bn(200e18);
 const amount = bn(100e18);
 
 const setup = async () => {
-  const [, admin, lp, other] = await ethers.getSigners();
+  const [, lp, other] = await ethers.getSigners();
 
   const tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
 
@@ -75,7 +75,7 @@ describe('Rewards Asset manager', function () {
   let poolId: string;
 
   before('deploy base contracts', async () => {
-    [, , lp, other] = await ethers.getSigners();
+    [, lp, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('set up asset manager', async () => {
