@@ -500,6 +500,8 @@ describe('Aave Asset manager', function () {
             await assetManager.rebalance(poolId);
             expect(await assetManager.maxInvestableBalance(poolId)).to.be.eq(0);
           });
+
+          it("update the pool's cash and managed balances correctly");
         });
       });
     });
