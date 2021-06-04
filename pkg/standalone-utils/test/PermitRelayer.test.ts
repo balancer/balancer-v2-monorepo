@@ -239,6 +239,27 @@ describe('PermitRelayer', function () {
           });
         });
 
+        it('allows managing user balance using permit', async () => {
+          const depositOp = {
+            kind: 0,
+            asset: dai.address,
+            amount: 100,
+            sender: signer.address,
+            recipient: signer.address,
+          };
+
+          const manageBalance = relayer.interface.encodeFunctionData('manageUserBalance', [[depositOp], 0]);
+
+          const tx = await relayer.connect(signer).multicall([daiPermit, manageBalance]);
+          const receipt = await tx.wait();
+
+          expectEvent.inIndirectReceipt(receipt, vault.interface, 'InternalBalanceChanged', {
+            user: signer.address,
+            token: dai.address,
+            delta: 100,
+          });
+        });
+
         it('allows performing a join using permit', async () => {
           const joinPoolRequest = {
             assets: [dai.address, ZERO_ADDRESS, mkr.address],

@@ -88,6 +88,16 @@ contract PermitRelayer is MultiDelegatecall {
         return vault.batchSwap{ value: value }(kind, swaps, assets, funds, limits, deadline);
     }
 
+    function manageUserBalance(
+        IVault.UserBalanceOp[] calldata ops,
+        uint256 value
+    ) external payable {
+        for (uint256 i = 0; i < ops.length; i++){
+            require(ops[i].sender == msg.sender, "Incorrect sender");
+        }
+        vault.manageUserBalance{ value: value }(ops);
+    }
+
     function joinPool(
         bytes32 poolId,
         address recipient,
