@@ -37,9 +37,6 @@ abstract contract SinglePoolAssetManager is IAssetManager {
     /// @notice The token which this asset manager is investing
     IERC20 public immutable token;
 
-    /// @notice the total AUM of tokens that the asset manager is aware it has earned
-    uint256 public totalAUM;
-
     PoolConfig private _poolConfig;
 
     constructor(
@@ -114,9 +111,6 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         vault.managePoolBalance(ops);
 
         _invest(amount, aum);
-
-        // Update with gains and add deposited tokens from AUM
-        totalAUM = aum.add(amount);
     }
 
     function capitalOut(bytes32 pId, uint256 amount) public override withCorrectPool(pId) {
@@ -127,14 +121,11 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _poolConfig.targetPercentage);
         require(poolManaged >= targetInvestment.add(tokensOut), "withdrawal leaves insufficient balance invested");
 
-        // Update with gains and remove withdrawn tokens from AUM
-        totalAUM = aum.sub(amount);
-
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
         // Send funds back to the vault
         ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, poolId, token, amount);
         // Update the vault with new managed balance accounting for returns
-        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, poolId, token, totalAUM);
+        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, poolId, token, aum.sub(amount));
 
         vault.managePoolBalance(ops);
     }
@@ -235,11 +226,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         }
     }
 
-    function realizeGains() public override {
-        totalAUM = readAUM();
-    }
-
     function balanceOf(bytes32 pId) public view override withCorrectPool(pId) returns (uint256) {
-        return totalAUM;
+        return readAUM();
     }
 }

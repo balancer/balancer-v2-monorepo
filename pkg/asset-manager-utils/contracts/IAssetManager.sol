@@ -43,11 +43,6 @@ interface IAssetManager {
     function readAUM() external view returns (uint256);
 
     /**
-     * @notice Checks invested balance and updates AUM appropriately
-     */
-    function realizeGains() external;
-
-    /**
      * @return The difference in token between the target investment
      * and the currently invested amount (i.e. the amount that can be invested)
      */

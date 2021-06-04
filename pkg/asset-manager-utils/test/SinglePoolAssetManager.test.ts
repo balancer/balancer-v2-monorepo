@@ -175,7 +175,6 @@ describe('Single Pool Asset Manager', function () {
           const aum = await assetManager.readAUM();
           const newAUM = aum.mul(11).div(10);
           await assetManager.connect(lp).setUnrealisedAUM(newAUM);
-          await assetManager.connect(lp).realizeGains();
 
           await assetManager.connect(lp).updateBalanceOfPool(poolId);
         });

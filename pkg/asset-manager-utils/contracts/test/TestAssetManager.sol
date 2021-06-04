@@ -52,8 +52,10 @@ contract TestAssetManager is AssetManager {
         bytes32, /*poolId*/
         uint256 shares,
         uint256 aum
-    ) internal view override returns (uint256) {
-        return (shares * aum) / totalSupply;
+    ) internal override returns (uint256) {
+        uint256 tokensRemoved = (shares * aum) / totalSupply;
+        nextAUM = aum - tokensRemoved;
+        return tokensRemoved;
     }
 
     /**

@@ -218,7 +218,6 @@ describe('Single Pool Aave AToken asset manager', function () {
       // Simulate a return on asset manager's investment
       const amountReturned = amountToDeposit.div(10);
       await lendingPool.connect(lp).simulateATokenIncrease(tokens.DAI.address, amountReturned, assetManager.address);
-      await assetManager.connect(lp).realizeGains();
 
       await assetManager.connect(lp).updateBalanceOfPool(poolId);
     });
