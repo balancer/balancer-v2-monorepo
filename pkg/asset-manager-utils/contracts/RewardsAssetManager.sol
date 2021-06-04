@@ -133,10 +133,7 @@ abstract contract RewardsAssetManager is IAssetManager {
      * @param pId - the id of the pool withdrawing funds from this asset manager
      * @param amount - the amount of tokens to withdraw to the vault
      */
-    function capitalOut(
-        bytes32 pId,
-        uint256 amount
-    ) public override withCorrectPool(pId) {
+    function capitalOut(bytes32 pId, uint256 amount) public override withCorrectPool(pId) {
         uint256 aum = readAUM();
         uint256 tokensOut = _divest(amount, aum);
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
