@@ -131,6 +131,8 @@ describe('Rewards Asset manager', function () {
         'Fee on critical rebalances must be less than 10%'
       );
     });
+
+    it('prevents an unauthorized user from setting the pool config');
   });
 
   describe('capitalIn', () => {
