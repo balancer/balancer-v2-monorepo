@@ -107,6 +107,7 @@ contract StableMath {
 
         // Amount out, so we round down overall.
 
+        // Given that we need to have a greater final balance out, the invariant needs to be rounded up
         uint256 invariant = _calculateInvariant(amplificationParameter, balances, true);
 
         balances[tokenIndexIn] = balances[tokenIndexIn].add(tokenAmountIn);
@@ -147,6 +148,7 @@ contract StableMath {
 
         // Amount in, so we round up overall.
 
+        // Given that we need to have a greater final balance in, the invariant needs to be rounded up
         uint256 invariant = _calculateInvariant(amplificationParameter, balances, true);
 
         balances[tokenIndexOut] = balances[tokenIndexOut].sub(tokenAmountOut);
@@ -225,6 +227,7 @@ contract StableMath {
         uint256 newInvariant = _calculateInvariant(amp, newBalances, false);
         uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
+        // If the invariant didn't increase for any reason, we simply don't mint BPT
         if (invariantRatio > FixedPoint.ONE) {
             return bptTotalSupply.mulDown(invariantRatio.sub(FixedPoint.ONE));
         } else {
@@ -353,9 +356,8 @@ contract StableMath {
     ) internal pure returns (uint256) {
         // Token out, so we round down overall.
 
-        // Get the current invariant
+        // Get the current and new invariants. Since we need a bigger new invariant, we round the current one up.
         uint256 currentInvariant = _calculateInvariant(amp, balances, true);
-        // Calculate the new invariant
         uint256 newInvariant = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply).mulUp(currentInvariant);
 
         // Calculate amount out without fee

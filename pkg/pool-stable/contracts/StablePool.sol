@@ -415,7 +415,7 @@ contract StablePool is BaseGeneralPool, StableMath {
 
     function _invariantAfterJoin(uint256[] memory balances, uint256[] memory amountsIn) private view returns (uint256) {
         _mutateAmounts(balances, amountsIn, FixedPoint.add);
-        // This invariant is used only to calculate the due protocol fees, then we round up
+        // This invariant is used only to compute the final balance when calculating the protocol fees, then we round up
         return StableMath._calculateInvariant(_amplificationParameter, balances, true);
     }
 
@@ -425,7 +425,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         returns (uint256)
     {
         _mutateAmounts(balances, amountsOut, FixedPoint.sub);
-        // This invariant is used only to calculate the due protocol fees, then we round up
+        // This invariant is used only to compute the final balance when calculating the protocol fees, then we round up
         return StableMath._calculateInvariant(_amplificationParameter, balances, true);
     }
 
@@ -452,7 +452,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
 
         // When calculating the current BPT rate, we may not have paid the protocol fees, therefore
-        // the invariant should be smaller than it's current value. Then, we round down overall.
+        // the invariant should be smaller than its current value. Then, we round down overall.
         uint256 invariant = StableMath._calculateInvariant(_amplificationParameter, balances, false);
         return invariant.divDown(totalSupply());
     }
