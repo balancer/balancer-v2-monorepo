@@ -29,27 +29,29 @@ describe('StableMath', function () {
         const amp = bn(100);
         const balances = [fp(10), fp(12)];
 
-        const result = await mock.invariant(amp, balances);
+        const result = await mock.invariant(amp, balances, true);
         const expectedInvariant = calculateInvariant(balances, amp);
 
         expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
       });
+
       it('returns invariant equals analytical solution', async () => {
         const amp = bn(100);
         const balances = [fp(10), fp(12)];
 
-        const result = await mock.invariant(amp, balances);
+        const result = await mock.invariant(amp, balances, true);
         const expectedInvariant = calculateAnalyticalInvariantForTwoTokens(balances, amp);
 
         expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
       });
     });
+
     context('three tokens', () => {
       it('returns invariant', async () => {
         const amp = bn(100);
         const balances = [fp(10), fp(12), fp(14)];
 
-        const result = await mock.invariant(amp, balances);
+        const result = await mock.invariant(amp, balances, true);
         const expectedInvariant = calculateInvariant(balances, amp);
 
         expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
