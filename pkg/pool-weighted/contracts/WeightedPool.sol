@@ -112,7 +112,7 @@ contract WeightedPool is BaseWeightedPool {
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { normalizedWeights[0] = _normalizedWeight0;} else { return normalizedWeights; }
+            if (totalTokens > 0) { normalizedWeights[0] = _normalizedWeight0; } else { return normalizedWeights; }
             if (totalTokens > 1) { normalizedWeights[1] = _normalizedWeight1; } else { return normalizedWeights; }
             if (totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else { return normalizedWeights; }
             if (totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else { return normalizedWeights; }
