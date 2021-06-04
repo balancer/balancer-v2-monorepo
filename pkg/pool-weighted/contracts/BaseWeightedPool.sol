@@ -76,9 +76,10 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     function _getNormalizedWeights() internal view virtual returns (uint256[] memory);
 
     /**
-     * @dev Returns the index of the token with the largest weight.
+     * @dev Returns all normalized weights, in the same order as the Pool's tokens, along with the index of the token
+     * with the highest weight.
      */
-    function _getMaxWeightTokenIndex() internal view virtual returns (uint256);
+    function _getNormalizedWeightsAndMaxWeightIndex() internal view virtual returns (uint256[] memory, uint256);
 
     function getLastInvariant() external view returns (uint256) {
         return _lastInvariant;
@@ -94,7 +95,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // upscale here for consistency
         _upscaleArray(balances, _scalingFactors());
 
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        (uint256[] memory normalizedWeights, ) = _getNormalizedWeightsAndMaxWeightIndex();
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
 
@@ -158,7 +159,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), amountsIn.length);
         _upscaleArray(amountsIn, _scalingFactors());
 
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        (uint256[] memory normalizedWeights, ) = _getNormalizedWeightsAndMaxWeightIndex();
 
         uint256 invariantAfterJoin = WeightedMath._calculateInvariant(normalizedWeights, amountsIn);
 
@@ -194,7 +195,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     {
         // All joins are disabled while the contract is paused.
 
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        (uint256[] memory normalizedWeights, uint256 maxWeightTokenIndex) = _getNormalizedWeightsAndMaxWeightIndex();
 
         // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous join
         // or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids spending gas
@@ -204,6 +205,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
             balances,
             normalizedWeights,
+            maxWeightTokenIndex,
             _lastInvariant,
             invariantBeforeJoin,
             protocolSwapFeePercentage
@@ -304,7 +306,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
         // out) remain functional.
 
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        (uint256[] memory normalizedWeights, uint256 maxWeightTokenIndex) = _getNormalizedWeightsAndMaxWeightIndex();
 
         if (_isNotPaused()) {
             // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
@@ -314,6 +316,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
                 balances,
                 normalizedWeights,
+                maxWeightTokenIndex,
                 _lastInvariant,
                 invariantBeforeExit,
                 protocolSwapFeePercentage
@@ -425,6 +428,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     function _getDueProtocolFeeAmounts(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
+        uint256 maxWeightTokenIndex,
         uint256 previousInvariant,
         uint256 currentInvariant,
         uint256 protocolSwapFeePercentage
@@ -436,8 +440,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         if (protocolSwapFeePercentage == 0) {
             return dueProtocolFeeAmounts;
         }
-
-        uint256 maxWeightTokenIndex = _getMaxWeightTokenIndex();
 
         // The protocol swap fees are always paid using the token with the largest weight in the Pool. As this is the
         // token that is expected to have the largest balance, using it to pay fees should not unbalance the Pool.

@@ -68,7 +68,7 @@ contract DynamicWeightedPool is BaseWeightedPool {
         _creationTime = block.timestamp;
     }
 
-    function _getNormalizedWeights() internal view override returns (uint256[] memory);
+    function _getNormalizedWeightsAndMaxWeightIndex() internal view override returns (uint256[] memory);
         uint256[] memory weights = new uint256[](2);
 
         // Change weights from 50-50 to 30-70 one month after deployment
@@ -80,7 +80,7 @@ contract DynamicWeightedPool is BaseWeightedPool {
           weights[1] = 0.7e18;
         }
 
-        return weights;
+        return (weights, 1);
     }
 
     ...

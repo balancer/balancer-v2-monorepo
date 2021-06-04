@@ -30,6 +30,7 @@ describe('WeightedPool', function () {
 
       it('sets token weights', async () => {
         const normalizedWeights = await pool.getNormalizedWeights();
+
         expect(normalizedWeights).to.deep.equal(pool.normalizedWeights);
       });
     });
