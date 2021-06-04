@@ -209,7 +209,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     /**
      * @notice withdraw `amount` of cash from the Vault, reducing the pool's TVL
      * @dev When withdrawing `amount` will be moved from the pool's cash to managed balance
-     * As these funds are to be paid as fees (and so lost) we cache the previous managed balance and restore it.
+     * As these funds are to be paid as fees (and so lost) we then remove this from the managed balance
      */
     function _withdrawCashFromVault(uint256 amount) private {
         // Pull funds from the vault and update balance to reflect that the fee is no longer part of managed funds
