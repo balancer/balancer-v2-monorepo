@@ -425,7 +425,10 @@ describe('Aave Asset manager', function () {
         });
 
         it('transfers the expected number of tokens from the Vault', async () => {
-          const expectedRebalanceAmount = await assetManager.maxInvestableBalance(poolId);
+          const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+          const poolTVL = cash.add(managed);
+          const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
+          const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
 
           await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
             { account: lendingPool.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
@@ -451,7 +454,10 @@ describe('Aave Asset manager', function () {
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
-            const expectedRebalanceAmount = await assetManager.maxInvestableBalance(poolId);
+            const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+            const poolTVL = cash.add(managed);
+            const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
+            const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
 
             await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
               { account: lendingPool.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
@@ -466,16 +472,19 @@ describe('Aave Asset manager', function () {
         });
 
         describe('when fee percentage is non-zero', () => {
-          let zeroFeeRebalanceAmount: BigNumber;
           const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
           sharedBeforeEach(async () => {
             poolController = lp; // TODO
 
             await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
-            zeroFeeRebalanceAmount = await assetManager.maxInvestableBalance(poolId);
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
+            const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+            const poolTVL = cash.add(managed);
+            const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
+            const zeroFeeRebalanceAmount = targetInvestmentAmount.sub(managed);
+
             const expectedFeeAmount = await assetManager.getRebalanceFee(poolId);
 
             const investmentFeeAdjustment = expectedFeeAmount.mul(poolConfig.targetPercentage).div(fp(1));
