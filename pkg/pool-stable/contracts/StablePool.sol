@@ -437,7 +437,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         _mutateAmounts(balances, amountsOut, FixedPoint.sub);
         // This invariant is used only to compute the final balance when calculating the protocol fees. These are
         // rounded down, so we round the invariant up.
-        return StableMath._calculateInvariant(_amplificationParameter, balances, true);
+        (uint256 currentAmp, ) = getAmplificationParameter();
+        return StableMath._calculateInvariant(currentAmp, balances, true);
     }
 
     /**
@@ -514,6 +515,8 @@ contract StablePool is BaseGeneralPool, StableMath {
     function getAmplificationParameter() public view returns (uint256 value, bool isUpdating) {
         (uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) = _getAmplificationData();
 
+        // Note that block.timestamp >= startTime, since startTime is set to the current time when an update starts
+
         if (block.timestamp < endTime) {
             isUpdating = true;
             if (endValue > startValue) {
@@ -522,7 +525,6 @@ contract StablePool is BaseGeneralPool, StableMath {
                 value = startValue - ((startValue - endValue) * (block.timestamp - startTime)) / (endTime - startTime);
             }
         } else {
-            // Note that block.timestamp >= startTime, since startTime is set to the current time when an update starts
             isUpdating = false;
             value = endValue;
         }
