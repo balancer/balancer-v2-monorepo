@@ -71,8 +71,13 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     function _getNormalizedWeight(IERC20 token) internal view virtual returns (uint256);
 
     /**
+     * @dev Returns all normalized weights, in the same order as the Pool's tokens.
+     */
+    function _getNormalizedWeights() internal view virtual returns (uint256[] memory);
+
+    /**
      * @dev Returns all normalized weights, in the same order as the Pool's tokens, along with the index of the token
-     * with the highest weight
+     * with the highest weight.
      */
     function _getNormalizedWeightsAndMaxWeightIndex() internal view virtual returns (uint256[] memory, uint256);
 
@@ -94,8 +99,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
 
-    function getNormalizedWeightsAndMaxWeightIndex() external view returns (uint256[] memory, uint256) {
-        return _getNormalizedWeightsAndMaxWeightIndex();
+    function getNormalizedWeights() external view returns (uint256[] memory) {
+        return _getNormalizedWeights();
     }
 
     // Base Pool handlers

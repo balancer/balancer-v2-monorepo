@@ -106,6 +106,25 @@ contract WeightedPool is BaseWeightedPool {
         }
     }
 
+    function _getNormalizedWeights() internal view virtual override returns (uint256[] memory) {
+        uint256 totalTokens = _getTotalTokens();
+        uint256[] memory normalizedWeights = new uint256[](totalTokens);
+
+        // prettier-ignore
+        {
+            if (totalTokens > 0) { normalizedWeights[0] = _normalizedWeight0;} else { return normalizedWeights; }
+            if (totalTokens > 1) { normalizedWeights[1] = _normalizedWeight1; } else { return normalizedWeights; }
+            if (totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else { return normalizedWeights; }
+            if (totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else { return normalizedWeights; }
+            if (totalTokens > 4) { normalizedWeights[4] = _normalizedWeight4; } else { return normalizedWeights; }
+            if (totalTokens > 5) { normalizedWeights[5] = _normalizedWeight5; } else { return normalizedWeights; }
+            if (totalTokens > 6) { normalizedWeights[6] = _normalizedWeight6; } else { return normalizedWeights; }
+            if (totalTokens > 7) { normalizedWeights[7] = _normalizedWeight7; } else { return normalizedWeights; }
+        }
+
+        return normalizedWeights;
+    }
+
     function _getNormalizedWeightsAndMaxWeightIndex()
         internal
         view
@@ -113,29 +132,6 @@ contract WeightedPool is BaseWeightedPool {
         override
         returns (uint256[] memory, uint256)
     {
-        uint256 totalTokens = _getTotalTokens();
-        uint256[] memory normalizedWeights = new uint256[](totalTokens);
-
-        // prettier-ignore
-        {
-            if (totalTokens > 0) { normalizedWeights[0] = _normalizedWeight0;} else
-            { return (normalizedWeights, _maxWeightTokenIndex); }
-            if (totalTokens > 1) { normalizedWeights[1] = _normalizedWeight1; } else
-            { return (normalizedWeights, _maxWeightTokenIndex); }
-            if (totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else
-            { return (normalizedWeights, _maxWeightTokenIndex); }
-            if (totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else
-            { return (normalizedWeights, _maxWeightTokenIndex); }
-            if (totalTokens > 4) { normalizedWeights[4] = _normalizedWeight4; } else
-            { return (normalizedWeights, _maxWeightTokenIndex); }
-            if (totalTokens > 5) { normalizedWeights[5] = _normalizedWeight5; } else
-            { return (normalizedWeights, _maxWeightTokenIndex); }
-            if (totalTokens > 6) { normalizedWeights[6] = _normalizedWeight6; } else
-            { return (normalizedWeights, _maxWeightTokenIndex); }
-            if (totalTokens > 7) { normalizedWeights[7] = _normalizedWeight7; } else
-            { return (normalizedWeights, _maxWeightTokenIndex); }
-        }
-
-        return (normalizedWeights, _maxWeightTokenIndex);
+        return (_getNormalizedWeights(), _maxWeightTokenIndex);
     }
 }

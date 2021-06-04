@@ -29,10 +29,9 @@ describe('WeightedPool', function () {
       });
 
       it('sets token weights', async () => {
-        const [normalizedWeights, maxWeightIndex] = await pool.getNormalizedWeightsAndMaxWeightIndex();
+        const normalizedWeights = await pool.getNormalizedWeights();
 
         expect(normalizedWeights).to.deep.equal(pool.normalizedWeights);
-        expect(maxWeightIndex).to.deep.equal(pool.maxWeightIndex);
       });
     });
   }
