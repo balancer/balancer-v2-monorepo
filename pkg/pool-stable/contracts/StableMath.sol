@@ -37,11 +37,7 @@ contract StableMath {
         uint256 amplificationParameter,
         uint256[] memory balances,
         bool roundUp
-    )
-        internal
-        pure
-        returns (uint256)
-    {
+    ) internal pure returns (uint256) {
         /**********************************************************************************************
         // invariant                                                                                 //
         // D = invariant                                                  D^(n+1)                    //

@@ -4,10 +4,13 @@ import { BigNumber } from 'ethers';
 import { BigNumberish, decimal, bn, fp, fromFp, toFp } from '../../../numbers';
 
 export function calculateInvariant(fpRawBalances: BigNumberish[], amplificationParameter: BigNumberish): BigNumber {
-  return calculateApproxInvariant(fpRawBalances, amplificationParameter)
+  return calculateApproxInvariant(fpRawBalances, amplificationParameter);
 }
 
-export function calculateApproxInvariant(fpRawBalances: BigNumberish[], amplificationParameter: BigNumberish): BigNumber {
+export function calculateApproxInvariant(
+  fpRawBalances: BigNumberish[],
+  amplificationParameter: BigNumberish
+): BigNumber {
   const totalCoins = fpRawBalances.length;
   const balances = fpRawBalances.map(fromFp);
 
@@ -132,23 +135,23 @@ export function calcBptOutGivenExactTokensIn(
   fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
   // Get current invariant
-  const currentInvariant = fromFp(calculateInvariant(fpBalances, amplificationParameter))
+  const currentInvariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));
 
-  const balances = fpBalances.map(fromFp)
-  const amountsIn = fpAmountsIn.map(fromFp)
+  const balances = fpBalances.map(fromFp);
+  const amountsIn = fpAmountsIn.map(fromFp);
 
   // First calculate the sum of all token balances which will be used to calculate
   // the current weights of each token relative to the sum of all balances
-  const sumBalances = balances.reduce((a: Decimal, b: Decimal) => a.add(b), decimal(0))
+  const sumBalances = balances.reduce((a: Decimal, b: Decimal) => a.add(b), decimal(0));
 
   // Calculate the weighted balance ratio without considering fees
-  const balanceRatiosWithFee = []
+  const balanceRatiosWithFee = [];
   // The weighted sum of token balance rations sans fee
-  let invariantRatioWithFees = decimal(0)
+  let invariantRatioWithFees = decimal(0);
   for (let i = 0; i < balances.length; i++) {
-    const currentWeight = balances[i].div(sumBalances)
-    balanceRatiosWithFee[i] = balances[i].add(amountsIn[i]).div(balances[i])
-    invariantRatioWithFees = invariantRatioWithFees.add(balanceRatiosWithFee[i].mul(currentWeight))
+    const currentWeight = balances[i].div(sumBalances);
+    balanceRatiosWithFee[i] = balances[i].add(amountsIn[i]).div(balances[i]);
+    invariantRatioWithFees = invariantRatioWithFees.add(balanceRatiosWithFee[i].mul(currentWeight));
   }
 
   // Second loop to calculate new amounts in taking into account the fee on the % excess
@@ -157,24 +160,24 @@ export function calcBptOutGivenExactTokensIn(
 
     // Check if the balance ratio is greater than the ideal ratio to charge fees or not
     if (balanceRatiosWithFee[i].gt(invariantRatioWithFees)) {
-      const nonTaxableAmount = balances[i].mul(invariantRatioWithFees.sub(1))
-      const taxableAmount = amountsIn[i].sub(nonTaxableAmount)
-      amountInWithoutFee = nonTaxableAmount.add(taxableAmount.mul(decimal(1).sub(fromFp(fpSwapFeePercentage))))
+      const nonTaxableAmount = balances[i].mul(invariantRatioWithFees.sub(1));
+      const taxableAmount = amountsIn[i].sub(nonTaxableAmount);
+      amountInWithoutFee = nonTaxableAmount.add(taxableAmount.mul(decimal(1).sub(fromFp(fpSwapFeePercentage))));
     } else {
-      amountInWithoutFee = amountsIn[i]
+      amountInWithoutFee = amountsIn[i];
     }
 
-    balances[i] = balances[i].add(amountInWithoutFee)
+    balances[i] = balances[i].add(amountInWithoutFee);
   }
 
   // Calculate the new invariant, taking swap fees into account
-  const newInvariant = fromFp(calculateInvariant(balances.map(fp), amplificationParameter))
-  const invariantRatio = newInvariant.div(currentInvariant)
+  const newInvariant = fromFp(calculateInvariant(balances.map(fp), amplificationParameter));
+  const invariantRatio = newInvariant.div(currentInvariant);
 
   if (invariantRatio.gt(1)) {
-    return fp(fromFp(fpBptTotalSupply).mul(invariantRatio.sub(1)))
+    return fp(fromFp(fpBptTotalSupply).mul(invariantRatio.sub(1)));
   } else {
-    return bn(0)
+    return bn(0);
   }
 }
 
@@ -187,15 +190,17 @@ export function calcTokenInGivenExactBptOut(
   fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
   // Get current invariant
-  const fpCurrentInvariant = bn(calculateInvariant(fpBalances, amplificationParameter))
+  const fpCurrentInvariant = bn(calculateInvariant(fpBalances, amplificationParameter));
 
   // Calculate new invariant
-  const newInvariant = fromFp(bn(fpBptTotalSupply).add(fpBptAmountOut)).div(fromFp(fpBptTotalSupply)).mul(fromFp(fpCurrentInvariant))
+  const newInvariant = fromFp(bn(fpBptTotalSupply).add(fpBptAmountOut))
+    .div(fromFp(fpBptTotalSupply))
+    .mul(fromFp(fpCurrentInvariant));
 
   // First calculate the sum of all token balances which will be used to calculate
   // the current weight of token
-  const balances = fpBalances.map(fromFp)
-  const sumBalances = balances.reduce((a: Decimal, b: Decimal) => a.add(b), decimal(0))
+  const balances = fpBalances.map(fromFp);
+  const sumBalances = balances.reduce((a: Decimal, b: Decimal) => a.add(b), decimal(0));
 
   // Calculate amount in without fee.
   const newBalanceTokenIndex = _getTokenBalanceGivenInvariantAndAllOtherBalances(
@@ -203,17 +208,17 @@ export function calcTokenInGivenExactBptOut(
     amplificationParameter,
     newInvariant,
     tokenIndex
-  )
-  const amountInWithoutFee = newBalanceTokenIndex.sub(balances[tokenIndex])
+  );
+  const amountInWithoutFee = newBalanceTokenIndex.sub(balances[tokenIndex]);
 
   // We can now compute how much extra balance is being deposited and used in virtual swaps, and charge swap fees
   // accordingly.
-  const currentWeight = balances[tokenIndex].div(sumBalances)
-  const taxablePercentage = currentWeight.gt(1) ? 0 : decimal(1).sub(currentWeight)
-  const taxableAmount = amountInWithoutFee.mul(taxablePercentage)
-  const nonTaxableAmount = amountInWithoutFee.sub(taxableAmount)
+  const currentWeight = balances[tokenIndex].div(sumBalances);
+  const taxablePercentage = currentWeight.gt(1) ? 0 : decimal(1).sub(currentWeight);
+  const taxableAmount = amountInWithoutFee.mul(taxablePercentage);
+  const nonTaxableAmount = amountInWithoutFee.sub(taxableAmount);
 
-  const bptOut = nonTaxableAmount.add(taxableAmount.div(decimal(1).sub(fromFp(fpSwapFeePercentage))))
+  const bptOut = nonTaxableAmount.add(taxableAmount.div(decimal(1).sub(fromFp(fpSwapFeePercentage))));
 
   return fp(bptOut);
 }
@@ -226,22 +231,22 @@ export function calcBptInGivenExactTokensOut(
   fpSwapFeePercentage: BigNumber
 ): BigNumber {
   // Get current invariant
-  const currentInvariant = fromFp(calculateInvariant(fpBalances, amplificationParameter))
+  const currentInvariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));
 
-  const balances = fpBalances.map(fromFp)
-  const amountsOut = fpAmountsOut.map(fromFp)
+  const balances = fpBalances.map(fromFp);
+  const amountsOut = fpAmountsOut.map(fromFp);
 
   // First calculate the sum of all token balances which will be used to calculate
   // the current weight of token
-  const sumBalances = balances.reduce((a: Decimal, b: Decimal) => a.add(b), decimal(0))
+  const sumBalances = balances.reduce((a: Decimal, b: Decimal) => a.add(b), decimal(0));
 
   // Calculate the weighted balance ratio without considering fees
-  const balanceRatiosWithoutFee = []
-  let invariantRatioWithoutFees = decimal(0)
+  const balanceRatiosWithoutFee = [];
+  let invariantRatioWithoutFees = decimal(0);
   for (let i = 0; i < balances.length; i++) {
-    const currentWeight = balances[i].div(sumBalances)
-    balanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).div(balances[i])
-    invariantRatioWithoutFees = invariantRatioWithoutFees.add(balanceRatiosWithoutFee[i].mul(currentWeight))
+    const currentWeight = balances[i].div(sumBalances);
+    balanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).div(balances[i]);
+    invariantRatioWithoutFees = invariantRatioWithoutFees.add(balanceRatiosWithoutFee[i].mul(currentWeight));
   }
 
   // Second loop to calculate new amounts in taking into account the fee on the % excess
@@ -249,26 +254,28 @@ export function calcBptInGivenExactTokensOut(
     // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it to
     // 'token out'. This results in slightly larger price impact.
 
-    let amountOutWithFee
+    let amountOutWithFee;
     if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
-      const invariantRatioComplement = invariantRatioWithoutFees.gt(1) ? decimal(0) : decimal(1).sub(invariantRatioWithoutFees)
-      const nonTaxableAmount = balances[i].mul(invariantRatioComplement)
+      const invariantRatioComplement = invariantRatioWithoutFees.gt(1)
+        ? decimal(0)
+        : decimal(1).sub(invariantRatioWithoutFees);
+      const nonTaxableAmount = balances[i].mul(invariantRatioComplement);
       const taxableAmount = amountsOut[i].sub(nonTaxableAmount);
-      amountOutWithFee = nonTaxableAmount.add(taxableAmount.div(decimal(1).sub(fromFp(fpSwapFeePercentage))))
+      amountOutWithFee = nonTaxableAmount.add(taxableAmount.div(decimal(1).sub(fromFp(fpSwapFeePercentage))));
     } else {
       amountOutWithFee = amountsOut[i];
     }
 
-    balances[i] = balances[i].sub(amountOutWithFee)
+    balances[i] = balances[i].sub(amountOutWithFee);
   }
 
   // get new invariant taking into account swap fees
-  const newInvariant = fromFp(calculateInvariant(balances.map(fp), amplificationParameter))
+  const newInvariant = fromFp(calculateInvariant(balances.map(fp), amplificationParameter));
 
   // return amountBPTIn
-  const invariantRatio = newInvariant.div(currentInvariant)
-  const invariantRatioComplement = invariantRatio.lt(1) ? decimal(1).sub(invariantRatio) : decimal(0)
-  return fp(fromFp(fpBptTotalSupply).mul(invariantRatioComplement))
+  const invariantRatio = newInvariant.div(currentInvariant);
+  const invariantRatioComplement = invariantRatio.lt(1) ? decimal(1).sub(invariantRatio) : decimal(0);
+  return fp(fromFp(fpBptTotalSupply).mul(invariantRatioComplement));
 }
 
 export function calcTokenOutGivenExactBptIn(
@@ -280,31 +287,38 @@ export function calcTokenOutGivenExactBptIn(
   fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
   // Get current invariant
-  const fpCurrentInvariant = bn(calculateInvariant(fpBalances, amplificationParameter))
+  const fpCurrentInvariant = bn(calculateInvariant(fpBalances, amplificationParameter));
 
   // Calculate new invariant
-  const newInvariant = fromFp(bn(fpBptTotalSupply).sub(fpBptAmountIn)).div(fromFp(fpBptTotalSupply)).mul(fromFp(fpCurrentInvariant))
+  const newInvariant = fromFp(bn(fpBptTotalSupply).sub(fpBptAmountIn))
+    .div(fromFp(fpBptTotalSupply))
+    .mul(fromFp(fpCurrentInvariant));
 
   // First calculate the sum of all token balances which will be used to calculate
   // the current weight of token
-  const balances = fpBalances.map(fromFp)
-  const sumBalances = balances.reduce((a: Decimal, b: Decimal) => a.add(b), decimal(0))
+  const balances = fpBalances.map(fromFp);
+  const sumBalances = balances.reduce((a: Decimal, b: Decimal) => a.add(b), decimal(0));
 
   // get amountOutBeforeFee
-  const newBalanceTokenIndex = _getTokenBalanceGivenInvariantAndAllOtherBalances(balances, amplificationParameter, newInvariant, tokenIndex)
-  const amountOutWithoutFee = balances[tokenIndex].sub(newBalanceTokenIndex)
+  const newBalanceTokenIndex = _getTokenBalanceGivenInvariantAndAllOtherBalances(
+    balances,
+    amplificationParameter,
+    newInvariant,
+    tokenIndex
+  );
+  const amountOutWithoutFee = balances[tokenIndex].sub(newBalanceTokenIndex);
 
   // We can now compute how much excess balance is being withdrawn as a result of the virtual swaps, which result
   // in swap fees.
-  const currentWeight = balances[tokenIndex].div(sumBalances)
-  const taxablePercentage = currentWeight.gt(1) ? decimal(0) : decimal(1).sub(currentWeight)
+  const currentWeight = balances[tokenIndex].div(sumBalances);
+  const taxablePercentage = currentWeight.gt(1) ? decimal(0) : decimal(1).sub(currentWeight);
 
   // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it
   // to 'token out'. This results in slightly larger price impact. Fees are rounded up.
-  const taxableAmount = amountOutWithoutFee.mul(taxablePercentage)
-  const nonTaxableAmount = amountOutWithoutFee.sub(taxableAmount)
-  const tokenOut = nonTaxableAmount.add(taxableAmount.mul(decimal(1).sub(fromFp(fpSwapFeePercentage))))
-  return fp(tokenOut)
+  const taxableAmount = amountOutWithoutFee.mul(taxablePercentage);
+  const nonTaxableAmount = amountOutWithoutFee.sub(taxableAmount);
+  const tokenOut = nonTaxableAmount.add(taxableAmount.mul(decimal(1).sub(fromFp(fpSwapFeePercentage))));
+  return fp(tokenOut);
 }
 
 export function calcTokensOutGivenExactBptIn(
@@ -369,7 +383,7 @@ function _getTokenBalanceGivenInvariantAndAllOtherBalances(
   }
 
   // const a = 1;
-  amplificationParameter = decimal(amplificationParameter)
+  amplificationParameter = decimal(amplificationParameter);
   const b = invariant.div(amplificationParameter.mul(numTokens)).add(sum).sub(invariant);
   const c = invariant
     .pow(numTokens + 1)
