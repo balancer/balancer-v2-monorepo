@@ -176,6 +176,12 @@ export default class WeightedPool {
     return this.instance.getSwapFeePercentage();
   }
 
+  // Valid on Oracle pools
+  async getNormalizedWeights(): Promise<BigNumber[]> {
+    return this.instance.getNormalizedWeights()
+  }
+
+  // Valid on BaseWeightedPool subclasses
   async getNormalizedWeightsAndMaxWeightIndex(): Promise<[BigNumber[], BigNumber]> {
     return this.instance.getNormalizedWeightsAndMaxWeightIndex()
   }

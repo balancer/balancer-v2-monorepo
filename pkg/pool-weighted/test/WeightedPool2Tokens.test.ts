@@ -56,6 +56,14 @@ describe('WeightedPool2Tokens', function () {
     });
   };
 
+  describe('weights', () => {
+    it('sets token weights', async () => {
+      const normalizedWeights = await pool.getNormalizedWeights();
+
+      expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0000001);
+    });
+  });
+
   describe('oracle', () => {
     const MAX_RELATIVE_ERROR = 0.00005;
 
