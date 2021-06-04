@@ -14,21 +14,25 @@
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeCast.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "./IAssetManager.sol";
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-// solhint-disable private-vars-leading-underscore
-abstract contract SinglePoolAssetManager is IAssetManager {
-    using FixedPoint for uint256;
-    using SafeCast for uint256;
-
-    uint64 private constant ONE = 1e18;
+/**
+ * @title RewardsAssetManager
+ * @dev RewardsAssetManager is owned by a single pool such that any
+ * rewards received by the Asset Manager may be distributed to LPs
+ *
+ * Note: any behaviour to claim these rewards must be implemented in a derived contract
+ */
+abstract contract RewardsAssetManager is IAssetManager {
+    using Math for uint256;
 
     /// @notice The Balancer Vault contract
     IVault public immutable vault;
@@ -39,9 +43,6 @@ abstract contract SinglePoolAssetManager is IAssetManager {
     /// @notice The token which this asset manager is investing
     IERC20 public immutable token;
 
-    /// @notice the total AUM of tokens that the asset manager is aware it has earned
-    uint256 public totalAUM;
-
     PoolConfig private _poolConfig;
 
     constructor(
@@ -49,13 +50,13 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         bytes32 _poolId,
         IERC20 _token
     ) {
+        _token.approve(address(_vault), type(uint256).max);
         vault = _vault;
         poolId = _poolId;
         token = _token;
-        _token.approve(address(_vault), type(uint256).max);
     }
 
-    modifier onlyPool() {
+    modifier onlyPoolController() {
         address poolAddress = address((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
         require(msg.sender == poolAddress, "Only callable by pool controller");
         _;
@@ -63,7 +64,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
 
     modifier withCorrectPool(bytes32 pId) {
         require(pId == poolId, "SinglePoolAssetManager called with incorrect poolId");
-        require(pId != bytes32(0), "Pool Id cannot be empty");
+        require(pId != bytes32(0), "Pool id cannot be empty");
         _;
     }
 
@@ -74,13 +75,6 @@ abstract contract SinglePoolAssetManager is IAssetManager {
     }
 
     // Investment configuration
-    function _getTargetInvestment(
-        uint256 cash,
-        uint256 managed,
-        uint256 investablePercent
-    ) private pure returns (uint256) {
-        return (cash + managed).mulDown(investablePercent);
-    }
 
     function maxInvestableBalance(bytes32 pId) public view override withCorrectPool(pId) returns (int256) {
         return _maxInvestableBalance(readAUM());
@@ -89,7 +83,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
     function _maxInvestableBalance(uint256 aum) internal view returns (int256) {
         (uint256 poolCash, , , ) = vault.getPoolTokenInfo(poolId, token);
         // Calculate the managed portion of funds locally as the Vault is unaware of returns
-        return int256(_getTargetInvestment(poolCash, aum, _poolConfig.targetPercentage)) - int256(aum);
+        return int256(FixedPoint.mulDown(poolCash.add(aum), _poolConfig.targetPercentage)) - int256(aum);
     }
 
     // Reporting
@@ -99,7 +93,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
 
         IVault.PoolBalanceOp memory transfer = IVault.PoolBalanceOp(
             IVault.PoolBalanceOpKind.UPDATE,
-            poolId,
+            pId,
             token,
             managedBalance
         );
@@ -111,42 +105,50 @@ abstract contract SinglePoolAssetManager is IAssetManager {
 
     // Deposit / Withdraw
 
+    /**
+     * @dev Transfers capital into the asset manager, and then invests it
+     * @param pId - the id of the pool depositing funds into this asset manager
+     * @param amount - the amount of tokens being deposited
+     */
     function capitalIn(bytes32 pId, uint256 amount) public override withCorrectPool(pId) {
         uint256 aum = readAUM();
+        (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
+        uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _poolConfig.targetPercentage);
 
-        int256 maxAmountIn = _maxInvestableBalance(aum);
-        require(maxAmountIn >= amount.toInt256(), "investment amount exceeds target");
+        require(targetInvestment >= poolManaged.add(amount), "investment amount exceeds target");
 
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
         // Update the vault with new managed balance accounting for returns
-        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, poolId, token, aum);
+        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, pId, token, poolManaged);
         // Pull funds from the vault
-        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, poolId, token, amount);
+        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, pId, token, amount);
 
         vault.managePoolBalance(ops);
 
         _invest(amount, aum);
-
-        // Update with gains and add deposited tokens from AUM
-        totalAUM = aum.add(amount);
     }
 
+    /**
+     * @notice Divests capital back to the asset manager and then sends it to the vault
+     * @param pId - the id of the pool withdrawing funds from this asset manager
+     * @param amount - the amount of tokens to withdraw to the vault
+     */
     function capitalOut(bytes32 pId, uint256 amount) public override withCorrectPool(pId) {
         uint256 aum = readAUM();
+        uint256 tokensOut = _divest(amount, aum);
+        (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
+        uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _poolConfig.targetPercentage);
 
-        _divest(amount, aum);
+        require(poolManaged >= targetInvestment.add(tokensOut), "withdrawal leaves insufficient balance invested");
 
-        int256 maxAmountOut = -1 * _maxInvestableBalance(aum);
-        require(maxAmountOut >= amount.toInt256(), "withdrawal leaves insufficient balance invested");
-
-        // Update with gains and remove withdrawn tokens from AUM
-        totalAUM = aum.sub(amount);
+        // As we have now updated totalAUM and burned the pool's shares
+        // calling balanceOf(poolId) will now return the pool's managed balance post-withdrawal
 
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
         // Send funds back to the vault
-        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, poolId, token, amount);
+        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, pId, token, tokensOut);
         // Update the vault with new managed balance accounting for returns
-        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, poolId, token, totalAUM);
+        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, pId, token, aum.sub(tokensOut));
 
         vault.managePoolBalance(ops);
     }
@@ -168,12 +170,11 @@ abstract contract SinglePoolAssetManager is IAssetManager {
 
     function readAUM() public view virtual override returns (uint256);
 
-    // TODO restrict access with onlyPool
+    // TODO restrict access with onlyPoolController
     function setPoolConfig(bytes32 pId, PoolConfig calldata config) external override withCorrectPool(pId) {
-        require(pId == poolId, "poolId mismatch");
-        require(config.targetPercentage <= ONE, "Investment target must be less than 100%");
+        require(config.targetPercentage <= FixedPoint.ONE, "Investment target must be less than 100%");
         require(config.criticalPercentage <= config.targetPercentage, "Critical level must be less than target");
-        require(config.feePercentage <= ONE / 10, "Fee on critical rebalances must be less than 10%");
+        require(config.feePercentage <= FixedPoint.ONE / 10, "Fee on critical rebalances must be less than 10%");
 
         _poolConfig = config;
     }
@@ -198,23 +199,25 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         uint256 poolManaged,
         PoolConfig memory config
     ) internal pure returns (uint256) {
-        uint256 criticalManagedBalance = (poolCash + poolManaged).mulDown(config.criticalPercentage);
+        uint256 criticalManagedBalance = FixedPoint.mulDown(poolCash + poolManaged, config.criticalPercentage);
         if (poolManaged >= criticalManagedBalance) {
             return 0;
         }
-        return criticalManagedBalance.sub(poolManaged).mulDown(config.feePercentage);
+        return FixedPoint.mulDown(criticalManagedBalance.sub(poolManaged), config.feePercentage);
     }
 
     /**
      * @notice Rebalances funds between pool and asset manager to maintain target investment percentage.
      * @return feeAmount - the amount of tokens to be made available to msg.sender as a fee
      */
-    function _rebalance() internal returns (uint256 feeAmount) {
+    function _rebalance(
+        bytes32 /*pId*/
+    ) internal returns (uint256 feeAmount) {
         uint256 aum = readAUM();
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
         PoolConfig memory config = _poolConfig;
 
-        uint256 targetInvestment = (poolCash + poolManaged).mulDown(config.targetPercentage);
+        uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, config.targetPercentage);
         if (targetInvestment > poolManaged) {
             // Pool is under-invested so add more funds
             uint256 rebalanceAmount = targetInvestment.sub(poolManaged);
@@ -224,7 +227,7 @@ abstract contract SinglePoolAssetManager is IAssetManager {
             feeAmount = _getRebalanceFee(poolCash, poolManaged, config);
 
             // As paying out fees reduces the TVL of the pool, we must correct the amount invested to account for this
-            capitalIn(poolId, rebalanceAmount.sub(feeAmount.mulDown(config.targetPercentage)));
+            capitalIn(poolId, rebalanceAmount.sub(FixedPoint.mulDown(feeAmount, config.targetPercentage)));
         } else {
             // Pool is over-invested so remove some funds
             // Incentivising rebalancer is unneccessary as removing capital
@@ -234,12 +237,12 @@ abstract contract SinglePoolAssetManager is IAssetManager {
     }
 
     function rebalance(bytes32 pId) external override withCorrectPool(pId) {
-        uint256 rebalancerFee = _rebalance();
+        uint256 rebalancerFee = _rebalance(pId);
 
         if (rebalancerFee > 0) {
             // Pull funds from the vault
             IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
-            ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, poolId, token, rebalancerFee);
+            ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, pId, token, rebalancerFee);
             vault.managePoolBalance(ops);
 
             // Send fee to rebalancer
@@ -247,11 +250,34 @@ abstract contract SinglePoolAssetManager is IAssetManager {
         }
     }
 
-    function realizeGains() public override {
-        totalAUM = readAUM();
+    /**
+     * @notice Rebalances funds between pool and asset manager to maintain target investment percentage.
+     * Any reward from rebalancing the pool is immediately used in the provided batch swap.
+     */
+    function rebalanceAndSwap(
+        bytes32 pId,
+        IVault.BatchSwapStep[] calldata swaps,
+        IAsset[] calldata assets,
+        IVault.FundManagement calldata funds,
+        int256[] calldata limits,
+        uint256 deadline
+    ) external withCorrectPool(pId) {
+        uint256 rebalancerFee = _rebalance(pId);
+
+        if (rebalancerFee > 0) {
+            // Pull funds from the vault
+            IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
+            ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, pId, token, rebalancerFee);
+            vault.managePoolBalance(ops);
+
+            require(funds.sender == address(this), "Asset Manager must be sender");
+            require(!funds.fromInternalBalance, "Can't use Asset Manager's internal balance");
+            require(address(assets[swaps[0].assetInIndex]) == address(token), "Must swap asset manager's token");
+            vault.batchSwap(IVault.SwapKind.GIVEN_IN, swaps, assets, funds, limits, deadline);
+        }
     }
 
     function balanceOf(bytes32 pId) public view override withCorrectPool(pId) returns (uint256) {
-        return totalAUM;
+        return readAUM();
     }
 }

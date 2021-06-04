@@ -96,6 +96,11 @@ export default class WeightedPool {
     return this.weights;
   }
 
+  get maxWeightIndex(): BigNumberish {
+    const maxIdx = this.weights.indexOf(this.maxWeight);
+    return bn(maxIdx);
+  }
+
   async name(): Promise<string> {
     return this.instance.name();
   }

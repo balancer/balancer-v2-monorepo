@@ -10,6 +10,7 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 
@@ -20,22 +21,21 @@ const tokenInitialBalance = bn(200e18);
 const amount = bn(100e18);
 
 const setup = async () => {
-  const [, admin, lp, other] = await ethers.getSigners();
+  const [, lp, other] = await ethers.getSigners();
 
   const tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
 
   // Deploy Balancer Vault
-  const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
-  const vault = await deploy('v2-vault/Vault', { args: [authorizer.address, tokens.DAI.address, 0, 0] });
-
-  // Deploy Asset manager
-  const assetManager = await deploy('TestAssetManager', {
-    args: [vault.address, tokens.DAI.address],
-  });
+  const vault = await Vault.create();
 
   // Deploy Pool
   const pool = await deploy('v2-vault/MockPool', { args: [vault.address, GeneralPool] });
   const poolId = await pool.getPoolId();
+
+  // Deploy Asset manager
+  const assetManager = await deploy('TestAssetManager', {
+    args: [vault.address, poolId, tokens.DAI.address],
+  });
 
   await tokens.mint({ to: lp, amount: tokenInitialBalance });
   await tokens.approve({ to: vault.address, from: [lp] });
@@ -45,7 +45,7 @@ const setup = async () => {
 
   await pool.registerTokens(tokens.addresses, assetManagers);
 
-  await vault.connect(lp).joinPool(poolId, lp.address, lp.address, {
+  await vault.instance.connect(lp).joinPool(poolId, lp.address, lp.address, {
     assets: tokens.addresses,
     maxAmountsIn: tokens.addresses.map(() => MAX_UINT256),
     fromInternalBalance: false,
@@ -63,19 +63,19 @@ const setup = async () => {
       assetManager,
       tokens,
       pool,
-      vault,
+      vault: vault.instance,
     },
   };
 };
 
-describe('Asset manager', function () {
+describe('Rewards Asset manager', function () {
   let tokens: TokenList, vault: Contract, assetManager: Contract;
 
   let lp: SignerWithAddress, other: SignerWithAddress;
   let poolId: string;
 
   before('deploy base contracts', async () => {
-    [, , lp, other] = await ethers.getSigners();
+    [, lp, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('set up asset manager', async () => {
@@ -131,10 +131,12 @@ describe('Asset manager', function () {
         'Fee on critical rebalances must be less than 10%'
       );
     });
+
+    it('prevents an unauthorized user from setting the pool config');
   });
 
-  describe('capital[In/Out]', () => {
-    describe('when a token is below its investment target', () => {
+  describe('capitalIn', () => {
+    context('when a token is below its investment target', () => {
       let poolController: SignerWithAddress; // TODO
       const investablePercent = fp(0.9);
 
@@ -145,63 +147,43 @@ describe('Asset manager', function () {
           .setPoolConfig(poolId, { targetPercentage: investablePercent, criticalPercentage: 0, feePercentage: 0 });
       });
 
-      describe('capitalIn', () => {
-        it('transfers only the requested token from the vault to the lending pool via the manager', async () => {
-          await expectBalanceChange(() => assetManager.connect(lp).capitalIn(poolId, amount), tokens, [
-            { account: assetManager.address, changes: { DAI: amount } },
-            { account: vault.address, changes: { DAI: -amount } },
-          ]);
-        });
-
-        it('allows anyone to deposit pool assets to an investment manager to get to the target investable %', async () => {
-          const amountToDeposit = tokenInitialBalance.mul(bn(79)).div(bn(100));
-
-          await expectBalanceChange(() => assetManager.connect(lp).capitalIn(poolId, amountToDeposit), tokens, [
-            { account: assetManager.address, changes: { DAI: amountToDeposit } },
-            { account: vault.address, changes: { DAI: -amountToDeposit } },
-          ]);
-        });
-
-        it('prevents depositing pool assets to an investment manager over the target investable %', async () => {
-          const amountToDeposit = tokenInitialBalance.mul(bn(99)).div(bn(100));
-
-          expect(assetManager.connect(lp).capitalIn(poolId, amountToDeposit)).to.be.revertedWith(
-            OVER_INVESTMENT_REVERT_REASON
-          );
-        });
-
-        it("updates the pool's managed balance", async () => {
-          const amountToDeposit = tokenInitialBalance.mul(bn(79)).div(bn(100));
-
-          await assetManager.connect(lp).capitalIn(poolId, amountToDeposit);
-
-          const { managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-          const actualManagedBalance = await assetManager.readAUM();
-
-          expect(managed).to.be.eq(actualManagedBalance);
-        });
+      it('transfers only the requested token from the vault to the lending pool via the manager', async () => {
+        await expectBalanceChange(() => assetManager.connect(lp).capitalIn(poolId, amount), tokens, [
+          { account: assetManager.address, changes: { DAI: amount } },
+          { account: vault.address, changes: { DAI: -amount } },
+        ]);
       });
 
-      describe('capitalOut', () => {
-        sharedBeforeEach(async () => {
-          const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+      it('allows anyone to deposit pool assets to an investment manager to get to the target investable %', async () => {
+        const amountToDeposit = tokenInitialBalance.mul(bn(79)).div(bn(100));
 
-          await assetManager.connect(poolController).capitalIn(poolId, maxInvestableBalance.div(2));
+        await expectBalanceChange(() => assetManager.connect(lp).capitalIn(poolId, amountToDeposit), tokens, [
+          { account: assetManager.address, changes: { DAI: amountToDeposit } },
+          { account: vault.address, changes: { DAI: -amountToDeposit } },
+        ]);
+      });
 
-          // should be under invested
-          expect(maxInvestableBalance).to.gt(bn(0));
-        });
+      it('prevents depositing pool assets to an investment manager over the target investable %', async () => {
+        const amountToDeposit = tokenInitialBalance.mul(bn(99)).div(bn(100));
 
-        it('reverts', async () => {
-          const minimalWithdrawal = 100;
-          await expect(assetManager.connect(lp).capitalOut(poolId, minimalWithdrawal)).revertedWith(
-            UNDER_INVESTMENT_REVERT_REASON
-          );
-        });
+        expect(assetManager.connect(lp).capitalIn(poolId, amountToDeposit)).to.be.revertedWith(
+          OVER_INVESTMENT_REVERT_REASON
+        );
+      });
+
+      it("updates the pool's managed balance", async () => {
+        const amountToDeposit = tokenInitialBalance.mul(bn(79)).div(bn(100));
+
+        await assetManager.connect(lp).capitalIn(poolId, amountToDeposit);
+
+        const { managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+        const actualManagedBalance = await assetManager.readAUM();
+
+        expect(managed).to.be.eq(actualManagedBalance);
       });
     });
 
-    describe('when a token is above its investment target', () => {
+    context('when a token is above its investment target', () => {
       let poolController: SignerWithAddress; // TODO
       const amountToDeposit = tokenInitialBalance.mul(bn(9)).div(bn(10));
 
@@ -220,62 +202,108 @@ describe('Asset manager', function () {
         // Simulate a return on asset manager's investment
         const amountReturned = amountToDeposit.div(10);
         await assetManager.connect(lp).setUnrealisedAUM(amountToDeposit.add(amountReturned));
-        await assetManager.connect(lp).realizeGains();
 
         await assetManager.connect(lp).updateBalanceOfPool(poolId);
       });
 
-      describe('capitalIn', () => {
-        it('reverts', async () => {
-          const minimalInvestment = 1;
-          await expect(assetManager.connect(lp).capitalIn(poolId, minimalInvestment)).revertedWith(
-            OVER_INVESTMENT_REVERT_REASON
-          );
-        });
+      it('reverts', async () => {
+        const minimalInvestment = 1;
+        await expect(assetManager.connect(lp).capitalIn(poolId, minimalInvestment)).revertedWith(
+          OVER_INVESTMENT_REVERT_REASON
+        );
+      });
+    });
+  });
+
+  describe('capitalOut', () => {
+    context('when a token is below its investment target', () => {
+      let poolController: SignerWithAddress; // TODO
+      const investablePercent = fp(0.9);
+
+      sharedBeforeEach(async () => {
+        poolController = lp; // TODO
+        await assetManager
+          .connect(poolController)
+          .setPoolConfig(poolId, { targetPercentage: investablePercent, criticalPercentage: 0, feePercentage: 0 });
+
+        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+        await assetManager.connect(poolController).capitalIn(poolId, maxInvestableBalance.div(2));
+
+        // should be under invested
+        expect(maxInvestableBalance).to.gt(0);
       });
 
-      describe('capitalOut', () => {
-        it('allows anyone to withdraw assets to a pool to get to the target investable %', async () => {
-          const amountToWithdraw = (await assetManager.maxInvestableBalance(poolId)).mul(-1);
-          // await assetManager.connect(poolController).setInvestablePercent(poolId, fp(0));
+      it('reverts', async () => {
+        const minimalWithdrawal = 100;
+        await expect(assetManager.connect(lp).capitalOut(poolId, minimalWithdrawal)).revertedWith(
+          UNDER_INVESTMENT_REVERT_REASON
+        );
+      });
+    });
 
-          await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
-            { account: assetManager.address, changes: { DAI: ['very-near', -amountToWithdraw] } },
-            { account: vault.address, changes: { DAI: ['very-near', amountToWithdraw] } },
-          ]);
-        });
+    context('when a token is above its investment target', () => {
+      let poolController: SignerWithAddress; // TODO
+      const amountToDeposit = tokenInitialBalance.mul(bn(9)).div(bn(10));
 
-        it("updates the pool's managed balance", async () => {
-          const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+      sharedBeforeEach(async () => {
+        const investablePercent = fp(0.9);
+        poolController = lp; // TODO
+        await assetManager
+          .connect(poolController)
+          .setPoolConfig(poolId, { targetPercentage: investablePercent, criticalPercentage: 0, feePercentage: 0 });
+        await assetManager.connect(poolController).capitalIn(poolId, amountToDeposit);
 
-          // return a portion of the return to the vault to serve as a buffer
-          const amountToWithdraw = maxInvestableBalance.abs();
+        // should be perfectly balanced
+        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+        expect(maxInvestableBalance).to.equal(bn(0));
 
-          await assetManager.connect(lp).capitalOut(poolId, amountToWithdraw);
+        // Simulate a return on asset manager's investment
+        const amountReturned = amountToDeposit.div(10);
+        await assetManager.connect(lp).setUnrealisedAUM(amountToDeposit.add(amountReturned));
 
-          const { managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-          const actualManagedBalance = await assetManager.readAUM();
+        await assetManager.connect(lp).updateBalanceOfPool(poolId);
+      });
 
-          expect(managed.sub(actualManagedBalance)).to.be.lt(10);
-        });
+      it('allows anyone to withdraw assets to a pool to get to the target investable %', async () => {
+        const amountToWithdraw = (await assetManager.maxInvestableBalance(poolId)).mul(-1);
+        // await assetManager.connect(poolController).setInvestablePercent(poolId, fp(0));
 
-        it('allows the pool to withdraw tokens to rebalance', async () => {
-          const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+        await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
+          { account: assetManager.address, changes: { DAI: ['very-near', -amountToWithdraw] } },
+          { account: vault.address, changes: { DAI: ['very-near', amountToWithdraw] } },
+        ]);
+      });
 
-          // return a portion of the return to the vault to serve as a buffer
-          const amountToWithdraw = maxInvestableBalance.abs();
+      it("updates the pool's managed balance", async () => {
+        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
 
-          await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
-            { account: assetManager.address, changes: { DAI: ['very-near', -amountToWithdraw] } },
-            { account: vault.address, changes: { DAI: ['very-near', amountToWithdraw] } },
-          ]);
-        });
+        // return a portion of the return to the vault to serve as a buffer
+        const amountToWithdraw = maxInvestableBalance.abs();
+
+        await assetManager.connect(lp).capitalOut(poolId, amountToWithdraw);
+
+        const { managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+        const actualManagedBalance = await assetManager.readAUM();
+
+        expect(managed.sub(actualManagedBalance)).to.be.lt(10);
+      });
+
+      it('allows the pool to withdraw tokens to rebalance', async () => {
+        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+
+        // return a portion of the return to the vault to serve as a buffer
+        const amountToWithdraw = maxInvestableBalance.abs();
+
+        await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
+          { account: assetManager.address, changes: { DAI: ['very-near', -amountToWithdraw] } },
+          { account: vault.address, changes: { DAI: ['very-near', amountToWithdraw] } },
+        ]);
       });
     });
   });
 
   describe('getRebalanceFee', () => {
-    describe('when pool is safely above critical investment level', () => {
+    context('when pool is safely above critical investment level', () => {
       let poolController: SignerWithAddress; // TODO
       const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
 
@@ -293,10 +321,10 @@ describe('Asset manager', function () {
       });
     });
 
-    describe('when pool is below critical investment level', () => {
+    context('when pool is below critical investment level', () => {
       let poolController: SignerWithAddress; // TODO
 
-      describe('when fee percentage is zero', () => {
+      context('when fee percentage is zero', () => {
         const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0) };
         sharedBeforeEach(async () => {
           poolController = lp; // TODO
@@ -310,7 +338,7 @@ describe('Asset manager', function () {
         });
       });
 
-      describe('when fee percentage is non-zero', () => {
+      context('when fee percentage is non-zero', () => {
         let targetInvestmentAmount: BigNumber;
         const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
         sharedBeforeEach(async () => {
@@ -329,8 +357,8 @@ describe('Asset manager', function () {
   });
 
   describe('rebalance', () => {
-    describe('when pool is below target investment level', () => {
-      describe('when pool is safely above critical investment level', () => {
+    context('when pool is below target investment level', () => {
+      context('when pool is safely above critical investment level', () => {
         let poolController: SignerWithAddress; // TODO
         const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
 
@@ -358,10 +386,10 @@ describe('Asset manager', function () {
         });
       });
 
-      describe('when pool is below critical investment level', () => {
+      context('when pool is below critical investment level', () => {
         let poolController: SignerWithAddress; // TODO
 
-        describe('when fee percentage is zero', () => {
+        context('when fee percentage is zero', () => {
           const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0) };
           sharedBeforeEach(async () => {
             poolController = lp; // TODO
@@ -384,7 +412,7 @@ describe('Asset manager', function () {
           });
         });
 
-        describe('when fee percentage is non-zero', () => {
+        context('when fee percentage is non-zero', () => {
           let zeroFeeRebalanceAmount: BigNumber;
           const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
           sharedBeforeEach(async () => {

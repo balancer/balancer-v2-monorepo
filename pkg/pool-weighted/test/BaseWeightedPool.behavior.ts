@@ -83,12 +83,6 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
         });
       });
 
-      it('sets token weights', async () => {
-        const normalizedWeights = await pool.getNormalizedWeights();
-
-        expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0000001);
-      });
-
       it('sets swap fee', async () => {
         expect(await pool.getSwapFeePercentage()).to.equal(POOL_SWAP_FEE_PERCENTAGE);
       });

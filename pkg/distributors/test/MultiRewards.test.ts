@@ -50,13 +50,13 @@ const setup = async () => {
 
   // Deploy staking contract for pool
   const stakingContract = await deploy('MultiRewards', {
-    args: [vault.address, pool.address],
+    args: [vault.address],
   });
 
   const rewardToken = rewardTokens.DAI;
 
   const rewardsDuration = 1; // Have a neglibile duration so that rewards are distributed instantaneously
-  await stakingContract.addReward(rewardToken.address, mockAssetManager.address, rewardsDuration);
+  await stakingContract.addReward(pool.address, rewardToken.address, mockAssetManager.address, rewardsDuration);
 
   await tokens.mint({ to: lp, amount: tokenInitialBalance });
   await tokens.approve({ to: vault.address, from: [lp] });
@@ -81,7 +81,6 @@ const setup = async () => {
       poolId,
     },
     contracts: {
-      tokens,
       rewardTokens,
       pool,
       stakingContract,
@@ -91,7 +90,7 @@ const setup = async () => {
 };
 
 describe('Staking contract', () => {
-  let lp: SignerWithAddress, other: SignerWithAddress, mockAssetManager: SignerWithAddress;
+  let admin: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress, mockAssetManager: SignerWithAddress;
 
   let rewardTokens: TokenList;
   let vault: Contract;
@@ -100,7 +99,7 @@ describe('Staking contract', () => {
   let pool: Contract;
 
   before('deploy base contracts', async () => {
-    [, , lp, mockAssetManager, other] = await ethers.getSigners();
+    [, admin, lp, mockAssetManager, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('set up asset manager', async () => {
@@ -122,9 +121,9 @@ describe('Staking contract', () => {
       const bptBalance = await pool.balanceOf(lp.address);
 
       const { v, r, s } = await signPermit(pool, lp, stakingContract, bptBalance);
-      await stakingContract.connect(lp).stakeWithPermit(bptBalance, MAX_UINT256, v, r, s);
+      await stakingContract.connect(lp).stakeWithPermit(pool.address, bptBalance, MAX_UINT256, v, r, s);
 
-      const stakedBalance = await stakingContract.balanceOf(lp.address);
+      const stakedBalance = await stakingContract.balanceOf(pool.address, lp.address);
       expect(stakedBalance).to.be.eq(bptBalance);
     });
   });
@@ -138,13 +137,15 @@ describe('Staking contract', () => {
       await pool.connect(lp).approve(stakingContract.address, bptBalance);
 
       // Stake 3/4 of the bpt to the LP and 1/4 to another address
-      await stakingContract.connect(lp)['stake(uint256)'](bptBalance.mul(3).div(4));
-      await stakingContract.connect(lp)['stake(uint256,address)'](bptBalance.div(4), other.address);
+      await stakingContract.connect(lp)['stake(address,uint256)'](pool.address, bptBalance.mul(3).div(4));
+      const args = [pool.address, bptBalance.div(4), other.address];
+      await stakingContract.connect(lp)['stake(address,uint256,address)'](...args);
     });
 
     it('sends expected amount of reward token to the rewards contract', async () => {
       await expectBalanceChange(
-        () => stakingContract.connect(mockAssetManager).notifyRewardAmount(rewardToken.address, rewardAmount),
+        () =>
+          stakingContract.connect(mockAssetManager).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount),
         rewardTokens,
         [{ account: stakingContract, changes: { DAI: rewardAmount } }]
       );
@@ -152,7 +153,9 @@ describe('Staking contract', () => {
 
     it('emits RewardAdded when an allocation is stored', async () => {
       const receipt = await (
-        await stakingContract.connect(mockAssetManager).notifyRewardAmount(rewardToken.address, rewardAmount)
+        await stakingContract
+          .connect(mockAssetManager)
+          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount)
       ).wait();
 
       expectEvent.inReceipt(receipt, 'RewardAdded', {
@@ -162,41 +165,47 @@ describe('Staking contract', () => {
     });
 
     it('distributes the reward according to the fraction of staked LP tokens', async () => {
-      await stakingContract.connect(mockAssetManager).notifyRewardAmount(rewardToken.address, rewardAmount);
+      await stakingContract
+        .connect(mockAssetManager)
+        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
       await advanceTime(10);
 
       // 3/4 share
       const expectedReward = fp(0.75);
-      const actualReward = await stakingContract.earned(lp.address, rewardToken.address);
+      const actualReward = await stakingContract.earned(pool.address, lp.address, rewardToken.address);
 
       expect(expectedReward.sub(actualReward).abs()).to.be.lte(100);
 
       // 1/4 share
       const expectedRewardOther = fp(0.25);
-      const actualRewardOther = await stakingContract.earned(other.address, rewardToken.address);
+      const actualRewardOther = await stakingContract.earned(pool.address, other.address, rewardToken.address);
 
       expect(expectedRewardOther.sub(actualRewardOther).abs()).to.be.lte(100);
     });
 
     it('allows a user to claim the reward to an EOA', async () => {
-      await stakingContract.connect(mockAssetManager).notifyRewardAmount(rewardToken.address, rewardAmount);
+      await stakingContract
+        .connect(mockAssetManager)
+        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
       await advanceTime(10);
 
       const expectedReward = fp(0.75);
 
-      await expectBalanceChange(() => stakingContract.connect(lp).getReward(), rewardTokens, [
+      await expectBalanceChange(() => stakingContract.connect(lp).getReward([pool.address]), rewardTokens, [
         { account: lp, changes: { DAI: ['very-near', expectedReward] } },
       ]);
     });
 
     it('allows a user to claim the reward to internal balance', async () => {
-      await stakingContract.connect(mockAssetManager).notifyRewardAmount(rewardToken.address, rewardAmount);
+      await stakingContract
+        .connect(mockAssetManager)
+        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
       await advanceTime(10);
 
       const expectedReward = fp(0.75);
 
       await expectBalanceChange(
-        () => stakingContract.connect(lp).getRewardAsInternalBalance(),
+        () => stakingContract.connect(lp).getRewardAsInternalBalance([pool.address]),
         rewardTokens,
         [{ account: lp, changes: { DAI: ['very-near', expectedReward] } }],
         vault
@@ -204,12 +213,14 @@ describe('Staking contract', () => {
     });
 
     it('emits RewardPaid when an allocation is claimed', async () => {
-      await stakingContract.connect(mockAssetManager).notifyRewardAmount(rewardToken.address, rewardAmount);
+      await stakingContract
+        .connect(mockAssetManager)
+        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
       await advanceTime(10);
 
       const expectedReward = bn('749999999999999923');
 
-      const receipt = await (await stakingContract.connect(lp).getReward()).wait();
+      const receipt = await (await stakingContract.connect(lp).getReward([pool.address])).wait();
 
       expectEvent.inReceipt(receipt, 'RewardPaid', {
         user: lp.address,
@@ -222,8 +233,12 @@ describe('Staking contract', () => {
       const secondRewardAmount = fp(2);
 
       beforeEach(async () => {
-        await stakingContract.connect(mockAssetManager).notifyRewardAmount(rewardToken.address, rewardAmount);
-        await stakingContract.connect(mockAssetManager).notifyRewardAmount(rewardToken.address, secondRewardAmount);
+        await stakingContract
+          .connect(mockAssetManager)
+          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+        await stakingContract
+          .connect(mockAssetManager)
+          .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount);
         // total reward = fp(3)
       });
 
@@ -231,8 +246,114 @@ describe('Staking contract', () => {
         const expectedReward = fp(0.75).mul(3);
         await advanceTime(10);
 
-        const actualReward = await stakingContract.earned(lp.address, rewardToken.address);
+        const actualReward = await stakingContract.earned(pool.address, lp.address, rewardToken.address);
         expect(expectedReward.sub(actualReward).abs()).to.be.lte(300);
+      });
+    });
+  });
+
+  describe('with two pools', async () => {
+    let pool2: Contract;
+
+    const rewardAmount = fp(1);
+
+    sharedBeforeEach('deploy another pool', async () => {
+      const poolTokens = await TokenList.create(['BAT', 'SNX'], { sorted: true });
+      const assetManagers = Array(poolTokens.length).fill(mockAssetManager.address);
+
+      pool2 = await deploy('v2-pool-weighted/WeightedPool', {
+        args: [
+          vault.address,
+          'Test Pool2',
+          'TEST2',
+          poolTokens.addresses,
+          [fp(0.5), fp(0.5)],
+          assetManagers,
+          fp(0.0001),
+          0,
+          0,
+          admin.address,
+        ],
+      });
+      const poolId = await pool2.getPoolId();
+
+      const rewardsDuration = 1; // Have a neglibile duration so that rewards are distributed instantaneously
+      await stakingContract.addReward(pool2.address, rewardToken.address, mockAssetManager.address, rewardsDuration);
+
+      await poolTokens.mint({ to: lp, amount: tokenInitialBalance });
+      await poolTokens.approve({ to: vault.address, from: [lp] });
+
+      await rewardTokens.mint({ to: mockAssetManager, amount: rewardTokenInitialBalance });
+      await rewardTokens.approve({ to: stakingContract.address, from: [mockAssetManager] });
+
+      const assets = poolTokens.addresses;
+
+      await vault.connect(lp).joinPool(poolId, lp.address, lp.address, {
+        assets,
+        maxAmountsIn: Array(assets.length).fill(MAX_UINT256),
+        fromInternalBalance: false,
+        userData: encodeJoinWeightedPool({
+          kind: 'Init',
+          amountsIn: Array(assets.length).fill(tokenInitialBalance),
+        }),
+      });
+
+      const bptBalance = await pool2.balanceOf(lp.address);
+      await pool.connect(lp).approve(stakingContract.address, bptBalance);
+      await stakingContract.connect(lp)['stake(address,uint256)'](pool.address, bptBalance);
+
+      const bptBalance2 = await pool2.balanceOf(lp.address);
+      await pool2.connect(lp).approve(stakingContract.address, bptBalance2);
+      await stakingContract.connect(lp)['stake(address,uint256)'](pool2.address, bptBalance2);
+    });
+
+    it('allows you to claim across multiple pools', async () => {
+      await stakingContract
+        .connect(mockAssetManager)
+        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+      const rewardAmount2 = fp(0.75);
+      await stakingContract
+        .connect(mockAssetManager)
+        .notifyRewardAmount(pool2.address, rewardToken.address, rewardAmount2);
+
+      await advanceTime(10);
+
+      const expectedReward = fp(1.75);
+
+      await expectBalanceChange(
+        () => stakingContract.connect(lp).getReward([pool.address, pool2.address]),
+        rewardTokens,
+        [{ account: lp, changes: { DAI: ['very-near', expectedReward] } }]
+      );
+    });
+
+    it.skip('emits RewardPaid for each pool', async () => {
+      await stakingContract
+        .connect(mockAssetManager)
+        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+      const rewardAmount2 = fp(0.75);
+      await stakingContract
+        .connect(mockAssetManager)
+        .notifyRewardAmount(pool2.address, rewardToken.address, rewardAmount2);
+      await advanceTime(10);
+
+      const receipt = await (await stakingContract.connect(lp).getReward([pool.address])).wait();
+
+      const user = lp.address;
+
+      // TODO detect duplicate event, or consolidate events
+      const expectedReward = bn('999999999999999898');
+      expectEvent.inReceipt(receipt, 'RewardPaid', {
+        user,
+        rewardToken: rewardToken.address,
+        amount: expectedReward,
+      });
+
+      const expectedReward2 = bn('749999999999999923');
+      expectEvent.inReceipt(receipt, 'RewardPaid', {
+        user,
+        rewardToken: rewardToken.address,
+        amount: expectedReward2,
       });
     });
   });

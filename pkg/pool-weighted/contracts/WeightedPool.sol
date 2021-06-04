@@ -125,7 +125,13 @@ contract WeightedPool is BaseWeightedPool {
         return normalizedWeights;
     }
 
-    function _getMaxWeightTokenIndex() internal view virtual override returns (uint256) {
-        return _maxWeightTokenIndex;
+    function _getNormalizedWeightsAndMaxWeightIndex()
+        internal
+        view
+        virtual
+        override
+        returns (uint256[] memory, uint256)
+    {
+        return (_getNormalizedWeights(), _maxWeightTokenIndex);
     }
 }

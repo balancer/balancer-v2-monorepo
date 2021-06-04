@@ -16,13 +16,13 @@ import "./aave/ILendingPoolAddressesProvider.sol";
 import "./aave/ILendingPool.sol";
 import "./aave/IAaveIncentivesController.sol";
 
-import "./SinglePoolAssetManager.sol";
+import "./RewardsAssetManager.sol";
 import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-contract SinglePoolAaveATokenAssetManager is SinglePoolAssetManager {
+contract AaveATokenAssetManager is RewardsAssetManager {
     uint16 public constant REFERRAL_CODE = 0;
 
     IAaveIncentivesController public immutable aaveIncentives;
@@ -40,7 +40,7 @@ contract SinglePoolAaveATokenAssetManager is SinglePoolAssetManager {
         IERC20 _aToken,
         IAaveIncentivesController _aaveIncentives,
         IERC20 _stkAave
-    ) SinglePoolAssetManager(_vault, bytes32(0), _token) {
+    ) RewardsAssetManager(_vault, bytes32(0), _token) {
         // TODO: pull these from Aave addresses provider
         lendingPool = _lendingPool;
         aToken = _aToken;
@@ -95,6 +95,7 @@ contract SinglePoolAaveATokenAssetManager is SinglePoolAssetManager {
         aaveIncentives.claimRewards(assets, type(uint256).max, address(this));
 
         // Forward to distributor
-        distributor.notifyRewardAmount(stkAave, stkAave.balanceOf(address(this)));
+        IERC20 poolAddress = IERC20((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
+        distributor.notifyRewardAmount(poolAddress, stkAave, stkAave.balanceOf(address(this)));
     }
 }
