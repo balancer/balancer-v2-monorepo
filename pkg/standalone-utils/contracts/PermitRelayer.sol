@@ -56,11 +56,10 @@ contract PermitRelayer is MultiDelegatecall {
         bool approved,
         bytes calldata authorisation
     ) external payable {
-        bytes memory data =
-            abi.encodePacked(
-                abi.encodeWithSelector(vault.setRelayerApproval.selector, msg.sender, relayer, approved),
-                authorisation
-            );
+        bytes memory data = abi.encodePacked(
+            abi.encodeWithSelector(vault.setRelayerApproval.selector, msg.sender, relayer, approved),
+            authorisation
+        );
         _vaultAction(0, data);
     }
 
@@ -88,11 +87,8 @@ contract PermitRelayer is MultiDelegatecall {
         return vault.batchSwap{ value: value }(kind, swaps, assets, funds, limits, deadline);
     }
 
-    function manageUserBalance(
-        IVault.UserBalanceOp[] calldata ops,
-        uint256 value
-    ) external payable {
-        for (uint256 i = 0; i < ops.length; i++){
+    function manageUserBalance(IVault.UserBalanceOp[] calldata ops, uint256 value) external payable {
+        for (uint256 i = 0; i < ops.length; i++) {
             require(ops[i].sender == msg.sender, "Incorrect sender");
         }
         vault.manageUserBalance{ value: value }(ops);
