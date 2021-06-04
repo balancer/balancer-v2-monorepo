@@ -426,7 +426,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         returns (uint256)
     {
         _mutateAmounts(balances, amountsOut, FixedPoint.sub);
-        // This invariant is used only to compute the final balance when calculating the protocol fees, then we round up
+        // This invariant is used only to compute the final balance when calculating the protocol fees. These are
+        // rounded down, so we round the invariant up.
         return StableMath._calculateInvariant(_amplificationParameter, balances, true);
     }
 
