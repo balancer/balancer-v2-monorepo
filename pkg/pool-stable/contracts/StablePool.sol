@@ -43,7 +43,12 @@ contract StablePool is BaseGeneralPool, StableMath {
     event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
     event AmpUpdateStopped(uint256 currentValue);
 
+    // To track how many tokens are owed to the Vault as protocol fees, we measure and store the value of the invariant
+    // after every join and exit. All invariant growth that happens between join and exit events is due to swap fees.
     uint256 private _lastInvariant;
+    // Because the invariant depends on the amplification parameter, and this value may change over time, we should only
+    // compare invariants that were computed using the same value. We therefore store it whenever we store
+    // _lastInvariant.
     uint256 private _lastInvariantAmp;
 
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
@@ -138,8 +143,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Set the initial BPT to the value of the invariant.
         uint256 bptAmountOut = invariantAfterJoin;
 
-        _lastInvariant = invariantAfterJoin;
-        _lastInvariantAmp = currentAmp;
+        _updateLastInvariant(invariantAfterJoin, currentAmp);
 
         return (bptAmountOut, amountsIn);
     }
@@ -168,11 +172,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous join
         // or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids spending gas to
         // calculate the fee amounts during each individual swap.
-        uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
-            balances,
-            _lastInvariant,
-            protocolSwapFeePercentage
-        );
+        uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(balances, protocolSwapFeePercentage);
 
         // Update current balances by subtracting the protocol fee amounts
         _mutateAmounts(balances, dueProtocolFeeAmounts, FixedPoint.sub);
@@ -180,7 +180,7 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         // Update the invariant with the balances the Pool will have after the join, in order to compute the
         // protocol swap fee amounts due in future joins and exits.
-        (_lastInvariant, _lastInvariantAmp) = _invariantAfterJoin(balances, amountsIn);
+        _updateInvariantAfterJoin(balances, amountsIn);
 
         return (bptAmountOut, amountsIn, dueProtocolFeeAmounts);
     }
@@ -276,7 +276,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
             // spending gas calculating fee amounts during each individual swap
-            dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(balances, _lastInvariant, protocolSwapFeePercentage);
+            dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(balances, protocolSwapFeePercentage);
 
             // Update current balances by subtracting the protocol fee amounts
             _mutateAmounts(balances, dueProtocolFeeAmounts, FixedPoint.sub);
@@ -290,7 +290,7 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the
         // protocol swap fee amounts due in future joins and exits.
-        (_lastInvariant, _lastInvariantAmp) = _invariantAfterExit(balances, amountsOut);
+        _updateInvariantAfterExit(balances, amountsOut);
 
         return (bptAmountIn, amountsOut, dueProtocolFeeAmounts);
     }
@@ -386,11 +386,23 @@ contract StablePool is BaseGeneralPool, StableMath {
 
     // Helpers
 
-    function _getDueProtocolFeeAmounts(
-        uint256[] memory balances,
-        uint256 previousInvariant,
-        uint256 protocolSwapFeePercentage
-    ) private view returns (uint256[] memory) {
+    /**
+     * @dev Stores the last measured invariant, and the amplification parameter used to compute it.
+     */
+    function _updateLastInvariant(uint256 invariant, uint256 amplificationParameter) private {
+        _lastInvariant = invariant;
+        _lastInvariantAmp = amplificationParameter;
+    }
+
+    /**
+     * @dev Returns the amount of protocol fees to pay, given the value of the last stored invariant and the current
+     * balances.
+     */
+    function _getDueProtocolFeeAmounts(uint256[] memory balances, uint256 protocolSwapFeePercentage)
+        private
+        view
+        returns (uint256[] memory)
+    {
         // Initialize with zeros
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
 
@@ -418,7 +430,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenProtocolSwapFeeAmount(
             _lastInvariantAmp,
             balances,
-            previousInvariant,
+            _lastInvariant,
             chosenTokenIndex,
             protocolSwapFeePercentage
         );
@@ -426,28 +438,30 @@ contract StablePool is BaseGeneralPool, StableMath {
         return dueProtocolFeeAmounts;
     }
 
-    function _invariantAfterJoin(uint256[] memory balances, uint256[] memory amountsIn)
-        private
-        view
-        returns (uint256, uint256)
-    {
+    /**
+     * @dev Computes and stores the value of the invariant after a join, which is required to compute due protocol fees
+     * in the future.
+     */
+    function _updateInvariantAfterJoin(uint256[] memory balances, uint256[] memory amountsIn) private {
         _mutateAmounts(balances, amountsIn, FixedPoint.add);
+
+        (uint256 currentAmp, ) = getAmplificationParameter();
         // This invariant is used only to compute the final balance when calculating the protocol fees. These are
         // rounded down, so we round the invariant up.
-        (uint256 currentAmp, ) = getAmplificationParameter();
-        return (StableMath._calculateInvariant(currentAmp, balances, true), currentAmp);
+        _updateLastInvariant(StableMath._calculateInvariant(currentAmp, balances, true), currentAmp);
     }
 
-    function _invariantAfterExit(uint256[] memory balances, uint256[] memory amountsOut)
-        private
-        view
-        returns (uint256, uint256)
-    {
+    /**
+     * @dev Computes and stores the value of the invariant after an exit, which is required to compute due protocol fees
+     * in the future.
+     */
+    function _updateInvariantAfterExit(uint256[] memory balances, uint256[] memory amountsOut) private {
         _mutateAmounts(balances, amountsOut, FixedPoint.sub);
+
+        (uint256 currentAmp, ) = getAmplificationParameter();
         // This invariant is used only to compute the final balance when calculating the protocol fees. These are
         // rounded down, so we round the invariant up.
-        (uint256 currentAmp, ) = getAmplificationParameter();
-        return (StableMath._calculateInvariant(currentAmp, balances, true), currentAmp);
+        _updateLastInvariant(StableMath._calculateInvariant(currentAmp, balances, true), currentAmp);
     }
 
     /**
