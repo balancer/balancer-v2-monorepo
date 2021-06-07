@@ -44,6 +44,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     event AmpUpdateStopped(uint256 currentValue);
 
     uint256 private _lastInvariant;
+    uint256 private _lastInvariantAmp;
 
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
@@ -138,6 +139,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 bptAmountOut = invariantAfterJoin;
 
         _lastInvariant = invariantAfterJoin;
+        _lastInvariantAmp = currentAmp;
 
         return (bptAmountOut, amountsIn);
     }
@@ -178,7 +180,7 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         // Update the invariant with the balances the Pool will have after the join, in order to compute the
         // protocol swap fee amounts due in future joins and exits.
-        _lastInvariant = _invariantAfterJoin(balances, amountsIn);
+        (_lastInvariant, _lastInvariantAmp) = _invariantAfterJoin(balances, amountsIn);
 
         return (bptAmountOut, amountsIn, dueProtocolFeeAmounts);
     }
@@ -288,7 +290,7 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the
         // protocol swap fee amounts due in future joins and exits.
-        _lastInvariant = _invariantAfterExit(balances, amountsOut);
+        (_lastInvariant, _lastInvariantAmp) = _invariantAfterExit(balances, amountsOut);
 
         return (bptAmountIn, amountsOut, dueProtocolFeeAmounts);
     }
@@ -412,10 +414,9 @@ contract StablePool is BaseGeneralPool, StableMath {
             }
         }
 
-        (uint256 currentAmp, ) = getAmplificationParameter();
         // Set the fee amount to pay in the selected token
         dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenProtocolSwapFeeAmount(
-            currentAmp,
+            _lastInvariantAmp,
             balances,
             previousInvariant,
             chosenTokenIndex,
@@ -425,24 +426,28 @@ contract StablePool is BaseGeneralPool, StableMath {
         return dueProtocolFeeAmounts;
     }
 
-    function _invariantAfterJoin(uint256[] memory balances, uint256[] memory amountsIn) private view returns (uint256) {
+    function _invariantAfterJoin(uint256[] memory balances, uint256[] memory amountsIn)
+        private
+        view
+        returns (uint256, uint256)
+    {
         _mutateAmounts(balances, amountsIn, FixedPoint.add);
         // This invariant is used only to compute the final balance when calculating the protocol fees. These are
         // rounded down, so we round the invariant up.
         (uint256 currentAmp, ) = getAmplificationParameter();
-        return StableMath._calculateInvariant(currentAmp, balances, true);
+        return (StableMath._calculateInvariant(currentAmp, balances, true), currentAmp);
     }
 
     function _invariantAfterExit(uint256[] memory balances, uint256[] memory amountsOut)
         private
         view
-        returns (uint256)
+        returns (uint256, uint256)
     {
         _mutateAmounts(balances, amountsOut, FixedPoint.sub);
         // This invariant is used only to compute the final balance when calculating the protocol fees. These are
         // rounded down, so we round the invariant up.
         (uint256 currentAmp, ) = getAmplificationParameter();
-        return StableMath._calculateInvariant(currentAmp, balances, true);
+        return (StableMath._calculateInvariant(currentAmp, balances, true), currentAmp);
     }
 
     /**
