@@ -75,13 +75,14 @@ contract StableMath {
 
             if (invariant > prevInvariant) {
                 if (invariant.sub(prevInvariant) <= 1) {
-                    break;
+                    return invariant;
                 }
             } else if (prevInvariant.sub(invariant) <= 1) {
-                break;
+                return invariant;
             }
         }
-        return invariant;
+
+        _revert(Errors.STABLE_GET_BALANCE_DIDNT_CONVERGE);
     }
 
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the current balances.
@@ -472,12 +473,13 @@ contract StableMath {
 
             if (tokenBalance > prevTokenBalance) {
                 if (tokenBalance.sub(prevTokenBalance) <= 1) {
-                    break;
+                    return tokenBalance;
                 }
             } else if (prevTokenBalance.sub(tokenBalance) <= 1) {
-                break;
+                return tokenBalance;
             }
         }
-        return tokenBalance;
+
+        _revert(Errors.STABLE_GET_BALANCE_DIDNT_CONVERGE);
     }
 }
