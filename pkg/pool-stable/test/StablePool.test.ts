@@ -640,7 +640,7 @@ describe('StablePool', function () {
       });
     });
 
-    describe.only('set amp', () => {
+    describe('set amp', () => {
       sharedBeforeEach('deploy pool', async () => {
         await deployPool({ owner });
       });
