@@ -487,8 +487,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
 
         uint256 dailyRate = endValue > currentValue
-            ? (1 days * endValue) / (currentValue * duration)
-            : (1 days * currentValue) / (endValue * duration);
+            ? Math.divUp(1 days * endValue, currentValue * duration)
+            : Math.divUp(1 days * currentValue, endValue * duration);
         _require(dailyRate <= _MAX_AMP_UPDATE_DAILY_RATE, Errors.AMP_RATE_TOO_HIGH);
 
         _setAmplificationData(uint64(currentValue), uint64(endValue), uint64(block.timestamp), uint64(endTime));
