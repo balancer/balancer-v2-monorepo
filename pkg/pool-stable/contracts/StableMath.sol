@@ -28,6 +28,7 @@ contract StableMath {
 
     uint256 internal constant _MIN_AMP = 1;
     uint256 internal constant _MAX_AMP = 5000;
+    uint256 internal constant _AMP_PRECISION = 1e3;
 
     uint256 internal constant _MAX_STABLE_TOKENS = 5;
 
@@ -68,8 +69,12 @@ contract StableMath {
             }
             prevInvariant = invariant;
             invariant = Math.div(
-                Math.mul(Math.mul(numTokens, invariant), invariant).add(Math.mul(Math.mul(ampTimesTotal, sum), P_D)),
-                Math.mul(numTokens.add(1), invariant).add(Math.mul(ampTimesTotal.sub(1), P_D)),
+                Math.mul(Math.mul(numTokens, invariant), invariant).add(
+                    Math.div(Math.mul(Math.mul(ampTimesTotal, sum), P_D), _AMP_PRECISION, roundUp)
+                ),
+                Math.mul(numTokens.add(1), invariant).add(
+                    Math.div(Math.mul(ampTimesTotal.sub(_AMP_PRECISION), P_D), _AMP_PRECISION, !roundUp)
+                ),
                 roundUp
             );
 
@@ -454,8 +459,11 @@ contract StableMath {
 
         uint256 inv2 = Math.mul(invariant, invariant);
         // We remove the balance fromm c by multiplying it
-        uint256 c = Math.mul(Math.divUp(inv2, Math.mul(ampTimesTotal, P_D)), balances[tokenIndex]);
-        uint256 b = sum.add(Math.divDown(invariant, ampTimesTotal));
+        uint256 c = Math.mul(
+            Math.mul(Math.divUp(inv2, Math.mul(ampTimesTotal, P_D)), _AMP_PRECISION),
+            balances[tokenIndex]
+        );
+        uint256 b = sum.add(Math.mul(Math.divDown(invariant, ampTimesTotal), _AMP_PRECISION));
 
         // We iterate to find the balance
         uint256 prevTokenBalance = 0;
