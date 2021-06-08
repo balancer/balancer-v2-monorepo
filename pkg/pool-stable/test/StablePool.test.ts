@@ -20,8 +20,9 @@ describe('StablePool', function () {
     other: SignerWithAddress,
     lp: SignerWithAddress;
 
-  const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  const AMP_PRECISION = 1e3;
   const AMPLIFICATION_PARAMETER = bn(200);
+  const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const INITIAL_BALANCES = [fp(1), fp(0.9), fp(0.8), fp(1.1)];
 
   before('setup signers', async () => {
@@ -114,8 +115,8 @@ describe('StablePool', function () {
         });
 
         it('sets amplification', async () => {
-          const { value, isUpdating } = await pool.getAmplificationParameter();
-          expect(value).to.be.equal(AMPLIFICATION_PARAMETER);
+          const { value, isUpdating, precision } = await pool.getAmplificationParameter();
+          expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(precision));
           expect(isUpdating).to.be.false;
         });
 
@@ -647,10 +648,10 @@ describe('StablePool', function () {
 
       context('when the sender is allowed', () => {
         context('when requesting a reasonable period change', () => {
-          const period = DAY * 5;
+          const period = DAY * 6;
           let endTime: BigNumber;
 
-          beforeEach('set end time', async () => {
+          sharedBeforeEach('set end time', async () => {
             const startTime = (await currentTimestamp()).add(100);
             await setNextBlockTimestamp(startTime);
             endTime = startTime.add(period);
@@ -670,11 +671,11 @@ describe('StablePool', function () {
                   expect(isUpdating).to.be.true;
 
                   if (increasing) {
-                    const diff = newAmp.sub(AMPLIFICATION_PARAMETER);
-                    expect(value).to.be.equal(AMPLIFICATION_PARAMETER.add(diff.div(2)));
+                    const diff = newAmp.sub(AMPLIFICATION_PARAMETER).mul(AMP_PRECISION);
+                    expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).add(diff.div(2)));
                   } else {
-                    const diff = AMPLIFICATION_PARAMETER.sub(newAmp);
-                    expect(value).to.be.equal(AMPLIFICATION_PARAMETER.sub(diff.div(2)));
+                    const diff = AMPLIFICATION_PARAMETER.sub(newAmp).mul(AMP_PRECISION);
+                    expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).sub(diff.div(2)));
                   }
                 });
 
@@ -684,7 +685,7 @@ describe('StablePool', function () {
                   await advanceTime(period + 1);
 
                   const { value, isUpdating } = await pool.getAmplificationParameter();
-                  expect(value).to.be.equal(newAmp);
+                  expect(value).to.be.equal(newAmp.mul(AMP_PRECISION));
                   expect(isUpdating).to.be.false;
                 });
 
@@ -692,15 +693,15 @@ describe('StablePool', function () {
                   const receipt = await pool.startAmpChange(newAmp, endTime);
 
                   expectEvent.inReceipt(await receipt.wait(), 'AmpUpdateStarted', {
-                    startValue: AMPLIFICATION_PARAMETER,
-                    endValue: newAmp,
+                    startValue: AMPLIFICATION_PARAMETER.mul(AMP_PRECISION),
+                    endValue: newAmp.mul(AMP_PRECISION),
                     endTime,
                   });
                 });
               });
 
               context('when there was a previous ongoing update', () => {
-                beforeEach('start change', async () => {
+                sharedBeforeEach('start change', async () => {
                   await pool.startAmpChange(newAmp, endTime);
                 });
 
@@ -709,14 +710,12 @@ describe('StablePool', function () {
                 });
 
                 it('can stop and change', async () => {
-                  await advanceTime(period / 3);
+                  await advanceTime(period / 4);
                   const beforeStop = await pool.getAmplificationParameter();
                   expect(beforeStop.isUpdating).to.be.true;
 
                   const stopReceipt = await pool.stopAmpChange();
-                  expectEvent.inReceipt(await stopReceipt.wait(), 'AmpUpdateStopped', {
-                    currentValue: beforeStop.value,
-                  });
+                  expectEvent.inReceipt(await stopReceipt.wait(), 'AmpUpdateStopped');
 
                   const afterStop = await pool.getAmplificationParameter();
                   expect(afterStop.value).to.be.equal(beforeStop.value);
@@ -725,12 +724,11 @@ describe('StablePool', function () {
                   const startReceipt = await pool.startAmpChange(newAmp, endTime);
                   const now = await currentTimestamp();
                   expectEvent.inReceipt(await startReceipt.wait(), 'AmpUpdateStarted', {
-                    startValue: afterStop.value,
-                    endValue: newAmp,
+                    endValue: newAmp.mul(AMP_PRECISION),
                     startTime: now,
                   });
 
-                  await advanceTime(period / 3);
+                  await advanceTime(period / 4);
 
                   const afterStart = await pool.getAmplificationParameter();
                   expect(afterStart.isUpdating).to.be.true;
@@ -741,13 +739,13 @@ describe('StablePool', function () {
 
             context('when increasing the amp', () => {
               context('when increasing the amp by less than 10x', () => {
-                const newAmp = AMPLIFICATION_PARAMETER.mul(3);
+                const newAmp = AMPLIFICATION_PARAMETER.mul(2);
 
                 itUpdatesAmpCorrectly(newAmp);
               });
 
               context('when increasing the amp by more than 10x', () => {
-                const newAmp = AMPLIFICATION_PARAMETER.mul(11);
+                const newAmp = AMPLIFICATION_PARAMETER.mul(12);
 
                 it('reverts', async () => {
                   await expect(pool.startAmpChange(newAmp, endTime)).to.be.revertedWith('AMP_FACTOR');
@@ -757,13 +755,13 @@ describe('StablePool', function () {
 
             context('when decreasing the amp', () => {
               context('when decreasing the amp by less than 10x', () => {
-                const newAmp = AMPLIFICATION_PARAMETER.div(3);
+                const newAmp = AMPLIFICATION_PARAMETER.div(2);
 
                 itUpdatesAmpCorrectly(newAmp);
               });
 
               context('when decreasing the amp by more than 10x', () => {
-                const newAmp = AMPLIFICATION_PARAMETER.div(11);
+                const newAmp = AMPLIFICATION_PARAMETER.div(12);
 
                 it('reverts', async () => {
                   await expect(pool.startAmpChange(newAmp, endTime)).to.be.revertedWith('AMP_FACTOR');
