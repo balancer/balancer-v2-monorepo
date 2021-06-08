@@ -30,7 +30,7 @@ export default {
     return { mocked, admin, pauseWindowDuration, bufferPeriodDuration };
   },
 
-  toRawVaultDeployment(params: RawWeightedPoolDeployment): RawVaultDeployment {
+  toRawVaultDeployment(params: RawWeightedPoolDeployment | RawStablePoolDeployment): RawVaultDeployment {
     let { admin, pauseWindowDuration, bufferPeriodDuration } = params;
     if (!admin) admin = params.from;
     if (!pauseWindowDuration) pauseWindowDuration = 0;
@@ -59,7 +59,6 @@ export default {
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!oracleEnabled) oracleEnabled = true;
-    if (!owner) owner = ZERO_ADDRESS;
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!twoTokens) twoTokens = false;
     else if (tokens.length !== 2) throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
@@ -90,7 +89,6 @@ export default {
     if (!swapFeePercentage) swapFeePercentage = bn(0);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    if (!owner) owner = ZERO_ADDRESS;
     return { tokens, amplificationParameter, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner };
   },
 
@@ -158,7 +156,8 @@ export default {
     );
   },
 
-  toAddress(to: Account): string {
+  toAddress(to?: Account): string {
+    if (!to) return ZERO_ADDRESS
     return typeof to === 'string' ? to : to.address;
   },
 };

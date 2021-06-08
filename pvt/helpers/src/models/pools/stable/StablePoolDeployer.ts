@@ -18,9 +18,9 @@ export default {
     const vault = await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
-    const { tokens, amplificationParameter, swapFeePercentage } = deployment;
+    const { owner, tokens, amplificationParameter, swapFeePercentage } = deployment;
     const poolId = await pool.getPoolId();
-    return new StablePool(pool, poolId, vault, tokens, amplificationParameter, swapFeePercentage);
+    return new StablePool(pool, poolId, vault, tokens, amplificationParameter, swapFeePercentage, owner);
   },
 
   async _deployStandalone(params: StablePoolDeployment, vault: Vault): Promise<Contract> {

@@ -33,7 +33,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
     // solhint-disable not-rely-on-time
 
-    // Amplication factor changes must happen over a minimum period of one day, and can at most divide or multiple the
+    // Amplification factor changes must happen over a minimum period of one day, and can at most divide or multiple the
     // current value by 10.
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
     uint256 private constant _MAX_AMP_UPDATE_FACTOR = 10;
