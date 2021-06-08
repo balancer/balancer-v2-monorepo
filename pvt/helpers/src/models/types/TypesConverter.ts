@@ -49,7 +49,6 @@ export default {
       pauseWindowDuration,
       bufferPeriodDuration,
       oracleEnabled,
-      owner,
       twoTokens,
     } = params;
     if (!tokens) tokens = new TokenList();
@@ -70,26 +69,26 @@ export default {
       pauseWindowDuration,
       bufferPeriodDuration,
       oracleEnabled,
-      owner,
+      owner: params.owner,
       twoTokens,
     };
   },
 
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
-    let {
-      tokens,
-      amplificationParameter,
-      swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-      owner,
-    } = params;
+    let { tokens, amplificationParameter, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
     if (!tokens) tokens = new TokenList();
     if (!amplificationParameter) amplificationParameter = bn(200);
     if (!swapFeePercentage) swapFeePercentage = bn(0);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    return { tokens, amplificationParameter, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner };
+    return {
+      tokens,
+      amplificationParameter,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      owner: params.owner,
+    };
   },
 
   /***
@@ -157,7 +156,7 @@ export default {
   },
 
   toAddress(to?: Account): string {
-    if (!to) return ZERO_ADDRESS
+    if (!to) return ZERO_ADDRESS;
     return typeof to === 'string' ? to : to.address;
   },
 };

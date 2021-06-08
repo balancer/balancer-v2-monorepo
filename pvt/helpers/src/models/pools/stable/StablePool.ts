@@ -117,7 +117,7 @@ export default class StablePool {
     return this.instance.getSwapFeePercentage();
   }
 
-  async getAmplificationParameter(): Promise<{ value: BigNumber, isUpdating: boolean }> {
+  async getAmplificationParameter(): Promise<{ value: BigNumber; isUpdating: boolean }> {
     return this.instance.getAmplificationParameter();
   }
 
@@ -136,17 +136,21 @@ export default class StablePool {
     return this.vault.getPoolTokenInfo(this.poolId, token);
   }
 
-  async startAmpChange(newAmp: BigNumberish, endTime?: BigNumberish, txParams: TxParams = {}): Promise<ContractTransaction> {
-    const sender = txParams.from || this.owner
-    const pool = sender ? this.instance.connect(sender) : this.instance
-    if (!endTime) endTime = (await currentTimestamp()).add(2 * DAY)
-    return pool.startAmplificationParameterUpdate(newAmp, endTime)
+  async startAmpChange(
+    newAmp: BigNumberish,
+    endTime?: BigNumberish,
+    txParams: TxParams = {}
+  ): Promise<ContractTransaction> {
+    const sender = txParams.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    if (!endTime) endTime = (await currentTimestamp()).add(2 * DAY);
+    return pool.startAmplificationParameterUpdate(newAmp, endTime);
   }
 
   async stopAmpChange(txParams: TxParams = {}): Promise<ContractTransaction> {
-    const sender = txParams.from || this.owner
-    const pool = sender ? this.instance.connect(sender) : this.instance
-    return pool.stopAmplificationParameterUpdate()
+    const sender = txParams.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    return pool.stopAmplificationParameterUpdate();
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
