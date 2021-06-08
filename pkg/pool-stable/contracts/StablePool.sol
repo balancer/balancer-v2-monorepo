@@ -20,7 +20,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
-import "hardhat/console.sol";
 
 import "./StableMath.sol";
 import "./StablePoolUserDataHelpers.sol";
@@ -504,9 +503,17 @@ contract StablePool is BaseGeneralPool, StableMath {
             super._isOwnerOnlyAction(actionId);
     }
 
-    function getAmplificationParameter() external view returns (uint256 value, bool isUpdating) {
+    function getAmplificationParameter()
+        external
+        view
+        returns (
+            uint256 value,
+            bool isUpdating,
+            uint256 precision
+        )
+    {
         (value, isUpdating) = _getAmplificationParameter();
-        value = value / _AMP_PRECISION;
+        precision = _AMP_PRECISION;
     }
 
     function _getAmplificationParameter() internal view returns (uint256 value, bool isUpdating) {

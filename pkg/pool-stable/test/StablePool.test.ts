@@ -20,8 +20,9 @@ describe('StablePool', function () {
     other: SignerWithAddress,
     lp: SignerWithAddress;
 
-  const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  const AMP_PRECISION = 1e3;
   const AMPLIFICATION_PARAMETER = bn(200);
+  const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const INITIAL_BALANCES = [fp(1), fp(0.9), fp(0.8), fp(1.1)];
 
   before('setup signers', async () => {
@@ -115,7 +116,7 @@ describe('StablePool', function () {
 
         it('sets amplification', async () => {
           const { value, isUpdating } = await pool.getAmplificationParameter();
-          expect(value).to.be.equal(AMPLIFICATION_PARAMETER);
+          expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
           expect(isUpdating).to.be.false;
         });
 
@@ -641,10 +642,6 @@ describe('StablePool', function () {
     });
 
     describe('set amp', () => {
-      const AMP_PRECISION = 10000;
-
-      let owner: SignerWithAddress;
-
       sharedBeforeEach('deploy pool', async () => {
         await deployPool({ owner });
       });
@@ -674,11 +671,11 @@ describe('StablePool', function () {
                   expect(isUpdating).to.be.true;
 
                   if (increasing) {
-                    const diff = newAmp.sub(AMPLIFICATION_PARAMETER);
-                    expect(value).to.be.equal(AMPLIFICATION_PARAMETER.add(diff.div(2)));
+                    const diff = newAmp.sub(AMPLIFICATION_PARAMETER).mul(AMP_PRECISION);
+                    expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).add(diff.div(2)));
                   } else {
-                    const diff = AMPLIFICATION_PARAMETER.sub(newAmp);
-                    expect(value).to.be.equal(AMPLIFICATION_PARAMETER.sub(diff.div(2)));
+                    const diff = AMPLIFICATION_PARAMETER.sub(newAmp).mul(AMP_PRECISION);
+                    expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).sub(diff.div(2)));
                   }
                 });
 
@@ -688,7 +685,7 @@ describe('StablePool', function () {
                   await advanceTime(period + 1);
 
                   const { value, isUpdating } = await pool.getAmplificationParameter();
-                  expect(value).to.be.equal(newAmp);
+                  expect(value).to.be.equal(newAmp.mul(AMP_PRECISION));
                   expect(isUpdating).to.be.false;
                 });
 
@@ -713,7 +710,7 @@ describe('StablePool', function () {
                 });
 
                 it('can stop and change', async () => {
-                  await advanceTime(period / 3);
+                  await advanceTime(period / 4);
                   const beforeStop = await pool.getAmplificationParameter();
                   expect(beforeStop.isUpdating).to.be.true;
 
@@ -731,7 +728,7 @@ describe('StablePool', function () {
                     startTime: now,
                   });
 
-                  await advanceTime(period / 3);
+                  await advanceTime(period / 4);
 
                   const afterStart = await pool.getAmplificationParameter();
                   expect(afterStart.isUpdating).to.be.true;
