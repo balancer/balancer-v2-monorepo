@@ -115,8 +115,8 @@ describe('StablePool', function () {
         });
 
         it('sets amplification', async () => {
-          const { value, isUpdating } = await pool.getAmplificationParameter();
-          expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
+          const { value, isUpdating, precision } = await pool.getAmplificationParameter();
+          expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(precision));
           expect(isUpdating).to.be.false;
         });
 
