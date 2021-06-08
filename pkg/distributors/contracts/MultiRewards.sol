@@ -198,30 +198,22 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         emit Withdrawn(address(stakingToken), msg.sender, amount);
     }
 
-    /**
-     * @notice Allows a user to claim any rewards which are due.
-     */
     function getReward(IERC20[] calldata stakingTokens) public nonReentrant {
-        for (uint256 j; j < stakingTokens.length; j++) {
-            IERC20 stakingToken = stakingTokens[j];
-            for (uint256 i; i < rewardTokens[stakingToken].length; i++) {
-                IERC20 rewardsToken = rewardTokens[stakingToken][i];
-                _updateReward(stakingToken, msg.sender, rewardsToken);
+        _getReward(stakingTokens, false);
+    }
 
-                uint256 reward = rewards[stakingToken][msg.sender][rewardsToken];
-                if (reward > 0) {
-                    rewards[stakingToken][msg.sender][rewardsToken] = 0;
-                    rewardsToken.safeTransfer(msg.sender, reward);
-                    emit RewardPaid(msg.sender, address(rewardsToken), reward);
-                }
-            }
-        }
+    function getRewardAsInternalBalance(IERC20[] calldata stakingTokens) public nonReentrant {
+        _getReward(stakingTokens, true);
     }
 
     /**
      * @notice Allows a user to claim any rewards to internal balance
      */
-    function getRewardAsInternalBalance(IERC20[] calldata stakingTokens) public nonReentrant {
+    function _getReward(IERC20[] calldata stakingTokens, bool asInternalBalance) internal {
+        IVault.UserBalanceOpKind kind = asInternalBalance
+            ? IVault.UserBalanceOpKind.TRANSFER_INTERNAL
+            : IVault.UserBalanceOpKind.WITHDRAW_INTERNAL;
+
         uint256 opsCount;
         for (uint256 k; k < stakingTokens.length; k++) {
             IERC20 stakingToken = stakingTokens[k];
@@ -249,7 +241,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
                     amount: reward,
                     sender: address(this),
                     recipient: msg.sender,
-                    kind: IVault.UserBalanceOpKind.DEPOSIT_INTERNAL
+                    kind: kind
                 });
                 idx++;
             }
@@ -281,9 +273,21 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
             rewardData[stakingToken][rewardsToken].rewardsDistributor == msg.sender,
             "Callable only by distributor"
         );
-        // handle the transfer of reward tokens via `transferFrom` to reduce the number
+        // handle the transfer of reward tokens via `safeTransactionFrom` to reduce the number
         // of transactions required and ensure correctness of the reward amount
         rewardsToken.safeTransferFrom(msg.sender, address(this), reward);
+
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
+
+        ops[0] = IVault.UserBalanceOp({
+            asset: IAsset(address(rewardsToken)),
+            amount: reward,
+            sender: address(this),
+            recipient: payable(address(this)),
+            kind: IVault.UserBalanceOpKind.DEPOSIT_INTERNAL
+        });
+
+        vault.manageUserBalance(ops);
 
         if (block.timestamp >= rewardData[stakingToken][rewardsToken].periodFinish) {
             rewardData[stakingToken][rewardsToken].rewardRate = reward.divDown(
@@ -319,7 +323,18 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         require(token != stakingToken, "Cannot withdraw staking token");
         // TODO
         require(rewardData[stakingToken][token].lastUpdateTime == 0, "Cannot withdraw reward token");
-        token.safeTransfer(owner(), tokenAmount);
+
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
+        ops[0] = IVault.UserBalanceOp({
+            asset: IAsset(address(token)),
+            amount: tokenAmount,
+            sender: address(this),
+            recipient: payable(owner()),
+            kind: IVault.UserBalanceOpKind.TRANSFER_EXTERNAL
+        });
+
+        vault.manageUserBalance(ops);
+
         emit Recovered(address(token), tokenAmount);
     }
 

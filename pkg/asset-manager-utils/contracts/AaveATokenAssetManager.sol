@@ -59,7 +59,7 @@ contract AaveATokenAssetManager is RewardsAssetManager {
     function initialise(bytes32 pId, address rewardsDistributor) public {
         _initialise(pId);
         distributor = IMultiRewards(rewardsDistributor);
-        IERC20(stkAave).approve(rewardsDistributor, type(uint256).max);
+        stkAave.approve(rewardsDistributor, type(uint256).max);
     }
 
     /**

@@ -339,10 +339,10 @@ describe('Aave Asset manager', function () {
     });
 
     it('sends expected amount of stkAave to the rewards contract', async () => {
-      const rewardsBefore = await stkAave.balanceOf(distributor.address);
+      const rewardsBefore = await vault.getInternalBalance(distributor.address, [stkAave.address]);
       await assetManager.claimRewards();
-      const rewardsAfter = await stkAave.balanceOf(distributor.address);
-      expect(rewardsAfter).to.be.eq(rewardsBefore.add(rewardAmount));
+      const rewardsAfter = await vault.getInternalBalance(distributor.address, [stkAave.address]);
+      expect(rewardsAfter[0]).to.be.eq(rewardsBefore[0].add(rewardAmount));
     });
 
     it('distributes the reward according to the fraction of staked LP tokens', async () => {
