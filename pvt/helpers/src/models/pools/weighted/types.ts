@@ -15,7 +15,7 @@ export type RawWeightedPoolDeployment = {
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   oracleEnabled?: boolean;
-  owner?: Account;
+  owner?: SignerWithAddress;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   fromFactory?: boolean;
@@ -31,7 +31,7 @@ export type WeightedPoolDeployment = {
   bufferPeriodDuration: BigNumberish;
   twoTokens: boolean;
   oracleEnabled: boolean;
-  owner: Account;
+  owner?: SignerWithAddress;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
 };

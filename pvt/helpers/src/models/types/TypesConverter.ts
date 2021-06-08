@@ -30,7 +30,7 @@ export default {
     return { mocked, admin, pauseWindowDuration, bufferPeriodDuration };
   },
 
-  toRawVaultDeployment(params: RawWeightedPoolDeployment): RawVaultDeployment {
+  toRawVaultDeployment(params: RawWeightedPoolDeployment | RawStablePoolDeployment): RawVaultDeployment {
     let { admin, pauseWindowDuration, bufferPeriodDuration } = params;
     if (!admin) admin = params.from;
     if (!pauseWindowDuration) pauseWindowDuration = 0;
@@ -49,7 +49,6 @@ export default {
       pauseWindowDuration,
       bufferPeriodDuration,
       oracleEnabled,
-      owner,
       twoTokens,
     } = params;
     if (!tokens) tokens = new TokenList();
@@ -59,7 +58,6 @@ export default {
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!oracleEnabled) oracleEnabled = true;
-    if (!owner) owner = ZERO_ADDRESS;
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!twoTokens) twoTokens = false;
     else if (tokens.length !== 2) throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
@@ -71,27 +69,26 @@ export default {
       pauseWindowDuration,
       bufferPeriodDuration,
       oracleEnabled,
-      owner,
+      owner: params.owner,
       twoTokens,
     };
   },
 
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
-    let {
-      tokens,
-      amplificationParameter,
-      swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-      owner,
-    } = params;
+    let { tokens, amplificationParameter, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
     if (!tokens) tokens = new TokenList();
     if (!amplificationParameter) amplificationParameter = bn(200);
     if (!swapFeePercentage) swapFeePercentage = bn(0);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    if (!owner) owner = ZERO_ADDRESS;
-    return { tokens, amplificationParameter, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner };
+    return {
+      tokens,
+      amplificationParameter,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      owner: params.owner,
+    };
   },
 
   /***
@@ -158,7 +155,8 @@ export default {
     );
   },
 
-  toAddress(to: Account): string {
+  toAddress(to?: Account): string {
+    if (!to) return ZERO_ADDRESS;
     return typeof to === 'string' ? to : to.address;
   },
 };

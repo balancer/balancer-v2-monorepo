@@ -1,6 +1,8 @@
-import { BigNumber, Contract, ContractFunction } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
 
-import { actionId } from '../../../models/misc/actions';
+import { actionId } from '../../misc/actions';
+import { currentTimestamp, DAY } from '../../../time';
 import { BigNumberish, bn, fp } from '../../../numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../constants';
 
@@ -10,7 +12,8 @@ import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import StablePoolDeployer from './StablePoolDeployer';
-import { Account } from '../../types/types';
+import { Account, TxParams } from '../../types/types';
+import { encodeExitStablePool, encodeJoinStablePool } from './encoding';
 import {
   JoinExitStablePool,
   InitStablePool,
@@ -36,7 +39,6 @@ import {
   calculateOneTokenSwapFeeAmount,
   calcInGivenOut,
 } from './math';
-import { encodeExitStablePool, encodeJoinStablePool } from './encoding';
 
 const SWAP_GIVEN = { IN: 0, OUT: 1 };
 
@@ -47,6 +49,7 @@ export default class StablePool {
   swapFeePercentage: BigNumberish;
   amplificationParameter: BigNumberish;
   vault: Vault;
+  owner?: SignerWithAddress;
 
   static async create(params: RawStablePoolDeployment = {}): Promise<StablePool> {
     return StablePoolDeployer.deploy(params);
@@ -58,7 +61,8 @@ export default class StablePool {
     vault: Vault,
     tokens: TokenList,
     amplificationParameter: BigNumberish,
-    swapFeePercentage: BigNumberish
+    swapFeePercentage: BigNumberish,
+    owner?: SignerWithAddress
   ) {
     this.instance = instance;
     this.poolId = poolId;
@@ -66,6 +70,7 @@ export default class StablePool {
     this.tokens = tokens;
     this.amplificationParameter = amplificationParameter;
     this.swapFeePercentage = swapFeePercentage;
+    this.owner = owner;
   }
 
   get address(): string {
@@ -112,14 +117,8 @@ export default class StablePool {
     return this.instance.getSwapFeePercentage();
   }
 
-  async getAmplificationParameter(): Promise<BigNumber> {
-    const { value } = await this.instance.getAmplificationParameter();
-    return value;
-  }
-
-  async isAmplificationUpdating(): Promise<boolean> {
-    const { isUpdating } = await this.instance.getAmplificationParameter();
-    return isUpdating;
+  async getAmplificationParameter(): Promise<{ value: BigNumber; isUpdating: boolean }> {
+    return this.instance.getAmplificationParameter();
   }
 
   async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
@@ -135,6 +134,23 @@ export default class StablePool {
     token: Token
   ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
     return this.vault.getPoolTokenInfo(this.poolId, token);
+  }
+
+  async startAmpChange(
+    newAmp: BigNumberish,
+    endTime?: BigNumberish,
+    txParams: TxParams = {}
+  ): Promise<ContractTransaction> {
+    const sender = txParams.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    if (!endTime) endTime = (await currentTimestamp()).add(2 * DAY);
+    return pool.startAmplificationParameterUpdate(newAmp, endTime);
+  }
+
+  async stopAmpChange(txParams: TxParams = {}): Promise<ContractTransaction> {
+    const sender = txParams.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    return pool.stopAmplificationParameterUpdate();
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
