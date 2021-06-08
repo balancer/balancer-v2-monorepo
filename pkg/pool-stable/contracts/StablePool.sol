@@ -480,15 +480,18 @@ contract StablePool is BaseGeneralPool, StableMath {
         _require(endValue >= _MIN_AMP, Errors.MIN_AMP);
         _require(endValue <= _MAX_AMP, Errors.MAX_AMP);
 
-        uint256 duration = endTime - block.timestamp;
+        uint256 duration = Math.sub(endTime, block.timestamp);
         _require(duration >= _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
 
         (uint256 currentValue, bool isUpdating) = getAmplificationParameter();
         _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
 
+        // daily rate = (endValue / currentValue) / duration * 1 day
+        // We perform all multiplications first to not reduce precision, and round the division up as we want to avoid
+        // large rates. Note that these are regular integer multiplications and divisions, not fixed point.
         uint256 dailyRate = endValue > currentValue
-            ? Math.divUp(1 days * endValue, currentValue * duration)
-            : Math.divUp(1 days * currentValue, endValue * duration);
+            ? Math.divUp(Math.mul(1 days, endValue), Math.mul(currentValue, duration))
+            : Math.divUp(Math.mul(1 days, currentValue), Math.mul(endValue, duration));
         _require(dailyRate <= _MAX_AMP_UPDATE_DAILY_RATE, Errors.AMP_RATE_TOO_HIGH);
 
         _setAmplificationData(uint64(currentValue), uint64(endValue), uint64(block.timestamp), uint64(endTime));
@@ -524,6 +527,13 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         if (block.timestamp < endTime) {
             isUpdating = true;
+
+            // We can skip checked arithmetic as:
+            //  - block.timestamp is always larger or equal to startTime
+            //  - endTime is alawys larger than startTime
+            //  - the value delta is bounded by the largest amplification paramater, which never causes the
+            //    multiplication to overflow.
+            // This also means that the following computation will never revert nor yield invalid results.
             if (endValue > startValue) {
                 value = startValue + ((endValue - startValue) * (block.timestamp - startTime)) / (endTime - startTime);
             } else {
