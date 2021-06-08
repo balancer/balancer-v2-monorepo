@@ -34,9 +34,9 @@ contract StablePool is BaseGeneralPool, StableMath {
     // solhint-disable not-rely-on-time
 
     // Amplification factor changes must happen over a minimum period of one day, and can at most divide or multiple the
-    // current value by 10.
+    // current value by 2 every day.
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
-    uint256 private constant _MAX_AMP_UPDATE_FACTOR = 10;
+    uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
 
     bytes32 private _packedAmplificationData;
 
@@ -480,16 +480,16 @@ contract StablePool is BaseGeneralPool, StableMath {
         _require(endValue >= _MIN_AMP, Errors.MIN_AMP);
         _require(endValue <= _MAX_AMP, Errors.MAX_AMP);
 
-        _require(endTime >= block.timestamp + _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
+        uint256 duration = endTime - block.timestamp;
+        _require(duration >= _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
 
         (uint256 currentValue, bool isUpdating) = getAmplificationParameter();
         _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
 
-        if (endValue > currentValue) {
-            _require(endValue <= currentValue * _MAX_AMP_UPDATE_FACTOR, Errors.AMP_FACTOR);
-        } else {
-            _require(endValue >= currentValue / _MAX_AMP_UPDATE_FACTOR, Errors.AMP_FACTOR);
-        }
+        uint256 dailyRate = endValue > currentValue
+            ? (1 days * endValue) / (currentValue * duration)
+            : (1 days * currentValue) / (endValue * duration);
+        _require(dailyRate <= _MAX_AMP_UPDATE_DAILY_RATE, Errors.AMP_RATE_TOO_HIGH);
 
         _setAmplificationData(uint64(currentValue), uint64(endValue), uint64(block.timestamp), uint64(endTime));
 
@@ -506,6 +506,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             uint64(block.timestamp),
             uint64(block.timestamp)
         );
+
         emit AmpUpdateStopped(currentValue);
     }
 

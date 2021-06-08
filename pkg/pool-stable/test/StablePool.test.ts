@@ -152,15 +152,36 @@ describe('StablePool', function () {
         });
 
         it('reverts if amplification coefficient is too high', async () => {
-          const highAmp = bn(6000);
+          const highAmp = bn(5001);
 
           await expect(deployPool({ amplificationParameter: highAmp })).to.be.revertedWith('MAX_AMP');
         });
 
         it('reverts if amplification coefficient is too low', async () => {
-          const lowAmp = bn(0);
+          const lowAmp = bn(9);
 
           await expect(deployPool({ amplificationParameter: lowAmp })).to.be.revertedWith('MIN_AMP');
+        });
+      });
+    });
+
+    describe.only('amplification parameter ramping', () => {
+      let nextTimestamp: BigNumber;
+
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool({ owner });
+
+        nextTimestamp = (await currentTimestamp()).add(1);
+        await setNextBlockTimestamp(nextTimestamp);
+      });
+
+      describe('limits', () => {
+        it('can ramp to the current value', async () => {
+          await pool.startAmplificationRamp(AMPLIFICATION_PARAMETER, nextTimestamp.add(DAY), owner);
+        });
+
+        it('can ramp to twice the current value over a day', async () => {
+          await pool.startAmplificationRamp(AMPLIFICATION_PARAMETER.mul(2), nextTimestamp.add(DAY), owner);
         });
       });
     });
