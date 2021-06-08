@@ -70,10 +70,10 @@ contract StableMath {
             prevInvariant = invariant;
             invariant = Math.div(
                 Math.mul(Math.mul(numTokens, invariant), invariant).add(
-                    Math.mul(Math.mul(ampTimesTotal, sum), P_D) / _AMP_PRECISION
+                    Math.div(Math.mul(Math.mul(ampTimesTotal, sum), P_D), _AMP_PRECISION, roundUp)
                 ),
                 Math.mul(numTokens.add(1), invariant).add(
-                    Math.mul(ampTimesTotal.sub(_AMP_PRECISION), P_D) / _AMP_PRECISION
+                    Math.div(Math.mul(ampTimesTotal.sub(_AMP_PRECISION), P_D), _AMP_PRECISION, !roundUp)
                 ),
                 roundUp
             );
