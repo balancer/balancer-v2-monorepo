@@ -14,14 +14,18 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('StablePool', function () {
   let allTokens: TokenList;
-  let trader: SignerWithAddress, recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
+  let owner: SignerWithAddress,
+    trader: SignerWithAddress,
+    recipient: SignerWithAddress,
+    other: SignerWithAddress,
+    lp: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const AMPLIFICATION_PARAMETER = bn(200);
   const INITIAL_BALANCES = [fp(1), fp(0.9), fp(0.8), fp(1.1)];
 
   before('setup signers', async () => {
-    [, lp, trader, recipient, other] = await ethers.getSigners();
+    [, owner, lp, trader, recipient, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -637,10 +641,7 @@ describe('StablePool', function () {
     });
 
     describe('set amp', () => {
-      let owner: SignerWithAddress;
-
       sharedBeforeEach('deploy pool', async () => {
-        owner = other;
         await deployPool({ owner });
       });
 
