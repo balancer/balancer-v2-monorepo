@@ -1,6 +1,0 @@
-* @nventuro
-
-/pkg/vault/ @nventuro @dmf7z @facuspagnuolo
-/pkg/pool-*/ @nventuro @dmf7z @facuspagnuolo
-/pkg/asset-manager-utils/ @TomAFrench @gtaschuk @Zer0dot
-/pkg/distributors/ @TomAFrench @gtaschuk
