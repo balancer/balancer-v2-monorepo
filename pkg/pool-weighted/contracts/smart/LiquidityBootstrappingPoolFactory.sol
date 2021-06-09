@@ -36,7 +36,9 @@ contract LiquidityBootstrappingPoolFactory is BasePoolFactory, FactoryWidePauseW
         IERC20[] memory tokens,
         uint256[] memory weights,
         uint256 swapFeePercentage,
-        address owner
+        address owner,
+        uint256 minDuration,
+        bool publicSwap
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -50,7 +52,9 @@ contract LiquidityBootstrappingPoolFactory is BasePoolFactory, FactoryWidePauseW
                 swapFeePercentage,
                 pauseWindowDuration,
                 bufferPeriodDuration,
-                owner
+                owner,
+                minDuration,
+                publicSwap
             )
         );
         _register(pool);
