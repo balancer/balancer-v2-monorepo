@@ -23,7 +23,7 @@ interface IAssetManager {
     }
 
     /**
-     * @notice Returns the pools config
+     * @notice Returns the pool's config
      */
     function getPoolConfig(bytes32 poolId) external view returns (PoolConfig memory);
 
@@ -33,7 +33,7 @@ interface IAssetManager {
     function setPoolConfig(bytes32 poolId, PoolConfig calldata config) external;
 
     /**
-     * @notice Returns invested balance
+     * @notice Returns the invested balance
      */
     function balanceOf(bytes32 poolId) external view returns (uint256);
 
@@ -43,7 +43,7 @@ interface IAssetManager {
     function readAUM() external view returns (uint256);
 
     /**
-     * @return The difference in token between the target investment
+     * @return The difference in tokens between the target investment
      * and the currently invested amount (i.e. the amount that can be invested)
      */
     function maxInvestableBalance(bytes32 poolId) external view returns (int256);
@@ -55,7 +55,6 @@ interface IAssetManager {
 
     /**
      * @notice Updates the Vault on the value of the pool's investment returns
-     * @dev To be called following a call to realizeGains
      */
     function updateBalanceOfPool(bytes32 poolId) external;
 
@@ -72,8 +71,9 @@ interface IAssetManager {
     function capitalOut(bytes32 poolId, uint256 amount) external;
 
     /**
-     * @notice Rebalances funds between pool and asset manager to maintain target investment percentage.
-     * If the pool is below it's critical threshold for the amount invested then calling this will send a small reward
+     * @notice Rebalances funds between the pool and the asset manager to maintain target investment percentage.
+     * If the pool is below its critical threshold for the amount invested then calling this will send a small reward
+     * to the sender
      */
     function rebalance(bytes32 poolId) external;
 }
