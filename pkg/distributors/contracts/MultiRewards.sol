@@ -281,7 +281,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
             rewardData[stakingToken][rewardsToken].rewardsDistributor == msg.sender,
             "Callable only by distributor"
         );
-        // handle the transfer of reward tokens via `transferFrom` to reduce the number
+        // handle the transfer of reward tokens via `safeTransferFrom` to reduce the number
         // of transactions required and ensure correctness of the reward amount
         rewardsToken.safeTransferFrom(msg.sender, address(this), reward);
 
