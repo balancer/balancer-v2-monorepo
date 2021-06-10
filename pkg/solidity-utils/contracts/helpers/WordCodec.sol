@@ -25,8 +25,8 @@ library WordCodec {
     // Masks are values with the least significant N bits set. They can be used to extract an encoded value from a word,
     // or to insert a new one replacing the old.
     uint256 private constant _MASK_1 = 2**(1) - 1;
-    uint256 private constant _MASK_8 = 2**(8) - 1;
     uint256 private constant _MASK_10 = 2**(10) - 1;
+    uint256 private constant _MASK_16 = 2**(16) - 1;
     uint256 private constant _MASK_22 = 2**(22) - 1;
     uint256 private constant _MASK_31 = 2**(31) - 1;
     uint256 private constant _MASK_32 = 2**(32) - 1;
@@ -55,21 +55,6 @@ library WordCodec {
     // Unsigned
 
     /**
-     * @dev Inserts an 8 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
-     * the new word.
-     *
-     * Assumes `value` can be represented using 10 bits.
-     */
-    function insertUint8(
-        bytes32 word,
-        uint256 value,
-        uint256 offset
-    ) internal pure returns (bytes32) {
-        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_8 << offset));
-        return clearedWord | bytes32(value << offset);
-    }
-
-    /**
      * @dev Inserts a 10 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
      * the new word.
      *
@@ -83,6 +68,22 @@ library WordCodec {
         bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_10 << offset));
         return clearedWord | bytes32(value << offset);
     }
+
+    /**
+     * @dev Inserts a 16 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value.
+     * Returns the new word.
+     *
+     * Assumes `value` can be represented using 10 bits.
+     */
+    function insertUint16(
+        bytes32 word,
+        uint256 value,
+        uint256 offset
+    ) internal pure returns (bytes32) {
+        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_16 << offset));
+        return clearedWord | bytes32(value << offset);
+    }
+
 
     /**
      * @dev Inserts a 31 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
@@ -195,17 +196,17 @@ library WordCodec {
     // Unsigned
 
     /**
-     * @dev Decodes and returns an 8 bit unsigned integer shifted by an offset from a 256 bit word.
-     */
-    function decodeUint8(bytes32 word, uint256 offset) internal pure returns (uint256) {
-        return uint256(word >> offset) & _MASK_8;
-    }
-
-    /**
      * @dev Decodes and returns a 10 bit unsigned integer shifted by an offset from a 256 bit word.
      */
     function decodeUint10(bytes32 word, uint256 offset) internal pure returns (uint256) {
         return uint256(word >> offset) & _MASK_10;
+    }
+
+    /**
+     * @dev Decodes and returns a 16 bit unsigned integer shifted by an offset from a 256 bit word.
+     */
+    function decodeUint16(bytes32 word, uint256 offset) internal pure returns (uint256) {
+        return uint256(word >> offset) & _MASK_16;
     }
 
     /**

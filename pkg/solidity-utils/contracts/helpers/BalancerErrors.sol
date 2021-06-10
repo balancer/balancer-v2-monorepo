@@ -135,9 +135,7 @@ library Errors {
     uint256 internal constant AMP_FACTOR = 319;
     uint256 internal constant AMP_NO_ONGOING_UPDATE = 320;
     uint256 internal constant GRADUAL_UPDATE_TIME_TRAVEL = 321;
-    uint256 internal constant WEIGHT_CHANGE_TIME_BELOW_MIN = 322;
-    uint256 internal constant SWAPS_PAUSED = 323;
-    uint256 internal constant CALLER_NOT_OWNER = 324;
+    uint256 internal constant SWAPS_PAUSED = 322;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
