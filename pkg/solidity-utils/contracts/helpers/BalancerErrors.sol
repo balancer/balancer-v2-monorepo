@@ -164,6 +164,8 @@ library Errors {
     uint256 internal constant REVOKE_SENDER_NOT_ADMIN = 423;
     uint256 internal constant RENOUNCE_SENDER_NOT_ALLOWED = 424;
     uint256 internal constant BUFFER_PERIOD_EXPIRED = 425;
+    uint256 internal constant CALLER_IS_NOT_OWNER = 426;
+    uint256 internal constant NEW_OWNER_IS_ZERO = 427;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;

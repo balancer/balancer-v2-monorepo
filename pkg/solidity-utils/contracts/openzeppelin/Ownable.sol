@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-
 // Based on the Ownable library from OpenZeppelin Contracts, altered to reduce runtime gas by dropping
 // support for the GSN.
 
 pragma solidity ^0.7.0;
+
+import "../helpers/BalancerErrors.sol";
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -26,7 +27,7 @@ abstract contract Ownable {
     /**
      * @dev Initializes the contract setting the deployer as the initial owner.
      */
-    constructor () {
+    constructor() {
         _owner = msg.sender;
         emit OwnershipTransferred(address(0), msg.sender);
     }
@@ -42,7 +43,7 @@ abstract contract Ownable {
      * @dev Throws if called by any account other than the owner.
      */
     modifier onlyOwner() {
-        require(owner() == msg.sender, "Ownable: caller is not the owner");
+        _require(owner() == msg.sender, Errors.CALLER_IS_NOT_OWNER);
         _;
     }
 
@@ -63,7 +64,7 @@ abstract contract Ownable {
      * Can only be called by the current owner.
      */
     function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        _require(newOwner != address(0), Errors.NEW_OWNER_IS_ZERO);
         emit OwnershipTransferred(_owner, newOwner);
         _owner = newOwner;
     }
