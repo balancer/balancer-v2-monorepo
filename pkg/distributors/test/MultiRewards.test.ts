@@ -147,7 +147,8 @@ describe('Staking contract', () => {
         () =>
           stakingContract.connect(mockAssetManager).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount),
         rewardTokens,
-        [{ account: stakingContract, changes: { DAI: rewardAmount } }]
+        [{ account: stakingContract, changes: { DAI: rewardAmount } }],
+        vault
       );
     });
 
