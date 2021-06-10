@@ -35,6 +35,9 @@ contract StablePool is BaseGeneralPool, StableMath {
 
     // Amplification factor changes must happen over a minimum period of one day, and can at most divide or multiple the
     // current value by 2 every day.
+    // WARNING: this only limits *a single* amplification change to have a maximum rate of change of twice the original
+    // value daily. It is possible to perform multiple amplification changes in sequence to increase this value more
+    // rapidly: for example, by doubling the value every day it can increase by a factor of 8 over three days (2^3).
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
     uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
 
