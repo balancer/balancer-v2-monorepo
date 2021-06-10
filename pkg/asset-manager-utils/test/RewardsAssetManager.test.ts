@@ -114,7 +114,7 @@ describe('Rewards Asset manager', function () {
     it('reverts when setting target over 100%', async () => {
       const badPoolConfig = { targetPercentage: fp(1.1), criticalPercentage: 0, feePercentage: 0 };
       await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
-        'Investment target must be less than 100%'
+        'Investment target must be less than or equal to 100%'
       );
     });
 

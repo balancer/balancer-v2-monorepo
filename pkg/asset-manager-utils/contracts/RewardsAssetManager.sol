@@ -172,7 +172,7 @@ abstract contract RewardsAssetManager is IAssetManager {
 
     // TODO restrict access with onlyPoolController
     function setPoolConfig(bytes32 pId, PoolConfig calldata config) external override withCorrectPool(pId) {
-        require(config.targetPercentage <= FixedPoint.ONE, "Investment target must be less than 100%");
+        require(config.targetPercentage <= FixedPoint.ONE, "Investment target must be less than or equal to 100%");
         require(config.criticalPercentage <= config.targetPercentage, "Critical level must be less than target");
         require(config.feePercentage <= FixedPoint.ONE / 10, "Fee on critical rebalances must be less than 10%");
 
