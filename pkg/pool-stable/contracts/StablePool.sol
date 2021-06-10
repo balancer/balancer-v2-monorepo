@@ -33,7 +33,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
     // solhint-disable not-rely-on-time
 
-    // Amplication factor changes must happen over a minimum period of one day, and can at most divide or multiple the
+    // Amplification factor changes must happen over a minimum period of one day, and can at most divide or multiple the
     // current value by 10.
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
     uint256 private constant _MAX_AMP_UPDATE_FACTOR = 10;
@@ -77,17 +77,11 @@ contract StablePool is BaseGeneralPool, StableMath {
             owner
         )
     {
-        _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
-        _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
-
         _require(tokens.length <= _MAX_STABLE_TOKENS, Errors.MAX_STABLE_TOKENS);
 
-        _setAmplificationData(
-            uint64(amplificationParameter),
-            uint64(amplificationParameter),
-            uint64(block.timestamp),
-            uint64(block.timestamp)
-        );
+        _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
+        _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
+        _setAmplificationData(amplificationParameter * _AMP_PRECISION);
     }
 
     // Base Pool handlers
@@ -100,10 +94,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 indexIn,
         uint256 indexOut
     ) internal view virtual override whenNotPaused returns (uint256) {
-        (uint256 currentAmp, ) = getAmplificationParameter();
-
+        (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 amountOut = StableMath._calcOutGivenIn(currentAmp, balances, indexIn, indexOut, swapRequest.amount);
-
         return amountOut;
     }
 
@@ -113,9 +105,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 indexIn,
         uint256 indexOut
     ) internal view virtual override whenNotPaused returns (uint256) {
-        (uint256 currentAmp, ) = getAmplificationParameter();
+        (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 amountIn = StableMath._calcInGivenOut(currentAmp, balances, indexIn, indexOut, swapRequest.amount);
-
         return amountIn;
     }
 
@@ -137,7 +128,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         InputHelpers.ensureInputLengthMatch(amountsIn.length, _getTotalTokens());
         _upscaleArray(amountsIn, _scalingFactors());
 
-        (uint256 currentAmp, ) = getAmplificationParameter();
+        (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 invariantAfterJoin = StableMath._calculateInvariant(currentAmp, amountsIn, true);
 
         // Set the initial BPT to the value of the invariant.
@@ -211,7 +202,7 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         _upscaleArray(amountsIn, _scalingFactors());
 
-        (uint256 currentAmp, ) = getAmplificationParameter();
+        (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
             currentAmp,
             balances,
@@ -236,7 +227,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
 
         uint256[] memory amountsIn = new uint256[](_getTotalTokens());
-        (uint256 currentAmp, ) = getAmplificationParameter();
+        (uint256 currentAmp, ) = _getAmplificationParameter();
         amountsIn[tokenIndex] = StableMath._calcTokenInGivenExactBptOut(
             currentAmp,
             balances,
@@ -329,7 +320,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory amountsOut = new uint256[](_getTotalTokens());
 
         // And then assign the result to the selected token
-        (uint256 currentAmp, ) = getAmplificationParameter();
+        (uint256 currentAmp, ) = _getAmplificationParameter();
         amountsOut[tokenIndex] = StableMath._calcTokenOutGivenExactBptIn(
             currentAmp,
             balances,
@@ -371,7 +362,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens());
         _upscaleArray(amountsOut, _scalingFactors());
 
-        (uint256 currentAmp, ) = getAmplificationParameter();
+        (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
             currentAmp,
             balances,
@@ -445,7 +436,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     function _updateInvariantAfterJoin(uint256[] memory balances, uint256[] memory amountsIn) private {
         _mutateAmounts(balances, amountsIn, FixedPoint.add);
 
-        (uint256 currentAmp, ) = getAmplificationParameter();
+        (uint256 currentAmp, ) = _getAmplificationParameter();
         // This invariant is used only to compute the final balance when calculating the protocol fees. These are
         // rounded down, so we round the invariant up.
         _updateLastInvariant(StableMath._calculateInvariant(currentAmp, balances, true), currentAmp);
@@ -458,7 +449,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     function _updateInvariantAfterExit(uint256[] memory balances, uint256[] memory amountsOut) private {
         _mutateAmounts(balances, amountsOut, FixedPoint.sub);
 
-        (uint256 currentAmp, ) = getAmplificationParameter();
+        (uint256 currentAmp, ) = _getAmplificationParameter();
         // This invariant is used only to compute the final balance when calculating the protocol fees. These are
         // rounded down, so we round the invariant up.
         _updateLastInvariant(StableMath._calculateInvariant(currentAmp, balances, true), currentAmp);
@@ -488,43 +479,39 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         // When calculating the current BPT rate, we may not have paid the protocol fees, therefore
         // the invariant should be smaller than its current value. Then, we round down overall.
-        (uint256 currentAmp, ) = getAmplificationParameter();
+        (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, false);
         return invariant.divDown(totalSupply());
     }
 
     // Amplification
 
-    function startAmplificationParameterUpdate(uint256 endValue, uint256 endTime) external authenticate {
-        _require(endValue >= _MIN_AMP, Errors.MIN_AMP);
-        _require(endValue <= _MAX_AMP, Errors.MAX_AMP);
+    function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticate {
+        _require(rawEndValue >= _MIN_AMP, Errors.MIN_AMP);
+        _require(rawEndValue <= _MAX_AMP, Errors.MAX_AMP);
 
         _require(endTime >= block.timestamp + _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
 
-        (uint256 currentValue, bool isUpdating) = getAmplificationParameter();
+        (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
         _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
 
+        uint256 endValue = rawEndValue * _AMP_PRECISION;
         if (endValue > currentValue) {
             _require(endValue <= currentValue * _MAX_AMP_UPDATE_FACTOR, Errors.AMP_FACTOR);
         } else {
             _require(endValue >= currentValue / _MAX_AMP_UPDATE_FACTOR, Errors.AMP_FACTOR);
         }
 
-        _setAmplificationData(uint64(currentValue), uint64(endValue), uint64(block.timestamp), uint64(endTime));
+        _setAmplificationData(currentValue, endValue, block.timestamp, endTime);
 
         emit AmpUpdateStarted(currentValue, endValue, block.timestamp, endTime);
     }
 
     function stopAmplificationParameterUpdate() external authenticate {
-        (uint256 currentValue, bool isUpdating) = getAmplificationParameter();
+        (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
         _require(isUpdating, Errors.AMP_NO_ONGOING_UPDATE);
 
-        _setAmplificationData(
-            uint64(currentValue),
-            uint64(currentValue),
-            uint64(block.timestamp),
-            uint64(block.timestamp)
-        );
+        _setAmplificationData(currentValue);
         emit AmpUpdateStopped(currentValue);
     }
 
@@ -535,7 +522,20 @@ contract StablePool is BaseGeneralPool, StableMath {
             super._isOwnerOnlyAction(actionId);
     }
 
-    function getAmplificationParameter() public view returns (uint256 value, bool isUpdating) {
+    function getAmplificationParameter()
+        external
+        view
+        returns (
+            uint256 value,
+            bool isUpdating,
+            uint256 precision
+        )
+    {
+        (value, isUpdating) = _getAmplificationParameter();
+        precision = _AMP_PRECISION;
+    }
+
+    function _getAmplificationParameter() internal view returns (uint256 value, bool isUpdating) {
         (uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) = _getAmplificationData();
 
         // Note that block.timestamp >= startTime, since startTime is set to the current time when an update starts
@@ -553,17 +553,21 @@ contract StablePool is BaseGeneralPool, StableMath {
         }
     }
 
+    function _setAmplificationData(uint256 value) private {
+        _setAmplificationData(value, value, block.timestamp, block.timestamp);
+    }
+
     function _setAmplificationData(
-        uint64 startValue,
-        uint64 endValue,
-        uint64 startTime,
-        uint64 endTime
+        uint256 startValue,
+        uint256 endValue,
+        uint256 startTime,
+        uint256 endTime
     ) private {
         _packedAmplificationData =
-            WordCodec.encodeUint(startValue, 0) |
-            WordCodec.encodeUint(endValue, 64) |
-            WordCodec.encodeUint(startTime, 64 * 2) |
-            WordCodec.encodeUint(endTime, 64 * 3);
+            WordCodec.encodeUint(uint64(startValue), 0) |
+            WordCodec.encodeUint(uint64(endValue), 64) |
+            WordCodec.encodeUint(uint64(startTime), 64 * 2) |
+            WordCodec.encodeUint(uint64(endTime), 64 * 3);
     }
 
     function _getAmplificationData()

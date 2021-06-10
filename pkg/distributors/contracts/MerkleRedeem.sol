@@ -70,7 +70,7 @@ contract MerkleRedeem is IDistributor, Ownable {
     }
 
     /**
-     * @notice Allows a user to claim a particular weeks worth of rewards
+     * @notice Allows a user to claim a particular week's worth of rewards
      */
     function claimWeek(
         address payable liquidityProvider,
@@ -98,7 +98,7 @@ contract MerkleRedeem is IDistributor, Ownable {
     }
 
     /**
-     * @notice Allows a user to claim a particular weeks worth of rewards
+     * @notice Allows a user to claim a particular week's worth of rewards
      */
     function claimWeeks(
         address payable liquidityProvider,
