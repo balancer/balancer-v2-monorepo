@@ -84,7 +84,7 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
         _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
-        _setAmplificationData(amplificationParameter * _AMP_PRECISION);
+        _setAmplificationData(Math.mul(amplificationParameter, _AMP_PRECISION));
     }
 
     // Base Pool handlers
@@ -489,6 +489,13 @@ contract StablePool is BaseGeneralPool, StableMath {
 
     // Amplification
 
+    /**
+     * @dev Begins changing the amplification parameter to `rawEndValue` over time. The value will change linearly until
+     * `endTime` is reached, when it will be `rawEndValue`.
+     *
+     * NOTE: Internally, the amplification parameter is represented using higher precision. The values returned by
+     * `getAmplificationParameter` have to be corrected to account for this when comparing to `rawEndValue`.
+     */
     function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticate {
         _require(rawEndValue >= _MIN_AMP, Errors.MIN_AMP);
         _require(rawEndValue <= _MAX_AMP, Errors.MAX_AMP);
@@ -499,10 +506,11 @@ contract StablePool is BaseGeneralPool, StableMath {
         (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
         _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
 
+        uint256 endValue = Math.mul(rawEndValue, _AMP_PRECISION);
+
         // daily rate = (endValue / currentValue) / duration * 1 day
         // We perform all multiplications first to not reduce precision, and round the division up as we want to avoid
         // large rates. Note that these are regular integer multiplications and divisions, not fixed point.
-        uint256 endValue = rawEndValue * _AMP_PRECISION;
         uint256 dailyRate = endValue > currentValue
             ? Math.divUp(Math.mul(1 days, endValue), Math.mul(currentValue, duration))
             : Math.divUp(Math.mul(1 days, currentValue), Math.mul(endValue, duration));
@@ -513,6 +521,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         emit AmpUpdateStarted(currentValue, endValue, block.timestamp, endTime);
     }
 
+    /**
+     * @dev Stops the amplification parameter change process, keeping the current value.
+     */
     function stopAmplificationParameterUpdate() external authenticate {
         (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
         _require(isUpdating, Errors.AMP_NO_ONGOING_UPDATE);
