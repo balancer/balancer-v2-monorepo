@@ -34,9 +34,12 @@ contract StablePool is BaseGeneralPool, StableMath {
     // solhint-disable not-rely-on-time
 
     // Amplification factor changes must happen over a minimum period of one day, and can at most divide or multiple the
-    // current value by 10.
+    // current value by 2 every day.
+    // WARNING: this only limits *a single* amplification change to have a maximum rate of change of twice the original
+    // value daily. It is possible to perform multiple amplification changes in sequence to increase this value more
+    // rapidly: for example, by doubling the value every day it can increase by a factor of 8 over three days (2^3).
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
-    uint256 private constant _MAX_AMP_UPDATE_FACTOR = 10;
+    uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
 
     bytes32 private _packedAmplificationData;
 
@@ -490,17 +493,20 @@ contract StablePool is BaseGeneralPool, StableMath {
         _require(rawEndValue >= _MIN_AMP, Errors.MIN_AMP);
         _require(rawEndValue <= _MAX_AMP, Errors.MAX_AMP);
 
-        _require(endTime >= block.timestamp + _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
+        uint256 duration = Math.sub(endTime, block.timestamp);
+        _require(duration >= _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
 
         (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
         _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
 
+        // daily rate = (endValue / currentValue) / duration * 1 day
+        // We perform all multiplications first to not reduce precision, and round the division up as we want to avoid
+        // large rates. Note that these are regular integer multiplications and divisions, not fixed point.
         uint256 endValue = rawEndValue * _AMP_PRECISION;
-        if (endValue > currentValue) {
-            _require(endValue <= currentValue * _MAX_AMP_UPDATE_FACTOR, Errors.AMP_FACTOR);
-        } else {
-            _require(endValue >= currentValue / _MAX_AMP_UPDATE_FACTOR, Errors.AMP_FACTOR);
-        }
+        uint256 dailyRate = endValue > currentValue
+            ? Math.divUp(Math.mul(1 days, endValue), Math.mul(currentValue, duration))
+            : Math.divUp(Math.mul(1 days, currentValue), Math.mul(endValue, duration));
+        _require(dailyRate <= _MAX_AMP_UPDATE_DAILY_RATE, Errors.AMP_RATE_TOO_HIGH);
 
         _setAmplificationData(currentValue, endValue, block.timestamp, endTime);
 
@@ -542,6 +548,13 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         if (block.timestamp < endTime) {
             isUpdating = true;
+
+            // We can skip checked arithmetic as:
+            //  - block.timestamp is always larger or equal to startTime
+            //  - endTime is alawys larger than startTime
+            //  - the value delta is bounded by the largest amplification paramater, which never causes the
+            //    multiplication to overflow.
+            // This also means that the following computation will never revert nor yield invalid results.
             if (endValue > startValue) {
                 value = startValue + ((endValue - startValue) * (block.timestamp - startTime)) / (endTime - startTime);
             } else {

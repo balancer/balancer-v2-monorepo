@@ -10,7 +10,7 @@ import {
   advanceTime,
   currentTimestamp,
   lastBlockNumber,
-  setNextBlockTimestamp,
+  advanceToTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -431,7 +431,7 @@ describe('WeightedPool2Tokens', function () {
         }
 
         await pool.instance.mockOracleIndex(LATEST);
-        await setNextBlockTimestamp(samples[LATEST].timestamp);
+        await advanceToTimestamp(samples[LATEST].timestamp);
       });
     };
 
