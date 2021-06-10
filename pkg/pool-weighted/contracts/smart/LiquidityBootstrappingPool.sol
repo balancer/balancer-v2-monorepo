@@ -91,8 +91,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
             // Insert "start weights" and "end weights" into poolState
             // Before the first update, start=end, which avoids initialization edge cases
-            poolState = poolState.write32(normalizedWeight, i * 32);
-            poolState = poolState.write16(normalizedWeight, _END_WEIGHT_OFFSET + i * 16);
+            poolState = poolState.compress32(normalizedWeight, i * 32);
+            poolState = poolState.compress16(normalizedWeight, _END_WEIGHT_OFFSET + i * 16);
 
             normalizedSum = normalizedSum.add(normalizedWeight);
         }
@@ -132,10 +132,10 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { endWeights[0] = poolState.read16(_END_WEIGHT_OFFSET); }
-            if (totalTokens > 1) { endWeights[1] = poolState.read16(_END_WEIGHT_OFFSET + 16); }
-            if (totalTokens > 2) { endWeights[2] = poolState.read16(_END_WEIGHT_OFFSET + 32); }
-            if (totalTokens > 3) { endWeights[3] = poolState.read16(_END_WEIGHT_OFFSET + 48); }
+            if (totalTokens > 0) { endWeights[0] = poolState.uncompress16(_END_WEIGHT_OFFSET); }
+            if (totalTokens > 1) { endWeights[1] = poolState.uncompress16(_END_WEIGHT_OFFSET + 16); }
+            if (totalTokens > 2) { endWeights[2] = poolState.uncompress16(_END_WEIGHT_OFFSET + 32); }
+            if (totalTokens > 3) { endWeights[3] = poolState.uncompress16(_END_WEIGHT_OFFSET + 48); }
         }
     }
 
@@ -187,7 +187,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             _require(endWeights[i] >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             // update the end weights in memory
-            newPoolState = newPoolState.write16(endWeights[i], _END_WEIGHT_OFFSET + i * 16);
+            newPoolState = newPoolState.compress16(endWeights[i], _END_WEIGHT_OFFSET + i * 16);
 
             sumWeights = sumWeights.add(endWeights[i]);
         }
@@ -217,8 +217,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         bytes32 poolState = _poolState;
 
-        uint256 startWeight = poolState.read32(i * 32);
-        uint256 endWeight = poolState.read16(_END_WEIGHT_OFFSET + i * 16);
+        uint256 startWeight = poolState.uncompress32(i * 32);
+        uint256 endWeight = poolState.uncompress16(_END_WEIGHT_OFFSET + i * 16);
 
         // If no ongoing weight change, return the fixed weight
         if (startWeight == endWeight) {
@@ -231,7 +231,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         if (pctProgress == 0) {
             return startWeight;
-        } else if (pctProgress == 1) {
+        } else if (pctProgress == FixedPoint.ONE) {
             return endWeight;
         }
 
@@ -289,7 +289,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     ) internal view override whenNotPaused returns (uint256) {
         _require(swapEnabled, Errors.SWAPS_PAUSED);
 
-        return BaseWeightedPool._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        return super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
 
     function _onSwapGivenOut(
@@ -299,7 +299,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     ) internal view override whenNotPaused returns (uint256) {
         _require(swapEnabled, Errors.SWAPS_PAUSED);
 
-        return BaseWeightedPool._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
 
     /**
@@ -332,7 +332,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 secondsElapsed = currentTime.sub(startTime);
 
         // In the degenerate case of a zero duration change, consider it completed (and avoid division by zero)
-        return totalSeconds == 0 ? 1 : secondsElapsed.divDown(totalSeconds);
+        return totalSeconds == 0 ? FixedPoint.ONE : secondsElapsed.divDown(totalSeconds);
     }
 
     /**
@@ -351,7 +351,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         // Copy current weights to start weights
         for (uint8 i = 0; i < totalTokens; i++) {
-            poolState = poolState.write32(normalizedWeights[i], i * 32);
+            poolState = poolState.compress32(normalizedWeights[i], i * 32);
         }
 
         // Reset the timestamps
@@ -369,12 +369,12 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 pctProgress,
         uint8 i
     ) private pure returns (uint256) {
-        uint256 startWeight = poolState.read32(i * 32);
-        uint256 endWeight = poolState.read16(_END_WEIGHT_OFFSET + i * 16);
+        uint256 startWeight = poolState.uncompress32(i * 32);
+        uint256 endWeight = poolState.uncompress16(_END_WEIGHT_OFFSET + i * 16);
 
         if (startWeight == endWeight || pctProgress == 0) {
             return startWeight;
-        } else if (pctProgress == 1) {
+        } else if (pctProgress == FixedPoint.ONE) {
             return endWeight;
         }
 

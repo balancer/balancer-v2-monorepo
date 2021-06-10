@@ -24,46 +24,39 @@ library WeightCompression {
     using FixedPoint for uint256;
     using WordCodec for bytes32;
 
-    // Scaling factors to adjust resolution of weights from full 256 bit to 16/32 bits respectively
-    uint256 private constant _MAX_UINT_16 = 2**(16) - 1;
-    uint256 private constant _MAX_UINT_32 = 2**(32) - 1;
-
-    uint256 private constant _SCALING_FACTOR_16 = 1e18 / _MAX_UINT_16;
-    uint256 private constant _SCALING_FACTOR_32 = 1e18 / _MAX_UINT_32;
-
     /**
-     * @dev Read a value from a 16-bit slot at the given offset
+     * @dev Read a value from a 16-bit slot at the given offset and convert to full FixedPoint
      */
-    function read16(bytes32 word, uint256 offset) internal pure returns (uint256) {
-        return word.decodeUint16(offset).mulDown(_SCALING_FACTOR_16);
+    function uncompress16(bytes32 word, uint256 offset) internal pure returns (uint256) {
+        return word.decodeUint16(offset).mulDown(FixedPoint.ONE).divDown(type(uint16).max);
     }
 
     /**
-     * @dev Write a value into a 16-bit slot at the given offset
+     * @dev Compress a FisedPoint value to 16 bits, and write to a slot at the given offset
      */
-    function write16(
+    function compress16(
         bytes32 word,
         uint256 value,
         uint256 offset
     ) internal pure returns (bytes32) {
-        return word.insertUint16(value.divDown(_SCALING_FACTOR_16), offset);
+        return word.insertUint16(value.mulDown(type(uint16).max).divDown(FixedPoint.ONE), offset);
     }
 
     /**
-     * @dev Read a value from a 32-bit slot at the given offset
+     * @dev Read a value from a 32-bit slot at the given offset and convert to full FixedPoint
      */
-    function read32(bytes32 word, uint256 offset) internal pure returns (uint256) {
-        return word.decodeUint32(offset).mulDown(_SCALING_FACTOR_32);
+    function uncompress32(bytes32 word, uint256 offset) internal pure returns (uint256) {
+        return word.decodeUint32(offset).mulDown(FixedPoint.ONE).divDown(type(uint32).max);
     }
 
     /**
-     * @dev Write value into a 32-bit slot at the given offset
+     * @dev Compress a FisedPoint value to 32 bits, and write to a slot at the given offset
      */
-    function write32(
+    function compress32(
         bytes32 word,
         uint256 value,
         uint256 offset
     ) internal pure returns (bytes32) {
-        return word.insertUint32(value.divDown(_SCALING_FACTOR_32), offset);
+        return word.insertUint32(value.mulDown(type(uint32).max).divDown(FixedPoint.ONE), offset);
     }
 }

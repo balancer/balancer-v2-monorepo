@@ -59,6 +59,8 @@ export default class WeightedPool {
   swapFeePercentage: BigNumberish;
   vault: Vault;
   twoTokens: boolean;
+  lbp: boolean;
+  swapEnabledOnStart: boolean;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
     return WeightedPoolDeployer.deploy(params);
@@ -72,7 +74,9 @@ export default class WeightedPool {
     weights: BigNumberish[],
     assetManagers: string[],
     swapFeePercentage: BigNumberish,
-    twoTokens: boolean
+    twoTokens: boolean,
+    lbp: boolean;
+    swapEnabledOnStart: boolean
   ) {
     this.instance = instance;
     this.poolId = poolId;
@@ -82,6 +86,8 @@ export default class WeightedPool {
     this.assetManagers = assetManagers;
     this.swapFeePercentage = swapFeePercentage;
     this.twoTokens = twoTokens;
+    this.lbp = lbp;
+    this.swapEnabledOnStart = swapEnabledOnStart;
   }
 
   get address(): string {
