@@ -132,10 +132,10 @@ library Errors {
     uint256 internal constant ORACLE_BAD_SECS = 316;
     uint256 internal constant AMP_END_TIME_TOO_CLOSE = 317;
     uint256 internal constant AMP_ONGOING_UPDATE = 318;
-    uint256 internal constant AMP_FACTOR = 319;
+    uint256 internal constant AMP_RATE_TOO_HIGH = 319;
     uint256 internal constant AMP_NO_ONGOING_UPDATE = 320;
     uint256 internal constant STABLE_INVARIANT_DIDNT_CONVERGE = 321;
-    uint256 internal constant STABLE_GET_BALANCE_DIDNT_CONVERGE = 321;
+    uint256 internal constant STABLE_GET_BALANCE_DIDNT_CONVERGE = 322;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
@@ -164,6 +164,8 @@ library Errors {
     uint256 internal constant REVOKE_SENDER_NOT_ADMIN = 423;
     uint256 internal constant RENOUNCE_SENDER_NOT_ALLOWED = 424;
     uint256 internal constant BUFFER_PERIOD_EXPIRED = 425;
+    uint256 internal constant CALLER_IS_NOT_OWNER = 426;
+    uint256 internal constant NEW_OWNER_IS_ZERO = 427;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;
