@@ -339,10 +339,10 @@ describe('Aave Asset manager', function () {
     });
 
     it('sends expected amount of stkAave to the rewards contract', async () => {
-      const rewardsBefore = await stkAave.balanceOf(distributor.address);
+      const rewardsBefore = await vault.getInternalBalance(distributor.address, [stkAave.address]);
       await assetManager.claimRewards();
-      const rewardsAfter = await stkAave.balanceOf(distributor.address);
-      expect(rewardsAfter).to.be.eq(rewardsBefore.add(rewardAmount));
+      const rewardsAfter = await vault.getInternalBalance(distributor.address, [stkAave.address]);
+      expect(rewardsAfter[0]).to.be.eq(rewardsBefore[0].add(rewardAmount));
     });
 
     it('distributes the reward according to the fraction of staked LP tokens', async () => {
@@ -410,6 +410,46 @@ describe('Aave Asset manager', function () {
   });
 
   describe('rebalance', () => {
+    context('when pool is above target investment level', () => {
+      let poolController: SignerWithAddress; // TODO
+      const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
+
+      sharedBeforeEach(async () => {
+        poolController = lp; // TODO
+        await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
+        const amountToDeposit = tokenInitialBalance.mul(poolConfig.targetPercentage).div(fp(1));
+        await assetManager.connect(poolController).capitalIn(poolId, amountToDeposit);
+
+        // should be perfectly balanced
+        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+        expect(maxInvestableBalance).to.equal(bn(0));
+
+        // Simulate a return on asset manager's investment
+        const amountReturned = amountToDeposit.div(10);
+        await lendingPool.connect(lp).simulateATokenIncrease(tokens.DAI.address, amountReturned, assetManager.address);
+
+        await assetManager.connect(lp).updateBalanceOfPool(poolId);
+      });
+
+      it('transfers the expected number of tokens to the Vault', async () => {
+        const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+        const poolTVL = cash.add(managed);
+        const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
+        const expectedRebalanceAmount = managed.sub(targetInvestmentAmount);
+
+        await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
+          { account: lendingPool.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+          { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
+        ]);
+      });
+
+      it('returns the pool to its target allocation', async () => {
+        await assetManager.rebalance(poolId);
+        const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
+        expect(differenceFromTarget.abs()).to.be.lte(1);
+      });
+    });
+
     describe('when pool is below target investment level', () => {
       describe('when pool is safely above critical investment level', () => {
         let poolController: SignerWithAddress; // TODO
@@ -425,7 +465,10 @@ describe('Aave Asset manager', function () {
         });
 
         it('transfers the expected number of tokens from the Vault', async () => {
-          const expectedRebalanceAmount = await assetManager.maxInvestableBalance(poolId);
+          const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+          const poolTVL = cash.add(managed);
+          const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
+          const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
 
           await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
             { account: lendingPool.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
@@ -451,7 +494,10 @@ describe('Aave Asset manager', function () {
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
-            const expectedRebalanceAmount = await assetManager.maxInvestableBalance(poolId);
+            const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+            const poolTVL = cash.add(managed);
+            const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
+            const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
 
             await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
               { account: lendingPool.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
@@ -466,16 +512,19 @@ describe('Aave Asset manager', function () {
         });
 
         describe('when fee percentage is non-zero', () => {
-          let zeroFeeRebalanceAmount: BigNumber;
           const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
           sharedBeforeEach(async () => {
             poolController = lp; // TODO
 
             await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
-            zeroFeeRebalanceAmount = await assetManager.maxInvestableBalance(poolId);
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
+            const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+            const poolTVL = cash.add(managed);
+            const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
+            const zeroFeeRebalanceAmount = targetInvestmentAmount.sub(managed);
+
             const expectedFeeAmount = await assetManager.getRebalanceFee(poolId);
 
             const investmentFeeAdjustment = expectedFeeAmount.mul(poolConfig.targetPercentage).div(fp(1));
@@ -500,6 +549,8 @@ describe('Aave Asset manager', function () {
             await assetManager.rebalance(poolId);
             expect(await assetManager.maxInvestableBalance(poolId)).to.be.eq(0);
           });
+
+          it("update the pool's cash and managed balances correctly");
         });
       });
     });
