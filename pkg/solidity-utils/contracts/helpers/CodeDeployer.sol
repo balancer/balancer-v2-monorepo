@@ -17,24 +17,30 @@ pragma solidity ^0.7.0;
 import "./BalancerErrors.sol";
 
 /**
- * @dev Library used to deploy contracts with specific code.
+ * @dev Library used to deploy contracts with specific code. This can be used for long-term storage of immutable data as
+ * contract code, which can be retrieved via the `extcodecopy` opcode.
  */
 library CodeDeployer {
-    // The following sequence corresponds to the creation code of the following equivalent Solidity contract, plus
-    // padding to make the full code 32 bytes long:
+    // During contract construction, the full code supplied exists as code, and can be accessed via `codesize` and
+    // `codecopy`. This is not the contract's final code however: whatever the constructor returns is what will be
+    // stored as its code.
+    //
+    // We use this mechanism to have a simple constructor that stores whatever is appended to it. The following opcode
+    // sequence corresponds to the creation code of the following equivalent Solidity contract, plus padding to make the
+    // full code 32 bytes long:
     //
     // contract CodeDeployer {
     //     constructor() payable {
     //         uint256 size;
     //         assembly {
-    //             size := sub(codesize(), 32)
-    //             codecopy(0, 32, size)
-    //             return(0, size)
+    //             size := sub(codesize(), 32) // size of appended data, as constructor is 32 bytes long
+    //             codecopy(0, 32, size) // copy all appended data to memory at position 0
+    //             return(0, size) // return appended data for it to be stored as code
     //         }
     //     }
     // }
     //
-    // More concretely, it is composed of the following opcodes (plus padding):
+    // More specifically, it is composed of the following opcodes (plus padding):
     //
     // [1] PUSH1 0x20
     // [2] CODESIZE
@@ -46,8 +52,7 @@ library CodeDeployer {
     // [11] PUSH1 0x00
     // [12] RETURN
     //
-    // This simple contract takes whatever data was appended to it during creation, and stores that as its code.
-
+    // The padding is just the 0xfe sequence (invalid opcode).
     bytes32 public constant creationCode = 0x602038038060206000396000f3fefefefefefefefefefefefefefefefefefefe;
 
     /**
@@ -61,19 +66,19 @@ library CodeDeployer {
 
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            // `code` is composed of length and data. We've already stored the length in `codeLength`, so we can simply
+            // `code` is composed of length and data. We've already stored its length in `codeLength`, so we simply
             // replace it with the deployer creation code (which is exactly 32 bytes long).
             mstore(code, deployerCreationCode)
 
-            // At this point, `code` now points to the deployer creation code immediately followed by `code` data
+            // At this point, `code` now points to the deployer creation code immediately followed by `code`'s data
             // contents. This is exactly what the deployer expects to receive when created.
             destination := create(0, code, add(codeLength, 32))
 
-            // Restore the original length to not mutate `code`
+            // Finally, we restore the original length in order to not mutate `code`.
             mstore(code, codeLength)
         }
 
-        // The create opcode returns the zero address when contract creation fails
-        _require(destination != address(0), Errors.DEPLOYMENT_FAILED);
+        // The create opcode returns the zero address when contract creation fails, so we revert if this happens.
+        _require(destination != address(0), Errors.CODE_DEPLOYMENT_FAILED);
     }
 }
