@@ -115,7 +115,18 @@ abstract contract BaseSplitCodeFactory {
         return _getCreationCodeWithArgs("");
     }
 
+    /**
+     * @dev Returns the creation code that will result in a contract being deployed with `constructorArgs`.
+     */
     function _getCreationCodeWithArgs(bytes memory constructorArgs) private view returns (bytes memory code) {
+        // This function exists because `abi.encode()` cannot be instructed to place its result at a specific address.
+        // We need for the ABI-encoded constructor arguments to be located immediately after the creation code, but
+        // cannot rely on `abi.encodePacked()` to perform concatenation as that would involve copying the creation code,
+        // which would be prohibitely expensive.
+        // Instead, we compute the creation code in a pre-allocated array that is large enough to hold *both* the
+        // creation code and the constructor arguments, and then copy the ABI-encoded arguments (which should not be
+        // overly long) right after the end of the creation code.
+
         // Immutable variables cannot be used in assembly, so we store them in the stack first.
         address creationCodeStorageA = _creationCodeStorageA;
         uint256 creationCodeSizeA = _creationCodeSizeA;
