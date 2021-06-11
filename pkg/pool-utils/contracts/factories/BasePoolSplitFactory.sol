@@ -95,6 +95,38 @@ abstract contract BasePoolSplitFactory {
     }
 
     /**
+     * @dev Returns the creation code of this Factory's Pool.
+     */
+    function getPoolCreationCode() public view returns (bytes memory code) {
+        // Immutable variables cannot be used in assembly, so we store them in the stack first.
+        address creationCodeStorageA = _creationCodeStorageA;
+        uint256 creationCodeSizeA = _creationCodeSizeA;
+        address creationCodeStorageB = _creationCodeStorageB;
+        uint256 creationCodeSizeB = _creationCodeSizeB;
+
+        uint256 creationCodeSize = creationCodeSizeA + creationCodeSizeB;
+
+        assembly {
+            // First, we allocate memory for `code` by retriving the free memory pointer and then moving it ahead of
+            // `code` by the size of `code`'s contents plus 32 bytes for its length.
+            code := mload(0x40)
+            mstore(0x40, add(code, add(creationCodeSize, 32)))
+
+            // Now, we initialize `code` by storing its length and retrieving the creation code from A and B
+            mstore(code, creationCodeSize)
+            extcodecopy(creationCodeStorageA, add(code, 32), 0, creationCodeSizeA)
+            extcodecopy(creationCodeStorageB, add(add(code, 32), creationCodeSizeA), 0, creationCodeSizeB)
+        }
+    }
+
+    /**
+     * @dev Returns the two addresses where the creation code of this Factory's Pool is stored.
+     */
+    function getPoolCreationCodeStorage() public view returns (address storageA, address storageB) {
+        return (_creationCodeStorageA, _creationCodeStorageB);
+    }
+
+    /**
      * @dev Returns true if `pool` was created by this factory.
      */
     function isPoolFromFactory(address pool) external view returns (bool) {

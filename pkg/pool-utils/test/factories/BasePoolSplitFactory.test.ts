@@ -1,7 +1,7 @@
 import { Contract } from 'ethers';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -23,6 +23,23 @@ describe('BasePoolSplitFactory', function () {
 
   it('stores the vault address', async () => {
     expect(await factory.getVault()).to.equal(vault.address);
+  });
+
+  it('returns the pool creation code storage addresses', async () => {
+    const { storageA, storageB } = await factory.getPoolCreationCodeStorage();
+
+    const codeA = await ethers.provider.getCode(storageA);
+    const codeB = await ethers.provider.getCode(storageB);
+
+    const artifact = await getArtifact('MockFactoryCreatedPool');
+    expect(codeA.concat(codeB.slice(2))).to.equal(artifact.bytecode); // Slice to remove the '0x' prefix
+  });
+
+  it('returns the pool creation code', async () => {
+    const artifact = await getArtifact('MockFactoryCreatedPool');
+    const poolCreationCode = await factory.getPoolCreationCode();
+
+    expect(poolCreationCode).to.equal(artifact.bytecode);
   });
 
   it('creates a pool', async () => {
