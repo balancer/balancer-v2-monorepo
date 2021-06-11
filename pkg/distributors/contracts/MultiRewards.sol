@@ -27,6 +27,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
+import "@balancer-labs/v2-pool-weighted/contracts/BaseWeightedPool.sol";
+
 import "./interfaces/IMultiRewards.sol";
 import "./interfaces/IDistributor.sol";
 
@@ -247,6 +249,41 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
             }
         }
         vault.manageUserBalance(ops);
+    }
+
+    function claimToWeightedPool(
+        bytes32 poolId,
+        IERC20 stakingToken,
+        IERC20 rewardsToken
+    ) public nonReentrant {
+        _updateReward(stakingToken, msg.sender, rewardsToken);
+        uint256 reward = rewards[stakingToken][msg.sender][rewardsToken];
+
+        if (reward == 0) return;
+
+        (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
+
+        IAsset[] memory assets = new IAsset[](tokens.length);
+        uint256[] memory amountsIn = new uint256[](tokens.length);
+
+        bool found;
+        for (uint256 j; j < tokens.length; j++) {
+            assets[j] = IAsset(address(tokens[j]));
+            if (tokens[j] == rewardsToken) {
+                amountsIn[j] = reward;
+                found = true;
+            }
+        }
+
+        bytes memory userData = abi.encode(
+            BaseWeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+            amountsIn,
+            uint256(0)
+        );
+
+        IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest(assets, amountsIn, userData, true);
+
+        vault.joinPool(poolId, address(this), msg.sender, request);
     }
 
     function exit(IERC20[] calldata stakingTokens) external {

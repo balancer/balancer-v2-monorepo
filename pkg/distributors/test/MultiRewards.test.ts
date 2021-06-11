@@ -7,7 +7,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -227,6 +227,86 @@ describe('Staking contract', () => {
         user: lp.address,
         rewardToken: rewardToken.address,
         amount: expectedReward,
+      });
+    });
+
+    describe('with a pool to claim into', () => {
+      let destinationPool: Contract;
+      let destinationPoolId: string;
+      let assets: string[];
+
+      beforeEach(async () => {
+        // Creating a BAT-DAI pool
+        const tokens = await TokenList.create(['BAT']);
+        await tokens.mint({ to: lp, amount: tokenInitialBalance });
+        await tokens.approve({ to: vault.address, from: [lp] });
+
+        await rewardTokens.mint({ to: lp, amount: tokenInitialBalance });
+        await rewardTokens.approve({ to: vault.address, from: [lp] });
+
+        assets = [rewardToken.address, tokens.BAT.address].sort((a, b) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
+        const weights = [fp(0.5), fp(0.5)];
+        const assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS];
+
+        destinationPool = await deploy('v2-pool-weighted/WeightedPool', {
+          args: [
+            vault.address,
+            'Reinvestment Pool',
+            'REINVEST',
+            assets,
+            weights,
+            assetManagers,
+            fp(0.0001),
+            0,
+            0,
+            admin.address,
+          ],
+        });
+
+        destinationPoolId = await destinationPool.getPoolId();
+
+        await vault.connect(lp).joinPool(destinationPoolId, lp.address, lp.address, {
+          assets,
+          maxAmountsIn: Array(assets.length).fill(MAX_UINT256),
+          fromInternalBalance: false,
+          userData: encodeJoinWeightedPool({
+            kind: 'Init',
+            amountsIn: Array(assets.length).fill(tokenInitialBalance),
+          }),
+        });
+      });
+
+      it('emits PoolBalanceChanged when a LP claims to weighted pool', async () => {
+        await stakingContract
+          .connect(mockAssetManager)
+          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+        await advanceTime(10);
+
+        const receipt = await (
+          await stakingContract.connect(lp).claimToWeightedPool(destinationPoolId, pool.address, rewardToken.address)
+        ).wait();
+
+        const deltas = [0, bn('749999999999999923')];
+
+        expectEvent.inIndirectReceipt(receipt, vault.interface, 'PoolBalanceChanged', {
+          poolId: destinationPoolId,
+          liquidityProvider: stakingContract.address,
+          tokens: assets,
+          deltas,
+          protocolFeeAmounts: [0, 0],
+        });
+      });
+
+      it('mints bpt to a LP when they claim to weighted pool', async () => {
+        await stakingContract
+          .connect(mockAssetManager)
+          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+        await advanceTime(10);
+
+        const bptBalanceBefore = await destinationPool.balanceOf(lp.address);
+        await stakingContract.connect(lp).claimToWeightedPool(destinationPoolId, pool.address, rewardToken.address);
+        const bptBalanceAfter = await destinationPool.balanceOf(lp.address);
+        expect(bptBalanceAfter.sub(bptBalanceBefore)).to.equal(bn('749260760383141013'));
       });
     });
 
