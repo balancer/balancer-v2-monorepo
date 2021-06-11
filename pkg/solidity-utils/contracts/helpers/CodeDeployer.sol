@@ -53,7 +53,8 @@ library CodeDeployer {
     // [12] RETURN
     //
     // The padding is just the 0xfe sequence (invalid opcode).
-    bytes32 public constant creationCode = 0x602038038060206000396000f3fefefefefefefefefefefefefefefefefefefe;
+    bytes32
+        private constant DEPLOYER_CREATION_CODE = 0x602038038060206000396000f3fefefefefefefefefefefefefefefefefefefe;
 
     /**
      * @dev Deploys a contract with `code` as its code, returning the destination address.
@@ -62,7 +63,7 @@ library CodeDeployer {
      */
     function deploy(bytes memory code) internal returns (address destination) {
         uint256 codeLength = code.length;
-        bytes32 deployerCreationCode = CodeDeployer.creationCode;
+        bytes32 deployerCreationCode = DEPLOYER_CREATION_CODE;
 
         // solhint-disable-next-line no-inline-assembly
         assembly {

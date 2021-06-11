@@ -19,14 +19,21 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/CodeDeployer.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 /**
- * @dev Same as `BasePoolFactory`, for contracts whose creation code is so large that the factory cannot hold it. This
- * happens when the creation code grows close to 24kB.
+ * @dev Same as `BasePoolFactory`, for Pools whose creation code is so large that the factory cannot hold it. This
+ * happens when the Pool's creation code grows close to 24kB.
  *
- * Note that this factory cannot help with contracts that hava a *runtime* code larger than 24kB.
+ * Note that this factory cannot help with contracts that hava *runtime* (deployed) bytecode larger than 24kB.
  */
 abstract contract BasePoolSplitFactory {
     IVault private immutable _vault;
     mapping(address => bool) private _isPoolFromFactory;
+
+    // The Pool's creation code is stored as code in two separate addresses, and retrieved via `extcodecopy`. This means
+    // this factory supports Pools with creation code of up to 48kB.
+    // We rely on inline-assembly to achieve this, both to make the entire operation highly gas efficient, and because
+    // `extcodecopy` is not avaiable in Solidity.
+
+    // solhint-disable no-inline-assembly
 
     address private immutable _creationCodeStorageA;
     uint256 private immutable _creationCodeSizeA;
@@ -39,11 +46,11 @@ abstract contract BasePoolSplitFactory {
     constructor(IVault vault, bytes memory creationCode) {
         _vault = vault;
 
-        // We are going to deploy two contracts: one with the approximately the first half of `creationCode`'s contents
-        // (A), and another with the remaining half (B).
         uint256 creationCodeSize = creationCode.length;
 
-        // We store the lengths in both immutable and stack variables as immutable variables cannot be read during
+        // We are going to deploy two contracts: one with the approximately the first half of `creationCode`'s contents
+        // (A), and another with the remaining half (B).
+        // We store the lengths in both immutable and stack variables, since immutable variables cannot be read during
         // construction.
         uint256 creationCodeSizeA = creationCodeSize / 2;
         _creationCodeSizeA = creationCodeSizeA;
@@ -52,21 +59,28 @@ abstract contract BasePoolSplitFactory {
         _creationCodeSizeB = creationCodeSizeB;
 
         // To deploy the contracts, we're going to use `CodeDeployer.deploy()`, which expects a memory array with
-        // the code to deploy. Note that we cannot simply copy or move `creationCode`'s contents as they are expected to
-        // be very large (> 24kB), so we must operate in-place.
+        // the code to deploy. Note that we cannot simply create arrays for A and B's code by copying or moving
+        // `creationCode`'s contents as they are expected to be very large (> 24kB), so we must operate in-place.
 
-        // Creating A's array is simple: we simply replace `creactionCode`'s original length with A's length.
+        // Memory: [ code length ] [ A.data ] [ B.data ]
+
+        // Creating A's array is simple: we simply replace `creactionCode`'s length with A's length. We'll later restore
+        // the original length.
 
         bytes memory creationCodeA;
         assembly {
             creationCodeA := creationCode
             mstore(creationCodeA, creationCodeSizeA)
         }
+
+        // Memory: [ A.length ] [ A.data ] [ B.data ]
+        //         ^ creationCodeA
+
         _creationCodeStorageA = CodeDeployer.deploy(creationCodeA);
 
-        // Creating B's array is similar: since we cannot move B's contents around in memory, we are going to create a
-        // 'new' memory array starting at A's last 32 bytes, which will be replaced with B's length. We'll back-up this
-        // last byte to later restore it.
+        // Creating B's array is a bit more involved: since we cannot move B's contents, we are going to create a 'new'
+        // memory array starting at A's last 32 bytes, which will be replaced with B's length. We'll back-up this last
+        // byte to later restore it.
 
         bytes memory creationCodeB;
         bytes32 lastByteA;
@@ -78,6 +92,10 @@ abstract contract BasePoolSplitFactory {
             lastByteA := mload(creationCodeB)
             mstore(creationCodeB, creationCodeSizeB)
         }
+
+        // Memory: [ A.length ] [ A.data[ : -1] ] [ B.length ][ B.data ]
+        //         ^ creationCodeA                ^ creationCodeB
+
         _creationCodeStorageB = CodeDeployer.deploy(creationCodeB);
 
         // We now restore the original contents of `creationCode` by writing back the original length and A's last byte.
@@ -107,12 +125,12 @@ abstract contract BasePoolSplitFactory {
         uint256 creationCodeSize = creationCodeSizeA + creationCodeSizeB;
 
         assembly {
-            // First, we allocate memory for `code` by retriving the free memory pointer and then moving it ahead of
+            // First, we allocate memory for `code` by retrieving the free memory pointer and then moving it ahead of
             // `code` by the size of `code`'s contents plus 32 bytes for its length.
             code := mload(0x40)
             mstore(0x40, add(code, add(creationCodeSize, 32)))
 
-            // Now, we initialize `code` by storing its length and retrieving the creation code from A and B
+            // Next, we initialize `code` by storing its length and concatenating the creation code stored in A and B
             mstore(code, creationCodeSize)
             extcodecopy(creationCodeStorageA, add(code, 32), 0, creationCodeSizeA)
             extcodecopy(creationCodeStorageB, add(add(code, 32), creationCodeSizeA), 0, creationCodeSizeB)

@@ -24,10 +24,4 @@ contract MockPoolSplitFactory is BasePoolSplitFactory {
     constructor(IVault _vault) BasePoolSplitFactory(_vault, type(MockFactoryCreatedPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
-
-    function create() external returns (address) {
-        address pool = address(new MockFactoryCreatedPool());
-        _register(pool);
-        return pool;
-    }
 }
