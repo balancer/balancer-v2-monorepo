@@ -15,21 +15,18 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/CodeDeployer.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "./BalancerErrors.sol";
+import "./CodeDeployer.sol";
 
 /**
- * @dev Same as `BasePoolFactory`, for Pools whose creation code is so large that the factory cannot hold it. This
- * happens when the Pool's creation code grows close to 24kB.
+ * @dev Base factory for contracts whose creation code is so large that the factory cannot hold it. This happens when
+ * the contract's creation code grows close to 24kB.
  *
  * Note that this factory cannot help with contracts that hava *runtime* (deployed) bytecode larger than 24kB.
  */
-abstract contract BasePoolSplitFactory {
-    IVault private immutable _vault;
-    mapping(address => bool) private _isPoolFromFactory;
-
-    // The Pool's creation code is stored as code in two separate addresses, and retrieved via `extcodecopy`. This means
-    // this factory supports Pools with creation code of up to 48kB.
+abstract contract BaseSplitCodeFactory {
+    // The contract's creation code is stored as code in two separate addresses, and retrieved via `extcodecopy`. This
+    // means this factory supports contracts with creation code of up to 48kB.
     // We rely on inline-assembly to achieve this, both to make the entire operation highly gas efficient, and because
     // `extcodecopy` is not avaiable in Solidity.
 
@@ -41,11 +38,7 @@ abstract contract BasePoolSplitFactory {
     address private immutable _creationCodeStorageB;
     uint256 private immutable _creationCodeSizeB;
 
-    event PoolCreated(address indexed pool);
-
-    constructor(IVault vault, bytes memory creationCode) {
-        _vault = vault;
-
+    constructor(bytes memory creationCode) {
         uint256 creationCodeSize = creationCode.length;
 
         // We are going to deploy two contracts: one with the approximately the first half of `creationCode`'s contents
@@ -106,16 +99,20 @@ abstract contract BasePoolSplitFactory {
     }
 
     /**
-     * @dev Returns the Vault's address.
+     * @dev Returns the two addresses where the creation code of the contract crated by this factory is stored.
      */
-    function getVault() public view returns (IVault) {
-        return _vault;
+    function getCreationCodeStorage() public view returns (address storageA, address storageB) {
+        return (_creationCodeStorageA, _creationCodeStorageB);
     }
 
     /**
-     * @dev Returns the creation code of this Factory's Pool.
+     * @dev Returns the creation code of the contract this factory creates.
      */
-    function getPoolCreationCode() public view returns (bytes memory code) {
+    function getCreationCode() public view returns (bytes memory) {
+        return _getCreationCodeWithArgs("");
+    }
+
+    function _getCreationCodeWithArgs(bytes memory constructorArgs) private view returns (bytes memory code) {
         // Immutable variables cannot be used in assembly, so we store them in the stack first.
         address creationCodeStorageA = _creationCodeStorageA;
         uint256 creationCodeSizeA = _creationCodeSizeA;
@@ -123,41 +120,69 @@ abstract contract BasePoolSplitFactory {
         uint256 creationCodeSizeB = _creationCodeSizeB;
 
         uint256 creationCodeSize = creationCodeSizeA + creationCodeSizeB;
+        uint256 constructorArgsSize = constructorArgs.length;
+
+        uint256 codeSize = creationCodeSize + constructorArgsSize;
 
         assembly {
             // First, we allocate memory for `code` by retrieving the free memory pointer and then moving it ahead of
-            // `code` by the size of `code`'s contents plus 32 bytes for its length.
+            // `code` by the size of the creation code plus constructor arguments, and 32 bytes for the array length.
             code := mload(0x40)
-            mstore(0x40, add(code, add(creationCodeSize, 32)))
+            mstore(0x40, add(code, add(codeSize, 32)))
 
-            // Next, we initialize `code` by storing its length and concatenating the creation code stored in A and B
-            mstore(code, creationCodeSize)
-            extcodecopy(creationCodeStorageA, add(code, 32), 0, creationCodeSizeA)
-            extcodecopy(creationCodeStorageB, add(add(code, 32), creationCodeSizeA), 0, creationCodeSizeB)
+            // We now store the length of the code plus constructor arguments.
+            mstore(code, codeSize)
+
+            // Next, we concatenate the creation code stored in A and B.
+            let dataStart := add(code, 32)
+            extcodecopy(creationCodeStorageA, dataStart, 0, creationCodeSizeA)
+            extcodecopy(creationCodeStorageB, add(dataStart, creationCodeSizeA), 0, creationCodeSizeB)
+        }
+
+        // Finally, we copy the constructorArgs to the end of the array. Unfortunately there is no way to avoid this
+        // copy, as it is not possible to tell Solidity where to store the result of `abi.encode()`.
+        uint256 constructorArgsDataPtr;
+        uint256 constructorArgsCodeDataPtr;
+        assembly {
+            constructorArgsDataPtr := add(constructorArgs, 32)
+            constructorArgsCodeDataPtr := add(add(code, 32), creationCodeSize)
+        }
+
+        memcpy(constructorArgsCodeDataPtr, constructorArgsDataPtr, constructorArgsSize);
+    }
+
+    function _memcpy(
+        uint256 dest,
+        uint256 src,
+        uint256 len
+    ) private pure {
+        // Copy word-length chunks while possible
+        for (; len >= 32; len -= 32) {
+            assembly {
+                mstore(dest, mload(src))
+            }
+            dest += 32;
+            src += 32;
+        }
+
+        // Copy remaining bytes
+        uint256 mask = 256**(32 - len) - 1;
+        assembly {
+            let srcpart := and(mload(src), not(mask))
+            let destpart := and(mload(dest), mask)
+            mstore(dest, or(destpart, srcpart))
         }
     }
 
-    /**
-     * @dev Returns the two addresses where the creation code of this Factory's Pool is stored.
-     */
-    function getPoolCreationCodeStorage() public view returns (address storageA, address storageB) {
-        return (_creationCodeStorageA, _creationCodeStorageB);
-    }
+    function _create(bytes memory constructorArgs) internal virtual returns (address) {
+        bytes memory creationCode = _getCreationCodeWithArgs(constructorArgs);
 
-    /**
-     * @dev Returns true if `pool` was created by this factory.
-     */
-    function isPoolFromFactory(address pool) external view returns (bool) {
-        return _isPoolFromFactory[pool];
-    }
+        address destination;
+        assembly {
+            destination := create(0, add(creationCode, 32), mload(creationCode))
+        }
 
-    /**
-     * @dev Registers a new created pool.
-     *
-     * Emits a `PoolCreated` event.
-     */
-    function _register(address pool) internal {
-        _isPoolFromFactory[pool] = true;
-        emit PoolCreated(pool);
+        _require(destination != address(0), Errors.FACTORY_CONTRACT_DEPLOYMENT_FAILED);
+        return destination;
     }
 }

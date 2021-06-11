@@ -54,7 +54,7 @@ library CodeDeployer {
     //
     // The padding is just the 0xfe sequence (invalid opcode).
     bytes32
-        private constant DEPLOYER_CREATION_CODE = 0x602038038060206000396000f3fefefefefefefefefefefefefefefefefefefe;
+        private constant _DEPLOYER_CREATION_CODE = 0x602038038060206000396000f3fefefefefefefefefefefefefefefefefefefe;
 
     /**
      * @dev Deploys a contract with `code` as its code, returning the destination address.
@@ -62,11 +62,12 @@ library CodeDeployer {
      * Reverts if deployment fails.
      */
     function deploy(bytes memory code) internal returns (address destination) {
-        uint256 codeLength = code.length;
-        bytes32 deployerCreationCode = DEPLOYER_CREATION_CODE;
+        bytes32 deployerCreationCode = _DEPLOYER_CREATION_CODE;
 
         // solhint-disable-next-line no-inline-assembly
         assembly {
+            let codeLength := mload(code)
+
             // `code` is composed of length and data. We've already stored its length in `codeLength`, so we simply
             // replace it with the deployer creation code (which is exactly 32 bytes long).
             mstore(code, deployerCreationCode)

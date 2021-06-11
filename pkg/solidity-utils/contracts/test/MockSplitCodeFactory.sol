@@ -14,4 +14,31 @@
 
 pragma solidity ^0.7.0;
 
-contract MockFactoryCreatedPool {}
+import "../helpers/BaseSplitCodeFactory.sol";
+
+contract MockFactoryCreatedContract {
+    bytes32 private _id;
+
+    constructor(bytes32 id) {
+        _id = id;
+    }
+
+    function getId() external view returns (bytes32) {
+        return _id;
+    }
+}
+
+contract MockSplitCodeFactory is BaseSplitCodeFactory {
+    event ContractCreated(address destination);
+
+    constructor() BaseSplitCodeFactory(type(MockFactoryCreatedContract).creationCode) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function create(bytes32 id) external returns (address) {
+        address destination = _create(abi.encode(id));
+        emit ContractCreated(destination);
+
+        return destination;
+    }
+}
