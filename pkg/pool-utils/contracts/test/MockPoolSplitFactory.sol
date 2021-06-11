@@ -17,11 +17,11 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "../factories/BasePoolFactory.sol";
+import "../factories/BasePoolSplitFactory.sol";
 import "./MockFactoryCreatedPool.sol";
 
-contract MockPoolFactory is BasePoolFactory {
-    constructor(IVault _vault) BasePoolFactory(_vault) {
+contract MockPoolSplitFactory is BasePoolSplitFactory {
+    constructor(IVault _vault) BasePoolSplitFactory(_vault, type(MockFactoryCreatedPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

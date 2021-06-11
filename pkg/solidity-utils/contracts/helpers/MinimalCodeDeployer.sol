@@ -54,8 +54,6 @@ library MinimalCodeDeployer {
      * @dev Deploys a contract with `code` as its code, returning the destination address.
      *
      * Reverts if deployment fails.
-     *
-     * WARNING: `code` is mutated by this call.
      */
     function deploy(bytes memory code) internal returns (address destination) {
         uint256 codeLength = code.length;
@@ -66,11 +64,16 @@ library MinimalCodeDeployer {
             // `code` is composed of length and data. We've already stored the length in `codeLength`, so we can simply
             // replace it with the deployer creation code (which is exactly 32 bytes long).
             mstore(code, deployerCreationCode)
+
             // At this point, `code` now points to the deployer creation code immediately followed by `code` data
             // contents. This is exactly what the deployer expects to receive when created.
             destination := create(0, code, add(codeLength, 32))
+
+            // Restore the original length to not mutate `code`
+            mstore(code, codeLength)
         }
 
+        // The create opcode returns the zero address when contract creation fails
         _require(destination != address(0), Errors.DEPLOYMENT_FAILED);
     }
 }
