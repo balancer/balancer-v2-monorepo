@@ -38,6 +38,9 @@ abstract contract BaseSplitCodeFactory {
     address private immutable _creationCodeStorageB;
     uint256 private immutable _creationCodeSizeB;
 
+    /**
+     * @dev The creation code of a contract Foo can be obtained inside Solidity with `type(Foo).creationCode`.
+     */
     constructor(bytes memory creationCode) {
         uint256 creationCodeSize = creationCode.length;
 
@@ -151,6 +154,10 @@ abstract contract BaseSplitCodeFactory {
         _memcpy(constructorArgsCodeDataPtr, constructorArgsDataPtr, constructorArgsSize);
     }
 
+    /**
+     * @dev Deploys a contract with constructor arguments. To create `constructorArgs`, call `abi.encode()` with the
+     * contract's constructor arguments, in order.
+     */
     function _create(bytes memory constructorArgs) internal virtual returns (address) {
         bytes memory creationCode = _getCreationCodeWithArgs(constructorArgs);
 
