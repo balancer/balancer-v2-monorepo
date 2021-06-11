@@ -4,11 +4,11 @@ import { Contract } from 'ethers';
 import { ethers } from 'hardhat';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-describe('MinimalCodeDeployer', function () {
+describe('CodeDeployer', function () {
   let factory: Contract;
 
   sharedBeforeEach(async () => {
-    factory = await deploy('MinimalCodeDeployerFactory', { args: [] });
+    factory = await deploy('CodeDeployerFactory', { args: [] });
   });
 
   context('with no code', () => {

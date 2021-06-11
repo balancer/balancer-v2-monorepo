@@ -14,13 +14,13 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/MinimalCodeDeployer.sol";
+import "../helpers/CodeDeployer.sol";
 
-contract MinimalCodeDeployerFactory {
+contract CodeDeployerFactory {
     event CodeDeployed(address at);
 
     function deploy(bytes memory data) external {
-        address destination = MinimalCodeDeployer.deploy(data);
+        address destination = CodeDeployer.deploy(data);
         emit CodeDeployed(destination);
     }
 }

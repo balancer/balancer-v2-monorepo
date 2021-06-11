@@ -19,11 +19,11 @@ import "./BalancerErrors.sol";
 /**
  * @dev Library used to deploy contracts with specific code.
  */
-library MinimalCodeDeployer {
+library CodeDeployer {
     // The following sequence corresponds to the creation code of the following equivalent Solidity contract, plus
     // padding to make the full code 32 bytes long:
     //
-    // contract MinimalCodeDeployer {
+    // contract CodeDeployer {
     //     constructor() payable {
     //         uint256 size;
     //         assembly {
@@ -57,7 +57,7 @@ library MinimalCodeDeployer {
      */
     function deploy(bytes memory code) internal returns (address destination) {
         uint256 codeLength = code.length;
-        bytes32 deployerCreationCode = MinimalCodeDeployer.creationCode;
+        bytes32 deployerCreationCode = CodeDeployer.creationCode;
 
         // solhint-disable-next-line no-inline-assembly
         assembly {

@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/MinimalCodeDeployer.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/CodeDeployer.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 /**
@@ -51,7 +51,7 @@ abstract contract BasePoolSplitFactory {
         uint256 creationCodeSizeB = creationCodeSize - creationCodeSizeA;
         _creationCodeSizeB = creationCodeSizeB;
 
-        // To deploy the contracts, we're going to use `MinimalCodeDeployer.deploy()`, which expects a memory array with
+        // To deploy the contracts, we're going to use `CodeDeployer.deploy()`, which expects a memory array with
         // the code to deploy. Note that we cannot simply copy or move `creationCode`'s contents as they are expected to
         // be very large (> 24kB), so we must operate in-place.
 
@@ -62,7 +62,7 @@ abstract contract BasePoolSplitFactory {
             creationCodeA := creationCode
             mstore(creationCodeA, creationCodeSizeA)
         }
-        _creationCodeStorageA = MinimalCodeDeployer.deploy(creationCodeA);
+        _creationCodeStorageA = CodeDeployer.deploy(creationCodeA);
 
         // Creating B's array is similar: since we cannot move B's contents around in memory, we are going to create a
         // 'new' memory array starting at A's last 32 bytes, which will be replaced with B's length. We'll back-up this
@@ -78,7 +78,7 @@ abstract contract BasePoolSplitFactory {
             lastByteA := mload(creationCodeB)
             mstore(creationCodeB, creationCodeSizeB)
         }
-        _creationCodeStorageB = MinimalCodeDeployer.deploy(creationCodeB);
+        _creationCodeStorageB = CodeDeployer.deploy(creationCodeB);
 
         // We now restore the original contents of `creationCode` by writing back the original length and A's last byte.
         assembly {
