@@ -84,7 +84,10 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
         _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
-        _setAmplificationData(Math.mul(amplificationParameter, _AMP_PRECISION));
+
+        uint256 initialAmp = Math.mul(amplificationParameter, _AMP_PRECISION);
+        _setAmplificationData(initialAmp);
+        emit AmpUpdateStopped(initialAmp);
     }
 
     // Base Pool handlers
