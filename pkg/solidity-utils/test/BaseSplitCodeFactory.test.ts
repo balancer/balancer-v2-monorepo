@@ -8,6 +8,7 @@ import { ethers } from 'hardhat';
 describe('BasePoolCodeFactory', function () {
   let factory: Contract;
 
+  const INVALID_ID = '0x0000000000000000000000000000000000000000000000000000000000000000';
   const id = '0x0123456789012345678901234567890123456789012345678901234567890123';
 
   sharedBeforeEach(async () => {
@@ -34,6 +35,12 @@ describe('BasePoolCodeFactory', function () {
   it('creates a contract', async () => {
     const receipt = await (await factory.create(id)).wait();
     expectEvent.inReceipt(receipt, 'ContractCreated');
+  });
+
+  context('when the creation reverts', () => {
+    it('reverts', async () => {
+      await expect(factory.create(INVALID_ID)).to.be.revertedWith('FACTORY_CONTRACT_DEPLOYMENT_FAILED');
+    });
   });
 
   context('with a created pool', () => {

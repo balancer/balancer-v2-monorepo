@@ -148,9 +148,23 @@ abstract contract BaseSplitCodeFactory {
             constructorArgsCodeDataPtr := add(add(code, 32), creationCodeSize)
         }
 
-        memcpy(constructorArgsCodeDataPtr, constructorArgsDataPtr, constructorArgsSize);
+        _memcpy(constructorArgsCodeDataPtr, constructorArgsDataPtr, constructorArgsSize);
     }
 
+    function _create(bytes memory constructorArgs) internal virtual returns (address) {
+        bytes memory creationCode = _getCreationCodeWithArgs(constructorArgs);
+
+        address destination;
+        assembly {
+            destination := create(0, add(creationCode, 32), mload(creationCode))
+        }
+
+        _require(destination != address(0), Errors.FACTORY_CONTRACT_DEPLOYMENT_FAILED);
+        return destination;
+    }
+
+    // From
+    // https://github.com/Arachnid/solidity-stringutils/blob/b9a6f6615cf18a87a823cbc461ce9e140a61c305/src/strings.sol
     function _memcpy(
         uint256 dest,
         uint256 src,
@@ -172,17 +186,5 @@ abstract contract BaseSplitCodeFactory {
             let destpart := and(mload(dest), mask)
             mstore(dest, or(destpart, srcpart))
         }
-    }
-
-    function _create(bytes memory constructorArgs) internal virtual returns (address) {
-        bytes memory creationCode = _getCreationCodeWithArgs(constructorArgs);
-
-        address destination;
-        assembly {
-            destination := create(0, add(creationCode, 32), mload(creationCode))
-        }
-
-        _require(destination != address(0), Errors.FACTORY_CONTRACT_DEPLOYMENT_FAILED);
-        return destination;
     }
 }
