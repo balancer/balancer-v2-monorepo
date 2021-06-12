@@ -155,3 +155,9 @@ export type Sample = {
 };
 
 export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
+
+export type GradualUpdateParams = {
+  startTime: BigNumber;
+  endTime: BigNumber;
+  endWeights: BigNumber[];
+}

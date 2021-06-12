@@ -28,7 +28,7 @@ library WeightCompression {
      * @dev Read a value from a 16-bit slot at the given offset and convert to full FixedPoint
      */
     function uncompress16(bytes32 word, uint256 offset) internal pure returns (uint256) {
-        return word.decodeUint16(offset).mulDown(FixedPoint.ONE).divDown(type(uint16).max);
+        return word.decodeUint16(offset).mulUp(FixedPoint.ONE).divUp(type(uint16).max);
     }
 
     /**
@@ -39,14 +39,14 @@ library WeightCompression {
         uint256 value,
         uint256 offset
     ) internal pure returns (bytes32) {
-        return word.insertUint16(value.mulDown(type(uint16).max).divDown(FixedPoint.ONE), offset);
+        return word.insertUint16(value.mulUp(type(uint16).max).divUp(FixedPoint.ONE), offset);
     }
 
     /**
      * @dev Read a value from a 32-bit slot at the given offset and convert to full FixedPoint
      */
     function uncompress32(bytes32 word, uint256 offset) internal pure returns (uint256) {
-        return word.decodeUint32(offset).mulDown(FixedPoint.ONE).divDown(type(uint32).max);
+        return word.decodeUint32(offset).mulUp(FixedPoint.ONE).divUp(type(uint32).max);
     }
 
     /**
@@ -57,6 +57,6 @@ library WeightCompression {
         uint256 value,
         uint256 offset
     ) internal pure returns (bytes32) {
-        return word.insertUint32(value.mulDown(type(uint32).max).divDown(FixedPoint.ONE), offset);
+        return word.insertUint32(value.mulUp(type(uint32).max).divUp(FixedPoint.ONE), offset);
     }
 }

@@ -29,6 +29,7 @@ import {
   PoolQueryResult,
   MiscData,
   Sample,
+  GradualUpdateParams,
 } from './types';
 import {
   calculateInvariant,
@@ -43,6 +44,8 @@ import {
   calculateBPTPrice,
 } from './math';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from './encoding';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { start } from 'repl';
 
 const SWAP_GIVEN = { IN: 0, OUT: 1 };
 const MAX_IN_RATIO = fp(0.3);
@@ -75,7 +78,7 @@ export default class WeightedPool {
     assetManagers: string[],
     swapFeePercentage: BigNumberish,
     twoTokens: boolean,
-    lbp: boolean;
+    lbp: boolean,
     swapEnabledOnStart: boolean
   ) {
     this.instance = instance;
@@ -575,5 +578,19 @@ export default class WeightedPool {
   async enableOracle(txParams: TxParams): Promise<void> {
     const pool = txParams.from ? this.instance.connect(txParams.from) : this.instance;
     await pool.enableOracle();
+  }
+
+  async setPublicSwap(from: SignerWithAddress, publicSwap: boolean): Promise<void> {
+    const pool = this.instance.connect(from);
+    await pool.setPublicSwap(publicSwap);
+  }
+
+  async updateWeightsGradually(from: SignerWithAddress, startTime: BigNumberish, endTime: BigNumberish, endWeights: BigNumberish[]): Promise<void> {
+    const pool = this.instance.connect(from);
+    await pool.updateWeightsGradually(startTime, endTime, endWeights);
+  }
+
+  async getGradualUpdateParams(): Promise<GradualUpdateParams> {
+    return await this.instance.getGradualUpdateParams();
   }
 }

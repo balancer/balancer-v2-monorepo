@@ -282,6 +282,38 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
     // Pool callback functions
 
+    function _onJoinPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    )
+        internal
+        override
+        whenNotPaused
+        returns (
+            uint256,
+            uint256[] memory,
+            uint256[] memory
+        )
+    {
+        _require(sender == getOwner(), Errors.SENDER_NOT_ALLOWED);
+
+        return
+            super._onJoinPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                userData
+            );
+    }
+
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
