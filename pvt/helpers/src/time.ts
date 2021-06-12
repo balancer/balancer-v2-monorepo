@@ -1,4 +1,3 @@
-import { time } from 'console';
 import { BigNumber } from 'ethers';
 import { ethers, network } from 'hardhat';
 
