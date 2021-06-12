@@ -44,7 +44,7 @@ abstract contract BaseSplitCodeFactory {
     constructor(bytes memory creationCode) {
         uint256 creationCodeSize = creationCode.length;
 
-        // We are going to deploy two contracts: one with the approximately the first half of `creationCode`'s contents
+        // We are going to deploy two contracts: one with approximately the first half of `creationCode`'s contents
         // (A), and another with the remaining half (B).
         // We store the lengths in both immutable and stack variables, since immutable variables cannot be read during
         // construction.
@@ -60,7 +60,7 @@ abstract contract BaseSplitCodeFactory {
 
         // Memory: [ code length ] [ A.data ] [ B.data ]
 
-        // Creating A's array is simple: we simply replace `creactionCode`'s length with A's length. We'll later restore
+        // Creating A's array is simple: we simply replace `creationCode`'s length with A's length. We'll later restore
         // the original length.
 
         bytes memory creationCodeA;
