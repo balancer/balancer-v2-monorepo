@@ -160,4 +160,4 @@ export type GradualUpdateParams = {
   startTime: BigNumber;
   endTime: BigNumber;
   endWeights: BigNumber[];
-}
+};

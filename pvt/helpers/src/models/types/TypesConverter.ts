@@ -51,7 +51,7 @@ export default {
       oracleEnabled,
       swapEnabledOnStart,
       twoTokens,
-      lbp
+      lbp,
     } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
@@ -76,7 +76,7 @@ export default {
       swapEnabledOnStart,
       owner: params.owner,
       twoTokens,
-      lbp
+      lbp,
     };
   },
 

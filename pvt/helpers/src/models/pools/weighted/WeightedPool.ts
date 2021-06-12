@@ -45,7 +45,6 @@ import {
 } from './math';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from './encoding';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { start } from 'repl';
 
 const SWAP_GIVEN = { IN: 0, OUT: 1 };
 const MAX_IN_RATIO = fp(0.3);
@@ -585,7 +584,12 @@ export default class WeightedPool {
     await pool.setPublicSwap(publicSwap);
   }
 
-  async updateWeightsGradually(from: SignerWithAddress, startTime: BigNumberish, endTime: BigNumberish, endWeights: BigNumberish[]): Promise<void> {
+  async updateWeightsGradually(
+    from: SignerWithAddress,
+    startTime: BigNumberish,
+    endTime: BigNumberish,
+    endWeights: BigNumberish[]
+  ): Promise<void> {
     const pool = this.instance.connect(from);
     await pool.updateWeightsGradually(startTime, endTime, endWeights);
   }
