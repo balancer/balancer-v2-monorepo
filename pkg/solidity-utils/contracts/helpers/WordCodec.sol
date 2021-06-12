@@ -84,7 +84,6 @@ library WordCodec {
         return clearedWord | bytes32(value << offset);
     }
 
-
     /**
      * @dev Inserts a 31 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
      * the new word.
