@@ -167,7 +167,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         InputHelpers.ensureInputLengthMatch(totalTokens, endWeights.length);
 
         // If the start time is in the past, "fast forward" to start now
-        // This prevents circumventing the minimum weight change duration
+        // This avoids discontinuities in the weight curve. Otherwise, if you set the start/end times with
+        // only 10% of the period in the future, the weights would immediately jump 90%
         uint256 effectiveStartTime = currentTime > startTime ? currentTime : startTime;
 
         // If called while a current weight change is ongoing, set starting point to current weights
