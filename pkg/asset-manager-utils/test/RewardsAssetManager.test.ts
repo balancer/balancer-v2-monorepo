@@ -14,32 +14,10 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { calcRebalanceAmount, calcRebalanceFee } from './helpers/rebalance';
 
 const OVER_INVESTMENT_REVERT_REASON = 'investment amount exceeds target';
 const UNDER_INVESTMENT_REVERT_REASON = 'withdrawal leaves insufficient balance invested';
-
-type PoolConfig = {
-  targetPercentage: BigNumber;
-  upperCriticalPercentage: BigNumber;
-  lowerCriticalPercentage: BigNumber;
-  feePercentage: BigNumber;
-};
-
-const calcRebalanceFee = (poolCash: BigNumber, poolManaged: BigNumber, config: PoolConfig): BigNumber => {
-  const poolAssets = poolCash.add(poolManaged);
-  const percentageInvested = poolManaged.mul(fp(1)).div(poolAssets);
-
-  if (percentageInvested.gt(config.upperCriticalPercentage)) {
-    const upperCriticalBalance = poolAssets.mul(config.upperCriticalPercentage).div(fp(1));
-    return poolManaged.sub(upperCriticalBalance).mul(config.feePercentage).div(fp(1));
-  }
-
-  if (percentageInvested.lt(config.lowerCriticalPercentage)) {
-    const lowerCriticalBalance = poolAssets.mul(config.lowerCriticalPercentage).div(fp(1));
-    return lowerCriticalBalance.sub(poolManaged).mul(config.feePercentage).div(fp(1));
-  }
-  return BigNumber.from(0);
-};
 
 const tokenInitialBalance = bn(200e18);
 const amount = bn(100e18);
@@ -517,14 +495,12 @@ describe('Rewards Asset manager', function () {
         });
 
         it('transfers the expected number of tokens to the Vault', async () => {
-          const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-          const poolTVL = cash.add(managed);
-          const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-          const expectedRebalanceAmount = managed.sub(targetInvestmentAmount);
+          const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+          const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
           await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
-            { account: assetManager.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
-            { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
+            { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
+            { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
           ]);
         });
 
@@ -562,10 +538,8 @@ describe('Rewards Asset manager', function () {
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
-            const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-            const poolTVL = cash.add(managed);
-            const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-            const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+            const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
             await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
               { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
@@ -581,7 +555,6 @@ describe('Rewards Asset manager', function () {
         });
 
         context('when fee percentage is non-zero', () => {
-          let zeroFeeRebalanceAmount: BigNumber;
           const poolConfig = {
             targetPercentage: fp(0.5),
             upperCriticalPercentage: fp(1),
@@ -593,11 +566,12 @@ describe('Rewards Asset manager', function () {
             const poolController = lp; // TODO
 
             await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
-            zeroFeeRebalanceAmount = await assetManager.maxInvestableBalance(poolId);
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
-            const expectedFeeAmount = await assetManager.getRebalanceFee(poolId);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+            const expectedFeeAmount = calcRebalanceFee(poolCash, poolManaged, poolConfig);
+            const zeroFeeRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
             const investmentFeeAdjustment = expectedFeeAmount.mul(poolConfig.targetPercentage).div(fp(1));
             const expectedInvestmentAmount = zeroFeeRebalanceAmount.sub(investmentFeeAdjustment);
@@ -611,7 +585,8 @@ describe('Rewards Asset manager', function () {
           });
 
           it('pays the correct fee to the rebalancer', async () => {
-            const expectedFeeAmount = await assetManager.getRebalanceFee(poolId);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+            const expectedFeeAmount = calcRebalanceFee(poolCash, poolManaged, poolConfig);
             expect(expectedFeeAmount).to.be.gt(0);
             await expectBalanceChange(() => assetManager.connect(lp).rebalance(poolId), tokens, [
               { account: lp.address, changes: { DAI: ['very-near', expectedFeeAmount] } },
@@ -646,10 +621,8 @@ describe('Rewards Asset manager', function () {
         });
 
         it('transfers the expected number of tokens from the Vault', async () => {
-          const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-          const poolTVL = cash.add(managed);
-          const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-          const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
+          const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+          const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
           await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
             { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
@@ -680,10 +653,8 @@ describe('Rewards Asset manager', function () {
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
-            const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-            const poolTVL = cash.add(managed);
-            const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-            const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+            const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
             await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
               { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
@@ -711,12 +682,9 @@ describe('Rewards Asset manager', function () {
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
-            const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-            const poolTVL = cash.add(managed);
-            const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-            const zeroFeeRebalanceAmount = targetInvestmentAmount.sub(managed);
-
-            const expectedFeeAmount = await assetManager.getRebalanceFee(poolId);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+            const zeroFeeRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
+            const expectedFeeAmount = calcRebalanceFee(poolCash, poolManaged, poolConfig);
 
             const investmentFeeAdjustment = expectedFeeAmount.mul(poolConfig.targetPercentage).div(fp(1));
             const expectedInvestmentAmount = zeroFeeRebalanceAmount.sub(investmentFeeAdjustment);
@@ -730,7 +698,8 @@ describe('Rewards Asset manager', function () {
           });
 
           it('pays the correct fee to the rebalancer', async () => {
-            const expectedFeeAmount = await assetManager.getRebalanceFee(poolId);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+            const expectedFeeAmount = calcRebalanceFee(poolCash, poolManaged, poolConfig);
             await expectBalanceChange(() => assetManager.connect(lp).rebalance(poolId), tokens, [
               { account: lp.address, changes: { DAI: ['very-near', expectedFeeAmount] } },
             ]);
@@ -799,10 +768,8 @@ describe('Rewards Asset manager', function () {
         });
 
         it('transfers the expected number of tokens from the Vault', async () => {
-          const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-          const poolTVL = cash.add(managed);
-          const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-          const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
+          const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+          const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
           await expectBalanceChange(() => assetManager.rebalanceAndSwap(poolId, swap), tokens, [
             { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
@@ -835,10 +802,8 @@ describe('Rewards Asset manager', function () {
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
-            const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-            const poolTVL = cash.add(managed);
-            const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-            const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+            const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
             await expectBalanceChange(() => assetManager.rebalanceAndSwap(poolId, swap), tokens, [
               { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
@@ -914,13 +879,13 @@ describe('Rewards Asset manager', function () {
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
-            const expectedFeeAmount = await assetManager.getRebalanceFee(poolId);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+
+            const expectedFeeAmount = calcRebalanceFee(poolCash, poolManaged, poolConfig);
             const investmentFeeAdjustment = expectedFeeAmount.mul(poolConfig.targetPercentage).div(fp(1));
 
-            const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-            const poolTVL = cash.add(managed);
-            const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-            const expectedInvestmentAmount = targetInvestmentAmount.sub(managed).sub(investmentFeeAdjustment);
+            const zeroFeeRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
+            const expectedInvestmentAmount = zeroFeeRebalanceAmount.sub(investmentFeeAdjustment);
 
             // The fee does not feature in the DAI balance change of the vault as it is replaced during the swap
             await expectBalanceChange(() => assetManager.connect(lp).rebalanceAndSwap(poolId, swap), tokens, [
@@ -938,7 +903,8 @@ describe('Rewards Asset manager', function () {
           });
 
           it('performs the expected swap', async () => {
-            const expectedFee: BigNumber = await assetManager.getRebalanceFee(poolId);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+            const expectedFeeAmount = calcRebalanceFee(poolCash, poolManaged, poolConfig);
 
             // Check that the expected swap occurs
             const receipt = await (await assetManager.rebalanceAndSwap(poolId, swap)).wait();
@@ -946,12 +912,12 @@ describe('Rewards Asset manager', function () {
               poolId: swapPoolId,
               tokenIn: tokens.DAI.address,
               tokenOut: tokens.MKR.address,
-              amountIn: expectedFee,
-              amountOut: expectedFee,
+              amountIn: expectedFeeAmount,
+              amountOut: expectedFeeAmount,
             });
 
             // Check that keeper holds expected number of tokens after swap
-            expect(await tokens.MKR.balanceOf(lp.address)).to.be.eq(expectedFee);
+            expect(await tokens.MKR.balanceOf(lp.address)).to.be.eq(expectedFeeAmount);
           });
 
           it("update the pool's cash and managed balances correctly");
@@ -981,10 +947,8 @@ describe('Rewards Asset manager', function () {
         });
 
         it('transfers the expected number of tokens from the Vault', async () => {
-          const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-          const poolTVL = cash.add(managed);
-          const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-          const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
+          const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+          const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
           await expectBalanceChange(() => assetManager.rebalanceAndSwap(poolId, swap), tokens, [
             { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
@@ -1012,9 +976,7 @@ describe('Rewards Asset manager', function () {
 
           it('transfers the expected number of tokens from the Vault', async () => {
             const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
-            const poolAssets = poolCash.add(poolManaged);
-            const targetInvestmentAmount = poolAssets.mul(poolConfig.targetPercentage).div(fp(1));
-            const expectedRebalanceAmount = targetInvestmentAmount.sub(poolManaged);
+            const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
             await expectBalanceChange(() => assetManager.rebalanceAndSwap(poolId, swap), tokens, [
               { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
@@ -1089,13 +1051,11 @@ describe('Rewards Asset manager', function () {
 
           it('transfers the expected number of tokens from the Vault', async () => {
             const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
-            const expectedFeeAmount = await assetManager.getRebalanceFee(poolId);
 
-            const poolAssets = poolCash.add(poolManaged);
-            const targetInvestmentAmount = poolAssets.mul(poolConfig.targetPercentage).div(fp(1));
-            const zeroFeeRebalanceAmount = targetInvestmentAmount.sub(poolManaged);
-
+            const expectedFeeAmount = calcRebalanceFee(poolCash, poolManaged, poolConfig);
             const investmentFeeAdjustment = expectedFeeAmount.mul(poolConfig.targetPercentage).div(fp(1));
+
+            const zeroFeeRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
             const expectedInvestmentAmount = zeroFeeRebalanceAmount.sub(investmentFeeAdjustment);
 
             // The fee does not feature in the DAI balance change of the vault as it is replaced during the swap
@@ -1114,7 +1074,8 @@ describe('Rewards Asset manager', function () {
           });
 
           it('performs the expected swap', async () => {
-            const expectedFee: BigNumber = await assetManager.getRebalanceFee(poolId);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+            const expectedFeeAmount = calcRebalanceFee(poolCash, poolManaged, poolConfig);
 
             // Check that the expected swap occurs
             const receipt = await (await assetManager.rebalanceAndSwap(poolId, swap)).wait();
@@ -1122,12 +1083,12 @@ describe('Rewards Asset manager', function () {
               poolId: swapPoolId,
               tokenIn: tokens.DAI.address,
               tokenOut: tokens.MKR.address,
-              amountIn: expectedFee,
-              amountOut: expectedFee,
+              amountIn: expectedFeeAmount,
+              amountOut: expectedFeeAmount,
             });
 
             // Check that keeper holds expected number of tokens after swap
-            expect(await tokens.MKR.balanceOf(lp.address)).to.be.eq(expectedFee);
+            expect(await tokens.MKR.balanceOf(lp.address)).to.be.eq(expectedFeeAmount);
           });
         });
       });
