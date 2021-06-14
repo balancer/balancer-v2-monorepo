@@ -263,8 +263,8 @@ abstract contract RewardsAssetManager is IAssetManager {
             // Pool is under-invested so add more funds
             uint256 rebalanceAmount = targetInvestment.sub(poolManaged);
 
-            // If pool is above critical threshold then we want to pay a fee to rebalancer
-            // The fee is paid on the portion of managed funds which are above the critical threshold
+            // If pool is below critical threshold then we want to pay a fee to rebalancer
+            // The fee is paid on the portion of managed funds which are below the critical threshold
             feeAmount = _getRebalanceFee(poolCash, poolManaged, config);
 
             // As paying out fees reduces the TVL of the pool, we must correct the amount invested to account for this
@@ -273,8 +273,8 @@ abstract contract RewardsAssetManager is IAssetManager {
             // Pool is over-invested so remove some funds
             uint256 rebalanceAmount = poolManaged.sub(targetInvestment);
 
-            // If pool is below critical threshold then we want to pay a fee to rebalancer
-            // The fee is paid on the portion of managed funds which are below the critical threshold
+            // If pool is above critical threshold then we want to pay a fee to rebalancer
+            // The fee is paid on the portion of managed funds which are above the critical threshold
             feeAmount = _getRebalanceFee(poolCash, poolManaged, config);
 
             capitalOut(poolId, rebalanceAmount.sub(FixedPoint.mulDown(feeAmount, config.targetPercentage)));
