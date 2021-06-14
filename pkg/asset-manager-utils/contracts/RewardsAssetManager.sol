@@ -174,7 +174,6 @@ abstract contract RewardsAssetManager is IAssetManager {
     function setPoolConfig(bytes32 pId, PoolConfig calldata config) external override withCorrectPool(pId) {
         require(config.targetPercentage <= FixedPoint.ONE, "Investment target must be less than or equal to 100%");
         require(config.criticalPercentage <= config.targetPercentage, "Critical level must be less than target");
-        require(config.feePercentage <= FixedPoint.ONE / 10, "Fee on critical rebalances must be less than 10%");
 
         _poolConfig = config;
     }
@@ -189,44 +188,10 @@ abstract contract RewardsAssetManager is IAssetManager {
         poolManaged = aum;
     }
 
-    function getRebalanceFee(bytes32 pId) external view override withCorrectPool(pId) returns (uint256) {
-        (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(readAUM());
-        return _getRebalanceFee(poolCash, poolManaged, _poolConfig);
-    }
-
-    function _getRebalanceFee(
-        uint256 poolCash,
-        uint256 poolManaged,
-        PoolConfig memory config
-    ) internal pure returns (uint256) {
-        uint256 criticalManagedBalance = FixedPoint.mulDown(poolCash + poolManaged, config.criticalPercentage);
-        if (poolManaged >= criticalManagedBalance) {
-            return 0;
-        }
-        return FixedPoint.mulDown(criticalManagedBalance.sub(poolManaged), config.feePercentage);
-    }
-
-    /**
-     * @notice withdraw `amount` of cash from the Vault, reducing the pool's TVL
-     * @dev When withdrawing `amount` will be moved from the pool's cash to managed balance
-     * As these funds are to be paid as fees (and so lost) we then remove this from the managed balance
-     */
-    function _withdrawCashFromVault(uint256 amount) private {
-        // Pull funds from the vault and update balance to reflect that the fee is no longer part of managed funds
-        IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
-        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, poolId, token, amount);
-        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, poolId, token, readAUM().sub(amount));
-
-        vault.managePoolBalance(ops);
-    }
-
     /**
      * @notice Rebalances funds between pool and asset manager to maintain target investment percentage.
-     * @return feeAmount - the amount of tokens to be made available to msg.sender as a fee
      */
-    function _rebalance(
-        bytes32 /*pId*/
-    ) internal returns (uint256 feeAmount) {
+    function _rebalance() internal {
         uint256 aum = readAUM();
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
         PoolConfig memory config = _poolConfig;
@@ -234,31 +199,15 @@ abstract contract RewardsAssetManager is IAssetManager {
         uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, config.targetPercentage);
         if (targetInvestment > poolManaged) {
             // Pool is under-invested so add more funds
-            uint256 rebalanceAmount = targetInvestment.sub(poolManaged);
-
-            // If pool is above critical threshold then we want to pay a fee to rebalancer
-            // The fee is paid on the portion of managed funds which are above the critical threshold
-            feeAmount = _getRebalanceFee(poolCash, poolManaged, config);
-
-            // As paying out fees reduces the TVL of the pool, we must correct the amount invested to account for this
-            capitalIn(poolId, rebalanceAmount.sub(FixedPoint.mulDown(feeAmount, config.targetPercentage)));
+            capitalIn(poolId, targetInvestment - poolManaged);
         } else {
             // Pool is over-invested so remove some funds
-            // Incentivising rebalancer is unneccessary as removing capital
-            // will expose an arb opportunity if it is limiting trading.
-            capitalOut(poolId, poolManaged.sub(targetInvestment));
+            capitalOut(poolId, poolManaged - targetInvestment);
         }
     }
 
     function rebalance(bytes32 pId) external override withCorrectPool(pId) {
-        uint256 rebalancerFee = _rebalance(pId);
-
-        if (rebalancerFee > 0) {
-            _withdrawCashFromVault(rebalancerFee);
-
-            // Send fee to rebalancer
-            token.transfer(msg.sender, rebalancerFee);
-        }
+        _rebalance();
     }
 
     struct BatchSwap {
@@ -267,28 +216,6 @@ abstract contract RewardsAssetManager is IAssetManager {
         IVault.FundManagement funds;
         int256[] limits;
         uint256 deadline;
-    }
-
-    /**
-     * @notice Rebalances funds between pool and asset manager to maintain target investment percentage.
-     * Any reward from rebalancing the pool is immediately used in the provided batch swap.
-     */
-    function rebalanceAndSwap(bytes32 pId, BatchSwap memory swap) external withCorrectPool(pId) {
-        uint256 rebalancerFee = _rebalance(pId);
-
-        if (rebalancerFee > 0) {
-            _withdrawCashFromVault(rebalancerFee);
-
-            // Ensure that we use the full fee as input to the swap
-            swap.swaps[0].amount = rebalancerFee;
-            require(swap.funds.sender == address(this), "Asset Manager must be sender");
-            require(!swap.funds.fromInternalBalance, "Can't use Asset Manager's internal balance");
-            require(
-                address(swap.assets[swap.swaps[0].assetInIndex]) == address(token),
-                "Must swap asset manager's token"
-            );
-            vault.batchSwap(IVault.SwapKind.GIVEN_IN, swap.swaps, swap.assets, swap.funds, swap.limits, swap.deadline);
-        }
     }
 
     function balanceOf(bytes32 pId) public view override withCorrectPool(pId) returns (uint256) {

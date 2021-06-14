@@ -19,7 +19,6 @@ interface IAssetManager {
     struct PoolConfig {
         uint64 targetPercentage;
         uint64 criticalPercentage;
-        uint64 feePercentage;
     }
 
     /**
@@ -47,11 +46,6 @@ interface IAssetManager {
      * and the currently invested amount (i.e. the amount that can be invested)
      */
     function maxInvestableBalance(bytes32 poolId) external view returns (int256);
-
-    /**
-     * @return the rebalance fee for the pool
-     */
-    function getRebalanceFee(bytes32 poolId) external view returns (uint256);
 
     /**
      * @notice Updates the Vault on the value of the pool's investment returns
