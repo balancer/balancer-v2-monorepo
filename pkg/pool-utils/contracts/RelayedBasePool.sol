@@ -24,23 +24,25 @@ import "./interfaces/IBasePoolRelayer.sol";
 /**
  * @dev Base Pool associated with a relayer that guarantees it can only be joined/exited from the relayer itself.
  * This contract as a simple mixin for pools. Implementing pools must make sure to call the BasePool's constructor
- * properly, and validate that the given
+ * properly.
  */
 abstract contract RelayedBasePool is BasePool {
     using Address for address;
 
-    IBasePoolRelayer public immutable relayer;
+    IBasePoolRelayer internal immutable _relayer;
 
-    modifier ensureRelayer(bytes32 poolId) {
-        // Note that this modifier is relying on an input parameter, which is usually given by the Vault which is
-        // considered a trusted party. It's up to the implementing pool whether to validate this value or not.
-        _require(relayer.hasCalledPool(poolId), Errors.BASE_POOL_RELAYER_NOT_CALLED);
+    modifier ensureRelayerCall(bytes32 poolId) {
+        _require(_relayer.hasCalledPool(poolId), Errors.BASE_POOL_RELAYER_NOT_CALLED);
         _;
     }
 
-    constructor(IBasePoolRelayer _relayer) {
-        _require(address(_relayer).isContract(), Errors.RELAYER_NOT_CONTRACT);
-        relayer = _relayer;
+    constructor(IBasePoolRelayer relayer) {
+        _require(address(relayer).isContract(), Errors.RELAYER_NOT_CONTRACT);
+        _relayer = relayer;
+    }
+
+    function getRelayer() public view returns (IBasePoolRelayer) {
+        return _relayer;
     }
 
     function onJoinPool(
@@ -51,7 +53,7 @@ abstract contract RelayedBasePool is BasePool {
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public virtual override ensureRelayer(poolId) returns (uint256[] memory, uint256[] memory) {
+    ) public virtual override ensureRelayerCall(poolId) returns (uint256[] memory, uint256[] memory) {
         return
             super.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
     }
@@ -64,7 +66,7 @@ abstract contract RelayedBasePool is BasePool {
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public virtual override ensureRelayer(poolId) returns (uint256[] memory, uint256[] memory) {
+    ) public virtual override ensureRelayerCall(poolId) returns (uint256[] memory, uint256[] memory) {
         return
             super.onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
     }

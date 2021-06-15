@@ -35,7 +35,7 @@ describe('RelayedBasePool', function () {
 
   describe('relayer', () => {
     it('uses the given relayer', async () => {
-      expect(await pool.relayer()).to.be.equal(relayer.address);
+      expect(await pool.getRelayer()).to.be.equal(relayer.address);
     });
   });
 
