@@ -314,7 +314,7 @@ describe('Rewards Asset manager', function () {
         expect(maxInvestableBalance).to.be.lt(0);
       });
 
-      it('allows anyone to withdraw assets to a pool to get to the ta/rget investable %', async () => {
+      it('allows anyone to withdraw assets to a pool to get to the target investable %', async () => {
         const amountToWithdraw = (await assetManager.maxInvestableBalance(poolId)).mul(-1);
 
         await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
