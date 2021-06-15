@@ -136,6 +136,8 @@ library Errors {
     uint256 internal constant AMP_NO_ONGOING_UPDATE = 320;
     uint256 internal constant STABLE_INVARIANT_DIDNT_CONVERGE = 321;
     uint256 internal constant STABLE_GET_BALANCE_DIDNT_CONVERGE = 322;
+    uint256 internal constant RELAYER_NOT_CONTRACT = 323;
+    uint256 internal constant BASE_POOL_RELAYER_NOT_CALLED = 324;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
