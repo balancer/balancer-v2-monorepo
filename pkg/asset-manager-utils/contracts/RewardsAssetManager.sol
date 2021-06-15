@@ -141,14 +141,11 @@ abstract contract RewardsAssetManager is IAssetManager {
 
         require(poolManaged >= targetInvestment.add(tokensOut), "withdrawal leaves insufficient balance invested");
 
-        // As we have now updated totalAUM and burned the pool's shares
-        // calling balanceOf(poolId) will now return the pool's managed balance post-withdrawal
-
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
-        // Send funds back to the vault
-        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, pId, token, tokensOut);
         // Update the vault with new managed balance accounting for returns
-        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, pId, token, aum.sub(tokensOut));
+        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, pId, token, aum);
+        // Send funds back to the vault
+        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, pId, token, tokensOut);
 
         vault.managePoolBalance(ops);
     }
