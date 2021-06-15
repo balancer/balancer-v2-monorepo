@@ -32,10 +32,10 @@ abstract contract BaseSplitCodeFactory {
 
     // solhint-disable no-inline-assembly
 
-    address private immutable _creationCodeStorageA;
+    address private immutable _creationCodeContractA;
     uint256 private immutable _creationCodeSizeA;
 
-    address private immutable _creationCodeStorageB;
+    address private immutable _creationCodeContractB;
     uint256 private immutable _creationCodeSizeB;
 
     /**
@@ -72,7 +72,7 @@ abstract contract BaseSplitCodeFactory {
         // Memory: [ A.length ] [ A.data ] [ B.data ]
         //         ^ creationCodeA
 
-        _creationCodeStorageA = CodeDeployer.deploy(creationCodeA);
+        _creationCodeContractA = CodeDeployer.deploy(creationCodeA);
 
         // Creating B's array is a bit more involved: since we cannot move B's contents, we are going to create a 'new'
         // memory array starting at A's last 32 bytes, which will be replaced with B's length. We'll back-up this last
@@ -92,7 +92,7 @@ abstract contract BaseSplitCodeFactory {
         // Memory: [ A.length ] [ A.data[ : -1] ] [ B.length ][ B.data ]
         //         ^ creationCodeA                ^ creationCodeB
 
-        _creationCodeStorageB = CodeDeployer.deploy(creationCodeB);
+        _creationCodeContractB = CodeDeployer.deploy(creationCodeB);
 
         // We now restore the original contents of `creationCode` by writing back the original length and A's last byte.
         assembly {
@@ -104,8 +104,8 @@ abstract contract BaseSplitCodeFactory {
     /**
      * @dev Returns the two addresses where the creation code of the contract crated by this factory is stored.
      */
-    function getCreationCodeStorage() public view returns (address storageA, address storageB) {
-        return (_creationCodeStorageA, _creationCodeStorageB);
+    function getCreationCodeContracts() public view returns (address contractA, address contractB) {
+        return (_creationCodeContractA, _creationCodeContractB);
     }
 
     /**
@@ -128,9 +128,9 @@ abstract contract BaseSplitCodeFactory {
         // overly long) right after the end of the creation code.
 
         // Immutable variables cannot be used in assembly, so we store them in the stack first.
-        address creationCodeStorageA = _creationCodeStorageA;
+        address creationCodeContractA = _creationCodeContractA;
         uint256 creationCodeSizeA = _creationCodeSizeA;
-        address creationCodeStorageB = _creationCodeStorageB;
+        address creationCodeContractB = _creationCodeContractB;
         uint256 creationCodeSizeB = _creationCodeSizeB;
 
         uint256 creationCodeSize = creationCodeSizeA + creationCodeSizeB;
@@ -149,8 +149,8 @@ abstract contract BaseSplitCodeFactory {
 
             // Next, we concatenate the creation code stored in A and B.
             let dataStart := add(code, 32)
-            extcodecopy(creationCodeStorageA, dataStart, 0, creationCodeSizeA)
-            extcodecopy(creationCodeStorageB, add(dataStart, creationCodeSizeA), 0, creationCodeSizeB)
+            extcodecopy(creationCodeContractA, dataStart, 0, creationCodeSizeA)
+            extcodecopy(creationCodeContractB, add(dataStart, creationCodeSizeA), 0, creationCodeSizeB)
         }
 
         // Finally, we copy the constructorArgs to the end of the array. Unfortunately there is no way to avoid this

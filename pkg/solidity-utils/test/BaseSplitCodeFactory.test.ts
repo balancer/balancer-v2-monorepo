@@ -16,10 +16,10 @@ describe('BasePoolCodeFactory', function () {
   });
 
   it('returns the contract creation code storage addresses', async () => {
-    const { storageA, storageB } = await factory.getCreationCodeStorage();
+    const { contractA, contractB } = await factory.getCreationCodeContracts();
 
-    const codeA = await ethers.provider.getCode(storageA);
-    const codeB = await ethers.provider.getCode(storageB);
+    const codeA = await ethers.provider.getCode(contractA);
+    const codeB = await ethers.provider.getCode(contractB);
 
     const artifact = await getArtifact('MockFactoryCreatedContract');
     expect(codeA.concat(codeB.slice(2))).to.equal(artifact.bytecode); // Slice to remove the '0x' prefix
