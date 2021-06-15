@@ -12,6 +12,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
+import { calcRebalanceAmount, calcRebalanceFee } from './helpers/rebalance';
 
 const OVER_INVESTMENT_REVERT_REASON = 'investment amount exceeds target';
 const UNDER_INVESTMENT_REVERT_REASON = 'withdrawal leaves insufficient balance invested';
@@ -154,33 +155,66 @@ describe('Aave Asset manager', function () {
     });
 
     it('allows a pool controller to set the pools target investment config', async () => {
-      const updatedConfig = { targetPercentage: 3, criticalPercentage: 2, feePercentage: 1 };
+      const updatedConfig = {
+        targetPercentage: 3,
+        upperCriticalPercentage: 4,
+        lowerCriticalPercentage: 2,
+        feePercentage: 1,
+      };
       await assetManager.connect(poolController).setPoolConfig(poolId, updatedConfig);
 
       const result = await assetManager.getPoolConfig(poolId);
       expect(result.targetPercentage).to.equal(updatedConfig.targetPercentage);
-      expect(result.criticalPercentage).to.equal(updatedConfig.criticalPercentage);
+      expect(result.upperCriticalPercentage).to.equal(updatedConfig.upperCriticalPercentage);
+      expect(result.lowerCriticalPercentage).to.equal(updatedConfig.lowerCriticalPercentage);
       expect(result.feePercentage).to.equal(updatedConfig.feePercentage);
     });
 
-    it('reverts when setting target over 100%', async () => {
-      const badPoolConfig = { targetPercentage: fp(1.1), criticalPercentage: 0, feePercentage: 0 };
+    it('reverts when setting upper critical over 100%', async () => {
+      const badPoolConfig = {
+        targetPercentage: 0,
+        upperCriticalPercentage: fp(1).add(1),
+        lowerCriticalPercentage: 0,
+        feePercentage: 0,
+      };
       await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
-        'Investment target must be less than or equal to 100%'
+        'Upper critical level must be less than or equal to 100%'
       );
     });
 
-    it('reverts when setting critical above target', async () => {
-      const badPoolConfig = { targetPercentage: 1, criticalPercentage: 2, feePercentage: 0 };
+    it('reverts when setting upper critical below target', async () => {
+      const badPoolConfig = {
+        targetPercentage: 1,
+        upperCriticalPercentage: 0,
+        lowerCriticalPercentage: 0,
+        feePercentage: 0,
+      };
       await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
-        'Critical level must be less than target'
+        'Target must be less than or equal to upper critical level'
+      );
+    });
+
+    it('reverts when setting lower critical above target', async () => {
+      const badPoolConfig = {
+        targetPercentage: 1,
+        upperCriticalPercentage: 2,
+        lowerCriticalPercentage: 2,
+        feePercentage: 0,
+      };
+      await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
+        'Lower critical level must be less than or equal to target'
       );
     });
 
     it('reverts when setting fee percentage over 100%', async () => {
-      const badPoolConfig = { targetPercentage: 0, criticalPercentage: 0, feePercentage: fp(1.01) };
+      const badPoolConfig = {
+        targetPercentage: 0,
+        upperCriticalPercentage: 0,
+        lowerCriticalPercentage: 0,
+        feePercentage: fp(0.1).add(1),
+      };
       await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
-        'Fee on critical rebalances must be less than 10%'
+        'Fee on critical rebalances must be less than or equal to 10%'
       );
     });
 
@@ -193,9 +227,12 @@ describe('Aave Asset manager', function () {
 
     beforeEach(async () => {
       poolController = lp; // TODO
-      await assetManager
-        .connect(poolController)
-        .setPoolConfig(poolId, { targetPercentage, criticalPercentage: 0, feePercentage: 0 });
+      await assetManager.connect(poolController).setPoolConfig(poolId, {
+        targetPercentage,
+        upperCriticalPercentage: fp(1),
+        lowerCriticalPercentage: 0,
+        feePercentage: 0,
+      });
     });
 
     describe('capitalIn', () => {
@@ -261,9 +298,12 @@ describe('Aave Asset manager', function () {
     beforeEach(async () => {
       const investablePercent = fp(0.9);
       poolController = lp; // TODO
-      await assetManager
-        .connect(poolController)
-        .setPoolConfig(poolId, { targetPercentage: investablePercent, criticalPercentage: 0, feePercentage: 0 });
+      await assetManager.connect(poolController).setPoolConfig(poolId, {
+        targetPercentage: investablePercent,
+        upperCriticalPercentage: fp(1),
+        lowerCriticalPercentage: 0,
+        feePercentage: 0,
+      });
 
       await assetManager.connect(poolController).capitalIn(poolId, amountToDeposit);
 
@@ -319,7 +359,7 @@ describe('Aave Asset manager', function () {
         const amountToWithdraw = maxInvestableBalance.abs();
 
         await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
-          { account: lendingPool.address, changes: { DAI: ['near', -amountToWithdraw] } },
+          { account: lendingPool.address, changes: { DAI: ['near', amountToWithdraw.mul(-1)] } },
           { account: vault.address, changes: { DAI: ['near', amountToWithdraw] } },
         ]);
       });
@@ -356,9 +396,14 @@ describe('Aave Asset manager', function () {
   });
 
   describe('getRebalanceFee', () => {
-    describe('when pool is safely above critical investment level', () => {
+    context('when pool is safely above critical investment level', () => {
       let poolController: SignerWithAddress; // TODO
-      const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
+      const poolConfig = {
+        targetPercentage: fp(0.5),
+        upperCriticalPercentage: fp(1),
+        lowerCriticalPercentage: fp(0.1),
+        feePercentage: fp(0.1),
+      };
 
       sharedBeforeEach(async () => {
         poolController = lp; // TODO
@@ -374,11 +419,16 @@ describe('Aave Asset manager', function () {
       });
     });
 
-    describe('when pool is below critical investment level', () => {
+    context('when pool is below critical investment level', () => {
       let poolController: SignerWithAddress; // TODO
 
       describe('when fee percentage is zero', () => {
-        const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0) };
+        const poolConfig = {
+          targetPercentage: fp(0.5),
+          upperCriticalPercentage: fp(1),
+          lowerCriticalPercentage: fp(0.1),
+          feePercentage: fp(0),
+        };
         sharedBeforeEach(async () => {
           poolController = lp; // TODO
 
@@ -391,9 +441,14 @@ describe('Aave Asset manager', function () {
         });
       });
 
-      describe('when fee percentage is non-zero', () => {
+      context('when fee percentage is non-zero', () => {
         let targetInvestmentAmount: BigNumber;
-        const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
+        const poolConfig = {
+          targetPercentage: fp(0.5),
+          upperCriticalPercentage: fp(1),
+          lowerCriticalPercentage: fp(0.1),
+          feePercentage: fp(0.1),
+        };
         sharedBeforeEach(async () => {
           poolController = lp; // TODO
 
@@ -412,7 +467,12 @@ describe('Aave Asset manager', function () {
   describe('rebalance', () => {
     context('when pool is above target investment level', () => {
       let poolController: SignerWithAddress; // TODO
-      const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
+      const poolConfig = {
+        targetPercentage: fp(0.5),
+        upperCriticalPercentage: fp(1),
+        lowerCriticalPercentage: fp(0.1),
+        feePercentage: fp(0.1),
+      };
 
       sharedBeforeEach(async () => {
         poolController = lp; // TODO
@@ -432,14 +492,12 @@ describe('Aave Asset manager', function () {
       });
 
       it('transfers the expected number of tokens to the Vault', async () => {
-        const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-        const poolTVL = cash.add(managed);
-        const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-        const expectedRebalanceAmount = managed.sub(targetInvestmentAmount);
+        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+        const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
         await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
-          { account: lendingPool.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
-          { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
+          { account: lendingPool.address, changes: { DAI: expectedRebalanceAmount } },
+          { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
         ]);
       });
 
@@ -450,10 +508,15 @@ describe('Aave Asset manager', function () {
       });
     });
 
-    describe('when pool is below target investment level', () => {
-      describe('when pool is safely above critical investment level', () => {
+    context('when pool is below target investment level', () => {
+      context('when pool is safely above critical investment level', () => {
         let poolController: SignerWithAddress; // TODO
-        const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
+        const poolConfig = {
+          targetPercentage: fp(0.5),
+          upperCriticalPercentage: fp(1),
+          lowerCriticalPercentage: fp(0.1),
+          feePercentage: fp(0.1),
+        };
 
         sharedBeforeEach(async () => {
           poolController = lp; // TODO
@@ -465,14 +528,12 @@ describe('Aave Asset manager', function () {
         });
 
         it('transfers the expected number of tokens from the Vault', async () => {
-          const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-          const poolTVL = cash.add(managed);
-          const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-          const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
+          const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+          const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
           await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
-            { account: lendingPool.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
-            { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+            { account: lendingPool.address, changes: { DAI: expectedRebalanceAmount } },
+            { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
           ]);
         });
 
@@ -482,11 +543,16 @@ describe('Aave Asset manager', function () {
         });
       });
 
-      describe('when pool is below critical investment level', () => {
+      context('when pool is below critical investment level', () => {
         let poolController: SignerWithAddress; // TODO
 
         describe('when fee percentage is zero', () => {
-          const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0) };
+          const poolConfig = {
+            targetPercentage: fp(0.5),
+            upperCriticalPercentage: fp(1),
+            lowerCriticalPercentage: fp(0.1),
+            feePercentage: fp(0),
+          };
           sharedBeforeEach(async () => {
             poolController = lp; // TODO
 
@@ -494,14 +560,12 @@ describe('Aave Asset manager', function () {
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
-            const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-            const poolTVL = cash.add(managed);
-            const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-            const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+            const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
             await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
-              { account: lendingPool.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
-              { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+              { account: lendingPool.address, changes: { DAI: expectedRebalanceAmount } },
+              { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
             ]);
           });
 
@@ -512,7 +576,12 @@ describe('Aave Asset manager', function () {
         });
 
         describe('when fee percentage is non-zero', () => {
-          const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
+          const poolConfig = {
+            targetPercentage: fp(0.5),
+            upperCriticalPercentage: fp(1),
+            lowerCriticalPercentage: fp(0.1),
+            feePercentage: fp(0.1),
+          };
           sharedBeforeEach(async () => {
             poolController = lp; // TODO
 
@@ -520,28 +589,28 @@ describe('Aave Asset manager', function () {
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
-            const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-            const poolTVL = cash.add(managed);
-            const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-            const zeroFeeRebalanceAmount = targetInvestmentAmount.sub(managed);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
 
-            const expectedFeeAmount = await assetManager.getRebalanceFee(poolId);
-
+            const expectedFeeAmount = calcRebalanceFee(poolCash, poolManaged, poolConfig);
             const investmentFeeAdjustment = expectedFeeAmount.mul(poolConfig.targetPercentage).div(fp(1));
+
+            const zeroFeeRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
             const expectedInvestmentAmount = zeroFeeRebalanceAmount.sub(investmentFeeAdjustment);
 
             const expectedVaultRemovedAmount = expectedInvestmentAmount.add(expectedFeeAmount);
 
             await expectBalanceChange(() => assetManager.connect(lp).rebalance(poolId), tokens, [
-              { account: lendingPool.address, changes: { DAI: ['very-near', expectedInvestmentAmount] } },
-              { account: vault.address, changes: { DAI: ['very-near', -expectedVaultRemovedAmount] } },
+              { account: lendingPool.address, changes: { DAI: expectedInvestmentAmount } },
+              { account: vault.address, changes: { DAI: expectedVaultRemovedAmount.mul(-1) } },
             ]);
           });
 
           it('pays the correct fee to the rebalancer', async () => {
-            const expectedFeeAmount = await assetManager.getRebalanceFee(poolId);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+            const expectedFeeAmount = calcRebalanceFee(poolCash, poolManaged, poolConfig);
+
             await expectBalanceChange(() => assetManager.connect(lp).rebalance(poolId), tokens, [
-              { account: lp.address, changes: { DAI: ['very-near', expectedFeeAmount] } },
+              { account: lp.address, changes: { DAI: expectedFeeAmount } },
             ]);
           });
 

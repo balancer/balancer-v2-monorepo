@@ -37,7 +37,7 @@ export async function deployedAt(contract: string, address: string): Promise<Con
   return ethers.getContractAt(artifact.abi, address);
 }
 
-function getArtifact(contract: string): Promise<Artifact> {
+export async function getArtifact(contract: string): Promise<Artifact> {
   let artifactsPath: string;
   if (!contract.includes('/')) {
     artifactsPath = path.resolve('./artifacts');

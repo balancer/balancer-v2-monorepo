@@ -141,14 +141,11 @@ abstract contract RewardsAssetManager is IAssetManager {
 
         require(poolManaged >= targetInvestment.add(tokensOut), "withdrawal leaves insufficient balance invested");
 
-        // As we have now updated totalAUM and burned the pool's shares
-        // calling balanceOf(poolId) will now return the pool's managed balance post-withdrawal
-
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
-        // Send funds back to the vault
-        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, pId, token, tokensOut);
         // Update the vault with new managed balance accounting for returns
-        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, pId, token, aum.sub(tokensOut));
+        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, pId, token, aum);
+        // Send funds back to the vault
+        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, pId, token, tokensOut);
 
         vault.managePoolBalance(ops);
     }
@@ -172,15 +169,38 @@ abstract contract RewardsAssetManager is IAssetManager {
 
     // TODO restrict access with onlyPoolController
     function setPoolConfig(bytes32 pId, PoolConfig calldata config) external override withCorrectPool(pId) {
-        require(config.targetPercentage <= FixedPoint.ONE, "Investment target must be less than or equal to 100%");
-        require(config.criticalPercentage <= config.targetPercentage, "Critical level must be less than target");
-        require(config.feePercentage <= FixedPoint.ONE / 10, "Fee on critical rebalances must be less than 10%");
+        require(
+            config.upperCriticalPercentage <= FixedPoint.ONE,
+            "Upper critical level must be less than or equal to 100%"
+        );
+        require(
+            config.targetPercentage <= config.upperCriticalPercentage,
+            "Target must be less than or equal to upper critical level"
+        );
+        require(
+            config.lowerCriticalPercentage <= config.targetPercentage,
+            "Lower critical level must be less than or equal to target"
+        );
+        require(
+            config.feePercentage <= FixedPoint.ONE / 10,
+            "Fee on critical rebalances must be less than or equal to 10%"
+        );
 
         _poolConfig = config;
     }
 
     function getPoolConfig(bytes32 pId) external view override withCorrectPool(pId) returns (PoolConfig memory) {
         return _poolConfig;
+    }
+
+    function getPoolBalances(bytes32 pId)
+        public
+        view
+        override
+        withCorrectPool(pId)
+        returns (uint256 poolCash, uint256 poolManaged)
+    {
+        return _getPoolBalances(readAUM());
     }
 
     function _getPoolBalances(uint256 aum) internal view returns (uint256 poolCash, uint256 poolManaged) {
@@ -199,11 +219,25 @@ abstract contract RewardsAssetManager is IAssetManager {
         uint256 poolManaged,
         PoolConfig memory config
     ) internal pure returns (uint256) {
-        uint256 criticalManagedBalance = FixedPoint.mulDown(poolCash + poolManaged, config.criticalPercentage);
-        if (poolManaged >= criticalManagedBalance) {
-            return 0;
+        uint256 amountSubjectToFees = 0;
+
+        uint256 upperCriticalManagedBalance = FixedPoint.mulDown(
+            poolCash + poolManaged,
+            config.upperCriticalPercentage
+        );
+        if (poolManaged > upperCriticalManagedBalance) {
+            amountSubjectToFees = poolManaged.sub(upperCriticalManagedBalance);
         }
-        return FixedPoint.mulDown(criticalManagedBalance.sub(poolManaged), config.feePercentage);
+
+        uint256 lowerCriticalManagedBalance = FixedPoint.mulDown(
+            poolCash + poolManaged,
+            config.lowerCriticalPercentage
+        );
+        if (poolManaged < lowerCriticalManagedBalance) {
+            amountSubjectToFees = lowerCriticalManagedBalance.sub(poolManaged);
+        }
+
+        return FixedPoint.mulDown(amountSubjectToFees, config.feePercentage);
     }
 
     /**
@@ -236,17 +270,21 @@ abstract contract RewardsAssetManager is IAssetManager {
             // Pool is under-invested so add more funds
             uint256 rebalanceAmount = targetInvestment.sub(poolManaged);
 
-            // If pool is above critical threshold then we want to pay a fee to rebalancer
-            // The fee is paid on the portion of managed funds which are above the critical threshold
+            // If pool is below critical threshold then we want to pay a fee to rebalancer
+            // The fee is paid on the portion of managed funds which are below the critical threshold
             feeAmount = _getRebalanceFee(poolCash, poolManaged, config);
 
             // As paying out fees reduces the TVL of the pool, we must correct the amount invested to account for this
             capitalIn(poolId, rebalanceAmount.sub(FixedPoint.mulDown(feeAmount, config.targetPercentage)));
         } else {
             // Pool is over-invested so remove some funds
-            // Incentivising rebalancer is unneccessary as removing capital
-            // will expose an arb opportunity if it is limiting trading.
-            capitalOut(poolId, poolManaged.sub(targetInvestment));
+            uint256 rebalanceAmount = poolManaged.sub(targetInvestment);
+
+            // If pool is above critical threshold then we want to pay a fee to rebalancer
+            // The fee is paid on the portion of managed funds which are above the critical threshold
+            feeAmount = _getRebalanceFee(poolCash, poolManaged, config);
+
+            capitalOut(poolId, rebalanceAmount.sub(FixedPoint.mulDown(feeAmount, config.targetPercentage)));
         }
     }
 

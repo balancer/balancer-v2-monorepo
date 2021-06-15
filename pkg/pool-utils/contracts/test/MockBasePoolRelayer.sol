@@ -13,21 +13,18 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "../interfaces/IBasePoolRelayer.sol";
 
-import "../factories/BasePoolFactory.sol";
-import "./MockFactoryCreatedPool.sol";
 
-contract MockPoolFactory is BasePoolFactory {
-    constructor(IVault _vault) BasePoolFactory(_vault) {
-        // solhint-disable-previous-line no-empty-blocks
+contract MockBasePoolRelayer is IBasePoolRelayer {
+    bool internal _hasCalledPool;
+
+    function hasCalledPool(bytes32) external view override returns (bool) {
+        return _hasCalledPool;
     }
 
-    function create() external returns (address) {
-        address pool = address(new MockFactoryCreatedPool());
-        _register(pool);
-        return pool;
+    function mockHasCalledPool(bool _newHasCalledPool) external {
+        _hasCalledPool = _newHasCalledPool;
     }
 }

@@ -136,8 +136,10 @@ library Errors {
     uint256 internal constant AMP_NO_ONGOING_UPDATE = 320;
     uint256 internal constant STABLE_INVARIANT_DIDNT_CONVERGE = 321;
     uint256 internal constant STABLE_GET_BALANCE_DIDNT_CONVERGE = 322;
-    uint256 internal constant GRADUAL_UPDATE_TIME_TRAVEL = 323;
-    uint256 internal constant SWAPS_PAUSED = 324;
+    uint256 internal constant RELAYER_NOT_CONTRACT = 323;
+    uint256 internal constant BASE_POOL_RELAYER_NOT_CALLED = 324;
+    uint256 internal constant GRADUAL_UPDATE_TIME_TRAVEL = 325;
+    uint256 internal constant SWAPS_PAUSED = 326;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
@@ -168,6 +170,8 @@ library Errors {
     uint256 internal constant BUFFER_PERIOD_EXPIRED = 425;
     uint256 internal constant CALLER_IS_NOT_OWNER = 426;
     uint256 internal constant NEW_OWNER_IS_ZERO = 427;
+    uint256 internal constant CODE_DEPLOYMENT_FAILED = 428;
+    uint256 internal constant FACTORY_CONTRACT_DEPLOYMENT_FAILED = 429;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;

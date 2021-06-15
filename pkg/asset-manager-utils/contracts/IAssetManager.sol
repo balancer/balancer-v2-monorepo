@@ -18,7 +18,8 @@ pragma experimental ABIEncoderV2;
 interface IAssetManager {
     struct PoolConfig {
         uint64 targetPercentage;
-        uint64 criticalPercentage;
+        uint64 upperCriticalPercentage;
+        uint64 lowerCriticalPercentage;
         uint64 feePercentage;
     }
 
@@ -41,6 +42,12 @@ interface IAssetManager {
      * @return the current assets under management of this asset manager
      */
     function readAUM() external view returns (uint256);
+
+    /**
+     * @return poolCash - The up-to-date cash balance of the pool
+     * @return poolManaged - The up-to-date managed balance of the pool
+     */
+    function getPoolBalances(bytes32 poolId) external view returns (uint256 poolCash, uint256 poolManaged);
 
     /**
      * @return The difference in tokens between the target investment

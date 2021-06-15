@@ -17,17 +17,15 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "../factories/BasePoolFactory.sol";
+import "../factories/BasePoolSplitCodeFactory.sol";
 import "./MockFactoryCreatedPool.sol";
 
-contract MockPoolFactory is BasePoolFactory {
-    constructor(IVault _vault) BasePoolFactory(_vault) {
+contract MockPoolSplitCodeFactory is BasePoolSplitCodeFactory {
+    constructor(IVault _vault) BasePoolSplitCodeFactory(_vault, type(MockFactoryCreatedPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     function create() external returns (address) {
-        address pool = address(new MockFactoryCreatedPool());
-        _register(pool);
-        return pool;
+        return _create("");
     }
 }
