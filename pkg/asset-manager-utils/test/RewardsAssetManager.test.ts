@@ -345,18 +345,6 @@ describe('Rewards Asset manager', function () {
         expect(managed.sub(actualManagedBalance)).to.be.lt(10);
       });
 
-      it('allows the pool to withdraw tokens to rebalance', async () => {
-        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
-
-        // return a portion of the return to the vault to serve as a buffer
-        const amountToWithdraw = maxInvestableBalance.abs();
-
-        await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
-          { account: assetManager.address, changes: { DAI: amountToWithdraw.mul(-1) } },
-          { account: vault.address, changes: { DAI: amountToWithdraw } },
-        ]);
-      });
-
       it('allows withdrawing returns which are greater than the current managed balance', async () => {
         const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
         const poolAssets = poolCash.add(poolManaged);
