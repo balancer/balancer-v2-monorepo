@@ -364,6 +364,18 @@ describe('Rewards Asset manager', function () {
           { account: vault.address, changes: { DAI: ['very-near', amountToWithdraw] } },
         ]);
       });
+
+      it('allows withdrawing returns which are greater than the current managed balance', async () => {
+        await tokens.DAI.mint(assetManager.address, tokenInitialBalance.mul(10));
+        await assetManager.connect(lp).setUnrealisedAUM(amountToDeposit.add(tokenInitialBalance.mul(10)));
+
+        const amountToWithdraw = (await assetManager.maxInvestableBalance(poolId)).mul(-1);
+
+        await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
+          { account: assetManager.address, changes: { DAI: ['very-near', -amountToWithdraw] } },
+          { account: vault.address, changes: { DAI: ['very-near', amountToWithdraw] } },
+        ]);
+      });
     });
   });
 
