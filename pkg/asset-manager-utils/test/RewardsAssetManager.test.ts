@@ -331,6 +331,15 @@ describe('Rewards Asset manager', function () {
         ]);
       });
 
+      it('prevents depositing pool assets to an investment manager over the target investable %', async () => {
+        const maxDivestment = (await assetManager.maxInvestableBalance(poolId)).mul(-1);
+        const overDivestmentAmount = maxDivestment.add(1);
+
+        expect(assetManager.connect(lp).capitalOut(poolId, overDivestmentAmount)).to.be.revertedWith(
+          UNDER_INVESTMENT_REVERT_REASON
+        );
+      });
+
       it("updates the pool's managed balance", async () => {
         const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
 
