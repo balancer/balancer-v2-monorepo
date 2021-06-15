@@ -86,7 +86,7 @@ contract StableMath {
                     Math.div(Math.mul(Math.mul(ampTimesTotal, sum), P_D), _AMP_PRECISION, roundUp)
                 ),
                 Math.mul(numTokens + 1, invariant).add(
-                    // No need to use SafeMath for the amp precision, the amp is guaranteed to be at least 1
+                    // No need to use checked arithmetic for the amp precision, the amp is guaranteed to be at least 1
                     Math.div(Math.mul(ampTimesTotal - _AMP_PRECISION, P_D), _AMP_PRECISION, !roundUp)
                 ),
                 roundUp
@@ -139,8 +139,8 @@ contract StableMath {
             tokenIndexOut
         );
 
-        // No need to use SafeMath since `tokenAmountIn` was actually added to the same balance right before calling
-        // `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
+        // No need to use checked arithmetic since `tokenAmountIn` was actually added to the same balance right before
+        // calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
         balances[tokenIndexIn] = balances[tokenIndexIn] - tokenAmountIn;
 
         return balances[tokenIndexOut].sub(finalBalanceOut).sub(1);
@@ -182,8 +182,8 @@ contract StableMath {
             tokenIndexIn
         );
 
-        // No need to use SafeMath since `tokenAmountOut` was actually subtracted from the same balance right before
-        // calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
+        // No need to use checked arithmetic since `tokenAmountOut` was actually subtracted from the same balance right
+        // before calling `_getTokenBalanceGivenInvariantAndAllOtherBalances` which doesn't alter the balances array.
         balances[tokenIndexOut] = balances[tokenIndexOut] + tokenAmountOut;
 
         return finalBalanceIn.sub(balances[tokenIndexIn]).add(1);
@@ -224,7 +224,7 @@ contract StableMath {
             if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
                 uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithFees.sub(FixedPoint.ONE));
                 uint256 taxableAmount = amountsIn[i].sub(nonTaxableAmount);
-                // No need to use SafeMath for the swap fee, it is guaranteed to be lower than 50%
+                // No need to use checked arithmetic for the swap fee, it is guaranteed to be lower than 50%
                 amountInWithoutFee = nonTaxableAmount.add(taxableAmount.mulDown(FixedPoint.ONE - swapFeePercentage));
             } else {
                 amountInWithoutFee = amountsIn[i];
@@ -285,7 +285,7 @@ contract StableMath {
         uint256 taxableAmount = amountInWithoutFee.mulUp(taxablePercentage);
         uint256 nonTaxableAmount = amountInWithoutFee.sub(taxableAmount);
 
-        // No need to use SafeMath for the swap fee, it is guaranteed to be lower than 50%
+        // No need to use checked arithmetic for the swap fee, it is guaranteed to be lower than 50%
         return nonTaxableAmount.add(taxableAmount.divUp(FixedPoint.ONE - swapFeePercentage));
     }
 
@@ -329,7 +329,7 @@ contract StableMath {
             if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
                 uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithoutFees.complement());
                 uint256 taxableAmount = amountsOut[i].sub(nonTaxableAmount);
-                // No need to use SafeMath for the swap fee, it is guaranteed to be lower than 50%
+                // No need to use checked arithmetic for the swap fee, it is guaranteed to be lower than 50%
                 amountOutWithFee = nonTaxableAmount.add(taxableAmount.divUp(FixedPoint.ONE - swapFeePercentage));
             } else {
                 amountOutWithFee = amountsOut[i];
@@ -387,7 +387,7 @@ contract StableMath {
         uint256 taxableAmount = amountOutWithoutFee.mulUp(taxablePercentage);
         uint256 nonTaxableAmount = amountOutWithoutFee.sub(taxableAmount);
 
-        // No need to use SafeMath for the swap fee, it is guaranteed to be lower than 50%
+        // No need to use checked arithmetic for the swap fee, it is guaranteed to be lower than 50%
         return nonTaxableAmount.add(taxableAmount.mulDown(FixedPoint.ONE - swapFeePercentage));
     }
 
