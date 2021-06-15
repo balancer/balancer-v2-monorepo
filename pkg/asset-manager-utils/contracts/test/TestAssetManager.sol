@@ -23,7 +23,6 @@ pragma solidity ^0.7.0;
 // solhint-disable private-vars-leading-underscore
 contract TestAssetManager is RewardsAssetManager {
     using Math for uint256;
-    uint256 public nextAUM;
 
     constructor(
         IVault _vault,
@@ -43,8 +42,7 @@ contract TestAssetManager is RewardsAssetManager {
      * @param aum - the current assets under management of this asset manager
      * @return the number of shares to mint for the pool
      */
-    function _invest(uint256 amount, uint256 aum) internal override returns (uint256) {
-        nextAUM = aum + amount;
+    function _invest(uint256 amount, uint256 aum) internal pure override returns (uint256) {
         return amount;
     }
 
@@ -52,8 +50,7 @@ contract TestAssetManager is RewardsAssetManager {
      * @param amount - the amount of tokens being divested
      * @return the number of tokens to return to the vault
      */
-    function _divest(uint256 amount, uint256 aum) internal override returns (uint256) {
-        nextAUM = aum - amount;
+    function _divest(uint256 amount, uint256 aum) internal pure override returns (uint256) {
         return amount;
     }
 
@@ -61,13 +58,6 @@ contract TestAssetManager is RewardsAssetManager {
      * @return the current assets under management of this asset manager
      */
     function readAUM() public view override returns (uint256) {
-        return nextAUM;
-    }
-
-    /**
-     * @dev Sets the next value to be read by `readAUM`
-     */
-    function setUnrealisedAUM(uint256 aum) external {
-        nextAUM = aum;
+        return token.balanceOf(address(this));
     }
 }
