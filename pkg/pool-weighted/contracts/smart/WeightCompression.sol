@@ -22,41 +22,36 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
  */
 library WeightCompression {
     using FixedPoint for uint256;
-    using WordCodec for bytes32;
 
     /**
-     * @dev Read a value from a 16-bit slot at the given offset and convert to full FixedPoint
+     * @dev Convert a 16-bit value to full FixedPoint
      */
-    function uncompress16(bytes32 word, uint256 offset) internal pure returns (uint256) {
-        return word.decodeUint16(offset).mulUp(FixedPoint.ONE).divUp(type(uint16).max);
+    function uncompress16(uint256 value) internal pure returns (uint256) {
+        return value.mulUp(FixedPoint.ONE).divUp(type(uint16).max);
+        //return word.decodeUint16(offset).mulUp(FixedPoint.ONE).divUp(type(uint16).max);
     }
 
     /**
-     * @dev Compress a FisedPoint value to 16 bits, and write to a slot at the given offset
+     * @dev Compress a FixedPoint value to 16 bits
      */
-    function compress16(
-        bytes32 word,
-        uint256 value,
-        uint256 offset
-    ) internal pure returns (bytes32) {
-        return word.insertUint16(value.mulUp(type(uint16).max).divUp(FixedPoint.ONE), offset);
+    function compress16(uint256 value) internal pure returns (uint256) {
+        //return word.insertUint16(value.mulUp(type(uint16).max).divUp(FixedPoint.ONE), offset);
+        return value.mulUp(type(uint16).max).divUp(FixedPoint.ONE);
     }
 
     /**
-     * @dev Read a value from a 32-bit slot at the given offset and convert to full FixedPoint
+     * @dev Convert a 32-bit value to full FixedPoint
      */
-    function uncompress32(bytes32 word, uint256 offset) internal pure returns (uint256) {
-        return word.decodeUint32(offset).mulUp(FixedPoint.ONE).divUp(type(uint32).max);
+    function uncompress32(uint256 value) internal pure returns (uint256) {
+        //return word.decodeUint32(offset).mulUp(FixedPoint.ONE).divUp(type(uint32).max);
+        return value.mulUp(FixedPoint.ONE).divUp(type(uint32).max);
     }
 
     /**
-     * @dev Compress a FisedPoint value to 32 bits, and write to a slot at the given offset
+     * @dev Compress a FixedPoint value to 32 bits
      */
-    function compress32(
-        bytes32 word,
-        uint256 value,
-        uint256 offset
-    ) internal pure returns (bytes32) {
-        return word.insertUint32(value.mulUp(type(uint32).max).divUp(FixedPoint.ONE), offset);
+    function compress32(uint256 value) internal pure returns (uint256) {
+        //return word.insertUint32(value.mulUp(type(uint32).max).divUp(FixedPoint.ONE), offset);
+        return value.mulUp(type(uint32).max).divUp(FixedPoint.ONE);
     }
 }

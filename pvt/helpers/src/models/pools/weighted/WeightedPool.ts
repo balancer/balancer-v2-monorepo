@@ -1,4 +1,4 @@
-import { BigNumber, Contract, ContractFunction } from 'ethers';
+import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
 
 import { actionId } from '../../../models/misc/actions';
 import { BigNumberish, bn, fp } from '../../../numbers';
@@ -579,9 +579,9 @@ export default class WeightedPool {
     await pool.enableOracle();
   }
 
-  async setPublicSwap(from: SignerWithAddress, publicSwap: boolean): Promise<void> {
+  async setSwapEnabled(from: SignerWithAddress, swapEnabled: boolean): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    await pool.setPublicSwap(publicSwap);
+    return pool.setSwapEnabled(swapEnabled);
   }
 
   async updateWeightsGradually(
@@ -594,7 +594,7 @@ export default class WeightedPool {
     await pool.updateWeightsGradually(startTime, endTime, endWeights);
   }
 
-  async getGradualUpdateParams(): Promise<GradualUpdateParams> {
-    return await this.instance.getGradualUpdateParams();
+  async getGradualWeightUpdateParams(): Promise<GradualUpdateParams> {
+    return await this.instance.getGradualWeightUpdateParams();
   }
 }

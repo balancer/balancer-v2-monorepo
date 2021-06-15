@@ -26,31 +26,39 @@ import "./WeightCompression.sol";
 contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     using FixedPoint for uint256;
     using WordCodec for bytes32;
-    using WeightCompression for bytes32;
+    using WeightCompression for uint256;
 
     uint256 private constant _MAX_LBP_TOKENS = 4;
+
+    // State variables
+
+    // All swaps fail while this is false
+    bool public swapEnabled;
+
+    // For gas optimization, store start/end weights and timestamps in one bytes32
+    // Start weights need to be high precision, since restarting the update resets them to "spot"
+    // values. Target end weights do not need as much precision.
+    // [     32 bits   |     32 bits     |      64 bits     |      128 bits      |
+    // [ end timestamp | start timestamp | 4x16 end weights | 4x32 start weights |
+    // |MSB                                                                   LSB|
+
+    bytes32 private _poolState;
+
     // Offsets for data elements in _poolState
     // Start weights begin at offset 0
     uint256 private constant _END_WEIGHT_OFFSET = 128;
     uint256 private constant _START_TIME_OFFSET = 192;
     uint256 private constant _END_TIME_OFFSET = 224;
 
-    // State variables
-
-    // Setting this to false pauses trading
-    bool public swapEnabled;
-
-    // For gas optimization, store start/end weights and timestamps in one bytes32
-    // Start weights need to be high precision, since restarting the update resets them to "spot"
-    // values. Target end weights do not need as much precision.
-    // <---     128 bits     ---|---     64 bits     ---|---  32 bits ----|--  32 bits ----|
-    // 4 x 32bit start weights  | 4 x 16bit end weights | start timestamp | end timestamp  |
-    bytes32 private _poolState;
-
     // Event declarations
 
-    event PublicSwapSet(bool swapEnabled);
-    event GradualUpdateScheduled(uint256 startTime, uint256 endTime, uint256[] startWeights, uint256[] endWeights);
+    event SwapEnabledSet(bool swapEnabled);
+    event GradualWeightUpdateScheduled(
+        uint256 startTime,
+        uint256 endTime,
+        uint256[] startWeights,
+        uint256[] endWeights
+    );
 
     constructor(
         IVault vault,
@@ -91,8 +99,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
             // Insert "start weights" and "end weights" into poolState
             // Before the first update, start=end, which avoids initialization edge cases
-            poolState = poolState.compress32(normalizedWeight, i * 32);
-            poolState = poolState.compress16(normalizedWeight, _END_WEIGHT_OFFSET + i * 16);
+            poolState = poolState.insertUint32(normalizedWeight.compress32(), i * 32);
+            poolState = poolState.insertUint16(normalizedWeight.compress16(), _END_WEIGHT_OFFSET + i * 16);
 
             normalizedSum = normalizedSum.add(normalizedWeight);
         }
@@ -102,10 +110,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         // Write initial pool state - all zeros except for the start weights
         _poolState = poolState;
 
-        // If false, the sale will start in a paused state (prevents front-running the unpause transaction)
-        swapEnabled = swapEnabledOnStart;
-
-        emit PublicSwapSet(swapEnabledOnStart);
+        // If false, the pool will start in the paused state (prevents front-running the unpause transaction)
+        _setSwapEnabled(swapEnabledOnStart);
     }
 
     // External functions
@@ -113,7 +119,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     /**
      * @dev Return start time, end time, and endWeights as an array
      */
-    function getGradualUpdateParams()
+    function getGradualWeightUpdateParams()
         external
         view
         returns (
@@ -132,20 +138,18 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { endWeights[0] = poolState.uncompress16(_END_WEIGHT_OFFSET); }
-            if (totalTokens > 1) { endWeights[1] = poolState.uncompress16(_END_WEIGHT_OFFSET + 16); }
-            if (totalTokens > 2) { endWeights[2] = poolState.uncompress16(_END_WEIGHT_OFFSET + 32); }
-            if (totalTokens > 3) { endWeights[3] = poolState.uncompress16(_END_WEIGHT_OFFSET + 48); }
+            if (totalTokens > 0) { endWeights[0] = poolState.decodeUint16(_END_WEIGHT_OFFSET).uncompress16(); }
+            if (totalTokens > 1) { endWeights[1] = poolState.decodeUint16(_END_WEIGHT_OFFSET + 16).uncompress16(); }
+            if (totalTokens > 2) { endWeights[2] = poolState.decodeUint16(_END_WEIGHT_OFFSET + 32).uncompress16(); }
+            if (totalTokens > 3) { endWeights[3] = poolState.decodeUint16(_END_WEIGHT_OFFSET + 48).uncompress16(); }
         }
     }
 
     /**
      * @dev Can pause/unpause trading
      */
-    function setPublicSwap(bool publicSwap) external authenticate whenNotPaused nonReentrant {
-        swapEnabled = publicSwap;
-
-        emit PublicSwapSet(publicSwap);
+    function setSwapEnabled(bool _swapEnabled) external authenticate whenNotPaused nonReentrant {
+        _setSwapEnabled(_swapEnabled);
     }
 
     /**
@@ -160,8 +164,6 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentTime = block.timestamp;
 
-        _require(currentTime < endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
-
         // Must specify normalized weights for all tokens
         uint256 totalTokens = _getTotalTokens();
         InputHelpers.ensureInputLengthMatch(totalTokens, endWeights.length);
@@ -170,6 +172,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         // This avoids discontinuities in the weight curve. Otherwise, if you set the start/end times with
         // only 10% of the period in the future, the weights would immediately jump 90%
         uint256 effectiveStartTime = currentTime > startTime ? currentTime : startTime;
+
+        _require(effectiveStartTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
 
         // If called while a current weight change is ongoing, set starting point to current weights
         // Initialize the memory variable that will be written to storage at the end
@@ -188,7 +192,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             _require(endWeights[i] >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             // update the end weights in memory
-            newPoolState = newPoolState.compress16(endWeights[i], _END_WEIGHT_OFFSET + i * 16);
+            newPoolState = newPoolState.insertUint16(endWeights[i].compress16(), _END_WEIGHT_OFFSET + i * 16);
 
             sumWeights = sumWeights.add(endWeights[i]);
         }
@@ -197,7 +201,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         _poolState = newPoolState;
 
-        emit GradualUpdateScheduled(effectiveStartTime, endTime, startWeights, endWeights);
+        emit GradualWeightUpdateScheduled(effectiveStartTime, endTime, startWeights, endWeights);
     }
 
     // Internal functions
@@ -218,45 +222,35 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         bytes32 poolState = _poolState;
 
-        uint256 startWeight = poolState.uncompress32(i * 32);
-        uint256 endWeight = poolState.uncompress16(_END_WEIGHT_OFFSET + i * 16);
+        return _getNormalizedWeightByIndex(i, poolState);
+    }
 
-        // If no ongoing weight change, return the fixed weight
-        if (startWeight == endWeight) {
-            return startWeight;
-        }
+    function _getNormalizedWeightByIndex(uint8 i, bytes32 poolState) internal view returns (uint256) {
+        uint256 startWeight = poolState.decodeUint32(i * 32).uncompress32();
+        uint256 endWeight = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).uncompress16();
 
         // Return 0 - 1 value representing how much of the period has elapsed
         // Will return 0 if it hasn't started, and 1 if it's past the end
         uint256 pctProgress = _calculateProgress(poolState);
 
-        if (pctProgress == 0) {
-            return startWeight;
-        } else if (pctProgress == FixedPoint.ONE) {
-            return endWeight;
-        }
-
         return _interpolateWeight(startWeight, endWeight, pctProgress);
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory) {
-        bytes32 poolState = _poolState;
-
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory normalizedWeights = new uint256[](totalTokens);
 
-        // Need to calculate them
-        uint256 pctProgress = _calculateProgress(poolState);
+        bytes32 poolState = _poolState;
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { normalizedWeights[0] = _getDynamicWeight(poolState, pctProgress, 0);
+            if (totalTokens > 0) { normalizedWeights[0] = _getNormalizedWeightByIndex(0, poolState);
             } else { return normalizedWeights; }
-            if (totalTokens > 1) { normalizedWeights[1] = _getDynamicWeight(poolState, pctProgress, 1);
+            if (totalTokens > 1) { normalizedWeights[1] = _getNormalizedWeightByIndex(1, poolState);
             } else { return normalizedWeights; }
-            if (totalTokens > 2) { normalizedWeights[2] = _getDynamicWeight(poolState, pctProgress, 2);
+            if (totalTokens > 2) { normalizedWeights[2] = _getNormalizedWeightByIndex(2, poolState);
             } else { return normalizedWeights; }
-            if (totalTokens > 3) { normalizedWeights[3] = _getDynamicWeight(poolState, pctProgress, 3);
+            if (totalTokens > 3) { normalizedWeights[3] = _getNormalizedWeightByIndex(3, poolState);
             } else { return normalizedWeights; }
         }
 
@@ -283,6 +277,20 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
     // Pool callback functions
 
+    // Prevent any account other than the owner from joining the pool
+
+    function _onInitializePool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        bytes memory userData
+    ) internal override whenNotPaused returns (uint256, uint256[] memory) {
+        // Only the owner can initialize the pool
+        _require(sender == getOwner(), Errors.SENDER_NOT_ALLOWED);
+
+        return super._onInitializePool(poolId, sender, recipient, userData);
+    }
+
     function _onJoinPool(
         bytes32 poolId,
         address sender,
@@ -301,6 +309,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             uint256[] memory
         )
     {
+        // Only the owner can add liquidity; block public LPs
         _require(sender == getOwner(), Errors.SENDER_NOT_ALLOWED);
 
         return
@@ -314,6 +323,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
                 userData
             );
     }
+
+    // Swap overrides - revert unless swaps are enabled
 
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,
@@ -340,7 +351,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
      */
     function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
         return
-            (actionId == getActionId(LiquidityBootstrappingPool.setPublicSwap.selector)) ||
+            (actionId == getActionId(LiquidityBootstrappingPool.setSwapEnabled.selector)) ||
             (actionId == getActionId(LiquidityBootstrappingPool.updateWeightsGradually.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
@@ -356,9 +367,9 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         // Ensure current time is always between startTime and endTime, so the computation will always work
         if (currentTime > endTime) {
-            currentTime = endTime;
+            return FixedPoint.ONE;
         } else if (currentTime < startTime) {
-            currentTime = startTime;
+            return 0;
         }
 
         uint256 totalSeconds = endTime.sub(startTime);
@@ -384,7 +395,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         // Copy current weights to start weights
         for (uint8 i = 0; i < totalTokens; i++) {
-            poolState = poolState.compress32(normalizedWeights[i], i * 32);
+            poolState = poolState.insertUint32(normalizedWeights[i].compress32(), i * 32);
         }
 
         // Reset the timestamps
@@ -392,36 +403,23 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         return (poolState.insertUint32(endTime, _END_TIME_OFFSET), normalizedWeights);
     }
 
-    /**
-     * @dev If there is no ongoing weight update, just return the normalizedWeights from storage
-     * If there's an ongoing weight update, but we're at or past the end block, return the endWeights.
-     * If we're in the middle of an update, calculate the current weight by linear interpolation.
-     */
-    function _getDynamicWeight(
-        bytes32 poolState,
-        uint256 pctProgress,
-        uint8 i
-    ) private pure returns (uint256) {
-        uint256 startWeight = poolState.uncompress32(i * 32);
-        uint256 endWeight = poolState.uncompress16(_END_WEIGHT_OFFSET + i * 16);
-
-        if (startWeight == endWeight || pctProgress == 0) {
-            return startWeight;
-        } else if (pctProgress == FixedPoint.ONE) {
-            return endWeight;
-        }
-
-        return _interpolateWeight(startWeight, endWeight, pctProgress);
-    }
-
     function _interpolateWeight(
         uint256 startWeight,
         uint256 endWeight,
         uint256 pctProgress
     ) private pure returns (uint256) {
+        if (pctProgress == 0) return startWeight;
+        if (pctProgress == FixedPoint.ONE) return endWeight;
+
         uint256 totalWeightChange = endWeight < startWeight ? startWeight.sub(endWeight) : endWeight.sub(startWeight);
         uint256 weightDelta = pctProgress.mulDown(totalWeightChange);
 
         return endWeight < startWeight ? startWeight.sub(weightDelta) : startWeight.add(weightDelta);
+    }
+
+    function _setSwapEnabled(bool _swapEnabled) private {
+        swapEnabled = _swapEnabled;
+
+        emit SwapEnabledSet(_swapEnabled);
     }
 }
