@@ -32,6 +32,18 @@ contract StableMath {
 
     uint256 internal constant _MAX_STABLE_TOKENS = 5;
 
+    // Note on unchecked arithmetic:
+    // This contract performs a large number of additions, subtractions, multiplications and divisions, often inside
+    // loops. Since many of these operations are gas-sensitive (as they happen e.g. during a swap), it is important to
+    // not make any unnecessary checks. We rely on a set of invariants to avoid having to use checked arithmetic (the
+    // Math library), including:
+    //  - the number of tokens is bounded by _MAX_STABLE_TOKENS
+    //  - the amplification parameter is bounded by _MAX_AMP * _AMP_PRECISION, which fits in 23 bits
+    //  - the token balances are bounded by 2^112 (guaranteed by the Vault) times 1e18 (the maximum scaling factor),
+    //    which fits in 172 bits
+    //
+    // This means e.g. we can safely multiply a balance by the amplification parameter without worrying about overflow.
+
     // Computes the invariant given the current balances, using the Newton-Raphson approximation.
     // The amplification parameter equals: A n^(n-1)
     function _calculateInvariant(
