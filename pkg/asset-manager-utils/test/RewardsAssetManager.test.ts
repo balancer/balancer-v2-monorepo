@@ -206,7 +206,7 @@ describe('Rewards Asset manager', function () {
       it('transfers only the requested token from the vault to the lending pool via the manager', async () => {
         await expectBalanceChange(() => assetManager.connect(lp).capitalIn(poolId, amount), tokens, [
           { account: assetManager.address, changes: { DAI: amount } },
-          { account: vault.address, changes: { DAI: -amount } },
+          { account: vault.address, changes: { DAI: amount.mul(-1) } },
         ]);
       });
 
@@ -215,7 +215,7 @@ describe('Rewards Asset manager', function () {
 
         await expectBalanceChange(() => assetManager.connect(lp).capitalIn(poolId, amountToDeposit), tokens, [
           { account: assetManager.address, changes: { DAI: amountToDeposit } },
-          { account: vault.address, changes: { DAI: -amountToDeposit } },
+          { account: vault.address, changes: { DAI: amountToDeposit.mul(-1) } },
         ]);
       });
 
@@ -334,7 +334,7 @@ describe('Rewards Asset manager', function () {
         // await assetManager.connect(poolController).setInvestablePercent(poolId, fp(0));
 
         await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
-          { account: assetManager.address, changes: { DAI: ['very-near', -amountToWithdraw] } },
+          { account: assetManager.address, changes: { DAI: ['very-near', amountToWithdraw.mul(-1)] } },
           { account: vault.address, changes: { DAI: ['very-near', amountToWithdraw] } },
         ]);
       });
@@ -360,7 +360,7 @@ describe('Rewards Asset manager', function () {
         const amountToWithdraw = maxInvestableBalance.abs();
 
         await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
-          { account: assetManager.address, changes: { DAI: ['very-near', -amountToWithdraw] } },
+          { account: assetManager.address, changes: { DAI: ['very-near', amountToWithdraw.mul(-1)] } },
           { account: vault.address, changes: { DAI: ['very-near', amountToWithdraw] } },
         ]);
       });
@@ -500,7 +500,7 @@ describe('Rewards Asset manager', function () {
 
           await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
             { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
-            { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+            { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount.mul(-1)] } },
           ]);
         });
 
@@ -543,7 +543,7 @@ describe('Rewards Asset manager', function () {
 
             await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
               { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
-              { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+              { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount.mul(-1)] } },
             ]);
           });
 
@@ -580,7 +580,7 @@ describe('Rewards Asset manager', function () {
 
             await expectBalanceChange(() => assetManager.connect(lp).rebalance(poolId), tokens, [
               { account: assetManager.address, changes: { DAI: ['very-near', expectedInvestmentAmount] } },
-              { account: vault.address, changes: { DAI: ['very-near', -expectedVaultRemovedAmount] } },
+              { account: vault.address, changes: { DAI: ['very-near', expectedVaultRemovedAmount.mul(-1)] } },
             ]);
           });
 
@@ -626,7 +626,7 @@ describe('Rewards Asset manager', function () {
 
           await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
             { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
-            { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+            { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount.mul(-1)] } },
           ]);
         });
 
@@ -658,7 +658,7 @@ describe('Rewards Asset manager', function () {
 
             await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
               { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
-              { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+              { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount.mul(-1)] } },
             ]);
           });
 
@@ -693,7 +693,7 @@ describe('Rewards Asset manager', function () {
 
             await expectBalanceChange(() => assetManager.connect(lp).rebalance(poolId), tokens, [
               { account: assetManager.address, changes: { DAI: ['very-near', expectedInvestmentAmount] } },
-              { account: vault.address, changes: { DAI: ['very-near', -expectedVaultRemovedAmount] } },
+              { account: vault.address, changes: { DAI: ['very-near', expectedVaultRemovedAmount.mul(-1)] } },
             ]);
           });
 
@@ -772,7 +772,7 @@ describe('Rewards Asset manager', function () {
           const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
           await expectBalanceChange(() => assetManager.rebalanceAndSwap(poolId, swap), tokens, [
-            { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+            { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount.mul(-1)] } },
           ]);
         });
 
@@ -807,7 +807,7 @@ describe('Rewards Asset manager', function () {
 
             await expectBalanceChange(() => assetManager.rebalanceAndSwap(poolId, swap), tokens, [
               { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
-              { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+              { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount.mul(-1)] } },
             ]);
           });
 
@@ -892,7 +892,10 @@ describe('Rewards Asset manager', function () {
               { account: assetManager.address, changes: { DAI: ['very-near', expectedInvestmentAmount] } },
               {
                 account: vault.address,
-                changes: { DAI: ['very-near', -expectedInvestmentAmount], MKR: ['very-near', -expectedFeeAmount] },
+                changes: {
+                  DAI: ['very-near', expectedInvestmentAmount.mul(-1)],
+                  MKR: ['very-near', expectedFeeAmount.mul(-1)],
+                },
               },
             ]);
           });
@@ -951,7 +954,7 @@ describe('Rewards Asset manager', function () {
           const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
           await expectBalanceChange(() => assetManager.rebalanceAndSwap(poolId, swap), tokens, [
-            { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+            { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount.mul(-1)] } },
           ]);
         });
 
@@ -980,7 +983,7 @@ describe('Rewards Asset manager', function () {
 
             await expectBalanceChange(() => assetManager.rebalanceAndSwap(poolId, swap), tokens, [
               { account: assetManager.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
-              { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+              { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount.mul(-1)] } },
             ]);
           });
 
@@ -1063,7 +1066,10 @@ describe('Rewards Asset manager', function () {
               { account: assetManager.address, changes: { DAI: ['very-near', expectedInvestmentAmount] } },
               {
                 account: vault.address,
-                changes: { DAI: ['very-near', -expectedInvestmentAmount], MKR: ['very-near', -expectedFeeAmount] },
+                changes: {
+                  DAI: ['very-near', expectedInvestmentAmount.mul(-1)],
+                  MKR: ['very-near', expectedFeeAmount.mul(-1)],
+                },
               },
             ]);
           });
