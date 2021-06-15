@@ -14,11 +14,10 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 /**
- * @dev Library for encoding and decoding values of different bit-lengths stored inside a 256 bit word.
+ * @dev Library for compressing and uncompressing lower resolution numbers into uint256 values
  */
 library WeightCompression {
     using FixedPoint for uint256;
@@ -28,14 +27,12 @@ library WeightCompression {
      */
     function uncompress16(uint256 value) internal pure returns (uint256) {
         return value.mulUp(FixedPoint.ONE).divUp(type(uint16).max);
-        //return word.decodeUint16(offset).mulUp(FixedPoint.ONE).divUp(type(uint16).max);
     }
 
     /**
      * @dev Compress a FixedPoint value to 16 bits
      */
     function compress16(uint256 value) internal pure returns (uint256) {
-        //return word.insertUint16(value.mulUp(type(uint16).max).divUp(FixedPoint.ONE), offset);
         return value.mulUp(type(uint16).max).divUp(FixedPoint.ONE);
     }
 
@@ -43,7 +40,6 @@ library WeightCompression {
      * @dev Convert a 32-bit value to full FixedPoint
      */
     function uncompress32(uint256 value) internal pure returns (uint256) {
-        //return word.decodeUint32(offset).mulUp(FixedPoint.ONE).divUp(type(uint32).max);
         return value.mulUp(FixedPoint.ONE).divUp(type(uint32).max);
     }
 
@@ -51,7 +47,6 @@ library WeightCompression {
      * @dev Compress a FixedPoint value to 32 bits
      */
     function compress32(uint256 value) internal pure returns (uint256) {
-        //return word.insertUint32(value.mulUp(type(uint32).max).divUp(FixedPoint.ONE), offset);
         return value.mulUp(type(uint32).max).divUp(FixedPoint.ONE);
     }
 }
