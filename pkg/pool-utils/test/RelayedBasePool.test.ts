@@ -1,5 +1,7 @@
 import { expect } from 'chai';
+import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -10,7 +12,12 @@ import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('RelayedBasePool', function () {
+  let user: SignerWithAddress;
   let vault: Vault, relayer: Contract, pool: Contract, tokens: TokenList;
+
+  before('set signer', async () => {
+    [, user] = await ethers.getSigners();
+  });
 
   sharedBeforeEach('deploy pool', async () => {
     vault = await Vault.create();
@@ -39,20 +46,21 @@ describe('RelayedBasePool', function () {
     });
   });
 
-  describe('join', () => {
-    const join = async () => {
-      return vault.joinPool({
-        poolAddress: pool.address,
-        poolId: await pool.getPoolId(),
-        recipient: ZERO_ADDRESS,
-        currentBalances: Array(tokens.length).fill(fp(1000)),
-        tokens: tokens.addresses,
-        lastChangeBlock: 0,
-        protocolFeePercentage: 0,
-        data: '0x',
-      });
-    };
+  const join = async () => {
+    return vault.joinPool({
+      poolAddress: pool.address,
+      poolId: await pool.getPoolId(),
+      recipient: user.address,
+      currentBalances: Array(tokens.length).fill(fp(1000)),
+      tokens: tokens.addresses,
+      lastChangeBlock: 0,
+      protocolFeePercentage: 0,
+      data: '0x',
+      from: user,
+    });
+  };
 
+  describe('join', () => {
     context('when the relayer tells it has not called the pool', () => {
       sharedBeforeEach('mock relayer', async () => {
         await relayer.mockHasCalledPool(false);
@@ -79,14 +87,20 @@ describe('RelayedBasePool', function () {
       return vault.exitPool({
         poolAddress: pool.address,
         poolId: await pool.getPoolId(),
-        recipient: ZERO_ADDRESS,
-        currentBalances: Array(tokens.length).fill(fp(1000)),
+        recipient: user.address,
+        currentBalances: Array(tokens.length).fill(fp(0)),
         tokens: tokens.addresses,
         lastChangeBlock: 0,
         protocolFeePercentage: 0,
         data: '0x',
+        from: user,
       });
     };
+
+    sharedBeforeEach('join', async () => {
+      await relayer.mockHasCalledPool(true);
+      await join();
+    });
 
     context('when the relayer tells it has not called the pool', () => {
       sharedBeforeEach('mock relayer', async () => {

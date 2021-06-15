@@ -79,7 +79,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         address,
         bytes memory
     ) internal view override returns (uint256, uint256[] memory) {
-        return (_MINIMUM_BPT, _zeros());
+        return (_MINIMUM_BPT * 2, _zeros());
     }
 
     function _onJoinPool(
@@ -100,7 +100,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
             uint256[] memory
         )
     {
-        return (_MINIMUM_BPT, _zeros(), _zeros());
+        return (_MINIMUM_BPT * 2, _zeros(), _zeros());
     }
 
     function _onExitPool(
@@ -121,7 +121,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
             uint256[] memory
         )
     {
-        return (0, _zeros(), _zeros());
+        return (_MINIMUM_BPT, _zeros(), _zeros());
     }
 
     function _zeros() private view returns (uint256[] memory) {
