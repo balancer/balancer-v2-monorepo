@@ -84,7 +84,9 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
         _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
-        _setAmplificationData(Math.mul(amplificationParameter, _AMP_PRECISION));
+
+        uint256 initialAmp = Math.mul(amplificationParameter, _AMP_PRECISION);
+        _setAmplificationData(initialAmp);
     }
 
     // Base Pool handlers
@@ -517,8 +519,6 @@ contract StablePool is BaseGeneralPool, StableMath {
         _require(dailyRate <= _MAX_AMP_UPDATE_DAILY_RATE, Errors.AMP_RATE_TOO_HIGH);
 
         _setAmplificationData(currentValue, endValue, block.timestamp, endTime);
-
-        emit AmpUpdateStarted(currentValue, endValue, block.timestamp, endTime);
     }
 
     /**
@@ -529,7 +529,6 @@ contract StablePool is BaseGeneralPool, StableMath {
         _require(isUpdating, Errors.AMP_NO_ONGOING_UPDATE);
 
         _setAmplificationData(currentValue);
-        emit AmpUpdateStopped(currentValue);
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
@@ -579,6 +578,8 @@ contract StablePool is BaseGeneralPool, StableMath {
 
     function _setAmplificationData(uint256 value) private {
         _setAmplificationData(value, value, block.timestamp, block.timestamp);
+
+        emit AmpUpdateStopped(value);
     }
 
     function _setAmplificationData(
@@ -592,6 +593,8 @@ contract StablePool is BaseGeneralPool, StableMath {
             WordCodec.encodeUint(uint64(endValue), 64) |
             WordCodec.encodeUint(uint64(startTime), 64 * 2) |
             WordCodec.encodeUint(uint64(endTime), 64 * 3);
+
+        emit AmpUpdateStarted(startValue, endValue, startTime, endTime);
     }
 
     function _getAmplificationData()
