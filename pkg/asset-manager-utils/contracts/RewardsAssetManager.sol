@@ -196,6 +196,16 @@ abstract contract RewardsAssetManager is IAssetManager {
         return _poolConfig;
     }
 
+    function getPoolBalances(bytes32 pId)
+        public
+        view
+        override
+        withCorrectPool(pId)
+        returns (uint256 poolCash, uint256 poolManaged)
+    {
+        return _getPoolBalances(readAUM());
+    }
+
     function _getPoolBalances(uint256 aum) internal view returns (uint256 poolCash, uint256 poolManaged) {
         (poolCash, , , ) = vault.getPoolTokenInfo(poolId, token);
         // Calculate the managed portion of funds locally as the Vault is unaware of returns

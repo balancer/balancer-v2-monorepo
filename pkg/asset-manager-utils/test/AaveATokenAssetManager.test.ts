@@ -12,6 +12,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
+import { calcRebalanceAmount, calcRebalanceFee } from './helpers/rebalance';
 
 const OVER_INVESTMENT_REVERT_REASON = 'investment amount exceeds target';
 const UNDER_INVESTMENT_REVERT_REASON = 'withdrawal leaves insufficient balance invested';
@@ -358,7 +359,7 @@ describe('Aave Asset manager', function () {
         const amountToWithdraw = maxInvestableBalance.abs();
 
         await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
-          { account: lendingPool.address, changes: { DAI: ['near', -amountToWithdraw] } },
+          { account: lendingPool.address, changes: { DAI: ['near', amountToWithdraw.mul(-1)] } },
           { account: vault.address, changes: { DAI: ['near', amountToWithdraw] } },
         ]);
       });
@@ -491,14 +492,12 @@ describe('Aave Asset manager', function () {
       });
 
       it('transfers the expected number of tokens to the Vault', async () => {
-        const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-        const poolTVL = cash.add(managed);
-        const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-        const expectedRebalanceAmount = managed.sub(targetInvestmentAmount);
+        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+        const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
         await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
-          { account: lendingPool.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
-          { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
+          { account: lendingPool.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
+          { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount.mul(-1)] } },
         ]);
       });
 
@@ -529,14 +528,12 @@ describe('Aave Asset manager', function () {
         });
 
         it('transfers the expected number of tokens from the Vault', async () => {
-          const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-          const poolTVL = cash.add(managed);
-          const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-          const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
+          const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+          const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
           await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
             { account: lendingPool.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
-            { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+            { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount.mul(-1)] } },
           ]);
         });
 
@@ -563,14 +560,12 @@ describe('Aave Asset manager', function () {
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
-            const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-            const poolTVL = cash.add(managed);
-            const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-            const expectedRebalanceAmount = targetInvestmentAmount.sub(managed);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+            const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
             await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
               { account: lendingPool.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
-              { account: vault.address, changes: { DAI: ['very-near', -expectedRebalanceAmount] } },
+              { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount.mul(-1)] } },
             ]);
           });
 
@@ -581,7 +576,6 @@ describe('Aave Asset manager', function () {
         });
 
         describe('when fee percentage is non-zero', () => {
-          let zeroFeeRebalanceAmount: BigNumber;
           const poolConfig = {
             targetPercentage: fp(0.5),
             upperCriticalPercentage: fp(1),
@@ -595,26 +589,26 @@ describe('Aave Asset manager', function () {
           });
 
           it('transfers the expected number of tokens from the Vault', async () => {
-            const { cash, managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-            const poolTVL = cash.add(managed);
-            const targetInvestmentAmount = poolTVL.mul(poolConfig.targetPercentage).div(fp(1));
-            const zeroFeeRebalanceAmount = targetInvestmentAmount.sub(managed);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
 
-            const expectedFeeAmount = await assetManager.getRebalanceFee(poolId);
-
+            const expectedFeeAmount = calcRebalanceFee(poolCash, poolManaged, poolConfig);
             const investmentFeeAdjustment = expectedFeeAmount.mul(poolConfig.targetPercentage).div(fp(1));
+
+            const zeroFeeRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
             const expectedInvestmentAmount = zeroFeeRebalanceAmount.sub(investmentFeeAdjustment);
 
             const expectedVaultRemovedAmount = expectedInvestmentAmount.add(expectedFeeAmount);
 
             await expectBalanceChange(() => assetManager.connect(lp).rebalance(poolId), tokens, [
               { account: lendingPool.address, changes: { DAI: ['very-near', expectedInvestmentAmount] } },
-              { account: vault.address, changes: { DAI: ['very-near', -expectedVaultRemovedAmount] } },
+              { account: vault.address, changes: { DAI: ['very-near', expectedVaultRemovedAmount.mul(-1)] } },
             ]);
           });
 
           it('pays the correct fee to the rebalancer', async () => {
-            const expectedFeeAmount = await assetManager.getRebalanceFee(poolId);
+            const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+            const expectedFeeAmount = calcRebalanceFee(poolCash, poolManaged, poolConfig);
+
             await expectBalanceChange(() => assetManager.connect(lp).rebalance(poolId), tokens, [
               { account: lp.address, changes: { DAI: ['very-near', expectedFeeAmount] } },
             ]);

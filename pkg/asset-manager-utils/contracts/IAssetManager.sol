@@ -44,6 +44,12 @@ interface IAssetManager {
     function readAUM() external view returns (uint256);
 
     /**
+     * @return poolCash - The up-to-date cash balance of the pool
+     * @return poolManaged - The up-to-date managed balance of the pool
+     */
+    function getPoolBalances(bytes32 poolId) external view returns (uint256 poolCash, uint256 poolManaged);
+
+    /**
      * @return The difference in tokens between the target investment
      * and the currently invested amount (i.e. the amount that can be invested)
      */
