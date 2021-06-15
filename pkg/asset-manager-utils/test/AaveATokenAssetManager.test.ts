@@ -154,33 +154,66 @@ describe('Aave Asset manager', function () {
     });
 
     it('allows a pool controller to set the pools target investment config', async () => {
-      const updatedConfig = { targetPercentage: 3, criticalPercentage: 2, feePercentage: 1 };
+      const updatedConfig = {
+        targetPercentage: 3,
+        upperCriticalPercentage: 4,
+        lowerCriticalPercentage: 2,
+        feePercentage: 1,
+      };
       await assetManager.connect(poolController).setPoolConfig(poolId, updatedConfig);
 
       const result = await assetManager.getPoolConfig(poolId);
       expect(result.targetPercentage).to.equal(updatedConfig.targetPercentage);
-      expect(result.criticalPercentage).to.equal(updatedConfig.criticalPercentage);
+      expect(result.upperCriticalPercentage).to.equal(updatedConfig.upperCriticalPercentage);
+      expect(result.lowerCriticalPercentage).to.equal(updatedConfig.lowerCriticalPercentage);
       expect(result.feePercentage).to.equal(updatedConfig.feePercentage);
     });
 
-    it('reverts when setting target over 100%', async () => {
-      const badPoolConfig = { targetPercentage: fp(1.1), criticalPercentage: 0, feePercentage: 0 };
+    it('reverts when setting upper critical over 100%', async () => {
+      const badPoolConfig = {
+        targetPercentage: 0,
+        upperCriticalPercentage: fp(1).add(1),
+        lowerCriticalPercentage: 0,
+        feePercentage: 0,
+      };
       await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
-        'Investment target must be less than or equal to 100%'
+        'Upper critical level must be less than or equal to 100%'
       );
     });
 
-    it('reverts when setting critical above target', async () => {
-      const badPoolConfig = { targetPercentage: 1, criticalPercentage: 2, feePercentage: 0 };
+    it('reverts when setting upper critical below target', async () => {
+      const badPoolConfig = {
+        targetPercentage: 1,
+        upperCriticalPercentage: 0,
+        lowerCriticalPercentage: 0,
+        feePercentage: 0,
+      };
       await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
-        'Critical level must be less than target'
+        'Target must be less than or equal to upper critical level'
+      );
+    });
+
+    it('reverts when setting lower critical above target', async () => {
+      const badPoolConfig = {
+        targetPercentage: 1,
+        upperCriticalPercentage: 2,
+        lowerCriticalPercentage: 2,
+        feePercentage: 0,
+      };
+      await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
+        'Lower critical level must be less than or equal to target'
       );
     });
 
     it('reverts when setting fee percentage over 100%', async () => {
-      const badPoolConfig = { targetPercentage: 0, criticalPercentage: 0, feePercentage: fp(1.01) };
+      const badPoolConfig = {
+        targetPercentage: 0,
+        upperCriticalPercentage: 0,
+        lowerCriticalPercentage: 0,
+        feePercentage: fp(0.1).add(1),
+      };
       await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
-        'Fee on critical rebalances must be less than 10%'
+        'Fee on critical rebalances must be less than or equal to 10%'
       );
     });
 
@@ -193,9 +226,12 @@ describe('Aave Asset manager', function () {
 
     beforeEach(async () => {
       poolController = lp; // TODO
-      await assetManager
-        .connect(poolController)
-        .setPoolConfig(poolId, { targetPercentage, criticalPercentage: 0, feePercentage: 0 });
+      await assetManager.connect(poolController).setPoolConfig(poolId, {
+        targetPercentage,
+        upperCriticalPercentage: fp(1),
+        lowerCriticalPercentage: 0,
+        feePercentage: 0,
+      });
     });
 
     describe('capitalIn', () => {
@@ -261,9 +297,12 @@ describe('Aave Asset manager', function () {
     beforeEach(async () => {
       const investablePercent = fp(0.9);
       poolController = lp; // TODO
-      await assetManager
-        .connect(poolController)
-        .setPoolConfig(poolId, { targetPercentage: investablePercent, criticalPercentage: 0, feePercentage: 0 });
+      await assetManager.connect(poolController).setPoolConfig(poolId, {
+        targetPercentage: investablePercent,
+        upperCriticalPercentage: fp(1),
+        lowerCriticalPercentage: 0,
+        feePercentage: 0,
+      });
 
       await assetManager.connect(poolController).capitalIn(poolId, amountToDeposit);
 
@@ -356,9 +395,14 @@ describe('Aave Asset manager', function () {
   });
 
   describe('getRebalanceFee', () => {
-    describe('when pool is safely above critical investment level', () => {
+    context('when pool is safely above critical investment level', () => {
       let poolController: SignerWithAddress; // TODO
-      const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
+      const poolConfig = {
+        targetPercentage: fp(0.5),
+        upperCriticalPercentage: fp(1),
+        lowerCriticalPercentage: fp(0.1),
+        feePercentage: fp(0.1),
+      };
 
       sharedBeforeEach(async () => {
         poolController = lp; // TODO
@@ -374,11 +418,16 @@ describe('Aave Asset manager', function () {
       });
     });
 
-    describe('when pool is below critical investment level', () => {
+    context('when pool is below critical investment level', () => {
       let poolController: SignerWithAddress; // TODO
 
       describe('when fee percentage is zero', () => {
-        const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0) };
+        const poolConfig = {
+          targetPercentage: fp(0.5),
+          upperCriticalPercentage: fp(1),
+          lowerCriticalPercentage: fp(0.1),
+          feePercentage: fp(0),
+        };
         sharedBeforeEach(async () => {
           poolController = lp; // TODO
 
@@ -391,9 +440,14 @@ describe('Aave Asset manager', function () {
         });
       });
 
-      describe('when fee percentage is non-zero', () => {
+      context('when fee percentage is non-zero', () => {
         let targetInvestmentAmount: BigNumber;
-        const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
+        const poolConfig = {
+          targetPercentage: fp(0.5),
+          upperCriticalPercentage: fp(1),
+          lowerCriticalPercentage: fp(0.1),
+          feePercentage: fp(0.1),
+        };
         sharedBeforeEach(async () => {
           poolController = lp; // TODO
 
@@ -412,7 +466,12 @@ describe('Aave Asset manager', function () {
   describe('rebalance', () => {
     context('when pool is above target investment level', () => {
       let poolController: SignerWithAddress; // TODO
-      const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
+      const poolConfig = {
+        targetPercentage: fp(0.5),
+        upperCriticalPercentage: fp(1),
+        lowerCriticalPercentage: fp(0.1),
+        feePercentage: fp(0.1),
+      };
 
       sharedBeforeEach(async () => {
         poolController = lp; // TODO
@@ -450,10 +509,15 @@ describe('Aave Asset manager', function () {
       });
     });
 
-    describe('when pool is below target investment level', () => {
-      describe('when pool is safely above critical investment level', () => {
+    context('when pool is below target investment level', () => {
+      context('when pool is safely above critical investment level', () => {
         let poolController: SignerWithAddress; // TODO
-        const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
+        const poolConfig = {
+          targetPercentage: fp(0.5),
+          upperCriticalPercentage: fp(1),
+          lowerCriticalPercentage: fp(0.1),
+          feePercentage: fp(0.1),
+        };
 
         sharedBeforeEach(async () => {
           poolController = lp; // TODO
@@ -482,11 +546,16 @@ describe('Aave Asset manager', function () {
         });
       });
 
-      describe('when pool is below critical investment level', () => {
+      context('when pool is below critical investment level', () => {
         let poolController: SignerWithAddress; // TODO
 
         describe('when fee percentage is zero', () => {
-          const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0) };
+          const poolConfig = {
+            targetPercentage: fp(0.5),
+            upperCriticalPercentage: fp(1),
+            lowerCriticalPercentage: fp(0.1),
+            feePercentage: fp(0),
+          };
           sharedBeforeEach(async () => {
             poolController = lp; // TODO
 
@@ -512,7 +581,13 @@ describe('Aave Asset manager', function () {
         });
 
         describe('when fee percentage is non-zero', () => {
-          const poolConfig = { targetPercentage: fp(0.5), criticalPercentage: fp(0.1), feePercentage: fp(0.1) };
+          let zeroFeeRebalanceAmount: BigNumber;
+          const poolConfig = {
+            targetPercentage: fp(0.5),
+            upperCriticalPercentage: fp(1),
+            lowerCriticalPercentage: fp(0.1),
+            feePercentage: fp(0.1),
+          };
           sharedBeforeEach(async () => {
             poolController = lp; // TODO
 

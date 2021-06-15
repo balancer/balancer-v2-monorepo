@@ -18,7 +18,8 @@ pragma experimental ABIEncoderV2;
 interface IAssetManager {
     struct PoolConfig {
         uint64 targetPercentage;
-        uint64 criticalPercentage;
+        uint64 upperCriticalPercentage;
+        uint64 lowerCriticalPercentage;
         uint64 feePercentage;
     }
 
