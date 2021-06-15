@@ -139,7 +139,7 @@ describe('Rewards Asset manager', function () {
     it('reverts when setting upper critical over 100%', async () => {
       const badPoolConfig = {
         targetPercentage: 0,
-        upperCriticalPercentage: fp(1.1),
+        upperCriticalPercentage: fp(1).add(1),
         lowerCriticalPercentage: 0,
         feePercentage: 0,
       };
@@ -177,7 +177,7 @@ describe('Rewards Asset manager', function () {
         targetPercentage: 0,
         upperCriticalPercentage: 0,
         lowerCriticalPercentage: 0,
-        feePercentage: fp(1.01),
+        feePercentage: fp(0.1).add(1),
       };
       await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
         'Fee on critical rebalances must be less than or equal to 10%'
