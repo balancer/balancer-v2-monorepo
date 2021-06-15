@@ -496,8 +496,8 @@ describe('Aave Asset manager', function () {
         const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
         await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
-          { account: lendingPool.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
-          { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount.mul(-1)] } },
+          { account: lendingPool.address, changes: { DAI: expectedRebalanceAmount } },
+          { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
         ]);
       });
 
@@ -532,8 +532,8 @@ describe('Aave Asset manager', function () {
           const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
           await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
-            { account: lendingPool.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
-            { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount.mul(-1)] } },
+            { account: lendingPool.address, changes: { DAI: expectedRebalanceAmount } },
+            { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
           ]);
         });
 
@@ -564,8 +564,8 @@ describe('Aave Asset manager', function () {
             const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
             await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
-              { account: lendingPool.address, changes: { DAI: ['very-near', expectedRebalanceAmount] } },
-              { account: vault.address, changes: { DAI: ['very-near', expectedRebalanceAmount.mul(-1)] } },
+              { account: lendingPool.address, changes: { DAI: expectedRebalanceAmount } },
+              { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
             ]);
           });
 
@@ -600,8 +600,8 @@ describe('Aave Asset manager', function () {
             const expectedVaultRemovedAmount = expectedInvestmentAmount.add(expectedFeeAmount);
 
             await expectBalanceChange(() => assetManager.connect(lp).rebalance(poolId), tokens, [
-              { account: lendingPool.address, changes: { DAI: ['very-near', expectedInvestmentAmount] } },
-              { account: vault.address, changes: { DAI: ['very-near', expectedVaultRemovedAmount.mul(-1)] } },
+              { account: lendingPool.address, changes: { DAI: expectedInvestmentAmount } },
+              { account: vault.address, changes: { DAI: expectedVaultRemovedAmount.mul(-1) } },
             ]);
           });
 
@@ -610,7 +610,7 @@ describe('Aave Asset manager', function () {
             const expectedFeeAmount = calcRebalanceFee(poolCash, poolManaged, poolConfig);
 
             await expectBalanceChange(() => assetManager.connect(lp).rebalance(poolId), tokens, [
-              { account: lp.address, changes: { DAI: ['very-near', expectedFeeAmount] } },
+              { account: lp.address, changes: { DAI: expectedFeeAmount } },
             ]);
           });
 
