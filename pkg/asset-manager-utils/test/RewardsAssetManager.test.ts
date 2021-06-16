@@ -208,7 +208,7 @@ describe('Rewards Asset manager', function () {
         await assetManager.connect(lp).capitalIn(poolId, amountToDeposit);
 
         const { managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-        const actualManagedBalance = await assetManager.getAUM();
+        const actualManagedBalance = await assetManager.getAUM(poolId);
 
         expect(managed).to.be.eq(actualManagedBalance);
       });
@@ -320,7 +320,7 @@ describe('Rewards Asset manager', function () {
         await assetManager.connect(lp).capitalOut(poolId, amountToWithdraw);
 
         const { managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-        const actualManagedBalance = await assetManager.getAUM();
+        const actualManagedBalance = await assetManager.getAUM(poolId);
 
         expect(managed.sub(actualManagedBalance)).to.be.lt(10);
       });

@@ -84,7 +84,7 @@ contract AaveATokenAssetManager is RewardsAssetManager {
     /**
      * @dev Checks AToken balance (ever growing)
      */
-    function getAUM() public view override returns (uint256) {
+    function _getAUM() internal view override returns (uint256) {
         return aToken.balanceOf(address(this));
     }
 
