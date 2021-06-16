@@ -388,14 +388,14 @@ describe('Aave Asset manager', function () {
         const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
         const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
-        await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
+        await expectBalanceChange(() => assetManager['rebalance(bytes32)'](poolId), tokens, [
           { account: lendingPool.address, changes: { DAI: expectedRebalanceAmount } },
           { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
         ]);
       });
 
       it('returns the pool to its target allocation', async () => {
-        await assetManager.rebalance(poolId);
+        await assetManager['rebalance(bytes32)'](poolId);
         const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
         expect(differenceFromTarget.abs()).to.be.lte(1);
       });
