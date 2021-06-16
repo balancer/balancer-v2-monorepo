@@ -181,10 +181,6 @@ abstract contract RewardsAssetManager is IAssetManager {
             config.lowerCriticalPercentage <= config.targetPercentage,
             "Lower critical level must be less than or equal to target"
         );
-        require(
-            config.feePercentage <= FixedPoint.ONE / 10,
-            "Fee on critical rebalances must be less than or equal to 10%"
-        );
 
         _poolConfig = config;
     }

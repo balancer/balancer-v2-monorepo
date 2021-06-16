@@ -1,20 +1,19 @@
 import { ethers } from 'hardhat';
-import { BigNumber, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { calcRebalanceAmount, calcRebalanceFee } from './helpers/rebalance';
+import { calcRebalanceAmount } from './helpers/rebalance';
 
 const OVER_INVESTMENT_REVERT_REASON = 'investment amount exceeds target';
 const UNDER_INVESTMENT_REVERT_REASON = 'withdrawal leaves insufficient balance invested';
@@ -125,7 +124,6 @@ describe('Rewards Asset manager', function () {
         targetPercentage: 3,
         upperCriticalPercentage: 4,
         lowerCriticalPercentage: 2,
-        feePercentage: 1,
       };
       await assetManager.connect(poolController).setPoolConfig(poolId, updatedConfig);
 
@@ -133,7 +131,6 @@ describe('Rewards Asset manager', function () {
       expect(result.targetPercentage).to.equal(updatedConfig.targetPercentage);
       expect(result.upperCriticalPercentage).to.equal(updatedConfig.upperCriticalPercentage);
       expect(result.lowerCriticalPercentage).to.equal(updatedConfig.lowerCriticalPercentage);
-      expect(result.feePercentage).to.equal(updatedConfig.feePercentage);
     });
 
     it('reverts when setting upper critical over 100%', async () => {
@@ -141,7 +138,6 @@ describe('Rewards Asset manager', function () {
         targetPercentage: 0,
         upperCriticalPercentage: fp(1).add(1),
         lowerCriticalPercentage: 0,
-        feePercentage: 0,
       };
       await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
         'Upper critical level must be less than or equal to 100%'
@@ -153,7 +149,6 @@ describe('Rewards Asset manager', function () {
         targetPercentage: 1,
         upperCriticalPercentage: 0,
         lowerCriticalPercentage: 0,
-        feePercentage: 0,
       };
       await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
         'Target must be less than or equal to upper critical level'
@@ -165,22 +160,9 @@ describe('Rewards Asset manager', function () {
         targetPercentage: 1,
         upperCriticalPercentage: 2,
         lowerCriticalPercentage: 2,
-        feePercentage: 0,
       };
       await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
         'Lower critical level must be less than or equal to target'
-      );
-    });
-
-    it('reverts when setting fee percentage over 100%', async () => {
-      const badPoolConfig = {
-        targetPercentage: 0,
-        upperCriticalPercentage: 0,
-        lowerCriticalPercentage: 0,
-        feePercentage: fp(0.1).add(1),
-      };
-      await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
-        'Fee on critical rebalances must be less than or equal to 10%'
       );
     });
 
@@ -194,7 +176,6 @@ describe('Rewards Asset manager', function () {
         targetPercentage: fp(0.5),
         upperCriticalPercentage: fp(1),
         lowerCriticalPercentage: 0,
-        feePercentage: 0,
       };
 
       sharedBeforeEach(async () => {
@@ -240,7 +221,6 @@ describe('Rewards Asset manager', function () {
           targetPercentage: fp(0.5),
           upperCriticalPercentage: fp(1),
           lowerCriticalPercentage: 0,
-          feePercentage: 0,
         };
         poolController = lp; // TODO
         await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
@@ -272,7 +252,6 @@ describe('Rewards Asset manager', function () {
           targetPercentage: fp(0.5),
           upperCriticalPercentage: fp(1),
           lowerCriticalPercentage: 0,
-          feePercentage: 0,
         };
         await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
 
@@ -301,7 +280,6 @@ describe('Rewards Asset manager', function () {
           targetPercentage: fp(0.5),
           upperCriticalPercentage: fp(1),
           lowerCriticalPercentage: 0,
-          feePercentage: 0,
         };
         poolController = lp; // TODO
         await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
@@ -369,7 +347,6 @@ describe('Rewards Asset manager', function () {
         targetPercentage: fp(0.5),
         upperCriticalPercentage: fp(1),
         lowerCriticalPercentage: fp(0.1),
-        feePercentage: fp(0.1),
       };
 
       sharedBeforeEach(async () => {
@@ -408,7 +385,6 @@ describe('Rewards Asset manager', function () {
         targetPercentage: fp(0.5),
         upperCriticalPercentage: fp(1),
         lowerCriticalPercentage: fp(0.1),
-        feePercentage: fp(0.1),
       };
 
       sharedBeforeEach(async () => {

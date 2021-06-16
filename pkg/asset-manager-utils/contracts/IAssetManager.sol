@@ -20,7 +20,6 @@ interface IAssetManager {
         uint64 targetPercentage;
         uint64 upperCriticalPercentage;
         uint64 lowerCriticalPercentage;
-        uint64 feePercentage;
     }
 
     /**
