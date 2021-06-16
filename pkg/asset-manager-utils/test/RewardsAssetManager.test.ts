@@ -6,14 +6,15 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
-import { calcRebalanceAmount } from './helpers/rebalance';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { calcRebalanceAmount, PoolConfig } from './helpers/rebalance';
 
 const OVER_INVESTMENT_REVERT_REASON = 'investment amount exceeds target';
 const UNDER_INVESTMENT_REVERT_REASON = 'withdrawal leaves insufficient balance invested';
@@ -55,26 +56,9 @@ const setup = async () => {
     ),
   });
 
-  // Deploy Pool for liquidating fees
-  const swapPool = await deploy('v2-vault/test/MockPool', { args: [vault.address, GeneralPool] });
-  const swapPoolId = await swapPool.getPoolId();
-
-  await swapPool.registerTokens(tokens.addresses, [ZERO_ADDRESS, ZERO_ADDRESS]);
-
-  await vault.instance.connect(lp).joinPool(swapPoolId, lp.address, lp.address, {
-    assets: tokens.addresses,
-    maxAmountsIn: tokens.addresses.map(() => MAX_UINT256),
-    fromInternalBalance: false,
-    userData: encodeJoin(
-      tokens.addresses.map(() => tokenInitialBalance),
-      tokens.addresses.map(() => 0)
-    ),
-  });
-
   return {
     data: {
       poolId,
-      swapPoolId,
     },
     contracts: {
       assetManager,
@@ -89,7 +73,7 @@ describe('Rewards Asset manager', function () {
   let tokens: TokenList, vault: Contract, assetManager: Contract;
 
   let lp: SignerWithAddress, other: SignerWithAddress;
-  let poolId: string, swapPoolId: string;
+  let poolId: string;
 
   before('deploy base contracts', async () => {
     [, lp, other] = await ethers.getSigners();
@@ -98,7 +82,6 @@ describe('Rewards Asset manager', function () {
   sharedBeforeEach('set up asset manager', async () => {
     const { data, contracts } = await setup();
     poolId = data.poolId;
-    swapPoolId = data.swapPoolId;
 
     assetManager = contracts.assetManager;
     tokens = contracts.tokens;
@@ -342,76 +325,128 @@ describe('Rewards Asset manager', function () {
   });
 
   describe('rebalance', () => {
-    context('when pool is above target investment level', () => {
-      const poolConfig = {
-        targetPercentage: fp(0.5),
-        upperCriticalPercentage: fp(1),
-        lowerCriticalPercentage: fp(0.1),
-      };
-
-      sharedBeforeEach(async () => {
-        const poolController = lp; // TODO
-        await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
-
-        const { poolCash } = await assetManager.getPoolBalances(poolId);
-        await tokens.DAI.mint(assetManager.address, poolCash.mul(101).div(100));
-
-        // should be overinvested
-        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
-        expect(maxInvestableBalance).to.be.lt(0);
+    function itRebalancesCorrectly(force: boolean) {
+      it('emits a Rebalance event', async () => {
+        const tx = await assetManager.rebalance(poolId, force);
+        const receipt = await tx.wait();
+        expectEvent.inReceipt(receipt, 'Rebalance');
       });
 
       it('transfers the expected number of tokens to the Vault', async () => {
+        const poolConfig = await assetManager.getPoolConfig(poolId);
         const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
         const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
-        await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
+        await expectBalanceChange(() => assetManager.rebalance(poolId, force), tokens, [
           { account: assetManager.address, changes: { DAI: expectedRebalanceAmount } },
           { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
         ]);
       });
 
       it('returns the pool to its target allocation', async () => {
-        await assetManager.rebalance(poolId);
+        await assetManager.rebalance(poolId, force);
         const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
         expect(differenceFromTarget.abs()).to.be.lte(1);
       });
 
-      it("update the pool's cash and managed balances correctly");
+      it("updates the pool's managed balance on the vault correctly", async () => {
+        await assetManager.rebalance(poolId, force);
+        const { poolManaged: expectedManaged } = await assetManager.getPoolBalances(poolId);
+        const { managed: actualManaged } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+        expect(actualManaged).to.be.eq(expectedManaged);
+      });
+    }
+
+    function itSkipsTheRebalance() {
+      it('skips the rebalance', async () => {
+        const tx = await assetManager.rebalance(poolId, false);
+        const receipt = await tx.wait();
+        expectEvent.notEmitted(receipt, 'Rebalance');
+      });
+    }
+
+    const poolConfig = {
+      targetPercentage: fp(0.5),
+      upperCriticalPercentage: fp(0.75),
+      lowerCriticalPercentage: fp(0.25),
+    };
+
+    sharedBeforeEach(async () => {
+      const poolController = lp; // TODO
+      await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
+    });
+
+    context('when pool is above target investment level', () => {
+      context('when pool is in non-critical range', () => {
+        sharedBeforeEach(async () => {
+          const { poolCash } = await assetManager.getPoolBalances(poolId);
+          await tokens.DAI.mint(assetManager.address, poolCash.mul(101).div(100));
+
+          // should be overinvested
+          const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+          expect(maxInvestableBalance).to.be.lt(0);
+        });
+
+        context('when forced', () => {
+          const force = true;
+          itRebalancesCorrectly(force);
+        });
+
+        context('when not forced', () => {
+          itSkipsTheRebalance();
+        });
+      });
+    });
+
+    context('when pool is above upper critical investment level', () => {
+      sharedBeforeEach(async () => {
+        const { poolCash } = await assetManager.getPoolBalances(poolId);
+        // Results in an investment percentage of 80%
+        await tokens.DAI.mint(assetManager.address, poolCash.mul(4));
+      });
+
+      context('when forced', () => {
+        const force = true;
+        itRebalancesCorrectly(force);
+      });
+
+      context('when not forced', () => {
+        const force = false;
+        itRebalancesCorrectly(force);
+      });
     });
 
     context('when pool is below target investment level', () => {
-      const poolConfig = {
-        targetPercentage: fp(0.5),
-        upperCriticalPercentage: fp(1),
-        lowerCriticalPercentage: fp(0.1),
-      };
+      context('when pool is in non-critical range', () => {
+        sharedBeforeEach(async () => {
+          const poolController = lp; // TODO
 
-      sharedBeforeEach(async () => {
-        const poolController = lp; // TODO
+          // Ensure that the pool is invested below its target level but above than critical level
+          const targetInvestmentAmount = await assetManager.maxInvestableBalance(poolId);
+          await assetManager.connect(poolController).capitalIn(poolId, targetInvestmentAmount.mul(99).div(100));
+        });
 
-        await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
-        // Ensure that the pool is invested below its target level but above than critical level
-        const targetInvestmentAmount = await assetManager.maxInvestableBalance(poolId);
-        await assetManager.connect(poolController).capitalIn(poolId, targetInvestmentAmount.div(2));
+        context('when forced', () => {
+          const force = true;
+          itRebalancesCorrectly(force);
+        });
+
+        context('when not forced', () => {
+          itSkipsTheRebalance();
+        });
       });
 
-      it('transfers the expected number of tokens from the Vault', async () => {
-        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
-        const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
+      context('when pool is below lower critical investment level', () => {
+        context('when forced', () => {
+          const force = true;
+          itRebalancesCorrectly(force);
+        });
 
-        await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
-          { account: assetManager.address, changes: { DAI: expectedRebalanceAmount } },
-          { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
-        ]);
+        context('when not forced', () => {
+          const force = false;
+          itRebalancesCorrectly(force);
+        });
       });
-
-      it('returns the pool to its target allocation', async () => {
-        await assetManager.rebalance(poolId);
-        expect(await assetManager.maxInvestableBalance(poolId)).to.be.eq(0);
-      });
-
-      it("update the pool's cash and managed balances correctly");
     });
   });
 });

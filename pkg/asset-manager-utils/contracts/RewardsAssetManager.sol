@@ -225,10 +225,25 @@ abstract contract RewardsAssetManager is IAssetManager {
             uint256 rebalanceAmount = poolManaged.sub(targetInvestment);
             capitalOut(poolId, rebalanceAmount);
         }
+
+        emit Rebalance(poolId);
     }
 
-    function rebalance(bytes32 pId) external override withCorrectPool(pId) {
-        _rebalance(pId);
+    function rebalance(bytes32 pId, bool force) external override withCorrectPool(pId) {
+        if (force) {
+            _rebalance(pId);
+        } else {
+            (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(readAUM());
+            PoolConfig memory config = _poolConfig;
+
+            uint256 investedPercentage = poolManaged.mul(FixedPoint.ONE).divDown(poolCash + poolManaged);
+            if (
+                investedPercentage > config.upperCriticalPercentage ||
+                investedPercentage < config.lowerCriticalPercentage
+            ) {
+                _rebalance(pId);
+            }
+        }
     }
 
     function balanceOf(bytes32 pId) public view override withCorrectPool(pId) returns (uint256) {
