@@ -90,7 +90,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor7;
 
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
-    event TargetManagerPoolConfigChanged(IERC20 indexed token, IAssetManager.PoolConfig target);
 
     constructor(
         IVault vault,
@@ -186,7 +185,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
-    function setAssetManagerPoolConfig(IERC20 token, IAssetManager.PoolConfig memory poolConfig)
+    function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig)
         external
         virtual
         authenticate
@@ -195,12 +194,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _setAssetManagerPoolConfig(token, poolConfig);
     }
 
-    function _setAssetManagerPoolConfig(IERC20 token, IAssetManager.PoolConfig memory poolConfig) private {
+    function _setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig) private {
         bytes32 poolId = getPoolId();
         (, , , address assetManager) = getVault().getPoolTokenInfo(poolId, token);
 
         IAssetManager(assetManager).setPoolConfig(poolId, poolConfig);
-        emit TargetManagerPoolConfigChanged(token, poolConfig);
     }
 
     function setPaused(bool paused) external authenticate {

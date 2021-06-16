@@ -14,7 +14,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { calcRebalanceAmount, PoolConfig } from './helpers/rebalance';
+import { calcRebalanceAmount, encodedPoolConfig } from './helpers/rebalance';
 
 const OVER_INVESTMENT_REVERT_REASON = 'investment amount exceeds target';
 const UNDER_INVESTMENT_REVERT_REASON = 'withdrawal leaves insufficient balance invested';
@@ -108,7 +108,7 @@ describe('Rewards Asset manager', function () {
         upperCriticalPercentage: 4,
         lowerCriticalPercentage: 2,
       };
-      await assetManager.connect(poolController).setPoolConfig(poolId, updatedConfig);
+      await assetManager.connect(poolController).setPoolConfig(poolId, encodedPoolConfig(updatedConfig));
 
       const result = await assetManager.getPoolConfig(poolId);
       expect(result.targetPercentage).to.equal(updatedConfig.targetPercentage);
@@ -122,9 +122,9 @@ describe('Rewards Asset manager', function () {
         upperCriticalPercentage: fp(1).add(1),
         lowerCriticalPercentage: 0,
       };
-      await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
-        'Upper critical level must be less than or equal to 100%'
-      );
+      await expect(
+        assetManager.connect(poolController).setPoolConfig(poolId, encodedPoolConfig(badPoolConfig))
+      ).to.be.revertedWith('Upper critical level must be less than or equal to 100%');
     });
 
     it('reverts when setting upper critical below target', async () => {
@@ -133,9 +133,9 @@ describe('Rewards Asset manager', function () {
         upperCriticalPercentage: 0,
         lowerCriticalPercentage: 0,
       };
-      await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
-        'Target must be less than or equal to upper critical level'
-      );
+      await expect(
+        assetManager.connect(poolController).setPoolConfig(poolId, encodedPoolConfig(badPoolConfig))
+      ).to.be.revertedWith('Target must be less than or equal to upper critical level');
     });
 
     it('reverts when setting lower critical above target', async () => {
@@ -144,9 +144,9 @@ describe('Rewards Asset manager', function () {
         upperCriticalPercentage: 2,
         lowerCriticalPercentage: 2,
       };
-      await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
-        'Lower critical level must be less than or equal to target'
-      );
+      await expect(
+        assetManager.connect(poolController).setPoolConfig(poolId, encodedPoolConfig(badPoolConfig))
+      ).to.be.revertedWith('Lower critical level must be less than or equal to target');
     });
 
     it('prevents an unauthorized user from setting the pool config');
@@ -163,7 +163,7 @@ describe('Rewards Asset manager', function () {
 
       sharedBeforeEach(async () => {
         poolController = lp; // TODO
-        await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
+        await assetManager.connect(poolController).setPoolConfig(poolId, encodedPoolConfig(poolConfig));
       });
 
       it('allows anyone to deposit pool assets to an investment manager to get to the target investable %', async () => {
@@ -206,7 +206,7 @@ describe('Rewards Asset manager', function () {
           lowerCriticalPercentage: 0,
         };
         poolController = lp; // TODO
-        await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
+        await assetManager.connect(poolController).setPoolConfig(poolId, encodedPoolConfig(poolConfig));
 
         const { poolCash } = await assetManager.getPoolBalances(poolId);
         await tokens.DAI.mint(assetManager.address, poolCash.mul(101).div(100));
@@ -236,7 +236,7 @@ describe('Rewards Asset manager', function () {
           upperCriticalPercentage: fp(1),
           lowerCriticalPercentage: 0,
         };
-        await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
+        await assetManager.connect(poolController).setPoolConfig(poolId, encodedPoolConfig(poolConfig));
 
         const { poolCash } = await assetManager.getPoolBalances(poolId);
         await tokens.DAI.mint(assetManager.address, poolCash.mul(99).div(100));
@@ -265,7 +265,7 @@ describe('Rewards Asset manager', function () {
           lowerCriticalPercentage: 0,
         };
         poolController = lp; // TODO
-        await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
+        await assetManager.connect(poolController).setPoolConfig(poolId, encodedPoolConfig(poolConfig));
 
         const { poolCash } = await assetManager.getPoolBalances(poolId);
         await tokens.DAI.mint(assetManager.address, poolCash.mul(101).div(100));
@@ -373,7 +373,7 @@ describe('Rewards Asset manager', function () {
 
     sharedBeforeEach(async () => {
       const poolController = lp; // TODO
-      await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
+      await assetManager.connect(poolController).setPoolConfig(poolId, encodedPoolConfig(poolConfig));
     });
 
     context('when pool is above target investment level', () => {

@@ -43,6 +43,12 @@ abstract contract RewardsAssetManager is IAssetManager {
     /// @notice The token which this asset manager is investing
     IERC20 public immutable token;
 
+    struct PoolConfig {
+        uint64 targetPercentage;
+        uint64 upperCriticalPercentage;
+        uint64 lowerCriticalPercentage;
+    }
+
     PoolConfig private _poolConfig;
 
     constructor(
@@ -168,7 +174,9 @@ abstract contract RewardsAssetManager is IAssetManager {
     function readAUM() public view virtual override returns (uint256);
 
     // TODO restrict access with onlyPoolController
-    function setPoolConfig(bytes32 pId, PoolConfig calldata config) external override withCorrectPool(pId) {
+    function setPoolConfig(bytes32 pId, bytes memory rawConfig) external override withCorrectPool(pId) {
+        PoolConfig memory config = abi.decode(rawConfig, (PoolConfig));
+
         require(
             config.upperCriticalPercentage <= FixedPoint.ONE,
             "Upper critical level must be less than or equal to 100%"
@@ -185,7 +193,7 @@ abstract contract RewardsAssetManager is IAssetManager {
         _poolConfig = config;
     }
 
-    function getPoolConfig(bytes32 pId) external view override withCorrectPool(pId) returns (PoolConfig memory) {
+    function getPoolConfig(bytes32 pId) external view withCorrectPool(pId) returns (PoolConfig memory) {
         return _poolConfig;
     }
 

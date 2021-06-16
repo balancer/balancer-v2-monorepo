@@ -1,11 +1,18 @@
-import { BigNumber } from 'ethers';
-import { fp } from '../../../../pvt/helpers/src/numbers';
+import { BigNumber, ethers } from 'ethers';
+import { BigNumberish, bn, fp } from '../../../../pvt/helpers/src/numbers';
 
 export type PoolConfig = {
-  targetPercentage: BigNumber;
-  upperCriticalPercentage: BigNumber;
-  lowerCriticalPercentage: BigNumber;
+  targetPercentage: BigNumberish;
+  upperCriticalPercentage: BigNumberish;
+  lowerCriticalPercentage: BigNumberish;
 };
+
+export function encodedPoolConfig(config: PoolConfig): string {
+  return ethers.utils.defaultAbiCoder.encode(
+    ['uint64', 'uint64', 'uint64'],
+    [bn(config.targetPercentage), bn(config.upperCriticalPercentage), bn(config.lowerCriticalPercentage)]
+  );
+}
 
 /**
  * @param poolCash - the amount of tokens held by the pool in cash

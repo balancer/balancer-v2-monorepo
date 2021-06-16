@@ -13,7 +13,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
-import { calcRebalanceAmount, PoolConfig } from './helpers/rebalance';
+import { calcRebalanceAmount, encodedPoolConfig, PoolConfig } from './helpers/rebalance';
 
 const OVER_INVESTMENT_REVERT_REASON = 'investment amount exceeds target';
 const UNDER_INVESTMENT_REVERT_REASON = 'withdrawal leaves insufficient balance invested';
@@ -148,74 +148,20 @@ describe('Aave Asset manager', function () {
     });
   });
 
-  describe('setPoolConfig', () => {
-    let poolController: SignerWithAddress;
-
-    sharedBeforeEach(async () => {
-      poolController = lp; // TODO
-    });
-
-    it('allows a pool controller to set the pools target investment config', async () => {
-      const updatedConfig = {
-        targetPercentage: 3,
-        upperCriticalPercentage: 4,
-        lowerCriticalPercentage: 2,
-      };
-      await assetManager.connect(poolController).setPoolConfig(poolId, updatedConfig);
-
-      const result = await assetManager.getPoolConfig(poolId);
-      expect(result.targetPercentage).to.equal(updatedConfig.targetPercentage);
-      expect(result.upperCriticalPercentage).to.equal(updatedConfig.upperCriticalPercentage);
-      expect(result.lowerCriticalPercentage).to.equal(updatedConfig.lowerCriticalPercentage);
-    });
-
-    it('reverts when setting upper critical over 100%', async () => {
-      const badPoolConfig = {
-        targetPercentage: 0,
-        upperCriticalPercentage: fp(1).add(1),
-        lowerCriticalPercentage: 0,
-      };
-      await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
-        'Upper critical level must be less than or equal to 100%'
-      );
-    });
-
-    it('reverts when setting upper critical below target', async () => {
-      const badPoolConfig = {
-        targetPercentage: 1,
-        upperCriticalPercentage: 0,
-        lowerCriticalPercentage: 0,
-      };
-      await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
-        'Target must be less than or equal to upper critical level'
-      );
-    });
-
-    it('reverts when setting lower critical above target', async () => {
-      const badPoolConfig = {
-        targetPercentage: 1,
-        upperCriticalPercentage: 2,
-        lowerCriticalPercentage: 2,
-      };
-      await expect(assetManager.connect(poolController).setPoolConfig(poolId, badPoolConfig)).to.be.revertedWith(
-        'Lower critical level must be less than or equal to target'
-      );
-    });
-
-    it('prevents an unauthorized user from setting the pool config');
-  });
-
   describe('when a token is below its investment target', () => {
     let poolController: SignerWithAddress; // TODO
     const targetPercentage = fp(0.9);
 
     beforeEach(async () => {
       poolController = lp; // TODO
-      await assetManager.connect(poolController).setPoolConfig(poolId, {
-        targetPercentage,
-        upperCriticalPercentage: fp(1),
-        lowerCriticalPercentage: 0,
-      });
+      await assetManager.connect(poolController).setPoolConfig(
+        poolId,
+        encodedPoolConfig({
+          targetPercentage,
+          upperCriticalPercentage: fp(1),
+          lowerCriticalPercentage: 0,
+        })
+      );
     });
 
     describe('capitalIn', () => {
@@ -281,11 +227,14 @@ describe('Aave Asset manager', function () {
     beforeEach(async () => {
       const investablePercent = fp(0.9);
       poolController = lp; // TODO
-      await assetManager.connect(poolController).setPoolConfig(poolId, {
-        targetPercentage: investablePercent,
-        upperCriticalPercentage: fp(1),
-        lowerCriticalPercentage: 0,
-      });
+      await assetManager.connect(poolController).setPoolConfig(
+        poolId,
+        encodedPoolConfig({
+          targetPercentage: investablePercent,
+          upperCriticalPercentage: fp(1),
+          lowerCriticalPercentage: 0,
+        })
+      );
 
       await assetManager.connect(poolController).capitalIn(poolId, amountToDeposit);
 
@@ -426,14 +375,14 @@ describe('Aave Asset manager', function () {
 
     sharedBeforeEach(async () => {
       const poolController = lp; // TODO
-      await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
+      await assetManager.connect(poolController).setPoolConfig(poolId, encodedPoolConfig(poolConfig));
     });
 
     context('when pool is above target investment level', () => {
       context('when pool is in non-critical range', () => {
         sharedBeforeEach(async () => {
           const poolController = lp; // TODO
-          await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
+          await assetManager.connect(poolController).setPoolConfig(poolId, encodedPoolConfig(poolConfig));
           const amountToDeposit = await assetManager.maxInvestableBalance(poolId);
           await assetManager.connect(poolController).capitalIn(poolId, amountToDeposit);
 

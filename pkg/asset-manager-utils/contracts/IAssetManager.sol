@@ -16,26 +16,15 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 interface IAssetManager {
-    struct PoolConfig {
-        uint64 targetPercentage;
-        uint64 upperCriticalPercentage;
-        uint64 lowerCriticalPercentage;
-    }
-
     /**
      * @notice Emitted when asset manager is rebalanced
      */
     event Rebalance(bytes32 poolId);
 
     /**
-     * @notice Returns the pool's config
-     */
-    function getPoolConfig(bytes32 poolId) external view returns (PoolConfig memory);
-
-    /**
      * @notice Sets the pool config
      */
-    function setPoolConfig(bytes32 poolId, PoolConfig calldata config) external;
+    function setPoolConfig(bytes32 poolId, bytes calldata config) external;
 
     /**
      * @notice Returns the invested balance
