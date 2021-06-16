@@ -55,26 +55,9 @@ const setup = async () => {
     ),
   });
 
-  // Deploy Pool for liquidating fees
-  const swapPool = await deploy('v2-vault/test/MockPool', { args: [vault.address, GeneralPool] });
-  const swapPoolId = await swapPool.getPoolId();
-
-  await swapPool.registerTokens(tokens.addresses, [ZERO_ADDRESS, ZERO_ADDRESS]);
-
-  await vault.instance.connect(lp).joinPool(swapPoolId, lp.address, lp.address, {
-    assets: tokens.addresses,
-    maxAmountsIn: tokens.addresses.map(() => MAX_UINT256),
-    fromInternalBalance: false,
-    userData: encodeJoin(
-      tokens.addresses.map(() => tokenInitialBalance),
-      tokens.addresses.map(() => 0)
-    ),
-  });
-
   return {
     data: {
       poolId,
-      swapPoolId,
     },
     contracts: {
       assetManager,
@@ -89,7 +72,7 @@ describe('Rewards Asset manager', function () {
   let tokens: TokenList, vault: Contract, assetManager: Contract;
 
   let lp: SignerWithAddress, other: SignerWithAddress;
-  let poolId: string, swapPoolId: string;
+  let poolId: string;
 
   before('deploy base contracts', async () => {
     [, lp, other] = await ethers.getSigners();
@@ -98,7 +81,6 @@ describe('Rewards Asset manager', function () {
   sharedBeforeEach('set up asset manager', async () => {
     const { data, contracts } = await setup();
     poolId = data.poolId;
-    swapPoolId = data.swapPoolId;
 
     assetManager = contracts.assetManager;
     tokens = contracts.tokens;
