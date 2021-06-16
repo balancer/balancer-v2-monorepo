@@ -56,11 +56,6 @@ interface IAssetManager {
     function maxInvestableBalance(bytes32 poolId) external view returns (int256);
 
     /**
-     * @return the rebalance fee for the pool
-     */
-    function getRebalanceFee(bytes32 poolId) external view returns (uint256);
-
-    /**
      * @notice Updates the Vault on the value of the pool's investment returns
      */
     function updateBalanceOfPool(bytes32 poolId) external;
