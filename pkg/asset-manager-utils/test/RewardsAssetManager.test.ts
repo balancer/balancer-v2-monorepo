@@ -13,7 +13,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
-import { calcRebalanceAmount } from './helpers/rebalance';
+import { calcRebalanceAmount, PoolConfig } from './helpers/rebalance';
 
 const OVER_INVESTMENT_REVERT_REASON = 'investment amount exceeds target';
 const UNDER_INVESTMENT_REVERT_REASON = 'withdrawal leaves insufficient balance invested';
@@ -324,6 +324,32 @@ describe('Rewards Asset manager', function () {
   });
 
   describe('rebalance', () => {
+    function itRebalancesCorrectly() {
+      let poolConfig: PoolConfig;
+
+      sharedBeforeEach(async () => {
+        poolConfig = await assetManager.getPoolConfig(poolId);
+      });
+
+      it('transfers the expected number of tokens to the Vault', async () => {
+        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+        const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
+
+        await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
+          { account: assetManager.address, changes: { DAI: expectedRebalanceAmount } },
+          { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
+        ]);
+      });
+
+      it('returns the pool to its target allocation', async () => {
+        await assetManager.rebalance(poolId);
+        const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
+        expect(differenceFromTarget.abs()).to.be.lte(1);
+      });
+
+      it("updates the pool's cash and managed balances correctly");
+    }
+
     context('when pool is above target investment level', () => {
       const poolConfig = {
         targetPercentage: fp(0.5),
@@ -343,23 +369,7 @@ describe('Rewards Asset manager', function () {
         expect(maxInvestableBalance).to.be.lt(0);
       });
 
-      it('transfers the expected number of tokens to the Vault', async () => {
-        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
-        const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
-
-        await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
-          { account: assetManager.address, changes: { DAI: expectedRebalanceAmount } },
-          { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
-        ]);
-      });
-
-      it('returns the pool to its target allocation', async () => {
-        await assetManager.rebalance(poolId);
-        const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
-        expect(differenceFromTarget.abs()).to.be.lte(1);
-      });
-
-      it("update the pool's cash and managed balances correctly");
+      itRebalancesCorrectly();
     });
 
     context('when pool is below target investment level', () => {
@@ -378,22 +388,7 @@ describe('Rewards Asset manager', function () {
         await assetManager.connect(poolController).capitalIn(poolId, targetInvestmentAmount.div(2));
       });
 
-      it('transfers the expected number of tokens from the Vault', async () => {
-        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
-        const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
-
-        await expectBalanceChange(() => assetManager.rebalance(poolId), tokens, [
-          { account: assetManager.address, changes: { DAI: expectedRebalanceAmount } },
-          { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
-        ]);
-      });
-
-      it('returns the pool to its target allocation', async () => {
-        await assetManager.rebalance(poolId);
-        expect(await assetManager.maxInvestableBalance(poolId)).to.be.eq(0);
-      });
-
-      it("update the pool's cash and managed balances correctly");
+      itRebalancesCorrectly();
     });
   });
 });
