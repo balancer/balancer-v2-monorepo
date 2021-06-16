@@ -198,7 +198,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes32 poolId = getPoolId();
         (, , , address assetManager) = getVault().getPoolTokenInfo(poolId, token);
 
-        IAssetManager(assetManager).setPoolConfig(poolId, poolConfig);
+        IAssetManager(assetManager).setConfig(poolId, poolConfig);
     }
 
     function setPaused(bool paused) external authenticate {

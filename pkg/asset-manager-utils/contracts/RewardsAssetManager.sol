@@ -43,13 +43,13 @@ abstract contract RewardsAssetManager is IAssetManager {
     /// @notice The token which this asset manager is investing
     IERC20 public immutable token;
 
-    struct PoolConfig {
+    struct InvestmentConfig {
         uint64 targetPercentage;
         uint64 upperCriticalPercentage;
         uint64 lowerCriticalPercentage;
     }
 
-    PoolConfig private _poolConfig;
+    InvestmentConfig private _config;
 
     constructor(
         IVault _vault,
@@ -89,7 +89,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     function _maxInvestableBalance(uint256 aum) internal view returns (int256) {
         (uint256 poolCash, , , ) = vault.getPoolTokenInfo(poolId, token);
         // Calculate the managed portion of funds locally as the Vault is unaware of returns
-        return int256(FixedPoint.mulDown(poolCash.add(aum), _poolConfig.targetPercentage)) - int256(aum);
+        return int256(FixedPoint.mulDown(poolCash.add(aum), _config.targetPercentage)) - int256(aum);
     }
 
     // Reporting
@@ -119,7 +119,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     function capitalIn(bytes32 pId, uint256 amount) public override withCorrectPool(pId) {
         uint256 aum = readAUM();
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
-        uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _poolConfig.targetPercentage);
+        uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _config.targetPercentage);
 
         require(targetInvestment >= poolManaged.add(amount), "investment amount exceeds target");
 
@@ -143,7 +143,7 @@ abstract contract RewardsAssetManager is IAssetManager {
         uint256 aum = readAUM();
         uint256 tokensOut = _divest(amount, aum);
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
-        uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _poolConfig.targetPercentage);
+        uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _config.targetPercentage);
 
         require(poolManaged >= targetInvestment.add(tokensOut), "withdrawal leaves insufficient balance invested");
 
@@ -174,8 +174,8 @@ abstract contract RewardsAssetManager is IAssetManager {
     function readAUM() public view virtual override returns (uint256);
 
     // TODO restrict access with onlyPoolController
-    function setPoolConfig(bytes32 pId, bytes memory rawConfig) external override withCorrectPool(pId) {
-        PoolConfig memory config = abi.decode(rawConfig, (PoolConfig));
+    function setConfig(bytes32 pId, bytes memory rawConfig) external override withCorrectPool(pId) {
+        InvestmentConfig memory config = abi.decode(rawConfig, (InvestmentConfig));
 
         require(
             config.upperCriticalPercentage <= FixedPoint.ONE,
@@ -190,11 +190,11 @@ abstract contract RewardsAssetManager is IAssetManager {
             "Lower critical level must be less than or equal to target"
         );
 
-        _poolConfig = config;
+        _config = config;
     }
 
-    function getPoolConfig(bytes32 pId) external view withCorrectPool(pId) returns (PoolConfig memory) {
-        return _poolConfig;
+    function getInvestmentConfig(bytes32 pId) external view withCorrectPool(pId) returns (InvestmentConfig memory) {
+        return _config;
     }
 
     function getPoolBalances(bytes32 pId)
@@ -221,7 +221,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     ) internal {
         uint256 aum = readAUM();
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
-        PoolConfig memory config = _poolConfig;
+        InvestmentConfig memory config = _config;
 
         uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, config.targetPercentage);
         if (targetInvestment > poolManaged) {
@@ -242,7 +242,7 @@ abstract contract RewardsAssetManager is IAssetManager {
             _rebalance(pId);
         } else {
             (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(readAUM());
-            PoolConfig memory config = _poolConfig;
+            InvestmentConfig memory config = _config;
 
             uint256 investedPercentage = poolManaged.mul(FixedPoint.ONE).divDown(poolCash + poolManaged);
             if (

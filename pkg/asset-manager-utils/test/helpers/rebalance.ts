@@ -1,13 +1,13 @@
 import { BigNumber, ethers } from 'ethers';
 import { BigNumberish, bn, fp } from '../../../../pvt/helpers/src/numbers';
 
-export type PoolConfig = {
+export type InvestmentConfig = {
   targetPercentage: BigNumberish;
   upperCriticalPercentage: BigNumberish;
   lowerCriticalPercentage: BigNumberish;
 };
 
-export function encodedPoolConfig(config: PoolConfig): string {
+export function encodeInvestmentConfig(config: InvestmentConfig): string {
   return ethers.utils.defaultAbiCoder.encode(
     ['uint64', 'uint64', 'uint64'],
     [bn(config.targetPercentage), bn(config.upperCriticalPercentage), bn(config.lowerCriticalPercentage)]
@@ -20,7 +20,11 @@ export function encodedPoolConfig(config: PoolConfig): string {
  * @param config - the investment config of the pool
  * @returns the amount of tokens sent from the vault to the asset manager. Negative values indicate tokens being sent to the vault.
  */
-export const calcRebalanceAmount = (poolCash: BigNumber, poolManaged: BigNumber, config: PoolConfig): BigNumber => {
+export const calcRebalanceAmount = (
+  poolCash: BigNumber,
+  poolManaged: BigNumber,
+  config: InvestmentConfig
+): BigNumber => {
   const poolAssets = poolCash.add(poolManaged);
   const targetInvestmentAmount = poolAssets.mul(config.targetPercentage).div(fp(1));
 

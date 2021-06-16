@@ -13,7 +13,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
-import { calcRebalanceAmount, encodedPoolConfig, PoolConfig } from './helpers/rebalance';
+import { calcRebalanceAmount, encodeInvestmentConfig } from './helpers/rebalance';
 
 const OVER_INVESTMENT_REVERT_REASON = 'investment amount exceeds target';
 const UNDER_INVESTMENT_REVERT_REASON = 'withdrawal leaves insufficient balance invested';
@@ -154,9 +154,9 @@ describe('Aave Asset manager', function () {
 
     beforeEach(async () => {
       poolController = lp; // TODO
-      await assetManager.connect(poolController).setPoolConfig(
+      await assetManager.connect(poolController).setConfig(
         poolId,
-        encodedPoolConfig({
+        encodeInvestmentConfig({
           targetPercentage,
           upperCriticalPercentage: fp(1),
           lowerCriticalPercentage: 0,
@@ -227,9 +227,9 @@ describe('Aave Asset manager', function () {
     beforeEach(async () => {
       const investablePercent = fp(0.9);
       poolController = lp; // TODO
-      await assetManager.connect(poolController).setPoolConfig(
+      await assetManager.connect(poolController).setConfig(
         poolId,
-        encodedPoolConfig({
+        encodeInvestmentConfig({
           targetPercentage: investablePercent,
           upperCriticalPercentage: fp(1),
           lowerCriticalPercentage: 0,
@@ -335,9 +335,9 @@ describe('Aave Asset manager', function () {
       });
 
       it('transfers the expected number of tokens to the Vault', async () => {
-        const poolConfig = await assetManager.getPoolConfig(poolId);
+        const config = await assetManager.getInvestmentConfig(poolId);
         const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
-        const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
+        const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, config);
 
         await expectBalanceChange(() => assetManager.rebalance(poolId, force), tokens, [
           { account: lendingPool.address, changes: { DAI: expectedRebalanceAmount } },
@@ -367,7 +367,7 @@ describe('Aave Asset manager', function () {
       });
     }
 
-    const poolConfig = {
+    const config = {
       targetPercentage: fp(0.5),
       upperCriticalPercentage: fp(0.75),
       lowerCriticalPercentage: fp(0.25),
@@ -375,14 +375,14 @@ describe('Aave Asset manager', function () {
 
     sharedBeforeEach(async () => {
       const poolController = lp; // TODO
-      await assetManager.connect(poolController).setPoolConfig(poolId, encodedPoolConfig(poolConfig));
+      await assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(config));
     });
 
     context('when pool is above target investment level', () => {
       context('when pool is in non-critical range', () => {
         sharedBeforeEach(async () => {
           const poolController = lp; // TODO
-          await assetManager.connect(poolController).setPoolConfig(poolId, encodedPoolConfig(poolConfig));
+          await assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(config));
           const amountToDeposit = await assetManager.maxInvestableBalance(poolId);
           await assetManager.connect(poolController).capitalIn(poolId, amountToDeposit);
 

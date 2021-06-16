@@ -22,9 +22,9 @@ interface IAssetManager {
     event Rebalance(bytes32 poolId);
 
     /**
-     * @notice Sets the pool config
+     * @notice Sets the config
      */
-    function setPoolConfig(bytes32 poolId, bytes calldata config) external;
+    function setConfig(bytes32 poolId, bytes calldata config) external;
 
     /**
      * @notice Returns the invested balance
