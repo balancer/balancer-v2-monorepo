@@ -225,6 +225,8 @@ abstract contract RewardsAssetManager is IAssetManager {
             uint256 rebalanceAmount = poolManaged.sub(targetInvestment);
             capitalOut(poolId, rebalanceAmount);
         }
+
+        emit Rebalance(poolId);
     }
 
     function rebalance(bytes32 pId) external override withCorrectPool(pId) {

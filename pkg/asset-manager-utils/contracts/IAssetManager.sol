@@ -23,6 +23,11 @@ interface IAssetManager {
     }
 
     /**
+     * @notice Emitted when asset manager is rebalanced
+     */
+    event Rebalance(bytes32 poolId);
+
+    /**
      * @notice Returns the pool's config
      */
     function getPoolConfig(bytes32 poolId) external view returns (PoolConfig memory);

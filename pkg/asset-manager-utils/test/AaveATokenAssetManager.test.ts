@@ -11,6 +11,7 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { calcRebalanceAmount, PoolConfig } from './helpers/rebalance';
 
@@ -385,6 +386,12 @@ describe('Aave Asset manager', function () {
       });
 
       if (shouldRebalance) {
+        it('emits a Rebalance event', async () => {
+          const tx = await assetManager['rebalance(bytes32,bool)'](poolId, forceRebalance);
+          const receipt = await tx.wait();
+          expectEvent.inReceipt(receipt, 'Rebalance');
+        });
+
         it('transfers the expected number of tokens to the Vault', async () => {
           const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
           const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
@@ -404,14 +411,9 @@ describe('Aave Asset manager', function () {
         it("updates the pool's cash and managed balances correctly");
       } else {
         it('skips the rebalance', async () => {
-          // We check that no changes have occurred to pool's balances
-          // We should add a Rebalance event and then this test can check for its absence.
-          // TODO: add a Rebalance event
-          const { poolCash: cashBefore, poolManaged: managedBefore } = await assetManager.getPoolBalances(poolId);
-          await assetManager['rebalance(bytes32,bool)'](poolId, forceRebalance);
-          const { poolCash: cashAfter, poolManaged: managedAfter } = await assetManager.getPoolBalances(poolId);
-          expect(cashAfter).to.be.eq(cashBefore);
-          expect(managedAfter).to.be.eq(managedBefore);
+          const tx = await assetManager['rebalance(bytes32,bool)'](poolId, forceRebalance);
+          const receipt = await tx.wait();
+          expectEvent.notEmitted(receipt, 'Rebalance');
         });
       }
     }
