@@ -377,78 +377,139 @@ describe('Aave Asset manager', function () {
   });
 
   describe('rebalance', () => {
-    function itRebalancesCorrectly() {
+    function itRebalancesCorrectly(forceRebalance: boolean, shouldRebalance: boolean) {
       let poolConfig: PoolConfig;
 
       sharedBeforeEach(async () => {
         poolConfig = await assetManager.getPoolConfig(poolId);
       });
 
-      it('transfers the expected number of tokens to the Vault', async () => {
-        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
-        const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
+      if (shouldRebalance) {
+        it('transfers the expected number of tokens to the Vault', async () => {
+          const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+          const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
-        await expectBalanceChange(() => assetManager['rebalance(bytes32)'](poolId), tokens, [
-          { account: lendingPool.address, changes: { DAI: expectedRebalanceAmount } },
-          { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
-        ]);
-      });
+          await expectBalanceChange(() => assetManager['rebalance(bytes32,bool)'](poolId, forceRebalance), tokens, [
+            { account: lendingPool.address, changes: { DAI: expectedRebalanceAmount } },
+            { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
+          ]);
+        });
 
-      it('returns the pool to its target allocation', async () => {
-        await assetManager['rebalance(bytes32)'](poolId);
-        const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
-        expect(differenceFromTarget.abs()).to.be.lte(1);
-      });
+        it('returns the pool to its target allocation', async () => {
+          await assetManager['rebalance(bytes32,bool)'](poolId, forceRebalance);
+          const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
+          expect(differenceFromTarget.abs()).to.be.lte(1);
+        });
 
-      it("updates the pool's cash and managed balances correctly");
+        it("updates the pool's cash and managed balances correctly");
+      } else {
+        it('skips the rebalance', async () => {
+          // We check that no changes have occurred to pool's balances
+          // We should add a Rebalance event and then this test can check for its absence.
+          // TODO: add a Rebalance event
+          const { poolCash: cashBefore, poolManaged: managedBefore } = await assetManager.getPoolBalances(poolId);
+          await assetManager['rebalance(bytes32,bool)'](poolId, forceRebalance);
+          const { poolCash: cashAfter, poolManaged: managedAfter } = await assetManager.getPoolBalances(poolId);
+          expect(cashAfter).to.be.eq(cashBefore);
+          expect(managedAfter).to.be.eq(managedBefore);
+        });
+      }
     }
 
-    context('when pool is above target investment level', () => {
-      let poolController: SignerWithAddress; // TODO
-      const poolConfig = {
-        targetPercentage: fp(0.5),
-        upperCriticalPercentage: fp(1),
-        lowerCriticalPercentage: fp(0.1),
-      };
+    const poolConfig = {
+      targetPercentage: fp(0.5),
+      upperCriticalPercentage: fp(0.75),
+      lowerCriticalPercentage: fp(0.25),
+    };
 
+    sharedBeforeEach(async () => {
+      const poolController = lp; // TODO
+      await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
+    });
+
+    context('when pool is above target investment level', () => {
+      context('when pool is in non-critical range', () => {
+        sharedBeforeEach(async () => {
+          const poolController = lp; // TODO
+          await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
+          const amountToDeposit = await assetManager.maxInvestableBalance(poolId);
+          await assetManager.connect(poolController).capitalIn(poolId, amountToDeposit);
+
+          // should be perfectly balanced
+          const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+          expect(maxInvestableBalance).to.equal(bn(0));
+
+          // Simulate a return on asset manager's investment
+          const amountReturned = amountToDeposit.div(10);
+          await lendingPool
+            .connect(lp)
+            .simulateATokenIncrease(tokens.DAI.address, amountReturned, assetManager.address);
+        });
+
+        context('when forced', () => {
+          itRebalancesCorrectly(true, true);
+        });
+
+        context('when not forced', () => {
+          itRebalancesCorrectly(false, false);
+        });
+      });
+    });
+
+    context('when pool is above upper critical investment level', () => {
       sharedBeforeEach(async () => {
-        poolController = lp; // TODO
-        await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
-        const amountToDeposit = tokenInitialBalance.mul(poolConfig.targetPercentage).div(fp(1));
+        const poolController = lp; // TODO
+        const amountToDeposit = await assetManager.maxInvestableBalance(poolId);
         await assetManager.connect(poolController).capitalIn(poolId, amountToDeposit);
 
         // should be perfectly balanced
         const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
         expect(maxInvestableBalance).to.equal(bn(0));
 
-        // Simulate a return on asset manager's investment
-        const amountReturned = amountToDeposit.div(10);
-        await lendingPool.connect(lp).simulateATokenIncrease(tokens.DAI.address, amountReturned, assetManager.address);
-
-        await assetManager.connect(lp).updateBalanceOfPool(poolId);
+        // Simulate a return on asset manager's investment which results in exceeding the upper critical level
+        await tokens.DAI.mint(lendingPool.address, amountToDeposit.mul(4));
+        await lendingPool
+          .connect(lp)
+          .simulateATokenIncrease(tokens.DAI.address, amountToDeposit.mul(4), assetManager.address);
+        await assetManager.updateBalanceOfPool(poolId);
       });
 
-      itRebalancesCorrectly();
+      context('when forced', () => {
+        itRebalancesCorrectly(true, true);
+      });
+
+      context('when not forced', () => {
+        itRebalancesCorrectly(false, true);
+      });
     });
 
     context('when pool is below target investment level', () => {
-      let poolController: SignerWithAddress; // TODO
-      const poolConfig = {
-        targetPercentage: fp(0.5),
-        upperCriticalPercentage: fp(1),
-        lowerCriticalPercentage: fp(0.1),
-      };
+      context('when pool is in non-critical range', () => {
+        sharedBeforeEach(async () => {
+          const poolController = lp; // TODO
+          // Ensure that the pool is invested below its target level but above than critical level
+          const targetInvestmentAmount = await assetManager.maxInvestableBalance(poolId);
+          await assetManager.connect(poolController).capitalIn(poolId, targetInvestmentAmount.div(2));
+        });
 
-      sharedBeforeEach(async () => {
-        poolController = lp; // TODO
+        context('when forced', () => {
+          itRebalancesCorrectly(true, true);
+        });
 
-        await assetManager.connect(poolController).setPoolConfig(poolId, poolConfig);
-        // Ensure that the pool is invested below its target level but above than critical level
-        const targetInvestmentAmount = await assetManager.maxInvestableBalance(poolId);
-        await assetManager.connect(poolController).capitalIn(poolId, targetInvestmentAmount.div(2));
+        context('when not forced', () => {
+          itRebalancesCorrectly(false, false);
+        });
       });
 
-      itRebalancesCorrectly();
+      context('when pool is below lower critical investment level', () => {
+        context('when forced', () => {
+          itRebalancesCorrectly(true, true);
+        });
+
+        context('when not forced', () => {
+          itRebalancesCorrectly(false, true);
+        });
+      });
     });
   });
 });
