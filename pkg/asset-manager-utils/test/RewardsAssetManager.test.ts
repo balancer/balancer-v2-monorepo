@@ -15,6 +15,8 @@ import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { calcRebalanceAmount, encodeInvestmentConfig } from './helpers/rebalance';
+import { config } from 'process';
+import { update } from 'lodash';
 
 const OVER_INVESTMENT_REVERT_REASON = 'investment amount exceeds target';
 const UNDER_INVESTMENT_REVERT_REASON = 'withdrawal leaves insufficient balance invested';
@@ -114,6 +116,24 @@ describe('Rewards Asset manager', function () {
       expect(result.targetPercentage).to.equal(updatedConfig.targetPercentage);
       expect(result.upperCriticalPercentage).to.equal(updatedConfig.upperCriticalPercentage);
       expect(result.lowerCriticalPercentage).to.equal(updatedConfig.lowerCriticalPercentage);
+    });
+
+    it('emits an event', async () => {
+      const updatedConfig = {
+        targetPercentage: 3,
+        upperCriticalPercentage: 4,
+        lowerCriticalPercentage: 2,
+      };
+
+      const receipt = await (
+        await assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(updatedConfig))
+      ).wait();
+
+      expectEvent.inReceipt(receipt, 'InvestmentConfigSet', {
+        targetPercentage: updatedConfig.targetPercentage,
+        lowerCriticalPercentage: updatedConfig.lowerCriticalPercentage,
+        upperCriticalPercentage: updatedConfig.upperCriticalPercentage,
+      });
     });
 
     it('reverts when setting upper critical over 100%', async () => {

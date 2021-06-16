@@ -51,6 +51,8 @@ abstract contract RewardsAssetManager is IAssetManager {
 
     InvestmentConfig private _config;
 
+    event InvestmentConfigSet(uint64 targetPercentage, uint64 lowerCriticalPercentage, uint64 upperCriticalPercentage);
+
     constructor(
         IVault _vault,
         bytes32 _poolId,
@@ -191,6 +193,11 @@ abstract contract RewardsAssetManager is IAssetManager {
         );
 
         _config = config;
+        emit InvestmentConfigSet(
+            config.targetPercentage,
+            config.lowerCriticalPercentage,
+            config.upperCriticalPercentage
+        );
     }
 
     function getInvestmentConfig(bytes32 pId) external view withCorrectPool(pId) returns (InvestmentConfig memory) {
