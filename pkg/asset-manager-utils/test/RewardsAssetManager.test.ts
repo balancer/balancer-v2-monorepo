@@ -349,7 +349,12 @@ describe('Rewards Asset manager', function () {
         expect(differenceFromTarget.abs()).to.be.lte(1);
       });
 
-      it("updates the pool's cash and managed balances correctly");
+      it("updates the pool's managed balance on the vault correctly", async () => {
+        await assetManager.rebalance(poolId, force);
+        const { poolManaged: expectedManaged } = await assetManager.getPoolBalances(poolId);
+        const { managed: actualManaged } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+        expect(actualManaged).to.be.eq(expectedManaged);
+      });
     }
 
     function itSkipsTheRebalance() {
