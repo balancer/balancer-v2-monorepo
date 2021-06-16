@@ -326,12 +326,6 @@ describe('Rewards Asset manager', function () {
 
   describe('rebalance', () => {
     function itRebalancesCorrectly(force: boolean) {
-      let poolConfig: PoolConfig;
-
-      sharedBeforeEach(async () => {
-        poolConfig = await assetManager.getPoolConfig(poolId);
-      });
-
       it('emits a Rebalance event', async () => {
         const tx = await assetManager.rebalance(poolId, force);
         const receipt = await tx.wait();
@@ -339,6 +333,7 @@ describe('Rewards Asset manager', function () {
       });
 
       it('transfers the expected number of tokens to the Vault', async () => {
+        const poolConfig = await assetManager.getPoolConfig(poolId);
         const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
         const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
