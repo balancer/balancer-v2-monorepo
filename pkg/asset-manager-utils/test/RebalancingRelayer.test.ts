@@ -16,7 +16,7 @@ import {
   encodeJoinWeightedPool,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
 
-describe.only('RebalancingRelayer', function () {
+describe('RebalancingRelayer', function () {
   let user: SignerWithAddress, admin: SignerWithAddress, tokens: TokenList, poolId: string;
   let vault: Contract, authorizer: Contract, relayer: Contract, pool: Contract, assetManager: Contract;
 
@@ -113,8 +113,8 @@ describe.only('RebalancingRelayer', function () {
           });
         });
 
-        context('when the relayer is allowed to join', () => {
-          sharedBeforeEach('allow relayer', async () => {
+        context('when the relayer is not allowed to join', () => {
+          sharedBeforeEach('revoke relayer', async () => {
             const action = await actionId(vault, 'joinPool');
             await authorizer.connect(admin).revokeRole(action, relayer.address);
           });
@@ -210,8 +210,8 @@ describe.only('RebalancingRelayer', function () {
           });
         });
 
-        context('when the relayer is allowed to exit', () => {
-          sharedBeforeEach('allow relayer', async () => {
+        context('when the relayer is not allowed to exit', () => {
+          sharedBeforeEach('revoke relayer', async () => {
             const action = await actionId(vault, 'exitPool');
             await authorizer.connect(admin).revokeRole(action, relayer.address);
           });

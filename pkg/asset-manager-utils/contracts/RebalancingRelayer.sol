@@ -22,6 +22,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 import "./IAssetManager.sol";
 
 contract RebalancingRelayer is IBasePoolRelayer {
+    // We start at a non-zero value to make EIP2200 refunds lower, meaning there'll be a higher chance of them being
+    // fully effective.
     bytes32 constant internal _EMPTY_CALLED_POOL = bytes32(0x0000000000000000000000000000000000000000000000000000000000000001);
 
     modifier rebalance(bytes32 poolId) {
@@ -56,7 +58,9 @@ contract RebalancingRelayer is IBasePoolRelayer {
         (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
         for (uint256 i = 0; i < tokens.length; i++) {
             (,,, address assetManager) = vault.getPoolTokenInfo(poolId, tokens[i]);
-            IAssetManager(assetManager).rebalance(poolId);
+            if (assetManager != address(0)) {
+                IAssetManager(assetManager).rebalance(poolId);
+            }
         }
     }
 }
