@@ -85,7 +85,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     // Investment configuration
 
     function maxInvestableBalance(bytes32 pId) public view override withCorrectPool(pId) returns (int256) {
-        return _maxInvestableBalance(readAUM());
+        return _maxInvestableBalance(getAUM());
     }
 
     function _maxInvestableBalance(uint256 aum) internal view returns (int256) {
@@ -97,7 +97,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     // Reporting
 
     function updateBalanceOfPool(bytes32 pId) public override withCorrectPool(pId) {
-        uint256 managedBalance = readAUM();
+        uint256 managedBalance = getAUM();
 
         IVault.PoolBalanceOp memory transfer = IVault.PoolBalanceOp(
             IVault.PoolBalanceOpKind.UPDATE,
@@ -119,7 +119,7 @@ abstract contract RewardsAssetManager is IAssetManager {
      * @param amount - the amount of tokens being deposited
      */
     function capitalIn(bytes32 pId, uint256 amount) public override withCorrectPool(pId) {
-        uint256 aum = readAUM();
+        uint256 aum = getAUM();
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
         uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _config.targetPercentage);
 
@@ -142,7 +142,7 @@ abstract contract RewardsAssetManager is IAssetManager {
      * @param amount - the amount of tokens to withdraw to the vault
      */
     function capitalOut(bytes32 pId, uint256 amount) public override withCorrectPool(pId) {
-        uint256 aum = readAUM();
+        uint256 aum = getAUM();
         uint256 tokensOut = _divest(amount, aum);
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
         uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _config.targetPercentage);
@@ -173,7 +173,7 @@ abstract contract RewardsAssetManager is IAssetManager {
      */
     function _divest(uint256 amount, uint256 aum) internal virtual returns (uint256);
 
-    function readAUM() public view virtual override returns (uint256);
+    function getAUM() public view virtual override returns (uint256);
 
     // TODO restrict access with onlyPoolController
     function setConfig(bytes32 pId, bytes memory rawConfig) external override withCorrectPool(pId) {
@@ -211,7 +211,7 @@ abstract contract RewardsAssetManager is IAssetManager {
         withCorrectPool(pId)
         returns (uint256 poolCash, uint256 poolManaged)
     {
-        return _getPoolBalances(readAUM());
+        return _getPoolBalances(getAUM());
     }
 
     function _getPoolBalances(uint256 aum) internal view returns (uint256 poolCash, uint256 poolManaged) {
@@ -226,7 +226,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     function _rebalance(
         bytes32 /*pId*/
     ) internal {
-        uint256 aum = readAUM();
+        uint256 aum = getAUM();
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
         InvestmentConfig memory config = _config;
 
@@ -248,7 +248,7 @@ abstract contract RewardsAssetManager is IAssetManager {
         if (force) {
             _rebalance(pId);
         } else {
-            (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(readAUM());
+            (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(getAUM());
             InvestmentConfig memory config = _config;
 
             uint256 investedPercentage = poolManaged.mul(FixedPoint.ONE).divDown(poolCash + poolManaged);
@@ -262,6 +262,6 @@ abstract contract RewardsAssetManager is IAssetManager {
     }
 
     function balanceOf(bytes32 pId) public view override withCorrectPool(pId) returns (uint256) {
-        return readAUM();
+        return getAUM();
     }
 }

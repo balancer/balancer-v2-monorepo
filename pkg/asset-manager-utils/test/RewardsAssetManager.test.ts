@@ -34,7 +34,7 @@ const setup = async () => {
   const poolId = await pool.getPoolId();
 
   // Deploy Asset manager
-  const assetManager = await deploy('TestAssetManager', {
+  const assetManager = await deploy('MockRewardsAssetManager', {
     args: [vault.address, poolId, tokens.DAI.address],
   });
 
@@ -208,7 +208,7 @@ describe('Rewards Asset manager', function () {
         await assetManager.connect(lp).capitalIn(poolId, amountToDeposit);
 
         const { managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-        const actualManagedBalance = await assetManager.readAUM();
+        const actualManagedBalance = await assetManager.getAUM();
 
         expect(managed).to.be.eq(actualManagedBalance);
       });
@@ -320,7 +320,7 @@ describe('Rewards Asset manager', function () {
         await assetManager.connect(lp).capitalOut(poolId, amountToWithdraw);
 
         const { managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-        const actualManagedBalance = await assetManager.readAUM();
+        const actualManagedBalance = await assetManager.getAUM();
 
         expect(managed.sub(actualManagedBalance)).to.be.lt(10);
       });

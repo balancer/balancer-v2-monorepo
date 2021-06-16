@@ -18,10 +18,7 @@ import "../RewardsAssetManager.sol";
 
 pragma solidity ^0.7.0;
 
-// solhint-disable no-empty-blocks
-// solhint-disable var-name-mixedcase
-// solhint-disable private-vars-leading-underscore
-contract TestAssetManager is RewardsAssetManager {
+contract MockRewardsAssetManager is RewardsAssetManager {
     using Math for uint256;
 
     constructor(
@@ -57,7 +54,7 @@ contract TestAssetManager is RewardsAssetManager {
     /**
      * @return the current assets under management of this asset manager
      */
-    function readAUM() public view override returns (uint256) {
+    function getAUM() public view override returns (uint256) {
         return token.balanceOf(address(this));
     }
 }
