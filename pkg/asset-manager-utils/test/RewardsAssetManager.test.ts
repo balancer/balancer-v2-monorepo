@@ -325,44 +325,44 @@ describe('Rewards Asset manager', function () {
   });
 
   describe('rebalance', () => {
-    function itRebalancesCorrectly(forceRebalance: boolean, shouldRebalance: boolean) {
+    function itRebalancesCorrectly(force: boolean) {
       let poolConfig: PoolConfig;
 
       sharedBeforeEach(async () => {
         poolConfig = await assetManager.getPoolConfig(poolId);
       });
 
-      if (shouldRebalance) {
-        it('emits a Rebalance event', async () => {
-          const tx = await assetManager.rebalance(poolId, forceRebalance);
-          const receipt = await tx.wait();
-          expectEvent.inReceipt(receipt, 'Rebalance');
-        });
+      it('emits a Rebalance event', async () => {
+        const tx = await assetManager.rebalance(poolId, force);
+        const receipt = await tx.wait();
+        expectEvent.inReceipt(receipt, 'Rebalance');
+      });
 
-        it('transfers the expected number of tokens to the Vault', async () => {
-          const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
-          const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
+      it('transfers the expected number of tokens to the Vault', async () => {
+        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+        const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
-          await expectBalanceChange(() => assetManager.rebalance(poolId, forceRebalance), tokens, [
-            { account: assetManager.address, changes: { DAI: expectedRebalanceAmount } },
-            { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
-          ]);
-        });
+        await expectBalanceChange(() => assetManager.rebalance(poolId, force), tokens, [
+          { account: assetManager.address, changes: { DAI: expectedRebalanceAmount } },
+          { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
+        ]);
+      });
 
-        it('returns the pool to its target allocation', async () => {
-          await assetManager.rebalance(poolId, forceRebalance);
-          const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
-          expect(differenceFromTarget.abs()).to.be.lte(1);
-        });
+      it('returns the pool to its target allocation', async () => {
+        await assetManager.rebalance(poolId, force);
+        const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
+        expect(differenceFromTarget.abs()).to.be.lte(1);
+      });
 
-        it("updates the pool's cash and managed balances correctly");
-      } else {
-        it('skips the rebalance', async () => {
-          const tx = await assetManager.rebalance(poolId, forceRebalance);
-          const receipt = await tx.wait();
-          expectEvent.notEmitted(receipt, 'Rebalance');
-        });
-      }
+      it("updates the pool's cash and managed balances correctly");
+    }
+
+    function itSkipsTheRebalance() {
+      it('skips the rebalance', async () => {
+        const tx = await assetManager.rebalance(poolId, false);
+        const receipt = await tx.wait();
+        expectEvent.notEmitted(receipt, 'Rebalance');
+      });
     }
 
     const poolConfig = {
@@ -388,11 +388,12 @@ describe('Rewards Asset manager', function () {
         });
 
         context('when forced', () => {
-          itRebalancesCorrectly(true, true);
+          const force = true;
+          itRebalancesCorrectly(force);
         });
 
         context('when not forced', () => {
-          itRebalancesCorrectly(false, false);
+          itSkipsTheRebalance();
         });
       });
     });
@@ -405,11 +406,13 @@ describe('Rewards Asset manager', function () {
       });
 
       context('when forced', () => {
-        itRebalancesCorrectly(true, true);
+        const force = true;
+        itRebalancesCorrectly(force);
       });
 
       context('when not forced', () => {
-        itRebalancesCorrectly(false, true);
+        const force = false;
+        itRebalancesCorrectly(force);
       });
     });
 
@@ -424,21 +427,24 @@ describe('Rewards Asset manager', function () {
         });
 
         context('when forced', () => {
-          itRebalancesCorrectly(true, true);
+          const force = true;
+          itRebalancesCorrectly(force);
         });
 
         context('when not forced', () => {
-          itRebalancesCorrectly(false, false);
+          itSkipsTheRebalance();
         });
       });
 
       context('when pool is below lower critical investment level', () => {
         context('when forced', () => {
-          itRebalancesCorrectly(true, true);
+          const force = true;
+          itRebalancesCorrectly(force);
         });
 
         context('when not forced', () => {
-          itRebalancesCorrectly(false, true);
+          const force = false;
+          itRebalancesCorrectly(force);
         });
       });
     });
