@@ -334,7 +334,7 @@ describe('Rewards Asset manager', function () {
 
       if (shouldRebalance) {
         it('emits a Rebalance event', async () => {
-          const tx = await assetManager['rebalance(bytes32,bool)'](poolId, forceRebalance);
+          const tx = await assetManager.rebalance(poolId, forceRebalance);
           const receipt = await tx.wait();
           expectEvent.inReceipt(receipt, 'Rebalance');
         });
@@ -343,14 +343,14 @@ describe('Rewards Asset manager', function () {
           const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
           const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, poolConfig);
 
-          await expectBalanceChange(() => assetManager['rebalance(bytes32,bool)'](poolId, forceRebalance), tokens, [
+          await expectBalanceChange(() => assetManager.rebalance(poolId, forceRebalance), tokens, [
             { account: assetManager.address, changes: { DAI: expectedRebalanceAmount } },
             { account: vault.address, changes: { DAI: expectedRebalanceAmount.mul(-1) } },
           ]);
         });
 
         it('returns the pool to its target allocation', async () => {
-          await assetManager['rebalance(bytes32,bool)'](poolId, forceRebalance);
+          await assetManager.rebalance(poolId, forceRebalance);
           const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
           expect(differenceFromTarget.abs()).to.be.lte(1);
         });
@@ -358,7 +358,7 @@ describe('Rewards Asset manager', function () {
         it("updates the pool's cash and managed balances correctly");
       } else {
         it('skips the rebalance', async () => {
-          const tx = await assetManager['rebalance(bytes32,bool)'](poolId, forceRebalance);
+          const tx = await assetManager.rebalance(poolId, forceRebalance);
           const receipt = await tx.wait();
           expectEvent.notEmitted(receipt, 'Rebalance');
         });

@@ -229,10 +229,6 @@ abstract contract RewardsAssetManager is IAssetManager {
         emit Rebalance(poolId);
     }
 
-    function rebalance(bytes32 pId) external override withCorrectPool(pId) {
-        _rebalance(pId);
-    }
-
     function rebalance(bytes32 pId, bool force) external override withCorrectPool(pId) {
         if (force) {
             _rebalance(pId);
