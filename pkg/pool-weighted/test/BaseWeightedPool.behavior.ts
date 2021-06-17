@@ -66,10 +66,10 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
       });
 
       it('registers tokens in the vault', async () => {
-        const { tokens, balances } = await pool.getTokens();
+        const poolTokens = await pool.getTokens();
 
-        expect(tokens).to.have.members(tokens);
-        expect(balances).to.be.zeros;
+        expect(poolTokens.tokens).to.have.members(tokens.addresses);
+        expect(poolTokens.balances).to.be.zeros;
       });
 
       it('starts with no BPT', async () => {
