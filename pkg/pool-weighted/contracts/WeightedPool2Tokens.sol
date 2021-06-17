@@ -183,7 +183,7 @@ contract WeightedPool2Tokens is
     }
 
     // Caller must be approved by the Vault's Authorizer
-    function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
+    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
 
@@ -265,7 +265,7 @@ contract WeightedPool2Tokens is
         SwapRequest memory request,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) external virtual override whenNotPaused onlyVault(request.poolId) returns (uint256) {
+    ) public virtual override whenNotPaused onlyVault(request.poolId) returns (uint256) {
         bool tokenInIsToken0 = request.tokenIn == _token0;
 
         uint256 scalingFactorTokenIn = _scalingFactor(tokenInIsToken0);
@@ -368,7 +368,7 @@ contract WeightedPool2Tokens is
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     )
-        external
+        public
         virtual
         override
         onlyVault(poolId)
@@ -594,7 +594,7 @@ contract WeightedPool2Tokens is
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+    ) public virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         _upscaleArray(balances);
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _onExitPool(

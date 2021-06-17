@@ -90,7 +90,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor7;
 
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
-    event TargetManagerPoolConfigChanged(IERC20 indexed token, IAssetManager.PoolConfig target);
 
     constructor(
         IVault vault,
@@ -174,7 +173,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _swapFeePercentage;
     }
 
-    function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
+    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
 
@@ -186,8 +185,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
-    function setAssetManagerPoolConfig(IERC20 token, IAssetManager.PoolConfig memory poolConfig)
-        external
+    function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig)
+        public
         virtual
         authenticate
         whenNotPaused
@@ -195,12 +194,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _setAssetManagerPoolConfig(token, poolConfig);
     }
 
-    function _setAssetManagerPoolConfig(IERC20 token, IAssetManager.PoolConfig memory poolConfig) private {
+    function _setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig) private {
         bytes32 poolId = getPoolId();
         (, , , address assetManager) = getVault().getPoolTokenInfo(poolId, token);
 
-        IAssetManager(assetManager).setPoolConfig(poolId, poolConfig);
-        emit TargetManagerPoolConfigChanged(token, poolConfig);
+        IAssetManager(assetManager).setConfig(poolId, poolConfig);
     }
 
     function setPaused(bool paused) external authenticate {
@@ -209,8 +207,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
-            (actionId == getActionId(BasePool.setSwapFeePercentage.selector)) ||
-            (actionId == getActionId(BasePool.setAssetManagerPoolConfig.selector));
+            (actionId == getActionId(this.setSwapFeePercentage.selector)) ||
+            (actionId == getActionId(this.setAssetManagerPoolConfig.selector));
     }
 
     // Join / Exit Hooks

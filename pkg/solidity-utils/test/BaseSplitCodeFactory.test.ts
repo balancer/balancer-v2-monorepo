@@ -38,8 +38,8 @@ describe('BasePoolCodeFactory', function () {
   });
 
   context('when the creation reverts', () => {
-    it('reverts', async () => {
-      await expect(factory.create(INVALID_ID)).to.be.revertedWith('FACTORY_CONTRACT_DEPLOYMENT_FAILED');
+    it('reverts and bubbles up revert reasons', async () => {
+      await expect(factory.create(INVALID_ID)).to.be.revertedWith('NON_ZERO_ID');
     });
   });
 
