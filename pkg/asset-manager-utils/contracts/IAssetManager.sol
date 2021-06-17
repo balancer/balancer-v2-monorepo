@@ -29,7 +29,7 @@ interface IAssetManager {
     /**
      * @return the current assets under management of this asset manager
      */
-    function getAUM(bytes32 poolid) external view returns (uint256);
+    function getAUM(bytes32 poolId) external view returns (uint256);
 
     /**
      * @return poolCash - The up-to-date cash balance of the pool
