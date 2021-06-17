@@ -27,14 +27,9 @@ interface IAssetManager {
     function setConfig(bytes32 poolId, bytes calldata config) external;
 
     /**
-     * @notice Returns the invested balance
-     */
-    function balanceOf(bytes32 poolId) external view returns (uint256);
-
-    /**
      * @return the current assets under management of this asset manager
      */
-    function readAUM() external view returns (uint256);
+    function getAUM(bytes32 poolId) external view returns (uint256);
 
     /**
      * @return poolCash - The up-to-date cash balance of the pool

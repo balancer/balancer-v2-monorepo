@@ -18,10 +18,7 @@ import "../RewardsAssetManager.sol";
 
 pragma solidity ^0.7.0;
 
-// solhint-disable no-empty-blocks
-// solhint-disable var-name-mixedcase
-// solhint-disable private-vars-leading-underscore
-contract TestAssetManager is RewardsAssetManager {
+contract MockRewardsAssetManager is RewardsAssetManager {
     using Math for uint256;
 
     constructor(
@@ -30,34 +27,19 @@ contract TestAssetManager is RewardsAssetManager {
         IERC20 _token
     ) RewardsAssetManager(_vault, _poolId, _token) {}
 
-    /**
-     * @dev Should be called in same transaction as deployment through a factory contract
-     */
     function initialise(bytes32 pId) public {
         _initialise(pId);
     }
 
-    /**
-     * @param amount - the amount of tokens being deposited
-     * @param aum - the current assets under management of this asset manager
-     * @return the number of shares to mint for the pool
-     */
-    function _invest(uint256 amount, uint256 aum) internal pure override returns (uint256) {
+    function _invest(uint256 amount, uint256) internal pure override returns (uint256) {
         return amount;
     }
 
-    /**
-     * @param amount - the amount of tokens being divested
-     * @return the number of tokens to return to the vault
-     */
-    function _divest(uint256 amount, uint256 aum) internal pure override returns (uint256) {
+    function _divest(uint256 amount, uint256) internal pure override returns (uint256) {
         return amount;
     }
 
-    /**
-     * @return the current assets under management of this asset manager
-     */
-    function readAUM() public view override returns (uint256) {
+    function _getAUM() internal view override returns (uint256) {
         return token.balanceOf(address(this));
     }
 }
