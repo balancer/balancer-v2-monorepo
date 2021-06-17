@@ -20,8 +20,12 @@ interface IAssetManager {
         uint64 targetPercentage;
         uint64 upperCriticalPercentage;
         uint64 lowerCriticalPercentage;
-        uint64 feePercentage;
     }
+
+    /**
+     * @notice Emitted when asset manager is rebalanced
+     */
+    event Rebalance(bytes32 poolId);
 
     /**
      * @notice Returns the pool's config
@@ -56,11 +60,6 @@ interface IAssetManager {
     function maxInvestableBalance(bytes32 poolId) external view returns (int256);
 
     /**
-     * @return the rebalance fee for the pool
-     */
-    function getRebalanceFee(bytes32 poolId) external view returns (uint256);
-
-    /**
      * @notice Updates the Vault on the value of the pool's investment returns
      */
     function updateBalanceOfPool(bytes32 poolId) external;
@@ -79,8 +78,8 @@ interface IAssetManager {
 
     /**
      * @notice Rebalances funds between the pool and the asset manager to maintain target investment percentage.
-     * If the pool is below its critical threshold for the amount invested then calling this will send a small reward
-     * to the sender
+     * @param poolId - the poolId of the pool to be rebalanced
+     * @param force - a boolean representing whether a rebalance should be forced even when the pool is near balance
      */
-    function rebalance(bytes32 poolId) external;
+    function rebalance(bytes32 poolId, bool force) external;
 }
