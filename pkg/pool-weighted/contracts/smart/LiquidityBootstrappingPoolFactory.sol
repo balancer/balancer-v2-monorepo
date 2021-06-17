@@ -52,7 +52,8 @@ contract LiquidityBootstrappingPoolFactory is BasePoolSplitCodeFactory, FactoryW
                     swapFeePercentage,
                     pauseWindowDuration,
                     bufferPeriodDuration,
-                    owner
+                    owner,
+                    swapEnabledOnStart
                 )
             );
     }
