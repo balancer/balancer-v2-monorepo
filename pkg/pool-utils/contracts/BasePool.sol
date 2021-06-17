@@ -173,7 +173,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _swapFeePercentage;
     }
 
-    function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
+    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
 
@@ -186,7 +186,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig)
-        external
+        public
         virtual
         authenticate
         whenNotPaused
@@ -207,8 +207,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
-            (actionId == getActionId(BasePool.setSwapFeePercentage.selector)) ||
-            (actionId == getActionId(BasePool.setAssetManagerPoolConfig.selector));
+            (actionId == getActionId(this.setSwapFeePercentage.selector)) ||
+            (actionId == getActionId(this.setAssetManagerPoolConfig.selector));
     }
 
     // Join / Exit Hooks
