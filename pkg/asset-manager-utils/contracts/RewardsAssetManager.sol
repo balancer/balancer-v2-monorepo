@@ -21,6 +21,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "./IAssetManager.sol";
 
+import "hardhat/console.sol";
+
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
@@ -115,10 +117,9 @@ abstract contract RewardsAssetManager is IAssetManager {
 
     /**
      * @dev Transfers capital into the asset manager, and then invests it
-     * @param pId - the id of the pool depositing funds into this asset manager
      * @param amount - the amount of tokens being deposited
      */
-    function capitalIn(bytes32 pId, uint256 amount) public override withCorrectPool(pId) {
+    function _capitalIn(uint256 amount) private {
         uint256 aum = _getAUM();
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
         uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _config.targetPercentage);
@@ -127,9 +128,9 @@ abstract contract RewardsAssetManager is IAssetManager {
 
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
         // Update the vault with new managed balance accounting for returns
-        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, pId, token, poolManaged);
+        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, poolId, token, poolManaged);
         // Pull funds from the vault
-        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, pId, token, amount);
+        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, poolId, token, amount);
 
         vault.managePoolBalance(ops);
 
@@ -138,10 +139,9 @@ abstract contract RewardsAssetManager is IAssetManager {
 
     /**
      * @notice Divests capital back to the asset manager and then sends it to the vault
-     * @param pId - the id of the pool withdrawing funds from this asset manager
      * @param amount - the amount of tokens to withdraw to the vault
      */
-    function capitalOut(bytes32 pId, uint256 amount) public override withCorrectPool(pId) {
+    function _capitalOut(uint256 amount) private {
         uint256 aum = _getAUM();
         uint256 tokensOut = _divest(amount, aum);
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
@@ -151,9 +151,9 @@ abstract contract RewardsAssetManager is IAssetManager {
 
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
         // Update the vault with new managed balance accounting for returns
-        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, pId, token, aum);
+        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, poolId, token, aum);
         // Send funds back to the vault
-        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, pId, token, tokensOut);
+        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, poolId, token, tokensOut);
 
         vault.managePoolBalance(ops);
     }
@@ -238,11 +238,11 @@ abstract contract RewardsAssetManager is IAssetManager {
         if (targetInvestment > poolManaged) {
             // Pool is under-invested so add more funds
             uint256 rebalanceAmount = targetInvestment.sub(poolManaged);
-            capitalIn(poolId, rebalanceAmount);
+            _capitalIn(rebalanceAmount);
         } else {
             // Pool is over-invested so remove some funds
             uint256 rebalanceAmount = poolManaged.sub(targetInvestment);
-            capitalOut(poolId, rebalanceAmount);
+            _capitalOut(rebalanceAmount);
         }
 
         emit Rebalance(poolId);
