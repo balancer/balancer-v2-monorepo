@@ -185,7 +185,7 @@ describe('Rewards Asset manager', function () {
       });
 
       it('allows anyone to deposit pool assets to an investment manager to get to the target investable %', async () => {
-        const amountToDeposit = await assetManager.maxInvestableBalance(poolId);
+        const amountToDeposit = await calcRebalanceAmount(assetManager, poolId);
 
         await expectBalanceChange(() => assetManager.connect(lp).capitalIn(poolId, amountToDeposit), tokens, [
           { account: assetManager.address, changes: { DAI: amountToDeposit } },
@@ -194,7 +194,7 @@ describe('Rewards Asset manager', function () {
       });
 
       it('prevents depositing pool assets to an investment manager over the target investable %', async () => {
-        const maxInvestment = await assetManager.maxInvestableBalance(poolId);
+        const maxInvestment = await calcRebalanceAmount(assetManager, poolId);
         const overInvestmentAmount = maxInvestment.add(1);
 
         expect(assetManager.connect(lp).capitalIn(poolId, overInvestmentAmount)).to.be.revertedWith(
@@ -203,7 +203,7 @@ describe('Rewards Asset manager', function () {
       });
 
       it("updates the pool's managed balance", async () => {
-        const amountToDeposit = await assetManager.maxInvestableBalance(poolId);
+        const amountToDeposit = await calcRebalanceAmount(assetManager, poolId);
 
         await assetManager.connect(lp).capitalIn(poolId, amountToDeposit);
 
@@ -230,7 +230,7 @@ describe('Rewards Asset manager', function () {
         await tokens.DAI.mint(assetManager.address, poolCash.mul(101).div(100));
 
         // should be overinvested
-        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+        const maxInvestableBalance = await calcRebalanceAmount(assetManager, poolId);
         expect(maxInvestableBalance).to.be.lt(0);
       });
 
@@ -260,7 +260,7 @@ describe('Rewards Asset manager', function () {
         await tokens.DAI.mint(assetManager.address, poolCash.mul(99).div(100));
 
         // should be under invested
-        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+        const maxInvestableBalance = await calcRebalanceAmount(assetManager, poolId);
         expect(maxInvestableBalance).to.gt(0);
       });
 
@@ -289,12 +289,12 @@ describe('Rewards Asset manager', function () {
         await tokens.DAI.mint(assetManager.address, poolCash.mul(101).div(100));
 
         // should be overinvested
-        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+        const maxInvestableBalance = await calcRebalanceAmount(assetManager, poolId);
         expect(maxInvestableBalance).to.be.lt(0);
       });
 
       it('allows anyone to withdraw assets to a pool to get to the target investable %', async () => {
-        const amountToWithdraw = (await assetManager.maxInvestableBalance(poolId)).mul(-1);
+        const amountToWithdraw = (await calcRebalanceAmount(assetManager, poolId)).mul(-1);
 
         await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
           { account: assetManager.address, changes: { DAI: amountToWithdraw.mul(-1) } },
@@ -303,7 +303,7 @@ describe('Rewards Asset manager', function () {
       });
 
       it('prevents depositing pool assets to an investment manager over the target investable %', async () => {
-        const maxDivestment = (await assetManager.maxInvestableBalance(poolId)).mul(-1);
+        const maxDivestment = (await calcRebalanceAmount(assetManager, poolId)).mul(-1);
         const overDivestmentAmount = maxDivestment.add(1);
 
         expect(assetManager.connect(lp).capitalOut(poolId, overDivestmentAmount)).to.be.revertedWith(
@@ -312,7 +312,7 @@ describe('Rewards Asset manager', function () {
       });
 
       it("updates the pool's managed balance", async () => {
-        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+        const maxInvestableBalance = await calcRebalanceAmount(assetManager, poolId);
 
         // return a portion of the return to the vault to serve as a buffer
         const amountToWithdraw = maxInvestableBalance.abs();
@@ -332,7 +332,7 @@ describe('Rewards Asset manager', function () {
         // Asset manager experiences gains far in excess of pool value
         await tokens.DAI.mint(assetManager.address, poolAssets.mul(10));
 
-        const amountToWithdraw = (await assetManager.maxInvestableBalance(poolId)).mul(-1);
+        const amountToWithdraw = (await calcRebalanceAmount(assetManager, poolId)).mul(-1);
 
         await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
           { account: assetManager.address, changes: { DAI: -amountToWithdraw } },
@@ -351,9 +351,7 @@ describe('Rewards Asset manager', function () {
       });
 
       it('transfers the expected number of tokens to the Vault', async () => {
-        const config = await assetManager.getInvestmentConfig(poolId);
-        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
-        const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, config);
+        const expectedRebalanceAmount = await calcRebalanceAmount(assetManager, poolId);
 
         await expectBalanceChange(() => assetManager.rebalance(poolId, force), tokens, [
           { account: assetManager.address, changes: { DAI: expectedRebalanceAmount } },
@@ -363,7 +361,7 @@ describe('Rewards Asset manager', function () {
 
       it('returns the pool to its target allocation', async () => {
         await assetManager.rebalance(poolId, force);
-        const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
+        const differenceFromTarget = await calcRebalanceAmount(assetManager, poolId);
         expect(differenceFromTarget.abs()).to.be.lte(1);
       });
 
@@ -401,8 +399,8 @@ describe('Rewards Asset manager', function () {
           await tokens.DAI.mint(assetManager.address, poolCash.mul(101).div(100));
 
           // should be overinvested
-          const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
-          expect(maxInvestableBalance).to.be.lt(0);
+          const expectedRebalanceAmount = await calcRebalanceAmount(assetManager, poolId);
+          expect(expectedRebalanceAmount).to.be.lt(0);
         });
 
         context('when forced', () => {
@@ -440,7 +438,7 @@ describe('Rewards Asset manager', function () {
           const poolController = lp; // TODO
 
           // Ensure that the pool is invested below its target level but above than critical level
-          const targetInvestmentAmount = await assetManager.maxInvestableBalance(poolId);
+          const targetInvestmentAmount = await calcRebalanceAmount(assetManager, poolId);
           await assetManager.connect(poolController).capitalIn(poolId, targetInvestmentAmount.mul(99).div(100));
         });
 

@@ -38,12 +38,6 @@ interface IAssetManager {
     function getPoolBalances(bytes32 poolId) external view returns (uint256 poolCash, uint256 poolManaged);
 
     /**
-     * @return The difference in tokens between the target investment
-     * and the currently invested amount (i.e. the amount that can be invested)
-     */
-    function maxInvestableBalance(bytes32 poolId) external view returns (int256);
-
-    /**
      * @notice Updates the Vault on the value of the pool's investment returns
      */
     function updateBalanceOfPool(bytes32 poolId) external;

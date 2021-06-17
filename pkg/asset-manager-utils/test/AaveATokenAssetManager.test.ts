@@ -203,7 +203,7 @@ describe('Aave Asset manager', function () {
 
     describe('capitalOut', () => {
       beforeEach(async () => {
-        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+        const maxInvestableBalance = await calcRebalanceAmount(assetManager, poolId);
 
         await assetManager.connect(poolController).capitalIn(poolId, maxInvestableBalance.div(2));
 
@@ -239,7 +239,7 @@ describe('Aave Asset manager', function () {
       await assetManager.connect(poolController).capitalIn(poolId, amountToDeposit);
 
       // should be perfectly balanced
-      const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+      const maxInvestableBalance = await calcRebalanceAmount(assetManager, poolId);
       expect(maxInvestableBalance).to.equal(bn(0));
 
       // Simulate a return on asset manager's investment
@@ -260,7 +260,7 @@ describe('Aave Asset manager', function () {
 
     describe('capitalOut', () => {
       it('allows anyone to withdraw assets to a pool to get to the target investable %', async () => {
-        const amountToWithdraw = (await assetManager.maxInvestableBalance(poolId)).mul(-1);
+        const amountToWithdraw = (await calcRebalanceAmount(assetManager, poolId)).mul(-1);
         // await assetManager.connect(poolController).setInvestablePercent(poolId, fp(0));
 
         await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
@@ -270,7 +270,7 @@ describe('Aave Asset manager', function () {
       });
 
       it("updates the pool's managed balance", async () => {
-        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+        const maxInvestableBalance = await calcRebalanceAmount(assetManager, poolId);
 
         // return a portion of the return to the vault to serve as a buffer
         const amountToWithdraw = maxInvestableBalance.abs();
@@ -284,7 +284,7 @@ describe('Aave Asset manager', function () {
       });
 
       it('allows the pool to withdraw tokens to rebalance', async () => {
-        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+        const maxInvestableBalance = await calcRebalanceAmount(assetManager, poolId);
 
         // return a portion of the return to the vault to serve as a buffer
         const amountToWithdraw = maxInvestableBalance.abs();
@@ -335,9 +335,7 @@ describe('Aave Asset manager', function () {
       });
 
       it('transfers the expected number of tokens to the Vault', async () => {
-        const config = await assetManager.getInvestmentConfig(poolId);
-        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
-        const expectedRebalanceAmount = calcRebalanceAmount(poolCash, poolManaged, config);
+        const expectedRebalanceAmount = await calcRebalanceAmount(assetManager, poolId);
 
         await expectBalanceChange(() => assetManager.rebalance(poolId, force), tokens, [
           { account: lendingPool.address, changes: { DAI: expectedRebalanceAmount } },
@@ -347,7 +345,7 @@ describe('Aave Asset manager', function () {
 
       it('returns the pool to its target allocation', async () => {
         await assetManager.rebalance(poolId, force);
-        const differenceFromTarget = await assetManager.maxInvestableBalance(poolId);
+        const differenceFromTarget = await calcRebalanceAmount(assetManager, poolId);
         expect(differenceFromTarget.abs()).to.be.lte(1);
       });
 
@@ -383,11 +381,11 @@ describe('Aave Asset manager', function () {
         sharedBeforeEach(async () => {
           const poolController = lp; // TODO
           await assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(config));
-          const amountToDeposit = await assetManager.maxInvestableBalance(poolId);
+          const amountToDeposit = await calcRebalanceAmount(assetManager, poolId);
           await assetManager.connect(poolController).capitalIn(poolId, amountToDeposit);
 
           // should be perfectly balanced
-          const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+          const maxInvestableBalance = await calcRebalanceAmount(assetManager, poolId);
           expect(maxInvestableBalance).to.equal(bn(0));
 
           // Simulate a return on asset manager's investment
@@ -411,11 +409,11 @@ describe('Aave Asset manager', function () {
     context('when pool is above upper critical investment level', () => {
       sharedBeforeEach(async () => {
         const poolController = lp; // TODO
-        const amountToDeposit = await assetManager.maxInvestableBalance(poolId);
+        const amountToDeposit = await calcRebalanceAmount(assetManager, poolId);
         await assetManager.connect(poolController).capitalIn(poolId, amountToDeposit);
 
         // should be perfectly balanced
-        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
+        const maxInvestableBalance = await calcRebalanceAmount(assetManager, poolId);
         expect(maxInvestableBalance).to.equal(bn(0));
 
         // Simulate a return on asset manager's investment which results in exceeding the upper critical level
@@ -442,7 +440,7 @@ describe('Aave Asset manager', function () {
         sharedBeforeEach(async () => {
           const poolController = lp; // TODO
           // Ensure that the pool is invested below its target level but above than critical level
-          const targetInvestmentAmount = await assetManager.maxInvestableBalance(poolId);
+          const targetInvestmentAmount = await calcRebalanceAmount(assetManager, poolId);
           await assetManager.connect(poolController).capitalIn(poolId, targetInvestmentAmount.div(2));
         });
 

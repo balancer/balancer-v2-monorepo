@@ -82,18 +82,6 @@ abstract contract RewardsAssetManager is IAssetManager {
         poolId = pId;
     }
 
-    // Investment configuration
-
-    function maxInvestableBalance(bytes32 pId) public view override withCorrectPool(pId) returns (int256) {
-        return _maxInvestableBalance(_getAUM());
-    }
-
-    function _maxInvestableBalance(uint256 aum) internal view returns (int256) {
-        (uint256 poolCash, , , ) = vault.getPoolTokenInfo(poolId, token);
-        // Calculate the managed portion of funds locally as the Vault is unaware of returns
-        return int256(FixedPoint.mulDown(poolCash.add(aum), _config.targetPercentage)) - int256(aum);
-    }
-
     // Reporting
 
     function updateBalanceOfPool(bytes32 pId) public override withCorrectPool(pId) {

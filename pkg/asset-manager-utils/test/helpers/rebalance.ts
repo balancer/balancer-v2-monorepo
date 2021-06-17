@@ -1,4 +1,4 @@
-import { BigNumber, ethers } from 'ethers';
+import { BigNumber, Contract, ethers } from 'ethers';
 import { BigNumberish, bn, fp } from '../../../../pvt/helpers/src/numbers';
 
 export type InvestmentConfig = {
@@ -15,16 +15,23 @@ export function encodeInvestmentConfig(config: InvestmentConfig): string {
 }
 
 /**
+ * @param assetManager - the asset manager being queried
+ * @param poolId - the poolId of the pool being queried
+ * @returns the amount of tokens sent from the vault to the asset manager. Negative values indicate tokens being sent to the vault.
+ */
+export const calcRebalanceAmount = async (assetManager: Contract, poolId: string): Promise<BigNumber> => {
+  const config = await assetManager.getInvestmentConfig(poolId);
+  const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+  return calcDifferenceFromTarget(poolCash, poolManaged, config);
+};
+
+/**
  * @param poolCash - the amount of tokens held by the pool in cash
  * @param poolManaged - the amount of tokens held by the pool in it's asset manager
  * @param config - the investment config of the pool
  * @returns the amount of tokens sent from the vault to the asset manager. Negative values indicate tokens being sent to the vault.
  */
-export const calcRebalanceAmount = (
-  poolCash: BigNumber,
-  poolManaged: BigNumber,
-  config: InvestmentConfig
-): BigNumber => {
+const calcDifferenceFromTarget = (poolCash: BigNumber, poolManaged: BigNumber, config: InvestmentConfig): BigNumber => {
   const poolAssets = poolCash.add(poolManaged);
   const targetInvestmentAmount = poolAssets.mul(config.targetPercentage).div(fp(1));
 
