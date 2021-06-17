@@ -15,29 +15,34 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-vault/contracts/AssetHelpers.sol";
+import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-pool-utils/contracts/interfaces/IBasePoolRelayer.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/misc/IWETH.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 
 import "./IAssetManager.sol";
 
-contract RebalancingRelayer is IBasePoolRelayer {
+contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
     // We start at a non-zero value to make EIP2200 refunds lower, meaning there'll be a higher chance of them being
     // fully effective.
-    bytes32 constant internal _EMPTY_CALLED_POOL = bytes32(0x0000000000000000000000000000000000000000000000000000000000000001);
+    bytes32 internal constant _EMPTY_CALLED_POOL = bytes32(
+        0x0000000000000000000000000000000000000000000000000000000000000001
+    );
 
-    modifier rebalance(bytes32 poolId) {
+    modifier rebalance(bytes32 poolId, IAsset[] memory assets) {
         _require(_calledPool == _EMPTY_CALLED_POOL, Errors.REBALANCING_RELAYER_REENTERED);
         _calledPool = poolId;
         _;
         _calledPool = _EMPTY_CALLED_POOL;
-        _rebalance(poolId);
+        _rebalance(poolId, _translateToIERC20(assets));
     }
 
     IVault public immutable vault;
     bytes32 internal _calledPool;
 
-    constructor (IVault _vault) {
+    constructor(IVault _vault, IWETH weth) AssetHelpers(weth) {
         vault = _vault;
         _calledPool = _EMPTY_CALLED_POOL;
     }
@@ -46,20 +51,28 @@ contract RebalancingRelayer is IBasePoolRelayer {
         return _calledPool == poolId;
     }
 
-    function joinPool(bytes32 poolId, IVault.JoinPoolRequest memory request) external payable rebalance(poolId) {
-        vault.joinPool(poolId, msg.sender, msg.sender, request);
+    function joinPool(
+        bytes32 poolId,
+        address recipient,
+        IVault.JoinPoolRequest memory request
+    ) external payable rebalance(poolId, request.assets) {
+        vault.joinPool{ value: msg.value }(poolId, msg.sender, recipient, request);
     }
 
-    function exitPool(bytes32 poolId, IVault.ExitPoolRequest memory request) external rebalance(poolId) {
-        vault.exitPool(poolId, msg.sender, msg.sender, request);
+    function exitPool(
+        bytes32 poolId,
+        address payable recipient,
+        IVault.ExitPoolRequest memory request
+    ) external rebalance(poolId, request.assets) {
+        vault.exitPool(poolId, msg.sender, recipient, request);
     }
 
-    function _rebalance(bytes32 poolId) internal {
-        (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
+    function _rebalance(bytes32 poolId, IERC20[] memory tokens) internal {
         for (uint256 i = 0; i < tokens.length; i++) {
-            (,,, address assetManager) = vault.getPoolTokenInfo(poolId, tokens[i]);
+            (, , , address assetManager) = vault.getPoolTokenInfo(poolId, tokens[i]);
             if (assetManager != address(0)) {
-                IAssetManager(assetManager).rebalance(poolId);
+                // Do not force a rebalance unless necessary
+                IAssetManager(assetManager).rebalance(poolId, false);
             }
         }
     }

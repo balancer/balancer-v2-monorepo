@@ -21,6 +21,20 @@ import "../RelayedBasePool.sol";
 contract MockRelayedBasePool is BasePool, RelayedBasePool {
     uint256 private constant _MINIMUM_BPT = 1e6;
 
+    event Join(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        bytes userData
+    );
+
+    event Exit(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        bytes userData
+    );
+
     constructor(
         IVault vault,
         IVault.PoolSpecialization specialization,
@@ -58,6 +72,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public override(BasePool, RelayedBasePool) returns (uint256[] memory, uint256[] memory) {
+        emit Join(poolId, sender, recipient, userData);
         return RelayedBasePool.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
     }
 
@@ -70,6 +85,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public override(BasePool, RelayedBasePool) returns (uint256[] memory, uint256[] memory) {
+        emit Exit(poolId, sender, recipient, userData);
         return RelayedBasePool.onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
     }
 

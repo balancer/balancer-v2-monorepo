@@ -14,52 +14,54 @@
 
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+
 import "../IAssetManager.sol";
 
 pragma solidity ^0.7.0;
 
 contract MockAssetManager is IAssetManager {
-    event Rebalanced(bytes32 poolId);
+    event Rebalanced(address assetManager, bytes32 poolId, IERC20 token, bool force);
 
-    mapping (bytes32 => PoolConfig) internal configs;
+    IERC20 internal _token;
 
-    function getPoolConfig(bytes32 poolId) external view override returns (PoolConfig memory) {
-        return configs[poolId];
+    constructor(IERC20 token) {
+        _token = token;
     }
 
-    function setPoolConfig(bytes32 poolId, PoolConfig calldata config) external override {
-        configs[poolId] = config;
+    function setConfig(bytes32, bytes memory) external override {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
-    function balanceOf(bytes32) external pure override returns (uint256) {
+    function getToken() external view override returns (IERC20) {
+        return _token;
+    }
+
+    function getAUM(bytes32) external pure override returns (uint256) {
         return 0;
     }
 
-    function readAUM() external pure override returns (uint256) {
-        return 0;
+    function getPoolBalances(bytes32) external pure override returns (uint256 poolCash, uint256 poolManaged) {
+        return (0, 0);
     }
 
     function maxInvestableBalance(bytes32) external pure override returns (int256) {
         return 0;
     }
 
-    function getRebalanceFee(bytes32) external pure override returns (uint256) {
-        return 0;
-    }
-
-    function updateBalanceOfPool(bytes32 poolId) external override {
-        // do nothing
+    function updateBalanceOfPool(bytes32) external override {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function capitalIn(bytes32, uint256) external pure override {
-        // do nothing
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function capitalOut(bytes32, uint256) external pure override {
-        // do nothing
+        // solhint-disable-previous-line no-empty-blocks
     }
 
-    function rebalance(bytes32 poolId) external override {
-        emit Rebalanced(poolId);
+    function rebalance(bytes32 poolId, bool force) external override {
+        emit Rebalanced(address(this), poolId, _token, force);
     }
 }

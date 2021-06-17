@@ -4,6 +4,7 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
@@ -17,22 +18,27 @@ import {
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
 
 describe('RebalancingRelayer', function () {
-  let user: SignerWithAddress, admin: SignerWithAddress, tokens: TokenList, poolId: string;
-  let vault: Contract, authorizer: Contract, relayer: Contract, pool: Contract, assetManager: Contract;
+  let poolId: string, tokens: TokenList;
+  let sender: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
+  let vault: Contract, authorizer: Contract, relayer: Contract, pool: Contract, assetManagers: Contract[];
 
   before('setup signer', async () => {
-    [, admin, user] = await ethers.getSigners();
+    [, admin, sender, recipient] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy relayer', async () => {
+    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
     authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
     vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
-    relayer = await deploy('RebalancingRelayer', { args: [vault.address] });
+    relayer = await deploy('RebalancingRelayer', { args: [vault.address, WETH.address] });
   });
 
   sharedBeforeEach('deploy sample pool', async () => {
     tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
-    assetManager = await deploy('MockAssetManager');
+    assetManagers = [
+      await deploy('MockAssetManager', { args: [tokens.first.address] }),
+      await deploy('MockAssetManager', { args: [tokens.second.address] }),
+    ];
     pool = await deploy('v2-pool-utils/MockRelayedBasePool', {
       args: [
         vault.address,
@@ -40,7 +46,7 @@ describe('RebalancingRelayer', function () {
         'BPT',
         'BPT',
         tokens.addresses,
-        Array(tokens.length).fill(assetManager.address),
+        assetManagers.map((a) => a.address),
         fp(0.1),
         0,
         0,
@@ -79,35 +85,59 @@ describe('RebalancingRelayer', function () {
 
         context('when the user did allow the relayer', () => {
           sharedBeforeEach('allow relayer', async () => {
-            await vault.connect(user).setRelayerApproval(user.address, relayer.address, true);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
           });
 
           it('joins the pool', async () => {
-            const previousUserBalance = await pool.balanceOf(user.address);
+            const previousSenderBalance = await pool.balanceOf(sender.address);
+            const previousRecipientBalance = await pool.balanceOf(recipient.address);
             const previousRelayerBalance = await pool.balanceOf(relayer.address);
 
-            await relayer.connect(user).joinPool(poolId, request);
+            const receipt = await relayer.connect(sender).joinPool(poolId, recipient.address, request);
 
-            const currentUserBalance = await pool.balanceOf(user.address);
-            expect(currentUserBalance.gt(previousUserBalance)).to.be.true;
+            expectEvent.inIndirectReceipt(await receipt.wait(), pool.interface, 'Join', {
+              poolId,
+              sender: sender.address,
+              recipient: recipient.address,
+              userData: request.userData,
+            });
+
+            const currentSenderBalance = await pool.balanceOf(sender.address);
+            expect(currentSenderBalance).to.be.equal(previousSenderBalance);
+
+            const currentRecipientBalance = await pool.balanceOf(recipient.address);
+            expect(currentRecipientBalance.gt(previousRecipientBalance)).to.be.true;
 
             const currentRelayerBalance = await pool.balanceOf(relayer.address);
             expect(currentRelayerBalance).to.be.equal(previousRelayerBalance);
           });
 
           it('rebalances the pool', async () => {
-            const receipt = await relayer.connect(user).joinPool(poolId, request);
-            expectEvent.inIndirectReceipt(await receipt.wait(), assetManager.interface, 'Rebalanced', { poolId });
+            const receipt = await relayer.connect(sender).joinPool(poolId, recipient.address, request);
+
+            expectEvent.inIndirectReceipt(await receipt.wait(), assetManagers[0].interface, 'Rebalanced', {
+              poolId,
+              assetManager: assetManagers[0].address,
+              token: tokens.first.address,
+              force: false,
+            });
+
+            expectEvent.inIndirectReceipt(await receipt.wait(), assetManagers[0].interface, 'Rebalanced', {
+              poolId,
+              assetManager: assetManagers[1].address,
+              token: tokens.second.address,
+              force: false,
+            });
           });
         });
 
         context('when the user did not allow the relayer', () => {
           sharedBeforeEach('disallow relayer', async () => {
-            await vault.connect(user).setRelayerApproval(user.address, relayer.address, false);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, false);
           });
 
           it('reverts', async () => {
-            await expect(relayer.connect(user).joinPool(poolId, request)).to.be.revertedWith(
+            await expect(relayer.connect(sender).joinPool(poolId, recipient.address, request)).to.be.revertedWith(
               'USER_DOESNT_ALLOW_RELAYER'
             );
           });
@@ -120,7 +150,9 @@ describe('RebalancingRelayer', function () {
           });
 
           it('reverts', async () => {
-            await expect(relayer.connect(user).joinPool(poolId, request)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            await expect(relayer.connect(sender).joinPool(poolId, recipient.address, request)).to.be.revertedWith(
+              'SENDER_NOT_ALLOWED'
+            );
           });
         });
       });
@@ -128,9 +160,9 @@ describe('RebalancingRelayer', function () {
 
     context('when going through the vault', () => {
       it('reverts', async () => {
-        await expect(vault.connect(user).joinPool(poolId, user.address, user.address, request)).to.be.revertedWith(
-          'BASE_POOL_RELAYER_NOT_CALLED'
-        );
+        await expect(
+          vault.connect(sender).joinPool(poolId, sender.address, recipient.address, request)
+        ).to.be.revertedWith('BASE_POOL_RELAYER_NOT_CALLED');
       });
     });
   });
@@ -170,41 +202,57 @@ describe('RebalancingRelayer', function () {
 
         context('when the user did allow the relayer', () => {
           sharedBeforeEach('allow relayer', async () => {
-            await vault.connect(user).setRelayerApproval(user.address, relayer.address, true);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
           });
 
           sharedBeforeEach('join pool', async () => {
             const action = await actionId(vault, 'joinPool');
             await authorizer.connect(admin).grantRole(action, relayer.address);
-            await relayer.connect(user).joinPool(poolId, joinRequest);
+            await relayer.connect(sender).joinPool(poolId, sender.address, joinRequest);
           });
 
           it('exits the pool', async () => {
-            const previousUserBalance = await pool.balanceOf(user.address);
+            const previousSenderBalance = await pool.balanceOf(sender.address);
             const previousRelayerBalance = await pool.balanceOf(relayer.address);
 
-            await relayer.connect(user).exitPool(poolId, exitRequest);
+            const receipt = await relayer.connect(sender).exitPool(poolId, recipient.address, exitRequest);
 
-            const currentUserBalance = await pool.balanceOf(user.address);
-            expect(currentUserBalance.lt(previousUserBalance)).to.be.true;
+            expectEvent.inIndirectReceipt(await receipt.wait(), pool.interface, 'Exit', {
+              poolId,
+              sender: sender.address,
+              recipient: recipient.address,
+              userData: exitRequest.userData,
+            });
+
+            const currentSenderBalance = await pool.balanceOf(sender.address);
+            expect(currentSenderBalance.lt(previousSenderBalance)).to.be.true;
 
             const currentRelayerBalance = await pool.balanceOf(relayer.address);
             expect(currentRelayerBalance).to.be.equal(previousRelayerBalance);
           });
 
           it('rebalances the pool', async () => {
-            const receipt = await relayer.connect(user).exitPool(poolId, exitRequest);
-            expectEvent.inIndirectReceipt(await receipt.wait(), assetManager.interface, 'Rebalanced', { poolId });
+            const receipt = await relayer.connect(sender).exitPool(poolId, recipient.address, exitRequest);
+
+            expectEvent.inIndirectReceipt(await receipt.wait(), assetManagers[0].interface, 'Rebalanced', {
+              poolId,
+              token: tokens.first.address,
+            });
+
+            expectEvent.inIndirectReceipt(await receipt.wait(), assetManagers[0].interface, 'Rebalanced', {
+              poolId,
+              token: tokens.second.address,
+            });
           });
         });
 
         context('when the user did not allow the relayer', () => {
           sharedBeforeEach('disallow relayer', async () => {
-            await vault.connect(user).setRelayerApproval(user.address, relayer.address, false);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, false);
           });
 
           it('reverts', async () => {
-            await expect(relayer.connect(user).exitPool(poolId, exitRequest)).to.be.revertedWith(
+            await expect(relayer.connect(sender).exitPool(poolId, recipient.address, exitRequest)).to.be.revertedWith(
               'USER_DOESNT_ALLOW_RELAYER'
             );
           });
@@ -217,7 +265,9 @@ describe('RebalancingRelayer', function () {
           });
 
           it('reverts', async () => {
-            await expect(relayer.connect(user).exitPool(poolId, exitRequest)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            await expect(relayer.connect(sender).exitPool(poolId, recipient.address, exitRequest)).to.be.revertedWith(
+              'SENDER_NOT_ALLOWED'
+            );
           });
         });
       });
@@ -225,9 +275,9 @@ describe('RebalancingRelayer', function () {
 
     context('when going through the vault', () => {
       it('reverts', async () => {
-        await expect(vault.connect(user).exitPool(poolId, user.address, user.address, exitRequest)).to.be.revertedWith(
-          'BASE_POOL_RELAYER_NOT_CALLED'
-        );
+        await expect(
+          vault.connect(sender).exitPool(poolId, sender.address, sender.address, exitRequest)
+        ).to.be.revertedWith('BASE_POOL_RELAYER_NOT_CALLED');
       });
     });
   });
