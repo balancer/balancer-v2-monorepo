@@ -42,7 +42,7 @@ contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
     IVault public immutable vault;
     bytes32 internal _calledPool;
 
-    constructor(IVault _vault, IWETH weth) AssetHelpers(weth) {
+    constructor(IVault _vault) AssetHelpers(_vault.WETH()) {
         vault = _vault;
         _calledPool = _EMPTY_CALLED_POOL;
     }
@@ -71,7 +71,11 @@ contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
         for (uint256 i = 0; i < tokens.length; i++) {
             (, , , address assetManager) = vault.getPoolTokenInfo(poolId, tokens[i]);
             if (assetManager != address(0)) {
-                // Do not force a rebalance unless necessary
+                // Note that malicious Asset Managers could perform reentrant calls at this stage and e.g. try to exit
+                // the Pool before Managers for other tokens have rebalanced. This is considered a non-issue as a) no
+                // exploits should be enabled by allowing for this, and b) Pools trust their Asset Managers.
+
+                // Do a non-forced rebalance
                 IAssetManager(assetManager).rebalance(poolId, false);
             }
         }

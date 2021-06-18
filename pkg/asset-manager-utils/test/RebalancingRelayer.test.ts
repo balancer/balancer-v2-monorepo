@@ -4,7 +4,6 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
@@ -27,10 +26,9 @@ describe('RebalancingRelayer', function () {
   });
 
   sharedBeforeEach('deploy relayer', async () => {
-    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
     authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
     vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
-    relayer = await deploy('RebalancingRelayer', { args: [vault.address, WETH.address] });
+    relayer = await deploy('RebalancingRelayer', { args: [vault.address] });
   });
 
   sharedBeforeEach('deploy sample pool', async () => {
@@ -122,7 +120,7 @@ describe('RebalancingRelayer', function () {
               force: false,
             });
 
-            expectEvent.inIndirectReceipt(await receipt.wait(), assetManagers[0].interface, 'Rebalanced', {
+            expectEvent.inIndirectReceipt(await receipt.wait(), assetManagers[1].interface, 'Rebalanced', {
               poolId,
               assetManager: assetManagers[1].address,
               token: tokens.second.address,
@@ -239,7 +237,7 @@ describe('RebalancingRelayer', function () {
               token: tokens.first.address,
             });
 
-            expectEvent.inIndirectReceipt(await receipt.wait(), assetManagers[0].interface, 'Rebalanced', {
+            expectEvent.inIndirectReceipt(await receipt.wait(), assetManagers[1].interface, 'Rebalanced', {
               poolId,
               token: tokens.second.address,
             });
