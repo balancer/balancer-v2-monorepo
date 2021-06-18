@@ -21,7 +21,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "./IAssetManager.sol";
 
-
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
@@ -189,6 +188,10 @@ abstract contract RewardsAssetManager is IAssetManager {
         require(
             config.targetPercentage <= config.upperCriticalPercentage,
             "Target must be less than or equal to upper critical level"
+        );
+        require(
+            config.targetPercentage <= FixedPoint.ONE.mul(9).divDown(10),
+            "Target must be less than or equal to 90%"
         );
         require(
             config.lowerCriticalPercentage <= config.targetPercentage,
