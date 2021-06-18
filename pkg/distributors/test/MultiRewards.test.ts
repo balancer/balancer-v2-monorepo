@@ -171,9 +171,7 @@ describe('Staking contract', () => {
     const rewardAmount = fp(1);
     sharedBeforeEach(async () => {
       await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
-    });
 
-    beforeEach(async () => {
       const bptBalance = await pool.balanceOf(lp.address);
 
       await pool.connect(lp).approve(stakingContract.address, bptBalance);
@@ -275,7 +273,7 @@ describe('Staking contract', () => {
     describe('with a second distribution from the same rewarder', () => {
       const secondRewardAmount = fp(2);
 
-      beforeEach(async () => {
+      sharedBeforeEach(async () => {
         await stakingContract
           .connect(mockAssetManager)
           .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
@@ -297,7 +295,7 @@ describe('Staking contract', () => {
     describe('with a second distributions from another rewarder', () => {
       const secondRewardAmount = fp(2);
 
-      beforeEach(async () => {
+      sharedBeforeEach(async () => {
         await stakingContract
           .connect(mockAssetManager)
           .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
