@@ -49,18 +49,6 @@ interface IAssetManager {
     function updateBalanceOfPool(bytes32 poolId) external;
 
     /**
-     * @dev Transfers capital into the asset manager, and then invests it
-     * @param amount - the amount of tokens being deposited
-     */
-    function capitalIn(bytes32 poolId, uint256 amount) external;
-
-    /**
-     * @notice Divests capital back to the asset manager and then sends it to the vault
-     * @param amount - the amount of tokens to withdraw to the vault
-     */
-    function capitalOut(bytes32 poolId, uint256 amount) external;
-
-    /**
      * @notice Rebalances funds between the pool and the asset manager to maintain target investment percentage.
      * @param poolId - the poolId of the pool to be rebalanced
      * @param force - a boolean representing whether a rebalance should be forced even when the pool is near balance
