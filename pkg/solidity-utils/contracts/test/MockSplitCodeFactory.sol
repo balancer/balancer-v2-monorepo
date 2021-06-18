@@ -20,7 +20,7 @@ contract MockFactoryCreatedContract {
     bytes32 private _id;
 
     constructor(bytes32 id) {
-        require(id != 0);
+        require(id != 0, "NON_ZERO_ID");
         _id = id;
     }
 

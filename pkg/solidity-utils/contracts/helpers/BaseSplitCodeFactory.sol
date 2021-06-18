@@ -177,7 +177,15 @@ abstract contract BaseSplitCodeFactory {
             destination := create(0, add(creationCode, 32), mload(creationCode))
         }
 
-        _require(destination != address(0), Errors.FACTORY_CONTRACT_DEPLOYMENT_FAILED);
+        if (destination == address(0)) {
+            // Bubble up inner revert reason
+            // solhint-disable-next-line no-inline-assembly
+            assembly {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+        }
+
         return destination;
     }
 
