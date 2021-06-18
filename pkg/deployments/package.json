@@ -3,10 +3,6 @@
   "version": "1.1.1",
   "description": "Addresses and ABIs of all Balancer V2 deployed contracts",
   "license": "GPL-3.0-only",
-  "files": [
-    "deployed/**/*",
-    "extra-abis/**/*"
-  ],
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/deployments#readme",
   "repository": {
     "type": "git",
@@ -17,45 +13,19 @@
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },
   "scripts": {
-    "deploy:hardhat": "hardhat --network hardhat deploy",
-    "deploy:local": "hardhat --network localhost deploy",
-    "deploy:rinkeby": "hardhat --network rinkeby deploy",
-    "deploy:kovan": "hardhat --network kovan deploy",
-    "deploy:ropsten": "hardhat --network ropsten deploy",
-    "deploy:goerli": "hardhat --network goerli deploy",
-    "lint": "yarn lint:solidity && yarn lint:typescript",
-    "lint:solidity": "solhint 'contracts/**/*.sol'",
-    "lint:typescript": "eslint . --ext .ts",
-    "export": "hardhat export --export-all deployments/addresses.json"
+    "lint": "eslint . --ext .ts",
+    "test": "hardhat test ./**/test/*.ts"
   },
   "devDependencies": {
-    "@balancer-labs/v2-common": "workspace:*",
-    "@balancer-labs/v2-pool-stable": "workspace:*",
-    "@balancer-labs/v2-pool-weighted": "workspace:*",
-    "@balancer-labs/v2-solidity-utils": "workspace:*",
-    "@balancer-labs/v2-standalone-utils": "workspace:*",
-    "@balancer-labs/v2-vault": "workspace:*",
     "@nomiclabs/hardhat-ethers": "^2.0.1",
-    "@tenderly/hardhat-tenderly": "1.1.0-beta.5",
-    "@types/lodash": "^4.14.161",
     "@types/node": "^14.6.0",
     "@typescript-eslint/eslint-plugin": "^4.1.1",
     "@typescript-eslint/parser": "^4.1.1",
-    "dotenv": "^8.2.0",
     "eslint": "^7.9.0",
     "eslint-plugin-prettier": "^3.1.4",
     "hardhat": "^2.2.0",
-    "hardhat-deploy": "^0.7.0-beta.32",
     "hardhat-local-networks-config-plugin": "0.0.5",
-    "lodash.frompairs": "^4.0.1",
-    "lodash.pick": "^4.4.0",
-    "lodash.range": "^3.2.0",
-    "lodash.times": "^4.3.2",
-    "lodash.zip": "^4.2.0",
     "prettier": "^2.1.2",
-    "prettier-plugin-solidity": "v1.0.0-alpha.59",
-    "solhint": "^3.2.0",
-    "solhint-plugin-prettier": "^0.0.4",
     "ts-node": "^8.10.2",
     "typescript": "^4.0.2"
   }
