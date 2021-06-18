@@ -21,7 +21,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "./IAssetManager.sol";
 
-import "hardhat/console.sol";
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
