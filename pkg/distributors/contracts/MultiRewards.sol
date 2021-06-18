@@ -58,11 +58,11 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
     mapping(IERC20 => mapping(address => mapping(IERC20 => Reward))) public rewardData;
     mapping(IERC20 => EnumerableSet.AddressSet) private _rewardTokens;
 
-    // stakingToken -> rewardToken -> rewarders
+    // pool -> rewardToken -> rewarders
     mapping(IERC20 => mapping(IERC20 => EnumerableSet.AddressSet)) private _rewarders;
     mapping(IERC20 => mapping(IERC20 => EnumerableSet.AddressSet)) private _whitelist;
 
-    // stakingToken -> rewarder ->  user -> reward token -> amount
+    // pool -> rewarder ->  user -> reward token -> amount
     mapping(IERC20 => mapping(address => mapping(address => mapping(IERC20 => uint256)))) public userRewardPerTokenPaid;
     mapping(IERC20 => mapping(address => mapping(address => mapping(IERC20 => uint256)))) public rewards;
 
@@ -75,18 +75,15 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         vault = _vault;
     }
 
-    modifier onlyWhitelistedRewarder(IERC20 stakingToken, IERC20 rewardsToken) {
+    modifier onlyWhitelistedRewarder(IERC20 pool, IERC20 rewardsToken) {
         require(
-            isWhitelistedToReward(stakingToken, rewardsToken, msg.sender),
+            isWhitelistedToReward(pool, rewardsToken, msg.sender),
             "only accessible by whitelisted rewarders and asset managers"
         );
         _;
     }
-    modifier onlyOwnerOrStakingToken(IERC20 stakingToken) {
-        require(
-            msg.sender == owner() || msg.sender == address(stakingToken),
-            "only accessible by the owner or the staking token"
-        );
+    modifier onlyOwnerOrPool(IERC20 pool) {
+        require(msg.sender == owner() || msg.sender == address(pool), "only accessible by the owner or the pool");
         _;
     }
 
@@ -94,29 +91,29 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
      * @notice Allows a rewarder to be explicitly added to a whitelist of rewarders
      */
     function whitelistRewarder(
-        IERC20 stakingToken,
+        IERC20 pool,
         IERC20 rewardsToken,
         address rewarder
-    ) public onlyOwnerOrStakingToken(stakingToken) {
-        _whitelist[stakingToken][rewardsToken].add(rewarder);
+    ) public onlyOwnerOrPool(pool) {
+        _whitelist[pool][rewardsToken].add(rewarder);
     }
 
     /**
      * @notice Adds a new reward token to be distributed
-     * @param stakingToken - The bpt of the pool that will receive rewards
+     * @param pool - The bpt of the pool that will receive rewards
      * @param rewardsToken - The new token to be distributed to stakers
      * @param rewardsDuration - The duration over which each distribution is spread
      */
     function addReward(
-        IERC20 stakingToken,
+        IERC20 pool,
         IERC20 rewardsToken,
         uint256 rewardsDuration
-    ) public onlyWhitelistedRewarder(stakingToken, rewardsToken) {
+    ) public onlyWhitelistedRewarder(pool, rewardsToken) {
         require(rewardsDuration > 0, "reward rate must be nonzero");
-        require(rewardData[stakingToken][msg.sender][rewardsToken].rewardsDuration == 0, "Duplicate rewards token");
-        _rewardTokens[stakingToken].add(address(rewardsToken));
-        _rewarders[stakingToken][rewardsToken].add(msg.sender);
-        rewardData[stakingToken][msg.sender][rewardsToken].rewardsDuration = rewardsDuration;
+        require(rewardData[pool][msg.sender][rewardsToken].rewardsDuration == 0, "Duplicate rewards token");
+        _rewardTokens[pool].add(address(rewardsToken));
+        _rewarders[pool][rewardsToken].add(msg.sender);
+        rewardData[pool][msg.sender][rewardsToken].rewardsDuration = rewardsDuration;
         rewardsToken.approve(address(vault), type(uint256).max);
     }
 
@@ -127,15 +124,15 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
      * by virtue of being an asset manager
      */
     function isWhitelistedToReward(
-        IERC20 stakingToken,
+        IERC20 pool,
         IERC20 rewardsToken,
         address rewarder
     ) public view returns (bool) {
-        if (_whitelist[stakingToken][rewardsToken].contains(rewarder)) {
+        if (_whitelist[pool][rewardsToken].contains(rewarder)) {
             return true;
         } else {
-            IBasePool pool = IBasePool(address(stakingToken));
-            bytes32 poolId = pool.getPoolId();
+            IBasePool poolContract = IBasePool(address(pool));
+            bytes32 poolId = poolContract.getPoolId();
             (IERC20[] memory poolTokens, , ) = vault.getPoolTokens(poolId);
 
             for (uint256 pt; pt < poolTokens.length; pt++) {
@@ -152,52 +149,52 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
      * @notice Checks if a rewarder has added a reward and is ready to call notifyReward
      */
     function isReadyToDistribute(
-        IERC20 stakingToken,
+        IERC20 pool,
         IERC20 rewardsToken,
         address rewarder
     ) public view returns (bool) {
-        return _rewarders[stakingToken][rewardsToken].contains(rewarder);
+        return _rewarders[pool][rewardsToken].contains(rewarder);
     }
 
     /**
      * @notice Total supply of a staking token being added
      */
-    function totalSupply(IERC20 stakingToken) external view returns (uint256) {
-        return _totalSupply[stakingToken];
+    function totalSupply(IERC20 pool) external view returns (uint256) {
+        return _totalSupply[pool];
     }
 
     /**
      * @notice The balance of a staking token than `account` has staked
      */
-    function balanceOf(IERC20 stakingToken, address account) external view returns (uint256) {
-        return _balances[stakingToken][account];
+    function balanceOf(IERC20 pool, address account) external view returns (uint256) {
+        return _balances[pool][account];
     }
 
     function lastTimeRewardApplicable(
-        IERC20 stakingToken,
+        IERC20 pool,
         address rewarder,
         IERC20 rewardsToken
     ) public view returns (uint256) {
-        return Math.min(block.timestamp, rewardData[stakingToken][rewarder][rewardsToken].periodFinish);
+        return Math.min(block.timestamp, rewardData[pool][rewarder][rewardsToken].periodFinish);
     }
 
     /**
      * @notice Calculates the amount of reward per staked bpt that is
      */
     function rewardPerToken(
-        IERC20 stakingToken,
+        IERC20 pool,
         address rewarder,
         IERC20 rewardsToken
     ) public view returns (uint256) {
-        if (_totalSupply[stakingToken] == 0) {
-            return rewardData[stakingToken][rewarder][rewardsToken].rewardPerTokenStored;
+        if (_totalSupply[pool] == 0) {
+            return rewardData[pool][rewarder][rewardsToken].rewardPerTokenStored;
         }
         return
-            rewardData[stakingToken][rewarder][rewardsToken].rewardPerTokenStored.add(
-                lastTimeRewardApplicable(stakingToken, rewarder, rewardsToken)
-                    .sub(rewardData[stakingToken][rewarder][rewardsToken].lastUpdateTime)
-                    .mulDown(rewardData[stakingToken][rewarder][rewardsToken].rewardRate)
-                    .divDown(_totalSupply[stakingToken])
+            rewardData[pool][rewarder][rewardsToken].rewardPerTokenStored.add(
+                lastTimeRewardApplicable(pool, rewarder, rewardsToken)
+                    .sub(rewardData[pool][rewarder][rewardsToken].lastUpdateTime)
+                    .mulDown(rewardData[pool][rewarder][rewardsToken].rewardRate)
+                    .divDown(_totalSupply[pool])
             );
     }
 
@@ -206,73 +203,71 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
      * from a particular rewarder
      */
     function earned(
-        IERC20 stakingToken,
+        IERC20 pool,
         address rewarder,
         address account,
         IERC20 rewardsToken
     ) public view returns (uint256) {
         return
-            _balances[stakingToken][account]
+            _balances[pool][account]
                 .mulDown(
-                rewardPerToken(stakingToken, rewarder, rewardsToken).sub(
-                    userRewardPerTokenPaid[stakingToken][rewarder][account][rewardsToken]
+                rewardPerToken(pool, rewarder, rewardsToken).sub(
+                    userRewardPerTokenPaid[pool][rewarder][account][rewardsToken]
                 )
             )
-                .add(rewards[stakingToken][rewarder][account][rewardsToken]);
+                .add(rewards[pool][rewarder][account][rewardsToken]);
     }
 
     /**
      * @notice Calculates the total amount of `rewardsToken` that `account` is able to claim
      */
     function totalEarned(
-        IERC20 stakingToken,
+        IERC20 pool,
         address account,
         IERC20 rewardsToken
     ) public view returns (uint256 total) {
-        for (uint256 r; r < _rewarders[stakingToken][rewardsToken].length(); r++) {
-            total = total.add(
-                earned(stakingToken, _rewarders[stakingToken][rewardsToken].at(r), account, rewardsToken)
-            );
+        for (uint256 r; r < _rewarders[pool][rewardsToken].length(); r++) {
+            total = total.add(earned(pool, _rewarders[pool][rewardsToken].at(r), account, rewardsToken));
         }
     }
 
     function getRewardForDuration(
-        IERC20 stakingToken,
+        IERC20 pool,
         address rewarder,
         IERC20 rewardsToken
     ) external view returns (uint256) {
         return
-            rewardData[stakingToken][rewarder][rewardsToken].rewardRate.mulDown(
-                rewardData[stakingToken][rewarder][rewardsToken].rewardsDuration
+            rewardData[pool][rewarder][rewardsToken].rewardRate.mulDown(
+                rewardData[pool][rewarder][rewardsToken].rewardsDuration
             );
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
-    function stake(IERC20 stakingToken, uint256 amount) external {
-        stake(stakingToken, amount, msg.sender);
+    function stake(IERC20 pool, uint256 amount) external {
+        stake(pool, amount, msg.sender);
     }
 
     /**
      * @notice Stakes a token so that `receiver` can earn rewards
-     * @param stakingToken The token being staked to earn rewards
-     * @param amount Amount of `stakingToken` to stake
+     * @param pool The token being staked to earn rewards
+     * @param amount Amount of `pool` to stake
      * @param receiver The recipient of claimed rewards
      */
     function stake(
-        IERC20 stakingToken,
+        IERC20 pool,
         uint256 amount,
         address receiver
-    ) public nonReentrant whenNotPaused updateReward(stakingToken, receiver) {
+    ) public nonReentrant whenNotPaused updateReward(pool, receiver) {
         require(amount > 0, "Cannot stake 0");
-        _totalSupply[stakingToken] = _totalSupply[stakingToken].add(amount);
-        _balances[stakingToken][receiver] = _balances[stakingToken][receiver].add(amount);
-        stakingToken.safeTransferFrom(msg.sender, address(this), amount);
-        emit Staked(address(stakingToken), receiver, amount);
+        _totalSupply[pool] = _totalSupply[pool].add(amount);
+        _balances[pool][receiver] = _balances[pool][receiver].add(amount);
+        pool.safeTransferFrom(msg.sender, address(this), amount);
+        emit Staked(address(pool), receiver, amount);
     }
 
     /**
      * @notice Stake tokens using a permit signature for approval
-     * @param stakingToken The token being staked to earn rewards
+     * @param pool The bpt being staked to earn rewards
      * @param amount    Amount of allowance
      * @param deadline  The time at which this expires (unix time)
      * @param v         v of the signature
@@ -280,67 +275,67 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
      * @param s         s of the signature
      */
     function stakeWithPermit(
-        IERC20 stakingToken,
+        IERC20 pool,
         uint256 amount,
         uint256 deadline,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) public {
-        IERC20Permit(address(stakingToken)).permit(msg.sender, address(this), amount, deadline, v, r, s);
-        stake(stakingToken, amount, msg.sender);
+        IERC20Permit(address(pool)).permit(msg.sender, address(this), amount, deadline, v, r, s);
+        stake(pool, amount, msg.sender);
     }
 
-    function unstake(IERC20 stakingToken, uint256 amount) public nonReentrant updateReward(stakingToken, msg.sender) {
+    function unstake(IERC20 pool, uint256 amount) public nonReentrant updateReward(pool, msg.sender) {
         require(amount > 0, "Cannot withdraw 0");
-        _totalSupply[stakingToken] = _totalSupply[stakingToken].sub(amount);
-        _balances[stakingToken][msg.sender] = _balances[stakingToken][msg.sender].sub(amount);
-        stakingToken.safeTransfer(msg.sender, amount);
-        emit Withdrawn(address(stakingToken), msg.sender, amount);
+        _totalSupply[pool] = _totalSupply[pool].sub(amount);
+        _balances[pool][msg.sender] = _balances[pool][msg.sender].sub(amount);
+        pool.safeTransfer(msg.sender, amount);
+        emit Withdrawn(address(pool), msg.sender, amount);
     }
 
-    // todo accept array of claims [{stakingToken, rewardToken}]
-    function getReward(IERC20[] calldata stakingTokens) public nonReentrant {
-        _getReward(stakingTokens, false);
+    // todo accept array of claims [{pool, rewardToken}]
+    function getReward(IERC20[] calldata pools) public nonReentrant {
+        _getReward(pools, false);
     }
 
-    function getRewardAsInternalBalance(IERC20[] calldata stakingTokens) public nonReentrant {
-        _getReward(stakingTokens, true);
+    function getRewardAsInternalBalance(IERC20[] calldata pools) public nonReentrant {
+        _getReward(pools, true);
     }
 
     /**
      * @notice Allows a user to claim any rewards to internal balance
      */
-    function _getReward(IERC20[] calldata stakingTokens, bool asInternalBalance) internal {
+    function _getReward(IERC20[] calldata pools, bool asInternalBalance) internal {
         IVault.UserBalanceOpKind kind = asInternalBalance
             ? IVault.UserBalanceOpKind.TRANSFER_INTERNAL
             : IVault.UserBalanceOpKind.WITHDRAW_INTERNAL;
 
         uint256 opsCount;
-        for (uint256 st; st < stakingTokens.length; st++) {
-            IERC20 stakingToken = stakingTokens[st];
-            for (uint256 rt; rt < _rewardTokens[stakingToken].length(); rt++) {
-                address rewardsToken = _rewardTokens[stakingToken].at(rt);
-                opsCount += _rewarders[stakingToken][IERC20(rewardsToken)].length();
+        for (uint256 p; p < pools.length; p++) {
+            IERC20 pool = pools[p];
+            for (uint256 rt; rt < _rewardTokens[pool].length(); rt++) {
+                address rewardsToken = _rewardTokens[pool].at(rt);
+                opsCount += _rewarders[pool][IERC20(rewardsToken)].length();
             }
         }
 
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](opsCount);
 
         uint256 idx;
-        for (uint256 s; s < stakingTokens.length; s++) {
-            IERC20 stakingToken = stakingTokens[s];
-            for (uint256 t; t < _rewardTokens[stakingToken].length(); t++) {
-                IERC20 rewardsToken = IERC20(_rewardTokens[stakingToken].at(t));
+        for (uint256 p; p < pools.length; p++) {
+            IERC20 pool = pools[p];
+            for (uint256 t; t < _rewardTokens[pool].length(); t++) {
+                IERC20 rewardsToken = IERC20(_rewardTokens[pool].at(t));
 
-                for (uint256 r; r < _rewarders[stakingToken][rewardsToken].length(); r++) {
-                    address rewarder = _rewarders[stakingToken][rewardsToken].at(r);
+                for (uint256 r; r < _rewarders[pool][rewardsToken].length(); r++) {
+                    address rewarder = _rewarders[pool][rewardsToken].at(r);
 
-                    _updateReward(stakingToken, rewarder, msg.sender, rewardsToken);
-                    uint256 reward = rewards[stakingToken][rewarder][msg.sender][rewardsToken];
+                    _updateReward(pool, rewarder, msg.sender, rewardsToken);
+                    uint256 reward = rewards[pool][rewarder][msg.sender][rewardsToken];
 
                     if (reward > 0) {
-                        rewards[stakingToken][rewarder][msg.sender][rewardsToken] = 0;
+                        rewards[pool][rewarder][msg.sender][rewardsToken] = 0;
 
                         emit RewardPaid(msg.sender, address(rewardsToken), reward);
                     }
@@ -362,12 +357,12 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
     /**
      * @notice Allows a user to unstake all their tokens
      */
-    function exit(IERC20[] calldata stakingTokens) external {
-        for (uint256 j; j < stakingTokens.length; j++) {
-            IERC20 stakingToken = stakingTokens[j];
-            unstake(stakingToken, _balances[stakingToken][msg.sender]);
+    function exit(IERC20[] calldata pools) external {
+        for (uint256 p; p < pools.length; p++) {
+            IERC20 pool = pools[p];
+            unstake(pool, _balances[pool][msg.sender]);
         }
-        getReward(stakingTokens);
+        getReward(pools);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -378,10 +373,10 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
      * @param reward - the amount of tokens to deposit
      */
     function notifyRewardAmount(
-        IERC20 stakingToken,
+        IERC20 pool,
         IERC20 rewardsToken,
         uint256 reward
-    ) external override updateReward(stakingToken, address(0)) {
+    ) external override updateReward(pool, address(0)) {
         // handle the transfer of reward tokens via `safeTransferFrom` to reduce the number
         // of transactions required and ensure correctness of the reward amount
         rewardsToken.safeTransferFrom(msg.sender, address(this), reward);
@@ -398,21 +393,21 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
 
         vault.manageUserBalance(ops);
 
-        if (block.timestamp >= rewardData[stakingToken][msg.sender][rewardsToken].periodFinish) {
-            rewardData[stakingToken][msg.sender][rewardsToken].rewardRate = reward.divDown(
-                rewardData[stakingToken][msg.sender][rewardsToken].rewardsDuration
+        if (block.timestamp >= rewardData[pool][msg.sender][rewardsToken].periodFinish) {
+            rewardData[pool][msg.sender][rewardsToken].rewardRate = reward.divDown(
+                rewardData[pool][msg.sender][rewardsToken].rewardsDuration
             );
         } else {
-            uint256 remaining = rewardData[stakingToken][msg.sender][rewardsToken].periodFinish.sub(block.timestamp);
-            uint256 leftover = remaining.mulDown(rewardData[stakingToken][msg.sender][rewardsToken].rewardRate);
-            rewardData[stakingToken][msg.sender][rewardsToken].rewardRate = reward.add(leftover).divDown(
-                rewardData[stakingToken][msg.sender][rewardsToken].rewardsDuration
+            uint256 remaining = rewardData[pool][msg.sender][rewardsToken].periodFinish.sub(block.timestamp);
+            uint256 leftover = remaining.mulDown(rewardData[pool][msg.sender][rewardsToken].rewardRate);
+            rewardData[pool][msg.sender][rewardsToken].rewardRate = reward.add(leftover).divDown(
+                rewardData[pool][msg.sender][rewardsToken].rewardsDuration
             );
         }
 
-        rewardData[stakingToken][msg.sender][rewardsToken].lastUpdateTime = block.timestamp;
-        rewardData[stakingToken][msg.sender][rewardsToken].periodFinish = block.timestamp.add(
-            rewardData[stakingToken][msg.sender][rewardsToken].rewardsDuration
+        rewardData[pool][msg.sender][rewardsToken].lastUpdateTime = block.timestamp;
+        rewardData[pool][msg.sender][rewardsToken].periodFinish = block.timestamp.add(
+            rewardData[pool][msg.sender][rewardsToken].rewardsDuration
         );
         emit RewardAdded(address(rewardsToken), reward);
     }
@@ -425,12 +420,12 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
      * @param tokenAmount - the amount of tokens to withdraw
      */
     function recoverERC20(
-        IERC20 stakingToken,
+        IERC20 pool,
         IERC20 token,
         uint256 tokenAmount
     ) external onlyOwner {
-        require(token != stakingToken, "Cannot withdraw staking token");
-        require(rewardData[stakingToken][msg.sender][token].lastUpdateTime == 0, "Cannot withdraw reward token");
+        require(token != pool, "Cannot withdraw staking token");
+        require(rewardData[pool][msg.sender][token].lastUpdateTime == 0, "Cannot withdraw reward token");
 
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
         ops[0] = IVault.UserBalanceOp({
@@ -447,38 +442,34 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
     }
 
     function setRewardsDuration(
-        IERC20 stakingToken,
+        IERC20 pool,
         IERC20 rewardsToken,
         uint256 rewardsDuration
     ) external {
         require(
-            block.timestamp > rewardData[stakingToken][msg.sender][rewardsToken].periodFinish,
+            block.timestamp > rewardData[pool][msg.sender][rewardsToken].periodFinish,
             "Reward period still active"
         );
         require(rewardsDuration > 0, "Reward duration must be non-zero");
-        rewardData[stakingToken][msg.sender][rewardsToken].rewardsDuration = rewardsDuration;
+        rewardData[pool][msg.sender][rewardsToken].rewardsDuration = rewardsDuration;
         emit RewardsDurationUpdated(
-            address(stakingToken),
+            address(pool),
             address(rewardsToken),
-            rewardData[stakingToken][msg.sender][rewardsToken].rewardsDuration
+            rewardData[pool][msg.sender][rewardsToken].rewardsDuration
         );
     }
 
     function _updateReward(
-        IERC20 stakingToken,
+        IERC20 pool,
         address rewarder,
         address account,
         IERC20 token
     ) internal {
-        rewardData[stakingToken][rewarder][token].rewardPerTokenStored = rewardPerToken(stakingToken, rewarder, token);
-        rewardData[stakingToken][rewarder][token].lastUpdateTime = lastTimeRewardApplicable(
-            stakingToken,
-            rewarder,
-            token
-        );
+        rewardData[pool][rewarder][token].rewardPerTokenStored = rewardPerToken(pool, rewarder, token);
+        rewardData[pool][rewarder][token].lastUpdateTime = lastTimeRewardApplicable(pool, rewarder, token);
         if (account != address(0)) {
-            rewards[stakingToken][rewarder][account][token] = earned(stakingToken, rewarder, account, token);
-            userRewardPerTokenPaid[stakingToken][rewarder][account][token] = rewardData[stakingToken][rewarder][token]
+            rewards[pool][rewarder][account][token] = earned(pool, rewarder, account, token);
+            userRewardPerTokenPaid[pool][rewarder][account][token] = rewardData[pool][rewarder][token]
                 .rewardPerTokenStored;
         }
     }
@@ -488,12 +479,12 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
      * @notice
      * Updates the rewards due to `account` from all _rewardTokens and _rewarders
      */
-    modifier updateReward(IERC20 stakingToken, address account) {
-        for (uint256 i; i < _rewardTokens[stakingToken].length(); i++) {
-            IERC20 rewardToken = IERC20(_rewardTokens[stakingToken].at(i));
-            for (uint256 j; j < _rewarders[stakingToken][rewardToken].length(); j++) {
-                address rewarder = _rewarders[stakingToken][rewardToken].at(j);
-                _updateReward(stakingToken, rewarder, account, rewardToken);
+    modifier updateReward(IERC20 pool, address account) {
+        for (uint256 t; t < _rewardTokens[pool].length(); t++) {
+            IERC20 rewardToken = IERC20(_rewardTokens[pool].at(t));
+            for (uint256 r; r < _rewarders[pool][rewardToken].length(); r++) {
+                address rewarder = _rewarders[pool][rewardToken].at(r);
+                _updateReward(pool, rewarder, account, rewardToken);
             }
         }
         _;
@@ -501,8 +492,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
 
     /* ========== EVENTS ========== */
 
-    event Staked(address indexed stakingToken, address indexed user, uint256 amount);
-    event Withdrawn(address indexed stakingToken, address indexed user, uint256 amount);
-    event RewardsDurationUpdated(address indexed stakingToken, address token, uint256 newDuration);
+    event Staked(address indexed pool, address indexed account, uint256 amount);
+    event Withdrawn(address indexed pool, address indexed account, uint256 amount);
+    event RewardsDurationUpdated(address indexed pool, address token, uint256 newDuration);
     event Recovered(address indexed token, uint256 amount);
 }
