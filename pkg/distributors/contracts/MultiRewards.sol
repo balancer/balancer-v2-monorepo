@@ -108,7 +108,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         IERC20 pool,
         IERC20 rewardsToken,
         uint256 rewardsDuration
-    ) public onlyWhitelistedRewarder(pool, rewardsToken) override {
+    ) public override onlyWhitelistedRewarder(pool, rewardsToken) {
         require(rewardsDuration > 0, "reward rate must be nonzero");
         require(rewardData[pool][msg.sender][rewardsToken].rewardsDuration == 0, "Duplicate rewards token");
         _rewardTokens[pool].add(address(rewardsToken));

@@ -72,7 +72,6 @@ const setup = async () => {
 
   await assetManager.initialise(poolId, distributor.address);
 
-  const rewardsDuration = 1; // Have a neglibile duration so that rewards are distributed instantaneously
   await distributor.whitelistRewarder(pool.address, admin.address, lp.address);
 
   await tokens.mint({ to: lp, amount: tokenInitialBalance });
