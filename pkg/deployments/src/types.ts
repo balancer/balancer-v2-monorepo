@@ -8,7 +8,7 @@ export type Network = typeof NETWORKS[number];
 
 export type NAry<T> = T | Array<T>;
 
-export type Param = boolean | string | number | BigNumber;
+export type Param = boolean | string | number | BigNumber | any;
 
 export type Input = {
   [key: string]: NAry<Param>;

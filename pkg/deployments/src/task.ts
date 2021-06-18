@@ -115,11 +115,9 @@ export default class Task {
       else if (BigNumber.isBigNumber(item)) input[key] = item;
       else if (typeof item !== 'object') input[key] = item;
       else {
-        const isTask = item.constructor.name == 'Task';
-        const output = isTask ? (item as Task).output({ network: this.network }) : (item as Output);
-        const value = output[key];
-        if (!value) throw Error(`Could not find a value for "${key}" on given input`);
-        input[key] = value;
+        const isTask = item.constructor.name == 'Task'
+        const output: Output | any = isTask ? (item as Task).output({ network: this.network }) : item
+        input[key] = output[key] ? output[key] : output
       }
       return input;
     }, {});
