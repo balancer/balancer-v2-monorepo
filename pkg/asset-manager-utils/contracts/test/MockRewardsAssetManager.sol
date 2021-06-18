@@ -25,7 +25,9 @@ contract MockRewardsAssetManager is RewardsAssetManager {
         IVault _vault,
         bytes32 _poolId,
         IERC20 _token
-    ) RewardsAssetManager(_vault, _poolId, _token) {}
+    ) RewardsAssetManager(_vault, _poolId, _token) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function initialise(bytes32 pId) public {
         _initialise(pId);
