@@ -279,12 +279,13 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         IERC20 pool,
         uint256 amount,
         uint256 deadline,
+        address recipient,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) public {
         IERC20Permit(address(pool)).permit(msg.sender, address(this), amount, deadline, v, r, s);
-        stake(pool, amount, msg.sender);
+        stake(pool, amount, recipient);
     }
 
     function unstake(IERC20 pool, uint256 amount) public nonReentrant updateReward(pool, msg.sender) {
