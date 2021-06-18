@@ -226,8 +226,9 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         address account,
         IERC20 rewardsToken
     ) public view returns (uint256 total) {
-        for (uint256 r; r < _rewarders[pool][rewardsToken].length(); r++) {
-            total = total.add(earned(pool, _rewarders[pool][rewardsToken].at(r), account, rewardsToken));
+        uint256 rewardersLength = _rewarders[pool][rewardsToken].length();
+        for (uint256 r; r < rewardersLength; r++) {
+            total = total.add(earned(pool, _rewarders[pool][rewardsToken].unchecked_at(r), account, rewardsToken));
         }
     }
 
@@ -314,8 +315,9 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         uint256 opsCount;
         for (uint256 p; p < pools.length; p++) {
             IERC20 pool = pools[p];
-            for (uint256 rt; rt < _rewardTokens[pool].length(); rt++) {
-                address rewardsToken = _rewardTokens[pool].at(rt);
+            uint256 rewardTokensLength = _rewardTokens[pool].length();
+            for (uint256 rt; rt < rewardTokensLength; rt++) {
+                address rewardsToken = _rewardTokens[pool].unchecked_at(rt);
                 opsCount += _rewarders[pool][IERC20(rewardsToken)].length();
             }
         }
@@ -325,11 +327,14 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         uint256 idx;
         for (uint256 p; p < pools.length; p++) {
             IERC20 pool = pools[p];
-            for (uint256 t; t < _rewardTokens[pool].length(); t++) {
-                IERC20 rewardsToken = IERC20(_rewardTokens[pool].at(t));
 
-                for (uint256 r; r < _rewarders[pool][rewardsToken].length(); r++) {
-                    address rewarder = _rewarders[pool][rewardsToken].at(r);
+            uint256 tokensLength = _rewardTokens[pool].length();
+            for (uint256 t; t < tokensLength; t++) {
+                IERC20 rewardsToken = IERC20(_rewardTokens[pool].unchecked_at(t));
+
+                uint256 rewardersLength = _rewarders[pool][rewardsToken].length();
+                for (uint256 r; r < rewardersLength; r++) {
+                    address rewarder = _rewarders[pool][rewardsToken].unchecked_at(r);
 
                     _updateReward(pool, rewarder, msg.sender, rewardsToken);
                     uint256 reward = rewards[pool][rewarder][msg.sender][rewardsToken];
@@ -480,10 +485,11 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
      * Updates the rewards due to `account` from all _rewardTokens and _rewarders
      */
     modifier updateReward(IERC20 pool, address account) {
-        for (uint256 t; t < _rewardTokens[pool].length(); t++) {
-            IERC20 rewardToken = IERC20(_rewardTokens[pool].at(t));
+        uint256 rewardTokensLength = _rewardTokens[pool].length();
+        for (uint256 t; t < rewardTokensLength; t++) {
+            IERC20 rewardToken = IERC20(_rewardTokens[pool].unchecked_at(t));
             for (uint256 r; r < _rewarders[pool][rewardToken].length(); r++) {
-                address rewarder = _rewarders[pool][rewardToken].at(r);
+                address rewarder = _rewarders[pool][rewardToken].unchecked_at(r);
                 _updateReward(pool, rewarder, account, rewardToken);
             }
         }
