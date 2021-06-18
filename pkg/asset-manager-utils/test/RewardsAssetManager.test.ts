@@ -1,11 +1,11 @@
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
-import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
@@ -15,9 +15,6 @@ import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { calcRebalanceAmount, encodeInvestmentConfig } from './helpers/rebalance';
-
-const OVER_INVESTMENT_REVERT_REASON = 'investment amount exceeds target';
-const UNDER_INVESTMENT_REVERT_REASON = 'withdrawal leaves insufficient balance invested';
 
 const tokenInitialBalance = bn(200e18);
 
@@ -170,178 +167,6 @@ describe('Rewards Asset manager', function () {
     it('prevents an unauthorized user from setting the pool config');
   });
 
-  describe('capitalIn', () => {
-    context('when a token is below its investment target', () => {
-      let poolController: SignerWithAddress; // TODO
-      const config = {
-        targetPercentage: fp(0.5),
-        upperCriticalPercentage: fp(1),
-        lowerCriticalPercentage: 0,
-      };
-
-      sharedBeforeEach(async () => {
-        poolController = lp; // TODO
-        await assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(config));
-      });
-
-      it('allows anyone to deposit pool assets to an investment manager to get to the target investable %', async () => {
-        const amountToDeposit = await assetManager.maxInvestableBalance(poolId);
-
-        await expectBalanceChange(() => assetManager.connect(lp).capitalIn(poolId, amountToDeposit), tokens, [
-          { account: assetManager.address, changes: { DAI: amountToDeposit } },
-          { account: vault.address, changes: { DAI: amountToDeposit.mul(-1) } },
-        ]);
-      });
-
-      it('prevents depositing pool assets to an investment manager over the target investable %', async () => {
-        const maxInvestment = await assetManager.maxInvestableBalance(poolId);
-        const overInvestmentAmount = maxInvestment.add(1);
-
-        expect(assetManager.connect(lp).capitalIn(poolId, overInvestmentAmount)).to.be.revertedWith(
-          OVER_INVESTMENT_REVERT_REASON
-        );
-      });
-
-      it("updates the pool's managed balance", async () => {
-        const amountToDeposit = await assetManager.maxInvestableBalance(poolId);
-
-        await assetManager.connect(lp).capitalIn(poolId, amountToDeposit);
-
-        const { managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-        const actualManagedBalance = await assetManager.getAUM(poolId);
-
-        expect(managed).to.be.eq(actualManagedBalance);
-      });
-    });
-
-    context('when a token is above its investment target', () => {
-      let poolController: SignerWithAddress; // TODO
-
-      sharedBeforeEach(async () => {
-        const config = {
-          targetPercentage: fp(0.5),
-          upperCriticalPercentage: fp(1),
-          lowerCriticalPercentage: 0,
-        };
-        poolController = lp; // TODO
-        await assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(config));
-
-        const { poolCash } = await assetManager.getPoolBalances(poolId);
-        await tokens.DAI.mint(assetManager.address, poolCash.mul(101).div(100));
-
-        // should be overinvested
-        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
-        expect(maxInvestableBalance).to.be.lt(0);
-      });
-
-      it('reverts', async () => {
-        const minimalInvestment = 1;
-        await expect(assetManager.connect(lp).capitalIn(poolId, minimalInvestment)).revertedWith(
-          OVER_INVESTMENT_REVERT_REASON
-        );
-      });
-    });
-  });
-
-  describe('capitalOut', () => {
-    context('when a token is below its investment target', () => {
-      let poolController: SignerWithAddress; // TODO
-
-      sharedBeforeEach(async () => {
-        poolController = lp; // TODO
-        const config = {
-          targetPercentage: fp(0.5),
-          upperCriticalPercentage: fp(1),
-          lowerCriticalPercentage: 0,
-        };
-        await assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(config));
-
-        const { poolCash } = await assetManager.getPoolBalances(poolId);
-        await tokens.DAI.mint(assetManager.address, poolCash.mul(99).div(100));
-
-        // should be under invested
-        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
-        expect(maxInvestableBalance).to.gt(0);
-      });
-
-      it('reverts', async () => {
-        const minimalWithdrawal = 100;
-        await expect(assetManager.connect(lp).capitalOut(poolId, minimalWithdrawal)).revertedWith(
-          UNDER_INVESTMENT_REVERT_REASON
-        );
-      });
-    });
-
-    context('when a token is above its investment target', () => {
-      let poolController: SignerWithAddress; // TODO
-
-      sharedBeforeEach(async () => {
-        poolController = lp; // TODO
-        const config = {
-          targetPercentage: fp(0.5),
-          upperCriticalPercentage: fp(1),
-          lowerCriticalPercentage: 0,
-        };
-        poolController = lp; // TODO
-        await assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(config));
-
-        const { poolCash } = await assetManager.getPoolBalances(poolId);
-        await tokens.DAI.mint(assetManager.address, poolCash.mul(101).div(100));
-
-        // should be overinvested
-        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
-        expect(maxInvestableBalance).to.be.lt(0);
-      });
-
-      it('allows anyone to withdraw assets to a pool to get to the target investable %', async () => {
-        const amountToWithdraw = (await assetManager.maxInvestableBalance(poolId)).mul(-1);
-
-        await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
-          { account: assetManager.address, changes: { DAI: amountToWithdraw.mul(-1) } },
-          { account: vault.address, changes: { DAI: amountToWithdraw } },
-        ]);
-      });
-
-      it('prevents depositing pool assets to an investment manager over the target investable %', async () => {
-        const maxDivestment = (await assetManager.maxInvestableBalance(poolId)).mul(-1);
-        const overDivestmentAmount = maxDivestment.add(1);
-
-        expect(assetManager.connect(lp).capitalOut(poolId, overDivestmentAmount)).to.be.revertedWith(
-          UNDER_INVESTMENT_REVERT_REASON
-        );
-      });
-
-      it("updates the pool's managed balance", async () => {
-        const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
-
-        // return a portion of the return to the vault to serve as a buffer
-        const amountToWithdraw = maxInvestableBalance.abs();
-
-        await assetManager.connect(lp).capitalOut(poolId, amountToWithdraw);
-
-        const { managed } = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-        const actualManagedBalance = await assetManager.getAUM(poolId);
-
-        expect(managed.sub(actualManagedBalance)).to.be.lt(10);
-      });
-
-      it('allows withdrawing returns which are greater than the current managed balance', async () => {
-        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
-        const poolAssets = poolCash.add(poolManaged);
-
-        // Asset manager experiences gains far in excess of pool value
-        await tokens.DAI.mint(assetManager.address, poolAssets.mul(10));
-
-        const amountToWithdraw = (await assetManager.maxInvestableBalance(poolId)).mul(-1);
-
-        await expectBalanceChange(() => assetManager.connect(lp).capitalOut(poolId, amountToWithdraw), tokens, [
-          { account: assetManager.address, changes: { DAI: -amountToWithdraw } },
-          { account: vault.address, changes: { DAI: amountToWithdraw } },
-        ]);
-      });
-    });
-  });
-
   describe('rebalance', () => {
     function itRebalancesCorrectly(force: boolean) {
       it('emits a Rebalance event', async () => {
@@ -389,20 +214,29 @@ describe('Rewards Asset manager', function () {
       lowerCriticalPercentage: fp(0.25),
     };
 
+    // Balances that make the Asset Manager be at the critical percentages
+    let lowerCriticalBalance: BigNumber;
+    let upperCriticalBalance: BigNumber;
+
     sharedBeforeEach(async () => {
       const poolController = lp; // TODO
       await assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(config));
+
+      const { poolCash } = await assetManager.getPoolBalances(poolId);
+
+      lowerCriticalBalance = poolCash
+        .mul(config.lowerCriticalPercentage)
+        .div(FP_SCALING_FACTOR.sub(config.lowerCriticalPercentage));
+
+      upperCriticalBalance = poolCash
+        .mul(config.upperCriticalPercentage)
+        .div(FP_SCALING_FACTOR.sub(config.upperCriticalPercentage));
     });
 
     context('when pool is above target investment level', () => {
       context('when pool is in non-critical range', () => {
         sharedBeforeEach(async () => {
-          const { poolCash } = await assetManager.getPoolBalances(poolId);
-          await tokens.DAI.mint(assetManager.address, poolCash.mul(101).div(100));
-
-          // should be overinvested
-          const maxInvestableBalance = await assetManager.maxInvestableBalance(poolId);
-          expect(maxInvestableBalance).to.be.lt(0);
+          await tokens.DAI.mint(assetManager.address, upperCriticalBalance.mul(99).div(100));
         });
 
         context('when forced', () => {
@@ -414,34 +248,28 @@ describe('Rewards Asset manager', function () {
           itSkipsTheRebalance();
         });
       });
-    });
 
-    context('when pool is above upper critical investment level', () => {
-      sharedBeforeEach(async () => {
-        const { poolCash } = await assetManager.getPoolBalances(poolId);
-        // Results in an investment percentage of 80%
-        await tokens.DAI.mint(assetManager.address, poolCash.mul(4));
-      });
+      context('when pool is above upper critical investment level', () => {
+        sharedBeforeEach(async () => {
+          await tokens.DAI.mint(assetManager.address, upperCriticalBalance.mul(101).div(100));
+        });
 
-      context('when forced', () => {
-        const force = true;
-        itRebalancesCorrectly(force);
-      });
+        context('when forced', () => {
+          const force = true;
+          itRebalancesCorrectly(force);
+        });
 
-      context('when not forced', () => {
-        const force = false;
-        itRebalancesCorrectly(force);
+        context('when not forced', () => {
+          const force = false;
+          itRebalancesCorrectly(force);
+        });
       });
     });
 
     context('when pool is below target investment level', () => {
       context('when pool is in non-critical range', () => {
         sharedBeforeEach(async () => {
-          const poolController = lp; // TODO
-
-          // Ensure that the pool is invested below its target level but above than critical level
-          const targetInvestmentAmount = await assetManager.maxInvestableBalance(poolId);
-          await assetManager.connect(poolController).capitalIn(poolId, targetInvestmentAmount.mul(99).div(100));
+          await tokens.DAI.mint(assetManager.address, lowerCriticalBalance.mul(101).div(100));
         });
 
         context('when forced', () => {
@@ -455,6 +283,10 @@ describe('Rewards Asset manager', function () {
       });
 
       context('when pool is below lower critical investment level', () => {
+        sharedBeforeEach(async () => {
+          await tokens.DAI.mint(assetManager.address, lowerCriticalBalance.mul(99).div(100));
+        });
+
         context('when forced', () => {
           const force = true;
           itRebalancesCorrectly(force);
