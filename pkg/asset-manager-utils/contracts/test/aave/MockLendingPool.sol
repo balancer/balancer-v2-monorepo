@@ -13,9 +13,12 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
+
+import "../../aave/DataTypes.sol";
 
 // solhint-disable no-unused-vars
 contract MockAToken is ERC20 {
@@ -71,6 +74,25 @@ contract MockAaveLendingPool {
         t.burn(to, amount);
         IERC20(asset).transfer(to, amount);
         return amount;
+    }
+
+    function getReserveData(address /*asset*/) external view returns (DataTypes.ReserveData memory) {
+        return DataTypes.ReserveData({
+            configuration: DataTypes.ReserveConfigurationMap({
+                data: 0
+            }),
+            liquidityIndex: 0,
+            variableBorrowIndex: 0,
+            currentLiquidityRate: 0,
+            currentVariableBorrowRate: 0,
+            currentStableBorrowRate: 0,
+            lastUpdateTimestamp: 0,
+            aTokenAddress: address(this),
+            stableDebtTokenAddress: address(0),
+            variableDebtTokenAddress: address(0),
+            interestRateStrategyAddress: address(0),
+            id: 0
+        });
     }
 
     function simulateATokenIncrease(
