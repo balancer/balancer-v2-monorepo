@@ -76,14 +76,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
     }
 
     modifier onlyWhitelistedRewarder(IERC20 pool, IERC20 rewardsToken) {
-        require(
-            isWhitelistedToReward(pool, rewardsToken, msg.sender),
-            "only accessible by whitelisted rewarders and asset managers"
-        );
-        _;
-    }
-    modifier onlyOwnerOrPool(IERC20 pool) {
-        require(msg.sender == owner() || msg.sender == address(pool), "only accessible by the owner or the pool");
+        require(isWhitelistedRewarder(pool, rewardsToken, msg.sender), "only accessible by whitelisted rewarders");
         _;
     }
 
@@ -94,8 +87,22 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         IERC20 pool,
         IERC20 rewardsToken,
         address rewarder
-    ) public onlyOwnerOrPool(pool) {
+    ) external override {
+        require(
+            msg.sender == owner() ||
+                msg.sender == address(pool) ||
+                (isAssetManager(pool, msg.sender) && msg.sender == rewarder),
+            "only accessible by governance, pool or it's asset managers"
+        );
         _whitelist[pool][rewardsToken].add(rewarder);
+    }
+
+    function isWhitelistedRewarder(
+        IERC20 pool,
+        IERC20 rewardsToken,
+        address rewarder
+    ) public view returns (bool) {
+        return _whitelist[pool][rewardsToken].contains(rewarder);
     }
 
     /**
@@ -123,23 +130,15 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
      * @notice Checks if a rewarder has been explicitly whitelisted, or implicitly whitelisted
      * by virtue of being an asset manager
      */
-    function isWhitelistedToReward(
-        IERC20 pool,
-        IERC20 rewardsToken,
-        address rewarder
-    ) public view returns (bool) {
-        if (_whitelist[pool][rewardsToken].contains(rewarder)) {
-            return true;
-        } else {
-            IBasePool poolContract = IBasePool(address(pool));
-            bytes32 poolId = poolContract.getPoolId();
-            (IERC20[] memory poolTokens, , ) = vault.getPoolTokens(poolId);
+    function isAssetManager(IERC20 pool, address rewarder) public view returns (bool) {
+        IBasePool poolContract = IBasePool(address(pool));
+        bytes32 poolId = poolContract.getPoolId();
+        (IERC20[] memory poolTokens, , ) = vault.getPoolTokens(poolId);
 
-            for (uint256 pt; pt < poolTokens.length; pt++) {
-                (, , , address assetManager) = vault.getPoolTokenInfo(poolId, poolTokens[pt]);
-                if (assetManager == rewarder) {
-                    return true;
-                }
+        for (uint256 pt; pt < poolTokens.length; pt++) {
+            (, , , address assetManager) = vault.getPoolTokenInfo(poolId, poolTokens[pt]);
+            if (assetManager == rewarder) {
+                return true;
             }
         }
         return false;
