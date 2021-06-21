@@ -15,10 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 
 import "@balancer-labs/v2-asset-manager-utils/contracts/AaveATokenAssetManager.sol";
 
@@ -30,7 +30,9 @@ contract AaveWeightedPoolFactory is BasePoolFactory {
 
     address private constant _REWARDS_DISTRIBUTOR = address(0);
 
-    constructor(IWeightedPoolFactory baseFactory, ILendingPool aaveLendingPool) BasePoolFactory(baseFactory.getVault()) {
+    constructor(IWeightedPoolFactory baseFactory, ILendingPool aaveLendingPool)
+        BasePoolFactory(baseFactory.getVault())
+    {
         poolFactory = baseFactory;
         lendingPool = aaveLendingPool;
     }
@@ -57,12 +59,7 @@ contract AaveWeightedPoolFactory is BasePoolFactory {
         address[] memory assetManagers = new address[](tokens.length);
         for (uint256 i; i < managedTokens.length; i++) {
             assetManagers[managedTokens[i]] = address(
-                new AaveATokenAssetManager(
-                    getVault(),
-                    tokens[i],
-                    lendingPool,
-                    aaveIncentives
-                )
+                new AaveATokenAssetManager(getVault(), tokens[i], lendingPool, aaveIncentives)
             );
         }
 
@@ -70,7 +67,7 @@ contract AaveWeightedPoolFactory is BasePoolFactory {
         address pool = poolFactory.create(name, symbol, tokens, weights, assetManagers, swapFeePercentage, owner);
 
         // Initialise asset managers with deployed pool's id
-        bytes32 poolId = BasePool(pool).getPoolId();
+        bytes32 poolId = IBasePool(pool).getPoolId();
         for (uint256 i; i < managedTokens.length; i++) {
             AaveATokenAssetManager(assetManagers[managedTokens[i]]).initialize(poolId, rewardsDistributor);
         }
