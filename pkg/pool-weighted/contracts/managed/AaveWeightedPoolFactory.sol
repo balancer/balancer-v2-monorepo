@@ -23,18 +23,17 @@ import "@balancer-labs/v2-asset-manager-utils/contracts/AaveATokenAssetManager.s
 
 import "../IWeightedPoolFactory.sol";
 
-contract AaveWeightedPoolFactoryFactory {
+contract AaveWeightedPoolFactory {
     IWeightedPoolFactory public immutable poolFactory;
     IVault public immutable vault;
-
-    ILendingPool private constant _AAVE_LENDINGPOOL = ILendingPool(0);
-    IAaveIncentivesController private constant _AAVE_INCENTIVES = IAaveIncentivesController(0);
+    ILendingPool public immutable lendingPool;
 
     address private constant _REWARDS_DISTRIBUTOR = address(0);
 
-    constructor(IWeightedPoolFactory baseFactory) {
+    constructor(IWeightedPoolFactory baseFactory, ILendingPool aaveLendingPool) {
         poolFactory = baseFactory;
         vault = baseFactory.getVault();
+        lendingPool = aaveLendingPool;
     }
 
     /**
@@ -47,7 +46,9 @@ contract AaveWeightedPoolFactoryFactory {
         uint256[] memory weights,
         uint256[] memory managedTokens,
         uint256 swapFeePercentage,
-        address owner
+        address owner,
+        IAaveIncentivesController aaveIncentives,
+        address rewardsDistributor
     ) external returns (address) {
         // Without an owner the investment config may not be set to invest any funds.
         // We then reject any ownerless pools from this factory.
@@ -57,7 +58,12 @@ contract AaveWeightedPoolFactoryFactory {
         address[] memory assetManagers = new address[](tokens.length);
         for (uint256 i; i < managedTokens.length; i++) {
             assetManagers[managedTokens[i]] = address(
-                new AaveATokenAssetManager(vault, tokens[i], _AAVE_LENDINGPOOL, _AAVE_INCENTIVES)
+                new AaveATokenAssetManager(
+                    vault,
+                    tokens[i],
+                    lendingPool,
+                    aaveIncentives
+                )
             );
         }
 
@@ -67,7 +73,7 @@ contract AaveWeightedPoolFactoryFactory {
         // Initialise asset managers with deployed pool's id
         bytes32 poolId = BasePool(pool).getPoolId();
         for (uint256 i; i < managedTokens.length; i++) {
-            AaveATokenAssetManager(assetManagers[managedTokens[i]]).initialize(poolId, _REWARDS_DISTRIBUTOR);
+            AaveATokenAssetManager(assetManagers[managedTokens[i]]).initialize(poolId, rewardsDistributor);
         }
 
         return pool;
