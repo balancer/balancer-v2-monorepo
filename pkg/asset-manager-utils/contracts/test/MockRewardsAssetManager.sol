@@ -29,8 +29,8 @@ contract MockRewardsAssetManager is RewardsAssetManager {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function initialise(bytes32 pId) public {
-        _initialise(pId);
+    function initialize(bytes32 pId) public {
+        _initialize(pId);
     }
 
     function _invest(uint256 amount, uint256) internal pure override returns (uint256) {

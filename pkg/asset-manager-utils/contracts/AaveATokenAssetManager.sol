@@ -56,8 +56,8 @@ contract AaveATokenAssetManager is RewardsAssetManager {
      * @param pId - the id of the pool
      * @param rewardsDistributor - the address of the rewards contract (to distribute stkAAVE)
      */
-    function initialise(bytes32 pId, address rewardsDistributor) public {
-        _initialise(pId);
+    function initialize(bytes32 pId, address rewardsDistributor) public {
+        _initialize(pId);
         distributor = IMultiRewards(rewardsDistributor);
         stkAave.approve(rewardsDistributor, type(uint256).max);
     }

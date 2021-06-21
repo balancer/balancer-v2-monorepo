@@ -70,7 +70,7 @@ const setup = async () => {
     args: [vault.address],
   });
 
-  await assetManager.initialise(poolId, distributor.address);
+  await assetManager.initialize(poolId, distributor.address);
 
   const rewardsDuration = 1; // Have a neglibile duration so that rewards are distributed instantaneously
   await distributor.addReward(pool.address, stkAave.address, assetManager.address, rewardsDuration);
