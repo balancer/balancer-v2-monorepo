@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
@@ -23,16 +24,14 @@ import "@balancer-labs/v2-asset-manager-utils/contracts/AaveATokenAssetManager.s
 
 import "../IWeightedPoolFactory.sol";
 
-contract AaveWeightedPoolFactory {
+contract AaveWeightedPoolFactory is BasePoolFactory {
     IWeightedPoolFactory public immutable poolFactory;
-    IVault public immutable vault;
     ILendingPool public immutable lendingPool;
 
     address private constant _REWARDS_DISTRIBUTOR = address(0);
 
-    constructor(IWeightedPoolFactory baseFactory, ILendingPool aaveLendingPool) {
+    constructor(IWeightedPoolFactory baseFactory, ILendingPool aaveLendingPool) BasePoolFactory(baseFactory.getVault()) {
         poolFactory = baseFactory;
-        vault = baseFactory.getVault();
         lendingPool = aaveLendingPool;
     }
 
@@ -59,7 +58,7 @@ contract AaveWeightedPoolFactory {
         for (uint256 i; i < managedTokens.length; i++) {
             assetManagers[managedTokens[i]] = address(
                 new AaveATokenAssetManager(
-                    vault,
+                    getVault(),
                     tokens[i],
                     lendingPool,
                     aaveIncentives
@@ -76,6 +75,7 @@ contract AaveWeightedPoolFactory {
             AaveATokenAssetManager(assetManagers[managedTokens[i]]).initialize(poolId, rewardsDistributor);
         }
 
+        _register(pool);
         return pool;
     }
 }
