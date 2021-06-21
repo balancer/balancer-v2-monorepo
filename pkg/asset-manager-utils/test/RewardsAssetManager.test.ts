@@ -153,15 +153,15 @@ describe('Rewards Asset manager', function () {
       ).to.be.revertedWith('Target must be less than or equal to upper critical level');
     });
 
-    it('reverts when setting target above 90%', async () => {
+    it('reverts when setting target above 95%', async () => {
       const badConfig = {
-        targetPercentage: fp(0.9).add(1),
+        targetPercentage: fp(0.95).add(1),
         upperCriticalPercentage: fp(1),
         lowerCriticalPercentage: 0,
       };
       await expect(
         assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(badConfig))
-      ).to.be.revertedWith('Target must be less than or equal to 90%');
+      ).to.be.revertedWith('Target must be less than or equal to 95%');
     });
 
     it('reverts when setting lower critical above target', async () => {
