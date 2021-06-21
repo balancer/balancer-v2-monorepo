@@ -42,8 +42,8 @@ contract AaveATokenAssetManager is RewardsAssetManager {
         // Query aToken addresses from lending pool
         lendingPool = _lendingPool;
         aToken = IERC20(_lendingPool.getReserveData(address(_token)).aTokenAddress);
-        
-        // Query reward token from incentives contract 
+
+        // Query reward token from incentives contract
         aaveIncentives = _aaveIncentives;
         stkAave = IERC20(_aaveIncentives.REWARD_TOKEN());
 

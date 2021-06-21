@@ -76,23 +76,24 @@ contract MockAaveLendingPool {
         return amount;
     }
 
-    function getReserveData(address /*asset*/) external view returns (DataTypes.ReserveData memory) {
-        return DataTypes.ReserveData({
-            configuration: DataTypes.ReserveConfigurationMap({
-                data: 0
-            }),
-            liquidityIndex: 0,
-            variableBorrowIndex: 0,
-            currentLiquidityRate: 0,
-            currentVariableBorrowRate: 0,
-            currentStableBorrowRate: 0,
-            lastUpdateTimestamp: 0,
-            aTokenAddress: address(this),
-            stableDebtTokenAddress: address(0),
-            variableDebtTokenAddress: address(0),
-            interestRateStrategyAddress: address(0),
-            id: 0
-        });
+    function getReserveData(
+        address /*asset*/
+    ) external view returns (DataTypes.ReserveData memory) {
+        return
+            DataTypes.ReserveData({
+                configuration: DataTypes.ReserveConfigurationMap({ data: 0 }),
+                liquidityIndex: 0,
+                variableBorrowIndex: 0,
+                currentLiquidityRate: 0,
+                currentVariableBorrowRate: 0,
+                currentStableBorrowRate: 0,
+                lastUpdateTimestamp: 0,
+                aTokenAddress: address(this),
+                stableDebtTokenAddress: address(0),
+                variableDebtTokenAddress: address(0),
+                interestRateStrategyAddress: address(0),
+                id: 0
+            });
     }
 
     function simulateATokenIncrease(
