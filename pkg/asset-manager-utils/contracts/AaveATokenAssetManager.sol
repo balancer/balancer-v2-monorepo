@@ -37,16 +37,15 @@ contract AaveATokenAssetManager is RewardsAssetManager {
         IVault _vault,
         IERC20 _token,
         ILendingPool _lendingPool,
-        IERC20 _aToken,
-        IAaveIncentivesController _aaveIncentives,
-        IERC20 _stkAave
+        IAaveIncentivesController _aaveIncentives
     ) RewardsAssetManager(_vault, bytes32(0), _token) {
-        // TODO: pull these from Aave addresses provider
+        // Query aToken addresses from lending pool
         lendingPool = _lendingPool;
-        aToken = _aToken;
+        aToken = IERC20(_lendingPool.getReserveData(address(_token)).aTokenAddress);
 
+        // Query reward token from incentives contract
         aaveIncentives = _aaveIncentives;
-        stkAave = _stkAave;
+        stkAave = IERC20(_aaveIncentives.REWARD_TOKEN());
 
         _token.approve(address(_lendingPool), type(uint256).max);
     }
@@ -56,8 +55,8 @@ contract AaveATokenAssetManager is RewardsAssetManager {
      * @param pId - the id of the pool
      * @param rewardsDistributor - the address of the rewards contract (to distribute stkAAVE)
      */
-    function initialise(bytes32 pId, address rewardsDistributor) public {
-        _initialise(pId);
+    function initialize(bytes32 pId, address rewardsDistributor) public {
+        _initialize(pId);
 
         distributor = IMultiRewards(rewardsDistributor);
         IERC20 poolAddress = IERC20((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
