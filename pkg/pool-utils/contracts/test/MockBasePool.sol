@@ -48,6 +48,7 @@ contract MockBasePool is BasePool {
         bytes32 poolId,
         address sender,
         address recipient,
+        uint256[] memory scalingFactors,
         bytes memory userData
     ) internal override returns (uint256, uint256[] memory) {}
 
@@ -58,6 +59,7 @@ contract MockBasePool is BasePool {
         uint256[] memory currentBalances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
         bytes memory userData
     )
         internal
@@ -76,6 +78,7 @@ contract MockBasePool is BasePool {
         uint256[] memory currentBalances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
         bytes memory userData
     )
         internal
