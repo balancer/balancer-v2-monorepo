@@ -53,14 +53,6 @@ contract MockAssetManager is IAssetManager {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function capitalIn(bytes32, uint256) external pure override {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    function capitalOut(bytes32, uint256) external pure override {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
     function rebalance(bytes32 poolId, bool force) external override {
         emit Rebalanced(address(this), poolId, _token, force);
     }
