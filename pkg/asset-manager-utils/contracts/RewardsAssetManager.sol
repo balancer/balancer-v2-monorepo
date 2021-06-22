@@ -194,6 +194,10 @@ abstract contract RewardsAssetManager is IAssetManager {
             "Target must be less than or equal to upper critical level"
         );
         require(
+            config.targetPercentage <= 0.95e18, // 0.95
+            "Target must be less than or equal to 95%"
+        );
+        require(
             config.lowerCriticalPercentage <= config.targetPercentage,
             "Lower critical level must be less than or equal to target"
         );
