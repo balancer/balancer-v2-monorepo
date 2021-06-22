@@ -27,4 +27,8 @@ contract MockAaveRewards is IAaveIncentivesController, ERC20("Staked Aave", "stk
     ) external override returns (uint256) {
         _mint(to, 1e18);
     }
+
+    function REWARD_TOKEN() external view override returns (address) {
+        return address(this);
+    }
 }

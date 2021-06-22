@@ -21,4 +21,9 @@ interface IAaveIncentivesController {
         uint256 amount,
         address to
     ) external returns (uint256);
+
+    /**
+     * @dev for backward compatibility with previous implementation of the Incentives controller
+     */
+    function REWARD_TOKEN() external view returns (address);
 }

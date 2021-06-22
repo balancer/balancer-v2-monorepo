@@ -33,14 +33,7 @@ const setup = async () => {
 
   // Deploy Asset manager
   const assetManager = await deploy('AaveATokenAssetManager', {
-    args: [
-      vault.address,
-      tokens.DAI.address,
-      lendingPool.address,
-      daiAToken.address,
-      aaveRewardsController.address,
-      stkAave.address,
-    ],
+    args: [vault.address, tokens.DAI.address, lendingPool.address, aaveRewardsController.address],
   });
 
   // Assign assetManager to the DAI token, and other to the other token
