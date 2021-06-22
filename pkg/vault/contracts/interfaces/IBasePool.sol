@@ -86,4 +86,6 @@ interface IBasePool is IPoolSwapStructs {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
+
+    function getPoolId() external view returns (bytes32);
 }
