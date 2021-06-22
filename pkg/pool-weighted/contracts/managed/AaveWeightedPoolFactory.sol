@@ -38,7 +38,7 @@ contract AaveWeightedPoolFactory is BasePoolFactory {
     }
 
     /**
-     * @dev Deploys a new `WeightedPool`.
+     * @dev Deploys a new `WeightedPool` which invests specified tokens into Aave.
      */
     function create(
         string memory name,
