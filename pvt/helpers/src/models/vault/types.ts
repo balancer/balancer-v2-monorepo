@@ -34,6 +34,22 @@ export type Swap = {
   from?: SignerWithAddress;
 };
 
+export type GeneralSwap = {
+  kind: number;
+  poolAddress: string;
+  poolId: string;
+  to: Account;
+  indexIn: number;
+  indexOut: number;
+  tokenIn: string;
+  tokenOut: string;
+  lastChangeBlock: BigNumberish;
+  data: string;
+  amount: BigNumberish;
+  balances: BigNumberish[];
+  from?: SignerWithAddress;
+};
+
 export type JoinPool = {
   poolAddress: string;
   poolId: string;
