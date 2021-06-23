@@ -509,10 +509,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @dev Returns the scaling factor for one of the Pool's tokens. Reverts if `token` is not a token registered by the
      * Pool.
      *
-     * All scaling factors are fixed-point values with 18 decimals, to allow for this function to be overriden by
+     * All scaling factors are fixed-point values with 18 decimals, to allow for this function to be overridden by
      * derived contracts that need to apply further scaling, making these factors potentially non-integer.
      *
-     * The largest 'base' scaling factor (i.e. in tokens with less than 18 decimals) is 10**18, which in fixed-poin is
+     * The largest 'base' scaling factor (i.e. in tokens with less than 18 decimals) is 10**18, which in fixed-point is
      * 10**36. This value can be multiplied with a 112 bit Vault balance with no overflow by a factor of ~1e7, making
      * even relatively 'large' factors safe to use.
      *
