@@ -129,24 +129,11 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
     ) internal view virtual override returns (uint256) {
         _require(_getTotalTokens() == 2, Errors.NOT_TWO_TOKENS);
 
-        uint256[] memory balances = new uint256[](2);
-        uint256 indexIn;
-        uint256 indexOut;
-
-        if (_token0 == swapRequest.tokenIn) {
-            indexIn = 0;
-            indexOut = 1;
-
-            balances[0] = balanceTokenIn;
-            balances[1] = balanceTokenOut;
-        } else {
-            // _token0 == swapRequest.tokenOut
-            indexOut = 0;
-            indexIn = 1;
-
-            balances[0] = balanceTokenOut;
-            balances[1] = balanceTokenIn;
-        }
+        (uint256[] memory balances, uint256 indexIn, uint256 indexOut) = _getSwapBalanceArrays(
+            swapRequest,
+            balanceTokenIn,
+            balanceTokenOut
+        );
 
         return _onSwapGivenIn(swapRequest, balances, indexIn, indexOut);
     }
@@ -158,9 +145,28 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
     ) internal view virtual override returns (uint256) {
         _require(_getTotalTokens() == 2, Errors.NOT_TWO_TOKENS);
 
-        uint256[] memory balances = new uint256[](2);
-        uint256 indexIn;
-        uint256 indexOut;
+        (uint256[] memory balances, uint256 indexIn, uint256 indexOut) = _getSwapBalanceArrays(
+            swapRequest,
+            balanceTokenIn,
+            balanceTokenOut
+        );
+        return _onSwapGivenOut(swapRequest, balances, indexIn, indexOut);
+    }
+
+    function _getSwapBalanceArrays(
+        SwapRequest memory swapRequest,
+        uint256 balanceTokenIn,
+        uint256 balanceTokenOut
+    )
+        private
+        view
+        returns (
+            uint256[] memory balances,
+            uint256 indexIn,
+            uint256 indexOut
+        )
+    {
+        balances = new uint256[](2);
 
         if (_token0 == swapRequest.tokenIn) {
             indexIn = 0;
@@ -176,8 +182,6 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
             balances[0] = balanceTokenOut;
             balances[1] = balanceTokenIn;
         }
-
-        return _onSwapGivenOut(swapRequest, balances, indexIn, indexOut);
     }
 
     // Initialize
