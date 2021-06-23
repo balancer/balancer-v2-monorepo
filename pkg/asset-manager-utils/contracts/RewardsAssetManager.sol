@@ -231,6 +231,27 @@ abstract contract RewardsAssetManager is IAssetManager {
     }
 
     /**
+     * @notice Checks whether the pool should rebalance upon adding or removing `delta` cash.
+     */
+    function shouldRebalance(uint256 delta, bool positiveDelta) external view returns (bool) {
+        (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(_getAUM());
+
+        // We calculate the value of cash held by the pool after the join/exit
+        uint256 updatedCash = positiveDelta ? poolCash.add(delta) : poolCash.sub(delta);
+        return _shouldRebalance(updatedCash, poolManaged);
+    }
+
+    /**
+     * @notice Determines whether the pool should rebalance given the provided balances
+     */
+    function _shouldRebalance(uint256 cash, uint256 managed) private view returns (bool) {
+        uint256 investedPercentage = cash.mul(FixedPoint.ONE).divDown(cash + managed);
+        InvestmentConfig memory config = _config;
+        return
+            investedPercentage > config.upperCriticalPercentage || investedPercentage < config.lowerCriticalPercentage;
+    }
+
+    /**
      * @notice Rebalances funds between pool and asset manager to maintain target investment percentage.
      */
     function _rebalance(
@@ -259,13 +280,7 @@ abstract contract RewardsAssetManager is IAssetManager {
             _rebalance(pId);
         } else {
             (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(_getAUM());
-            InvestmentConfig memory config = _config;
-
-            uint256 investedPercentage = poolManaged.mul(FixedPoint.ONE).divDown(poolCash + poolManaged);
-            if (
-                investedPercentage > config.upperCriticalPercentage ||
-                investedPercentage < config.lowerCriticalPercentage
-            ) {
+            if (_shouldRebalance(poolCash, poolManaged)) {
                 _rebalance(pId);
             }
         }
