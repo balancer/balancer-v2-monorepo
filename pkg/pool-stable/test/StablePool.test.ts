@@ -672,6 +672,42 @@ describe('StablePool', function () {
       });
     });
 
+    describe('get rate', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        tokens = (
+          await TokenList.create(
+            [
+              { decimals: 18, symbol: 'MKR' },
+              { decimals: 18, symbol: 'DAI' },
+              { decimals: 6, symbol: 'USDT' },
+            ],
+            { sorted: true }
+          )
+        ).subset(numberOfTokens);
+
+        const swapFeePercentage = fp(0.1);
+        await deployPool({ swapFeePercentage, tokens });
+      });
+
+      context('before initialized', () => {
+        it('rate is zero', async () => {
+          await expect(pool.getRate()).to.be.revertedWith('ZERO_DIVISION');
+        });
+      });
+
+      context('once initialized', () => {
+        sharedBeforeEach('initialize pool', async () => {
+          await pool.init({ recipient, initialBalances });
+        });
+
+        it('rate equals to one', async () => {
+          const result = await pool.getRate();
+
+          expect(result).to.equalWithError(fp(1), 0.0001);
+        });
+      });
+    });
+
     describe('set amp', () => {
       sharedBeforeEach('deploy pool', async () => {
         await deployPool({ owner });
