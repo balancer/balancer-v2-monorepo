@@ -80,14 +80,14 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
     // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
 
-    uint256 internal immutable _scalingFactor0;
-    uint256 internal immutable _scalingFactor1;
-    uint256 internal immutable _scalingFactor2;
-    uint256 internal immutable _scalingFactor3;
-    uint256 internal immutable _scalingFactor4;
-    uint256 internal immutable _scalingFactor5;
-    uint256 internal immutable _scalingFactor6;
-    uint256 internal immutable _scalingFactor7;
+    uint256 private immutable _scalingFactor0;
+    uint256 private immutable _scalingFactor1;
+    uint256 private immutable _scalingFactor2;
+    uint256 private immutable _scalingFactor3;
+    uint256 private immutable _scalingFactor4;
+    uint256 private immutable _scalingFactor5;
+    uint256 private immutable _scalingFactor6;
+    uint256 private immutable _scalingFactor7;
 
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
 
@@ -513,14 +513,23 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
         // Tokens with more than 18 decimals are not supported.
         uint256 decimalsDifference = Math.sub(18, tokenDecimals);
-        return 10**decimalsDifference;
+        return FixedPoint.ONE * 10**decimalsDifference;
     }
 
     /**
      * @dev Returns the scaling factor for one of the Pool's tokens. Reverts if `token` is not a token registered by the
      * Pool.
+     *
+     * All scaling factors are fixed-point values with 18 decimals, to allow for this function to be overridden by
+     * derived contracts that need to apply further scaling, making these factors potentially non-integer.
+     *
+     * The largest 'base' scaling factor (i.e. in tokens with less than 18 decimals) is 10**18, which in fixed-point is
+     * 10**36. This value can be multiplied with a 112 bit Vault balance with no overflow by a factor of ~1e7, making
+     * even relatively 'large' factors safe to use.
+     *
+     * The 1e7 figure is the result of 2**256 / (1e18 * 1e18 * 2**112).
      */
-    function _scalingFactor(IERC20 token) internal view returns (uint256) {
+    function _scalingFactor(IERC20 token) internal view virtual returns (uint256) {
         // prettier-ignore
         if (token == _token0) { return _scalingFactor0; }
         else if (token == _token1) { return _scalingFactor1; }
@@ -536,10 +545,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @dev Returns all the scaling factors in the same order as the registered tokens. The Vault will always
-     * pass balances in this order when calling any of the Pool hooks
+     * @dev Same as `_scalingFactor()`, except for all registered tokens (in the same order as registered). The Vault
+     * will always pass balances in this order when calling any of the Pool hooks.
      */
-    function _scalingFactors() internal view returns (uint256[] memory) {
+    function _scalingFactors() internal view virtual returns (uint256[] memory) {
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory scalingFactors = new uint256[](totalTokens);
 
@@ -563,7 +572,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * scaling or not.
      */
     function _upscale(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return Math.mul(amount, scalingFactor);
+        // Upscale rounding wouldn't necessarily always go in the same direction: in a swap for example the balance of
+        // token in should be rounded up, and that of token out rounded down. This is the only place where we round in
+        // the same direction for all amounts, as the impact of this rounding is expected to be minimal (and there's no
+        // rounding error unless `_scalingFactor()` is overriden).
+        return FixedPoint.mulDown(amount, scalingFactor);
     }
 
     /**
@@ -572,7 +585,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
         for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            amounts[i] = Math.mul(amounts[i], scalingFactors[i]);
+            amounts[i] = FixedPoint.mulDown(amounts[i], scalingFactors[i]);
         }
     }
 
@@ -581,7 +594,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * whether it needed scaling or not. The result is rounded down.
      */
     function _downscaleDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return Math.divDown(amount, scalingFactor);
+        return FixedPoint.divDown(amount, scalingFactor);
     }
 
     /**
@@ -590,7 +603,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
         for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            amounts[i] = Math.divDown(amounts[i], scalingFactors[i]);
+            amounts[i] = FixedPoint.divDown(amounts[i], scalingFactors[i]);
         }
     }
 
@@ -599,7 +612,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * whether it needed scaling or not. The result is rounded up.
      */
     function _downscaleUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return Math.divUp(amount, scalingFactor);
+        return FixedPoint.divUp(amount, scalingFactor);
     }
 
     /**
@@ -608,7 +621,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
         for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            amounts[i] = Math.divUp(amounts[i], scalingFactors[i]);
+            amounts[i] = FixedPoint.divUp(amounts[i], scalingFactors[i]);
         }
     }
 
