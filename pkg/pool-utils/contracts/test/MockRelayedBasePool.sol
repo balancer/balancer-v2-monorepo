@@ -95,7 +95,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         address,
         bytes memory
     ) internal view override returns (uint256, uint256[] memory) {
-        return (_MINIMUM_BPT * 2, _zeros());
+        return (_MINIMUM_BPT * 2, _ones());
     }
 
     function _onJoinPool(
@@ -116,7 +116,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
             uint256[] memory
         )
     {
-        return (_MINIMUM_BPT * 2, _zeros(), _zeros());
+        return (_MINIMUM_BPT * 2, _ones(), _zeros());
     }
 
     function _onExitPool(
@@ -137,10 +137,17 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
             uint256[] memory
         )
     {
-        return (_MINIMUM_BPT, _zeros(), _zeros());
+        return (_MINIMUM_BPT, _ones(), _zeros());
     }
 
     function _zeros() private view returns (uint256[] memory) {
         return new uint256[](_getTotalTokens());
+    }
+
+    function _ones() private view returns (uint256[] memory ones) {
+        ones = new uint256[](_getTotalTokens());
+        for (uint256 i = 0; i < ones.length; i++) {
+            ones[i] = FixedPoint.ONE;
+        }
     }
 }

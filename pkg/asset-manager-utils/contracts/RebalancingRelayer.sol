@@ -21,10 +21,13 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-pool-utils/contracts/interfaces/IBasePoolRelayer.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/misc/IWETH.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 
 import "./IAssetManager.sol";
 
 contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
+    using Address for address payable;
+
     // We start at a non-zero value to make EIP2200 refunds lower, meaning there'll be a higher chance of them being
     // fully effective.
     bytes32 internal constant _EMPTY_CALLED_POOL = bytes32(
@@ -51,12 +54,23 @@ contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
         return _calledPool == poolId;
     }
 
+    receive() external payable {
+        // Accept ETH transfers only coming from the Vault. This is only expected to happen when joining a pool,
+        // any remaining ETH value will be transferred back to this contract and forwarded back to the original sender.
+        _require(msg.sender == address(vault), Errors.ETH_TRANSFER);
+    }
+
     function joinPool(
         bytes32 poolId,
         address recipient,
         IVault.JoinPoolRequest memory request
     ) external payable rebalance(poolId, request.assets) {
         vault.joinPool{ value: msg.value }(poolId, msg.sender, recipient, request);
+
+        // Send back to the sender any remaining ETH value
+        if (address(this).balance > 0) {
+            msg.sender.sendValue(address(this).balance);
+        }
     }
 
     function exitPool(

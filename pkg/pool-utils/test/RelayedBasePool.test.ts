@@ -23,6 +23,8 @@ describe('RelayedBasePool', function () {
     vault = await Vault.create();
     relayer = await deploy('MockBasePoolRelayer');
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
+    await tokens.mint({ to: user, amount: fp(50) });
+    await tokens.approve({ to: vault.instance, amount: fp(1000), from: user });
     pool = await deploy('MockRelayedBasePool', {
       args: [
         vault.address,

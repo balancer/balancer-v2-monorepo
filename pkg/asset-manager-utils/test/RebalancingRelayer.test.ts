@@ -3,6 +3,7 @@ import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
+import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -26,13 +27,19 @@ describe('RebalancingRelayer', function () {
   });
 
   sharedBeforeEach('deploy relayer', async () => {
+    const DAI = await Token.create('DAI');
+    const WETH = await Token.create('WETH');
+    tokens = new TokenList([DAI, WETH].sort());
+
     authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
-    vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
+    vault = await deploy('v2-vault/Vault', { args: [authorizer.address, tokens.WETH.address, 0, 0] });
     relayer = await deploy('RebalancingRelayer', { args: [vault.address] });
+
+    await tokens.mint({ to: sender, amount: fp(100) });
+    await tokens.approve({ to: vault, amount: fp(100), from: sender });
   });
 
   sharedBeforeEach('deploy sample pool', async () => {
-    tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
     assetManagers = [
       await deploy('MockAssetManager', { args: [tokens.first.address] }),
       await deploy('MockAssetManager', { args: [tokens.second.address] }),
@@ -126,6 +133,29 @@ describe('RebalancingRelayer', function () {
               token: tokens.second.address,
               force: false,
             });
+          });
+
+          it('returns any extra value to the sender', async () => {
+            const previousVaultBalance = await tokens.WETH.balanceOf(vault.address);
+            const previousSenderBalance = await ethers.provider.getBalance(sender.address);
+            const previousRelayerBalance = await ethers.provider.getBalance(relayer.address);
+
+            // Overwrite assets addresses to use ETH instead of WETH
+            request.assets = tokens.map((token) => (token === tokens.WETH ? ZERO_ADDRESS : token.address));
+            const gasPrice = 1;
+            const receipt = await relayer
+              .connect(sender)
+              .joinPool(poolId, recipient.address, request, { value: fp(10), gasPrice });
+
+            const ethUsed = (await receipt.wait()).gasUsed.mul(gasPrice);
+            const currentSenderBalance = await ethers.provider.getBalance(sender.address);
+            const expectedTransferredBalance = previousSenderBalance.sub(currentSenderBalance).sub(ethUsed);
+
+            const currentVaultBalance = await tokens.WETH.balanceOf(vault.address);
+            expect(currentVaultBalance).to.be.equal(previousVaultBalance.add(expectedTransferredBalance));
+
+            const currentRelayerBalance = await ethers.provider.getBalance(relayer.address);
+            expect(currentRelayerBalance).to.be.equal(previousRelayerBalance);
           });
         });
 
