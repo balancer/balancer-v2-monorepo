@@ -233,7 +233,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     /**
      * @notice Checks whether the pool should rebalance upon adding or removing `delta` cash.
      */
-    function shouldRebalance(uint256 delta, bool positiveDelta) external view returns (bool) {
+    function shouldRebalance(uint256 delta, bool positiveDelta) external view override returns (bool) {
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(_getAUM());
 
         // We calculate the value of cash held by the pool after the join/exit
