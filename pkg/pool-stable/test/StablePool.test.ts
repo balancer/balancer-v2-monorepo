@@ -509,6 +509,16 @@ describe('StablePool', function () {
           expect(result).to.be.equalWithError(expectedAmountOut, 0.1);
         });
 
+        if (numberOfTokens == 2) {
+          it('calculates the same amount regardless of the interface used', async () => {
+            const amount = fp(0.1);
+            const resultTwoTokens = await pool.swapGivenIn({ in: 1, out: 0, amount });
+            const resultGeneral = await pool.swapGivenIn({ in: 1, out: 0, amount }, true);
+
+            expect(resultTwoTokens).to.be.equal(resultGeneral);
+          });
+        }
+
         if (numberOfTokens > 2) {
           it('reverts if invalid token in index', async () => {
             await expect(pool.swapGivenIn({ in: 10, out: 0, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
@@ -535,6 +545,16 @@ describe('StablePool', function () {
 
           expect(result).to.be.equalWithError(expectedAmountIn, 0.1);
         });
+
+        if (numberOfTokens == 2) {
+          it('calculates the same amount regardless of the interface used', async () => {
+            const amount = fp(0.1);
+            const resultTwoTokens = await pool.swapGivenOut({ in: 1, out: 0, amount });
+            const resultGeneral = await pool.swapGivenOut({ in: 1, out: 0, amount }, true);
+
+            expect(resultTwoTokens).to.be.equal(resultGeneral);
+          });
+        }
 
         if (numberOfTokens > 2) {
           it('reverts if invalid token in index', async () => {

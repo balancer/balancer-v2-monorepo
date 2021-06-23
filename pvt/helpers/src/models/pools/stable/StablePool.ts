@@ -248,64 +248,14 @@ export default class StablePool {
     );
   }
 
-  async swapGivenIn(params: SwapStablePool): Promise<BigNumber> {
-    const swapRequest = {
-      kind: SWAP_GIVEN.IN,
-      poolId: this.poolId,
-      from: params.from ?? ZERO_ADDRESS,
-      to: params.recipient ?? ZERO_ADDRESS,
-      tokenIn: params.in < this.tokens.length ? this.tokens.get(params.in)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
-      tokenOut: params.out < this.tokens.length ? this.tokens.get(params.out)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
-      lastChangeBlock: params.lastChangeBlock ?? 0,
-      userData: params.data ?? '0x',
-      amount: params.amount,
-    };
-
-    if (this.tokens.length == 2) {
-      const [indexIn, indexOut] = this.tokens.indicesOf(params.in, params.out);
-      const currentBalances = await this.getBalances();
-
-      return this.instance[
-        'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256,uint256)'
-      ](swapRequest, currentBalances[indexIn], currentBalances[indexOut]);
-    } else {
-      const [indexIn, indexOut] = this.tokens.indicesOf(params.in, params.out);
-      const currentBalances = await this.getBalances();
-
-      return this.instance[
-        'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256[],uint256,uint256)'
-      ](swapRequest, currentBalances, indexIn, indexOut);
-    }
+  async swapGivenIn(params: SwapStablePool, forceGeneral = false): Promise<BigNumber> {
+    const swapRequest = this._buildSwapRequest(params, SWAP_GIVEN.IN);
+    return this._callSwapHook(swapRequest, params.in, params.out, forceGeneral);
   }
 
-  async swapGivenOut(params: SwapStablePool): Promise<BigNumber> {
-    const swapRequest = {
-      kind: SWAP_GIVEN.OUT,
-      poolId: this.poolId,
-      from: params.from ?? ZERO_ADDRESS,
-      to: params.recipient ?? ZERO_ADDRESS,
-      tokenIn: params.in < this.tokens.length ? this.tokens.get(params.in)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
-      tokenOut: params.out < this.tokens.length ? this.tokens.get(params.out)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
-      lastChangeBlock: params.lastChangeBlock ?? 0,
-      userData: params.data ?? '0x',
-      amount: params.amount,
-    };
-
-    if (this.tokens.length == 2) {
-      const [indexIn, indexOut] = this.tokens.indicesOf(params.in, params.out);
-      const currentBalances = await this.getBalances();
-
-      return this.instance[
-        'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256,uint256)'
-      ](swapRequest, currentBalances[indexIn], currentBalances[indexOut]);
-    } else {
-      const [indexIn, indexOut] = this.tokens.indicesOf(params.in, params.out);
-      const currentBalances = await this.getBalances();
-
-      return this.instance[
-        'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256[],uint256,uint256)'
-      ](swapRequest, currentBalances, indexIn, indexOut);
-    }
+  async swapGivenOut(params: SwapStablePool, forceGeneral = false): Promise<BigNumber> {
+    const swapRequest = this._buildSwapRequest(params, SWAP_GIVEN.OUT);
+    return this._callSwapHook(swapRequest, params.in, params.out, forceGeneral);
   }
 
   async init(params: InitStablePool): Promise<JoinResult> {
@@ -506,6 +456,57 @@ export default class StablePool {
         bptAmountIn: params.bptIn,
       }),
     };
+  }
+
+  private _buildSwapRequest(params: SwapStablePool, kind: number) {
+    return {
+      kind,
+      poolId: this.poolId,
+      from: params.from ?? ZERO_ADDRESS,
+      to: params.recipient ?? ZERO_ADDRESS,
+      tokenIn: params.in < this.tokens.length ? this.tokens.get(params.in)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
+      tokenOut: params.out < this.tokens.length ? this.tokens.get(params.out)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
+      lastChangeBlock: params.lastChangeBlock ?? 0,
+      userData: params.data ?? '0x',
+      amount: params.amount,
+    };
+  }
+
+  private async _callSwapHook(
+    swapRequest: unknown,
+    tokenIn: number | Token,
+    tokenOut: number | Token,
+    forceGeneral = false
+  ): Promise<BigNumber> {
+    const [indexIn, indexOut] = this.tokens.indicesOf(tokenIn, tokenOut);
+    const currentBalances = await this.getBalances();
+
+    if (forceGeneral || this.tokens.length > 2) {
+      return this._callGeneralSwapHook(swapRequest, currentBalances, indexIn, indexOut);
+    } else {
+      return this._callMinimalSwapInfoSwapHook(swapRequest, currentBalances[indexIn], currentBalances[indexOut]);
+    }
+  }
+
+  private _callMinimalSwapInfoSwapHook(
+    swapRequest: unknown,
+    currentBalanceTokenIn: BigNumber,
+    currentBalanceTokenOut: BigNumber
+  ): Promise<BigNumber> {
+    return this.instance[
+      'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256,uint256)'
+    ](swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+  }
+
+  private _callGeneralSwapHook(
+    swapRequest: unknown,
+    currentBalances: BigNumber[],
+    indexIn: number,
+    indexOut: number
+  ): Promise<BigNumber> {
+    return this.instance[
+      'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256[],uint256,uint256)'
+    ](swapRequest, currentBalances, indexIn, indexOut);
   }
 
   async pause(): Promise<void> {
