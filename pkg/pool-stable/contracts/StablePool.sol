@@ -487,6 +487,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         // When calculating the current BPT rate, we may not have paid the protocol fees, therefore
         // the invariant should be smaller than its current value. Then, we round down overall.
         (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        _upscaleArray(balances, _scalingFactors());
+
         uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, false);
         return invariant.divDown(totalSupply());
     }
