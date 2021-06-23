@@ -69,19 +69,12 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         uint256 bufferPeriodDuration,
         address owner
     )
-        BaseGeneralPool(
+        BasePool(
             vault,
-            name,
-            symbol,
-            tokens,
-            new address[](tokens.length),
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
-        )
-        BaseMinimalSwapInfoPool(
-            vault,
+            // Because we're inheriting from both BaseGeneralPool and BaseMinimalSwapInfoPool we can choose any
+            // specialization setting. Since this Pool never registers or deregisters any tokens after construction,
+            // picking Two Token when the Pool only has two tokens is free gas savings.
+            tokens.length == 2 ? IVault.PoolSpecialization.TWO_TOKEN : IVault.PoolSpecialization.GENERAL,
             name,
             symbol,
             tokens,

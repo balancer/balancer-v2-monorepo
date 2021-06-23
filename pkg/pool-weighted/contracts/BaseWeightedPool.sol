@@ -48,8 +48,12 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 bufferPeriodDuration,
         address owner
     )
-        BaseMinimalSwapInfoPool(
+        BasePool(
             vault,
+            // Given BaseMinimalSwapInfoPool supports both of these specializations, and this Pool never registers or
+            // deregisters any tokens after construction, picking Two Token when the Pool only has two tokens is free
+            // gas savings.
+            tokens.length == 2 ? IVault.PoolSpecialization.TWO_TOKEN : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
             name,
             symbol,
             tokens,
