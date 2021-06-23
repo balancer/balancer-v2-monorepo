@@ -127,6 +127,8 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) internal view virtual override returns (uint256) {
+        _require(_getTotalTokens() == 2, Errors.NOT_TWO_TOKENS);
+
         uint256[] memory balances = new uint256[](2);
         uint256 indexIn;
         uint256 indexOut;
@@ -154,6 +156,8 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) internal view virtual override returns (uint256) {
+        _require(_getTotalTokens() == 2, Errors.NOT_TWO_TOKENS);
+
         uint256[] memory balances = new uint256[](2);
         uint256 indexIn;
         uint256 indexOut;

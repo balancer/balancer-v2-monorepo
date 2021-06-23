@@ -42,6 +42,12 @@ import {
 
 const SWAP_GIVEN = { IN: 0, OUT: 1 };
 
+export enum SWAP_INTERFACE {
+  DEFAULT,
+  GENERAL,
+  MINIMAL_SWAP_INFO,
+}
+
 export default class StablePool {
   instance: Contract;
   poolId: string;
@@ -248,14 +254,14 @@ export default class StablePool {
     );
   }
 
-  async swapGivenIn(params: SwapStablePool, forceGeneral = false): Promise<BigNumber> {
+  async swapGivenIn(params: SwapStablePool, hookInterface = SWAP_INTERFACE.DEFAULT): Promise<BigNumber> {
     const swapRequest = this._buildSwapRequest(params, SWAP_GIVEN.IN);
-    return this._callSwapHook(swapRequest, params.in, params.out, forceGeneral);
+    return this._callSwapHook(swapRequest, params.in, params.out, hookInterface);
   }
 
-  async swapGivenOut(params: SwapStablePool, forceGeneral = false): Promise<BigNumber> {
+  async swapGivenOut(params: SwapStablePool, hookInterface = SWAP_INTERFACE.DEFAULT): Promise<BigNumber> {
     const swapRequest = this._buildSwapRequest(params, SWAP_GIVEN.OUT);
-    return this._callSwapHook(swapRequest, params.in, params.out, forceGeneral);
+    return this._callSwapHook(swapRequest, params.in, params.out, hookInterface);
   }
 
   async init(params: InitStablePool): Promise<JoinResult> {
@@ -476,15 +482,21 @@ export default class StablePool {
     swapRequest: unknown,
     tokenIn: number | Token,
     tokenOut: number | Token,
-    forceGeneral = false
+    hookInterface = SWAP_INTERFACE.DEFAULT
   ): Promise<BigNumber> {
     const [indexIn, indexOut] = this.tokens.indicesOf(tokenIn, tokenOut);
     const currentBalances = await this.getBalances();
 
-    if (forceGeneral || this.tokens.length > 2) {
-      return this._callGeneralSwapHook(swapRequest, currentBalances, indexIn, indexOut);
-    } else {
+    if (hookInterface == SWAP_INTERFACE.DEFAULT) {
+      if (this.tokens.length > 2) {
+        return this._callGeneralSwapHook(swapRequest, currentBalances, indexIn, indexOut);
+      } else {
+        return this._callMinimalSwapInfoSwapHook(swapRequest, currentBalances[indexIn], currentBalances[indexOut]);
+      }
+    } else if (hookInterface == SWAP_INTERFACE.MINIMAL_SWAP_INFO) {
       return this._callMinimalSwapInfoSwapHook(swapRequest, currentBalances[indexIn], currentBalances[indexOut]);
+    } else {
+      return this._callGeneralSwapHook(swapRequest, currentBalances, indexIn, indexOut);
     }
   }
 

@@ -7,7 +7,7 @@ import { GeneralPool, TwoTokenPool } from '@balancer-labs/v2-helpers/src/models/
 import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
+import StablePool, { SWAP_INTERFACE } from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
 import {
   advanceTime,
@@ -512,14 +512,22 @@ describe('StablePool', function () {
         if (numberOfTokens == 2) {
           it('calculates the same amount regardless of the interface used', async () => {
             const amount = fp(0.1);
-            const resultTwoTokens = await pool.swapGivenIn({ in: 1, out: 0, amount });
-            const resultGeneral = await pool.swapGivenIn({ in: 1, out: 0, amount }, true);
+            const resultMinimalSwapInfo = await pool.swapGivenIn(
+              { in: 1, out: 0, amount },
+              SWAP_INTERFACE.MINIMAL_SWAP_INFO
+            );
+            const resultGeneral = await pool.swapGivenIn({ in: 1, out: 0, amount }, SWAP_INTERFACE.GENERAL);
 
-            expect(resultTwoTokens).to.be.equal(resultGeneral);
+            expect(resultMinimalSwapInfo).to.be.equal(resultGeneral);
           });
-        }
+        } else {
+          it('reverts if using the minimal swap info interface', async () => {
+            const amount = fp(0.1);
+            await expect(
+              pool.swapGivenIn({ in: 1, out: 0, amount }, SWAP_INTERFACE.MINIMAL_SWAP_INFO)
+            ).to.be.revertedWith('NOT_TWO_TOKENS');
+          });
 
-        if (numberOfTokens > 2) {
           it('reverts if invalid token in index', async () => {
             await expect(pool.swapGivenIn({ in: 10, out: 0, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
           });
@@ -549,14 +557,22 @@ describe('StablePool', function () {
         if (numberOfTokens == 2) {
           it('calculates the same amount regardless of the interface used', async () => {
             const amount = fp(0.1);
-            const resultTwoTokens = await pool.swapGivenOut({ in: 1, out: 0, amount });
-            const resultGeneral = await pool.swapGivenOut({ in: 1, out: 0, amount }, true);
+            const resultMinimalSwapInfo = await pool.swapGivenOut(
+              { in: 1, out: 0, amount },
+              SWAP_INTERFACE.MINIMAL_SWAP_INFO
+            );
+            const resultGeneral = await pool.swapGivenOut({ in: 1, out: 0, amount }, SWAP_INTERFACE.GENERAL);
 
-            expect(resultTwoTokens).to.be.equal(resultGeneral);
+            expect(resultMinimalSwapInfo).to.be.equal(resultGeneral);
           });
-        }
+        } else {
+          it('reverts if using the minimal swap info interface', async () => {
+            const amount = fp(0.1);
+            await expect(
+              pool.swapGivenOut({ in: 1, out: 0, amount }, SWAP_INTERFACE.MINIMAL_SWAP_INFO)
+            ).to.be.revertedWith('NOT_TWO_TOKENS');
+          });
 
-        if (numberOfTokens > 2) {
           it('reverts if invalid token in index', async () => {
             await expect(pool.swapGivenOut({ in: 10, out: 0, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
           });
