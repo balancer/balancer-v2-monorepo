@@ -231,7 +231,13 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256[] memory scalingFactors = _scalingFactors();
 
         if (totalSupply() == 0) {
-            (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
+            (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(
+                poolId,
+                sender,
+                recipient,
+                scalingFactors,
+                userData
+            );
 
             // On initialization, we lock _MINIMUM_BPT by minting it for the zero address. This BPT acts as a minimum
             // as it will never be burned, which reduces potential issues with rounding, and also prevents the Pool from
@@ -253,6 +259,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 balances,
                 lastChangeBlock,
                 protocolSwapFeePercentage,
+                scalingFactors,
                 userData
             );
 
@@ -288,6 +295,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             balances,
             lastChangeBlock,
             protocolSwapFeePercentage,
+            scalingFactors,
             userData
         );
 
@@ -400,6 +408,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes32 poolId,
         address sender,
         address recipient,
+        uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual returns (uint256 bptAmountOut, uint256[] memory amountsIn);
 
@@ -427,6 +436,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256[] memory balances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
         bytes memory userData
     )
         internal
@@ -461,6 +471,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256[] memory balances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
         bytes memory userData
     )
         internal
@@ -617,7 +628,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData,
-        function(bytes32, address, address, uint256[] memory, uint256, uint256, bytes memory)
+        function(bytes32, address, address, uint256[] memory, uint256, uint256, uint256[] memory, bytes memory)
             internal
             returns (uint256, uint256[] memory, uint256[] memory) _action,
         function(uint256[] memory, uint256[] memory) internal view _downscaleArray
@@ -700,6 +711,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 balances,
                 lastChangeBlock,
                 protocolSwapFeePercentage,
+                scalingFactors,
                 userData
             );
 
