@@ -20,11 +20,12 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
 
 import "./StableMath.sol";
 import "./StablePoolUserDataHelpers.sol";
 
-contract StablePool is BaseGeneralPool, StableMath {
+contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
     using FixedPoint for uint256;
     using StablePoolUserDataHelpers for bytes;
     using WordCodec for bytes32;
@@ -79,6 +80,17 @@ contract StablePool is BaseGeneralPool, StableMath {
             bufferPeriodDuration,
             owner
         )
+        BaseMinimalSwapInfoPool(
+            vault,
+            name,
+            symbol,
+            tokens,
+            new address[](tokens.length),
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner
+        )
     {
         _require(tokens.length <= _MAX_STABLE_TOKENS, Errors.MAX_STABLE_TOKENS);
 
@@ -91,7 +103,7 @@ contract StablePool is BaseGeneralPool, StableMath {
 
     // Base Pool handlers
 
-    // Swap
+    // Swap - General Pool specialization (from BaseGeneralPool)
 
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,
@@ -113,6 +125,62 @@ contract StablePool is BaseGeneralPool, StableMath {
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 amountIn = StableMath._calcInGivenOut(currentAmp, balances, indexIn, indexOut, swapRequest.amount);
         return amountIn;
+    }
+
+    // Swap - Two Token Pool specialization (from BaseMinimalSwapInfoPool)
+
+    function _onSwapGivenIn(
+        SwapRequest memory swapRequest,
+        uint256 balanceTokenIn,
+        uint256 balanceTokenOut
+    ) internal view virtual override returns (uint256) {
+        uint256[] memory balances = new uint256[](2);
+        uint256 indexIn;
+        uint256 indexOut;
+
+        if (_token0 == swapRequest.tokenIn) {
+            indexIn = 0;
+            indexOut = 1;
+
+            balances[0] = balanceTokenIn;
+            balances[1] = balanceTokenOut;
+        } else {
+            // _token0 == swapRequest.tokenOut
+            indexOut = 0;
+            indexIn = 1;
+
+            balances[0] = balanceTokenOut;
+            balances[1] = balanceTokenIn;
+        }
+
+        return _onSwapGivenIn(swapRequest, balances, indexIn, indexOut);
+    }
+
+    function _onSwapGivenOut(
+        SwapRequest memory swapRequest,
+        uint256 balanceTokenIn,
+        uint256 balanceTokenOut
+    ) internal view virtual override returns (uint256) {
+        uint256[] memory balances = new uint256[](2);
+        uint256 indexIn;
+        uint256 indexOut;
+
+        if (_token0 == swapRequest.tokenIn) {
+            indexIn = 0;
+            indexOut = 1;
+
+            balances[0] = balanceTokenIn;
+            balances[1] = balanceTokenOut;
+        } else {
+            // _token0 == swapRequest.tokenOut
+            indexOut = 0;
+            indexIn = 1;
+
+            balances[0] = balanceTokenOut;
+            balances[1] = balanceTokenIn;
+        }
+
+        return _onSwapGivenOut(swapRequest, balances, indexIn, indexOut);
     }
 
     // Initialize
