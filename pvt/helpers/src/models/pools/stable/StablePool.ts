@@ -142,6 +142,10 @@ export default class StablePool {
     return this.vault.getPoolTokenInfo(this.poolId, token);
   }
 
+  async getRate(): Promise<BigNumber> {
+    return this.instance.getRate();
+  }
+
   async startAmpChange(
     newAmp: BigNumberish,
     endTime?: BigNumberish,

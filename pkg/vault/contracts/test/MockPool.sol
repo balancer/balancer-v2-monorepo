@@ -37,7 +37,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         return _vault;
     }
 
-    function getPoolId() external view returns (bytes32) {
+    function getPoolId() external view override returns (bytes32) {
         return _poolId;
     }
 
