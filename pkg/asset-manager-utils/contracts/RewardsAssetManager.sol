@@ -234,7 +234,7 @@ abstract contract RewardsAssetManager is IAssetManager {
      * @notice Determines whether the pool should rebalance given the provided balances
      */
     function shouldRebalance(uint256 cash, uint256 managed) public view override returns (bool) {
-        uint256 investedPercentage = cash.mul(FixedPoint.ONE).divDown(cash + managed);
+        uint256 investedPercentage = cash.mul(FixedPoint.ONE).divDown(cash.add(managed));
         InvestmentConfig memory config = _config;
         return
             investedPercentage > config.upperCriticalPercentage || investedPercentage < config.lowerCriticalPercentage;
