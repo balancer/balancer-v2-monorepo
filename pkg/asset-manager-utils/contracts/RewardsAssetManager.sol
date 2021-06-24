@@ -82,6 +82,10 @@ abstract contract RewardsAssetManager is IAssetManager {
         poolId = pId;
     }
 
+    function getToken() external view override returns (IERC20) {
+        return token;
+    }
+
     // Investment configuration
 
     function maxInvestableBalance(bytes32 pId) public view override withCorrectPool(pId) returns (int256) {

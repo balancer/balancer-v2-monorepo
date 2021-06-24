@@ -21,6 +21,20 @@ import "../RelayedBasePool.sol";
 contract MockRelayedBasePool is BasePool, RelayedBasePool {
     uint256 private constant _MINIMUM_BPT = 1e6;
 
+    event Join(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        bytes userData
+    );
+
+    event Exit(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        bytes userData
+    );
+
     constructor(
         IVault vault,
         IVault.PoolSpecialization specialization,
@@ -58,6 +72,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public override(BasePool, RelayedBasePool) returns (uint256[] memory, uint256[] memory) {
+        emit Join(poolId, sender, recipient, userData);
         return
             RelayedBasePool.onJoinPool(
                 poolId,
@@ -79,6 +94,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public override(BasePool, RelayedBasePool) returns (uint256[] memory, uint256[] memory) {
+        emit Exit(poolId, sender, recipient, userData);
         return
             RelayedBasePool.onExitPool(
                 poolId,
@@ -98,7 +114,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         uint256[] memory,
         bytes memory
     ) internal view override returns (uint256, uint256[] memory) {
-        return (_MINIMUM_BPT, _zeros());
+        return (_MINIMUM_BPT * 2, _ones());
     }
 
     function _onJoinPool(
@@ -120,7 +136,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
             uint256[] memory
         )
     {
-        return (_MINIMUM_BPT, _zeros(), _zeros());
+        return (_MINIMUM_BPT * 2, _ones(), _zeros());
     }
 
     function _onExitPool(
@@ -142,10 +158,17 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
             uint256[] memory
         )
     {
-        return (0, _zeros(), _zeros());
+        return (_MINIMUM_BPT, _ones(), _zeros());
     }
 
     function _zeros() private view returns (uint256[] memory) {
         return new uint256[](_getTotalTokens());
+    }
+
+    function _ones() private view returns (uint256[] memory ones) {
+        ones = new uint256[](_getTotalTokens());
+        for (uint256 i = 0; i < ones.length; i++) {
+            ones[i] = FixedPoint.ONE;
+        }
     }
 }
