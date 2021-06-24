@@ -178,6 +178,76 @@ describe('Rewards Asset manager', function () {
     it('prevents an unauthorized user from setting the pool config');
   });
 
+  describe('shouldRebalance', () => {
+    function itShouldRebalance(shouldRebalance: boolean) {
+      it(`returns ${shouldRebalance}`, async () => {
+        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+        expect(await assetManager.shouldRebalance(poolCash, poolManaged)).to.be.eq(shouldRebalance);
+      });
+    }
+
+    const config = {
+      targetPercentage: fp(0.5),
+      upperCriticalPercentage: fp(0.75),
+      lowerCriticalPercentage: fp(0.25),
+    };
+
+    // Balances that make the Asset Manager be at the critical percentages
+    let lowerCriticalBalance: BigNumber;
+    let upperCriticalBalance: BigNumber;
+
+    sharedBeforeEach(async () => {
+      const poolController = lp; // TODO
+      await assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(config));
+
+      const { poolCash } = await assetManager.getPoolBalances(poolId);
+
+      lowerCriticalBalance = poolCash
+        .mul(config.lowerCriticalPercentage)
+        .div(FP_SCALING_FACTOR.sub(config.lowerCriticalPercentage));
+
+      upperCriticalBalance = poolCash
+        .mul(config.upperCriticalPercentage)
+        .div(FP_SCALING_FACTOR.sub(config.upperCriticalPercentage));
+    });
+
+    context('when pool is above target investment level', () => {
+      context('when pool is in non-critical range', () => {
+        sharedBeforeEach(async () => {
+          await tokens.DAI.mint(assetManager.address, upperCriticalBalance.mul(99).div(100));
+        });
+
+        itShouldRebalance(false);
+      });
+
+      context('when pool is above upper critical investment level', () => {
+        sharedBeforeEach(async () => {
+          await tokens.DAI.mint(assetManager.address, upperCriticalBalance.mul(101).div(100));
+        });
+
+        itShouldRebalance(true);
+      });
+    });
+
+    context('when pool is below target investment level', () => {
+      context('when pool is in non-critical range', () => {
+        sharedBeforeEach(async () => {
+          await tokens.DAI.mint(assetManager.address, lowerCriticalBalance.mul(101).div(100));
+        });
+
+        itShouldRebalance(false);
+      });
+
+      context('when pool is below lower critical investment level', () => {
+        sharedBeforeEach(async () => {
+          await tokens.DAI.mint(assetManager.address, lowerCriticalBalance.mul(99).div(100));
+        });
+
+        itShouldRebalance(true);
+      });
+    });
+  });
+
   describe('rebalance', () => {
     function itRebalancesCorrectly(force: boolean) {
       it('emits a Rebalance event', async () => {
