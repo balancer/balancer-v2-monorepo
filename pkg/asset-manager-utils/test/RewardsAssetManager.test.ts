@@ -179,6 +179,13 @@ describe('Rewards Asset manager', function () {
   });
 
   describe('rebalance', () => {
+    function itShouldRebalance(shouldRebalance: boolean) {
+      it(`shouldRebalance returns ${shouldRebalance}`, async () => {
+        const { poolCash, poolManaged } = await assetManager.getPoolBalances(poolId);
+        expect(await assetManager.shouldRebalance(poolCash, poolManaged)).to.be.eq(shouldRebalance);
+      });
+    }
+
     function itRebalancesCorrectly(force: boolean) {
       it('emits a Rebalance event', async () => {
         const tx = await assetManager.rebalance(poolId, force);
@@ -250,6 +257,8 @@ describe('Rewards Asset manager', function () {
           await tokens.DAI.mint(assetManager.address, upperCriticalBalance.mul(99).div(100));
         });
 
+        itShouldRebalance(false);
+
         context('when forced', () => {
           const force = true;
           itRebalancesCorrectly(force);
@@ -264,6 +273,8 @@ describe('Rewards Asset manager', function () {
         sharedBeforeEach(async () => {
           await tokens.DAI.mint(assetManager.address, upperCriticalBalance.mul(101).div(100));
         });
+
+        itShouldRebalance(true);
 
         context('when forced', () => {
           const force = true;
@@ -283,6 +294,8 @@ describe('Rewards Asset manager', function () {
           await tokens.DAI.mint(assetManager.address, lowerCriticalBalance.mul(101).div(100));
         });
 
+        itShouldRebalance(false);
+
         context('when forced', () => {
           const force = true;
           itRebalancesCorrectly(force);
@@ -297,6 +310,8 @@ describe('Rewards Asset manager', function () {
         sharedBeforeEach(async () => {
           await tokens.DAI.mint(assetManager.address, lowerCriticalBalance.mul(99).div(100));
         });
+
+        itShouldRebalance(true);
 
         context('when forced', () => {
           const force = true;

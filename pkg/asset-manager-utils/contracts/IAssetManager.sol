@@ -56,6 +56,11 @@ interface IAssetManager {
     function updateBalanceOfPool(bytes32 poolId) external;
 
     /**
+     * @notice Determines whether the pool should rebalance given the provided balances
+     */
+    function shouldRebalance(uint256 cash, uint256 managed) external view returns (bool);
+
+    /**
      * @notice Rebalances funds between the pool and the asset manager to maintain target investment percentage.
      * @param poolId - the poolId of the pool to be rebalanced
      * @param force - a boolean representing whether a rebalance should be forced even when the pool is near balance
