@@ -111,6 +111,7 @@ library Errors {
     uint256 internal constant BPT_IN_MAX_AMOUNT = 207;
     uint256 internal constant BPT_OUT_MIN_AMOUNT = 208;
     uint256 internal constant EXPIRED_PERMIT = 209;
+    uint256 internal constant NOT_TWO_TOKENS = 210;
 
     // Pools
     uint256 internal constant MIN_AMP = 300;
@@ -138,8 +139,9 @@ library Errors {
     uint256 internal constant STABLE_GET_BALANCE_DIDNT_CONVERGE = 322;
     uint256 internal constant RELAYER_NOT_CONTRACT = 323;
     uint256 internal constant BASE_POOL_RELAYER_NOT_CALLED = 324;
-    uint256 internal constant GRADUAL_UPDATE_TIME_TRAVEL = 325;
-    uint256 internal constant SWAPS_PAUSED = 326;
+    uint256 internal constant REBALANCING_RELAYER_REENTERED = 325;
+    uint256 internal constant GRADUAL_UPDATE_TIME_TRAVEL = 326;
+    uint256 internal constant SWAPS_PAUSED = 327;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
