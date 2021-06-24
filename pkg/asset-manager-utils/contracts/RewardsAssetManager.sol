@@ -231,20 +231,9 @@ abstract contract RewardsAssetManager is IAssetManager {
     }
 
     /**
-     * @notice Checks whether the pool should rebalance upon adding or removing `delta` cash.
-     */
-    function shouldRebalance(uint256 delta, bool positiveDelta) external view override returns (bool) {
-        (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(_getAUM());
-
-        // We calculate the value of cash held by the pool after the join/exit
-        uint256 updatedCash = positiveDelta ? poolCash.add(delta) : poolCash.sub(delta);
-        return _shouldRebalance(updatedCash, poolManaged);
-    }
-
-    /**
      * @notice Determines whether the pool should rebalance given the provided balances
      */
-    function _shouldRebalance(uint256 cash, uint256 managed) private view returns (bool) {
+    function shouldRebalance(uint256 cash, uint256 managed) public view override returns (bool) {
         uint256 investedPercentage = cash.mul(FixedPoint.ONE).divDown(cash + managed);
         InvestmentConfig memory config = _config;
         return
@@ -280,7 +269,7 @@ abstract contract RewardsAssetManager is IAssetManager {
             _rebalance(pId);
         } else {
             (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(_getAUM());
-            if (_shouldRebalance(poolCash, poolManaged)) {
+            if (shouldRebalance(poolCash, poolManaged)) {
                 _rebalance(pId);
             }
         }

@@ -53,7 +53,7 @@ contract MockAssetManager is IAssetManager {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function shouldRebalance(uint256, bool) external pure override returns (bool) {
+    function shouldRebalance(uint256, uint256) external pure override returns (bool) {
         return true;
     }
 

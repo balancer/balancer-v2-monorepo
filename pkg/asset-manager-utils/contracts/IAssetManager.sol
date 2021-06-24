@@ -56,9 +56,9 @@ interface IAssetManager {
     function updateBalanceOfPool(bytes32 poolId) external;
 
     /**
-     * @notice Checks whether the pool should rebalance upon adding or removing `delta` cash.
+     * @notice Determines whether the pool should rebalance given the provided balances
      */
-    function shouldRebalance(uint256 delta, bool positiveDelta) external view returns (bool);
+    function shouldRebalance(uint256 cash, uint256 managed) external view returns (bool);
 
     /**
      * @notice Rebalances funds between the pool and the asset manager to maintain target investment percentage.
