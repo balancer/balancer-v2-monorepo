@@ -21,7 +21,6 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IPoolSwapStructs.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IMinimalSwapInfoPool.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
 
 contract MockVault is IPoolSwapStructs {
     struct Pool {
@@ -83,17 +82,6 @@ contract MockVault is IPoolSwapStructs {
         uint256 balanceTokenOut
     ) external {
         uint256 amount = IMinimalSwapInfoPool(pool).onSwap(request, balanceTokenIn, balanceTokenOut);
-        emit Swap(request.poolId, request.tokenIn, request.tokenOut, amount);
-    }
-
-    function callGeneralPoolSwap(
-        address pool,
-        SwapRequest memory request,
-        uint256[] memory balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) external {
-        uint256 amount = IGeneralPool(pool).onSwap(request, balances, indexIn, indexOut);
         emit Swap(request.poolId, request.tokenIn, request.tokenOut, amount);
     }
 

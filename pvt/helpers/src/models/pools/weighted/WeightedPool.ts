@@ -450,7 +450,6 @@ export default class WeightedPool {
   private async _buildSwapParams(kind: number, params: SwapWeightedPool): Promise<Swap> {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
-
     return {
       kind,
       poolAddress: this.address,
