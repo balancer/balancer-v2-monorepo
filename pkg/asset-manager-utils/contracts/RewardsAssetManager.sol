@@ -64,9 +64,9 @@ abstract contract RewardsAssetManager is IAssetManager {
         token = _token;
     }
 
-    modifier onlyPoolController() {
+    modifier onlyPoolContract() {
         address poolAddress = address((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
-        require(msg.sender == poolAddress, "Only callable by pool controller");
+        require(msg.sender == poolAddress, "Only callable by pool");
         _;
     }
 
@@ -181,8 +181,7 @@ abstract contract RewardsAssetManager is IAssetManager {
 
     function _getAUM() internal view virtual returns (uint256);
 
-    // TODO restrict access with onlyPoolController
-    function setConfig(bytes32 pId, bytes memory rawConfig) external override withCorrectPool(pId) {
+    function setConfig(bytes32 pId, bytes memory rawConfig) external override withCorrectPool(pId) onlyPoolContract {
         InvestmentConfig memory config = abi.decode(rawConfig, (InvestmentConfig));
 
         require(

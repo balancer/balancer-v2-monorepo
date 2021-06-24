@@ -27,7 +27,7 @@ const setup = async () => {
   const vault = await Vault.create();
 
   // Deploy Pool
-  const pool = await deploy('v2-vault/MockPool', { args: [vault.address, GeneralPool] });
+  const pool = await deploy('MockAssetManagedPool', { args: [vault.address, GeneralPool] });
   const poolId = await pool.getPoolId();
 
   // Deploy Asset manager
@@ -67,7 +67,7 @@ const setup = async () => {
 };
 
 describe('Rewards Asset manager', function () {
-  let tokens: TokenList, vault: Contract, assetManager: Contract;
+  let tokens: TokenList, vault: Contract, assetManager: Contract, pool: Contract;
 
   let lp: SignerWithAddress, other: SignerWithAddress;
   let poolId: string;
@@ -81,6 +81,7 @@ describe('Rewards Asset manager', function () {
     poolId = data.poolId;
 
     assetManager = contracts.assetManager;
+    pool = contracts.pool;
     tokens = contracts.tokens;
     vault = contracts.vault;
   });
@@ -93,19 +94,13 @@ describe('Rewards Asset manager', function () {
   });
 
   describe('setConfig', () => {
-    let poolController: SignerWithAddress;
-
-    sharedBeforeEach(async () => {
-      poolController = lp; // TODO
-    });
-
     it('allows a pool controller to set the pools target investment config', async () => {
       const updatedConfig = {
         targetPercentage: 3,
         upperCriticalPercentage: 4,
         lowerCriticalPercentage: 2,
       };
-      await assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(updatedConfig));
+      await pool.setAssetManagerPoolConfig(assetManager.address, encodeInvestmentConfig(updatedConfig));
 
       const result = await assetManager.getInvestmentConfig(poolId);
       expect(result.targetPercentage).to.equal(updatedConfig.targetPercentage);
@@ -121,10 +116,10 @@ describe('Rewards Asset manager', function () {
       };
 
       const receipt = await (
-        await assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(updatedConfig))
+        await pool.setAssetManagerPoolConfig(assetManager.address, encodeInvestmentConfig(updatedConfig))
       ).wait();
 
-      expectEvent.inReceipt(receipt, 'InvestmentConfigSet', {
+      expectEvent.inIndirectReceipt(receipt, assetManager.interface, 'InvestmentConfigSet', {
         targetPercentage: updatedConfig.targetPercentage,
         lowerCriticalPercentage: updatedConfig.lowerCriticalPercentage,
         upperCriticalPercentage: updatedConfig.upperCriticalPercentage,
@@ -138,7 +133,7 @@ describe('Rewards Asset manager', function () {
         lowerCriticalPercentage: 0,
       };
       await expect(
-        assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(badConfig))
+        pool.setAssetManagerPoolConfig(assetManager.address, encodeInvestmentConfig(badConfig))
       ).to.be.revertedWith('Upper critical level must be less than or equal to 100%');
     });
 
@@ -149,7 +144,7 @@ describe('Rewards Asset manager', function () {
         lowerCriticalPercentage: 0,
       };
       await expect(
-        assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(badConfig))
+        pool.setAssetManagerPoolConfig(assetManager.address, encodeInvestmentConfig(badConfig))
       ).to.be.revertedWith('Target must be less than or equal to upper critical level');
     });
 
@@ -160,7 +155,7 @@ describe('Rewards Asset manager', function () {
         lowerCriticalPercentage: 0,
       };
       await expect(
-        assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(badConfig))
+        pool.setAssetManagerPoolConfig(assetManager.address, encodeInvestmentConfig(badConfig))
       ).to.be.revertedWith('Target must be less than or equal to 95%');
     });
 
@@ -171,11 +166,21 @@ describe('Rewards Asset manager', function () {
         lowerCriticalPercentage: 2,
       };
       await expect(
-        assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(badConfig))
+        pool.setAssetManagerPoolConfig(assetManager.address, encodeInvestmentConfig(badConfig))
       ).to.be.revertedWith('Lower critical level must be less than or equal to target');
     });
 
-    it('prevents an unauthorized user from setting the pool config');
+    it('prevents an unauthorized user from setting the pool config', async () => {
+      const updatedConfig = {
+        targetPercentage: 3,
+        upperCriticalPercentage: 4,
+        lowerCriticalPercentage: 2,
+      };
+
+      await expect(
+        assetManager.connect(other).setConfig(poolId, encodeInvestmentConfig(updatedConfig))
+      ).to.be.revertedWith('Only callable by pool');
+    });
   });
 
   describe('rebalance', () => {
@@ -230,8 +235,7 @@ describe('Rewards Asset manager', function () {
     let upperCriticalBalance: BigNumber;
 
     sharedBeforeEach(async () => {
-      const poolController = lp; // TODO
-      await assetManager.connect(poolController).setConfig(poolId, encodeInvestmentConfig(config));
+      await pool.setAssetManagerPoolConfig(assetManager.address, encodeInvestmentConfig(config));
 
       const { poolCash } = await assetManager.getPoolBalances(poolId);
 
