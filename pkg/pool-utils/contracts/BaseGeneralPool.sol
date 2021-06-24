@@ -21,36 +21,11 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
 /**
  * @dev Extension of `BasePool`, adding a handler for `IGeneralPool.onSwap`.
  *
- * Derived contracts must implement `_onSwapGivenIn` and `_onSwapGivenOut` along with `BasePool`'s virtual functions.
+ * Derived contracts must call `BasePool`'s constructor, and implement `_onSwapGivenIn` and `_onSwapGivenOut` along with
+ * `BasePool`'s virtual functions. Inheriting from this contract lets derived contracts choose the General
+ * specialization setting.
  */
 abstract contract BaseGeneralPool is IGeneralPool, BasePool {
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        IERC20[] memory tokens,
-        address[] memory assetManagers,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
-    )
-        BasePool(
-            vault,
-            IVault.PoolSpecialization.GENERAL,
-            name,
-            symbol,
-            tokens,
-            assetManagers,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
-        )
-    {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
     // Swap Hooks
 
     function onSwap(

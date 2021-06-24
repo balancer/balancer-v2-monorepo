@@ -3,11 +3,11 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import { GeneralPool, TwoTokenPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
+import StablePool, { SWAP_INTERFACE } from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
 import {
   advanceTime,
@@ -100,7 +100,7 @@ describe('StablePool', function () {
         it('uses general specialization', async () => {
           const { address, specialization } = await pool.getRegisteredInfo();
           expect(address).to.equal(pool.address);
-          expect(specialization).to.equal(GeneralPool);
+          expect(specialization).to.equal(numberOfTokens == 2 ? TwoTokenPool : GeneralPool);
         });
 
         it('registers tokens in the vault', async () => {
@@ -509,13 +509,33 @@ describe('StablePool', function () {
           expect(result).to.be.equalWithError(expectedAmountOut, 0.1);
         });
 
-        it('reverts if invalid token in', async () => {
-          await expect(pool.swapGivenIn({ in: 10, out: 0, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
-        });
+        if (numberOfTokens == 2) {
+          it('calculates the same amount regardless of the interface used', async () => {
+            const amount = fp(0.1);
+            const resultMinimalSwapInfo = await pool.swapGivenIn(
+              { in: 1, out: 0, amount },
+              SWAP_INTERFACE.MINIMAL_SWAP_INFO
+            );
+            const resultGeneral = await pool.swapGivenIn({ in: 1, out: 0, amount }, SWAP_INTERFACE.GENERAL);
 
-        it('reverts if invalid token out', async () => {
-          await expect(pool.swapGivenIn({ in: 1, out: 10, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
-        });
+            expect(resultMinimalSwapInfo).to.be.equal(resultGeneral);
+          });
+        } else {
+          it('reverts if using the minimal swap info interface', async () => {
+            const amount = fp(0.1);
+            await expect(
+              pool.swapGivenIn({ in: 1, out: 0, amount }, SWAP_INTERFACE.MINIMAL_SWAP_INFO)
+            ).to.be.revertedWith('NOT_TWO_TOKENS');
+          });
+
+          it('reverts if invalid token in index', async () => {
+            await expect(pool.swapGivenIn({ in: 10, out: 0, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
+
+          it('reverts if invalid token out index', async () => {
+            await expect(pool.swapGivenIn({ in: 1, out: 10, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
+        }
 
         it('reverts if paused', async () => {
           await pool.pause();
@@ -534,13 +554,33 @@ describe('StablePool', function () {
           expect(result).to.be.equalWithError(expectedAmountIn, 0.1);
         });
 
-        it('reverts if invalid token in', async () => {
-          await expect(pool.swapGivenOut({ in: 10, out: 0, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
-        });
+        if (numberOfTokens == 2) {
+          it('calculates the same amount regardless of the interface used', async () => {
+            const amount = fp(0.1);
+            const resultMinimalSwapInfo = await pool.swapGivenOut(
+              { in: 1, out: 0, amount },
+              SWAP_INTERFACE.MINIMAL_SWAP_INFO
+            );
+            const resultGeneral = await pool.swapGivenOut({ in: 1, out: 0, amount }, SWAP_INTERFACE.GENERAL);
 
-        it('reverts if invalid token out', async () => {
-          await expect(pool.swapGivenOut({ in: 1, out: 10, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
-        });
+            expect(resultMinimalSwapInfo).to.be.equal(resultGeneral);
+          });
+        } else {
+          it('reverts if using the minimal swap info interface', async () => {
+            const amount = fp(0.1);
+            await expect(
+              pool.swapGivenOut({ in: 1, out: 0, amount }, SWAP_INTERFACE.MINIMAL_SWAP_INFO)
+            ).to.be.revertedWith('NOT_TWO_TOKENS');
+          });
+
+          it('reverts if invalid token in index', async () => {
+            await expect(pool.swapGivenOut({ in: 10, out: 0, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
+
+          it('reverts if invalid token out index', async () => {
+            await expect(pool.swapGivenOut({ in: 1, out: 10, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
+        }
 
         it('reverts if paused', async () => {
           await pool.pause();
