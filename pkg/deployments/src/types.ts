@@ -8,6 +8,7 @@ export type Network = typeof NETWORKS[number];
 
 export type NAry<T> = T | Array<T>;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Param = boolean | string | number | BigNumber | any;
 
 export type Input = {
