@@ -153,7 +153,7 @@ contract WeightedPool2Tokens is
         return _vault;
     }
 
-    function getPoolId() public view returns (bytes32) {
+    function getPoolId() public view override returns (bytes32) {
         return _poolId;
     }
 

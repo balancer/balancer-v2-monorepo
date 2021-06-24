@@ -33,14 +33,7 @@ const setup = async () => {
 
   // Deploy Asset manager
   const assetManager = await deploy('AaveATokenAssetManager', {
-    args: [
-      vault.address,
-      tokens.DAI.address,
-      lendingPool.address,
-      daiAToken.address,
-      aaveRewardsController.address,
-      stkAave.address,
-    ],
+    args: [vault.address, tokens.DAI.address, lendingPool.address, aaveRewardsController.address],
   });
 
   // Assign assetManager to the DAI token, and other to the other token
@@ -70,10 +63,9 @@ const setup = async () => {
     args: [vault.address],
   });
 
-  await assetManager.initialise(poolId, distributor.address);
+  await assetManager.initialize(poolId, distributor.address);
 
-  const rewardsDuration = 1; // Have a neglibile duration so that rewards are distributed instantaneously
-  await distributor.addReward(pool.address, stkAave.address, assetManager.address, rewardsDuration);
+  await distributor.whitelistRewarder(pool.address, admin.address, lp.address);
 
   await tokens.mint({ to: lp, amount: tokenInitialBalance });
   await tokens.approve({ to: vault.address, from: [lp] });
@@ -148,7 +140,7 @@ describe('Aave Asset manager', function () {
       await advanceTime(10);
 
       const expectedReward = fp(0.75);
-      const actualReward = await distributor.earned(pool.address, lp.address, stkAave.address);
+      const actualReward = await distributor.totalEarned(pool.address, lp.address, stkAave.address);
       expect(expectedReward.sub(actualReward).abs()).to.be.lte(100);
     });
   });

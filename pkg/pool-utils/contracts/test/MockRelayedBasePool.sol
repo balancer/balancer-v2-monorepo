@@ -73,7 +73,16 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         bytes memory userData
     ) public override(BasePool, RelayedBasePool) returns (uint256[] memory, uint256[] memory) {
         emit Join(poolId, sender, recipient, userData);
-        return RelayedBasePool.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
+        return
+            RelayedBasePool.onJoinPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                userData
+            );
     }
 
     function onExitPool(
@@ -86,13 +95,23 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         bytes memory userData
     ) public override(BasePool, RelayedBasePool) returns (uint256[] memory, uint256[] memory) {
         emit Exit(poolId, sender, recipient, userData);
-        return RelayedBasePool.onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
+        return
+            RelayedBasePool.onExitPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                userData
+            );
     }
 
     function _onInitializePool(
         bytes32,
         address,
         address,
+        uint256[] memory,
         bytes memory
     ) internal view override returns (uint256, uint256[] memory) {
         return (_MINIMUM_BPT * 2, _ones());
@@ -105,6 +124,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         uint256[] memory,
         uint256,
         uint256,
+        uint256[] memory,
         bytes memory
     )
         internal
@@ -126,6 +146,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         uint256[] memory,
         uint256,
         uint256,
+        uint256[] memory,
         bytes memory
     )
         internal

@@ -76,7 +76,7 @@ abstract contract RewardsAssetManager is IAssetManager {
         _;
     }
 
-    function _initialise(bytes32 pId) internal {
+    function _initialize(bytes32 pId) internal {
         require(poolId == bytes32(0), "Already initialised");
         require(pId != bytes32(0), "Pool id cannot be empty");
         poolId = pId;

@@ -31,8 +31,8 @@ export type StablePoolDeployment = {
 };
 
 export type SwapStablePool = {
-  in: number | Token;
-  out: number | Token;
+  in: number;
+  out: number;
   amount: BigNumberish;
   recipient?: Account;
   from?: SignerWithAddress;
