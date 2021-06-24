@@ -21,9 +21,7 @@ import "../IAssetManager.sol";
 contract MockAssetManagedPool is MockPool {
     constructor(IVault vault, IVault.PoolSpecialization specialization) MockPool(vault, specialization) {}
 
-    function setAssetManagerPoolConfig(address assetManager, bytes memory poolConfig)
-        public
-    {
+    function setAssetManagerPoolConfig(address assetManager, bytes memory poolConfig) public {
         IAssetManager(assetManager).setConfig(getPoolId(), poolConfig);
     }
 }
