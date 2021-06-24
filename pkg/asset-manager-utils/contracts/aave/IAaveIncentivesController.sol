@@ -25,5 +25,6 @@ interface IAaveIncentivesController {
     /**
      * @dev for backward compatibility with previous implementation of the Incentives controller
      */
+    // solhint-disable-next-line func-name-mixedcase
     function REWARD_TOKEN() external view returns (address);
 }

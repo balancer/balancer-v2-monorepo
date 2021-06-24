@@ -18,16 +18,17 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "../../aave/IAaveIncentivesController.sol";
 
-// solhint-disable no-unused-vars
 contract MockAaveRewards is IAaveIncentivesController, ERC20("Staked Aave", "stkAAVE") {
     function claimRewards(
         address[] calldata, /* assets */
         uint256, /* amount */
         address to
-    ) external override returns (uint256) {
-        _mint(to, 1e18);
+    ) external override returns (uint256 rewards) {
+        rewards = 1e18;
+        _mint(to, rewards);
     }
 
+    // solhint-disable-next-line func-name-mixedcase
     function REWARD_TOKEN() external view override returns (address) {
         return address(this);
     }
