@@ -76,7 +76,7 @@ abstract contract RewardsAssetManager is IAssetManager {
         _;
     }
 
-    function _initialise(bytes32 pId) internal {
+    function _initialize(bytes32 pId) internal {
         require(poolId == bytes32(0), "Already initialised");
         require(pId != bytes32(0), "Pool id cannot be empty");
         poolId = pId;
@@ -188,6 +188,10 @@ abstract contract RewardsAssetManager is IAssetManager {
         require(
             config.targetPercentage <= config.upperCriticalPercentage,
             "Target must be less than or equal to upper critical level"
+        );
+        require(
+            config.targetPercentage <= 0.95e18, // 0.95
+            "Target must be less than or equal to 95%"
         );
         require(
             config.lowerCriticalPercentage <= config.targetPercentage,
