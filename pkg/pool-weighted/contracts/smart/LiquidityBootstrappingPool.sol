@@ -284,12 +284,13 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         bytes32 poolId,
         address sender,
         address recipient,
+        uint256[] memory scalingFactors,
         bytes memory userData
     ) internal override whenNotPaused returns (uint256, uint256[] memory) {
         // Only the owner can initialize the pool
         _require(sender == getOwner(), Errors.SENDER_NOT_ALLOWED);
 
-        return super._onInitializePool(poolId, sender, recipient, userData);
+        return super._onInitializePool(poolId, sender, recipient, scalingFactors, userData);
     }
 
     function _onJoinPool(
@@ -299,6 +300,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] memory balances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
         bytes memory userData
     )
         internal
@@ -321,6 +323,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
                 balances,
                 lastChangeBlock,
                 protocolSwapFeePercentage,
+                scalingFactors,
                 userData
             );
     }
