@@ -4,7 +4,7 @@ import Task from '../../../src/task';
 import { Output } from '../../../src/types';
 
 describe('StablePool', function () {
-  const task = new Task('TBD-stable-pool', 'mainnet', 'test');
+  const task = new Task('20210624-stable-pool', 'mainnet', 'test');
 
   afterEach('delete deployment', async () => {
     await task.delete();
