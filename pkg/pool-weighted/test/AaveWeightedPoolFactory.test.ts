@@ -4,7 +4,7 @@ import { Contract } from 'ethers';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -17,6 +17,7 @@ describe('AaveWeightedPoolFactory', function () {
   let baseFactory: Contract;
   let factory: Contract;
   let vault: Vault;
+  let aaveRewardsController: Contract;
   let owner: SignerWithAddress;
 
   const NAME = 'Balancer Pool Token';
@@ -29,26 +30,39 @@ describe('AaveWeightedPoolFactory', function () {
   });
 
   sharedBeforeEach('deploy factory & tokens', async () => {
+    tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
+
+    // Deploy mocked Aave
+    const lendingPool = await deploy('v2-asset-manager-utils/MockAaveLendingPool', { args: [] });
+    aaveRewardsController = await deploy('v2-asset-manager-utils/MockAaveRewards');
+
+    const mkrAToken = await deploy('v2-asset-manager-utils/MockAToken', {
+      args: [lendingPool.address, 'aMKR', 'aMKR', 18],
+    });
+    await lendingPool.registerAToken(tokens.MKR.address, mkrAToken.address);
+    const daiAToken = await deploy('v2-asset-manager-utils/MockAToken', {
+      args: [lendingPool.address, 'aDAI', 'aDAI', 18],
+    });
+    await lendingPool.registerAToken(tokens.DAI.address, daiAToken.address);
+
     vault = await Vault.create();
 
     baseFactory = await deploy('WeightedPoolFactory', { args: [vault.address] });
 
-    factory = await deploy('AaveWeightedPoolFactory', { args: [baseFactory.address, ZERO_ADDRESS] });
-
-    tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
+    factory = await deploy('AaveWeightedPoolFactory', { args: [baseFactory.address, lendingPool.address] });
   });
 
-  async function createPool(): Promise<Contract> {
+  async function createPool(managedTokens: number[] = []): Promise<Contract> {
     const receipt = await (
       await factory.create(
         NAME,
         SYMBOL,
         tokens.addresses,
         WEIGHTS,
-        [],
+        managedTokens,
         POOL_SWAP_FEE_PERCENTAGE,
         owner.address,
-        ZERO_ADDRESS,
+        aaveRewardsController.address,
         ZERO_ADDRESS
       )
     ).wait();
@@ -102,8 +116,30 @@ describe('AaveWeightedPoolFactory', function () {
   });
 
   describe('asset managers', () => {
-    it('deploys asset managers for each managed token');
+    it('deploys asset managers for each managed token', async () => {
+      const managedTokenIndices = [0];
+      const pool = await createPool(managedTokenIndices);
+      const poolId = await pool.getPoolId();
 
-    it('asset managers are initialised with correct pool id');
+      for (let i = 0; i < tokens.length; i++) {
+        const { assetManager } = await vault.getPoolTokenInfo(poolId, tokens.get(i));
+        const expectAssetManagerDeployed = managedTokenIndices.includes(i);
+        const assetManagerDeployed = assetManager !== ZERO_ADDRESS;
+        expect(assetManagerDeployed).to.be.eq(expectAssetManagerDeployed);
+      }
+    });
+
+    it('asset managers are initialised with correct pool id', async () => {
+      const managedTokenIndices = [0];
+      const pool = await createPool(managedTokenIndices);
+      const poolId = await pool.getPoolId();
+
+      for (let i = 0; i < managedTokenIndices.length; i++) {
+        const token = tokens.get(managedTokenIndices[i]);
+        const { assetManager } = await vault.getPoolTokenInfo(poolId, token);
+        const manager = await deployedAt('v2-asset-manager-utils/AaveATokenAssetManager', assetManager);
+        expect(await manager.poolId()).to.be.eq(poolId);
+      }
+    });
   });
 });
