@@ -58,7 +58,7 @@ contract AaveATokenAssetManager is RewardsAssetManager {
     function initialize(bytes32 pId, address rewardsDistributor) public {
         _initialize(pId);
 
-        if (rewardsDistributor != address(0)){
+        if (rewardsDistributor != address(0)) {
             distributor = IMultiRewards(rewardsDistributor);
             IERC20 poolAddress = IERC20((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
             distributor.whitelistRewarder(poolAddress, stkAave, address(this));
