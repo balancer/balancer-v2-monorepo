@@ -4,7 +4,7 @@ import { Contract } from 'ethers';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -100,6 +100,22 @@ describe('AaveWeightedPoolFactory', function () {
 
     it('sets the owner ', async () => {
       expect(await pool.getOwner()).to.equal(owner.address);
+    });
+
+    it('reverts on zero address being passed as owner ', async () => {
+      await expect(
+        factory.create(
+          NAME,
+          SYMBOL,
+          tokens.addresses,
+          WEIGHTS,
+          [],
+          POOL_SWAP_FEE_PERCENTAGE,
+          ZERO_ADDRESS,
+          aaveRewardsController.address,
+          ZERO_ADDRESS
+        )
+      ).to.be.revertedWith('Pool must have owner');
     });
 
     it('sets the name', async () => {
