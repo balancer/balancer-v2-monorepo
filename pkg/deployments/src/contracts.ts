@@ -10,7 +10,7 @@ export async function deploy(artifact: Artifact, args: Array<Param> = [], from?:
   if (!from) from = await getSigner();
 
   const { ethers } = require('hardhat');
-  const factory = await ethers.getContractFactory(artifact.abi, artifact.bytecode);
+  const factory = await ethers.getContractFactory(artifact.abi, artifact.evm.bytecode);
   const deployment = await factory.connect(from).deploy(...args);
   return deployment.deployed();
 }

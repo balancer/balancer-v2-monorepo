@@ -1,4 +1,5 @@
 import { Contract, BigNumber } from 'ethers';
+import { CompilerOutputBytecode } from 'hardhat/types';
 
 import Task from './task';
 
@@ -35,5 +36,11 @@ export type RawOutput = {
 
 export type Artifact = {
   abi: { [key: string]: string };
-  bytecode: string;
+  evm: {
+    bytecode: CompilerOutputBytecode;
+    deployedBytecode: CompilerOutputBytecode;
+    methodIdentifiers: {
+      [methodSignature: string]: string;
+    };
+  };
 };

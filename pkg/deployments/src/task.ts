@@ -1,11 +1,13 @@
 import fs from 'fs';
 import path from 'path';
+import { BuildInfo } from 'hardhat/types';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import logger from './logger';
+import Verifier from './verifier';
 import { deploy, instanceAt } from './contracts';
-import { Artifact, Input, Output, RawInput, RawOutput, RawInputKeyValue, Network, NETWORKS, Param } from './types';
+import { Artifact, Input, Network, NETWORKS, Output, Param, RawInput, RawInputKeyValue, RawOutput } from './types';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 
@@ -14,16 +16,22 @@ const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 export default class Task {
   id: string;
   _network?: Network;
+  _verifier?: Verifier;
   _outputFile?: string;
 
-  constructor(id: string, network?: Network, outputFile?: string) {
+  constructor(id: string, network?: Network, verifier?: Verifier) {
+    if (network && !NETWORKS.includes(network)) throw Error(`Unknown network ${network}`);
     this.id = id;
     this._network = network;
-    this._outputFile = outputFile;
+    this._verifier = verifier;
   }
 
   get outputFile(): string {
     return `${this._outputFile || this.network}.json`;
+  }
+
+  set outputFile(file: string) {
+    this._outputFile = file;
   }
 
   get network(): string {
@@ -41,14 +49,20 @@ export default class Task {
     return instance;
   }
 
+  async verify(name: string, address: string, constructorArguments: unknown): Promise<void> {
+    if (!this._verifier) return logger.warn('Skipping contract verification, no verifier defined');
+    const url = await this._verifier.call(this, name, address, constructorArguments);
+    logger.success(`Verified contract ${name} at ${url}`);
+  }
+
   async instanceAt(name: string, address: string): Promise<Contract> {
     return instanceAt(this.artifact(name), address);
   }
 
-  async run(force = false): Promise<void> {
+  async run(force = false, verify = false): Promise<void> {
     const taskPath = this._fileAt(this.dir(), 'index.ts');
     const task = require(taskPath).default;
-    await task(this, force);
+    await task(this, force, verify);
   }
 
   dir(): string {
@@ -56,10 +70,19 @@ export default class Task {
     return this._dirAt(TASKS_DIRECTORY, this.id);
   }
 
-  artifact(name: string): Artifact {
+  buildInfo(fileName: string): BuildInfo {
     const abiDir = this._dirAt(this.dir(), 'abi');
-    const artifactFile = this._fileAt(abiDir, `${name}.json`);
+    const artifactFile = this._fileAt(abiDir, `${fileName}.json`);
     return JSON.parse(fs.readFileSync(artifactFile).toString());
+  }
+
+  artifact(contractName: string, fileName: string = contractName): Artifact {
+    const builds = this.buildInfo(fileName).output.contracts;
+    const sourceName = Object.keys(builds).find((sourceName) =>
+      Object.keys(builds[sourceName]).find((key) => key === contractName)
+    );
+    if (!sourceName) throw Error(`Could not find artifact for ${contractName}`);
+    return builds[sourceName][contractName];
   }
 
   input(): Input {
