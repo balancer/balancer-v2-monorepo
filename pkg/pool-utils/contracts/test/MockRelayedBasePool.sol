@@ -16,9 +16,9 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../BasePool.sol";
-import "../RelayedBasePool.sol";
+import "../RebalancedBasePool.sol";
 
-contract MockRelayedBasePool is BasePool, RelayedBasePool {
+contract MockRelayedBasePool is BasePool, RebalancedBasePool {
     uint256 private constant _MINIMUM_BPT = 1e6;
 
     event Join(
@@ -45,7 +45,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        IBasePoolRelayer relayer,
+        IRebalancedBasePoolRelayer relayer,
         address owner
     )
         BasePool(
@@ -60,7 +60,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
             bufferPeriodDuration,
             owner
         )
-        RelayedBasePool(relayer)
+        RebalancedBasePool(relayer)
     {}
 
     function onJoinPool(
@@ -71,10 +71,10 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public override(BasePool, RelayedBasePool) returns (uint256[] memory, uint256[] memory) {
+    ) public override(BasePool, RebalancedBasePool) returns (uint256[] memory, uint256[] memory) {
         emit Join(poolId, sender, recipient, userData);
         return
-            RelayedBasePool.onJoinPool(
+            RebalancedBasePool.onJoinPool(
                 poolId,
                 sender,
                 recipient,
@@ -93,10 +93,10 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public override(BasePool, RelayedBasePool) returns (uint256[] memory, uint256[] memory) {
+    ) public override(BasePool, RebalancedBasePool) returns (uint256[] memory, uint256[] memory) {
         emit Exit(poolId, sender, recipient, userData);
         return
-            RelayedBasePool.onExitPool(
+            RebalancedBasePool.onExitPool(
                 poolId,
                 sender,
                 recipient,

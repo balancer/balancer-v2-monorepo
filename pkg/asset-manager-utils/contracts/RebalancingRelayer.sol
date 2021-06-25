@@ -18,14 +18,14 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-vault/contracts/AssetHelpers.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-import "@balancer-labs/v2-pool-utils/contracts/interfaces/IBasePoolRelayer.sol";
+import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRebalancedBasePoolRelayer.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/misc/IWETH.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 
 import "./IAssetManager.sol";
 
-contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
+contract RebalancingRelayer is IRebalancedBasePoolRelayer, AssetHelpers {
     using Address for address payable;
 
     // We start at a non-zero value to make EIP2200 refunds lower, meaning there'll be a higher chance of them being

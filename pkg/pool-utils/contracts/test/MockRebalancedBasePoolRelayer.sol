@@ -14,10 +14,10 @@
 
 pragma solidity ^0.7.0;
 
-import "../interfaces/IBasePoolRelayer.sol";
+import "../interfaces/IRebalancedBasePoolRelayer.sol";
 
 
-contract MockBasePoolRelayer is IBasePoolRelayer {
+contract MockRebalancedBasePoolRelayer is IRebalancedBasePoolRelayer {
     bool internal _hasCalledPool;
 
     function hasCalledPool(bytes32) external view override returns (bool) {
