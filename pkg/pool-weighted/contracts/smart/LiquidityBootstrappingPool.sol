@@ -108,7 +108,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        // Write initial pool state - all zeros except for the start weights
+        // Write initial pool state
         _poolState = poolState;
 
         // If false, the pool will start in the paused state (prevents front-running the unpause transaction)
