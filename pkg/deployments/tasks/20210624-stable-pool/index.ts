@@ -11,6 +11,7 @@ export default async (task: Task, force = false): Promise<void> => {
   if (force || !output.factory) {
     const factory = await task.deploy('StablePoolFactory', args);
     task.save({ factory });
+    await task.verify('StablePoolFactory', factory.address, args);
   } else {
     logger.info(`StablePoolFactory already deployed at ${output.factory}`);
     await task.verify('StablePoolFactory', output.factory, args);

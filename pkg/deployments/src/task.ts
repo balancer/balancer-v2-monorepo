@@ -20,6 +20,7 @@ export default class Task {
   _outputFile?: string;
 
   constructor(id: string, network?: Network, verifier?: Verifier) {
+    if (network && !NETWORKS.includes(network)) throw Error(`Unknown network ${network}`);
     this.id = id;
     this._network = network;
     this._verifier = verifier;
@@ -45,7 +46,6 @@ export default class Task {
   async deploy(name: string, args: Array<Param> = [], from?: SignerWithAddress): Promise<Contract> {
     const instance = await deploy(this.artifact(name), args, from);
     logger.success(`Deployed ${name} at ${instance.address}`);
-    await this.verify(name, instance.address, args);
     return instance;
   }
 
