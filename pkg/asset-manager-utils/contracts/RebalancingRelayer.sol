@@ -24,7 +24,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-standalone-utils/contracts/BaseRelayer.sol";
 
-
 import "./IAssetManager.sol";
 
 contract RebalancingRelayer is BaseRelayer, IBasePoolRelayer, AssetHelpers {
