@@ -28,8 +28,6 @@ contract AaveWeightedPoolFactory is BasePoolFactory {
     IWeightedPoolFactory public immutable poolFactory;
     ILendingPool public immutable lendingPool;
 
-    address private constant _REWARDS_DISTRIBUTOR = address(0);
-
     constructor(IWeightedPoolFactory baseFactory, ILendingPool aaveLendingPool)
         BasePoolFactory(baseFactory.getVault())
     {
