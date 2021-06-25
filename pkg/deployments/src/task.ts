@@ -50,7 +50,7 @@ export default class Task {
   }
 
   async verify(name: string, address: string, constructorArguments: unknown): Promise<void> {
-    if (!this._verifier) return logger.warn('Avoiding contract verification, no verifier defined');
+    if (!this._verifier) return logger.warn('Skipping contract verification, no verifier defined');
     const url = await this._verifier.call(this, name, address, constructorArguments);
     logger.success(`Verified contract ${name} at ${url}`);
   }
