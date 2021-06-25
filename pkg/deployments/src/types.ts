@@ -1,8 +1,9 @@
 import { Contract, BigNumber } from 'ethers';
+import { CompilerOutputBytecode } from 'hardhat/types';
 
 import Task from './task';
 
-export const NETWORKS = ['goerli', 'kovan', 'mainnet', 'rinkeby', 'ropsten'];
+export const NETWORKS = ['goerli', 'kovan', 'mainnet', 'rinkeby', 'ropsten', 'polygon'];
 
 export type Network = typeof NETWORKS[number];
 
@@ -35,5 +36,11 @@ export type RawOutput = {
 
 export type Artifact = {
   abi: { [key: string]: string };
-  bytecode: string;
+  evm: {
+    bytecode: CompilerOutputBytecode;
+    deployedBytecode: CompilerOutputBytecode;
+    methodIdentifiers: {
+      [methodSignature: string]: string;
+    };
+  };
 };
