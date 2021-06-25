@@ -2,7 +2,7 @@ import { Contract, BigNumber } from 'ethers';
 
 import Task from './task';
 
-export const NETWORKS = ['goerli', 'kovan', 'mainnet', 'rinkeby', 'ropsten'];
+export const NETWORKS = ['goerli', 'kovan', 'mainnet', 'rinkeby', 'ropsten', 'polygon'];
 
 export type Network = typeof NETWORKS[number];
 
