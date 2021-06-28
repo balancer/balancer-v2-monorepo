@@ -139,8 +139,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { endWeights[0] = poolState.decodeUint16(_END_WEIGHT_OFFSET).uncompress16(); }
-            if (totalTokens > 1) { endWeights[1] = poolState.decodeUint16(_END_WEIGHT_OFFSET + 16).uncompress16(); }
+            endWeights[0] = poolState.decodeUint16(_END_WEIGHT_OFFSET).uncompress16();
+            endWeights[1] = poolState.decodeUint16(_END_WEIGHT_OFFSET + 16).uncompress16();
             if (totalTokens > 2) { endWeights[2] = poolState.decodeUint16(_END_WEIGHT_OFFSET + 32).uncompress16(); }
             if (totalTokens > 3) { endWeights[3] = poolState.decodeUint16(_END_WEIGHT_OFFSET + 48).uncompress16(); }
         }
@@ -245,14 +245,12 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { normalizedWeights[0] = _getNormalizedWeightByIndex(0, poolState);
-            } else { return normalizedWeights; }
-            if (totalTokens > 1) { normalizedWeights[1] = _getNormalizedWeightByIndex(1, poolState);
-            } else { return normalizedWeights; }
-            if (totalTokens > 2) { normalizedWeights[2] = _getNormalizedWeightByIndex(2, poolState);
-            } else { return normalizedWeights; }
-            if (totalTokens > 3) { normalizedWeights[3] = _getNormalizedWeightByIndex(3, poolState);
-            } else { return normalizedWeights; }
+            normalizedWeights[0] = _getNormalizedWeightByIndex(0, poolState);
+            normalizedWeights[1] = _getNormalizedWeightByIndex(1, poolState);
+            if (totalTokens == 2) return normalizedWeights;
+            normalizedWeights[2] = _getNormalizedWeightByIndex(2, poolState);
+            if (totalTokens == 3) return normalizedWeights;
+            normalizedWeights[3] = _getNormalizedWeightByIndex(3, poolState);
         }
 
         return normalizedWeights;
@@ -392,7 +390,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 startTime,
         uint256 endTime
     ) private view returns (bytes32, uint256[] memory) {
-        // A weight change is (or was) in progress, we need to nodify the start weights
+        // A weight change is (or was) in progress, we need to modify the start weights
         bytes32 poolState = _poolState;
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
