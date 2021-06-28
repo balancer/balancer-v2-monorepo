@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "../BasePool.sol";
 import "../RebalancedBasePool.sol";
 
-contract MockRelayedBasePool is BasePool, RebalancedBasePool {
+contract MockRebalancedBasePool is BasePool, RebalancedBasePool {
     uint256 private constant _MINIMUM_BPT = 1e6;
 
     event Join(

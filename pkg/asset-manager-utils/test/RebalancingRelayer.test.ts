@@ -17,7 +17,7 @@ import {
   encodeJoinWeightedPool,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
 
-describe('RebalancingRelayer', function () {
+describe.only('RebalancingRelayer', function () {
   let poolId: string, tokens: TokenList;
   let sender: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
   let vault: Contract, authorizer: Contract, relayer: Contract, pool: Contract, assetManagers: Contract[];
@@ -44,7 +44,7 @@ describe('RebalancingRelayer', function () {
       await deploy('MockAssetManager', { args: [tokens.first.address] }),
       await deploy('MockAssetManager', { args: [tokens.second.address] }),
     ];
-    pool = await deploy('v2-pool-utils/MockRelayedBasePool', {
+    pool = await deploy('v2-pool-utils/MockRebalancedBasePool', {
       args: [
         vault.address,
         GeneralPool,
@@ -187,6 +187,10 @@ describe('RebalancingRelayer', function () {
     });
 
     context('when going through the vault', () => {
+      sharedBeforeEach('mock asset manager', async () => {
+        await assetManagers[1].mockShouldRebalance(true);
+      });
+
       it('reverts', async () => {
         await expect(
           vault.connect(sender).joinPool(poolId, sender.address, recipient.address, request)
@@ -301,7 +305,12 @@ describe('RebalancingRelayer', function () {
       });
     });
 
-    context('when going through the vault', () => {
+    context.only('when going through the vault', () => {
+      sharedBeforeEach('join and mock asset manager', async () => {
+        await vault.connect(sender).joinPool(poolId, sender.address, sender.address, joinRequest);
+        await assetManagers[0].mockShouldRebalance(true);
+      });
+
       it('reverts', async () => {
         await expect(
           vault.connect(sender).exitPool(poolId, sender.address, sender.address, exitRequest)

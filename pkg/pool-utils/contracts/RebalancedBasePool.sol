@@ -51,8 +51,15 @@ abstract contract RebalancedBasePool is BasePool {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public virtual override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
-        (amountsIn, dueProtocolFeeAmounts) =
-            super.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
+        (amountsIn, dueProtocolFeeAmounts) = super.onJoinPool(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            userData
+        );
         _ensureAssetManagerBalanced(poolId, amountsIn, dueProtocolFeeAmounts, true);
         return (amountsIn, dueProtocolFeeAmounts);
     }
@@ -66,8 +73,15 @@ abstract contract RebalancedBasePool is BasePool {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public virtual override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
-        (amountsOut, dueProtocolFeeAmounts) =
-            super.onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
+        (amountsOut, dueProtocolFeeAmounts) = super.onExitPool(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            userData
+        );
         _ensureAssetManagerBalanced(poolId, amountsOut, dueProtocolFeeAmounts, false);
         return (amountsOut, dueProtocolFeeAmounts);
     }
@@ -79,14 +93,22 @@ abstract contract RebalancedBasePool is BasePool {
         bool positive
     ) internal view {
         uint256 totalTokens = _getTotalTokens();
-        if (totalTokens > 0) _ensureAssetManagerBalanced(poolId, _token0, amounts[0], protocolFeeAmounts[0], positive);
-        if (totalTokens > 1) _ensureAssetManagerBalanced(poolId, _token1, amounts[1], protocolFeeAmounts[1], positive);
-        if (totalTokens > 2) _ensureAssetManagerBalanced(poolId, _token2, amounts[2], protocolFeeAmounts[2], positive);
-        if (totalTokens > 3) _ensureAssetManagerBalanced(poolId, _token3, amounts[3], protocolFeeAmounts[3], positive);
-        if (totalTokens > 4) _ensureAssetManagerBalanced(poolId, _token4, amounts[4], protocolFeeAmounts[4], positive);
-        if (totalTokens > 5) _ensureAssetManagerBalanced(poolId, _token5, amounts[5], protocolFeeAmounts[5], positive);
-        if (totalTokens > 6) _ensureAssetManagerBalanced(poolId, _token6, amounts[6], protocolFeeAmounts[6], positive);
-        if (totalTokens > 7) _ensureAssetManagerBalanced(poolId, _token7, amounts[7], protocolFeeAmounts[7], positive);
+        if (totalTokens == 0) return;
+        _ensureAssetManagerBalanced(poolId, _token0, amounts[0], protocolFeeAmounts[0], positive);
+        if (totalTokens == 1) return;
+        _ensureAssetManagerBalanced(poolId, _token1, amounts[1], protocolFeeAmounts[1], positive);
+        if (totalTokens == 2) return;
+        _ensureAssetManagerBalanced(poolId, _token2, amounts[2], protocolFeeAmounts[2], positive);
+        if (totalTokens == 3) return;
+        _ensureAssetManagerBalanced(poolId, _token3, amounts[3], protocolFeeAmounts[3], positive);
+        if (totalTokens == 4) return;
+        _ensureAssetManagerBalanced(poolId, _token4, amounts[4], protocolFeeAmounts[4], positive);
+        if (totalTokens == 5) return;
+        _ensureAssetManagerBalanced(poolId, _token5, amounts[5], protocolFeeAmounts[5], positive);
+        if (totalTokens == 6) return;
+        _ensureAssetManagerBalanced(poolId, _token6, amounts[6], protocolFeeAmounts[6], positive);
+        if (totalTokens == 7) return;
+        _ensureAssetManagerBalanced(poolId, _token7, amounts[7], protocolFeeAmounts[7], positive);
     }
 
     function _ensureAssetManagerBalanced(
