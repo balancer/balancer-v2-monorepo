@@ -23,7 +23,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
  * @title BaseRelayer
  * @notice Allows users to atomically approve a relayer and call multiple actions on it
  */
-abstract contract BaseRelayer {
+contract BaseRelayer {
     using Address for address payable;
 
     IVault public immutable vault;
