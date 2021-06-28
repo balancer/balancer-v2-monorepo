@@ -39,12 +39,11 @@ abstract contract BaseRelayer {
     }
 
     function setRelayerApproval(
-        address relayer,
         bool approved,
         bytes calldata authorisation
     ) external payable {
         bytes memory data = abi.encodePacked(
-            abi.encodeWithSelector(vault.setRelayerApproval.selector, msg.sender, relayer, approved),
+            abi.encodeWithSelector(vault.setRelayerApproval.selector, msg.sender, address(this), approved),
             authorisation
         );
         _vaultAction(0, data);
