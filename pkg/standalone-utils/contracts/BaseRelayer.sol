@@ -38,10 +38,7 @@ contract BaseRelayer {
         _require(msg.sender == address(vault), Errors.ETH_TRANSFER);
     }
 
-    function setRelayerApproval(
-        bool approved,
-        bytes calldata authorisation
-    ) external payable {
+    function setRelayerApproval(bool approved, bytes calldata authorisation) external payable {
         bytes memory data = abi.encodePacked(
             abi.encodeWithSelector(vault.setRelayerApproval.selector, msg.sender, address(this), approved),
             authorisation
