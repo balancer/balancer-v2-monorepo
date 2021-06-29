@@ -22,13 +22,13 @@ import "./CodeDeployer.sol";
  * @dev Base factory for contracts whose creation code is so large that the factory cannot hold it. This happens when
  * the contract's creation code grows close to 24kB.
  *
- * Note that this factory cannot help with contracts that hava *runtime* (deployed) bytecode larger than 24kB.
+ * Note that this factory cannot help with contracts that have a *runtime* (deployed) bytecode larger than 24kB.
  */
 abstract contract BaseSplitCodeFactory {
     // The contract's creation code is stored as code in two separate addresses, and retrieved via `extcodecopy`. This
     // means this factory supports contracts with creation code of up to 48kB.
     // We rely on inline-assembly to achieve this, both to make the entire operation highly gas efficient, and because
-    // `extcodecopy` is not avaiable in Solidity.
+    // `extcodecopy` is not available in Solidity.
 
     // solhint-disable no-inline-assembly
 
@@ -122,7 +122,7 @@ abstract contract BaseSplitCodeFactory {
         // This function exists because `abi.encode()` cannot be instructed to place its result at a specific address.
         // We need for the ABI-encoded constructor arguments to be located immediately after the creation code, but
         // cannot rely on `abi.encodePacked()` to perform concatenation as that would involve copying the creation code,
-        // which would be prohibitely expensive.
+        // which would be prohibitively expensive.
         // Instead, we compute the creation code in a pre-allocated array that is large enough to hold *both* the
         // creation code and the constructor arguments, and then copy the ABI-encoded arguments (which should not be
         // overly long) right after the end of the creation code.

@@ -23,7 +23,7 @@ import "./interfaces/IBasePoolRelayer.sol";
 
 /**
  * @dev Base Pool associated with a relayer that guarantees it can only be joined/exited from the relayer itself.
- * This contract as a simple mixin for pools. Implementing pools must make sure to call the BasePool's constructor
+ * This contract is a simple mixin for pools. Implementing pools must make sure to call the BasePool's constructor
  * properly.
  */
 abstract contract RelayedBasePool is BasePool {
