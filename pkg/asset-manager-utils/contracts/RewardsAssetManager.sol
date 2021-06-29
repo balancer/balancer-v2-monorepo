@@ -213,13 +213,7 @@ abstract contract RewardsAssetManager is IAssetManager {
         return _config;
     }
 
-    function getPoolBalances(bytes32 pId)
-        public
-        view
-        override
-        withCorrectPool(pId)
-        returns (uint256, uint256)
-    {
+    function getPoolBalances(bytes32 pId) public view override withCorrectPool(pId) returns (uint256, uint256) {
         return _getPoolBalances(_getAUM());
     }
 
