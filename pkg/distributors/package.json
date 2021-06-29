@@ -46,7 +46,7 @@
     "ethereum-waffle": "^3.0.2",
     "ethereumjs-util": "^7.0.10",
     "ethers": "^5.0.18",
-    "hardhat": "^2.2.0",
+    "hardhat": "^2.4.1",
     "lodash.frompairs": "^4.0.1",
     "lodash.pick": "^4.4.0",
     "lodash.range": "^3.2.0",

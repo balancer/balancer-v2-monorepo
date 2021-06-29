@@ -1,16 +1,22 @@
 import fs from 'fs';
 import path from 'path';
-import { RunSuperFunction, HardhatRuntimeEnvironment } from 'hardhat/types';
+import { ActionType, RunSuperFunction, HardhatRuntimeEnvironment } from 'hardhat/types';
 
 const DIRECTORIES = ['artifacts'];
 const FUNCTIONS = ['queryBatchSwap', 'queryExit', 'queryJoin'];
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-export default async function (_: any, __: HardhatRuntimeEnvironment, run: RunSuperFunction<any>) {
-  await run();
+
+const override: ActionType<any> = async (
+  args: any,
+  env: HardhatRuntimeEnvironment,
+  run: RunSuperFunction<any>
+): Promise<any> => {
+  const result = await run();
   DIRECTORIES.forEach(traverseDirectory);
-}
+  return result;
+};
 
 function traverseDirectory(directory: string): void {
   fs.readdirSync(directory).forEach((file) => {
@@ -40,3 +46,5 @@ function shouldOverwriteItem(item: any): boolean {
   if (!type || !name || !stateMutability) return false;
   return type === 'function' && stateMutability === 'nonpayable' && FUNCTIONS.includes(name);
 }
+
+export default override;
