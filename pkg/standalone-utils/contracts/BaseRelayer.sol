@@ -34,7 +34,8 @@ contract BaseRelayer {
 
     receive() external payable {
         // Accept ETH transfers only coming from the Vault. This is only expected to happen when joining a pool,
-        // any remaining ETH value will be transferred back to this contract and forwarded back to the original sender.
+        // performing a swap or managing a user's balance does not use the full amount of ETH provided.
+        // Any remaining ETH value will be transferred back to this contract and forwarded back to the original sender.
         _require(msg.sender == address(_vault), Errors.ETH_TRANSFER);
     }
 
