@@ -65,7 +65,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     }
 
     modifier onlyPoolContract() {
-        address poolAddress = address((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
+        address poolAddress = address(uint256(poolId) >> (12 * 8));
         require(msg.sender == poolAddress, "Only callable by pool");
         _;
     }
