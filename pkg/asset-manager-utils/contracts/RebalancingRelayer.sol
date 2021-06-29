@@ -58,7 +58,7 @@ contract RebalancingRelayer is BaseRelayer, IBasePoolRelayer, AssetHelpers {
         address recipient,
         IVault.JoinPoolRequest memory request
     ) external payable rebalance(poolId, request.assets) {
-        vault.joinPool{ value: msg.value }(poolId, msg.sender, recipient, request);
+        getVault().joinPool{ value: msg.value }(poolId, msg.sender, recipient, request);
 
         // Send back to the sender any remaining ETH value
         if (address(this).balance > 0) {
@@ -71,12 +71,12 @@ contract RebalancingRelayer is BaseRelayer, IBasePoolRelayer, AssetHelpers {
         address payable recipient,
         IVault.ExitPoolRequest memory request
     ) external rebalance(poolId, request.assets) {
-        vault.exitPool(poolId, msg.sender, recipient, request);
+        getVault().exitPool(poolId, msg.sender, recipient, request);
     }
 
     function _rebalance(bytes32 poolId, IERC20[] memory tokens) internal {
         for (uint256 i = 0; i < tokens.length; i++) {
-            (, , , address assetManager) = vault.getPoolTokenInfo(poolId, tokens[i]);
+            (, , , address assetManager) = getVault().getPoolTokenInfo(poolId, tokens[i]);
             if (assetManager != address(0)) {
                 // Note that malicious Asset Managers could perform reentrant calls at this stage and e.g. try to exit
                 // the Pool before Managers for other tokens have rebalanced. This is considered a non-issue as a) no

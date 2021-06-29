@@ -26,21 +26,25 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 contract BaseRelayer {
     using Address for address payable;
 
-    IVault public immutable vault;
+    IVault private immutable _vault;
 
-    constructor(IVault _vault) {
-        vault = _vault;
+    constructor(IVault vault) {
+        _vault = vault;
     }
 
     receive() external payable {
         // Accept ETH transfers only coming from the Vault. This is only expected to happen when joining a pool,
         // any remaining ETH value will be transferred back to this contract and forwarded back to the original sender.
-        _require(msg.sender == address(vault), Errors.ETH_TRANSFER);
+        _require(msg.sender == address(_vault), Errors.ETH_TRANSFER);
+    }
+
+    function getVault() public view returns (IVault){
+        return _vault;
     }
 
     function setRelayerApproval(bool approved, bytes calldata authorisation) external payable {
         bytes memory data = abi.encodePacked(
-            abi.encodeWithSelector(vault.setRelayerApproval.selector, msg.sender, address(this), approved),
+            abi.encodeWithSelector(_vault.setRelayerApproval.selector, msg.sender, address(this), approved),
             authorisation
         );
         _vaultAction(0, data);
@@ -52,7 +56,7 @@ contract BaseRelayer {
      */
     function _vaultAction(uint256 value, bytes memory data) private returns (bytes memory) {
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory result) = address(vault).call{ value: value }(data);
+        (bool success, bytes memory result) = address(_vault).call{ value: value }(data);
 
         // Pass up revert if the call failed
         if (!success) {
