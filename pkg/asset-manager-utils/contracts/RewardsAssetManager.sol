@@ -252,11 +252,11 @@ abstract contract RewardsAssetManager is IAssetManager {
         uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, config.targetPercentage);
         if (targetInvestment > poolManaged) {
             // Pool is under-invested so add more funds
-            uint256 rebalanceAmount = targetInvestment.sub(poolManaged);
+            uint256 rebalanceAmount = targetInvestment - poolManaged;
             _capitalIn(rebalanceAmount);
         } else {
             // Pool is over-invested so remove some funds
-            uint256 rebalanceAmount = poolManaged.sub(targetInvestment);
+            uint256 rebalanceAmount = poolManaged - targetInvestment;
             _capitalOut(rebalanceAmount);
         }
 
