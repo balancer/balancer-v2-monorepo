@@ -39,7 +39,7 @@ contract BaseRelayer {
         _require(msg.sender == address(_vault), Errors.ETH_TRANSFER);
     }
 
-    function getVault() public view returns (IVault){
+    function getVault() public view returns (IVault) {
         return _vault;
     }
 
