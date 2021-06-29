@@ -37,6 +37,7 @@ describe('BaseRelayer', function () {
   let admin: SignerWithAddress, signer: SignerWithAddress;
 
   let approvalAuthorisation: string;
+  const EMPTY_AUTHORISATION = '0x';
 
   before('deploy base contracts', async () => {
     [, admin, signer] = await ethers.getSigners();
@@ -85,6 +86,7 @@ describe('BaseRelayer', function () {
         });
       });
     });
+
     context('when relayer is not allowed to set approval', () => {
       it('reverts', async () => {
         await expect(relayer.connect(signer).setRelayerApproval(true, approvalAuthorisation)).to.be.revertedWith(
@@ -95,6 +97,10 @@ describe('BaseRelayer', function () {
   });
 
   describe('multicall', () => {
+    function setRelayerApprovalTx(allowed: boolean, authorization: string) {
+      return relayer.interface.encodeFunctionData('setRelayerApproval', [allowed, authorization]);
+    }
+
     context('when sending ETH', () => {
       it('refunds the unused ETH', async () => {
         // Pass in 100 wei which will not be used
@@ -114,6 +120,24 @@ describe('BaseRelayer', function () {
       });
     });
 
+    context('when passed a call which will revert', () => {
+      it('passes up the correct revert string', async () => {
+        // Call should fail due to relayer not been approved by the Authorizer
+        await expect(
+          relayer.connect(signer).multicall([setRelayerApprovalTx(true, approvalAuthorisation)])
+        ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+
+        const authorizer = vault.authorizer as Contract;
+        const setRelayerApproval = actionId(vault.instance, 'setRelayerApproval');
+        await authorizer.connect(admin).grantRole(setRelayerApproval, relayer.address);
+
+        // Call should fail due to bad authorization from user
+        await expect(
+          relayer.connect(signer).multicall([setRelayerApprovalTx(true, EMPTY_AUTHORISATION)])
+        ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
+      });
+    });
+
     context('when relayer is allowed to set approval', () => {
       sharedBeforeEach('authorise relayer', async () => {
         const authorizer = vault.authorizer as Contract;
@@ -124,16 +148,8 @@ describe('BaseRelayer', function () {
       context('when not approved by sender', () => {
         context('when the first call gives permanent approval', () => {
           it("doesn't require signatures on further calls", async () => {
-            const setApproval = relayer.interface.encodeFunctionData('setRelayerApproval', [
-              true,
-              approvalAuthorisation,
-            ]);
-
-            const EMPTY_AUTHORISATION = '0x';
-            const revokeApproval = relayer.interface.encodeFunctionData('setRelayerApproval', [
-              false,
-              EMPTY_AUTHORISATION,
-            ]);
+            const setApproval = setRelayerApprovalTx(true, approvalAuthorisation);
+            const revokeApproval = setRelayerApprovalTx(false, EMPTY_AUTHORISATION);
 
             const tx = await relayer.connect(signer).multicall([setApproval, revokeApproval]);
             const receipt = await tx.wait();
