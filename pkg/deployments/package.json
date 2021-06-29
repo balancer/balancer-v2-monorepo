@@ -14,7 +14,9 @@
   },
   "scripts": {
     "lint": "eslint . --ext .ts",
-    "test": "hardhat test ./**/test/*.ts"
+    "test": "hardhat test ./**/test/*.ts",
+    "test:deploy": "yarn test --network mainnet",
+    "test:fork": "yarn test --fork mainnet --block-number 12731159"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.1",

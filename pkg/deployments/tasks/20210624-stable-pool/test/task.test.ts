@@ -4,17 +4,12 @@ import Task from '../../../src/task';
 import { Output } from '../../../src/types';
 
 describe('StablePool', function () {
-  const task = new Task('20210624-stable-pool', 'mainnet');
-  task.outputFile = 'test';
-
-  afterEach('delete deployment', async () => {
-    await task.delete();
-  });
+  const task = Task.forTest('20210624-stable-pool', 'mainnet');
 
   context('with no previous deploy', () => {
     const itDeploysFactory = (force: boolean) => {
       it('deploys a stable pool factory', async () => {
-        await task.run(force);
+        await task.run({ force });
 
         const output = task.output();
         expect(output.factory).not.to.be.null;
@@ -51,7 +46,7 @@ describe('StablePool', function () {
       const force = true;
 
       it('re-deploys the stable pool factory', async () => {
-        await task.run(force);
+        await task.run({ force });
 
         const output = task.output();
         expect(output.factory).not.to.be.equal(previousDeploy.factory);
@@ -63,7 +58,7 @@ describe('StablePool', function () {
       const force = false;
 
       it('does not re-deploys the stable pool factory', async () => {
-        await task.run(force);
+        await task.run({ force });
 
         const output = task.output();
         expect(output.factory).to.be.equal(previousDeploy.factory);
