@@ -82,9 +82,9 @@ contract BaseRelayer {
                 if (result.length < 68) revert("MULTICALL_FAILED");
                 // solhint-disable-next-line no-inline-assembly
                 assembly {
-                    result := add(result, 0x04)
+                    returndatacopy(0, 0, returndatasize())
+                    revert(0, returndatasize())
                 }
-                revert(abi.decode(result, (string)));
             }
 
             results[i] = result;
