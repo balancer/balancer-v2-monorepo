@@ -143,4 +143,8 @@ library EnumerableSet {
     function unchecked_at(AddressSet storage set, uint256 index) internal view returns (address) {
         return set._values[index];
     }
+
+    function rawIndexOf(AddressSet storage set, address value) internal view returns (uint256) {
+        return set._indexes[value] - 1;
+    }
 }
