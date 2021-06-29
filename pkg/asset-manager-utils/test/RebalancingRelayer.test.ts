@@ -62,9 +62,9 @@ describe('RebalancingRelayer', function () {
     poolId = await pool.getPoolId();
   });
 
-  describe('vault', () => {
+  describe('getVault', () => {
     it('uses the given vault', async () => {
-      expect(await relayer.vault()).to.be.equal(vault.address);
+      expect(await relayer.getVault()).to.be.equal(vault.address);
     });
   });
 
