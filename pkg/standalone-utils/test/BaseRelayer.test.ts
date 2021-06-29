@@ -15,23 +15,6 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '../../../pvt/helpers/src/models/vault/Vault';
 
-const setup = async () => {
-  const [, admin] = await ethers.getSigners();
-
-  // Deploy Balancer Vault
-  const vault = await Vault.create({ admin });
-
-  const relayer = await deploy('BaseRelayer', { args: [vault.address] });
-
-  return {
-    data: {},
-    contracts: {
-      relayer,
-      vault,
-    },
-  };
-};
-
 describe('BaseRelayer', function () {
   let relayer: Contract, vault: Vault;
   let admin: SignerWithAddress, user: SignerWithAddress;
@@ -39,15 +22,13 @@ describe('BaseRelayer', function () {
   let approvalAuthorisation: string;
   const EMPTY_AUTHORISATION = '0x';
 
-  before('deploy base contracts', async () => {
+  before('set up signers', async () => {
     [, admin, user] = await ethers.getSigners();
   });
 
   sharedBeforeEach('set up relayer', async () => {
-    const { contracts } = await setup();
-
-    relayer = contracts.relayer;
-    vault = contracts.vault;
+    vault = await Vault.create({ admin });
+    relayer = await deploy('BaseRelayer', { args: [vault.address] });
 
     const approval = vault.instance.interface.encodeFunctionData('setRelayerApproval', [
       user.address,
