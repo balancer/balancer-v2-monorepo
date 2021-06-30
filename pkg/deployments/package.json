@@ -15,7 +15,7 @@
   "scripts": {
     "lint": "eslint . --ext .ts",
     "test": "hardhat test ./**/test/*.ts",
-    "test:deploy": "yarn test --network mainnet",
+    "test:deployed": "yarn test --network mainnet",
     "test:fork": "yarn test --fork mainnet --block-number 12731159"
   },
   "devDependencies": {

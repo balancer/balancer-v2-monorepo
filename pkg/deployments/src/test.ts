@@ -17,14 +17,14 @@ async function runNormalTests(args: any, hre: HardhatRuntimeEnvironment, run: Ru
 
 async function runDeployTests(args: any, hre: HardhatRuntimeEnvironment, run: RunSuperFunction<any>): Promise<void> {
   console.log('Running deployment tests...');
-  if (args.fork) throw Error('Cannot test forks from non-local networks');
+  if (args.fork) throw Error("The 'fork' option is invalid when testing deployments on livenetwork");
   args.testFiles = args.testFiles.filter((file: string) => file.endsWith('.deploy.ts'));
   await run(args);
 }
 
 async function runForkTests(args: any, hre: HardhatRuntimeEnvironment, run: RunSuperFunction<any>): Promise<void> {
   console.log('Running fork tests...');
-  if (args.fork === 'hardhat') throw Error('Cannot test forks using local networks');
+  if (args.fork === 'hardhat') throw Error('Cannot fork local networks');
   args.testFiles = args.testFiles.filter((file: string) => file.endsWith('.fork.ts'));
 
   const forkingNetworkName = Object.keys(hre.config.networks).find((networkName) => networkName === args.fork);
