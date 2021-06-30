@@ -43,7 +43,12 @@ import {
   calculateSpotPrice,
   calculateBPTPrice,
 } from './math';
-import { encodeExitWeightedPool, encodeJoinWeightedPool } from './encoding';
+import {
+  encodeExitWeightedPool,
+  encodeJoinWeightedPool,
+  WeightedPoolExitKind,
+  WeightedPoolJoinKind,
+} from '@balancer-labs/balancerjs';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 const SWAP_GIVEN = { IN: 0, OUT: 1 };
@@ -487,7 +492,7 @@ export default class WeightedPool {
       recipient: params.recipient,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinWeightedPool({
-        kind: 'Init',
+        kind: WeightedPoolJoinKind.INIT,
         amountsIn,
       }),
     };
@@ -504,7 +509,7 @@ export default class WeightedPool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinWeightedPool({
-        kind: 'ExactTokensInForBPTOut',
+        kind: WeightedPoolJoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
         amountsIn,
         minimumBPT: params.minimumBptOut ?? 0,
       }),
@@ -519,7 +524,7 @@ export default class WeightedPool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinWeightedPool({
-        kind: 'TokenInForExactBPTOut',
+        kind: WeightedPoolJoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT,
         bptAmountOut: params.bptOut,
         enterTokenIndex: this.tokens.indexOf(params.token),
       }),
@@ -536,7 +541,7 @@ export default class WeightedPool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitWeightedPool({
-        kind: 'BPTInForExactTokensOut',
+        kind: WeightedPoolExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT,
         amountsOut,
         maxBPTAmountIn: params.maximumBptIn ?? MAX_UINT256,
       }),
@@ -551,7 +556,7 @@ export default class WeightedPool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitWeightedPool({
-        kind: 'ExactBPTInForOneTokenOut',
+        kind: WeightedPoolExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
         bptAmountIn: params.bptIn,
         exitTokenIndex: this.tokens.indexOf(params.token),
       }),
@@ -566,7 +571,7 @@ export default class WeightedPool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitWeightedPool({
-        kind: 'ExactBPTInForTokensOut',
+        kind: WeightedPoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
         bptAmountIn: params.bptIn,
       }),
     };

@@ -6,7 +6,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
+import { encodeJoinWeightedPool, WeightedPoolJoinKind } from '@balancer-labs/balancerjs';
 
 export const tokenInitialBalance = bn(200e18);
 export const rewardTokenInitialBalance = bn(100e18);
@@ -69,7 +69,7 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
     maxAmountsIn: Array(assets.length).fill(MAX_UINT256),
     fromInternalBalance: false,
     userData: encodeJoinWeightedPool({
-      kind: 'Init',
+      kind: WeightedPoolJoinKind.INIT,
       amountsIn: Array(assets.length).fill(tokenInitialBalance),
     }),
   });

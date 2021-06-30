@@ -2,6 +2,7 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
+import { encodeJoinWeightedPool, WeightedPoolJoinKind } from '@balancer-labs/balancerjs';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
@@ -9,7 +10,6 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
-import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
 import { advanceToTimestamp, currentTimestamp, DAY, MINUTE, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 import Task from '../../../src/task';
@@ -85,7 +85,7 @@ describe('LiquidityBootstrappingPoolFactory', function () {
     await usdc.connect(owner).approve(vault.address, MAX_UINT256);
 
     const poolId = await pool.getPoolId();
-    const userData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
+    const userData = encodeJoinWeightedPool({ kind: WeightedPoolJoinKind.INIT, amountsIn: initialBalances });
     await vault.connect(owner).joinPool(poolId, owner.address, owner.address, {
       assets: tokens,
       maxAmountsIn: initialBalances,

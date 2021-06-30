@@ -2,11 +2,11 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
+import { encodeJoinStablePool, StablePoolJoinKind } from '@balancer-labs/balancerjs';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
-import { encodeJoinStablePool } from '@balancer-labs/v2-helpers/src/models/pools/stable/encoding';
 
 import Task from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
@@ -65,7 +65,7 @@ describe('StablePoolFactory', function () {
     await usdc.connect(whale).approve(vault.address, MAX_UINT256);
 
     const poolId = await pool.getPoolId();
-    const userData = encodeJoinStablePool({ kind: 'Init', amountsIn: initialBalances });
+    const userData = encodeJoinStablePool({ kind: StablePoolJoinKind.INIT, amountsIn: initialBalances });
     await vault.connect(whale).joinPool(poolId, whale.address, owner.address, {
       assets: tokens,
       maxAmountsIn: initialBalances,
