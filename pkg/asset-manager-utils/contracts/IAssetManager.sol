@@ -29,6 +29,11 @@ interface IAssetManager {
     function setConfig(bytes32 poolId, bytes calldata config) external;
 
     /**
+     * Note: No function to read the asset manager config is included in IAssetManager
+     * as the signature is expected to vary between asset manager implementations
+     */
+
+    /**
      * @notice Returns the asset manager's token
      */
     function getToken() external view returns (IERC20);

@@ -59,7 +59,7 @@ contract AaveATokenAssetManager is RewardsAssetManager {
         _initialize(pId);
 
         distributor = IMultiRewards(rewardsDistributor);
-        IERC20 poolAddress = IERC20((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
+        IERC20 poolAddress = IERC20(uint256(poolId) >> (12 * 8));
         distributor.whitelistRewarder(poolAddress, stkAave, address(this));
         distributor.addReward(poolAddress, stkAave, 1);
 
@@ -99,7 +99,7 @@ contract AaveATokenAssetManager is RewardsAssetManager {
         aaveIncentives.claimRewards(assets, type(uint256).max, address(this));
 
         // Forward to distributor
-        IERC20 poolAddress = IERC20((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
+        IERC20 poolAddress = IERC20(uint256(poolId) >> (12 * 8));
 
         distributor.notifyRewardAmount(poolAddress, stkAave, stkAave.balanceOf(address(this)));
     }

@@ -65,7 +65,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     }
 
     modifier onlyPoolContract() {
-        address poolAddress = address((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
+        address poolAddress = address(uint256(poolId) >> (12 * 8));
         require(msg.sender == poolAddress, "Only callable by pool");
         _;
     }
@@ -220,7 +220,7 @@ abstract contract RewardsAssetManager is IAssetManager {
         withCorrectPool(pId)
         returns (uint256 poolCash, uint256 poolManaged)
     {
-        return _getPoolBalances(_getAUM());
+        (poolCash, poolManaged) = _getPoolBalances(_getAUM());
     }
 
     function _getPoolBalances(uint256 aum) internal view returns (uint256 poolCash, uint256 poolManaged) {
@@ -252,11 +252,11 @@ abstract contract RewardsAssetManager is IAssetManager {
         uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, config.targetPercentage);
         if (targetInvestment > poolManaged) {
             // Pool is under-invested so add more funds
-            uint256 rebalanceAmount = targetInvestment.sub(poolManaged);
+            uint256 rebalanceAmount = targetInvestment - poolManaged;
             _capitalIn(rebalanceAmount);
         } else {
             // Pool is over-invested so remove some funds
-            uint256 rebalanceAmount = poolManaged.sub(targetInvestment);
+            uint256 rebalanceAmount = poolManaged - targetInvestment;
             _capitalOut(rebalanceAmount);
         }
 
