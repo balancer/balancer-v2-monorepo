@@ -355,13 +355,13 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         uint256 normalizedSum = 0;
         for (uint256 i = 0; i < endWeights.length; i++) {
-            uint256 normalizedWeight = endWeights[i];
-            _require(normalizedWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
+            uint256 endWeight = endWeights[i];
+            _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             newPoolState = newPoolState.insertUint32(startWeights[i].compress32(), _START_WEIGHT_OFFSET + i * 32);
-            newPoolState = newPoolState.insertUint16(normalizedWeight.compress16(), _END_WEIGHT_OFFSET + i * 16);
+            newPoolState = newPoolState.insertUint16(endWeight.compress16(), _END_WEIGHT_OFFSET + i * 16);
 
-            normalizedSum = normalizedSum.add(normalizedWeight);
+            normalizedSum = normalizedSum.add(endWeight);
         }
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
@@ -383,13 +383,11 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         if (pctProgress == 0) return startWeight;
         if (pctProgress >= FixedPoint.ONE) return endWeight;
 
-        uint256 weightDelta;
-
         if (endWeight < startWeight) {
-            weightDelta = pctProgress.mulDown(startWeight.sub(endWeight));
+            uint256 weightDelta = pctProgress.mulDown(startWeight.sub(endWeight));
             finalWeight = startWeight.sub(weightDelta);
         } else {
-            weightDelta = pctProgress.mulDown(endWeight.sub(startWeight));
+            uint256 weightDelta = pctProgress.mulDown(endWeight.sub(startWeight));
             finalWeight = startWeight.add(weightDelta);
         }
     }
