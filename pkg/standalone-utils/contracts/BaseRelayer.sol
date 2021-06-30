@@ -78,8 +78,10 @@ contract BaseRelayer {
             (bool success, bytes memory result) = address(this).delegatecall(data[i]);
 
             if (!success) {
-                // Next 6 lines from https://ethereum.stackexchange.com/a/83577
+                // If there's no revert reason, provide our own
                 if (result.length < 68) revert("MULTICALL_FAILED");
+
+                // Otherwise, bubble-up the original one
                 // solhint-disable-next-line no-inline-assembly
                 assembly {
                     returndatacopy(0, 0, returndatasize())
