@@ -32,6 +32,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     using WordCodec for bytes32;
     using WeightCompression for uint256;
 
+    // LBPs often involve only two tokens - we support up to four since we're able to pack the entire config in a single
+    // storage slot.
     uint256 private constant _MAX_LBP_TOKENS = 4;
 
     // State variables
@@ -162,8 +164,6 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
 
-        // Cannot call _getNormalizedWeights() inside _startGradualWeightChange, because it reads from immutable storage
-        // and is also called from the constructor
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights);
     }
 
@@ -381,7 +381,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 pctProgress
     ) private pure returns (uint256 finalWeight) {
         if (pctProgress == 0) return startWeight;
-        if (pctProgress == FixedPoint.ONE) return endWeight;
+        if (pctProgress >= FixedPoint.ONE) return endWeight;
 
         uint256 weightDelta;
 
