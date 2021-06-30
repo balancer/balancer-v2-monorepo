@@ -122,7 +122,7 @@ describe('LiquidityBootstrappingPool', function () {
     });
 
     it('allows owner to join', async () => {
-      let bpt = await pool.balanceOf(owner.address);
+      const bpt = await pool.balanceOf(owner.address);
 
       await expect(pool.joinGivenIn({ from: owner, amountsIn: initialBalances })).to.not.be.reverted;
 
@@ -189,7 +189,7 @@ describe('LiquidityBootstrappingPool', function () {
         now = await currentTimestamp();
         // Start an hour in the past
         startTime = now.sub(MINUTE * 60);
-        endTime = now.add(UPDATE_DURATION);  
+        endTime = now.add(UPDATE_DURATION);
       });
 
       it('should fast-forward start time if in the past', async () => {
@@ -197,7 +197,7 @@ describe('LiquidityBootstrappingPool', function () {
         const updateParams = await pool.getGradualWeightUpdateParams();
 
         // Start time should be fast-forwarded to now
-        expect(updateParams.startTime).to.equalWithError(now, 0.001);          
+        expect(updateParams.startTime).to.equalWithError(now, 0.001);
       });
     });
 

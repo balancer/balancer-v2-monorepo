@@ -106,7 +106,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     /**
      * @dev Getter for _swapEnabled. If false, trading is disabled.
      */
-    function getSwapEnabled() external view returns(bool) {
+    function getSwapEnabled() external view returns (bool) {
         return _swapEnabled;
     }
 
@@ -345,9 +345,14 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
      * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
      * if necessary.
      */
-    function _startGradualWeightChange(uint256 startTime, uint256 endTime, uint256[] memory startWeights, uint256[] memory endWeights) internal virtual {
+    function _startGradualWeightChange(
+        uint256 startTime,
+        uint256 endTime,
+        uint256[] memory startWeights,
+        uint256[] memory endWeights
+    ) internal virtual {
         bytes32 newPoolState = _poolState;
-        
+
         uint256 normalizedSum = 0;
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 normalizedWeight = endWeights[i];
