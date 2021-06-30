@@ -97,12 +97,12 @@ describe('LiquidityBootstrappingPoolFactory', function () {
     it('creates it with swaps enabled', async () => {
       const pool = await createPool();
 
-      expect(await pool.swapEnabled()).to.be.true;
+      expect(await pool.getSwapEnabled()).to.be.true;
     });
     it('creates it with swaps disabled', async () => {
       const pool = await createPool(false);
 
-      expect(await pool.swapEnabled()).to.be.false;
+      expect(await pool.getSwapEnabled()).to.be.false;
     });
   });
 });

@@ -141,8 +141,8 @@ library Errors {
     uint256 internal constant BASE_POOL_RELAYER_NOT_CALLED = 324;
     uint256 internal constant REBALANCING_RELAYER_REENTERED = 325;
     uint256 internal constant GRADUAL_UPDATE_TIME_TRAVEL = 326;
-    uint256 internal constant SWAPS_PAUSED = 327;
-
+    uint256 internal constant SWAPS_DISABLED = 327;
+    
     // Lib
     uint256 internal constant REENTRANCY = 400;
     uint256 internal constant SENDER_NOT_ALLOWED = 401;

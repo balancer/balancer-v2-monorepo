@@ -17,7 +17,9 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 /**
- * @dev Library for compressing and uncompressing lower resolution numbers into uint256 values
+ * @dev Library for compressing and uncompresing numbers by using smaller types.
+ * All values are 18 decimal fixed-point numbers in the [0.0, 1.0] range,
+ * so heavier compression (fewer bits) results in fewer decimals.
  */
 library WeightCompression {
     using FixedPoint for uint256;
