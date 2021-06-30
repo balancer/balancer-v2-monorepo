@@ -15,7 +15,7 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-describe('StablePool', function () {
+describe('StablePoolFactory', function () {
   let owner: SignerWithAddress, whale: SignerWithAddress;
   let pool: Contract, factory: Contract, vault: Contract, usdc: Contract, dai: Contract;
 
@@ -54,6 +54,10 @@ describe('StablePool', function () {
 
     pool = await task.instanceAt('StablePool', event.args.pool);
     expect(await factory.isPoolFromFactory(pool.address)).to.be.true;
+
+    const poolId = pool.getPoolId();
+    const [registeredAddress] = await vault.getPool(poolId);
+    expect(registeredAddress).to.equal(pool.address);
   });
 
   it('can initialize a stable pool', async () => {

@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import Task from '../../../src/task';
 import { Output } from '../../../src/types';
 
-describe('StablePool', function () {
+describe('StablePoolFactory', function () {
   const task = Task.forTest('20210624-stable-pool', 'mainnet');
 
   context('with no previous deploy', () => {

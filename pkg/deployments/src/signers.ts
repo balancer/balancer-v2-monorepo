@@ -12,14 +12,14 @@ export async function getSigners(): Promise<SignerWithAddress[]> {
   return ethers.getSigners();
 }
 
-export async function getSigner(index: number | string = 0): Promise<SignerWithAddress> {
-  if (typeof index === 'string') {
+export async function getSigner(indexOrAddress: number | string = 0): Promise<SignerWithAddress> {
+  if (typeof indexOrAddress === 'string') {
     const { ethers } = await import('hardhat');
-    const signer = ethers.provider.getSigner(index);
+    const signer = ethers.provider.getSigner(indexOrAddress);
     return SignerWithAddress.create(signer);
   } else {
     const signers = await getSigners();
-    return signers[index];
+    return signers[indexOrAddress];
   }
 }
 
