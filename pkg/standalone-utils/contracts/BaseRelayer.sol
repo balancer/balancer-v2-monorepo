@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
@@ -23,7 +24,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
  * @title BaseRelayer
  * @notice Allows users to atomically approve a relayer and call multiple actions on it
  */
-contract BaseRelayer {
+contract BaseRelayer is ReentrancyGuard {
     using Address for address payable;
 
     IVault private immutable _vault;
@@ -71,7 +72,7 @@ contract BaseRelayer {
         return result;
     }
 
-    function multicall(bytes[] calldata data) external payable returns (bytes[] memory results) {
+    function multicall(bytes[] calldata data) external payable nonReentrant returns (bytes[] memory results) {
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls
