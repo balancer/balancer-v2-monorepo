@@ -155,11 +155,6 @@ describe('LiquidityBootstrappingPool', function () {
           describe('update weights gradually', () => {
             const UPDATE_DURATION = MINUTE * 60;
 
-            sharedBeforeEach('grant permission', async () => {
-              const action = await actionId(pool.instance, 'updateWeightsGradually');
-              await pool.vault.grantRole(action, owner);
-            });
-
             context('with invalid parameters', () => {
               let now: BigNumber;
 
@@ -320,26 +315,6 @@ describe('LiquidityBootstrappingPool', function () {
               'SENDER_NOT_ALLOWED'
             );
           });
-        });
-      });
-
-      describe('public actions', () => {
-        sharedBeforeEach('set sender to other', async () => {
-          sender = other;
-        });
-
-        it('anyone can get the swap state', async () => {
-          await expect(pool.getSwapEnabled(sender)).to.not.be.reverted;
-        });
-
-        it('anyone can swap', async () => {
-          await pool.init({ from: owner, initialBalances });
-
-          await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.not.be.reverted;
-        });
-
-        it('anyone can query the weight update params', async () => {
-          await expect(pool.getGradualWeightUpdateParams(sender)).to.not.be.reverted;
         });
       });
     });
