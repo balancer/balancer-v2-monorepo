@@ -1,11 +1,17 @@
 import { Contract, BigNumber } from 'ethers';
 import { CompilerOutputBytecode } from 'hardhat/types';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import Task from './task';
 
 export const NETWORKS = ['goerli', 'kovan', 'mainnet', 'rinkeby', 'ropsten', 'polygon'];
 
 export type Network = typeof NETWORKS[number];
+
+export type TaskRunOptions = {
+  force?: boolean;
+  from?: SignerWithAddress;
+};
 
 export type NAry<T> = T | Array<T>;
 
@@ -35,7 +41,7 @@ export type RawOutput = {
 };
 
 export type Artifact = {
-  abi: { [key: string]: string };
+  abi: unknown[];
   evm: {
     bytecode: CompilerOutputBytecode;
     deployedBytecode: CompilerOutputBytecode;
