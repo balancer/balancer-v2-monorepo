@@ -145,17 +145,6 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
     }
 
     /**
-     * @notice Checks if a rewarder has added a reward and is ready to call notifyReward
-     */
-    function isReadyToDistribute(
-        IERC20 pool,
-        IERC20 rewardsToken,
-        address rewarder
-    ) public view override returns (bool) {
-        return _rewarders[pool][rewardsToken].contains(rewarder);
-    }
-
-    /**
      * @notice Total supply of a staking token being added
      */
     function totalSupply(IERC20 pool) external view returns (uint256) {
