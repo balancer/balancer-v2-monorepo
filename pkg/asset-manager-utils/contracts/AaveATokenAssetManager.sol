@@ -35,19 +35,19 @@ contract AaveATokenAssetManager is RewardsAssetManager {
 
     constructor(
         IVault _vault,
-        IERC20 _token,
+        IERC20 token,
         ILendingPool _lendingPool,
         IAaveIncentivesController _aaveIncentives
-    ) RewardsAssetManager(_vault, bytes32(0), _token) {
+    ) RewardsAssetManager(_vault, bytes32(0), token) {
         // Query aToken addresses from lending pool
         lendingPool = _lendingPool;
-        aToken = IERC20(_lendingPool.getReserveData(address(_token)).aTokenAddress);
+        aToken = IERC20(_lendingPool.getReserveData(address(token)).aTokenAddress);
 
         // Query reward token from incentives contract
         aaveIncentives = _aaveIncentives;
         stkAave = IERC20(_aaveIncentives.REWARD_TOKEN());
 
-        _token.approve(address(_lendingPool), type(uint256).max);
+        token.approve(address(_lendingPool), type(uint256).max);
     }
 
     /**
@@ -72,7 +72,7 @@ contract AaveATokenAssetManager is RewardsAssetManager {
      * @return the amount deposited
      */
     function _invest(uint256 amount, uint256) internal override returns (uint256) {
-        lendingPool.deposit(address(token), amount, address(this), REFERRAL_CODE);
+        lendingPool.deposit(address(getToken()), amount, address(this), REFERRAL_CODE);
         return amount;
     }
 
@@ -82,7 +82,7 @@ contract AaveATokenAssetManager is RewardsAssetManager {
      * @return the number of tokens to return to the vault
      */
     function _divest(uint256 amount, uint256) internal override returns (uint256) {
-        return lendingPool.withdraw(address(token), amount, address(this));
+        return lendingPool.withdraw(address(getToken()), amount, address(this));
     }
 
     /**

@@ -34,14 +34,11 @@ pragma experimental ABIEncoderV2;
 abstract contract RewardsAssetManager is IAssetManager {
     using Math for uint256;
 
-    /// @notice The Balancer Vault contract
     IVault public immutable vault;
+    IERC20 private immutable _token;
 
-    /// @notice The id of the pool which owns this asset manager
+    // RewardsAssetManager manages a single Pool, to which it allocates all rewards that it receives.
     bytes32 public poolId;
-
-    /// @notice The token which this asset manager is investing
-    IERC20 public immutable token;
 
     struct InvestmentConfig {
         uint64 targetPercentage;
@@ -56,12 +53,12 @@ abstract contract RewardsAssetManager is IAssetManager {
     constructor(
         IVault _vault,
         bytes32 _poolId,
-        IERC20 _token
+        IERC20 token
     ) {
-        _token.approve(address(_vault), type(uint256).max);
+        token.approve(address(_vault), type(uint256).max);
         vault = _vault;
         poolId = _poolId;
-        token = _token;
+        _token = token;
     }
 
     modifier onlyPoolContract() {
@@ -82,8 +79,8 @@ abstract contract RewardsAssetManager is IAssetManager {
         poolId = pId;
     }
 
-    function getToken() external view override returns (IERC20) {
-        return token;
+    function getToken() public view override returns (IERC20) {
+        return _token;
     }
 
     // Investment configuration
@@ -93,7 +90,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     }
 
     function _maxInvestableBalance(uint256 aum) internal view returns (int256) {
-        (uint256 poolCash, , , ) = vault.getPoolTokenInfo(poolId, token);
+        (uint256 poolCash, , , ) = vault.getPoolTokenInfo(poolId, getToken());
         // Calculate the managed portion of funds locally as the Vault is unaware of returns
         return int256(FixedPoint.mulDown(poolCash.add(aum), _config.targetPercentage)) - int256(aum);
     }
@@ -106,7 +103,7 @@ abstract contract RewardsAssetManager is IAssetManager {
         IVault.PoolBalanceOp memory transfer = IVault.PoolBalanceOp(
             IVault.PoolBalanceOpKind.UPDATE,
             pId,
-            token,
+            getToken(),
             managedBalance
         );
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
@@ -130,9 +127,9 @@ abstract contract RewardsAssetManager is IAssetManager {
 
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
         // Update the vault with new managed balance accounting for returns
-        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, poolId, token, poolManaged);
+        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, poolId, getToken(), poolManaged);
         // Pull funds from the vault
-        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, poolId, token, amount);
+        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, poolId, getToken(), amount);
 
         vault.managePoolBalance(ops);
 
@@ -153,9 +150,9 @@ abstract contract RewardsAssetManager is IAssetManager {
 
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
         // Update the vault with new managed balance accounting for returns
-        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, poolId, token, aum);
+        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, poolId, getToken(), aum);
         // Send funds back to the vault
-        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, poolId, token, tokensOut);
+        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, poolId, getToken(), tokensOut);
 
         vault.managePoolBalance(ops);
     }
@@ -224,7 +221,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     }
 
     function _getPoolBalances(uint256 aum) internal view returns (uint256 poolCash, uint256 poolManaged) {
-        (poolCash, , , ) = vault.getPoolTokenInfo(poolId, token);
+        (poolCash, , , ) = vault.getPoolTokenInfo(poolId, getToken());
         // Calculate the managed portion of funds locally as the Vault is unaware of returns
         poolManaged = aum;
     }

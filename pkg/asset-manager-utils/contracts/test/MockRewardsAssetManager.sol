@@ -24,8 +24,8 @@ contract MockRewardsAssetManager is RewardsAssetManager {
     constructor(
         IVault _vault,
         bytes32 _poolId,
-        IERC20 _token
-    ) RewardsAssetManager(_vault, _poolId, _token) {
+        IERC20 token
+    ) RewardsAssetManager(_vault, _poolId, token) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -42,6 +42,6 @@ contract MockRewardsAssetManager is RewardsAssetManager {
     }
 
     function _getAUM() internal view override returns (uint256) {
-        return token.balanceOf(address(this));
+        return getToken().balanceOf(address(this));
     }
 }
