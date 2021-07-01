@@ -24,16 +24,14 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IMinimalSwapInfoPool.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePoolAuthorization.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BalancerPoolToken.sol";
+import "@balancer-labs/v2-pool-utils/contracts/interfaces/IPriceOracle.sol";
+import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
+import "@balancer-labs/v2-pool-utils/contracts/oracle/Buffer.sol";
 
 import "./WeightedMath.sol";
 import "./WeightedOracleMath.sol";
 import "./WeightedPool2TokensMiscData.sol";
 import "./WeightedPoolUserDataHelpers.sol";
-
-import "./oracle/PoolPriceOracle.sol";
-import "./oracle/Buffer.sol";
-
-import "./IPriceOracle.sol";
 
 contract WeightedPool2Tokens is
     IMinimalSwapInfoPool,

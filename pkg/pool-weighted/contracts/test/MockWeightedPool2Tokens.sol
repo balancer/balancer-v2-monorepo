@@ -15,11 +15,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./PoolPriceOracleMock.sol";
+import "@balancer-labs/v2-pool-utils/contracts/test/MockPoolPriceOracle.sol";
+
 import "./MockWeightedOracleMath.sol";
 import "../WeightedPool2Tokens.sol";
 
-contract WeightedPool2TokensMock is WeightedPool2Tokens, PoolPriceOracleMock, MockWeightedOracleMath {
+contract MockWeightedPool2Tokens is WeightedPool2Tokens, MockPoolPriceOracle, MockWeightedOracleMath {
     using WeightedPool2TokensMiscData for bytes32;
 
     struct MiscData {
