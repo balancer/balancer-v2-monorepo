@@ -257,6 +257,16 @@ describe('LiquidityBootstrappingPool', function () {
                 await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
               });
       
+              it('updating weights emits an event', async () => {
+                const receipt = await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
+        
+                expectEvent.inReceipt(await receipt.wait(), 'GradualWeightUpdateScheduled', {
+                  startTime: startTime,
+                  endTime: endTime,
+                  // weights don't exactly match because of the compression
+                });
+              });
+
               it('stores the params', async () => {
                 const updateParams = await pool.getGradualWeightUpdateParams();
       

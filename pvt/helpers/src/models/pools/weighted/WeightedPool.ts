@@ -593,9 +593,9 @@ export default class WeightedPool {
     startTime: BigNumberish,
     endTime: BigNumberish,
     endWeights: BigNumberish[]
-  ): Promise<void> {
+  ): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    await pool.updateWeightsGradually(startTime, endTime, endWeights);
+    return await pool.updateWeightsGradually(startTime, endTime, endWeights);
   }
 
   async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualUpdateParams> {
