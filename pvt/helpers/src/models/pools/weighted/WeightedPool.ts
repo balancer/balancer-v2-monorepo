@@ -1,4 +1,4 @@
-import { BigNumber, Contract, ContractFunction } from 'ethers';
+import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
 
 import { actionId } from '../../../models/misc/actions';
 import { BigNumberish, bn, fp } from '../../../numbers';
@@ -29,6 +29,7 @@ import {
   PoolQueryResult,
   MiscData,
   Sample,
+  GradualUpdateParams,
 } from './types';
 import {
   calculateInvariant,
@@ -43,6 +44,7 @@ import {
   calculateBPTPrice,
 } from './math';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from './encoding';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 const SWAP_GIVEN = { IN: 0, OUT: 1 };
 const MAX_IN_RATIO = fp(0.3);
@@ -59,6 +61,8 @@ export default class WeightedPool {
   swapFeePercentage: BigNumberish;
   vault: Vault;
   twoTokens: boolean;
+  lbp: boolean;
+  swapEnabledOnStart: boolean;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
     return WeightedPoolDeployer.deploy(params);
@@ -72,7 +76,9 @@ export default class WeightedPool {
     weights: BigNumberish[],
     assetManagers: string[],
     swapFeePercentage: BigNumberish,
-    twoTokens: boolean
+    twoTokens: boolean,
+    lbp: boolean,
+    swapEnabledOnStart: boolean
   ) {
     this.instance = instance;
     this.poolId = poolId;
@@ -82,6 +88,8 @@ export default class WeightedPool {
     this.assetManagers = assetManagers;
     this.swapFeePercentage = swapFeePercentage;
     this.twoTokens = twoTokens;
+    this.lbp = lbp;
+    this.swapEnabledOnStart = swapEnabledOnStart;
   }
 
   get address(): string {
@@ -174,6 +182,10 @@ export default class WeightedPool {
 
   async getSwapFeePercentage(): Promise<BigNumber> {
     return this.instance.getSwapFeePercentage();
+  }
+
+  async getSwapEnabled(from: SignerWithAddress): Promise<boolean> {
+    return this.instance.connect(from).getSwapEnabled();
   }
 
   async getNormalizedWeights(): Promise<BigNumber[]> {
@@ -569,5 +581,25 @@ export default class WeightedPool {
   async enableOracle(txParams: TxParams): Promise<void> {
     const pool = txParams.from ? this.instance.connect(txParams.from) : this.instance;
     await pool.enableOracle();
+  }
+
+  async setSwapEnabled(from: SignerWithAddress, swapEnabled: boolean): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.setSwapEnabled(swapEnabled);
+  }
+
+  async updateWeightsGradually(
+    from: SignerWithAddress,
+    startTime: BigNumberish,
+    endTime: BigNumberish,
+    endWeights: BigNumberish[]
+  ): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return await pool.updateWeightsGradually(startTime, endTime, endWeights);
+  }
+
+  async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualUpdateParams> {
+    const pool = from ? this.instance.connect(from) : this.instance;
+    return await this.instance.getGradualWeightUpdateParams();
   }
 }

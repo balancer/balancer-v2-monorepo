@@ -49,7 +49,9 @@ export default {
       pauseWindowDuration,
       bufferPeriodDuration,
       oracleEnabled,
+      swapEnabledOnStart,
       twoTokens,
+      lbp,
     } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
@@ -59,6 +61,8 @@ export default {
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!oracleEnabled) oracleEnabled = true;
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
+    if (!lbp) lbp = false;
+    if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (!twoTokens) twoTokens = false;
     else if (tokens.length !== 2) throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
     return {
@@ -69,8 +73,10 @@ export default {
       pauseWindowDuration,
       bufferPeriodDuration,
       oracleEnabled,
+      swapEnabledOnStart,
       owner: params.owner,
       twoTokens,
+      lbp,
     };
   },
 
