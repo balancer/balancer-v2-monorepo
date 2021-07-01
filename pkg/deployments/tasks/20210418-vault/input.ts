@@ -43,7 +43,7 @@ export default {
   },
   polygon: {
     authorizer,
-    weth: '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270',
+    weth: '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270', // WMATIC
     pauseWindowDuration: 3 * MONTH,
     bufferPeriodDuration: MONTH,
   },
