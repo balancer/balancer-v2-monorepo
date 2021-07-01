@@ -71,4 +71,11 @@ interface IAssetManager {
      * @param force - a boolean representing whether a rebalance should be forced even when the pool is near balance
      */
     function rebalance(bytes32 poolId, bool force) external;
+
+    /**
+     * @notice allows an authorized rebalancer to remove capital to facilitate large withdrawals
+     * @param poolId - the poolId of the pool to withdraw funds back to
+     * @param amount - the amount of tokens to withdraw back to the pool
+     */
+    function capitalOut(bytes32 poolId, uint256 amount) external;
 }

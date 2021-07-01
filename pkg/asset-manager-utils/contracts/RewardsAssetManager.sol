@@ -14,8 +14,9 @@
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRelayedBasePool.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -64,6 +65,14 @@ abstract contract RewardsAssetManager is IAssetManager {
 
     modifier onlyPoolContract() {
         require(msg.sender == getPoolAddress(), "Only callable by pool");
+        _;
+    }
+
+    modifier onlyPoolRebalancer() {
+        require(
+            address(IRelayedBasePool(getPoolAddress()).getRelayer()) == msg.sender,
+            "Only callable by authorized rebalancer"
+        );
         _;
     }
 
@@ -284,5 +293,14 @@ abstract contract RewardsAssetManager is IAssetManager {
                 _rebalance(pId);
             }
         }
+    }
+
+    /**
+     * @notice allows an authorized rebalancer to remove capital to facilitate large withdrawals
+     * @param pId - the poolId of the pool to withdraw funds back to
+     * @param amount - the amount of tokens to withdraw back to the pool
+     */
+    function capitalOut(bytes32 pId, uint256 amount) external override withCorrectPool(pId) onlyPoolRebalancer {
+       _capitalOut(amount);
     }
 }

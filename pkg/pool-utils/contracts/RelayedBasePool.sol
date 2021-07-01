@@ -20,13 +20,15 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 
 import "./BasePool.sol";
 import "./interfaces/IBasePoolRelayer.sol";
+import "./interfaces/IRelayedBasePool.sol";
+
 
 /**
  * @dev Base Pool associated with a relayer that guarantees it can only be joined/exited from the relayer itself.
  * This contract is a simple mixin for pools. Implementing pools must make sure to call the BasePool's constructor
  * properly.
  */
-abstract contract RelayedBasePool is BasePool {
+abstract contract RelayedBasePool is BasePool, IRelayedBasePool {
     using Address for address;
 
     IBasePoolRelayer internal immutable _relayer;
@@ -41,7 +43,7 @@ abstract contract RelayedBasePool is BasePool {
         _relayer = relayer;
     }
 
-    function getRelayer() public view returns (IBasePoolRelayer) {
+    function getRelayer() public view override returns (IBasePoolRelayer) {
         return _relayer;
     }
 
