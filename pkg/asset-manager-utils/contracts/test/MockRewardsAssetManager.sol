@@ -22,10 +22,10 @@ contract MockRewardsAssetManager is RewardsAssetManager {
     using Math for uint256;
 
     constructor(
-        IVault _vault,
-        bytes32 _poolId,
+        IVault vault,
+        bytes32 poolId,
         IERC20 token
-    ) RewardsAssetManager(_vault, _poolId, token) {
+    ) RewardsAssetManager(vault, poolId, token) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

@@ -34,11 +34,11 @@ contract AaveATokenAssetManager is RewardsAssetManager {
     IMultiRewards public distributor;
 
     constructor(
-        IVault _vault,
+        IVault vault,
         IERC20 token,
         ILendingPool _lendingPool,
         IAaveIncentivesController _aaveIncentives
-    ) RewardsAssetManager(_vault, bytes32(0), token) {
+    ) RewardsAssetManager(vault, bytes32(0), token) {
         // Query aToken addresses from lending pool
         lendingPool = _lendingPool;
         aToken = IERC20(_lendingPool.getReserveData(address(token)).aTokenAddress);
@@ -52,11 +52,11 @@ contract AaveATokenAssetManager is RewardsAssetManager {
 
     /**
      * @dev Should be called in same transaction as deployment through a factory contract
-     * @param pId - the id of the pool
+     * @param poolId - the id of the pool
      * @param rewardsDistributor - the address of the rewards contract (to distribute stkAAVE)
      */
-    function initialize(bytes32 pId, address rewardsDistributor) public {
-        _initialize(pId);
+    function initialize(bytes32 poolId, address rewardsDistributor) public {
+        _initialize(poolId);
 
         distributor = IMultiRewards(rewardsDistributor);
         IERC20 poolAddress = IERC20(uint256(poolId) >> (12 * 8));
@@ -99,7 +99,7 @@ contract AaveATokenAssetManager is RewardsAssetManager {
         aaveIncentives.claimRewards(assets, type(uint256).max, address(this));
 
         // Forward to distributor
-        IERC20 poolAddress = IERC20(uint256(poolId) >> (12 * 8));
+        IERC20 poolAddress = IERC20(uint256(getPoolId()) >> (12 * 8));
 
         distributor.notifyRewardAmount(poolAddress, stkAave, stkAave.balanceOf(address(this)));
     }
