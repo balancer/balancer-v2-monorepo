@@ -246,7 +246,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         bytes memory userData
     ) internal override returns (uint256, uint256[] memory) {
         // Only the owner can initialize the pool
-        _require(sender == getOwner(), Errors.CALLER_IS_NOT_OWNER);
+        _require(sender == getOwner(), Errors.CALLER_IS_NOT_LBP_OWNER);
 
         return super._onInitializePool(poolId, sender, recipient, scalingFactors, userData);
     }
@@ -270,7 +270,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         )
     {
         // Only the owner can add liquidity; block public LPs
-        _require(sender == getOwner(), Errors.CALLER_IS_NOT_OWNER);
+        _require(sender == getOwner(), Errors.CALLER_IS_NOT_LBP_OWNER);
 
         return
             super._onJoinPool(

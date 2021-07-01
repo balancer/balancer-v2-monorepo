@@ -184,6 +184,10 @@ export default class WeightedPool {
     return this.instance.getSwapFeePercentage();
   }
 
+  async getSwapEnabled(from: SignerWithAddress): Promise<boolean> {
+    return this.instance.connect(from).getSwapEnabled();
+  }
+
   async getNormalizedWeights(): Promise<BigNumber[]> {
     return this.instance.getNormalizedWeights();
   }
@@ -594,7 +598,8 @@ export default class WeightedPool {
     await pool.updateWeightsGradually(startTime, endTime, endWeights);
   }
 
-  async getGradualWeightUpdateParams(): Promise<GradualUpdateParams> {
+  async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualUpdateParams> {
+    const pool = from ? this.instance.connect(from) : this.instance;
     return await this.instance.getGradualWeightUpdateParams();
   }
 }
