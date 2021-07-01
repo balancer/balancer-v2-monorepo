@@ -140,12 +140,16 @@ describe('LiquidityBootstrappingPool', function () {
             });
           });
           
-          it('owner can join and receive BPT', async () => {
+          it('owner can join and receive BPT, then exit', async () => {
             const bptBeforeJoin = await pool.balanceOf(owner.address);
             await expect(pool.joinGivenIn({ from: owner, amountsIn: initialBalances })).to.not.be.reverted;
     
             const bptAfterJoin = await pool.balanceOf(owner.address);
             expect(bptAfterJoin).to.gt(bptBeforeJoin);
+
+            await expect(pool.exitGivenOut({ from: owner, amountsOut: initialBalances })).to.not.be.reverted;
+            const bptAfterExit = await pool.balanceOf(owner.address);
+            expect(bptAfterExit).to.lt(bptAfterJoin);
           });
 
           describe('update weights gradually', () => {
