@@ -16,11 +16,11 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 
-import "../IPriceOracle.sol";
+import "../interfaces/IPriceOracle.sol";
+import "../interfaces/IPoolPriceOracle.sol";
 
 import "./Buffer.sol";
 import "./Samples.sol";
-import "./IWeightedPoolPriceOracle.sol";
 
 /**
  * @dev This module allows Pools to access historical pricing information.
@@ -33,7 +33,7 @@ import "./IWeightedPoolPriceOracle.sol";
  * Usage of this module requires the caller to keep track of two variables: the latest circular buffer index, and the
  * timestamp when the index last changed.
  */
-contract PoolPriceOracle is IWeightedPoolPriceOracle {
+contract PoolPriceOracle is IPoolPriceOracle {
     using Buffer for uint256;
     using Samples for bytes32;
 

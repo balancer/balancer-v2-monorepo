@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-interface IWeightedPoolPriceOracle {
+interface IPoolPriceOracle {
     /**
      * @dev Returns the raw data of the sample at `index`.
      */

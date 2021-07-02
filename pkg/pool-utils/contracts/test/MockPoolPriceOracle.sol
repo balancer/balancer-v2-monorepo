@@ -17,9 +17,9 @@ pragma experimental ABIEncoderV2;
 
 import "../oracle/Samples.sol";
 import "../oracle/PoolPriceOracle.sol";
-import "../IPriceOracle.sol";
+import "../interfaces/IPriceOracle.sol";
 
-contract PoolPriceOracleMock is PoolPriceOracle {
+contract MockPoolPriceOracle is PoolPriceOracle {
     using Samples for bytes32;
 
     struct Sample {

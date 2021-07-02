@@ -8,7 +8,7 @@ This package contains the source code for Balancer V2 Weighted Pools, that is, P
 
 The two flavors currently in existence are [`WeightedPool`](./contracts/WeightedPool.sol) (basic eight token version) and [`WeightedPool2Tokens`](./contracts/WeightedPool2Tokens.sol) (limited to two tokens, but supporting price oracles).
 
-Other useful contracts include [`WeightedMath`](./contracts/WeightedMath.sol), which implements the low level calculations required for swaps, joins, exits and price calculations, and [`IPriceOracle`](./contracts/IPriceOracle.sol), used to make price oracle queries.
+Other useful contracts include [`WeightedMath`](./contracts/WeightedMath.sol), which implements the low level calculations required for swaps, joins, exits and price calculations, and [`IPriceOracle`](../pool-utils/contracts/interfaces/IPriceOracle.sol), used to make price oracle queries.
 
 ## Overview
 

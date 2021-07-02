@@ -48,7 +48,7 @@ export default {
       from,
     } = params;
     return params.twoTokens
-      ? deploy('v2-pool-weighted/WeightedPool2TokensMock', {
+      ? deploy('v2-pool-weighted/MockWeightedPool2Tokens', {
           args: [
             {
               vault: vault.address,
