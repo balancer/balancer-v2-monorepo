@@ -4,17 +4,17 @@ import { BigNumber, Contract } from 'ethers';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
+import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
+import { advanceToTimestamp, currentTimestamp, DAY, MINUTE, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 import Task from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonateWhale } from '../../../src/signers';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { encodeJoinWeightedPool } from '../../../../../pvt/helpers/src/models/pools/weighted/encoding';
-import { calculateInvariant } from '../../../../../pvt/helpers/src/models/pools/weighted/math';
-import { advanceToTimestamp, currentTimestamp, DAY, MINUTE, MONTH } from '../../../../../pvt/helpers/src/time';
 
 describe('LiquidityBootstrappingPoolFactory', function () {
   let owner: SignerWithAddress, whale: SignerWithAddress;
