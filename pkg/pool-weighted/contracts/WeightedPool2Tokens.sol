@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/LogCompression.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 
@@ -786,7 +787,7 @@ contract WeightedPool2Tokens is
 
     function getLatest(Variable variable) external view override returns (uint256) {
         int256 instantValue = _getInstantValue(variable, _miscData.oracleIndex());
-        return _fromLowResLog(instantValue);
+        return LogCompression.fromLowResLog(instantValue);
     }
 
     function getTimeWeightedAverage(OracleAverageQuery[] memory queries)
@@ -806,7 +807,7 @@ contract WeightedPool2Tokens is
 
             int256 beginAccumulator = _getPastAccumulator(query.variable, oracleIndex, query.ago + query.secs);
             int256 endAccumulator = _getPastAccumulator(query.variable, oracleIndex, query.ago);
-            results[i] = _fromLowResLog((endAccumulator - beginAccumulator) / int256(query.secs));
+            results[i] = LogCompression.fromLowResLog((endAccumulator - beginAccumulator) / int256(query.secs));
         }
     }
 
@@ -883,8 +884,8 @@ contract WeightedPool2Tokens is
     function _cacheInvariantAndSupply() internal {
         bytes32 miscData = _miscData;
         if (miscData.oracleEnabled()) {
-            miscData = miscData.setLogInvariant(WeightedOracleMath._toLowResLog(_lastInvariant));
-            miscData = miscData.setLogTotalSupply(WeightedOracleMath._toLowResLog(totalSupply()));
+            miscData = miscData.setLogInvariant(LogCompression.toLowResLog(_lastInvariant));
+            miscData = miscData.setLogTotalSupply(LogCompression.toLowResLog(totalSupply()));
             _miscData = miscData;
         }
     }

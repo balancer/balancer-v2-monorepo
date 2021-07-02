@@ -14,17 +14,11 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-solidity-utils/contracts/test/MockLogCompression.sol";
+
 import "../WeightedOracleMath.sol";
 
-contract MockWeightedOracleMath is WeightedOracleMath {
-    function toLowResLog(uint256 value) external pure returns (int256) {
-        return WeightedOracleMath._toLowResLog(value);
-    }
-
-    function fromLowResLog(int256 value) external pure returns (uint256) {
-        return WeightedOracleMath._fromLowResLog(value);
-    }
-
+contract MockWeightedOracleMath is WeightedOracleMath, MockLogCompression {
     function calcLogSpotPrice(
         uint256 normalizedWeightA,
         uint256 balanceA,
