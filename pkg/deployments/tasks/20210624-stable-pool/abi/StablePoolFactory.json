@@ -42,9 +42,9 @@
           "type": "address[]"
         },
         {
-          "internalType": "uint256[]",
-          "name": "weights",
-          "type": "uint256[]"
+          "internalType": "uint256",
+          "name": "amplificationParameter",
+          "type": "uint256"
         },
         {
           "internalType": "uint256",
@@ -55,11 +55,6 @@
           "internalType": "address",
           "name": "owner",
           "type": "address"
-        },
-        {
-          "internalType": "bool",
-          "name": "swapEnabledOnStart",
-          "type": "bool"
         }
       ],
       "name": "create",
@@ -71,37 +66,6 @@
         }
       ],
       "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "getCreationCode",
-      "outputs": [
-        {
-          "internalType": "bytes",
-          "name": "",
-          "type": "bytes"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "getCreationCodeContracts",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "contractA",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "contractB",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
       "type": "function"
     },
     {
