@@ -1,3 +1,5 @@
 # 2021-04-18 Authorizer
 
-TODO
+Initial version of the Authorizer contract, which powers Balancer governance.
+
+This contract is expected to be eventually replaced by one with a) native support for timelocks and b) more granular roles, that is, being able to grant powers over a subset of related contracts. These development efforts are tracked [here](https://github.com/balancer-labs/balancer-v2-monorepo/milestone/4).

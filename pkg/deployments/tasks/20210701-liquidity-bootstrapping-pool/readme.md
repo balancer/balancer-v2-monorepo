@@ -1,4 +1,4 @@
-# 20210701 - Liquidity Bootstrapping Pool
+# 2021-07-01 - Liquidity Bootstrapping Pool
 
 ## 🚧 UNDER CONSTRUCTION - NOT PRODUCTION READY 🚧
 
