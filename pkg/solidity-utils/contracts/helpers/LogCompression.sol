@@ -42,7 +42,7 @@ library LogCompression {
         int256 ln = LogExpMath.ln(int256(value));
 
         // Rounding division for signed numerator
-        uint256 lnWithError = (ln > 0 ? ln + _HALF_LOG_COMPRESSION_FACTOR : ln - _HALF_LOG_COMPRESSION_FACTOR);
+        int256 lnWithError = (ln > 0 ? ln + _HALF_LOG_COMPRESSION_FACTOR : ln - _HALF_LOG_COMPRESSION_FACTOR);
         return lnWithError / _LOG_COMPRESSION_FACTOR;
     }
 
