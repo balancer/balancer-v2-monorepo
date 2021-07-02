@@ -175,12 +175,15 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         if (_totalSupply[pool] == 0) {
             return rewardData[pool][rewarder][rewardsToken].rewardPerTokenStored;
         }
+        uint256 unrewardedDuration = lastTimeRewardApplicable(pool, rewarder, rewardsToken).sub(
+            rewardData[pool][rewarder][rewardsToken].lastUpdateTime
+        );
+
         return
             rewardData[pool][rewarder][rewardsToken].rewardPerTokenStored.add(
-                lastTimeRewardApplicable(pool, rewarder, rewardsToken)
-                    .sub(rewardData[pool][rewarder][rewardsToken].lastUpdateTime)
-                    .mulDown(rewardData[pool][rewarder][rewardsToken].rewardRate)
-                    .divDown(_totalSupply[pool])
+                Math.mul(unrewardedDuration, rewardData[pool][rewarder][rewardsToken].rewardRate).divDown(
+                    _totalSupply[pool]
+                )
             );
     }
 
@@ -224,7 +227,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         IERC20 rewardsToken
     ) external view returns (uint256) {
         return
-            rewardData[pool][rewarder][rewardsToken].rewardRate.mulDown(
+            Math.mul(
+                rewardData[pool][rewarder][rewardsToken].rewardRate,
                 rewardData[pool][rewarder][rewardsToken].rewardsDuration
             );
     }
@@ -386,13 +390,15 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         vault.manageUserBalance(ops);
 
         if (block.timestamp >= rewardData[pool][msg.sender][rewardsToken].periodFinish) {
-            rewardData[pool][msg.sender][rewardsToken].rewardRate = reward.divDown(
+            rewardData[pool][msg.sender][rewardsToken].rewardRate = Math.divDown(
+                reward,
                 rewardData[pool][msg.sender][rewardsToken].rewardsDuration
             );
         } else {
             uint256 remaining = rewardData[pool][msg.sender][rewardsToken].periodFinish.sub(block.timestamp);
             uint256 leftover = remaining.mulDown(rewardData[pool][msg.sender][rewardsToken].rewardRate);
-            rewardData[pool][msg.sender][rewardsToken].rewardRate = reward.add(leftover).divDown(
+            rewardData[pool][msg.sender][rewardsToken].rewardRate = Math.divDown(
+                reward.add(leftover),
                 rewardData[pool][msg.sender][rewardsToken].rewardsDuration
             );
         }
