@@ -113,10 +113,7 @@ export default class Task {
 
   buildInfos(): Array<BuildInfo> {
     const abiDir = this._dirAt(this.dir(), 'abi');
-    return fs.readdirSync(abiDir).map((fileName) => {
-      const artifactFile = this._fileAt(abiDir, fileName);
-      return JSON.parse(fs.readFileSync(artifactFile).toString());
-    });
+    return fs.readdirSync(abiDir).map((fileName) => this.buildInfo(fileName));
   }
 
   artifact(contractName: string, fileName?: string): Artifact {
