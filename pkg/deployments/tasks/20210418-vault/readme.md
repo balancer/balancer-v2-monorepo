@@ -8,5 +8,5 @@ Aditionally, the `WETH` argument may represent different things in different net
 
 ## Useful Files
 
-- [Ethereum mainnet address](./outputs/mainnet.json)
+- [Ethereum mainnet address](./output/mainnet.json)
 - [`Vault` ABI](./abi/Vault.json)

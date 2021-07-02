@@ -6,5 +6,5 @@ This contract is expected to be eventually replaced by one with a) native suppor
 
 ## Useful Files
 
-- [Ethereum mainnet address](./outputs/mainnet.json)
+- [Ethereum mainnet address](./output/mainnet.json)
 - [`Authorizer` ABI](./abi/Authorizer.json)
