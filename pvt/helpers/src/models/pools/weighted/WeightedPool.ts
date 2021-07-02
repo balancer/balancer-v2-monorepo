@@ -600,6 +600,6 @@ export default class WeightedPool {
 
   async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualUpdateParams> {
     const pool = from ? this.instance.connect(from) : this.instance;
-    return await this.instance.getGradualWeightUpdateParams();
+    return await pool.getGradualWeightUpdateParams();
   }
 }

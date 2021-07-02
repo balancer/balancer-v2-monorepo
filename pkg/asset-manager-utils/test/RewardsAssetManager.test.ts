@@ -1,19 +1,18 @@
+import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { BigNumber, Contract } from 'ethers';
-import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
-import { bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import { bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import { calcRebalanceAmount, encodeInvestmentConfig } from './helpers/rebalance';
 
 const tokenInitialBalance = bn(200e18);
@@ -69,11 +68,11 @@ const setup = async () => {
 describe('Rewards Asset manager', function () {
   let tokens: TokenList, vault: Contract, assetManager: Contract, pool: Contract;
 
-  let lp: SignerWithAddress, other: SignerWithAddress;
+  let other: SignerWithAddress;
   let poolId: string;
 
   before('deploy base contracts', async () => {
-    [, lp, other] = await ethers.getSigners();
+    [, , other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('set up asset manager', async () => {
