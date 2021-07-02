@@ -404,35 +404,6 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         emit RewardAdded(address(rewardsToken), reward);
     }
 
-    /**
-     * @notice
-     * Allows the owner to recover any extra tokens sent to this address.
-     * Added to support recovering LP Rewards from other systems to be distributed to holders
-     * @param token - the token to recover (cannot be staking or reward token)
-     * @param tokenAmount - the amount of tokens to withdraw
-     */
-    function recoverERC20(
-        IERC20 pool,
-        IERC20 token,
-        uint256 tokenAmount
-    ) external onlyOwner {
-        require(token != pool, "Cannot withdraw staking token");
-        require(rewardData[pool][msg.sender][token].lastUpdateTime == 0, "Cannot withdraw reward token");
-
-        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
-        ops[0] = IVault.UserBalanceOp({
-            asset: IAsset(address(token)),
-            amount: tokenAmount,
-            sender: address(this),
-            recipient: payable(owner()),
-            kind: IVault.UserBalanceOpKind.TRANSFER_EXTERNAL
-        });
-
-        vault.manageUserBalance(ops);
-
-        emit Recovered(address(token), tokenAmount);
-    }
-
     function setRewardsDuration(
         IERC20 pool,
         IERC20 rewardsToken,
@@ -488,5 +459,4 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
     event Staked(address indexed pool, address indexed account, uint256 amount);
     event Withdrawn(address indexed pool, address indexed account, uint256 amount);
     event RewardsDurationUpdated(address indexed pool, address token, uint256 newDuration);
-    event Recovered(address indexed token, uint256 amount);
 }
