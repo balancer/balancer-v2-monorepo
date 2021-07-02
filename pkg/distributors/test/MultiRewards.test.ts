@@ -138,7 +138,7 @@ describe('Staking contract', () => {
         .whitelistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
       await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
       expect(
-        await stakingContract.isReadyToDistribute(pool.address, rewardToken.address, mockAssetManager.address)
+        await stakingContract.isWhitelistedRewarder(pool.address, rewardToken.address, mockAssetManager.address)
       ).to.equal(true);
     });
   });
