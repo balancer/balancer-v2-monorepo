@@ -70,7 +70,7 @@ abstract contract RewardsAssetManager is IAssetManager {
 
     modifier onlyPoolRebalancer() {
         require(
-            address(IRelayedBasePool(getPoolAddress()).getRelayer()) == msg.sender,
+             msg.sender == address(IRelayedBasePool(getPoolAddress()).getRelayer()),
             "Only callable by authorized rebalancer"
         );
         _;
