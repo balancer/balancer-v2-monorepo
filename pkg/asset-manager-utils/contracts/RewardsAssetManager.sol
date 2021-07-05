@@ -14,8 +14,9 @@
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRelayedBasePool.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -63,8 +64,15 @@ abstract contract RewardsAssetManager is IAssetManager {
     }
 
     modifier onlyPoolContract() {
-        address poolAddress = address(uint256(_poolId) >> (12 * 8));
-        require(msg.sender == poolAddress, "Only callable by pool");
+        require(msg.sender == getPoolAddress(), "Only callable by pool");
+        _;
+    }
+
+    modifier onlyPoolRebalancer() {
+        require(
+            msg.sender == address(IRelayedBasePool(getPoolAddress()).getRelayer()),
+            "Only callable by authorized rebalancer"
+        );
         _;
     }
 
@@ -85,6 +93,10 @@ abstract contract RewardsAssetManager is IAssetManager {
 
     function getPoolId() public view returns (bytes32) {
         return _poolId;
+    }
+
+    function getPoolAddress() public view returns (address) {
+        return address(uint256(_poolId) >> (12 * 8));
     }
 
     function isInitialized() public view returns (bool) {
@@ -132,14 +144,10 @@ abstract contract RewardsAssetManager is IAssetManager {
      */
     function _capitalIn(uint256 amount) private {
         uint256 aum = _getAUM();
-        (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
-        uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _config.targetPercentage);
-
-        require(targetInvestment >= poolManaged.add(amount), "investment amount exceeds target");
 
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
         // Update the vault with new managed balance accounting for returns
-        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, _poolId, getToken(), poolManaged);
+        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, _poolId, getToken(), aum);
         // Pull funds from the vault
         ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, _poolId, getToken(), amount);
 
@@ -155,10 +163,6 @@ abstract contract RewardsAssetManager is IAssetManager {
     function _capitalOut(uint256 amount) private {
         uint256 aum = _getAUM();
         uint256 tokensOut = _divest(amount, aum);
-        (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
-        uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _config.targetPercentage);
-
-        require(poolManaged >= targetInvestment.add(tokensOut), "withdrawal leaves insufficient balance invested");
 
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
         // Update the vault with new managed balance accounting for returns
@@ -281,5 +285,14 @@ abstract contract RewardsAssetManager is IAssetManager {
                 _rebalance(pId);
             }
         }
+    }
+
+    /**
+     * @notice allows an authorized rebalancer to remove capital to facilitate large withdrawals
+     * @param pId - the poolId of the pool to withdraw funds back to
+     * @param amount - the amount of tokens to withdraw back to the pool
+     */
+    function capitalOut(bytes32 pId, uint256 amount) external override withCorrectPool(pId) onlyPoolRebalancer {
+        _capitalOut(amount);
     }
 }

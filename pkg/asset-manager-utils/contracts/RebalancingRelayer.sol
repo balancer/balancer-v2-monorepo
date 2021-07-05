@@ -34,12 +34,18 @@ contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
         0x0000000000000000000000000000000000000000000000000000000000000001
     );
 
-    modifier rebalance(bytes32 poolId, IAsset[] memory assets) {
+    modifier rebalance(
+        bytes32 poolId,
+        IAsset[] memory assets,
+        uint256[] memory minCashBalances
+    ) {
         _require(_calledPool == _EMPTY_CALLED_POOL, Errors.REBALANCING_RELAYER_REENTERED);
+        IERC20[] memory tokens = _translateToIERC20(assets);
+        _ensureCashBalance(poolId, tokens, minCashBalances);
         _calledPool = poolId;
         _;
         _calledPool = _EMPTY_CALLED_POOL;
-        _rebalance(poolId, _translateToIERC20(assets));
+        _rebalance(poolId, tokens);
     }
 
     IVault public immutable vault;
@@ -64,7 +70,7 @@ contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
         bytes32 poolId,
         address recipient,
         IVault.JoinPoolRequest memory request
-    ) external payable rebalance(poolId, request.assets) {
+    ) external payable rebalance(poolId, request.assets, new uint256[](request.assets.length)) {
         vault.joinPool{ value: msg.value }(poolId, msg.sender, recipient, request);
 
         // Send back to the sender any remaining ETH value
@@ -76,9 +82,25 @@ contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
     function exitPool(
         bytes32 poolId,
         address payable recipient,
-        IVault.ExitPoolRequest memory request
-    ) external rebalance(poolId, request.assets) {
+        IVault.ExitPoolRequest memory request,
+        uint256[] memory minCashBalances
+    ) external rebalance(poolId, request.assets, minCashBalances) {
         vault.exitPool(poolId, msg.sender, recipient, request);
+    }
+
+    function _ensureCashBalance(
+        bytes32 poolId,
+        IERC20[] memory tokens,
+        uint256[] memory minCashBalances
+    ) internal {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            (uint256 cash, , , address assetManager) = vault.getPoolTokenInfo(poolId, tokens[i]);
+            uint256 cashNeeded = minCashBalances[i];
+            if (assetManager != address(0) && cash < cashNeeded) {
+                // Withdraw the managed balance back to the pool to ensure that the cash covers the withdrawal
+                IAssetManager(assetManager).capitalOut(poolId, cashNeeded - cash);
+            }
+        }
     }
 
     function _rebalance(bytes32 poolId, IERC20[] memory tokens) internal {
