@@ -286,6 +286,10 @@ describe('RebalancingRelayer', function () {
                 .setAssetManagerPoolConfig(tokens.first.address, encodeInvestmentConfig(investmentConfig));
 
               await assetManagers[0].rebalance(poolId, true);
+
+              // Check that the pool has less cash than necessary for a withdrawal
+              const { cash } = await vault.getPoolTokenInfo(poolId, tokens.first.address);
+              expect(cash).to.be.lt(tokenIncrements[0]);
             });
 
             itExitsCorrectly();
