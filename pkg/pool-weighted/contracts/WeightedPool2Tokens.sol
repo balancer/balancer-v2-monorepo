@@ -28,10 +28,10 @@ import "@balancer-labs/v2-pool-utils/contracts/BalancerPoolToken.sol";
 import "@balancer-labs/v2-pool-utils/contracts/interfaces/IPriceOracle.sol";
 import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
 import "@balancer-labs/v2-pool-utils/contracts/oracle/Buffer.sol";
+import "@balancer-labs/v2-pool-utils/contracts/oracle/OracleSwapFeeMiscData.sol";
 
 import "./WeightedMath.sol";
 import "./WeightedOracleMath.sol";
-import "./WeightedPool2TokensMiscData.sol";
 import "./WeightedPoolUserDataHelpers.sol";
 
 contract WeightedPool2Tokens is
@@ -45,8 +45,8 @@ contract WeightedPool2Tokens is
     WeightedOracleMath
 {
     using FixedPoint for uint256;
+    using OracleSwapFeeMiscData for bytes32;
     using WeightedPoolUserDataHelpers for bytes;
-    using WeightedPool2TokensMiscData for bytes32;
 
     uint256 private constant _MINIMUM_BPT = 1e6;
 

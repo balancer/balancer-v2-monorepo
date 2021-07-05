@@ -61,7 +61,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     uint256 private constant _MINIMUM_BPT = 1e6;
 
-    uint256 internal _swapFeePercentage;
+    // Storage slot that can be used to store unrelated pieces of information. In particular, by default is used
+    // to store only the swap fee percentage of a pool. But it can be extended to store some more pieces of information.
+    // The swap fee percentage can be stored using 64 bits, therefore the remaining 192 bits can be used to store any
+    // other piece of information.
+    bytes32 internal _miscData;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
@@ -169,11 +173,15 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _totalTokens;
     }
 
-    function getSwapFeePercentage() external view returns (uint256) {
-        return _swapFeePercentage;
+    /**
+     * The swap fee percentage getter can be overridden in case further misc data is required by the implementing pool.
+     * In that case, the implementing pool must specify how misc data must be decoded in order to get the swap fee.
+     */
+    function getSwapFeePercentage() public view virtual returns (uint256) {
+        return uint256(_miscData);
     }
 
-    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual authenticate whenNotPaused {
+    function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
 
@@ -181,8 +189,16 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
-        _swapFeePercentage = swapFeePercentage;
+        _storeSwapFeePercentage(swapFeePercentage);
         emit SwapFeePercentageChanged(swapFeePercentage);
+    }
+
+    /**
+     * By default, the swap fee percentage is stored in the misc data field. Note that this storage slot can be
+     * overloaded to store more pieces of information besides the swap fee percentage.
+     */
+    function _storeSwapFeePercentage(uint256 swapFeePercentage) internal virtual {
+        _miscData = bytes32(swapFeePercentage);
     }
 
     function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig)
@@ -489,7 +505,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(FixedPoint.ONE.sub(_swapFeePercentage));
+        return amount.divUp(FixedPoint.ONE.sub(getSwapFeePercentage()));
     }
 
     /**
@@ -497,7 +513,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount - fee amount, so we round up (favoring a higher fee amount).
-        uint256 feeAmount = amount.mulUp(_swapFeePercentage);
+        uint256 feeAmount = amount.mulUp(getSwapFeePercentage());
         return amount.sub(feeAmount);
     }
 
