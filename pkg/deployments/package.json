@@ -13,7 +13,7 @@
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },
   "scripts": {
-    "lint": "eslint . --ext .ts",
+    "lint": "eslint . --ext .ts --max-warnings 0",
     "test": "hardhat test ./**/test/*.ts",
     "test:deployed": "yarn test --network mainnet",
     "test:fork": "yarn test --fork mainnet --block-number 12731159"

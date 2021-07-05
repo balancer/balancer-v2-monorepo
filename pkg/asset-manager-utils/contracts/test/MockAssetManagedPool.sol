@@ -19,7 +19,9 @@ import "@balancer-labs/v2-vault/contracts/test/MockPool.sol";
 import "../IAssetManager.sol";
 
 contract MockAssetManagedPool is MockPool {
-    constructor(IVault vault, IVault.PoolSpecialization specialization) MockPool(vault, specialization) {}
+    constructor(IVault vault, IVault.PoolSpecialization specialization) MockPool(vault, specialization) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function setAssetManagerPoolConfig(address assetManager, bytes memory poolConfig) public {
         IAssetManager(assetManager).setConfig(getPoolId(), poolConfig);
