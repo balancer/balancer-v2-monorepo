@@ -57,7 +57,6 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
     IVault public immutable vault;
     mapping(IERC20 => mapping(address => mapping(IERC20 => Reward))) public rewardData;
     mapping(IERC20 => EnumerableSet.AddressSet) private _rewardTokens;
-    mapping(IERC20 => address[]) private _rewardTokenArray;
 
     // pool -> rewardToken -> rewarders
     mapping(IERC20 => mapping(IERC20 => EnumerableSet.AddressSet)) private _rewarders;
