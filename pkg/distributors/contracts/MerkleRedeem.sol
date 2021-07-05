@@ -97,16 +97,10 @@ contract MerkleRedeem is IDistributor, Ownable {
         bytes32[] merkleProof;
     }
 
-    /**
-     * @notice Allows a user to claim a particular week's worth of rewards
-     */
-    function claimWeeks(
-        address payable liquidityProvider,
-        Claim[] memory claims,
-        bool useInternalBalance
-    ) public {
-        require(msg.sender == liquidityProvider, "user must claim own balance");
-        uint256 totalBalance = 0;
+    function _processClaims(address payable liquidityProvider, Claim[] memory claims)
+        internal
+        returns (uint256 totalBalance)
+    {
         Claim memory claim;
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
@@ -120,12 +114,44 @@ contract MerkleRedeem is IDistributor, Ownable {
             totalBalance = totalBalance.add(claim.balance);
             claimed[claim.week][liquidityProvider] = true;
         }
+    }
+
+    /**
+     * @notice Allows a user to claim a particular week's worth of rewards
+     */
+    function claimWeeks(
+        address payable liquidityProvider,
+        Claim[] memory claims,
+        bool useInternalBalance
+    ) public {
+        require(msg.sender == liquidityProvider, "user must claim own balance");
+
+        uint256 totalBalance = _processClaims(liquidityProvider, claims);
 
         if (useInternalBalance) {
             _disburseToInternalBalance(liquidityProvider, totalBalance);
         } else {
             _disburse(liquidityProvider, totalBalance);
         }
+    }
+
+    /**
+     * @notice Allows a user to claim several weeks of rewards to a callback
+     */
+    function claimWeeksWithCallback(
+        address payable liquidityProvider,
+        address payable callbackContract,
+        bytes calldata callbackData,
+        Claim[] memory claims
+    ) public {
+        require(msg.sender == liquidityProvider, "user must claim own balance");
+        uint256 totalBalance = _processClaims(liquidityProvider, claims);
+
+        _disburseToInternalBalance(callbackContract, totalBalance);
+
+        (bool success, ) = callbackContract.call(callbackData);
+        // solhint-disable-previous-line avoid-low-level-calls
+        require(success, "callback failed");
     }
 
     function claimStatus(

@@ -128,7 +128,7 @@ describe('MerkleRedeem', () => {
     let elements: string[];
     let merkleTree: MerkleTree;
 
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       elements = [encodeElement(lp1.address, claimableBalance)];
       merkleTree = new MerkleTree(elements);
       const root = merkleTree.getHexRoot();
@@ -232,7 +232,7 @@ describe('MerkleRedeem', () => {
     let merkleTree2: MerkleTree;
     let root2: string;
 
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       elements1 = [encodeElement(lp1.address, claimBalance1)];
       merkleTree1 = new MerkleTree(elements1);
       root1 = merkleTree1.getHexRoot();
@@ -277,8 +277,56 @@ describe('MerkleRedeem', () => {
       expect(result).to.eql(expectedResult); // "claim status should be accurate"
     });
 
+    interface Claim {
+      week: BigNumber;
+      balance: BigNumber;
+      merkleProof: BytesLike[];
+    }
+
+    describe('with a callback', () => {
+      let callbackContract: Contract;
+      let claims: Claim[];
+
+      sharedBeforeEach('set up mock callback', async () => {
+        callbackContract = await deploy('MockRewardCallback');
+
+        const proof1: BytesLike[] = merkleTree1.getHexProof(elements1[0]);
+        const proof2: BytesLike[] = merkleTree2.getHexProof(elements2[0]);
+
+        claims = [
+          { week: bn(1), balance: claimBalance1, merkleProof: proof1 },
+          { week: bn(2), balance: claimBalance2, merkleProof: proof2 },
+        ];
+      });
+
+      it('allows a user to claim the reward to a callback contract', async () => {
+        const expectedReward = claimBalance1.add(claimBalance2);
+        const calldata = callbackContract.interface.encodeFunctionData('testCallback', []);
+
+        await expectBalanceChange(
+          () =>
+            merkleRedeem.connect(lp1).claimWeeksWithCallback(lp1.address, callbackContract.address, calldata, claims),
+          rewardTokens,
+          [{ account: callbackContract.address, changes: { DAI: ['very-near', expectedReward] } }],
+          vault
+        );
+      });
+
+      it('calls the callback on the contract', async () => {
+        const calldata = callbackContract.interface.encodeFunctionData('testCallback', []);
+
+        const receipt = await (
+          await merkleRedeem
+            .connect(lp1)
+            .claimWeeksWithCallback(lp1.address, callbackContract.address, calldata, claims)
+        ).wait();
+
+        expectEvent.inIndirectReceipt(receipt, callbackContract.interface, 'CallbackReceived', {});
+      });
+    });
+
     describe('When a user has claimed one of their allocations', async () => {
-      beforeEach(async () => {
+      sharedBeforeEach(async () => {
         const claimedBalance1 = bn('1000');
         const proof1 = merkleTree1.getHexProof(elements1[0]);
 
