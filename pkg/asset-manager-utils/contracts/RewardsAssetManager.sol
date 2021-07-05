@@ -63,8 +63,7 @@ abstract contract RewardsAssetManager is IAssetManager {
     }
 
     modifier onlyPoolContract() {
-        address poolAddress = address(uint256(_poolId) >> (12 * 8));
-        require(msg.sender == poolAddress, "Only callable by pool");
+        require(msg.sender == getPoolAddress(), "Only callable by pool");
         _;
     }
 
@@ -85,6 +84,10 @@ abstract contract RewardsAssetManager is IAssetManager {
 
     function getPoolId() public view returns (bytes32) {
         return _poolId;
+    }
+
+    function getPoolAddress() public view returns (address) {
+        return address(uint256(_poolId) >> (12 * 8));
     }
 
     function isInitialized() public view returns (bool) {

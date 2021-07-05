@@ -99,8 +99,6 @@ contract AaveATokenAssetManager is RewardsAssetManager {
         aaveIncentives.claimRewards(assets, type(uint256).max, address(this));
 
         // Forward to distributor
-        IERC20 poolAddress = IERC20(uint256(getPoolId()) >> (12 * 8));
-
-        distributor.notifyRewardAmount(poolAddress, stkAave, stkAave.balanceOf(address(this)));
+        distributor.notifyRewardAmount(IERC20(getPoolAddress()), stkAave, stkAave.balanceOf(address(this)));
     }
 }
