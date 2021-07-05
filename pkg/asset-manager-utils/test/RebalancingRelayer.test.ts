@@ -275,10 +275,10 @@ describe('RebalancingRelayer', function () {
 
           context('when pool does not have enough cash to process exit', () => {
             sharedBeforeEach('invest funds', async () => {
-              // Config invests 95% of the pool's funds to ensure lack of cash
+              // Config invests 100% of the pool's funds to ensure lack of cash
               const investmentConfig = {
-                targetPercentage: fp(0.95),
-                upperCriticalPercentage: fp(0.95),
+                targetPercentage: fp(1),
+                upperCriticalPercentage: fp(1),
                 lowerCriticalPercentage: fp(0),
               };
               await pool
