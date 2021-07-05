@@ -293,6 +293,6 @@ abstract contract RewardsAssetManager is IAssetManager {
      * @param amount - the amount of tokens to withdraw back to the pool
      */
     function capitalOut(bytes32 pId, uint256 amount) external override withCorrectPool(pId) onlyPoolRebalancer {
-       _capitalOut(amount);
+        _capitalOut(amount);
     }
 }

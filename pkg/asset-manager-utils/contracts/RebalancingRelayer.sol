@@ -34,7 +34,11 @@ contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
         0x0000000000000000000000000000000000000000000000000000000000000001
     );
 
-    modifier rebalance(bytes32 poolId, IAsset[] memory assets, uint256[] memory minCashBalances) {
+    modifier rebalance(
+        bytes32 poolId,
+        IAsset[] memory assets,
+        uint256[] memory minCashBalances
+    ) {
         _require(_calledPool == _EMPTY_CALLED_POOL, Errors.REBALANCING_RELAYER_REENTERED);
         _ensureCashBalance(poolId, _translateToIERC20(assets), minCashBalances);
         _calledPool = poolId;
@@ -83,7 +87,11 @@ contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
         vault.exitPool(poolId, msg.sender, recipient, request);
     }
 
-    function _ensureCashBalance(bytes32 poolId, IERC20[] memory tokens, uint256[] memory minCashBalances) internal {
+    function _ensureCashBalance(
+        bytes32 poolId,
+        IERC20[] memory tokens,
+        uint256[] memory minCashBalances
+    ) internal {
         for (uint256 i = 0; i < tokens.length; i++) {
             (uint256 cash, , , address assetManager) = vault.getPoolTokenInfo(poolId, tokens[i]);
             uint256 cashNeeded = minCashBalances[i];
