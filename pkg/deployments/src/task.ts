@@ -1,5 +1,5 @@
 import fs from 'fs';
-import path from 'path';
+import path, { extname } from 'path';
 import { BuildInfo, CompilerOutputContract, HardhatRuntimeEnvironment } from 'hardhat/types';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -106,21 +106,21 @@ export default class Task {
   }
 
   buildInfo(fileName: string): BuildInfo {
-    const abiDir = this._dirAt(this.dir(), 'abi');
-    const artifactFile = this._fileAt(abiDir, `${fileName}.json`);
+    const buildInfoDir = this._dirAt(this.dir(), 'build-info');
+    const artifactFile = this._fileAt(buildInfoDir, `${extname(fileName) ? fileName : `${fileName}.json`}`);
     return JSON.parse(fs.readFileSync(artifactFile).toString());
   }
 
   buildInfos(): Array<BuildInfo> {
-    const abiDir = this._dirAt(this.dir(), 'abi');
-    return fs.readdirSync(abiDir).map((fileName) => this.buildInfo(fileName));
+    const buildInfoDir = this._dirAt(this.dir(), 'build-info');
+    return fs.readdirSync(buildInfoDir).map((fileName) => this.buildInfo(fileName));
   }
 
   artifact(contractName: string, fileName?: string): Artifact {
-    const abiDir = this._dirAt(this.dir(), 'abi');
+    const buildInfoDir = this._dirAt(this.dir(), 'build-info');
     const builds: {
       [sourceName: string]: { [contractName: string]: CompilerOutputContract };
-    } = this._existsFile(path.join(abiDir, `${fileName || contractName}.json`))
+    } = this._existsFile(path.join(buildInfoDir, `${fileName || contractName}.json`))
       ? this.buildInfo(contractName).output.contracts
       : this.buildInfos().reduce((result, info: BuildInfo) => ({ ...result, ...info.output.contracts }), {});
 

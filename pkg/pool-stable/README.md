@@ -14,4 +14,4 @@ This package contains the source code of Balancer V2 Stable Pools, that is, Pool
 
 The only flavor currently in existence is [`StablePool`](./contracts/StablePool.sol) (basic five token version).
 
-Another useful contract is [`StableMath`](./contracts/Stable.sol), which implements the low level calculations required for swaps, joins and exits.
+Another useful contract is [`StableMath`](./contracts/StableMath.sol), which implements the low level calculations required for swaps, joins and exits.

@@ -4,46 +4,15 @@
 
 [![NPM Package](https://img.shields.io/npm/v/@balancer-labs/v2-deployments.svg)](https://www.npmjs.org/package/@balancer-labs/v2-deployments)
 
-This package contains the addresses and ABIs of all Balancer V2 deployed contracts, for mainnet and various test networks. Artifacts are found in the [`deployed`](./deployed) directory, where each subdirectory represents a network.
+This package contains the addresses and ABIs of all Balancer V2 deployed contracts, for Ethereum and Polygon mainnet, as well as various test networks. Each deployment consists of a deployment script (called 'task'), inputs (script configuration, such as dependencies), outputs (typically contract addresses), and ABIs of related contracts. All tasks are found in the [`tasks`](./tasks) directory, where each subdirectory represents an individual deployment.
 
-Note that some protocol contracts are created dynamically: for example, `WeightedPool` contracts are deployed by the canonical `WeightedPoolFactory`. The ABIs of these contracts are stored in the [`extra-abis`](./extra-abis) directory, but their addresses are not. Those can be retrieved by querying the on-chain state, or processing emitted events.
+Note that some protocol contracts are created dynamically: for example, `WeightedPool` contracts are deployed by the canonical `WeightedPoolFactory`. While the ABIs of these contracts are stored in the `abi` directory of each deployment, their addresses are not. Those can be retrieved by querying the on-chain state or processing emitted events.
 
-## Overview
+## Past Deployments
 
-### Installation
-
-```console
-$ npm install @balancer-labs/v2-deployments
-```
-
-### Usage
-
-Using [Hardhat](https://hardhat.org/):
-
-```typescript
-import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
-
-// Creates an ethers Contract object for a canonical contract deployed on a specific network
-export function getBalancerDeployedContract(
-  contract: string,
-  network: string
-): Promise<Contract> {
-  const {
-    abi,
-    address,
-  } = require(`@balancer-labs/v2-deployments/deployed/${network}/${contract}.json`);
-  return ethers.getContractAt(abi, address);
-}
-
-// Creates an ethers Contract object from a dynamically created contract at a known address
-export function getBalancerContractAtAddress(
-  contract: string,
-  address: string
-): Promise<Contract> {
-  const {
-    abi,
-  } = require(`@balancer-labs/v2-deployments/extra-abis/${contract}.json`);
-  return ethers.getContractAt(abi, address);
-}
-```
+- [`Authorizer`: the governance contract](./tasks/20210418-authorizer)
+- [`Vault`: main protocol contract](./tasks/20210418-vault)
+- Pool factories:
+  - [Weighted Pools of up to 8 tokens](./tasks/20210418-weighted-pool)
+  - [Weighted Pools with two tokens and price oracle](./tasks/20210418-weighted-pool)
+  - [Stable Pools of up to 5 tokens](./tasks/20210624-stable-pool)
