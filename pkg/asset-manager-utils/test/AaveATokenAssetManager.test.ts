@@ -65,7 +65,7 @@ const setup = async () => {
 
   await assetManager.initialize(poolId, distributor.address);
 
-  await distributor.whitelistRewarder(pool.address, admin.address, lp.address);
+  await distributor.allowlistRewarder(pool.address, admin.address, lp.address);
 
   await tokens.mint({ to: lp, amount: tokenInitialBalance });
   await tokens.approve({ to: vault.address, from: [lp] });
