@@ -16,7 +16,6 @@ pragma solidity ^0.7.0;
 
 import "../interfaces/IBasePoolRelayer.sol";
 
-
 contract MockBasePoolRelayer is IBasePoolRelayer {
     bool internal _hasCalledPool;
 

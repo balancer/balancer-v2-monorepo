@@ -21,19 +21,9 @@ import "../RelayedBasePool.sol";
 contract MockRelayedBasePool is BasePool, RelayedBasePool {
     uint256 private constant _MINIMUM_BPT = 1e6;
 
-    event Join(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        bytes userData
-    );
+    event Join(bytes32 poolId, address sender, address recipient, bytes userData);
 
-    event Exit(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        bytes userData
-    );
+    event Exit(bytes32 poolId, address sender, address recipient, bytes userData);
 
     constructor(
         IVault vault,
