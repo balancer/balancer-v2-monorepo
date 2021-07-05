@@ -40,11 +40,12 @@ contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
         uint256[] memory minCashBalances
     ) {
         _require(_calledPool == _EMPTY_CALLED_POOL, Errors.REBALANCING_RELAYER_REENTERED);
-        _ensureCashBalance(poolId, _translateToIERC20(assets), minCashBalances);
+        IERC20[] memory tokens = _translateToIERC20(assets);
+        _ensureCashBalance(poolId, tokens, minCashBalances);
         _calledPool = poolId;
         _;
         _calledPool = _EMPTY_CALLED_POOL;
-        _rebalance(poolId, _translateToIERC20(assets));
+        _rebalance(poolId, tokens);
     }
 
     IVault public immutable vault;
