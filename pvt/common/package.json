@@ -6,7 +6,7 @@
   "license": "GPL-3.0-only",
   "scripts": {
     "lint": "yarn lint:typescript",
-    "lint:typescript": "eslint . --ext .ts"
+    "lint:typescript": "eslint . --ext .ts --max-warnings 0"
   },
   "dependencies": {
     "@balancer-labs/v2-helpers": "workspace:*",
