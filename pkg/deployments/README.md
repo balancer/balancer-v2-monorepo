@@ -4,7 +4,7 @@
 
 [![NPM Package](https://img.shields.io/npm/v/@balancer-labs/v2-deployments.svg)](https://www.npmjs.org/package/@balancer-labs/v2-deployments)
 
-This package contains the addresses and ABIs of all Balancer V2 deployed contracts, for Ethereum mainnet and various test networks and Polygon mainnet. Each deployment consists of a deployment script (called 'task'), inputs (script configuration, such as dependencies), outputs (typically contract addresses), and ABIs of related contracts. All tasks are found in the [`tasks`](./tasks) directory, where each subdirectory represents an individual deployment.
+This package contains the addresses and ABIs of all Balancer V2 deployed contracts, for Ethereum and Polygon mainnet, as well as various test networks. Each deployment consists of a deployment script (called 'task'), inputs (script configuration, such as dependencies), outputs (typically contract addresses), and ABIs of related contracts. All tasks are found in the [`tasks`](./tasks) directory, where each subdirectory represents an individual deployment.
 
 Note that some protocol contracts are created dynamically: for example, `WeightedPool` contracts are deployed by the canonical `WeightedPoolFactory`. While the ABIs of these contracts are stored in the `abi` directory of each deployment, their addresses are not. Those can be retrieved by querying the on-chain state or processing emitted events.
 
