@@ -213,68 +213,57 @@ describe('Staking contract', () => {
       });
     });
 
-    it('distributes the reward according to the fraction of staked LP tokens', async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
-      await advanceTime(10);
+    describe('when the rewarder has called notifyRewardAmount', () => {
+      sharedBeforeEach(async () => {
+        await stakingContract
+          .connect(mockAssetManager)
+          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+        await advanceTime(10);
+      });
 
-      // 3/4 share
-      const expectedReward = fp(0.75);
-      const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
+      it('distributes the reward according to the fraction of staked LP tokens', async () => {
+        // 3/4 share
+        const expectedReward = fp(0.75);
+        const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
 
-      expect(expectedReward.sub(actualReward).abs()).to.be.lte(100);
+        expect(expectedReward.sub(actualReward).abs()).to.be.lte(100);
 
-      // 1/4 share
-      const expectedRewardOther = fp(0.25);
-      const actualRewardOther = await stakingContract.totalEarned(pool.address, other.address, rewardToken.address);
+        // 1/4 share
+        const expectedRewardOther = fp(0.25);
+        const actualRewardOther = await stakingContract.totalEarned(pool.address, other.address, rewardToken.address);
 
-      expect(expectedRewardOther.sub(actualRewardOther).abs()).to.be.lte(100);
-    });
+        expect(expectedRewardOther.sub(actualRewardOther).abs()).to.be.lte(100);
+      });
 
-    it('allows a user to claim the reward to an EOA', async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
-      await advanceTime(10);
+      it('allows a user to claim the reward to an EOA', async () => {
+        const expectedReward = fp(0.75);
 
-      const expectedReward = fp(0.75);
+        await expectBalanceChange(() => stakingContract.connect(lp).getReward([pool.address]), rewardTokens, [
+          { account: lp, changes: { DAI: ['very-near', expectedReward] } },
+        ]);
+      });
 
-      await expectBalanceChange(() => stakingContract.connect(lp).getReward([pool.address]), rewardTokens, [
-        { account: lp, changes: { DAI: ['very-near', expectedReward] } },
-      ]);
-    });
+      it('allows a user to claim the reward to internal balance', async () => {
+        const expectedReward = fp(0.75);
 
-    it('allows a user to claim the reward to internal balance', async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
-      await advanceTime(10);
+        await expectBalanceChange(
+          () => stakingContract.connect(lp).getRewardAsInternalBalance([pool.address]),
+          rewardTokens,
+          [{ account: lp, changes: { DAI: ['very-near', expectedReward] } }],
+          vault
+        );
+      });
 
-      const expectedReward = fp(0.75);
+      it('emits RewardPaid when an allocation is claimed', async () => {
+        const expectedReward = bn('749999999999999923');
 
-      await expectBalanceChange(
-        () => stakingContract.connect(lp).getRewardAsInternalBalance([pool.address]),
-        rewardTokens,
-        [{ account: lp, changes: { DAI: ['very-near', expectedReward] } }],
-        vault
-      );
-    });
+        const receipt = await (await stakingContract.connect(lp).getReward([pool.address])).wait();
 
-    it('emits RewardPaid when an allocation is claimed', async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
-      await advanceTime(10);
-
-      const expectedReward = bn('749999999999999923');
-
-      const receipt = await (await stakingContract.connect(lp).getReward([pool.address])).wait();
-
-      expectEvent.inReceipt(receipt, 'RewardPaid', {
-        user: lp.address,
-        rewardToken: rewardToken.address,
-        amount: expectedReward,
+        expectEvent.inReceipt(receipt, 'RewardPaid', {
+          user: lp.address,
+          rewardToken: rewardToken.address,
+          amount: expectedReward,
+        });
       });
     });
 
