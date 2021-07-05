@@ -60,7 +60,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
 
     // pool -> rewardToken -> rewarders
     mapping(IERC20 => mapping(IERC20 => EnumerableSet.AddressSet)) private _rewarders;
-    mapping(IERC20 => mapping(IERC20 => EnumerableSet.AddressSet)) private _allowlist;
+    mapping(IERC20 => mapping(IERC20 => mapping(address => bool))) private _allowlist;
 
     // pool -> rewarder ->  user -> reward token -> amount
     mapping(IERC20 => mapping(address => mapping(address => mapping(IERC20 => uint256)))) public userRewardPerTokenPaid;
@@ -92,7 +92,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
             msg.sender == owner() || msg.sender == address(pool) || isAssetManager(pool, msg.sender),
             "only accessible by governance, pool or it's asset managers"
         );
-        _allowlist[pool][rewardsToken].add(rewarder);
+        _allowlist[pool][rewardsToken][rewarder] = true;
     }
 
     function isAllowlistedRewarder(
@@ -100,7 +100,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         IERC20 rewardsToken,
         address rewarder
     ) public view returns (bool) {
-        return _allowlist[pool][rewardsToken].contains(rewarder);
+        return _allowlist[pool][rewardsToken][rewarder];
     }
 
     /**
