@@ -10,18 +10,17 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
-import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
+import { ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import {
-  encodeExitWeightedPool,
-  encodeJoinWeightedPool,
-} from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
 import { encodeInvestmentConfig } from './helpers/rebalance';
 
 describe('RebalancingRelayer', function () {
   let poolId: string, tokens: TokenList;
   let sender: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
   let vault: Contract, authorizer: Contract, relayer: Contract, pool: Contract, assetManagers: Contract[];
+
+  // An array of token amounts which will be added/removed to pool's balance on joins/exits
+  let tokenIncrements: BigNumber[];
 
   before('setup signer', async () => {
     [, admin, sender, recipient] = await ethers.getSigners();
@@ -38,6 +37,7 @@ describe('RebalancingRelayer', function () {
 
     await tokens.mint({ to: sender, amount: fp(100) });
     await tokens.approve({ to: vault, amount: fp(100), from: sender });
+    tokenIncrements = Array(tokens.length).fill(fp(1));
   });
 
   sharedBeforeEach('deploy sample pool', async () => {
@@ -75,11 +75,10 @@ describe('RebalancingRelayer', function () {
     let request: { assets: string[]; maxAmountsIn: BigNumberish[]; userData: string; fromInternalBalance: boolean };
 
     sharedBeforeEach('build join request', async () => {
-      const amountsIn = Array(tokens.length).fill(fp(10));
       request = {
         assets: tokens.addresses,
-        maxAmountsIn: amountsIn,
-        userData: encodeJoinWeightedPool({ kind: 'Init', amountsIn }),
+        maxAmountsIn: tokenIncrements,
+        userData: '0x',
         fromInternalBalance: false,
       };
     });
@@ -195,28 +194,19 @@ describe('RebalancingRelayer', function () {
   describe('exit', () => {
     let joinRequest: { assets: string[]; maxAmountsIn: BigNumberish[]; userData: string; fromInternalBalance: boolean };
     let exitRequest: { assets: string[]; minAmountsOut: BigNumberish[]; userData: string; toInternalBalance: boolean };
-    let amountsOut: BigNumber[];
 
     sharedBeforeEach('build exit request', async () => {
-      const amountsIn = Array(tokens.length).fill(fp(10));
-      amountsOut = Array(tokens.length).fill(fp(1));
-
-      // Note: MockRelayedBasePool ignores all these values
       joinRequest = {
         assets: tokens.addresses,
-        maxAmountsIn: amountsIn,
-        userData: encodeJoinWeightedPool({ kind: 'Init', amountsIn }),
+        maxAmountsIn: tokenIncrements,
+        userData: '0x',
         fromInternalBalance: false,
       };
 
       exitRequest = {
         assets: tokens.addresses,
-        minAmountsOut: Array(amountsIn.length).fill(0),
-        userData: encodeExitWeightedPool({
-          kind: 'BPTInForExactTokensOut',
-          maxBPTAmountIn: MAX_UINT256,
-          amountsOut: amountsIn,
-        }),
+        minAmountsOut: tokenIncrements,
+        userData: '0x',
         toInternalBalance: false,
       };
     });
@@ -236,6 +226,7 @@ describe('RebalancingRelayer', function () {
           sharedBeforeEach('join pool', async () => {
             const action = await actionId(vault, 'joinPool');
             await authorizer.connect(admin).grantRole(action, relayer.address);
+            // We join twice here so that exiting doesn't return the pool to a zero-balance state
             await relayer.connect(sender).joinPool(poolId, sender.address, joinRequest);
             await relayer.connect(sender).joinPool(poolId, sender.address, joinRequest);
           });
@@ -247,7 +238,7 @@ describe('RebalancingRelayer', function () {
 
               const receipt = await relayer
                 .connect(sender)
-                .exitPool(poolId, recipient.address, exitRequest, amountsOut);
+                .exitPool(poolId, recipient.address, exitRequest, tokenIncrements);
 
               expectEvent.inIndirectReceipt(await receipt.wait(), pool.interface, 'Exit', {
                 poolId,
@@ -266,7 +257,7 @@ describe('RebalancingRelayer', function () {
             it('rebalances the pool', async () => {
               const receipt = await relayer
                 .connect(sender)
-                .exitPool(poolId, recipient.address, exitRequest, amountsOut);
+                .exitPool(poolId, recipient.address, exitRequest, tokenIncrements);
 
               expectEvent.inIndirectReceipt(await receipt.wait(), assetManagers[0].interface, 'Rebalance', {
                 poolId,
@@ -308,7 +299,12 @@ describe('RebalancingRelayer', function () {
 
           it('reverts', async () => {
             await expect(
-              relayer.connect(sender).exitPool(poolId, recipient.address, exitRequest, exitRequest.minAmountsOut)
+              relayer.connect(sender).exitPool(
+                poolId,
+                recipient.address,
+                exitRequest,
+                tokens.map(() => 0)
+              )
             ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
           });
         });
@@ -321,7 +317,12 @@ describe('RebalancingRelayer', function () {
 
           it('reverts', async () => {
             await expect(
-              relayer.connect(sender).exitPool(poolId, recipient.address, exitRequest, exitRequest.minAmountsOut)
+              relayer.connect(sender).exitPool(
+                poolId,
+                recipient.address,
+                exitRequest,
+                tokens.map(() => 0)
+              )
             ).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
         });
