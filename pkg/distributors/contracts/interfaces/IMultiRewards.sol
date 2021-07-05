@@ -29,7 +29,7 @@ interface IMultiRewards {
         uint256 rewardsDuration
     ) external;
 
-    function whitelistRewarder(
+    function allowlistRewarder(
         IERC20 pool,
         IERC20 rewardsToken,
         address rewarder

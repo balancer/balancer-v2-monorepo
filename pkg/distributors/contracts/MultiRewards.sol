@@ -60,7 +60,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
 
     // pool -> rewardToken -> rewarders
     mapping(IERC20 => mapping(IERC20 => EnumerableSet.AddressSet)) private _rewarders;
-    mapping(IERC20 => mapping(IERC20 => EnumerableSet.AddressSet)) private _whitelist;
+    mapping(IERC20 => mapping(IERC20 => mapping(address => bool))) private _allowlist;
 
     // pool -> rewarder ->  user -> reward token -> amount
     mapping(IERC20 => mapping(address => mapping(address => mapping(IERC20 => uint256)))) public userRewardPerTokenPaid;
@@ -75,15 +75,15 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         vault = _vault;
     }
 
-    modifier onlyWhitelistedRewarder(IERC20 pool, IERC20 rewardsToken) {
-        require(isWhitelistedRewarder(pool, rewardsToken, msg.sender), "only accessible by whitelisted rewarders");
+    modifier onlyAllowlistedRewarder(IERC20 pool, IERC20 rewardsToken) {
+        require(isAllowlistedRewarder(pool, rewardsToken, msg.sender), "only accessible by allowlisted rewarders");
         _;
     }
 
     /**
-     * @notice Allows a rewarder to be explicitly added to a whitelist of rewarders
+     * @notice Allows a rewarder to be explicitly added to a allowlist of rewarders
      */
-    function whitelistRewarder(
+    function allowlistRewarder(
         IERC20 pool,
         IERC20 rewardsToken,
         address rewarder
@@ -92,15 +92,15 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
             msg.sender == owner() || msg.sender == address(pool) || isAssetManager(pool, msg.sender),
             "only accessible by governance, pool or it's asset managers"
         );
-        _whitelist[pool][rewardsToken].add(rewarder);
+        _allowlist[pool][rewardsToken][rewarder] = true;
     }
 
-    function isWhitelistedRewarder(
+    function isAllowlistedRewarder(
         IERC20 pool,
         IERC20 rewardsToken,
         address rewarder
     ) public view returns (bool) {
-        return _whitelist[pool][rewardsToken].contains(rewarder);
+        return _allowlist[pool][rewardsToken][rewarder];
     }
 
     /**
@@ -113,7 +113,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         IERC20 pool,
         IERC20 rewardsToken,
         uint256 rewardsDuration
-    ) public override onlyWhitelistedRewarder(pool, rewardsToken) {
+    ) public override onlyAllowlistedRewarder(pool, rewardsToken) {
         require(rewardsDuration > 0, "reward rate must be nonzero");
         require(rewardData[pool][msg.sender][rewardsToken].rewardsDuration == 0, "Duplicate rewards token");
         _rewardTokens[pool].add(address(rewardsToken));
@@ -125,7 +125,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
     /* ========== VIEWS ========== */
 
     /**
-     * @notice Checks if a rewarder has been explicitly whitelisted, or implicitly whitelisted
+     * @notice Checks if a rewarder has been explicitly allowlisted, or implicitly allowlisted
      * by virtue of being an asset manager
      */
     function isAssetManager(IERC20 pool, address rewarder) public view returns (bool) {
