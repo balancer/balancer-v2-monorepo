@@ -145,9 +145,9 @@ abstract contract RewardsAssetManager is IAssetManager {
     function _capitalIn(uint256 amount) private {
         uint256 aum = _getAUM();
         (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
-        uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _config.targetPercentage);
+        // uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _config.targetPercentage);
 
-        require(targetInvestment >= poolManaged.add(amount), "investment amount exceeds target");
+        // require(targetInvestment >= poolManaged.add(amount), "investment amount exceeds target");
 
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
         // Update the vault with new managed balance accounting for returns
@@ -167,10 +167,10 @@ abstract contract RewardsAssetManager is IAssetManager {
     function _capitalOut(uint256 amount) private {
         uint256 aum = _getAUM();
         uint256 tokensOut = _divest(amount, aum);
-        (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
-        uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _config.targetPercentage);
+        // (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
+        // uint256 targetInvestment = FixedPoint.mulDown(poolCash + poolManaged, _config.targetPercentage);
 
-        require(poolManaged >= targetInvestment.add(tokensOut), "withdrawal leaves insufficient balance invested");
+        // require(poolManaged >= targetInvestment.add(tokensOut), "withdrawal leaves insufficient balance invested");
 
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
         // Update the vault with new managed balance accounting for returns
