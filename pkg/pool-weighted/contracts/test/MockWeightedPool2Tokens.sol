@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/test/MockPoolPriceOracle.sol";
+import "@balancer-labs/v2-pool-utils/contracts/test/oracle/MockPoolPriceOracle.sol";
 
 import "./MockWeightedOracleMath.sol";
 import "../WeightedPool2Tokens.sol";
