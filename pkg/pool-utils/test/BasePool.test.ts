@@ -391,4 +391,38 @@ describe('BasePool', function () {
       });
     });
   });
+
+  describe('misc data', () => {
+    let pool: Contract;
+    const swapFeePercentage = fp(0.02);
+
+    sharedBeforeEach('deploy pool', async () => {
+      pool = await deployBasePool({ swapFeePercentage });
+    });
+
+    it('stores the swap fee pct in the most-significant 64 bits', async () => {
+      expect(await pool.getSwapFeePercentage()).to.equal(swapFeePercentage);
+
+      const swapFeeHex = swapFeePercentage.toHexString().slice(2); // remove 0x
+      const expectedMiscData = swapFeeHex.padStart(16, '0').padEnd(64, '0'); // pad first 8 bytes and fill with zeros
+
+      const miscData = await pool.getMiscData();
+      expect(miscData).to.be.equal(`0x${expectedMiscData}`);
+    });
+
+    it('can store up-to 192 bits of extra data', async () => {
+      const swapFeeHex = `0x${swapFeePercentage.toHexString().slice(2).padStart(16, '0')}`;
+
+      const assertMiscData = async (data: string): Promise<void> => {
+        await pool.setMiscData(data);
+        const expectedMiscData = `${swapFeeHex}${data.slice(18)}`; // 0x + 16 bits
+        expect(await pool.getMiscData()).to.be.equal(expectedMiscData);
+      };
+
+      for (let i = 0; i <= 64; i++) {
+        const data = `0x${'1'.repeat(i).padStart(64, '0')}`;
+        await assertMiscData(data);
+      }
+    });
+  });
 });

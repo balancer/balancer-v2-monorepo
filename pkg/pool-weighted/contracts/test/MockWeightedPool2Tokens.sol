@@ -21,7 +21,7 @@ import "./MockWeightedOracleMath.sol";
 import "../WeightedPool2Tokens.sol";
 
 contract MockWeightedPool2Tokens is WeightedPool2Tokens, MockPoolPriceOracle, MockWeightedOracleMath {
-    using OracleSwapFeeMiscData for bytes32;
+    using WeightedPool2TokensMiscData for bytes32;
 
     struct MiscData {
         int256 logInvariant;

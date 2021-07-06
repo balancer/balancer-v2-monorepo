@@ -32,7 +32,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
  *
  * Note that we are not using the most-significant 106 bits.
  */
-library OracleSwapFeeMiscData {
+library WeightedPool2TokensMiscData {
     using WordCodec for bytes32;
     using WordCodec for uint256;
 

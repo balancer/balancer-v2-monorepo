@@ -32,6 +32,7 @@ library WordCodec {
     uint256 private constant _MASK_32 = 2**(32) - 1;
     uint256 private constant _MASK_53 = 2**(53) - 1;
     uint256 private constant _MASK_64 = 2**(64) - 1;
+    uint256 private constant _MASK_192 = 2**(192) - 1;
 
     // Largest positive values that can be represented as N bits signed integers.
     int256 private constant _MAX_INT_22 = 2**(21) - 1;
@@ -145,6 +146,22 @@ library WordCodec {
         bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_22 << offset));
         // Integer values need masking to remove the upper bits of negative values.
         return clearedWord | bytes32((uint256(value) & _MASK_22) << offset);
+    }
+
+    // Bytes
+
+    /**
+     * @dev Inserts 192 bit shifted by an offset into a 256 bit word, replacing the old value. Returns the new word.
+     *
+     * Assumes `value` can be represented using 192 bits.
+     */
+    function insertBits192(
+        bytes32 word,
+        bytes32 value,
+        uint256 offset
+    ) internal pure returns (bytes32) {
+        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_192 << offset));
+        return clearedWord | bytes32((uint256(value) & _MASK_192) << offset);
     }
 
     // Encoding
