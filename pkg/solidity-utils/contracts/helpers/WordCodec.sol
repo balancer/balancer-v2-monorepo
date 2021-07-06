@@ -58,7 +58,7 @@ library WordCodec {
      * @dev Inserts a 10 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
      * the new word.
      *
-     * Assumes `value` can be represented using 10 bits.
+     * Assumes `value` only uses its least significant 10 bits, otherwise it may overwrite sibling bytes.
      */
     function insertUint10(
         bytes32 word,
@@ -73,7 +73,7 @@ library WordCodec {
      * @dev Inserts a 16 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value.
      * Returns the new word.
      *
-     * Assumes `value` can be represented using 10 bits.
+     * Assumes `value` only uses its least significant 16 bits, otherwise it may overwrite sibling bytes.
      */
     function insertUint16(
         bytes32 word,
@@ -103,7 +103,7 @@ library WordCodec {
      * @dev Inserts a 32 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
      * the new word.
      *
-     * Assumes `value` can be represented using 31 bits.
+     * Assumes `value` only uses its least significant 32 bits, otherwise it may overwrite sibling bytes.
      */
     function insertUint32(
         bytes32 word,
@@ -118,7 +118,7 @@ library WordCodec {
      * @dev Inserts a 64 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
      * the new word.
      *
-     * Assumes `value` can be represented using 64 bits.
+     * Assumes `value` only uses its least significant 64 bits, otherwise it may overwrite sibling bytes.
      */
     function insertUint64(
         bytes32 word,
