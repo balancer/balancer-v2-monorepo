@@ -288,22 +288,14 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
 
     // todo accept array of claims [{pool, rewardToken}]
     function getReward(IERC20[] calldata pools) public nonReentrant {
-        _getReward(pools, false);
+        _getReward(pools, msg.sender, false);
     }
 
     function getRewardAsInternalBalance(IERC20[] calldata pools) public nonReentrant {
-        _getReward(pools, true);
+        _getReward(pools, msg.sender, true);
     }
 
-    /**
-     * @notice Allows a user to claim any rewards to internal balance
-     */
-    function _getReward(IERC20[] calldata pools, bool asInternalBalance) internal {
-        IVault.UserBalanceOpKind kind = asInternalBalance
-            ? IVault.UserBalanceOpKind.TRANSFER_INTERNAL
-            : IVault.UserBalanceOpKind.WITHDRAW_INTERNAL;
-
-        uint256 opsCount;
+    function _rewardOpsCount(IERC20[] calldata pools) internal returns (uint256 opsCount) {
         for (uint256 p; p < pools.length; p++) {
             IERC20 pool = pools[p];
             uint256 rewardTokensLength = _rewardTokens[pool].length();
@@ -312,8 +304,21 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
                 opsCount += _rewarders[pool][IERC20(rewardsToken)].length();
             }
         }
+    }
 
-        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](opsCount);
+    /**
+     * @notice Allows a user to claim any rewards to internal balance
+     */
+    function _getReward(
+        IERC20[] calldata pools,
+        address payable recipient,
+        bool asInternalBalance
+    ) internal {
+        IVault.UserBalanceOpKind kind = asInternalBalance
+            ? IVault.UserBalanceOpKind.TRANSFER_INTERNAL
+            : IVault.UserBalanceOpKind.WITHDRAW_INTERNAL;
+
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](_rewardOpsCount(pools));
 
         uint256 idx;
         for (uint256 p; p < pools.length; p++) {
@@ -340,7 +345,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
                         asset: IAsset(address(rewardsToken)),
                         amount: reward,
                         sender: address(this),
-                        recipient: msg.sender,
+                        recipient: recipient,
                         kind: kind
                     });
                     idx++;
@@ -348,6 +353,25 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
             }
         }
         vault.manageUserBalance(ops);
+    }
+
+    /**
+     * @notice Allows the user to claim rewards to a callback contract
+     * @param pools - An array of pools from which rewards will be claimed
+     * @param callbackContract - the contract where rewards will be transferred
+     * @param callbackData - the data that is used to call the callback contract
+     */
+
+    function getRewardWithCallback(
+        IERC20[] calldata pools,
+        address callbackContract,
+        bytes calldata callbackData
+    ) public nonReentrant {
+        _getReward(pools, payable(callbackContract), true);
+
+        (bool success, ) = callbackContract.call(callbackData);
+        // solhint-disable-previous-line avoid-low-level-calls
+        require(success, "callback failed");
     }
 
     /**
