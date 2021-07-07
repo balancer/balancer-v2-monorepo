@@ -55,7 +55,10 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         uint256 rewardPerTokenStored;
     }
 
+    // pool -> rewarder -> rewardToken -> RewardData
     mapping(IERC20 => mapping(address => mapping(IERC20 => Reward))) public rewardData;
+
+    // pool -> rewardTokens
     mapping(IERC20 => EnumerableSet.AddressSet) private _rewardTokens;
 
     // pool -> rewardToken -> rewarders
@@ -63,9 +66,13 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
     // pool -> rewarder ->  user -> reward token -> amount
     mapping(IERC20 => mapping(address => mapping(address => mapping(IERC20 => uint256)))) public userRewardPerTokenPaid;
-    mapping(IERC20 => mapping(address => mapping(address => mapping(IERC20 => uint256)))) public rewards;
+
+    // pool -> user -> reward token -> amount
+    mapping(IERC20 => mapping(address => mapping(IERC20 => uint256))) public unpaidRewards;
 
     mapping(IERC20 => uint256) private _totalSupply;
+
+    // pool -> user -> bpt balance staked
     mapping(IERC20 => mapping(address => uint256)) private _balances;
 
     /* ========== CONSTRUCTOR ========== */
@@ -111,6 +118,26 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     /* ========== VIEWS ========== */
 
     /**
+<<<<<<< HEAD
+=======
+     * @notice Checks if a user is an asset manager (and can therefore be allowlisted by anyone)
+     */
+    function isAssetManager(IERC20 pool, address rewarder) public view returns (bool) {
+        IBasePool poolContract = IBasePool(address(pool));
+        bytes32 poolId = poolContract.getPoolId();
+        (IERC20[] memory poolTokens, , ) = vault.getPoolTokens(poolId);
+
+        for (uint256 pt; pt < poolTokens.length; pt++) {
+            (, , , address assetManager) = vault.getPoolTokenInfo(poolId, poolTokens[pt]);
+            if (assetManager == rewarder) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+>>>>>>> 1965f638... track unpaidRewards without rewarder
      * @notice Total supply of a staking token being added
      */
     function totalSupply(IERC20 pool) external view returns (uint256) {
@@ -124,6 +151,9 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         return _balances[pool][account];
     }
 
+    /**
+     * @notice this time is used when determining up until what time a reward has been accounted for
+     */
     function lastTimeRewardApplicable(
         IERC20 pool,
         address rewarder,
@@ -133,7 +163,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice Calculates the amount of reward per staked bpt that is
+     * @notice Calculates the amount of reward per staked bpt for a rewardToken
      */
     function rewardPerToken(
         IERC20 pool,
@@ -159,20 +189,18 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @notice Calculates the amount of `rewardsToken` that `account` is able to claim
      * from a particular rewarder
      */
-    function earned(
+    function unaccountedForUnpaidRewards(
         IERC20 pool,
         address rewarder,
         address account,
         IERC20 rewardsToken
     ) public view returns (uint256) {
         return
-            _balances[pool][account]
-                .mulDown(
+            _balances[pool][account].mulDown(
                 rewardPerToken(pool, rewarder, rewardsToken).sub(
                     userRewardPerTokenPaid[pool][rewarder][account][rewardsToken]
                 )
-            )
-                .add(rewards[pool][rewarder][account][rewardsToken]);
+            );
     }
 
     /**
@@ -185,8 +213,11 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     ) public view returns (uint256 total) {
         uint256 rewardersLength = _rewarders[pool][rewardsToken].length();
         for (uint256 r; r < rewardersLength; r++) {
-            total = total.add(earned(pool, _rewarders[pool][rewardsToken].unchecked_at(r), account, rewardsToken));
+            total = total.add(
+                unaccountedForUnpaidRewards(pool, _rewarders[pool][rewardsToken].unchecked_at(r), account, rewardsToken)
+            );
         }
+        total = total.add(unpaidRewards[pool][account][rewardsToken]);
     }
 
     function getRewardForDuration(
@@ -267,10 +298,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         for (uint256 p; p < pools.length; p++) {
             IERC20 pool = pools[p];
             uint256 rewardTokensLength = _rewardTokens[pool].length();
-            for (uint256 rt; rt < rewardTokensLength; rt++) {
-                address rewardsToken = _rewardTokens[pool].unchecked_at(rt);
-                opsCount += _rewarders[pool][IERC20(rewardsToken)].length();
-            }
+            opsCount += rewardTokensLength;
         }
     }
 
@@ -296,28 +324,23 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             for (uint256 t; t < tokensLength; t++) {
                 IERC20 rewardsToken = IERC20(_rewardTokens[pool].unchecked_at(t));
 
-                uint256 rewardersLength = _rewarders[pool][rewardsToken].length();
-                for (uint256 r; r < rewardersLength; r++) {
-                    address rewarder = _rewarders[pool][rewardsToken].unchecked_at(r);
+                _updateReward(pool, msg.sender, rewardsToken);
+                uint256 reward = unpaidRewards[pool][msg.sender][rewardsToken];
 
-                    _updateReward(pool, rewarder, msg.sender, rewardsToken);
-                    uint256 reward = rewards[pool][rewarder][msg.sender][rewardsToken];
+                if (reward > 0) {
+                    unpaidRewards[pool][msg.sender][rewardsToken] = 0;
 
-                    if (reward > 0) {
-                        rewards[pool][rewarder][msg.sender][rewardsToken] = 0;
-
-                        emit RewardPaid(msg.sender, address(rewardsToken), reward);
-                    }
-
-                    ops[idx] = IVault.UserBalanceOp({
-                        asset: IAsset(address(rewardsToken)),
-                        amount: reward,
-                        sender: address(this),
-                        recipient: payable(recipient),
-                        kind: kind
-                    });
-                    idx++;
+                    emit RewardPaid(msg.sender, address(rewardsToken), reward);
                 }
+
+                ops[idx] = IVault.UserBalanceOp({
+                    asset: IAsset(address(rewardsToken)),
+                    amount: reward,
+                    sender: address(this),
+                    recipient: payable(recipient),
+                    kind: kind
+                });
+                idx++;
             }
         }
         getVault().manageUserBalance(ops);
@@ -420,19 +443,30 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         );
     }
 
+    /**
+     * @notice update unpaid rewards due to `account` for all rewarders for a particular token
+     *         and updates last update time
+     */
     function _updateReward(
         IERC20 pool,
-        address rewarder,
         address account,
         IERC20 token
     ) internal {
-        rewardData[pool][rewarder][token].rewardPerTokenStored = rewardPerToken(pool, rewarder, token);
-        rewardData[pool][rewarder][token].lastUpdateTime = lastTimeRewardApplicable(pool, rewarder, token);
-        if (account != address(0)) {
-            rewards[pool][rewarder][account][token] = earned(pool, rewarder, account, token);
-            userRewardPerTokenPaid[pool][rewarder][account][token] = rewardData[pool][rewarder][token]
-                .rewardPerTokenStored;
+        uint256 totalUnpaidRewards;
+        for (uint256 r; r < _rewarders[pool][token].length(); r++) {
+            address rewarder = _rewarders[pool][token].unchecked_at(r);
+
+            rewardData[pool][rewarder][token].rewardPerTokenStored = rewardPerToken(pool, rewarder, token);
+            rewardData[pool][rewarder][token].lastUpdateTime = lastTimeRewardApplicable(pool, rewarder, token);
+            if (account != address(0)) {
+                totalUnpaidRewards = totalUnpaidRewards.add(
+                    unaccountedForUnpaidRewards(pool, rewarder, account, token)
+                );
+                userRewardPerTokenPaid[pool][rewarder][account][token] = rewardData[pool][rewarder][token]
+                    .rewardPerTokenStored;
+            }
         }
+        unpaidRewards[pool][account][token] = totalUnpaidRewards;
     }
 
     /* ========== MODIFIERS ========== */
@@ -444,10 +478,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         uint256 rewardTokensLength = _rewardTokens[pool].length();
         for (uint256 t; t < rewardTokensLength; t++) {
             IERC20 rewardToken = IERC20(_rewardTokens[pool].unchecked_at(t));
-            for (uint256 r; r < _rewarders[pool][rewardToken].length(); r++) {
-                address rewarder = _rewarders[pool][rewardToken].unchecked_at(r);
-                _updateReward(pool, rewarder, account, rewardToken);
-            }
+            _updateReward(pool, account, rewardToken);
         }
         _;
     }
