@@ -19,15 +19,16 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 
+import "@balancer-labs/v2-asset-manager-utils/contracts/IAssetManager.sol";
+
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
-
-import "@balancer-labs/v2-asset-manager-utils/contracts/IAssetManager.sol";
 
 // This contract relies on tons of immutable state variables to perform efficient lookup, without resorting to storage
 // reads. Because immutable arrays are not supported, we instead declare a fixed set of state variables plus a total
@@ -50,6 +51,7 @@ import "@balancer-labs/v2-asset-manager-utils/contracts/IAssetManager.sol";
  * and implement the swap callbacks themselves.
  */
 abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable {
+    using WordCodec for bytes32;
     using FixedPoint for uint256;
 
     uint256 private constant _MIN_TOKENS = 2;
@@ -61,7 +63,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     uint256 private constant _MINIMUM_BPT = 1e6;
 
-    uint256 internal _swapFeePercentage;
+    // Storage slot that can be used to store unrelated pieces of information. In particular, by default is used
+    // to store only the swap fee percentage of a pool. But it can be extended to store some more pieces of information.
+    // The swap fee percentage is stored in the most-significant 64 bits, therefore the remaining 192 bits can be
+    // used to store any other piece of information.
+    bytes32 private _miscData;
+    uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
@@ -169,11 +176,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _totalTokens;
     }
 
-    function getSwapFeePercentage() external view returns (uint256) {
-        return _swapFeePercentage;
+    function getSwapFeePercentage() public view returns (uint256) {
+        return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
     }
 
-    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual authenticate whenNotPaused {
+    function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
 
@@ -181,7 +188,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
-        _swapFeePercentage = swapFeePercentage;
+        _miscData = _miscData.insertUint64(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET);
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
@@ -209,6 +216,18 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return
             (actionId == getActionId(this.setSwapFeePercentage.selector)) ||
             (actionId == getActionId(this.setAssetManagerPoolConfig.selector));
+    }
+
+    function _getMiscData() internal view returns (bytes32) {
+        return _miscData;
+    }
+
+    /**
+     * Inserts data into the least-significant 192 bits of the misc data storage slot.
+     * Note that the remaining 64 bits are used for the swap fee percentage and cannot be overloaded.
+     */
+    function _setMiscData(bytes32 newData) internal {
+        _miscData = _miscData.insertBits192(newData, 0);
     }
 
     // Join / Exit Hooks
@@ -489,7 +508,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(FixedPoint.ONE.sub(_swapFeePercentage));
+        return amount.divUp(FixedPoint.ONE.sub(getSwapFeePercentage()));
     }
 
     /**
@@ -497,7 +516,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount - fee amount, so we round up (favoring a higher fee amount).
-        uint256 feeAmount = amount.mulUp(_swapFeePercentage);
+        uint256 feeAmount = amount.mulUp(getSwapFeePercentage());
         return amount.sub(feeAmount);
     }
 

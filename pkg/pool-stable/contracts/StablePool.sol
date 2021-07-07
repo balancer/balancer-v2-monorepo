@@ -49,11 +49,12 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
 
     // To track how many tokens are owed to the Vault as protocol fees, we measure and store the value of the invariant
     // after every join and exit. All invariant growth that happens between join and exit events is due to swap fees.
-    uint256 private _lastInvariant;
+    uint256 internal _lastInvariant;
+
     // Because the invariant depends on the amplification parameter, and this value may change over time, we should only
     // compare invariants that were computed using the same value. We therefore store it whenever we store
     // _lastInvariant.
-    uint256 private _lastInvariantAmp;
+    uint256 internal _lastInvariantAmp;
 
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
@@ -284,7 +285,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
             balances,
             amountsIn,
             totalSupply(),
-            _swapFeePercentage
+            getSwapFeePercentage()
         );
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
@@ -310,7 +311,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
             tokenIndex,
             bptAmountOut,
             totalSupply(),
-            _swapFeePercentage
+            getSwapFeePercentage()
         );
 
         return (bptAmountOut, amountsIn);
@@ -404,7 +405,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
             tokenIndex,
             bptAmountIn,
             totalSupply(),
-            _swapFeePercentage
+            getSwapFeePercentage()
         );
 
         return (bptAmountIn, amountsOut);
@@ -444,7 +445,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
             balances,
             amountsOut,
             totalSupply(),
-            _swapFeePercentage
+            getSwapFeePercentage()
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
