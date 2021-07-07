@@ -241,6 +241,26 @@ describe('Staking contract', () => {
       sharedBeforeEach(async () => {
         await stakingContract.connect(other).getReward([pool.address]);
 
+        await stakingContract
+          .connect(rewarder)
+          .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount);
+      });
+
+      it('calculates totalEarned from both distributions for the other user', async () => {
+        const expectedReward = fp(0.75).mul(3);
+        await advanceTime(10);
+
+        const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
+        expect(expectedReward.sub(actualReward).abs()).to.be.lte(300);
+      });
+    });
+
+    describe('with a second distributions from another rewarder', () => {
+      const secondRewardAmount = fp(2);
+
+      sharedBeforeEach(async () => {
+        await stakingContract.connect(other).getReward([pool.address]);
+
         await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
         await stakingContract
           .connect(rewarder)
