@@ -81,18 +81,31 @@ export default {
   },
 
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
-    let { tokens, amplificationParameter, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
+    let {
+      tokens,
+      amplificationParameter,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      oracleEnabled,
+      meta,
+    } = params;
+
     if (!tokens) tokens = new TokenList();
     if (!amplificationParameter) amplificationParameter = bn(200);
     if (!swapFeePercentage) swapFeePercentage = bn(0);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!oracleEnabled) oracleEnabled = true;
+    if (!meta) meta = false;
     return {
       tokens,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
+      oracleEnabled,
+      meta,
       owner: params.owner,
     };
   },

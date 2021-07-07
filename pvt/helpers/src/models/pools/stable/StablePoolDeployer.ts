@@ -18,9 +18,9 @@ export default {
     const vault = await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
-    const { owner, tokens, amplificationParameter, swapFeePercentage } = deployment;
+    const { owner, tokens, amplificationParameter, swapFeePercentage, meta } = deployment;
     const poolId = await pool.getPoolId();
-    return new StablePool(pool, poolId, vault, tokens, amplificationParameter, swapFeePercentage, owner);
+    return new StablePool(pool, poolId, vault, tokens, amplificationParameter, swapFeePercentage, meta, owner);
   },
 
   async _deployStandalone(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
@@ -30,24 +30,26 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      owner,
+      oracleEnabled,
       from,
     } = params;
 
-    return deploy('v2-pool-stable/StablePool', {
-      args: [
-        vault.address,
-        NAME,
-        SYMBOL,
-        tokens.addresses,
-        amplificationParameter,
-        swapFeePercentage,
-        pauseWindowDuration,
-        bufferPeriodDuration,
-        TypesConverter.toAddress(owner),
-      ],
-      from,
-    });
+    const owner = TypesConverter.toAddress(params.owner);
+
+    const sharedArgs = [
+      vault.address,
+      NAME,
+      SYMBOL,
+      tokens.addresses,
+      amplificationParameter,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+    ];
+
+    return params.meta
+      ? deploy('v2-pool-stable/MockMetaStablePool', { args: [...sharedArgs, oracleEnabled, owner], from })
+      : deploy('v2-pool-stable/StablePool', { args: [...sharedArgs, owner], from });
   },
 
   async _deployFromFactory(params: StablePoolDeployment, vault: Vault): Promise<Contract> {

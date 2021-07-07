@@ -15,6 +15,8 @@ import StablePoolDeployer from './StablePoolDeployer';
 import { Account, TxParams } from '../../types/types';
 import { encodeExitStablePool, encodeJoinStablePool } from './encoding';
 import {
+  Sample,
+  MiscData,
   JoinExitStablePool,
   InitStablePool,
   JoinGivenInStablePool,
@@ -38,6 +40,8 @@ import {
   calcOutGivenIn,
   calculateOneTokenSwapFeeAmount,
   calcInGivenOut,
+  calculateSpotPrice,
+  calculateBptPrice,
 } from './math';
 
 const SWAP_GIVEN = { IN: 0, OUT: 1 };
@@ -55,6 +59,7 @@ export default class StablePool {
   swapFeePercentage: BigNumberish;
   amplificationParameter: BigNumberish;
   vault: Vault;
+  meta: boolean;
   owner?: SignerWithAddress;
 
   static async create(params: RawStablePoolDeployment = {}): Promise<StablePool> {
@@ -68,6 +73,7 @@ export default class StablePool {
     tokens: TokenList,
     amplificationParameter: BigNumberish,
     swapFeePercentage: BigNumberish,
+    meta: boolean,
     owner?: SignerWithAddress
   ) {
     this.instance = instance;
@@ -76,6 +82,7 @@ export default class StablePool {
     this.tokens = tokens;
     this.amplificationParameter = amplificationParameter;
     this.swapFeePercentage = swapFeePercentage;
+    this.meta = meta;
     this.owner = owner;
   }
 
@@ -115,8 +122,22 @@ export default class StablePool {
     return this.instance.getPoolId();
   }
 
-  async getLastInvariant(): Promise<BigNumber> {
+  async getLastInvariant(): Promise<{ lastInvariant: BigNumber; lastInvariantAmp: BigNumber }> {
     return this.instance.getLastInvariant();
+  }
+
+  async getOracleMiscData(): Promise<MiscData> {
+    if (!this.meta) throw Error('Cannot query misc data for non-meta stable pool');
+    return this.instance.getOracleMiscData();
+  }
+
+  async getOracleSample(oracleIndex?: BigNumberish): Promise<Sample> {
+    if (!oracleIndex) oracleIndex = (await this.getOracleMiscData()).oracleIndex;
+    return this.instance.getSample(oracleIndex);
+  }
+
+  async isOracleEnabled(): Promise<boolean> {
+    return (await this.getOracleMiscData()).oracleEnabled;
   }
 
   async getSwapFeePercentage(): Promise<BigNumber> {
@@ -146,6 +167,12 @@ export default class StablePool {
     return this.instance.getRate();
   }
 
+  async enableOracle(txParams: TxParams): Promise<void> {
+    if (!this.meta) throw Error('Cannot enable oracle for non-meta stable pool');
+    const pool = txParams.from ? this.instance.connect(txParams.from) : this.instance;
+    await pool.enableOracle();
+  }
+
   async startAmpChange(
     newAmp: BigNumberish,
     endTime?: BigNumberish,
@@ -161,6 +188,19 @@ export default class StablePool {
     const sender = txParams.from || this.owner;
     const pool = sender ? this.instance.connect(sender) : this.instance;
     return pool.stopAmplificationParameterUpdate();
+  }
+
+  async estimateSpotPrice(currentBalances?: BigNumberish[]): Promise<BigNumber> {
+    if (!this.meta) throw Error('Spot price estimation is only available for meta stable pools');
+    if (!currentBalances) currentBalances = await this.getBalances();
+    return calculateSpotPrice(this.amplificationParameter, currentBalances);
+  }
+
+  async estimateBptPrice(currentBalances?: BigNumberish[], currentSupply?: BigNumberish): Promise<BigNumber> {
+    if (!this.meta) throw Error('BPT price estimation is only available for meta stable pools');
+    if (!currentBalances) currentBalances = await this.getBalances();
+    if (!currentSupply) currentSupply = await this.totalSupply();
+    return calculateBptPrice(this.amplificationParameter, currentBalances, currentSupply);
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
@@ -401,6 +441,7 @@ export default class StablePool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinStablePool({
@@ -415,6 +456,7 @@ export default class StablePool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinStablePool({
@@ -431,6 +473,7 @@ export default class StablePool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitStablePool({
@@ -445,6 +488,7 @@ export default class StablePool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitStablePool({
@@ -459,6 +503,7 @@ export default class StablePool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitStablePool({
