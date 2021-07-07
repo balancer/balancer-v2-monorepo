@@ -31,7 +31,7 @@ contract StableOracleMath is StableMath {
         uint256 balanceX,
         uint256 balanceY,
         int256 logBptTotalSupply
-    ) internal view returns (int256 logSpotPrice, int256 logBptPrice) {
+    ) internal pure returns (int256 logSpotPrice, int256 logBptPrice) {
         uint256 spotPrice = _calcSpotPrice(amplificationParameter, balanceX, balanceY);
         logBptPrice = _calcLogBptPrice(spotPrice, balanceX, balanceY, logBptTotalSupply);
         logSpotPrice = LogCompression.toLowResLog(spotPrice);
@@ -44,7 +44,7 @@ contract StableOracleMath is StableMath {
         uint256 amplificationParameter,
         uint256 balanceX,
         uint256 balanceY
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         /**************************************************************************************************************
         //                                                                                                           //
         //                             2.a.x.y + a.y^2 + b.y                                                         //
@@ -89,7 +89,7 @@ contract StableOracleMath is StableMath {
         uint256 balanceX,
         uint256 balanceY,
         int256 logBptTotalSupply
-    ) internal view returns (int256) {
+    ) internal pure returns (int256) {
         /**************************************************************************************************************
         //                                                                                                           //
         //              balance X + (spot price Y/X * balance Y)                                                     //

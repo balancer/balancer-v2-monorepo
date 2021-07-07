@@ -22,7 +22,7 @@ contract MockStableOracleMath is StableOracleMath, MockLogCompression {
     function calcLogSpotPrice(
         uint256 amplificationParameter,
         uint256[] memory balances
-    ) external view returns (int256) {
+    ) external pure returns (int256) {
         uint256 spotPrice = StableOracleMath._calcSpotPrice(amplificationParameter, balances[0], balances[1]);
         return LogCompression.toLowResLog(spotPrice);
     }
@@ -31,7 +31,7 @@ contract MockStableOracleMath is StableOracleMath, MockLogCompression {
         uint256 amplificationParameter,
         uint256[] memory balances,
         int256 bptTotalSupplyLn
-    ) external view returns (int256) {
+    ) external pure returns (int256) {
         uint256 spotPrice = StableOracleMath._calcSpotPrice(amplificationParameter, balances[0], balances[1]);
         return StableOracleMath._calcLogBptPrice(spotPrice, balances[0], balances[1], bptTotalSupplyLn);
     }
