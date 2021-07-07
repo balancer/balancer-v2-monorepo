@@ -60,7 +60,7 @@ contract StableOracleMath is StableMath {
 
         uint256 invariant = _calculateInvariant(amplificationParameter, _balances(balanceX, balanceY), true);
 
-        uint256 a = amplificationParameter * 2 / _AMP_PRECISION;
+        uint256 a = (amplificationParameter * 2) / _AMP_PRECISION;
         uint256 b = Math.mul(invariant, a).sub(invariant);
 
         uint256 axy2 = Math.mul(a * 2, balanceX).mulUp(balanceY);
