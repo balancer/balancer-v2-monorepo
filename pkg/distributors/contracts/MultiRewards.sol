@@ -310,10 +310,17 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
                 _updateReward(pool, msg.sender, rewardsToken);
                 uint256 reward = unpaidRewards[pool][msg.sender][rewardsToken];
+<<<<<<< HEAD
 
                 if (reward > 0) {
                     unpaidRewards[pool][msg.sender][rewardsToken] = 0;
 
+=======
+
+                if (reward > 0) {
+                    unpaidRewards[pool][msg.sender][rewardsToken] = 0;
+
+>>>>>>> 0135bab8... track unpaidRewards without rewarder
                     emit RewardPaid(msg.sender, address(rewardsToken), reward);
                 }
 
