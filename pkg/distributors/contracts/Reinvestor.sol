@@ -45,6 +45,7 @@ contract Reinvestor {
 
     function _initializeArrays(bytes32 poolId, IERC20[] calldata tokens)
         internal
+        view
         returns (
             IAsset[] memory assets,
             uint256[] memory amountsIn,
@@ -79,7 +80,7 @@ contract Reinvestor {
         uint256[] memory internalBalances,
         uint256[] memory amountsIn,
         IVault.UserBalanceOp[] memory leftoverOps
-    ) internal {
+    ) internal view {
         uint256 leftoverOpsIdx;
 
         for (uint256 t; t < tokens.length; t++) {

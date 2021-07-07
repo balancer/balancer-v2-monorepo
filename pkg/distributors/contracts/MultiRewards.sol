@@ -296,7 +296,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         _getReward(pools, msg.sender, true);
     }
 
-    function _rewardOpsCount(IERC20[] calldata pools) internal returns (uint256 opsCount) {
+    function _rewardOpsCount(IERC20[] calldata pools) internal view returns (uint256 opsCount) {
         for (uint256 p; p < pools.length; p++) {
             IERC20 pool = pools[p];
             uint256 rewardTokensLength = _rewardTokens[pool].length();
