@@ -34,8 +34,8 @@ import "../interfaces/IPriceOracle.sol";
  *
  * All samples are stored in a single 256 bit word with the following structure:
  *
- * [    log pair price     |        bpt price      |       invariant       ]
- * [ instant | accumulator | instant | accumulator | instant | accumulator |  timestamp ]
+ * [    log pair price     |        bpt price      |       invariant       |  timestamp ]
+ * [ instant | accumulator | instant | accumulator | instant | accumulator |            ]
  * [  int22  |    int53    |  int22  |    int53    |  int22  |    int53    |    uint31  ]
  * MSB                                                                                LSB
  *
