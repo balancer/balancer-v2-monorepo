@@ -27,13 +27,15 @@ Active development occurs in this repository, which means some contracts in it m
 
 ## Build and Test
 
-* `yarn` (equivalent to `yarn install`) - installs all dependencies
-* `yarn build` - compiles and creates artifacts
-* `yarn test` - runs all tests
+On the project root, run:
 
-Note that running this at the top level runs tests for all workspaces. Tests use a hardhat `snapshot` plugin (which essentially creates dynamic text fixtures), and run in parallel for performance.
+```bash
+$ yarn # install all dependencies
+$ yarn build # compile all contracts
+$ yarn test # run all tests
+```
 
-To run tests for a single workspace, `cd pkg/<workspace>` and `yarn test` from there.
+This will run all tests in parallel. To run a single workspace's tests, run `yarn test` from within that workspace's directory.
 
 ## Security
 
