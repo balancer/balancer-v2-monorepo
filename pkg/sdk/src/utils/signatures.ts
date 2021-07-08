@@ -24,7 +24,7 @@ export function encodeCalldataAuthorization(calldata: string, deadline: BigNumbe
 export async function signJoinAuthorization(
   validator: Contract,
   user: Signer & TypedDataSigner,
-  allowedSender: string,
+  allowedSender: string | Contract,
   allowedCalldata: string,
   deadline?: BigNumberish,
   nonce?: BigNumberish
@@ -35,7 +35,7 @@ export async function signJoinAuthorization(
 export async function signExitAuthorization(
   validator: Contract,
   user: Signer & TypedDataSigner,
-  allowedSender: string,
+  allowedSender: string | Contract,
   allowedCalldata: string,
   deadline?: BigNumberish,
   nonce?: BigNumberish
@@ -46,7 +46,7 @@ export async function signExitAuthorization(
 export async function signSwapAuthorization(
   validator: Contract,
   user: Signer & TypedDataSigner,
-  allowedSender: string,
+  allowedSender: string | Contract,
   allowedCalldata: string,
   deadline?: BigNumberish,
   nonce?: BigNumberish
@@ -57,7 +57,7 @@ export async function signSwapAuthorization(
 export async function signBatchSwapAuthorization(
   validator: Contract,
   user: Signer & TypedDataSigner,
-  allowedSender: string,
+  allowedSender: string | Contract,
   allowedCalldata: string,
   deadline?: BigNumberish,
   nonce?: BigNumberish
@@ -76,7 +76,7 @@ export async function signBatchSwapAuthorization(
 export async function signSetRelayerApprovalAuthorization(
   validator: Contract,
   user: Signer & TypedDataSigner,
-  allowedSender: string,
+  allowedSender: string | Contract,
   allowedCalldata: string,
   deadline?: BigNumberish,
   nonce?: BigNumberish
@@ -96,7 +96,7 @@ export async function signAuthorizationFor(
   type: RelayerAction,
   validator: Contract,
   user: Signer & TypedDataSigner,
-  allowedSender: string,
+  allowedSender: string | Contract,
   allowedCalldata: string,
   deadline: BigNumberish = MAX_DEADLINE,
   nonce?: BigNumberish
@@ -105,6 +105,10 @@ export async function signAuthorizationFor(
   if (!nonce) {
     const userAddress = await user.getAddress();
     nonce = (await validator.getNextNonce(userAddress)) as BigNumberish;
+  }
+
+  if (typeof allowedSender !== 'string') {
+    allowedSender = allowedSender.address;
   }
 
   const domain = {

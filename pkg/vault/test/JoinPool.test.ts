@@ -16,10 +16,8 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { arraySub, bn, BigNumberish, min, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import {
-  encodeCalldataAuthorization,
-  signJoinAuthorization,
-} from '@balancer-labs/v2-helpers/src/models/misc/signatures';
+import { encodeCalldataAuthorization, signJoinAuthorization } from '@balancer-labs/balancerjs';
+
 import {
   PoolSpecializationSetting,
   MinimalSwapInfoPool,
@@ -136,7 +134,7 @@ describe('Join Pool', () => {
 
         if (data.signature) {
           const nonce = await vault.getNextNonce(lp.address);
-          const signature = await signJoinAuthorization(vault, lp, relayer, calldata, nonce, MAX_UINT256);
+          const signature = await signJoinAuthorization(vault, lp, relayer.address, calldata, MAX_UINT256, nonce);
           calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
         }
 

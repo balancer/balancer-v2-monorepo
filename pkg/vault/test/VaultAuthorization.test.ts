@@ -8,10 +8,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import {
-  encodeCalldataAuthorization,
-  signSetRelayerApprovalAuthorization,
-} from '@balancer-labs/v2-helpers/src/models/misc/signatures';
+import { encodeCalldataAuthorization, signSetRelayerApprovalAuthorization } from '@balancer-labs/balancerjs';
 
 describe('VaultAuthorization', function () {
   let authorizer: Contract, vault: Contract;
@@ -221,7 +218,7 @@ describe('VaultAuthorization', function () {
           ]);
 
           if (withSignature) {
-            const signature = await signSetRelayerApprovalAuthorization(vault, user, sender, calldata);
+            const signature = await signSetRelayerApprovalAuthorization(vault, user, sender.address, calldata);
             calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
           }
 

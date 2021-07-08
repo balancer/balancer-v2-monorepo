@@ -31,7 +31,7 @@ import {
   encodeCalldataAuthorization,
   signBatchSwapAuthorization,
   signSwapAuthorization,
-} from '@balancer-labs/v2-helpers/src/models/misc/signatures';
+} from '@balancer-labs/balancerjs';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
@@ -456,7 +456,14 @@ describe('Swaps', () => {
 
             if (input.signature) {
               const nonce = await vault.getNextNonce(trader.address);
-              const authorization = await signSwapAuthorization(vault, trader, sender, calldata, nonce, MAX_UINT256);
+              const authorization = await signSwapAuthorization(
+                vault,
+                trader,
+                sender.address,
+                calldata,
+                MAX_UINT256,
+                nonce
+              );
               const signature = typeof input.signature === 'string' ? input.signature : authorization;
               calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
             }
@@ -476,7 +483,14 @@ describe('Swaps', () => {
 
           if (input.signature) {
             const nonce = await vault.getNextNonce(trader.address);
-            const authorization = await signBatchSwapAuthorization(vault, trader, sender, calldata, nonce, MAX_UINT256);
+            const authorization = await signBatchSwapAuthorization(
+              vault,
+              trader,
+              sender.address,
+              calldata,
+              MAX_UINT256,
+              nonce
+            );
             const signature = typeof input.signature === 'string' ? input.signature : authorization;
             calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
           }

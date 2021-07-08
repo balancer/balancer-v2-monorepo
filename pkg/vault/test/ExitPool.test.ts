@@ -16,10 +16,8 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { arrayAdd, arraySub, BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import {
-  encodeCalldataAuthorization,
-  signExitAuthorization,
-} from '@balancer-labs/v2-helpers/src/models/misc/signatures';
+import { encodeCalldataAuthorization, signExitAuthorization } from '@balancer-labs/balancerjs';
+
 import {
   GeneralPool,
   MinimalSwapInfoPool,
@@ -157,7 +155,7 @@ describe('Exit Pool', () => {
 
         if (data.signature) {
           const nonce = await vault.getNextNonce(lp.address);
-          const signature = await signExitAuthorization(vault, lp, relayer, calldata, nonce, MAX_UINT256);
+          const signature = await signExitAuthorization(vault, lp, relayer.address, calldata, MAX_UINT256, nonce);
           calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
         }
 
