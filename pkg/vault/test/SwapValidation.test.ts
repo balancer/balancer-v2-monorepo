@@ -8,11 +8,11 @@ import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool'
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 
+import { BatchSwapStep, FundManagement, SwapKind } from '@balancer-labs/balancerjs';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { fromNow, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
-import { FundManagement, Swap, SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
@@ -63,7 +63,7 @@ describe('Swap Validation', () => {
     }
   });
 
-  let swaps: Swap[];
+  let swaps: BatchSwapStep[];
   beforeEach('create random swaps', () => {
     const randomInt = (max: number) => Math.floor(Math.random() * Math.floor(max));
 
@@ -84,11 +84,11 @@ describe('Swap Validation', () => {
 
   context('in swaps given in', () => {
     const doSwap = (funds: FundManagement, limits: BigNumber[], deadline: BigNumber): Promise<ContractTransaction> => {
-      return vault.connect(trader).batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds, limits, deadline);
+      return vault.connect(trader).batchSwap(SwapKind.GivenIn, swaps, tokens.addresses, funds, limits, deadline);
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
-      return vault.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds);
+      return vault.queryBatchSwap(SwapKind.GivenIn, swaps, tokens.addresses, funds);
     };
 
     itValidatesCorrectlyInAllCases(doSwap, querySwap);
@@ -96,11 +96,11 @@ describe('Swap Validation', () => {
 
   context('in swaps given out', () => {
     const doSwap = (funds: FundManagement, limits: BigNumber[], deadline: BigNumber): Promise<ContractTransaction> => {
-      return vault.connect(trader).batchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds, limits, deadline);
+      return vault.connect(trader).batchSwap(SwapKind.GivenOut, swaps, tokens.addresses, funds, limits, deadline);
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
-      return vault.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds);
+      return vault.queryBatchSwap(SwapKind.GivenOut, swaps, tokens.addresses, funds);
     };
 
     itValidatesCorrectlyInAllCases(doSwap, querySwap);

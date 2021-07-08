@@ -18,6 +18,7 @@ import {
   encodeExitStablePool,
   StablePoolJoinKind,
   StablePoolExitKind,
+  SwapKind,
 } from '@balancer-labs/balancerjs';
 import {
   JoinExitStablePool,
@@ -44,8 +45,6 @@ import {
   calculateOneTokenSwapFeeAmount,
   calcInGivenOut,
 } from './math';
-
-const SWAP_GIVEN = { IN: 0, OUT: 1 };
 
 export enum SWAP_INTERFACE {
   DEFAULT,
@@ -264,12 +263,12 @@ export default class StablePool {
   }
 
   async swapGivenIn(params: SwapStablePool, hookInterface = SWAP_INTERFACE.DEFAULT): Promise<BigNumber> {
-    const swapRequest = this._buildSwapRequest(params, SWAP_GIVEN.IN);
+    const swapRequest = this._buildSwapRequest(params, SwapKind.GivenIn);
     return this._callSwapHook(swapRequest, params.in, params.out, hookInterface);
   }
 
   async swapGivenOut(params: SwapStablePool, hookInterface = SWAP_INTERFACE.DEFAULT): Promise<BigNumber> {
-    const swapRequest = this._buildSwapRequest(params, SWAP_GIVEN.OUT);
+    const swapRequest = this._buildSwapRequest(params, SwapKind.GivenOut);
     return this._callSwapHook(swapRequest, params.in, params.out, hookInterface);
   }
 
@@ -473,7 +472,7 @@ export default class StablePool {
     };
   }
 
-  private _buildSwapRequest(params: SwapStablePool, kind: number) {
+  private _buildSwapRequest(params: SwapStablePool, kind: SwapKind) {
     return {
       kind,
       poolId: this.poolId,

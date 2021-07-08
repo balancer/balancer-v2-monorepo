@@ -46,12 +46,12 @@ import {
 import {
   encodeExitWeightedPool,
   encodeJoinWeightedPool,
+  SwapKind,
   WeightedPoolExitKind,
   WeightedPoolJoinKind,
 } from '@balancer-labs/balancerjs';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-const SWAP_GIVEN = { IN: 0, OUT: 1 };
 const MAX_IN_RATIO = fp(0.3);
 const MAX_OUT_RATIO = fp(0.3);
 const MAX_INVARIANT_RATIO = fp(3);
@@ -339,11 +339,11 @@ export default class WeightedPool {
   }
 
   async swapGivenIn(params: SwapWeightedPool): Promise<BigNumber> {
-    return this.swap(await this._buildSwapParams(SWAP_GIVEN.IN, params));
+    return this.swap(await this._buildSwapParams(SwapKind.GivenIn, params));
   }
 
   async swapGivenOut(params: SwapWeightedPool): Promise<BigNumber> {
-    return this.swap(await this._buildSwapParams(SWAP_GIVEN.OUT, params));
+    return this.swap(await this._buildSwapParams(SwapKind.GivenOut, params));
   }
 
   async swap(params: Swap): Promise<BigNumber> {
@@ -464,7 +464,7 @@ export default class WeightedPool {
     );
   }
 
-  private async _buildSwapParams(kind: number, params: SwapWeightedPool): Promise<Swap> {
+  private async _buildSwapParams(kind: SwapKind, params: SwapWeightedPool): Promise<Swap> {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
     return {

@@ -10,9 +10,9 @@ import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool'
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { Comparison, expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
+import { BatchSwapStep, FundManagement, SingleSwap, SwapKind } from '@balancer-labs/balancerjs';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { FundManagement, Swap, SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
 import {
   MAX_GAS_LIMIT,
   MAX_INT256,
@@ -32,15 +32,6 @@ import {
   signBatchSwapAuthorization,
   signSwapAuthorization,
 } from '@balancer-labs/v2-helpers/src/models/misc/signatures';
-
-type SingleSwap = {
-  kind: number;
-  poolId: string;
-  amount: BigNumberish;
-  assetIn: string;
-  assetOut: string;
-  userData: string;
-};
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
@@ -170,7 +161,7 @@ describe('Swaps', () => {
             () =>
               vault
                 .connect(sender)
-                .batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds, limits, deadline, { value: bn(1e18) }),
+                .batchSwap(SwapKind.GivenIn, swaps, tokenAddresses, funds, limits, deadline, { value: bn(1e18) }),
             tokens,
             [
               { account: vault, changes: { WETH: 1e18, DAI: -2e18 } },
@@ -198,7 +189,7 @@ describe('Swaps', () => {
               () =>
                 vault
                   .connect(sender)
-                  .batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds, limits, deadline, { gasPrice }),
+                  .batchSwap(SwapKind.GivenIn, swaps, tokenAddresses, funds, limits, deadline, { gasPrice }),
               tokens,
               [
                 { account: vault, changes: { WETH: -2e18, DAI: 1e18 } },
@@ -233,7 +224,7 @@ describe('Swaps', () => {
           ];
 
           const receipt = await (
-            await vault.connect(sender).batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds, limits, deadline)
+            await vault.connect(sender).batchSwap(SwapKind.GivenIn, swaps, tokenAddresses, funds, limits, deadline)
           ).wait();
 
           expectEvent.inReceipt(receipt, 'Swap', {
@@ -267,7 +258,7 @@ describe('Swaps', () => {
           await expect(
             vault
               .connect(sender)
-              .batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds, limits, deadline, { value: bn(1e18).sub(1) })
+              .batchSwap(SwapKind.GivenIn, swaps, tokenAddresses, funds, limits, deadline, { value: bn(1e18).sub(1) })
           ).to.be.revertedWith('INSUFFICIENT_ETH');
         });
 
@@ -286,7 +277,7 @@ describe('Swaps', () => {
 
           const gasPrice = 1;
           const receipt: ContractReceipt = await (
-            await vault.connect(sender).batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds, limits, deadline, {
+            await vault.connect(sender).batchSwap(SwapKind.GivenIn, swaps, tokenAddresses, funds, limits, deadline, {
               value: bn(1e18).add(42), // Only 1e18 is required
               gasPrice,
             })
@@ -322,7 +313,7 @@ describe('Swaps', () => {
 
           const gasPrice = 1;
           const receipt: ContractReceipt = await (
-            await vault.connect(other).batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds, limits, deadline, {
+            await vault.connect(other).batchSwap(SwapKind.GivenIn, swaps, tokenAddresses, funds, limits, deadline, {
               value: bn(1e18).add(42), // Only 1e18 is required
               gasPrice,
             })
@@ -349,7 +340,7 @@ describe('Swaps', () => {
 
           const gasPrice = 1;
           const receipt: ContractReceipt = await (
-            await vault.connect(other).batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds, limits, deadline, {
+            await vault.connect(other).batchSwap(SwapKind.GivenIn, swaps, tokenAddresses, funds, limits, deadline, {
               value: 42,
               gasPrice,
             })
@@ -364,7 +355,7 @@ describe('Swaps', () => {
     }
   });
 
-  function toBatchSwap(input: SwapInput): Swap[] {
+  function toBatchSwap(input: SwapInput): BatchSwapStep[] {
     return input.swaps.map((data) => ({
       poolId: ((data.pool ?? 0) == 0 ? mainPoolId : secondaryPoolId) || ZERO_BYTES32,
       amount: data.amount.toString(),
@@ -374,7 +365,7 @@ describe('Swaps', () => {
     }));
   }
 
-  function toSingleSwap(kind: number, input: SwapInput): SingleSwap {
+  function toSingleSwap(kind: SwapKind, input: SwapInput): SingleSwap {
     const data = toBatchSwap(input)[0];
     return {
       kind,
@@ -459,7 +450,7 @@ describe('Swaps', () => {
           it('trades the expected amount (single)', async () => {
             const sender = input.fromOther ? other : trader;
             const recipient = input.toOther ? other : trader;
-            const swap = toSingleSwap(SWAP_KIND.GIVEN_IN, input);
+            const swap = toSingleSwap(SwapKind.GivenIn, input);
 
             let calldata = vault.interface.encodeFunctionData('swap', [swap, funds, 0, MAX_UINT256]);
 
@@ -480,7 +471,7 @@ describe('Swaps', () => {
           const swaps = toBatchSwap(input);
           const limits = Array(tokens.length).fill(MAX_INT256);
 
-          const args = [SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds, limits, MAX_UINT256];
+          const args = [SwapKind.GivenIn, swaps, tokens.addresses, funds, limits, MAX_UINT256];
           let calldata = vault.interface.encodeFunctionData('batchSwap', args);
 
           if (input.signature) {
@@ -500,7 +491,7 @@ describe('Swaps', () => {
         if (isSingleSwap) {
           it(`reverts ${isSingleSwap ? '(single)' : ''}`, async () => {
             const sender = input.fromOther ? other : trader;
-            const swap = toSingleSwap(SWAP_KIND.GIVEN_IN, input);
+            const swap = toSingleSwap(SwapKind.GivenIn, input);
             const call = vault.connect(sender).swap(swap, funds, MAX_UINT256, MAX_UINT256);
 
             singleSwapReason
@@ -518,7 +509,7 @@ describe('Swaps', () => {
 
           const call = vault
             .connect(sender)
-            .batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds, limits, deadline);
+            .batchSwap(SwapKind.GivenIn, swaps, tokens.addresses, funds, limits, deadline);
           defaultReason ? await expect(call).to.be.revertedWith(defaultReason) : await expect(call).to.be.reverted;
         });
       };
@@ -943,7 +934,7 @@ describe('Swaps', () => {
           it('trades the expected amount (single)', async () => {
             const sender = input.fromOther ? other : trader;
             const recipient = input.toOther ? other : trader;
-            const swap = toSingleSwap(SWAP_KIND.GIVEN_OUT, input);
+            const swap = toSingleSwap(SwapKind.GivenOut, input);
 
             await expectBalanceChange(() => vault.connect(sender).swap(swap, funds, MAX_UINT256, MAX_UINT256), tokens, [
               { account: recipient, changes },
@@ -968,8 +959,7 @@ describe('Swaps', () => {
           const deadline = MAX_UINT256;
 
           await expectBalanceChange(
-            () =>
-              vault.connect(sender).batchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds, limits, deadline),
+            () => vault.connect(sender).batchSwap(SwapKind.GivenOut, swaps, tokens.addresses, funds, limits, deadline),
             tokens,
             [{ account: recipient, changes }]
           );
@@ -994,7 +984,7 @@ describe('Swaps', () => {
         if (isSingleSwap) {
           it(`reverts ${isSingleSwap ? '(single)' : ''}`, async () => {
             const sender = input.fromOther ? other : trader;
-            const swap = toSingleSwap(SWAP_KIND.GIVEN_OUT, input);
+            const swap = toSingleSwap(SwapKind.GivenOut, input);
             const call = vault.connect(sender).swap(swap, funds, MAX_UINT256, MAX_UINT256);
 
             singleSwapReason
@@ -1012,7 +1002,7 @@ describe('Swaps', () => {
 
           const call = vault
             .connect(sender)
-            .batchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds, limits, deadline);
+            .batchSwap(SwapKind.GivenOut, swaps, tokens.addresses, funds, limits, deadline);
 
           defaultReason ? await expect(call).to.be.revertedWith(defaultReason) : await expect(call).to.be.reverted;
         });
