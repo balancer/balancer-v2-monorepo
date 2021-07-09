@@ -10,7 +10,15 @@ import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool'
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { Comparison, expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
-import { BatchSwapStep, FundManagement, SingleSwap, SwapKind } from '@balancer-labs/balancerjs';
+import {
+  encodeCalldataAuthorization,
+  signBatchSwapAuthorization,
+  signSwapAuthorization,
+  BatchSwapStep,
+  FundManagement,
+  SingleSwap,
+  SwapKind,
+} from '@balancer-labs/balancerjs';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import {
@@ -27,11 +35,6 @@ import {
   PoolSpecializationSetting,
   TwoTokenPool,
 } from '@balancer-labs/v2-helpers/src/models/vault/pools';
-import {
-  encodeCalldataAuthorization,
-  signBatchSwapAuthorization,
-  signSwapAuthorization,
-} from '@balancer-labs/balancerjs';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
