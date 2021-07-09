@@ -117,6 +117,11 @@ const balancerErrorCodes: Record<string, string> = {
   '602': 'INSUFFICIENT_FLASH_LOAN_FEE_AMOUNT',
 };
 
+/**
+ * Decodes a Balancer error code into the corresponding reason
+ * @param error - a Balancer error code of the form `BAL#000`
+ * @returns The decoded error reason
+ */
 export const parseBalancerErrorCode = (error: string): string => {
   if (!error.includes('BAL#')) return error;
   const errorCode = error.replace('BAL#', '');
@@ -129,6 +134,11 @@ export const parseBalancerErrorCode = (error: string): string => {
   return actualError;
 };
 
+/**
+ * Encodes an error string into the corresponding error code
+ * @param error - a Balancer error message string
+ * @returns a Balancer error code of the form `BAL#000`
+ */
 export const encodeBalancerErrorCode = (error: string): string => {
   const encodedError = Object.entries(balancerErrorCodes).find(([, message]) => message === error);
 
