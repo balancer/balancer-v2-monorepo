@@ -6,10 +6,15 @@ import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { printGas, setupEnvironment, getWeightedPool, getStablePool, pickTokenAddresses } from './misc';
-import { encodeJoinStablePool, encodeExitStablePool, WeightedPoolJoinKind, StablePoolJoinKind, WeightedPoolExitKind, StablePoolExitKind } from '@balancer-labs/balancerjs';
 import {
+  encodeJoinStablePool,
+  encodeExitStablePool,
   encodeJoinWeightedPool,
   encodeExitWeightedPool,
+  WeightedPoolJoinKind,
+  StablePoolJoinKind,
+  WeightedPoolExitKind,
+  StablePoolExitKind,
 } from '@balancer-labs/balancerjs';
 import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
@@ -40,14 +45,20 @@ async function main() {
     bptAmountOut: BPTAmount,
     enterTokenIndex: 0,
   });
-  const exitWeightedUserData = encodeExitWeightedPool({ kind: WeightedPoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn: BPTAmount });
+  const exitWeightedUserData = encodeExitWeightedPool({
+    kind: WeightedPoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+    bptAmountIn: BPTAmount,
+  });
 
   const joinStableUserData = encodeJoinStablePool({
     kind: StablePoolJoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT,
     bptAmountOut: BPTAmount,
     enterTokenIndex: 0,
   });
-  const exitStableUserData = encodeExitStablePool({ kind: StablePoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn: BPTAmount });
+  const exitStableUserData = encodeExitStablePool({
+    kind: StablePoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+    bptAmountIn: BPTAmount,
+  });
 
   // numTokens is the size of the pool: 2,4,6,8
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
