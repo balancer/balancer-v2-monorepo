@@ -6,8 +6,12 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { encodeExitWeightedPool, encodeJoinWeightedPool, WeightedPoolExitKind, WeightedPoolJoinKind } from '@balancer-labs/balancerjs';
-
+import {
+  encodeExitWeightedPool,
+  encodeJoinWeightedPool,
+  WeightedPoolExitKind,
+  WeightedPoolJoinKind,
+} from '@balancer-labs/balancerjs';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -45,7 +49,11 @@ describe('BalancerHelpers', function () {
       const amountsIn = [fp(1), fp(0)];
       const expectedBptOut = await pool.estimateBptOut(amountsIn, initialBalances);
 
-      const data = encodeJoinWeightedPool({ kind: WeightedPoolJoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minimumBPT: 0 });
+      const data = encodeJoinWeightedPool({
+        kind: WeightedPoolJoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+        amountsIn,
+        minimumBPT: 0,
+      });
       const result = await helper.queryJoin(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
         assets: tokens.addresses,
         maxAmountsIn,
@@ -95,7 +103,11 @@ describe('BalancerHelpers', function () {
     });
 
     it('bubbles up revert reasons', async () => {
-      const data = encodeExitWeightedPool({ kind: WeightedPoolExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn: bptIn, exitTokenIndex: 90 });
+      const data = encodeExitWeightedPool({
+        kind: WeightedPoolExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+        bptAmountIn: bptIn,
+        exitTokenIndex: 90,
+      });
       const tx = helper.queryExit(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
         assets: tokens.addresses,
         minAmountsOut,
