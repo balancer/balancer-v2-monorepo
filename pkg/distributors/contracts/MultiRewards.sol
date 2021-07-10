@@ -277,12 +277,16 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         stake(pool, amount, recipient);
     }
 
-    function unstake(IERC20 pool, uint256 amount) public nonReentrant updateReward(pool, msg.sender) {
+    function unstake(
+        IERC20 pool,
+        uint256 amount,
+        address receiver
+    ) public nonReentrant updateReward(pool, msg.sender) {
         require(amount > 0, "Cannot withdraw 0");
         _totalSupply[pool] = _totalSupply[pool].sub(amount);
         _balances[pool][msg.sender] = _balances[pool][msg.sender].sub(amount);
-        pool.safeTransfer(msg.sender, amount);
-        emit Withdrawn(address(pool), msg.sender, amount);
+        pool.safeTransfer(receiver, amount);
+        emit Withdrawn(address(pool), receiver, amount);
     }
 
     // todo accept array of claims [{pool, rewardToken}]
@@ -369,8 +373,29 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     function exit(IERC20[] calldata pools) external {
         for (uint256 p; p < pools.length; p++) {
             IERC20 pool = pools[p];
-            unstake(pool, _balances[pool][msg.sender]);
+            unstake(pool, _balances[pool][msg.sender], msg.sender);
         }
+        getReward(pools);
+    }
+
+    /**
+     * @notice Allows a user to unstake all their bpt to exit pools
+     *         and transfers them all the rewards
+     */
+    function exitWithCallback(
+        IERC20[] calldata pools,
+        address callbackContract,
+        bytes calldata callbackData
+    ) public {
+        for (uint256 p; p < pools.length; p++) {
+            IERC20 pool = pools[p];
+            unstake(pool, _balances[pool][msg.sender], callbackContract);
+        }
+
+        (bool success, ) = callbackContract.call(callbackData);
+        // solhint-disable-previous-line avoid-low-level-calls
+        require(success, "callback failed");
+
         getReward(pools);
     }
 
