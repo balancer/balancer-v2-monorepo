@@ -310,17 +310,10 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
                 _updateReward(pool, msg.sender, rewardsToken);
                 uint256 reward = unpaidRewards[pool][msg.sender][rewardsToken];
-<<<<<<< HEAD
 
                 if (reward > 0) {
                     unpaidRewards[pool][msg.sender][rewardsToken] = 0;
 
-=======
-
-                if (reward > 0) {
-                    unpaidRewards[pool][msg.sender][rewardsToken] = 0;
-
->>>>>>> 0135bab8... track unpaidRewards without rewarder
                     emit RewardPaid(msg.sender, address(rewardsToken), reward);
                 }
 
@@ -362,6 +355,27 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             IERC20 pool = pools[p];
             unstake(pool, _balances[pool][msg.sender], msg.sender);
         }
+        getReward(pools);
+    }
+
+    /**
+     * @notice Allows a user to unstake all their bpt to exit pools
+     *         and transfers them all the rewards
+     */
+    function exitWithCallback(
+        IERC20[] calldata pools,
+        address callbackContract,
+        bytes calldata callbackData
+    ) public {
+        for (uint256 p; p < pools.length; p++) {
+            IERC20 pool = pools[p];
+            unstake(pool, _balances[pool][msg.sender], callbackContract);
+        }
+
+        (bool success, ) = callbackContract.call(callbackData);
+        // solhint-disable-previous-line avoid-low-level-calls
+        require(success, "callback failed");
+
         getReward(pools);
     }
 
