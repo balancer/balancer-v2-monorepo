@@ -34,4 +34,10 @@ interface IMultiRewards {
         IERC20 rewardsToken,
         address rewarder
     ) external;
+
+    function stakeFor(
+        IERC20 pool,
+        uint256 amount,
+        address receiver
+    ) external;
 }
