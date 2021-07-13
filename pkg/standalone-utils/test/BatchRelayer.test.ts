@@ -242,7 +242,8 @@ describe('BatchRelayer', function () {
       exitRequest = {
         assets: basePoolTokens.addresses,
         minAmountsOut: basePoolTokens.map(() => 0),
-        userData: encodeExitWeightedPool({ kind: 'ExactBPTInForOneTokenOut', bptAmountIn: 0, exitTokenIndex: 0 }),
+        // bptAmountIn is overwritten by the relayer
+        userData: encodeExitWeightedPool({ kind: 'ExactBPTInForOneTokenOut', bptAmountIn: 0, exitTokenIndex: 1 }),
         toInternalBalance: false,
       };
 
@@ -251,14 +252,13 @@ describe('BatchRelayer', function () {
           poolId: metaPoolId,
           assetInIndex: 1,
           assetOutIndex: 0,
-          amount: 1000,
+          amount: fp(1),
           userData: '0x',
         },
       ];
 
       assets = metaPoolTokens.addresses;
-
-      limits = assets.map(() => MAX_INT256);
+      limits = [0, MAX_INT256];
     });
 
     context('when the relayer is allowed to swap/exit', () => {
@@ -274,7 +274,21 @@ describe('BatchRelayer', function () {
           await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
         });
 
+        it('performs the given swap', async () => {
+          const receipt = await relayer
+            .connect(sender)
+            .swapAndExit(basePoolId, recipient.address, exitRequest, swapKind, swaps, assets, limits, deadline);
+
+          expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'Swap', {
+            poolId: metaPoolId,
+            tokenIn: assets[swaps[0].assetInIndex],
+            tokenOut: assets[swaps[0].assetOutIndex],
+          });
+        });
+
         it('exits the pool', async () => {
+          const previousRecipientBalance = await tokens.WETH.balanceOf(recipient.address);
+
           const receipt = await relayer
             .connect(sender)
             .swapAndExit(basePoolId, recipient.address, exitRequest, swapKind, swaps, assets, limits, deadline);
@@ -283,9 +297,23 @@ describe('BatchRelayer', function () {
             poolId: basePoolId,
             liquidityProvider: sender.address,
           });
+
+          const currentRecipientBalance = await tokens.WETH.balanceOf(recipient.address);
+
+          expect(currentRecipientBalance).to.be.gt(previousRecipientBalance);
         });
 
-        it('performs the given swap');
+        it("doesn't leave dust BPT on the sender", async () => {
+          const previousSenderBalance = await basePool.balanceOf(sender.address);
+
+          await relayer
+            .connect(sender)
+            .swapAndExit(basePoolId, recipient.address, exitRequest, swapKind, swaps, assets, limits, deadline);
+
+          const currentSenderBalance = await basePool.balanceOf(sender.address);
+
+          expect(currentSenderBalance).to.be.eq(previousSenderBalance);
+        });
       });
 
       context('when the user did not allow the relayer', () => {

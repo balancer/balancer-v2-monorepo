@@ -86,23 +86,31 @@ contract BatchRelayer {
         // as they need to have BPT on their address for the exit
         IVault.FundManagement memory funds = IVault.FundManagement({
             sender: msg.sender,
-            fromInternalBalance: true,
+            fromInternalBalance: false,
             recipient: msg.sender,
             toInternalBalance: false
         });
         int256[] memory swapAmounts = getVault().batchSwap(kind, swaps, assets, funds, limits, deadline);
 
+        {
         // Read amount of BPT from BatchSwap return value
-        // uint256 bptAmount;
-        // IAsset bpt = IAsset(_getPoolAddress(poolId));
-        // for (uint256 i; i < assets.length; i++) {
-        //     if (assets[i] == bpt) {
-        //         require(swapAmounts[i] > 0, "Invalid amount of BPT");
-        //         bptAmount = uint256(swapAmounts[i]);
-        //     }
-        // }
+        uint256 bptAmount;
+        IAsset bpt = IAsset(_getPoolAddress(poolId));
+        for (uint256 i; i < assets.length; i++) {
+            if (assets[i] == bpt) {
+                require(swapAmounts[i] < 0, "Invalid amount of BPT");
+                bptAmount = uint256(-swapAmounts[i]);
+            }
+        }
 
-        // TODO: inject bptAmount into the ExitPoolRequest
+        // Here we overwrite the bptAmountIn field of an `exactBptInForTokenOut` exit with the output of the swap
+        bytes memory userData = request.userData;
+        assembly {
+            mstore(add(userData, 64), bptAmount)
+        }
+        request.userData = userData;
+
+        }
         getVault().exitPool(poolId, msg.sender, recipient, request);
     }
 }
