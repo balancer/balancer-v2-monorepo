@@ -25,6 +25,8 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 contract BatchRelayer {
     IVault private immutable _vault;
 
+    uint256 private constant _BPT_AMOUNT_IN_OFFSET = 64;
+
     constructor(IVault vault) {
         _vault = vault;
     }
@@ -92,26 +94,27 @@ contract BatchRelayer {
         });
         int256[] memory swapAmounts = getVault().batchSwap(kind, swaps, assets, funds, limits, deadline);
 
+        // Prevent stack-too-deep
         {
-        // Read amount of BPT from BatchSwap return value
-        uint256 bptAmount;
-        IAsset bpt = IAsset(_getPoolAddress(poolId));
-        for (uint256 i; i < assets.length; i++) {
-            if (assets[i] == bpt) {
-                require(swapAmounts[i] < 0, "Invalid amount of BPT");
-                bptAmount = uint256(-swapAmounts[i]);
-                break;
+            // Read amount of BPT from BatchSwap return value
+            uint256 bptAmount;
+            IAsset bpt = IAsset(_getPoolAddress(poolId));
+            for (uint256 i; i < assets.length; i++) {
+                if (assets[i] == bpt) {
+                    require(swapAmounts[i] < 0, "Invalid amount of BPT");
+                    bptAmount = uint256(-swapAmounts[i]);
+                    break;
+                }
+            }
+
+            // Here we overwrite the bptAmountIn field of an `exactBptInForTokenOut` exit with the output of the swap
+            // We are mutating the userData field within request so no explicit assignment occurs
+            bytes memory userData = request.userData;
+            assembly {
+                mstore(add(userData, _BPT_AMOUNT_IN_OFFSET), bptAmount)
             }
         }
 
-        // Here we overwrite the bptAmountIn field of an `exactBptInForTokenOut` exit with the output of the swap
-        bytes memory userData = request.userData;
-        assembly {
-            mstore(add(userData, 64), bptAmount)
-        }
-        request.userData = userData;
-
-        }
         getVault().exitPool(poolId, msg.sender, recipient, request);
     }
 }
