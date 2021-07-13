@@ -5,7 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
+import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
@@ -13,16 +13,13 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '../../../pvt/helpers/src/models/vault/Vault';
-import {
-  encodeExitWeightedPool,
-  encodeJoinWeightedPool,
-} from '../../../pvt/helpers/src/models/pools/weighted/encoding';
+import { encodeExitStablePool, encodeJoinStablePool } from '../../../pvt/helpers/src/models/pools/stable/encoding';
 
 describe('BatchRelayer', function () {
   let tokens: TokenList, basePoolTokens: TokenList, metaPoolTokens: TokenList;
   let basePoolId: string, metaPoolId: string;
   let sender: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
-  let vault: Vault, relayer: Contract, basePool: WeightedPool, metaPool: WeightedPool;
+  let vault: Vault, relayer: Contract, basePool: StablePool, metaPool: StablePool;
 
   // An array of token amounts which will be added/removed to pool's balance on joins/exits
   let tokenIncrements: BigNumber[];
@@ -47,7 +44,7 @@ describe('BatchRelayer', function () {
 
   sharedBeforeEach('deploy sample pool', async () => {
     basePoolTokens = new TokenList([tokens.DAI, tokens.WETH].sort());
-    basePool = await WeightedPool.create({ tokens: basePoolTokens, vault });
+    basePool = await StablePool.create({ tokens: basePoolTokens, vault });
     basePoolId = basePool.poolId;
 
     // Approve vault to take LP's BPT
@@ -55,7 +52,7 @@ describe('BatchRelayer', function () {
     await bptToken.approve(vault.address, fp(100), { from: sender });
 
     metaPoolTokens = new TokenList([bptToken, tokens.WETH].sort());
-    metaPool = await WeightedPool.create({ tokens: metaPoolTokens, vault });
+    metaPool = await StablePool.create({ tokens: metaPoolTokens, vault });
     metaPoolId = metaPool.poolId;
 
     // Seed liquidity in pools
@@ -91,7 +88,7 @@ describe('BatchRelayer', function () {
       joinRequest = {
         assets: basePoolTokens.addresses,
         maxAmountsIn: tokenIncrements,
-        userData: encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', amountsIn: tokenIncrements, minimumBPT: 0 }),
+        userData: encodeJoinStablePool({ kind: 'ExactTokensInForBPTOut', amountsIn: tokenIncrements, minimumBPT: 0 }),
         fromInternalBalance: false,
       };
 
@@ -243,7 +240,7 @@ describe('BatchRelayer', function () {
         assets: basePoolTokens.addresses,
         minAmountsOut: basePoolTokens.map(() => 0),
         // bptAmountIn is overwritten by the relayer
-        userData: encodeExitWeightedPool({ kind: 'ExactBPTInForOneTokenOut', bptAmountIn: 0, exitTokenIndex: 1 }),
+        userData: encodeExitStablePool({ kind: 'ExactBPTInForOneTokenOut', bptAmountIn: 0, exitTokenIndex: 1 }),
         toInternalBalance: false,
       };
 
