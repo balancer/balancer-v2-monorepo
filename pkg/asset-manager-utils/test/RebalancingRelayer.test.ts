@@ -9,7 +9,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { encodeInvestmentConfig } from './helpers/rebalance';
@@ -48,7 +48,7 @@ describe('RebalancingRelayer', function () {
     pool = await deploy('v2-pool-utils/MockRelayedBasePool', {
       args: [
         vault.address,
-        GeneralPool,
+        PoolSpecialization.GeneralPool,
         'BPT',
         'BPT',
         tokens.addresses,

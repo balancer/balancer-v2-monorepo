@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MinimalSwapInfoPool, TwoTokenPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
@@ -58,7 +58,8 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
       });
 
       it('uses the corresponding specialization', async () => {
-        const expectedSpecialization = numberOfTokens == 2 ? TwoTokenPool : MinimalSwapInfoPool;
+        const expectedSpecialization =
+          numberOfTokens == 2 ? PoolSpecialization.TwoTokenPool : PoolSpecialization.MinimalSwapInfoPool;
 
         const { address, specialization } = await pool.getRegisteredInfo();
         expect(address).to.equal(pool.address);

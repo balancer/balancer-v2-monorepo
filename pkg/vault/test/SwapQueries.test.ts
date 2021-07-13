@@ -8,7 +8,7 @@ import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool'
 import { BatchSwapStep, FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 import { fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { MinimalSwapInfoPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
@@ -31,7 +31,7 @@ describe('Swap Queries', () => {
     await tokens.approve({ to: vault, amount: MAX_UINT112, from: lp });
 
     for (let i = 0; i < MAX_POOLS; ++i) {
-      const pool = await deploy('MockPool', { args: [vault.address, MinimalSwapInfoPool] });
+      const pool = await deploy('MockPool', { args: [vault.address, PoolSpecialization.MinimalSwapInfoPool] });
       const poolId = await pool.getPoolId();
 
       await pool.setMultiplier(fp(2));

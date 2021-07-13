@@ -18,6 +18,7 @@ import {
   FundManagement,
   SingleSwap,
   SwapKind,
+  PoolSpecialization,
 } from '@balancer-labs/balancer-js';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
@@ -29,12 +30,6 @@ import {
   ZERO_ADDRESS,
   ZERO_BYTES32,
 } from '@balancer-labs/v2-helpers/src/constants';
-import {
-  GeneralPool,
-  MinimalSwapInfoPool,
-  PoolSpecializationSetting,
-  TwoTokenPool,
-} from '@balancer-labs/v2-helpers/src/models/vault/pools';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
@@ -88,15 +83,15 @@ describe('Swaps', () => {
     const symbols = ['DAI', 'MKR'];
 
     context('with a general pool', () => {
-      itHandlesSwapsProperly(GeneralPool, symbols);
+      itHandlesSwapsProperly(PoolSpecialization.GeneralPool, symbols);
     });
 
     context('with a minimal swap info pool', () => {
-      itHandlesSwapsProperly(MinimalSwapInfoPool, symbols);
+      itHandlesSwapsProperly(PoolSpecialization.MinimalSwapInfoPool, symbols);
     });
 
     context('with a two token pool', () => {
-      itHandlesSwapsProperly(TwoTokenPool, symbols);
+      itHandlesSwapsProperly(PoolSpecialization.TwoTokenPool, symbols);
     });
   });
 
@@ -104,11 +99,11 @@ describe('Swaps', () => {
     const symbols = ['DAI', 'MKR', 'SNX'];
 
     context('with a general pool', () => {
-      itHandlesSwapsProperly(GeneralPool, symbols);
+      itHandlesSwapsProperly(PoolSpecialization.GeneralPool, symbols);
     });
 
     context('with a minimal swap info pool', () => {
-      itHandlesSwapsProperly(MinimalSwapInfoPool, symbols);
+      itHandlesSwapsProperly(PoolSpecialization.MinimalSwapInfoPool, symbols);
     });
   });
 
@@ -127,7 +122,7 @@ describe('Swaps', () => {
 
     context('with minimal swap info pool', () => {
       sharedBeforeEach('setup pool', async () => {
-        mainPoolId = await deployPool(GeneralPool, symbols);
+        mainPoolId = await deployPool(PoolSpecialization.GeneralPool, symbols);
       });
 
       itSwapsWithETHCorrectly();
@@ -135,7 +130,7 @@ describe('Swaps', () => {
 
     context('with general pool', () => {
       sharedBeforeEach('setup pool', async () => {
-        mainPoolId = await deployPool(MinimalSwapInfoPool, symbols);
+        mainPoolId = await deployPool(PoolSpecialization.MinimalSwapInfoPool, symbols);
       });
 
       itSwapsWithETHCorrectly();
@@ -380,7 +375,7 @@ describe('Swaps', () => {
     };
   }
 
-  async function deployPool(specialization: PoolSpecializationSetting, tokenSymbols: string[]): Promise<string> {
+  async function deployPool(specialization: PoolSpecialization, tokenSymbols: string[]): Promise<string> {
     const pool = await deploy('MockPool', { args: [vault.address, specialization] });
     await pool.setMultiplier(fp(2));
 
@@ -408,19 +403,19 @@ describe('Swaps', () => {
     return poolId;
   }
 
-  function deployMainPool(specialization: PoolSpecializationSetting, tokenSymbols: string[]) {
+  function deployMainPool(specialization: PoolSpecialization, tokenSymbols: string[]) {
     sharedBeforeEach('deploy main pool', async () => {
       mainPoolId = await deployPool(specialization, tokenSymbols);
     });
   }
 
-  function deployAnotherPool(specialization: PoolSpecializationSetting, tokenSymbols: string[]) {
+  function deployAnotherPool(specialization: PoolSpecialization, tokenSymbols: string[]) {
     sharedBeforeEach('deploy secondary pool', async () => {
       secondaryPoolId = await deployPool(specialization, tokenSymbols);
     });
   }
 
-  function itHandlesSwapsProperly(specialization: PoolSpecializationSetting, tokenSymbols: string[]) {
+  function itHandlesSwapsProperly(specialization: PoolSpecialization, tokenSymbols: string[]) {
     deployMainPool(specialization, tokenSymbols);
 
     describe('swap given in', () => {
@@ -749,7 +744,7 @@ describe('Swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -802,22 +797,22 @@ describe('Swaps', () => {
                 });
               };
               context('with a general pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(GeneralPool);
+                itHandleMultiSwapsWithoutHopsProperly(PoolSpecialization.GeneralPool);
               });
 
               context('with a minimal swap info pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(MinimalSwapInfoPool);
+                itHandleMultiSwapsWithoutHopsProperly(PoolSpecialization.MinimalSwapInfoPool);
               });
 
               context('with a two token pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(TwoTokenPool);
+                itHandleMultiSwapsWithoutHopsProperly(PoolSpecialization.TwoTokenPool);
               });
             });
 
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -843,12 +838,12 @@ describe('Swaps', () => {
               };
 
               context('with a general pool', () => {
-                const anotherPoolSpecialization = GeneralPool;
+                const anotherPoolSpecialization = PoolSpecialization.GeneralPool;
                 itHandleMultiSwapsWithoutHopsProperly(anotherPoolSpecialization);
               });
 
               context('with a minimal swap info pool', () => {
-                const anotherPoolSpecialization = MinimalSwapInfoPool;
+                const anotherPoolSpecialization = PoolSpecialization.MinimalSwapInfoPool;
                 itHandleMultiSwapsWithoutHopsProperly(anotherPoolSpecialization);
               });
             });
@@ -884,7 +879,7 @@ describe('Swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 const swaps = [
@@ -898,22 +893,22 @@ describe('Swaps', () => {
               };
 
               context('with a general pool', () => {
-                itHandleMultiSwapsWithHopsProperly(GeneralPool);
+                itHandleMultiSwapsWithHopsProperly(PoolSpecialization.GeneralPool);
               });
 
               context('with a minimal swap info pool', () => {
-                itHandleMultiSwapsWithHopsProperly(MinimalSwapInfoPool);
+                itHandleMultiSwapsWithHopsProperly(PoolSpecialization.MinimalSwapInfoPool);
               });
 
               context('with a two token pool', () => {
-                itHandleMultiSwapsWithHopsProperly(TwoTokenPool);
+                itHandleMultiSwapsWithHopsProperly(PoolSpecialization.TwoTokenPool);
               });
             });
 
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 const swaps = [
@@ -927,11 +922,11 @@ describe('Swaps', () => {
               };
 
               context('with a general pool', () => {
-                itHandleMultiSwapsWithHopsProperly(GeneralPool);
+                itHandleMultiSwapsWithHopsProperly(PoolSpecialization.GeneralPool);
               });
 
               context('with a minimal swap info pool', () => {
-                itHandleMultiSwapsWithHopsProperly(MinimalSwapInfoPool);
+                itHandleMultiSwapsWithHopsProperly(PoolSpecialization.MinimalSwapInfoPool);
               });
             });
           });
@@ -1233,7 +1228,7 @@ describe('Swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -1287,21 +1282,21 @@ describe('Swaps', () => {
               };
 
               context('with a general pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(GeneralPool);
+                itHandleMultiSwapsWithoutHopsProperly(PoolSpecialization.GeneralPool);
               });
 
               context('with a minimal swap info pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(MinimalSwapInfoPool);
+                itHandleMultiSwapsWithoutHopsProperly(PoolSpecialization.MinimalSwapInfoPool);
               });
               context('with a two token pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(TwoTokenPool);
+                itHandleMultiSwapsWithoutHopsProperly(PoolSpecialization.TwoTokenPool);
               });
             });
 
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -1327,11 +1322,11 @@ describe('Swaps', () => {
               };
 
               context('with a general pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(GeneralPool);
+                itHandleMultiSwapsWithoutHopsProperly(PoolSpecialization.GeneralPool);
               });
 
               context('with a minimal swap info pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(MinimalSwapInfoPool);
+                itHandleMultiSwapsWithoutHopsProperly(PoolSpecialization.MinimalSwapInfoPool);
               });
             });
           });
@@ -1364,7 +1359,7 @@ describe('Swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 const swaps = [
@@ -1378,22 +1373,22 @@ describe('Swaps', () => {
               };
 
               context('with a general pool', () => {
-                itHandleMultiSwapsWithHopsProperly(GeneralPool);
+                itHandleMultiSwapsWithHopsProperly(PoolSpecialization.GeneralPool);
               });
 
               context('with a minimal swap info pool', () => {
-                itHandleMultiSwapsWithHopsProperly(MinimalSwapInfoPool);
+                itHandleMultiSwapsWithHopsProperly(PoolSpecialization.MinimalSwapInfoPool);
               });
 
               context('with a two token pool', () => {
-                itHandleMultiSwapsWithHopsProperly(TwoTokenPool);
+                itHandleMultiSwapsWithHopsProperly(PoolSpecialization.TwoTokenPool);
               });
             });
 
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 const swaps = [
@@ -1407,11 +1402,11 @@ describe('Swaps', () => {
               };
 
               context('with a general pool', () => {
-                itHandleMultiSwapsWithHopsProperly(GeneralPool);
+                itHandleMultiSwapsWithHopsProperly(PoolSpecialization.GeneralPool);
               });
 
               context('with a minimal swap info pool', () => {
-                itHandleMultiSwapsWithHopsProperly(MinimalSwapInfoPool);
+                itHandleMultiSwapsWithHopsProperly(PoolSpecialization.MinimalSwapInfoPool);
               });
             });
           });

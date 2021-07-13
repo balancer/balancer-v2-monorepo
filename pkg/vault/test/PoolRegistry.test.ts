@@ -10,12 +10,7 @@ import { encodeExit, encodeJoin } from '@balancer-labs/v2-helpers/src/models/poo
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
-import {
-  PoolSpecializationSetting,
-  MinimalSwapInfoPool,
-  GeneralPool,
-  TwoTokenPool,
-} from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import { lastBlockNumber } from '@balancer-labs/v2-helpers/src/time';
 
@@ -41,11 +36,11 @@ describe('PoolRegistry', () => {
 
   describe('pool creation', () => {
     it('any account can create pools', async () => {
-      const receipt = await (await vault.connect(other).registerPool(GeneralPool)).wait();
+      const receipt = await (await vault.connect(other).registerPool(PoolSpecialization.GeneralPool)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolRegistered', {
         poolAddress: other.address,
-        specialization: GeneralPool,
+        specialization: PoolSpecialization.GeneralPool,
       });
 
       const poolId = event.args.poolId;
@@ -62,14 +57,14 @@ describe('PoolRegistry', () => {
     let poolId: string;
 
     sharedBeforeEach(async () => {
-      const receipt = await (await vault.connect(other).registerPool(GeneralPool)).wait();
+      const receipt = await (await vault.connect(other).registerPool(PoolSpecialization.GeneralPool)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
       poolId = event.args.poolId;
     });
 
     it('has an address and an specialization setting', async () => {
-      expect(await vault.getPool(poolId)).to.deep.equal([other.address, GeneralPool]);
+      expect(await vault.getPool(poolId)).to.deep.equal([other.address, PoolSpecialization.GeneralPool]);
     });
 
     it('starts with no tokens', async () => {
@@ -80,11 +75,11 @@ describe('PoolRegistry', () => {
     });
 
     it('gets a new id', async () => {
-      const receipt = await (await vault.connect(other).registerPool(GeneralPool)).wait();
+      const receipt = await (await vault.connect(other).registerPool(PoolSpecialization.GeneralPool)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolRegistered', {
         poolAddress: other.address,
-        specialization: GeneralPool,
+        specialization: PoolSpecialization.GeneralPool,
       });
 
       const otherPoolId = event.args.poolId;
@@ -93,7 +88,7 @@ describe('PoolRegistry', () => {
   });
 
   describe('token management', () => {
-    function itManagesPoolQueriesCorrectly(specialization: PoolSpecializationSetting) {
+    function itManagesPoolQueriesCorrectly(specialization: PoolSpecialization) {
       let poolId: string;
 
       sharedBeforeEach(async () => {
@@ -115,15 +110,15 @@ describe('PoolRegistry', () => {
     }
 
     describe('with general pool', () => {
-      itManagesPoolQueriesCorrectly(GeneralPool);
+      itManagesPoolQueriesCorrectly(PoolSpecialization.GeneralPool);
     });
 
     describe('with minimal swap info pool', () => {
-      itManagesPoolQueriesCorrectly(MinimalSwapInfoPool);
+      itManagesPoolQueriesCorrectly(PoolSpecialization.MinimalSwapInfoPool);
     });
 
     describe('with two token pool', () => {
-      itManagesPoolQueriesCorrectly(TwoTokenPool);
+      itManagesPoolQueriesCorrectly(PoolSpecialization.TwoTokenPool);
     });
   });
 
@@ -142,7 +137,7 @@ describe('PoolRegistry', () => {
     };
 
     describe('register', () => {
-      const itHandlesTokensRegistrationProperly = (specialization: PoolSpecializationSetting) => {
+      const itHandlesTokensRegistrationProperly = (specialization: PoolSpecialization) => {
         context('when the pool was created', () => {
           sharedBeforeEach('create pool', async () => {
             pool = await deploy('MockPool', { args: [vault.address, specialization] });
@@ -199,7 +194,7 @@ describe('PoolRegistry', () => {
                     });
                   });
 
-                  if (specialization == TwoTokenPool) {
+                  if (specialization == PoolSpecialization.TwoTokenPool) {
                     it('cannot be registered individually', async () => {
                       const error = 'TOKENS_LENGTH_MUST_BE_2';
                       await expect(pool.registerTokens([tokens.first.address], [assetManagers[0]])).to.be.revertedWith(
@@ -227,7 +222,9 @@ describe('PoolRegistry', () => {
 
                 context('with one token', () => {
                   setTokensAddresses(1);
-                  specialization === TwoTokenPool ? itRevertsDueToTwoTokens() : itRegistersTheTokens();
+                  specialization === PoolSpecialization.TwoTokenPool
+                    ? itRevertsDueToTwoTokens()
+                    : itRegistersTheTokens();
                 });
 
                 context('with two tokens', () => {
@@ -237,7 +234,9 @@ describe('PoolRegistry', () => {
 
                 context('with three tokens', () => {
                   setTokensAddresses(3);
-                  specialization === TwoTokenPool ? itRevertsDueToTwoTokens() : itRegistersTheTokens();
+                  specialization === PoolSpecialization.TwoTokenPool
+                    ? itRevertsDueToTwoTokens()
+                    : itRegistersTheTokens();
                 });
               });
             });
@@ -250,7 +249,8 @@ describe('PoolRegistry', () => {
               });
 
               it('reverts', async () => {
-                const error = specialization == TwoTokenPool ? 'TOKENS_ALREADY_SET' : 'TOKEN_ALREADY_REGISTERED';
+                const error =
+                  specialization == PoolSpecialization.TwoTokenPool ? 'TOKENS_ALREADY_SET' : 'TOKEN_ALREADY_REGISTERED';
                 await expect(pool.registerTokens(tokens.addresses, assetManagers)).to.be.revertedWith(error);
               });
             });
@@ -275,20 +275,20 @@ describe('PoolRegistry', () => {
       };
 
       context('for a minimal swap info pool', () => {
-        itHandlesTokensRegistrationProperly(MinimalSwapInfoPool);
+        itHandlesTokensRegistrationProperly(PoolSpecialization.MinimalSwapInfoPool);
       });
 
       context('for a general pool', () => {
-        itHandlesTokensRegistrationProperly(GeneralPool);
+        itHandlesTokensRegistrationProperly(PoolSpecialization.GeneralPool);
       });
 
       context('for a two token pool', () => {
-        itHandlesTokensRegistrationProperly(TwoTokenPool);
+        itHandlesTokensRegistrationProperly(PoolSpecialization.TwoTokenPool);
       });
     });
 
     describe('deregister', () => {
-      const itHandlesTokensDeregistrationProperly = (specialization: PoolSpecializationSetting) => {
+      const itHandlesTokensDeregistrationProperly = (specialization: PoolSpecialization) => {
         context('when the pool was created', () => {
           sharedBeforeEach('create pool', async () => {
             pool = await deploy('MockPool', { args: [vault.address, specialization] });
@@ -313,7 +313,7 @@ describe('PoolRegistry', () => {
                   });
 
                   context('when trying to deregister individually', () => {
-                    if (specialization == TwoTokenPool) {
+                    if (specialization == PoolSpecialization.TwoTokenPool) {
                       it('reverts', async () => {
                         const error = 'TOKENS_LENGTH_MUST_BE_2';
                         await expect(pool.deregisterTokens([tokens.first.address])).to.be.revertedWith(error);
@@ -390,7 +390,9 @@ describe('PoolRegistry', () => {
 
               context('with one token', () => {
                 setTokensAddresses(1);
-                specialization === TwoTokenPool ? itRevertsDueToTwoTokens() : itDeregistersTheTokens();
+                specialization === PoolSpecialization.TwoTokenPool
+                  ? itRevertsDueToTwoTokens()
+                  : itDeregistersTheTokens();
               });
 
               context('with two tokens', () => {
@@ -400,7 +402,9 @@ describe('PoolRegistry', () => {
 
               context('with three tokens', () => {
                 setTokensAddresses(3);
-                specialization === TwoTokenPool ? itRevertsDueToTwoTokens() : itDeregistersTheTokens();
+                specialization === PoolSpecialization.TwoTokenPool
+                  ? itRevertsDueToTwoTokens()
+                  : itDeregistersTheTokens();
               });
             });
 
@@ -431,15 +435,15 @@ describe('PoolRegistry', () => {
       };
 
       context('for a minimal swap info pool', () => {
-        itHandlesTokensDeregistrationProperly(MinimalSwapInfoPool);
+        itHandlesTokensDeregistrationProperly(PoolSpecialization.MinimalSwapInfoPool);
       });
 
       context('for a general pool', () => {
-        itHandlesTokensDeregistrationProperly(GeneralPool);
+        itHandlesTokensDeregistrationProperly(PoolSpecialization.GeneralPool);
       });
 
       context('for a two token pool', () => {
-        itHandlesTokensDeregistrationProperly(TwoTokenPool);
+        itHandlesTokensDeregistrationProperly(PoolSpecialization.TwoTokenPool);
       });
     });
   });

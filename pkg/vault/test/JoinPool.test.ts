@@ -16,14 +16,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { arraySub, bn, BigNumberish, min, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { encodeCalldataAuthorization, signJoinAuthorization } from '@balancer-labs/balancer-js';
-
-import {
-  PoolSpecializationSetting,
-  MinimalSwapInfoPool,
-  GeneralPool,
-  TwoTokenPool,
-} from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import { encodeCalldataAuthorization, PoolSpecialization, signJoinAuthorization } from '@balancer-labs/balancer-js';
 
 describe('Join Pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, relayer: SignerWithAddress;
@@ -51,18 +44,18 @@ describe('Join Pool', () => {
   });
 
   describe('with general pool', () => {
-    itJoinsSpecializedPoolCorrectly(GeneralPool, 4);
+    itJoinsSpecializedPoolCorrectly(PoolSpecialization.GeneralPool, 4);
   });
 
   describe('with minimal swap info pool', () => {
-    itJoinsSpecializedPoolCorrectly(MinimalSwapInfoPool, 3);
+    itJoinsSpecializedPoolCorrectly(PoolSpecialization.MinimalSwapInfoPool, 3);
   });
 
   describe('with two token pool', () => {
-    itJoinsSpecializedPoolCorrectly(TwoTokenPool, 2);
+    itJoinsSpecializedPoolCorrectly(PoolSpecialization.TwoTokenPool, 2);
   });
 
-  function itJoinsSpecializedPoolCorrectly(specialization: PoolSpecializationSetting, tokenAmount: number) {
+  function itJoinsSpecializedPoolCorrectly(specialization: PoolSpecialization, tokenAmount: number) {
     let pool: Contract;
     let poolId: string;
     let tokens: TokenList;
