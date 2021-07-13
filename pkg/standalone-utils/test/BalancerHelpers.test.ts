@@ -11,7 +11,7 @@ import {
   encodeJoinWeightedPool,
   WeightedPoolExitKind,
   WeightedPoolJoinKind,
-} from '@balancer-labs/balancerjs';
+} from '@balancer-labs/balancer-js';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';

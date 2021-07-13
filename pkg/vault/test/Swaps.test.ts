@@ -18,7 +18,7 @@ import {
   FundManagement,
   SingleSwap,
   SwapKind,
-} from '@balancer-labs/balancerjs';
+} from '@balancer-labs/balancer-js';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import {

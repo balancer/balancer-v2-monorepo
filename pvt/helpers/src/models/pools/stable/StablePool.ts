@@ -19,7 +19,7 @@ import {
   StablePoolJoinKind,
   StablePoolExitKind,
   SwapKind,
-} from '@balancer-labs/balancerjs';
+} from '@balancer-labs/balancer-js';
 import {
   JoinExitStablePool,
   InitStablePool,

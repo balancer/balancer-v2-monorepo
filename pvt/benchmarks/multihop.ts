@@ -1,7 +1,7 @@
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { FundManagement, SwapKind } from '@balancer-labs/balancerjs';
+import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { getTokensSwaps } from '@balancer-labs/v2-helpers/src/models/vault/swaps';

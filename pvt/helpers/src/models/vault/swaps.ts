@@ -1,6 +1,6 @@
 import { TokenList } from '../../tokens';
 import { BigNumberish } from '../../numbers';
-import { BatchSwapStep } from '@balancer-labs/balancerjs';
+import { BatchSwapStep } from '@balancer-labs/balancer-js';
 
 export type Trade = {
   poolId: string;

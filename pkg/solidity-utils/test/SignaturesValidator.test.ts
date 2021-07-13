@@ -8,7 +8,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_GAS_LIMIT, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
-import { encodeCalldataAuthorization, RelayerAction, signAuthorizationFor } from '@balancer-labs/balancerjs';
+import { encodeCalldataAuthorization, RelayerAction, signAuthorizationFor } from '@balancer-labs/balancer-js';
 
 describe('SignaturesValidator', () => {
   let validator: Contract;

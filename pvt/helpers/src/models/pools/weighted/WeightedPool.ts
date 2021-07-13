@@ -49,7 +49,7 @@ import {
   SwapKind,
   WeightedPoolExitKind,
   WeightedPoolJoinKind,
-} from '@balancer-labs/balancerjs';
+} from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 const MAX_IN_RATIO = fp(0.3);

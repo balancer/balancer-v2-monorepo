@@ -8,7 +8,7 @@ import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool'
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 
-import { BatchSwapStep, FundManagement, SwapKind } from '@balancer-labs/balancerjs';
+import { BatchSwapStep, FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { fromNow, MONTH } from '@balancer-labs/v2-helpers/src/time';

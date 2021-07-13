@@ -5,7 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 
-import { BatchSwapStep, FundManagement, SwapKind } from '@balancer-labs/balancerjs';
+import { BatchSwapStep, FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 import { fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MinimalSwapInfoPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';

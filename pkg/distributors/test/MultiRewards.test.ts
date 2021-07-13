@@ -12,7 +12,7 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { encodeJoinWeightedPool, signPermit, WeightedPoolJoinKind } from '@balancer-labs/balancerjs';
+import { encodeJoinWeightedPool, signPermit, WeightedPoolJoinKind } from '@balancer-labs/balancer-js';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 
 import { setup, tokenInitialBalance, rewardTokenInitialBalance, rewardsDuration } from './MultiRewardsSharedSetup';

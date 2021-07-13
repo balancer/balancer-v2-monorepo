@@ -16,7 +16,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { arrayAdd, arraySub, BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { encodeCalldataAuthorization, signExitAuthorization } from '@balancer-labs/balancerjs';
+import { encodeCalldataAuthorization, signExitAuthorization } from '@balancer-labs/balancer-js';
 
 import {
   GeneralPool,

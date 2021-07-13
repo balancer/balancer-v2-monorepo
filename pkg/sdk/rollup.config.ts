@@ -17,7 +17,7 @@ export default [
     input: 'src/index.ts',
     output: [
       {
-        name: 'balancerjs',
+        name: 'balancer-js',
         file: pkg.browser,
         format: 'umd',
         sourcemap: true,

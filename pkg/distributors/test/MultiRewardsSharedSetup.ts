@@ -6,7 +6,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { encodeJoinWeightedPool, WeightedPoolJoinKind } from '@balancer-labs/balancerjs';
+import { encodeJoinWeightedPool, WeightedPoolJoinKind } from '@balancer-labs/balancer-js';
 
 export const tokenInitialBalance = bn(200e18);
 export const rewardTokenInitialBalance = bn(100e18);

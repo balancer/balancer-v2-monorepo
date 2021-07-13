@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { bn, fp } from '../../numbers';
 import { MONTH } from '../../time';
-import { toNormalizedWeights } from '@balancer-labs/balancerjs';
+import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';

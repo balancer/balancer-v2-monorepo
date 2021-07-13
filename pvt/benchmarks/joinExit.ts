@@ -15,7 +15,7 @@ import {
   StablePoolJoinKind,
   WeightedPoolExitKind,
   StablePoolExitKind,
-} from '@balancer-labs/balancerjs';
+} from '@balancer-labs/balancer-js';
 import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
 // setup environment

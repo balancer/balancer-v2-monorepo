@@ -33,7 +33,7 @@
     "@balancer-labs/v2-vault": "workspace:*"
   },
   "devDependencies": {
-    "@balancer-labs/balancerjs": "workspace:*",
+    "@balancer-labs/balancer-js": "workspace:*",
     "@balancer-labs/v2-common": "workspace:*",
     "@balancer-labs/v2-helpers": "workspace:*",
     "@nomiclabs/hardhat-ethers": "^2.0.1",

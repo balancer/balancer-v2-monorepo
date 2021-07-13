@@ -31,7 +31,7 @@
     "@balancer-labs/v2-solidity-utils": "workspace:*"
   },
   "devDependencies": {
-    "@balancer-labs/balancerjs": "workspace:*",
+    "@balancer-labs/balancer-js": "workspace:*",
     "@balancer-labs/v2-common": "workspace:*",
     "@balancer-labs/v2-helpers": "workspace:*",
     "@balancer-labs/v2-standalone-utils": "workspace:*",

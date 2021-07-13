@@ -5,7 +5,7 @@ import chai, { expect } from 'chai';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 
-import { encodeBalancerErrorCode, parseBalancerErrorCode } from '@balancer-labs/balancerjs';
+import { encodeBalancerErrorCode, parseBalancerErrorCode } from '@balancer-labs/balancer-js';
 import { NAry } from '@balancer-labs/v2-helpers/src/models/types/types';
 import { expectEqualWithError, expectLessThanOrEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 

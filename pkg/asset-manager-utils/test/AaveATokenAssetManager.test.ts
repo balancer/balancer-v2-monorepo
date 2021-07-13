@@ -9,7 +9,7 @@ import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { encodeJoinWeightedPool, WeightedPoolJoinKind } from '@balancer-labs/balancerjs';
+import { encodeJoinWeightedPool, WeightedPoolJoinKind } from '@balancer-labs/balancer-js';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 
 const tokenInitialBalance = bn(200e18);
