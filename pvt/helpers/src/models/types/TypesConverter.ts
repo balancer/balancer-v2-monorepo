@@ -84,7 +84,7 @@ export default {
     let { tokens, amplificationParameter, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
     if (!tokens) tokens = new TokenList();
     if (!amplificationParameter) amplificationParameter = bn(200);
-    if (!swapFeePercentage) swapFeePercentage = bn(0);
+    if (!swapFeePercentage) swapFeePercentage = bn('12000000000000');
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     return {
