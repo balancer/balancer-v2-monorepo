@@ -2,6 +2,16 @@
   "name": "@balancer-labs/balancer-js",
   "version": "1.0.0",
   "description": "",
+  "license": "GPL-3.0-only",
+  "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/balancer-js#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/balancer-labs/balancer-v2-monorepo.git",
+    "directory": "pkg/balancer-js"
+  },
+  "bugs": {
+    "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
+  },
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "browser": "dist/index.umd.js",
@@ -11,9 +21,6 @@
     "dev": "rollup -c -w",
     "lint": "eslint ./src --ext .ts --max-warnings 0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "MIT",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^19.0.0",
     "@rollup/plugin-node-resolve": "^13.0.0",
