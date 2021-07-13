@@ -15,7 +15,7 @@ const SYMBOL = 'BPT';
 export default {
   async deploy(params: RawWeightedPoolDeployment): Promise<WeightedPool> {
     const deployment = TypesConverter.toWeightedPoolDeployment(params);
-    const vault = await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params));
+    const vault = params?.vault ?? (await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params)));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
     const { tokens, weights, assetManagers, swapFeePercentage, twoTokens, lbp, swapEnabledOnStart } = deployment;
