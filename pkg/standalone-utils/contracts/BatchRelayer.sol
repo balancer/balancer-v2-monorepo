@@ -100,6 +100,7 @@ contract BatchRelayer {
             if (assets[i] == bpt) {
                 require(swapAmounts[i] < 0, "Invalid amount of BPT");
                 bptAmount = uint256(-swapAmounts[i]);
+                break;
             }
         }
 
