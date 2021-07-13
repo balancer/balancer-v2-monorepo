@@ -84,17 +84,9 @@ describe('ERC20Permit', () => {
 
       context('with signature for other token', () => {
         beforeEach(async () => {
-          const currentNonce = await token.nonces(holder.address);
           const otherToken = await deploy('ERC20PermitMock', { args: ['Token', 'TKN'] });
 
-          ({ v, r, s, deadline } = await signPermit(
-            otherToken,
-            holder,
-            spender.address,
-            amount,
-            MAX_DEADLINE,
-            currentNonce
-          ));
+          ({ v, r, s, deadline } = await signPermit(otherToken, holder, spender.address, amount));
         });
 
         itRevertsWithInvalidSignature();
@@ -118,10 +110,9 @@ describe('ERC20Permit', () => {
 
       context('with expired deadline', () => {
         beforeEach(async () => {
-          const nonce = await token.nonces(holder.address);
           const now = await currentTimestamp();
 
-          ({ v, r, s, deadline } = await signPermit(token, holder, spender.address, amount, now.sub(1), nonce));
+          ({ v, r, s, deadline } = await signPermit(token, holder, spender.address, amount, now.sub(1)));
         });
 
         itRevertsWithInvalidSignature('EXPIRED_PERMIT');
