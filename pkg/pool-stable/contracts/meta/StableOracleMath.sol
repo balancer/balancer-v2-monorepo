@@ -55,7 +55,7 @@ contract StableOracleMath is StableMath {
         // a = amp param * n                                                                                         //
         // b = D + a.(S - D)                                                                                         //
         // D = invariant                                                                                             //
-        // S = sum of balances but x,y = 0                                                                           //
+        // S = sum of balances but x,y = 0 since x  and y are the only tokens                                        //
         **************************************************************************************************************/
 
         uint256 invariant = _calculateInvariant(amplificationParameter, _balances(balanceX, balanceY), true);
@@ -63,7 +63,7 @@ contract StableOracleMath is StableMath {
         uint256 a = (amplificationParameter * 2) / _AMP_PRECISION;
         uint256 b = Math.mul(invariant, a).sub(invariant);
 
-        uint256 axy2 = Math.mul(a * 2, balanceX).mulUp(balanceY);
+        uint256 axy2 = Math.mul(a * 2, balanceX).mulUp(balanceY); // n = 2
 
         // dx = a.x.y.2 + a.y^2 - b.y
         uint256 derivativeX = axy2.add(Math.mul(a, balanceY).mulUp(balanceY)).sub(b.mulUp(balanceY));
