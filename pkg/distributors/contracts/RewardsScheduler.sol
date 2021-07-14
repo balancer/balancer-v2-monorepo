@@ -77,8 +77,8 @@ contract RewardsScheduler {
         IERC20 rewardsToken,
         uint256 amount,
         uint256 startTime
-    ) public {
-        bytes32 rewardId = getRewardId(pool, rewardsToken, msg.sender, startTime);
+    ) public returns (bytes32 rewardId) {
+        rewardId = getRewardId(pool, rewardsToken, msg.sender, startTime);
         require(startTime > block.timestamp, "reward can only be scheduled for the future");
         require(
             multirewards.isAllowlistedRewarder(pool, rewardsToken, msg.sender),
