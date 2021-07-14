@@ -60,22 +60,43 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
     // Swap
 
     /**
+     * Override to make sure sender is vault
+     */
+    function onSwap(
+        SwapRequest memory request,
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut
+    ) public virtual override onlyVault(request.poolId) returns (uint256) {
+        return super.onSwap(request, balances, indexIn, indexOut);
+    }
+
+    /**
+     * Override to make sure sender is vault
+     */
+    function onSwap(
+        SwapRequest memory request,
+        uint256 balanceTokenIn,
+        uint256 balanceTokenOut
+    ) public virtual override onlyVault(request.poolId) returns (uint256) {
+        return super.onSwap(request, balanceTokenIn, balanceTokenOut);
+    }
+
+    /**
      * Update price oracle with the pre-swap balances
-     * Note this function does not perform any safety checks about swaps, it relies on upper implementations for that.
      */
     function _onSwapGivenIn(
         SwapRequest memory request,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override returns (uint256) {
         _updateOracle(request.lastChangeBlock, balances[0], balances[1]);
         return super._onSwapGivenIn(request, balances, indexIn, indexOut);
     }
 
     /**
      * Update price oracle with the pre-swap balances
-     * Note this function does not perform any safety checks about swaps, it relies on upper implementations for that.
      */
     function _onSwapGivenOut(
         SwapRequest memory request,
@@ -179,7 +200,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
             userData
         );
 
-        // If the contract is paused, avoid updating the oracle to minimize code paths taken.
+        // If the contract is paused, the oracle is not updated to avoid extra calculations and reduce potential errors.
         if (_isNotPaused()) {
             _cacheInvariantAndSupply();
         }
@@ -207,8 +228,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        // If the contract is paused, swap protocol fee amounts are not charged and the oracle is not updated
-        // to avoid extra calculations and reduce the potential for errors.
+        // If the contract is paused, the oracle is not updated to avoid extra calculations and reduce potential errors.
         if (_isNotPaused()) {
             _updateOracle(lastChangeBlock, balances[0], balances[1]);
         }
