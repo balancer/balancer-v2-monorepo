@@ -26,7 +26,7 @@ import "./interfaces/IMultiRewards.sol";
 contract RewardsScheduler {
     using SafeERC20 for IERC20;
 
-    IMultiRewards public multirewards;
+    IMultiRewards public immutable multirewards;
 
     constructor(IMultiRewards _multirewards) {
         multirewards = _multirewards;
