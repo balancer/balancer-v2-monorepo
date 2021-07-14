@@ -17,17 +17,11 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
 interface IMultiRewards {
-    function startScheduledReward(
+    function notifyRewardAmount(
         IERC20 stakingToken,
         IERC20 rewardsToken,
         uint256 reward,
         address rewarder
-    ) external;
-
-    function notifyRewardAmount(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        uint256 reward
     ) external;
 
     function addReward(

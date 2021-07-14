@@ -384,11 +384,13 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     /**
-     * @notice Allows a rewards distributor to deposit more tokens to be distributed as rewards
+     * @notice Allows a rewards distributor, or the reward scheduler
+     * to deposit more tokens to be distributed as rewards
      * @param rewardsToken - the token to deposit into staking contract for distribution
      * @param reward - the amount of tokens to deposit
+     * @param rewarder - the address issuing the reward (usually msg.sender)
      */
-    function startScheduledReward(
+    function notifyRewardAmount(
         IERC20 pool,
         IERC20 rewardsToken,
         uint256 reward,
@@ -398,33 +400,12 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             rewarder == msg.sender || msg.sender == rewardsScheduler,
             "Rewarder must be sender, or rewards scheduler"
         );
-        _startReward(pool, rewardsToken, reward, rewarder);
-    }
 
-    /**
-     * @notice Allows a rewards distributor to deposit more tokens to be distributed as rewards
-     * @param rewardsToken - the token to deposit into staking contract for distribution
-     * @param reward - the amount of tokens to deposit
-     */
-    function notifyRewardAmount(
-        IERC20 pool,
-        IERC20 rewardsToken,
-        uint256 reward
-    ) external override updateReward(pool, address(0)) {
         require(_rewarders[pool][rewardsToken].contains(msg.sender), "Reward must be configured with addReward");
 
-        _startReward(pool, rewardsToken, reward, msg.sender);
-    }
-
-    function _startReward(
-        IERC20 pool,
-        IERC20 rewardsToken,
-        uint256 reward,
-        address rewarder
-    ) internal {
         // handle the transfer of reward tokens via `safeTransferFrom` to reduce the number
         // of transactions required and ensure correctness of the reward amount
-        address funder = msg.sender == rewardsScheduler ? rewardsScheduler : rewarder;
+        address funder = (msg.sender == rewardsScheduler) ? rewardsScheduler : msg.sender;
         rewardsToken.safeTransferFrom(funder, address(this), reward);
 
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);

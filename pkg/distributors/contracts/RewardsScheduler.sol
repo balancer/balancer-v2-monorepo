@@ -54,7 +54,7 @@ contract RewardsScheduler {
             require(scheduledReward.startTime <= block.timestamp, "reward cannot be started");
 
             scheduledReward.rewardsToken.approve(address(multirewards), scheduledReward.amount);
-            multirewards.startScheduledReward(
+            multirewards.notifyRewardAmount(
                 scheduledReward.pool,
                 scheduledReward.rewardsToken,
                 scheduledReward.amount,

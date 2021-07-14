@@ -145,7 +145,10 @@ describe('Staking contract', () => {
 
     it('sends expected amount of reward token to the rewards contract', async () => {
       await expectBalanceChange(
-        () => stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount),
+        () =>
+          stakingContract
+            .connect(rewarder)
+            .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address),
         rewardTokens,
         [{ account: stakingContract, changes: { DAI: rewardAmount } }],
         vault
@@ -154,7 +157,9 @@ describe('Staking contract', () => {
 
     it('emits RewardAdded when an allocation is stored', async () => {
       const receipt = await (
-        await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount)
+        await stakingContract
+          .connect(rewarder)
+          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address)
       ).wait();
 
       expectEvent.inReceipt(receipt, 'RewardAdded', {
@@ -165,7 +170,9 @@ describe('Staking contract', () => {
 
     describe('when the rewarder has called notifyRewardAmount', () => {
       sharedBeforeEach(async () => {
-        await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+        await stakingContract
+          .connect(rewarder)
+          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address);
         await advanceTime(10);
       });
 
@@ -222,7 +229,10 @@ describe('Staking contract', () => {
         await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
         await stakingContract
           .connect(rewarder)
-          .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount);
+          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address);
+        await stakingContract
+          .connect(rewarder)
+          .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount, rewarder.address);
         // total reward = fp(3)
       });
 
@@ -241,7 +251,6 @@ describe('Staking contract', () => {
       sharedBeforeEach(async () => {
         await stakingContract.connect(other).getReward([pool.address]);
 
-        await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
         await stakingContract
           .connect(rewarder)
           .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount);
@@ -270,7 +279,9 @@ describe('Staking contract', () => {
         await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardToken.address, other.address);
         await stakingContract.connect(other).addReward(pool.address, rewardToken.address, rewardsDuration);
 
-        await stakingContract.connect(other).notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount);
+        await stakingContract
+          .connect(other)
+          .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount, other.address);
       });
 
       it('calculates totalEarned from both distributions', async () => {
@@ -346,9 +357,13 @@ describe('Staking contract', () => {
     });
 
     it('allows you to claim across multiple pools', async () => {
-      await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+      await stakingContract
+        .connect(rewarder)
+        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address);
       const rewardAmount2 = fp(0.75);
-      await stakingContract.connect(rewarder).notifyRewardAmount(pool2.address, rewardToken.address, rewardAmount2);
+      await stakingContract
+        .connect(rewarder)
+        .notifyRewardAmount(pool2.address, rewardToken.address, rewardAmount2, rewarder.address);
 
       await advanceTime(10);
 
@@ -362,9 +377,13 @@ describe('Staking contract', () => {
     });
 
     it.skip('emits RewardPaid for each pool', async () => {
-      await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+      await stakingContract
+        .connect(rewarder)
+        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address);
       const rewardAmount2 = fp(0.75);
-      await stakingContract.connect(rewarder).notifyRewardAmount(pool2.address, rewardToken.address, rewardAmount2);
+      await stakingContract
+        .connect(rewarder)
+        .notifyRewardAmount(pool2.address, rewardToken.address, rewardAmount2, rewarder.address);
       await advanceTime(10);
 
       const receipt = await (await stakingContract.connect(lp).getReward([pool.address])).wait();
