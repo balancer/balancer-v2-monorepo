@@ -93,7 +93,7 @@ describe('SignaturesValidator', () => {
         'Authorization' as RelayerAction,
         validator,
         user,
-        allowedSender.address,
+        allowedSender,
         allowedCalldata,
         deadline,
         nonce

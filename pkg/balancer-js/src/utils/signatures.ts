@@ -12,6 +12,15 @@ export enum RelayerAction {
   SetRelayerApproval = 'SetRelayerApproval',
 }
 
+export type Account = string | Signer | Contract;
+
+export async function accountToAddress(account: Account): Promise<string> {
+  if (typeof account == 'string') return account;
+  if (Signer.isSigner(account)) return account.getAddress();
+  if (account.address) return account.address;
+  throw new Error('Could not read account address');
+}
+
 export function encodeCalldataAuthorization(calldata: string, deadline: BigNumberish, signature: string): string {
   const encodedDeadline = hexZeroPad(hexValue(deadline), 32).slice(2);
   const { v, r, s } = splitSignature(signature);
@@ -24,7 +33,7 @@ export function encodeCalldataAuthorization(calldata: string, deadline: BigNumbe
 export async function signJoinAuthorization(
   validator: Contract,
   user: Signer & TypedDataSigner,
-  allowedSender: string | Contract,
+  allowedSender: Account,
   allowedCalldata: string,
   deadline?: BigNumberish,
   nonce?: BigNumberish
@@ -35,7 +44,7 @@ export async function signJoinAuthorization(
 export async function signExitAuthorization(
   validator: Contract,
   user: Signer & TypedDataSigner,
-  allowedSender: string | Contract,
+  allowedSender: Account,
   allowedCalldata: string,
   deadline?: BigNumberish,
   nonce?: BigNumberish
@@ -46,7 +55,7 @@ export async function signExitAuthorization(
 export async function signSwapAuthorization(
   validator: Contract,
   user: Signer & TypedDataSigner,
-  allowedSender: string | Contract,
+  allowedSender: Account,
   allowedCalldata: string,
   deadline?: BigNumberish,
   nonce?: BigNumberish
@@ -57,7 +66,7 @@ export async function signSwapAuthorization(
 export async function signBatchSwapAuthorization(
   validator: Contract,
   user: Signer & TypedDataSigner,
-  allowedSender: string | Contract,
+  allowedSender: Account,
   allowedCalldata: string,
   deadline?: BigNumberish,
   nonce?: BigNumberish
@@ -76,7 +85,7 @@ export async function signBatchSwapAuthorization(
 export async function signSetRelayerApprovalAuthorization(
   validator: Contract,
   user: Signer & TypedDataSigner,
-  allowedSender: string | Contract,
+  allowedSender: Account,
   allowedCalldata: string,
   deadline?: BigNumberish,
   nonce?: BigNumberish
@@ -96,7 +105,7 @@ export async function signAuthorizationFor(
   type: RelayerAction,
   validator: Contract,
   user: Signer & TypedDataSigner,
-  allowedSender: string | Contract,
+  allowedSender: Account,
   allowedCalldata: string,
   deadline: BigNumberish = MAX_DEADLINE,
   nonce?: BigNumberish
@@ -105,10 +114,6 @@ export async function signAuthorizationFor(
   if (!nonce) {
     const userAddress = await user.getAddress();
     nonce = (await validator.getNextNonce(userAddress)) as BigNumberish;
-  }
-
-  if (typeof allowedSender !== 'string') {
-    allowedSender = allowedSender.address;
   }
 
   const domain = {
@@ -129,7 +134,7 @@ export async function signAuthorizationFor(
 
   const value = {
     calldata: allowedCalldata,
-    sender: allowedSender,
+    sender: await accountToAddress(allowedSender),
     nonce: nonce.toString(),
     deadline: deadline.toString(),
   };

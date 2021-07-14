@@ -37,7 +37,7 @@ describe('ERC20Permit', () => {
 
     it('accepts holder signature', async function () {
       const previousNonce = await token.nonces(holder.address);
-      const { v, r, s } = await signPermit(token, holder, spender.address, amount);
+      const { v, r, s } = await signPermit(token, holder, spender, amount);
 
       const receipt = await (await token.permit(holder.address, spender.address, amount, MAX_DEADLINE, v, r, s)).wait();
       expectEvent.inReceipt(receipt, 'Approval', { owner: holder.address, spender: spender.address, value: amount });
@@ -51,7 +51,7 @@ describe('ERC20Permit', () => {
 
       context('with reused signature', () => {
         beforeEach(async () => {
-          ({ v, r, s, deadline } = await signPermit(token, holder, spender.address, amount));
+          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount));
           await token.permit(holder.address, spender.address, amount, deadline, v, r, s);
         });
 
@@ -60,7 +60,7 @@ describe('ERC20Permit', () => {
 
       context('with signature for other holder', () => {
         beforeEach(async () => {
-          ({ v, r, s, deadline } = await signPermit(token, spender, spender.address, amount));
+          ({ v, r, s, deadline } = await signPermit(token, spender, spender, amount));
         });
 
         itRevertsWithInvalidSignature();
@@ -68,7 +68,7 @@ describe('ERC20Permit', () => {
 
       context('with signature for other spender', () => {
         beforeEach(async () => {
-          ({ v, r, s, deadline } = await signPermit(token, holder, holder.address, amount));
+          ({ v, r, s, deadline } = await signPermit(token, holder, holder, amount));
         });
 
         itRevertsWithInvalidSignature();
@@ -76,7 +76,7 @@ describe('ERC20Permit', () => {
 
       context('with signature for other amount', () => {
         beforeEach(async () => {
-          ({ v, r, s, deadline } = await signPermit(token, holder, spender.address, amount.add(1)));
+          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount.add(1)));
         });
 
         itRevertsWithInvalidSignature();
@@ -86,7 +86,7 @@ describe('ERC20Permit', () => {
         beforeEach(async () => {
           const otherToken = await deploy('ERC20PermitMock', { args: ['Token', 'TKN'] });
 
-          ({ v, r, s, deadline } = await signPermit(otherToken, holder, spender.address, amount));
+          ({ v, r, s, deadline } = await signPermit(otherToken, holder, spender, amount));
         });
 
         itRevertsWithInvalidSignature();
@@ -94,7 +94,7 @@ describe('ERC20Permit', () => {
 
       context('with signature with invalid nonce', () => {
         beforeEach(async () => {
-          const currentNonce = await token.nonces(holder.address);
+          const currentNonce = await token.nonces(holder);
           ({ v, r, s, deadline } = await signPermit(
             token,
             holder,
@@ -112,7 +112,7 @@ describe('ERC20Permit', () => {
         beforeEach(async () => {
           const now = await currentTimestamp();
 
-          ({ v, r, s, deadline } = await signPermit(token, holder, spender.address, amount, now.sub(1)));
+          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount, now.sub(1)));
         });
 
         itRevertsWithInvalidSignature('EXPIRED_PERMIT');

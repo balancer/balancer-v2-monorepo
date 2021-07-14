@@ -3,11 +3,12 @@ import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
 import { splitSignature } from '@ethersproject/bytes';
 import { MaxUint256 as MAX_DEADLINE } from '@ethersproject/constants';
 import { Contract } from '@ethersproject/contracts';
+import { Account, accountToAddress } from './signatures';
 
 export const signPermit = async (
   token: Contract,
   owner: Signer & TypedDataSigner,
-  spender: string | Contract,
+  spender: Account,
   amount: BigNumberish,
   deadline: BigNumberish = MAX_DEADLINE,
   nonce?: BigNumberish
@@ -16,10 +17,6 @@ export const signPermit = async (
   const ownerAddress = await owner.getAddress();
 
   if (!nonce) nonce = (await token.nonces(ownerAddress)) as BigNumberish;
-
-  if (typeof spender !== 'string') {
-    spender = spender.address;
-  }
 
   const domain = {
     name: await token.name(),
@@ -40,7 +37,7 @@ export const signPermit = async (
 
   const value = {
     owner: ownerAddress,
-    spender,
+    spender: await accountToAddress(spender),
     value: amount,
     nonce,
     deadline,
