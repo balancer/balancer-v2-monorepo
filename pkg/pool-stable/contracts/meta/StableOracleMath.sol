@@ -78,8 +78,9 @@ contract StableOracleMath is StableMath {
     }
 
     /**
-     * @dev Calculates the price of BPT in token. A `logBptTotalSupply` should be the result of calling
-     * `LogCompression.toLowResLog` with the current BPT supply.
+     * @dev Calculates the price of BPT in token X. `logBptTotalSupply` should be the result of calling
+     * `LogCompression.toLowResLog` with the current BPT supply, and `spotPrice` the price of token
+     * Y in token X (obtainable via `_calcSpotPrice()`.
      *
      * The return value is a 4 decimal fixed-point number: use `LogCompression.fromLowResLog`
      * to recover the original value.
