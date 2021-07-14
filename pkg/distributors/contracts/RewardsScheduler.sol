@@ -53,6 +53,7 @@ contract RewardsScheduler {
             require(scheduledReward.startTime != 0, "reward has not been created");
             require(scheduledReward.startTime <= block.timestamp, "reward cannot be started");
 
+            scheduledReward.rewardsToken.approve(address(multirewards), scheduledReward.amount);
             multirewards.startScheduledReward(
                 scheduledReward.pool,
                 scheduledReward.rewardsToken,
@@ -88,7 +89,6 @@ contract RewardsScheduler {
         require(_rewards[rewardId].startTime == 0, "reward has already been scheduled");
 
         rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
-        rewardsToken.approve(address(multirewards), type(uint256).max);
 
         _rewards[rewardId] = ScheduledReward({
             pool: pool,
