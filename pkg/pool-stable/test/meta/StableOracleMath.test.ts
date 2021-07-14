@@ -45,7 +45,7 @@ describe('StableOracleMath', function () {
 
     function itComputesSpotPriceWithError(amp: BigNumber) {
       const minPower = 18;
-      const maxPower = 19;
+      const maxPower = 26;
 
       for (const power of range(minPower, maxPower)) {
         context(`with balances of magnitude e${power}`, () => {

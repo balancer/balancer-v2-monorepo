@@ -25,11 +25,29 @@ Active development occurs in this repository, which means some contracts in it m
 - [`v2-solidity-utils`](./pkg/solidity-utils): miscellaneous Solidity helpers and utilities used in many different contracts.
 - [`v2-standalone-utils`](./pkg/standalone-utils): miscellaneous standalone utility contracts.
 
+## Build and Test
+
+On the project root, run:
+
+```bash
+$ yarn # install all dependencies
+$ yarn build # compile all contracts
+$ yarn test # run all tests
+```
+
+This will run all tests in parallel. To run a single workspace's tests, run `yarn test` from within that workspace's directory.
+
+You can see a sample report of a test run [here](./audits/test-report.md).
+
 ## Security
 
 Multiple independent reviews and audits were performed by [Certora](https://www.certora.com/), [OpenZeppelin](https://openzeppelin.com/) and [Trail of Bits](https://www.trailofbits.com/). The latest reports from these engagements are located in the [`audits`](./audits) directory.
 
 Bug bounties apply to most of the smart contracts hosted in this repository: head to [Balancer V2 Bug Bounties](https://docs.balancer.fi/core-concepts/security/bug-bounties) to learn more.
+
+All core smart contracts are immutable, and cannot be upgraded. See page 6 of the [Trail of Bits audit](https://github.com/balancer-labs/balancer-v2-monorepo/blob/master/audits/trail-of-bits/2021-04-05.pdf):
+
+> Upgradeability | Not Applicable. The system cannot be upgraded.
 
 ## Licensing
 
