@@ -13,7 +13,28 @@ import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploySortedTokens, mintTokens, TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { advanceTime, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
-export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH'];
+export const tokenSymbols = [
+  'AAA',
+  'BBB',
+  'CCC',
+  'DDD',
+  'EEE',
+  'FFF',
+  'GGG',
+  'HHH',
+  'III',
+  'JJJ',
+  'KKK',
+  'LLL',
+  'MMM',
+  'NNN',
+  'OOO',
+  'PPP',
+  'QQQ',
+  'RRR',
+  'SSS',
+  'TTT',
+];
 
 export async function setupEnvironment(): Promise<{
   vault: Contract;

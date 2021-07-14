@@ -161,4 +161,23 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
             ones[i] = FixedPoint.ONE;
         }
     }
+
+    function _getMaxTokens() internal pure override returns (uint256) {
+        return 8;
+    }
+
+    function _getTotalTokens() internal pure override returns (uint256) {
+        return 3;
+    }
+
+    function _scalingFactor(IERC20) internal pure override returns (uint256) {
+        return 1e18;
+    }
+
+    function _scalingFactors() internal pure override returns (uint256[] memory factors) {
+        factors = new uint256[](3);
+        factors[0] = 1e18;
+        factors[1] = 1e18;
+        factors[2] = 1e18;
+    }
 }

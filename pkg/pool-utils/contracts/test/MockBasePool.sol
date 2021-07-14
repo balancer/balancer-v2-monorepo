@@ -97,4 +97,20 @@ contract MockBasePool is BasePool {
             uint256[] memory
         )
     {}
+
+    function _getMaxTokens() internal pure override returns (uint256) {
+        return 8;
+    }
+
+    function _getTotalTokens() internal pure override returns (uint256) {
+        return 2;
+    }
+
+    function _scalingFactor(IERC20) internal pure override returns (uint256) {
+        return 1e18;
+    }
+
+    function _scalingFactors() internal pure override returns (uint256[] memory) {
+        return new uint256[](2);
+    }    
 }

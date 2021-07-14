@@ -9,13 +9,13 @@ describe('WeightedPool', function () {
   let allTokens: TokenList;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-  const WEIGHTS = [fp(30), fp(20), fp(15), fp(10), fp(8), fp(6), fp(4), fp(2)];
+  const WEIGHTS = Array(20).fill(fp(0.05));
 
   sharedBeforeEach('deploy tokens', async () => {
-    allTokens = await TokenList.create(8, { sorted: true });
+    allTokens = await TokenList.create(20, { sorted: true });
   });
 
-  for (const numTokens of range(2, 9)) {
+  for (const numTokens of range(2, 21)) {
     context(`with ${numTokens} tokens`, () => {
       let pool: WeightedPool;
 

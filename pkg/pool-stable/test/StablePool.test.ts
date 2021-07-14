@@ -63,7 +63,7 @@ describe('StablePool', function () {
       const tokens = await TokenList.create(6, { sorted: true });
 
       await expect(StablePool.create({ tokens, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE })).to.be.revertedWith(
-        'MAX_STABLE_TOKENS'
+        'MAX_TOKENS'
       );
     });
   });
