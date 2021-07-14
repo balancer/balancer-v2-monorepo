@@ -21,6 +21,8 @@ import "../RelayedBasePool.sol";
 contract MockRelayedBasePool is BasePool, RelayedBasePool {
     uint256 private constant _MINIMUM_BPT = 1e6;
 
+    uint256 private immutable _totalTokens;
+
     event Join(bytes32 poolId, address sender, address recipient, bytes userData);
 
     event Exit(bytes32 poolId, address sender, address recipient, bytes userData);
@@ -51,7 +53,9 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
             owner
         )
         RelayedBasePool(relayer)
-    {}
+    {
+        _totalTokens = tokens.length;
+    }
 
     function onJoinPool(
         bytes32 poolId,
@@ -166,17 +170,20 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         return 8;
     }
 
-    function _getTotalTokens() internal pure override returns (uint256) {
-        return 2;
+    function _getTotalTokens() internal view override returns (uint256) {
+        return _totalTokens;
     }
 
     function _scalingFactor(IERC20) internal pure override returns (uint256) {
         return 1e18;
     }
 
-    function _scalingFactors() internal pure override returns (uint256[] memory factors) {
-        factors = new uint256[](2);
-        factors[0] = 1e18;
-        factors[1] = 1e18;
+    function _scalingFactors() internal view override returns (uint256[] memory factors) {
+        uint256 numTokens = _getTotalTokens();
+
+        factors = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; i++) {
+            factors[i] = 1e18;
+        }
     }
 }
