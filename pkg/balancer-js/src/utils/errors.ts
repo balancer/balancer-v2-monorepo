@@ -117,6 +117,13 @@ const balancerErrorCodes: Record<string, string> = {
   '602': 'INSUFFICIENT_FLASH_LOAN_FEE_AMOUNT',
 };
 
+export const isBalancerErrorCode = (error: string): boolean => {
+  if (!error.includes('BAL#')) return false;
+
+  const errorCode = error.replace('BAL#', '');
+  return Object.keys(balancerErrorCodes).includes(errorCode);
+};
+
 /**
  * Decodes a Balancer error code into the corresponding reason
  * @param error - a Balancer error code of the form `BAL#000`
