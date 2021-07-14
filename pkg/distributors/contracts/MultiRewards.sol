@@ -75,6 +75,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     // pool -> user -> bpt balance staked
     mapping(IERC20 => mapping(address => uint256)) private _balances;
 
+    address public rewardsScheduler;
+
     /* ========== CONSTRUCTOR ========== */
 
     constructor(IVault _vault)
@@ -83,6 +85,10 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         MultiRewardsAuthorization(_vault)
     {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function setRewardsScheduler(address rs) public onlyOwner {
+        rewardsScheduler = rs;
     }
 
     /**
@@ -382,6 +388,24 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @param rewardsToken - the token to deposit into staking contract for distribution
      * @param reward - the amount of tokens to deposit
      */
+    function startScheduledReward(
+        IERC20 pool,
+        IERC20 rewardsToken,
+        uint256 reward,
+        address rewarder
+    ) external override updateReward(pool, address(0)) {
+        require(
+            rewarder == msg.sender || msg.sender == rewardsScheduler,
+            "Rewarder must be sender, or rewards scheduler"
+        );
+        _startReward(pool, rewardsToken, reward, rewarder);
+    }
+
+    /**
+     * @notice Allows a rewards distributor to deposit more tokens to be distributed as rewards
+     * @param rewardsToken - the token to deposit into staking contract for distribution
+     * @param reward - the amount of tokens to deposit
+     */
     function notifyRewardAmount(
         IERC20 pool,
         IERC20 rewardsToken,
@@ -389,9 +413,19 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     ) external override updateReward(pool, address(0)) {
         require(_rewarders[pool][rewardsToken].contains(msg.sender), "Reward must be configured with addReward");
 
+        _startReward(pool, rewardsToken, reward, msg.sender);
+    }
+
+    function _startReward(
+        IERC20 pool,
+        IERC20 rewardsToken,
+        uint256 reward,
+        address rewarder
+    ) internal {
         // handle the transfer of reward tokens via `safeTransferFrom` to reduce the number
         // of transactions required and ensure correctness of the reward amount
-        rewardsToken.safeTransferFrom(msg.sender, address(this), reward);
+        address funder = msg.sender == rewardsScheduler ? rewardsScheduler : rewarder;
+        rewardsToken.safeTransferFrom(funder, address(this), reward);
 
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
 
@@ -405,23 +439,23 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
         getVault().manageUserBalance(ops);
 
-        if (block.timestamp >= rewardData[pool][msg.sender][rewardsToken].periodFinish) {
-            rewardData[pool][msg.sender][rewardsToken].rewardRate = Math.divDown(
+        if (block.timestamp >= rewardData[pool][rewarder][rewardsToken].periodFinish) {
+            rewardData[pool][rewarder][rewardsToken].rewardRate = Math.divDown(
                 reward,
-                rewardData[pool][msg.sender][rewardsToken].rewardsDuration
+                rewardData[pool][rewarder][rewardsToken].rewardsDuration
             );
         } else {
-            uint256 remaining = rewardData[pool][msg.sender][rewardsToken].periodFinish.sub(block.timestamp);
-            uint256 leftover = remaining.mulDown(rewardData[pool][msg.sender][rewardsToken].rewardRate);
-            rewardData[pool][msg.sender][rewardsToken].rewardRate = Math.divDown(
+            uint256 remaining = rewardData[pool][rewarder][rewardsToken].periodFinish.sub(block.timestamp);
+            uint256 leftover = remaining.mulDown(rewardData[pool][rewarder][rewardsToken].rewardRate);
+            rewardData[pool][rewarder][rewardsToken].rewardRate = Math.divDown(
                 reward.add(leftover),
-                rewardData[pool][msg.sender][rewardsToken].rewardsDuration
+                rewardData[pool][rewarder][rewardsToken].rewardsDuration
             );
         }
 
-        rewardData[pool][msg.sender][rewardsToken].lastUpdateTime = block.timestamp;
-        rewardData[pool][msg.sender][rewardsToken].periodFinish = block.timestamp.add(
-            rewardData[pool][msg.sender][rewardsToken].rewardsDuration
+        rewardData[pool][rewarder][rewardsToken].lastUpdateTime = block.timestamp;
+        rewardData[pool][rewarder][rewardsToken].periodFinish = block.timestamp.add(
+            rewardData[pool][rewarder][rewardsToken].rewardsDuration
         );
         emit RewardAdded(address(rewardsToken), reward);
     }

@@ -41,6 +41,7 @@ abstract contract MultiRewardsAuthorization is Authentication {
         require(
             _canPerform(getActionId(msg.sig), msg.sender) ||
                 msg.sender == address(pool) ||
+                msg.sender == address(rewardsScheduler) ||
                 isAssetManager(pool, msg.sender),
             "Only accessible by governance, pool or it's asset managers"
         );

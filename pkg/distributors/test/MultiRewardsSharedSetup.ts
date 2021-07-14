@@ -27,7 +27,7 @@ interface SetupContracts {
 }
 
 export const setup = async (): Promise<{ data: SetupData; contracts: SetupContracts }> => {
-  const [, admin, lp, mockAssetManager] = await ethers.getSigners();
+  const [, admin, lp, mockAssetManager, rewarder] = await ethers.getSigners();
 
   const tokens = await TokenList.create(['SNX', 'MKR'], { sorted: true });
   const rewardTokens = await TokenList.create(['DAI'], { sorted: true });
@@ -69,7 +69,8 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
   await tokens.approve({ to: vault.address, from: [lp] });
 
   await rewardTokens.mint({ to: mockAssetManager, amount: rewardTokenInitialBalance });
-  await rewardTokens.approve({ to: stakingContract.address, from: [mockAssetManager] });
+  await rewardTokens.mint({ to: rewarder, amount: rewardTokenInitialBalance });
+  await rewardTokens.approve({ to: stakingContract.address, from: mockAssetManager });
 
   const assets = tokens.addresses;
 
