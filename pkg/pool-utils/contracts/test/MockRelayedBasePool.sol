@@ -167,7 +167,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
     }
 
     function _getTotalTokens() internal pure override returns (uint256) {
-        return 3;
+        return 2;
     }
 
     function _scalingFactor(IERC20) internal pure override returns (uint256) {
@@ -175,9 +175,8 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
     }
 
     function _scalingFactors() internal pure override returns (uint256[] memory factors) {
-        factors = new uint256[](3);
+        factors = new uint256[](2);
         factors[0] = 1e18;
         factors[1] = 1e18;
-        factors[2] = 1e18;
     }
 }
