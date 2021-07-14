@@ -94,15 +94,8 @@ describe('ERC20Permit', () => {
 
       context('with signature with invalid nonce', () => {
         beforeEach(async () => {
-          const currentNonce = await token.nonces(holder);
-          ({ v, r, s, deadline } = await signPermit(
-            token,
-            holder,
-            spender.address,
-            amount,
-            MAX_DEADLINE,
-            currentNonce.add(1)
-          ));
+          const currentNonce = await token.nonces(holder.address);
+          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount, MAX_DEADLINE, currentNonce.add(1)));
         });
 
         itRevertsWithInvalidSignature();
