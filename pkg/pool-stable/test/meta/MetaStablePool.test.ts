@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { BigNumberish, decimal, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, decimal, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_INT22, MAX_UINT10, MAX_UINT31, MIN_INT22, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import {
   MINUTE,
@@ -17,6 +17,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { Sample } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
+import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 
 describe('MetaStablePool', function () {
   let pool: StablePool;
@@ -539,6 +540,12 @@ describe('MetaStablePool', function () {
   describe('price rates', () => {
     let rateProviders: Contract[];
 
+    sharedBeforeEach('deploy tokens', async () => {
+      const dai = await Token.create({ symbol: 'DAI', decimals: 18 });
+      const usdc = await Token.create({ symbol: 'USDC', decimals: 6 });
+      tokens = new TokenList(dai.compare(usdc) < 0 ? [dai, usdc] : [usdc, dai]);
+    });
+
     context('with rate providers', () => {
       sharedBeforeEach('deploy pool', async () => {
         rateProviders = await Promise.all(initialBalances.map(() => deploy('MockRateProvider')));
@@ -555,6 +562,8 @@ describe('MetaStablePool', function () {
       const itAdaptsTheScalingFactorsCorrectly = () => {
         it('adapt the scaling factors with the price rate', async () => {
           const priceRates = await Promise.all(rateProviders.map((provider) => provider.getRate()));
+          priceRates[0] = priceRates[0].mul(bn(10).pow(18 - tokens.first.decimals));
+          priceRates[1] = priceRates[1].mul(bn(10).pow(18 - tokens.second.decimals));
 
           const scalingFactors = await pool.instance.getScalingFactors();
           expect(scalingFactors[0]).to.be.equal(priceRates[0]);
@@ -588,12 +597,15 @@ describe('MetaStablePool', function () {
       });
 
       it('does not affect the scaling factors', async () => {
-        const scalingFactors = await pool.instance.getScalingFactors();
-        expect(scalingFactors[0]).to.be.equal(fp(1));
-        expect(scalingFactors[1]).to.be.equal(fp(1));
+        const expectedFactor0 = fp(1).mul(bn(10).pow(18 - tokens.first.decimals));
+        const expectedFactor1 = fp(1).mul(bn(10).pow(18 - tokens.second.decimals));
 
-        expect(await pool.instance.getScalingFactor(tokens.first.address)).to.be.equal(fp(1));
-        expect(await pool.instance.getScalingFactor(tokens.second.address)).to.be.equal(fp(1));
+        const scalingFactors = await pool.instance.getScalingFactors();
+        expect(scalingFactors[0]).to.be.equal(expectedFactor0);
+        expect(scalingFactors[1]).to.be.equal(expectedFactor1);
+
+        expect(await pool.instance.getScalingFactor(tokens.first.address)).to.be.equal(expectedFactor0);
+        expect(await pool.instance.getScalingFactor(tokens.second.address)).to.be.equal(expectedFactor1);
       });
     });
 
@@ -601,7 +613,7 @@ describe('MetaStablePool', function () {
       it('reverts', async () => {
         await expect(
           StablePool.create({ meta: true, tokens, swapFeePercentage, rateProviders: [] })
-        ).to.be.revertedWith('INVALID_RATE_PROVIDERS_LENGTH');
+        ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
       });
     });
   });

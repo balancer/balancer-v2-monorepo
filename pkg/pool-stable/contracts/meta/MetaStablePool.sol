@@ -61,7 +61,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         )
     {
         _require(tokens.length == 2, Errors.NOT_TWO_TOKENS);
-        _require(tokens.length == rateProviders.length, Errors.INVALID_RATE_PROVIDERS_LENGTH);
+        InputHelpers.ensureInputLengthMatch(tokens.length, rateProviders.length);
 
         _setOracleEnabled(oracleEnabled);
         _rateProvider0 = rateProviders[0];
@@ -401,6 +401,14 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         }
     }
 
+    // Price rates
+
+    function getRateProviders() external view returns (address[] memory providers) {
+        providers = new address[](2);
+        providers[0] = _rateProvider0;
+        providers[1] = _rateProvider1;
+    }
+
     /**
      * @dev Overrides scaling factor getter to introduce the token's price rate
      */
@@ -417,8 +425,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
     function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
         scalingFactors = super._scalingFactors();
         uint256[] memory priceRates = _priceRates();
-        _require(scalingFactors.length == priceRates.length, Errors.INVALID_RATES_LENGTH);
 
+        // There is no need to check the arrays length since both are based on `_getTotalTokens`
         // Given there is no generic direction for this rounding, it simply follows the same strategy as the BasePool.
         for (uint256 i = 0; i < scalingFactors.length; i++) {
             scalingFactors[i] = scalingFactors[i].mulDown(priceRates[i]);
@@ -430,6 +438,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
      * In case there is no rate provider for a token it returns 1e18.
      */
     function _priceRate(IERC20 token) internal view virtual returns (uint256) {
+        // Given that this function is only used by `onSwap` which can only be called by the vault in the case of a
+        // Meta Stable Pool, we can be sure the vault will not forward a call with an invalid `token` param.
         return _getPriceRate(token == _token0 ? _rateProvider0 : _rateProvider1);
     }
 
