@@ -8,7 +8,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_GAS_LIMIT, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
-import { encodeCalldataAuthorization, RelayerAction, signAuthorizationFor } from '@balancer-labs/balancer-js';
+import { RelayerAuthorization, RelayerAction } from '@balancer-labs/balancer-js';
 
 describe('SignaturesValidator', () => {
   let validator: Contract;
@@ -48,7 +48,11 @@ describe('SignaturesValidator', () => {
 
       it('decodes it properly', async () => {
         const signature = await user.signMessage('message');
-        const calldataWithSignature = await encodeCalldataAuthorization(calldata, deadline, signature);
+        const calldataWithSignature = await RelayerAuthorization.encodeCalldataAuthorization(
+          calldata,
+          deadline,
+          signature
+        );
 
         const tx = await user.sendTransaction({
           to: validator.address,
@@ -89,7 +93,7 @@ describe('SignaturesValidator', () => {
         ? validator.interface.encodeFunctionData(allowedFunction, [user.address])
         : calldata;
 
-      const signature = await signAuthorizationFor(
+      const signature = await RelayerAuthorization.signAuthorizationFor(
         'Authorization' as RelayerAction,
         validator,
         user,
@@ -98,7 +102,7 @@ describe('SignaturesValidator', () => {
         deadline,
         nonce
       );
-      return encodeCalldataAuthorization(calldata, deadline, signature);
+      return RelayerAuthorization.encodeCalldataAuthorization(calldata, deadline, signature);
     };
 
     const setAllowedFunction = (fnName: string) => {
