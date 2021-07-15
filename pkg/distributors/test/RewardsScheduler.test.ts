@@ -98,7 +98,9 @@ describe('Rewards Scheduler', () => {
     });
 
     it('doesnt reward before time has passed', async () => {
-      await expect(rewardsScheduler.connect(lp).poke([rewardId])).to.be.revertedWith('reward cannot be started');
+      await expect(rewardsScheduler.connect(lp).startRewards([rewardId])).to.be.revertedWith(
+        'reward cannot be started'
+      );
     });
 
     it('allows you to unschedule a reward that hasnt started', async () => {
@@ -127,7 +129,7 @@ describe('Rewards Scheduler', () => {
         const expectedReward = fp(1);
 
         await expectBalanceChange(
-          () => rewardsScheduler.connect(lp).poke([rewardId]),
+          () => rewardsScheduler.connect(lp).startRewards([rewardId]),
           rewardTokens,
           [{ account: stakingContract.address, changes: { DAI: ['very-near', expectedReward] } }],
           vault
@@ -135,7 +137,7 @@ describe('Rewards Scheduler', () => {
       });
 
       it('emits RewardAdded in MultiRewards', async () => {
-        const receipt = await (await rewardsScheduler.connect(lp).poke([rewardId])).wait();
+        const receipt = await (await rewardsScheduler.connect(lp).startRewards([rewardId])).wait();
 
         expectEvent.inIndirectReceipt(receipt, stakingContract.interface, 'RewardAdded', {
           token: rewardsToken.address,

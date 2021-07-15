@@ -45,7 +45,7 @@ contract RewardsScheduler {
 
     mapping(bytes32 => ScheduledReward) private _rewards;
 
-    function poke(bytes32[] calldata rewardIds) external {
+    function startRewards(bytes32[] calldata rewardIds) external {
         for (uint256 r; r < rewardIds.length; r++) {
             bytes32 rewardId = rewardIds[r];
             ScheduledReward memory scheduledReward = _rewards[rewardId];

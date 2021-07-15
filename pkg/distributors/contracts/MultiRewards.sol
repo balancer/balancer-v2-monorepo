@@ -123,14 +123,14 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     /* ========== VIEWS ========== */
 
     /**
-     * @notice Total supply of a staking token being added
+     * @notice Total supply of a pools bpt that has been added
      */
     function totalSupply(IERC20 pool) external view returns (uint256) {
         return _totalSupply[pool];
     }
 
     /**
-     * @notice The balance of a staking token than `account` has staked
+     * @notice The balance of a pools bpt that `account` has staked
      */
     function balanceOf(IERC20 pool, address account) external view returns (uint256) {
         return _balances[pool][account];
@@ -385,6 +385,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     /**
      * @notice Allows a rewards distributor, or the reward scheduler
      * to deposit more tokens to be distributed as rewards
+     * @param pool - the pool bpt that is staked in this contract
      * @param rewardsToken - the token to deposit into staking contract for distribution
      * @param reward - the amount of tokens to deposit
      * @param rewarder - the address issuing the reward (usually msg.sender)
