@@ -30,8 +30,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
     using FixedPoint for uint256;
     using OracleMiscData for bytes32;
 
-    address private immutable _rateProvider0;
-    address private immutable _rateProvider1;
+    IRateProvider private immutable _rateProvider0;
+    IRateProvider private immutable _rateProvider1;
 
     event OracleEnabledChanged(bool enabled);
 
@@ -40,7 +40,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        address[] memory rateProviders,
+        IRateProvider[] memory rateProviders,
         uint256 amplificationParameter,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
@@ -403,8 +403,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
 
     // Price rates
 
-    function getRateProviders() external view returns (address[] memory providers) {
-        providers = new address[](2);
+    function getRateProviders() external view returns (IRateProvider[] memory providers) {
+        providers = new IRateProvider[](2);
         providers[0] = _rateProvider0;
         providers[1] = _rateProvider1;
     }
@@ -452,7 +452,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         priceRates[1] = _getPriceRate(_rateProvider1);
     }
 
-    function _getPriceRate(address provider) internal view returns (uint256) {
-        return provider == address(0) ? FixedPoint.ONE : IRateProvider(provider).getRate();
+    function _getPriceRate(IRateProvider provider) internal view returns (uint256) {
+        return provider == IRateProvider(address(0)) ? FixedPoint.ONE : provider.getRate();
     }
 }

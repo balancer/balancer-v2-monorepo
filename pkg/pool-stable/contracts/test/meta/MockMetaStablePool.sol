@@ -37,7 +37,7 @@ contract MockMetaStablePool is MetaStablePool, MockPoolPriceOracle, MockStableOr
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        address[] memory rateProviders,
+        IRateProvider[] memory rateProviders,
         uint256 amplificationParameter,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
