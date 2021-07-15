@@ -40,8 +40,29 @@ contract RewardsScheduler {
         uint256 amount;
     }
 
-    event RewardScheduled(bytes32 rewardId, address scheduler, address rewardsToken, uint256 startTime);
-    event RewardUnscheduled(bytes32 rewardId, address scheduler, address rewardsToken, uint256 startTime);
+    event RewardScheduled(
+        bytes32 rewardId,
+        address indexed scheduler,
+        address indexed pool,
+        address indexed rewardsToken,
+        uint256 startTime,
+        uint256 amount
+    );
+    event RewardStarted(
+        bytes32 rewardId,
+        address indexed scheduler,
+        address indexed pool,
+        address indexed rewardsToken,
+        uint256 startTime,
+        uint256 amount
+    );
+    event RewardUnscheduled(
+        bytes32 rewardId,
+        address indexed scheduler,
+        address indexed pool,
+        address indexed rewardsToken,
+        uint256 startTime
+    );
 
     mapping(bytes32 => ScheduledReward) private _rewards;
 
@@ -59,6 +80,14 @@ contract RewardsScheduler {
                 scheduledReward.rewardsToken,
                 scheduledReward.amount,
                 scheduledReward.rewarder
+            );
+            emit RewardStarted(
+                rewardId,
+                msg.sender,
+                address(scheduledReward.pool),
+                address(scheduledReward.rewardsToken),
+                scheduledReward.startTime,
+                scheduledReward.amount
             );
             delete _rewards[rewardId];
         }
@@ -98,7 +127,7 @@ contract RewardsScheduler {
             startTime: startTime
         });
 
-        emit RewardScheduled(rewardId, msg.sender, address(rewardsToken), startTime);
+        emit RewardScheduled(rewardId, msg.sender, address(pool), address(rewardsToken), startTime, amount);
     }
 
     function unscheduleReward(bytes32 rewardId) external {
@@ -112,7 +141,13 @@ contract RewardsScheduler {
         IERC20 rewardsToken = IERC20(scheduledReward.rewardsToken);
 
         rewardsToken.safeTransfer(scheduledReward.rewarder, scheduledReward.amount);
-        emit RewardUnscheduled(rewardId, scheduledReward.rewarder, address(rewardsToken), scheduledReward.startTime);
+        emit RewardUnscheduled(
+            rewardId,
+            scheduledReward.rewarder,
+            address(scheduledReward.pool),
+            address(scheduledReward.rewardsToken),
+            scheduledReward.startTime
+        );
         delete _rewards[rewardId];
     }
 }
