@@ -33,7 +33,7 @@ interface IBasePool is IPoolSwapStructs {
      * Protocol fees are reported and charged on join events so that the Pool is free of debt whenever new users join.
      *
      * `sender` is the account performing the join (from which tokens will be withdrawn), and `recipient` is the account
-     * designated to receive any benefits (typically pool shares). `currentBalances` contains the total balances
+     * designated to receive any benefits (typically pool shares). `balances` contains the total balances
      * for each token the Pool registered in the Vault, in the same order that `IVault.getPoolTokens` would return.
      *
      * `lastChangeBlock` is the last block in which *any* of the Pool's registered tokens last changed its total
@@ -65,7 +65,7 @@ interface IBasePool is IPoolSwapStructs {
      * Protocol fees are charged on exit events to guarantee that users exiting the Pool have paid their share.
      *
      * `sender` is the account performing the exit (typically the pool shareholder), and `recipient` is the account
-     * to which the Vault will send the proceeds. `currentBalances` contains the total token balances for each token
+     * to which the Vault will send the proceeds. `balances` contains the total token balances for each token
      * the Pool registered in the Vault, in the same order that `IVault.getPoolTokens` would return.
      *
      * `lastChangeBlock` is the last block in which *any* of the Pool's registered tokens last changed its total

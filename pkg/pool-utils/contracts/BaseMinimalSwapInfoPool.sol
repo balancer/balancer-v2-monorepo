@@ -32,7 +32,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         SwapRequest memory request,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) external view virtual override returns (uint256) {
+    ) public virtual override returns (uint256) {
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
@@ -80,7 +80,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         SwapRequest memory swapRequest,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) internal view virtual returns (uint256);
+    ) internal virtual returns (uint256);
 
     /*
      * @dev Called when a swap with the Pool occurs, where the amount of tokens exiting the Pool is known.
@@ -96,5 +96,5 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         SwapRequest memory swapRequest,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) internal view virtual returns (uint256);
+    ) internal virtual returns (uint256);
 }
