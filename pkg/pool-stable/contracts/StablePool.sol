@@ -21,11 +21,12 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
 
 import "./StableMath.sol";
 import "./StablePoolUserDataHelpers.sol";
 
-contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
+contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRateProvider {
     using FixedPoint for uint256;
     using StablePoolUserDataHelpers for bytes;
     using WordCodec for bytes32;
@@ -556,7 +557,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
      * @dev This function returns the appreciation of one BPT relative to the
      * underlying tokens. This starts at 1 when the pool is created and grows over time
      */
-    function getRate() public view returns (uint256) {
+    function getRate() public view override returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
 
         // When calculating the current BPT rate, we may not have paid the protocol fees, therefore

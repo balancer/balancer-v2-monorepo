@@ -17,15 +17,21 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-pool-utils/contracts/interfaces/IPriceOracle.sol";
 import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
+import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/LogCompression.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "../StablePool.sol";
 import "./OracleMiscData.sol";
 import "./StableOracleMath.sol";
 
 contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPriceOracle {
+    using FixedPoint for uint256;
     using OracleMiscData for bytes32;
+
+    IRateProvider private immutable _rateProvider0;
+    IRateProvider private immutable _rateProvider1;
 
     event OracleEnabledChanged(bool enabled);
 
@@ -34,6 +40,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders,
         uint256 amplificationParameter,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
@@ -54,7 +61,11 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         )
     {
         _require(tokens.length == 2, Errors.NOT_TWO_TOKENS);
+        InputHelpers.ensureInputLengthMatch(tokens.length, rateProviders.length);
+
         _setOracleEnabled(oracleEnabled);
+        _rateProvider0 = rateProviders[0];
+        _rateProvider1 = rateProviders[1];
     }
 
     // Swap
@@ -388,5 +399,60 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
             miscData = miscData.setLogTotalSupply(LogCompression.toLowResLog(totalSupply()));
             _setMiscData(miscData);
         }
+    }
+
+    // Price rates
+
+    function getRateProviders() external view returns (IRateProvider[] memory providers) {
+        providers = new IRateProvider[](2);
+        providers[0] = _rateProvider0;
+        providers[1] = _rateProvider1;
+    }
+
+    /**
+     * @dev Overrides scaling factor getter to introduce the token's price rate
+     */
+    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
+        uint256 baseScalingFactor = super._scalingFactor(token);
+        uint256 priceRate = _priceRate(token);
+        // Given there is no generic direction for this rounding, it simply follows the same strategy as the BasePool.
+        return baseScalingFactor.mulDown(priceRate);
+    }
+
+    /**
+     * @dev Overrides scaling factor getter to introduce the tokens' price rate
+     */
+    function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
+        scalingFactors = super._scalingFactors();
+        uint256[] memory priceRates = _priceRates();
+
+        // There is no need to check the arrays length since both are based on `_getTotalTokens`
+        // Given there is no generic direction for this rounding, it simply follows the same strategy as the BasePool.
+        for (uint256 i = 0; i < scalingFactors.length; i++) {
+            scalingFactors[i] = scalingFactors[i].mulDown(priceRates[i]);
+        }
+    }
+
+    /**
+     * @dev Tells the list of price rates for each token. All price rates are fixed-point values with 18 decimals.
+     * In case there is no rate provider for a token it returns 1e18.
+     */
+    function _priceRate(IERC20 token) internal view virtual returns (uint256) {
+        // Given that this function is only used by `onSwap` which can only be called by the vault in the case of a
+        // Meta Stable Pool, we can be sure the vault will not forward a call with an invalid `token` param.
+        return _getPriceRate(token == _token0 ? _rateProvider0 : _rateProvider1);
+    }
+
+    /**
+     * @dev Same as `_priceRate()`, except for all registered tokens (in the same order as registered).
+     */
+    function _priceRates() internal view virtual returns (uint256[] memory priceRates) {
+        priceRates = new uint256[](2);
+        priceRates[0] = _getPriceRate(_rateProvider0);
+        priceRates[1] = _getPriceRate(_rateProvider1);
+    }
+
+    function _getPriceRate(IRateProvider provider) internal view returns (uint256) {
+        return provider == IRateProvider(address(0)) ? FixedPoint.ONE : provider.getRate();
     }
 }
