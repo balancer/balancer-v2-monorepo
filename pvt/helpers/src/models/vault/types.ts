@@ -29,9 +29,18 @@ export type Swap = {
   lastChangeBlock: BigNumberish;
   data: string;
   amount: BigNumberish;
+  from?: SignerWithAddress;
+};
+
+export type MinimalSwap = Swap & {
   balanceTokenIn: BigNumberish;
   balanceTokenOut: BigNumberish;
-  from?: SignerWithAddress;
+};
+
+export type GeneralSwap = Swap & {
+  balances: BigNumberish[];
+  indexIn: number;
+  indexOut: number;
 };
 
 export type JoinPool = {

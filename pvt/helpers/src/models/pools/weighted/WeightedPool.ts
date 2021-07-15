@@ -1,16 +1,16 @@
 import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
 
-import { actionId } from '../../../models/misc/actions';
+import { actionId } from '../../misc/actions';
 import { BigNumberish, bn, fp } from '../../../numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../constants';
 
 import * as expectEvent from '../../../test/expectEvent';
 import Vault from '../../vault/Vault';
-import { Swap } from '../../vault/types';
 import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import WeightedPoolDeployer from './WeightedPoolDeployer';
+import { MinimalSwap } from '../../vault/types';
 import { Account, TxParams } from '../../types/types';
 import {
   JoinExitWeightedPool,
@@ -341,7 +341,7 @@ export default class WeightedPool {
     return this.swap(await this._buildSwapParams(SWAP_GIVEN.OUT, params));
   }
 
-  async swap(params: Swap): Promise<BigNumber> {
+  async swap(params: MinimalSwap): Promise<BigNumber> {
     const tx = await this.vault.minimalSwap(params);
     const receipt = await (await tx).wait();
     const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
@@ -459,7 +459,7 @@ export default class WeightedPool {
     );
   }
 
-  private async _buildSwapParams(kind: number, params: SwapWeightedPool): Promise<Swap> {
+  private async _buildSwapParams(kind: number, params: SwapWeightedPool): Promise<MinimalSwap> {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
     return {

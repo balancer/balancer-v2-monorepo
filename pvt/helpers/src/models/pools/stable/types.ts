@@ -17,6 +17,8 @@ export type RawStablePoolDeployment = {
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   fromFactory?: boolean;
+  oracleEnabled?: boolean;
+  meta?: boolean;
 };
 
 export type StablePoolDeployment = {
@@ -25,6 +27,8 @@ export type StablePoolDeployment = {
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
+  oracleEnabled: boolean;
+  meta: boolean;
   owner?: SignerWithAddress;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -63,6 +67,7 @@ export type JoinGivenInStablePool = {
   recipient?: Account;
   currentBalances?: BigNumberish[];
   protocolFeePercentage?: BigNumberish;
+  lastChangeBlock?: BigNumberish;
 };
 
 export type JoinGivenOutStablePool = {
@@ -72,6 +77,7 @@ export type JoinGivenOutStablePool = {
   recipient?: Account;
   currentBalances?: BigNumberish[];
   protocolFeePercentage?: BigNumberish;
+  lastChangeBlock?: BigNumberish;
 };
 
 export type ExitGivenOutStablePool = {
@@ -81,6 +87,7 @@ export type ExitGivenOutStablePool = {
   from?: SignerWithAddress;
   currentBalances?: BigNumberish[];
   protocolFeePercentage?: BigNumberish;
+  lastChangeBlock?: BigNumberish;
 };
 
 export type SingleExitGivenInStablePool = {
@@ -90,6 +97,7 @@ export type SingleExitGivenInStablePool = {
   from?: SignerWithAddress;
   currentBalances?: BigNumberish[];
   protocolFeePercentage?: BigNumberish;
+  lastChangeBlock?: BigNumberish;
 };
 
 export type MultiExitGivenInStablePool = {
@@ -98,6 +106,7 @@ export type MultiExitGivenInStablePool = {
   from?: SignerWithAddress;
   currentBalances?: BigNumberish[];
   protocolFeePercentage?: BigNumberish;
+  lastChangeBlock?: BigNumberish;
 };
 
 export type JoinResult = {
@@ -121,3 +130,21 @@ export type ExitQueryResult = {
 };
 
 export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
+
+export type MiscData = {
+  oracleEnabled: boolean;
+  oracleIndex: BigNumber;
+  oracleSampleCreationTimestamp: BigNumber;
+  logTotalSupply: BigNumber;
+  logInvariant: BigNumber;
+};
+
+export type Sample = {
+  logPairPrice: BigNumber;
+  accLogPairPrice: BigNumber;
+  logBptPrice: BigNumber;
+  accLogBptPrice: BigNumber;
+  logInvariant: BigNumber;
+  accLogInvariant: BigNumber;
+  timestamp: BigNumber;
+};

@@ -127,6 +127,11 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         _setAmplificationData(initialAmp);
     }
 
+    function getLastInvariant() external view returns (uint256 lastInvariant, uint256 lastInvariantAmp) {
+        lastInvariant = _lastInvariant;
+        lastInvariantAmp = _lastInvariantAmp;
+    }
+
     // Base Pool handlers
 
     // Swap - General Pool specialization (from BaseGeneralPool)
@@ -136,7 +141,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override whenNotPaused returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 amountOut = StableMath._calcOutGivenIn(currentAmp, balances, indexIn, indexOut, swapRequest.amount);
         return amountOut;
@@ -147,7 +152,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override whenNotPaused returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 amountIn = StableMath._calcInGivenOut(currentAmp, balances, indexIn, indexOut, swapRequest.amount);
         return amountIn;
@@ -159,7 +164,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         SwapRequest memory swapRequest,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) internal view virtual override returns (uint256) {
+    ) internal virtual override returns (uint256) {
         _require(_getTotalTokens() == 2, Errors.NOT_TWO_TOKENS);
 
         (uint256[] memory balances, uint256 indexIn, uint256 indexOut) = _getSwapBalanceArrays(
@@ -175,7 +180,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         SwapRequest memory swapRequest,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) internal view virtual override returns (uint256) {
+    ) internal virtual override returns (uint256) {
         _require(_getTotalTokens() == 2, Errors.NOT_TWO_TOKENS);
 
         (uint256[] memory balances, uint256 indexIn, uint256 indexOut) = _getSwapBalanceArrays(
