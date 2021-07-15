@@ -11,15 +11,10 @@ import { encodeExit, encodeJoin } from '@balancer-labs/v2-helpers/src/models/poo
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
-import {
-  GeneralPool,
-  MinimalSwapInfoPool,
-  PoolSpecializationSetting,
-  TwoTokenPool,
-} from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { PoolSpecialization } from '../../balancer-js/dist';
 
 const OP_KIND = { WITHDRAW: 0, DEPOSIT: 1, UPDATE: 2 };
 
@@ -41,20 +36,20 @@ describe('Asset Management', function () {
   });
 
   context('with general pool', () => {
-    itManagesAssetsCorrectly(GeneralPool);
+    itManagesAssetsCorrectly(PoolSpecialization.GeneralPool);
   });
 
   context('with minimal swap info pool', () => {
-    itManagesAssetsCorrectly(MinimalSwapInfoPool);
+    itManagesAssetsCorrectly(PoolSpecialization.MinimalSwapInfoPool);
   });
 
   context('with two token pool', () => {
-    itManagesAssetsCorrectly(TwoTokenPool);
+    itManagesAssetsCorrectly(PoolSpecialization.TwoTokenPool);
   });
 
-  function itManagesAssetsCorrectly(specialization: PoolSpecializationSetting) {
+  function itManagesAssetsCorrectly(specialization: PoolSpecialization) {
     let tokens: TokenList;
-    const tokenNumber = specialization == TwoTokenPool ? 2 : 4;
+    const tokenNumber = specialization == PoolSpecialization.TwoTokenPool ? 2 : 4;
 
     sharedBeforeEach('deploy tokens', async () => {
       tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'].slice(0, tokenNumber), { sorted: true });
@@ -523,7 +518,7 @@ describe('Asset Management', function () {
                     expect(currentBalanceMKR).to.equal(previousBalanceMKR);
                   });
 
-                  if (specialization == TwoTokenPool) {
+                  if (specialization == PoolSpecialization.TwoTokenPool) {
                     it('updates both last change blocks when updating token A', async () => {
                       const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
                       await vault.connect(sender).managePoolBalance(ops);
