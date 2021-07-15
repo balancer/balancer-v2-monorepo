@@ -47,7 +47,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
     event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
     event AmpUpdateStopped(uint256 currentValue);
 
-    uint256 internal immutable _totalTokens;
+    uint256 private immutable _totalTokens;
 
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;

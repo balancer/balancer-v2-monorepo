@@ -38,7 +38,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
     // State variables
 
-    uint256 internal immutable _totalTokens;
+    uint256 private immutable _totalTokens;
 
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;

@@ -77,26 +77,26 @@ contract WeightedPool is BaseWeightedPool {
     // Since these Pools will register tokens only once, we can assume this index will be constant.
     uint256 internal immutable _maxWeightTokenIndex;
 
-    uint256 private immutable _normalizedWeight0;
-    uint256 private immutable _normalizedWeight1;
-    uint256 private immutable _normalizedWeight2;
-    uint256 private immutable _normalizedWeight3;
-    uint256 private immutable _normalizedWeight4;
-    uint256 private immutable _normalizedWeight5;
-    uint256 private immutable _normalizedWeight6;
-    uint256 private immutable _normalizedWeight7;
-    uint256 private immutable _normalizedWeight8;
-    uint256 private immutable _normalizedWeight9;
-    uint256 private immutable _normalizedWeight10;
-    uint256 private immutable _normalizedWeight11;
-    uint256 private immutable _normalizedWeight12;
-    uint256 private immutable _normalizedWeight13;
-    uint256 private immutable _normalizedWeight14;
-    uint256 private immutable _normalizedWeight15;
-    uint256 private immutable _normalizedWeight16;
-    uint256 private immutable _normalizedWeight17;
-    uint256 private immutable _normalizedWeight18;
-    uint256 private immutable _normalizedWeight19;
+    uint256 internal immutable _normalizedWeight0;
+    uint256 internal immutable _normalizedWeight1;
+    uint256 internal immutable _normalizedWeight2;
+    uint256 internal immutable _normalizedWeight3;
+    uint256 internal immutable _normalizedWeight4;
+    uint256 internal immutable _normalizedWeight5;
+    uint256 internal immutable _normalizedWeight6;
+    uint256 internal immutable _normalizedWeight7;
+    uint256 internal immutable _normalizedWeight8;
+    uint256 internal immutable _normalizedWeight9;
+    uint256 internal immutable _normalizedWeight10;
+    uint256 internal immutable _normalizedWeight11;
+    uint256 internal immutable _normalizedWeight12;
+    uint256 internal immutable _normalizedWeight13;
+    uint256 internal immutable _normalizedWeight14;
+    uint256 internal immutable _normalizedWeight15;
+    uint256 internal immutable _normalizedWeight16;
+    uint256 internal immutable _normalizedWeight17;
+    uint256 internal immutable _normalizedWeight18;
+    uint256 internal immutable _normalizedWeight19;
 
     constructor(
         IVault vault,
