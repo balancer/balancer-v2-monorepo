@@ -175,15 +175,15 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
     }
 
     function _scalingFactor(IERC20) internal pure override returns (uint256) {
-        return 1e18;
+        return FixedPoint.ONE;
     }
 
-    function _scalingFactors() internal view override returns (uint256[] memory factors) {
+    function _scalingFactors() internal view override returns (uint256[] memory scalingFactors) {
         uint256 numTokens = _getTotalTokens();
 
-        factors = new uint256[](numTokens);
+        scalingFactors = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; i++) {
-            factors[i] = 1e18;
+            scalingFactors[i] = FixedPoint.ONE;
         }
     }
 }

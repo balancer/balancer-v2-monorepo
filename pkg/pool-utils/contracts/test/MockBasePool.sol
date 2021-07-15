@@ -18,6 +18,9 @@ pragma experimental ABIEncoderV2;
 import "../BasePool.sol";
 
 contract MockBasePool is BasePool {
+
+    uint256 private immutable _totalTokens;
+
     constructor(
         IVault vault,
         IVault.PoolSpecialization specialization,
@@ -42,7 +45,9 @@ contract MockBasePool is BasePool {
             bufferPeriodDuration,
             owner
         )
-    {}
+    {
+        _totalTokens = tokens.length;
+    }
 
     function setMiscData(bytes32 data) external {
         _setMiscData(data);
@@ -102,15 +107,20 @@ contract MockBasePool is BasePool {
         return 8;
     }
 
-    function _getTotalTokens() internal pure override returns (uint256) {
-        return 2;
+    function _getTotalTokens() internal view override returns (uint256) {
+        return _totalTokens;
     }
 
     function _scalingFactor(IERC20) internal pure override returns (uint256) {
-        return 1e18;
+        return FixedPoint.ONE;
     }
 
-    function _scalingFactors() internal pure override returns (uint256[] memory) {
-        return new uint256[](2);
+    function _scalingFactors() internal view override returns (uint256[] memory scalingFactors) {
+        uint256 numTokens = _getTotalTokens();
+
+        scalingFactors = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; i++) {
+            scalingFactors[i] = FixedPoint.ONE;
+        }
     }    
 }
