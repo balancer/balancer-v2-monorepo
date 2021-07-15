@@ -37,6 +37,7 @@ contract MockMetaStablePool is MetaStablePool, MockPoolPriceOracle, MockStableOr
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
+        address[] memory rateProviders,
         uint256 amplificationParameter,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
@@ -49,6 +50,7 @@ contract MockMetaStablePool is MetaStablePool, MockPoolPriceOracle, MockStableOr
             name,
             symbol,
             tokens,
+            rateProviders,
             amplificationParameter,
             swapFeePercentage,
             pauseWindowDuration,
@@ -58,6 +60,14 @@ contract MockMetaStablePool is MetaStablePool, MockPoolPriceOracle, MockStableOr
         )
     {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function getScalingFactors() external view returns (uint256[] memory) {
+        return _scalingFactors();
+    }
+
+    function getScalingFactor(IERC20 token) external view returns (uint256) {
+        return _scalingFactor(token);
     }
 
     function mockOracleDisabled() external {

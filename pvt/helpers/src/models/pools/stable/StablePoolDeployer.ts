@@ -8,6 +8,7 @@ import StablePool from './StablePool';
 import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
 import { RawStablePoolDeployment, StablePoolDeployment } from './types';
+import { ZERO_ADDRESS } from "../../../constants";
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -35,21 +36,39 @@ export default {
     } = params;
 
     const owner = TypesConverter.toAddress(params.owner);
-
-    const sharedArgs = [
-      vault.address,
-      NAME,
-      SYMBOL,
-      tokens.addresses,
-      amplificationParameter,
-      swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-    ];
+    const rateProviders = params.rateProviders || Array(tokens.length).fill(ZERO_ADDRESS);
 
     return params.meta
-      ? deploy('v2-pool-stable/MockMetaStablePool', { args: [...sharedArgs, oracleEnabled, owner], from })
-      : deploy('v2-pool-stable/StablePool', { args: [...sharedArgs, owner], from });
+      ? deploy('v2-pool-stable/MockMetaStablePool', {
+          args: [
+            vault.address,
+            NAME,
+            SYMBOL,
+            tokens.addresses,
+            rateProviders.map(TypesConverter.toAddress),
+            amplificationParameter,
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            oracleEnabled,
+            owner,
+          ],
+          from,
+        })
+      : deploy('v2-pool-stable/StablePool', {
+          args: [
+            vault.address,
+            NAME,
+            SYMBOL,
+            tokens.addresses,
+            amplificationParameter,
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner,
+          ],
+          from,
+        });
   },
 
   async _deployFromFactory(params: StablePoolDeployment, vault: Vault): Promise<Contract> {

@@ -83,6 +83,7 @@ export default {
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
     let {
       tokens,
+      rateProviders,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
@@ -100,6 +101,7 @@ export default {
     if (!meta) meta = false;
     return {
       tokens,
+      rateProviders,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
