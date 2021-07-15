@@ -13,13 +13,7 @@ import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import StablePoolDeployer from './StablePoolDeployer';
 import { Account, TxParams } from '../../types/types';
-import {
-  encodeJoinStablePool,
-  encodeExitStablePool,
-  StablePoolJoinKind,
-  StablePoolExitKind,
-  SwapKind,
-} from '@balancer-labs/balancer-js';
+import { StablePoolJoinKind, SwapKind, StablePoolEncoder } from '@balancer-labs/balancer-js';
 import {
   Sample,
   MiscData,
@@ -448,10 +442,7 @@ export default class StablePool {
       from: params.from,
       recipient: params.recipient,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: encodeJoinStablePool({
-        kind: StablePoolJoinKind.INIT,
-        amountsIn,
-      }),
+      data: StablePoolEncoder.joinInit(amountsIn),
     };
   }
 
@@ -465,11 +456,7 @@ export default class StablePool {
       lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: encodeJoinStablePool({
-        kind: StablePoolJoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
-        amountsIn,
-        minimumBPT: params.minimumBptOut ?? 0,
-      }),
+      data: StablePoolEncoder.joinExactTokensInForBPTOut(amountsIn, params.minimumBptOut ?? 0),
     };
   }
 
@@ -480,11 +467,7 @@ export default class StablePool {
       lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: encodeJoinStablePool({
-        kind: StablePoolJoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT,
-        bptAmountOut: params.bptOut,
-        enterTokenIndex: this.tokens.indexOf(params.token),
-      }),
+      data: StablePoolEncoder.joinTokenInForExactBPTOut(params.bptOut, this.tokens.indexOf(params.token)),
     };
   }
 
@@ -497,11 +480,7 @@ export default class StablePool {
       lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: encodeExitStablePool({
-        kind: StablePoolExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT,
-        amountsOut,
-        maxBPTAmountIn: params.maximumBptIn ?? MAX_UINT256,
-      }),
+      data: StablePoolEncoder.exitBPTInForExactTokensOut(amountsOut, params.maximumBptIn ?? MAX_UINT256),
     };
   }
 
@@ -512,11 +491,7 @@ export default class StablePool {
       lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: encodeExitStablePool({
-        kind: StablePoolExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
-        bptAmountIn: params.bptIn,
-        exitTokenIndex: this.tokens.indexOf(params.token),
-      }),
+      data: StablePoolEncoder.exitExactBPTInForOneTokenOut(params.bptIn, this.tokens.indexOf(params.token)),
     };
   }
 
@@ -527,10 +502,7 @@ export default class StablePool {
       lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: encodeExitStablePool({
-        kind: StablePoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
-        bptAmountIn: params.bptIn,
-      }),
+      data: StablePoolEncoder.exitExactBPTInForTokensOut(params.bptIn),
     };
   }
 

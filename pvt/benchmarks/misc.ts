@@ -5,13 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import {
-  encodeJoinStablePool,
-  encodeJoinWeightedPool,
-  StablePoolJoinKind,
-  toNormalizedWeights,
-  WeightedPoolJoinKind,
-} from '@balancer-labs/balancer-js';
+import { StablePoolEncoder, toNormalizedWeights, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploySortedTokens, mintTokens, TokenList } from '@balancer-labs/v2-helpers/src/tokens';
@@ -93,10 +87,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
       parameters: params,
     });
 
-    joinUserData = encodeJoinWeightedPool({
-      kind: WeightedPoolJoinKind.INIT,
-      amountsIn: tokenAddresses.map(() => initialPoolBalance),
-    });
+    joinUserData = WeightedPoolEncoder.joinInit(tokenAddresses.map(() => initialPoolBalance));
   } else if (poolName == 'StablePool') {
     const amplificationParameter = bn(50);
 
@@ -105,10 +96,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
       parameters: [tokenAddresses, amplificationParameter, swapFeePercentage],
     });
 
-    joinUserData = encodeJoinStablePool({
-      kind: StablePoolJoinKind.INIT,
-      amountsIn: tokenAddresses.map(() => initialPoolBalance),
-    });
+    joinUserData = StablePoolEncoder.joinInit(tokenAddresses.map(() => initialPoolBalance));
   } else {
     throw new Error(`Unhandled pool: ${poolName}`);
   }

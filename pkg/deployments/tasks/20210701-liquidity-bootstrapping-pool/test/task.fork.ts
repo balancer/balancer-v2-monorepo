@@ -2,7 +2,7 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
-import { encodeJoinWeightedPool, SwapKind, WeightedPoolJoinKind } from '@balancer-labs/balancer-js';
+import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
@@ -84,7 +84,7 @@ describe('LiquidityBootstrappingPoolFactory', function () {
     await usdc.connect(owner).approve(vault.address, MAX_UINT256);
 
     const poolId = await pool.getPoolId();
-    const userData = encodeJoinWeightedPool({ kind: WeightedPoolJoinKind.INIT, amountsIn: initialBalances });
+    const userData = WeightedPoolEncoder.joinInit(initialBalances);
     await vault.connect(owner).joinPool(poolId, owner.address, owner.address, {
       assets: tokens,
       maxAmountsIn: initialBalances,

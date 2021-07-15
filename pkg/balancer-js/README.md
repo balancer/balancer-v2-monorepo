@@ -22,7 +22,6 @@ Some examples of common uses for Balancer.js are shown below
 
 Each Balancer pool is referenced by its own unique pool ID. This ID contains various information about the pool which is in an encoded form. Balancer.js exposes functions to easily extract various information from this ID.
 
-
 Sample code that calculates a pool's address from it's pool ID to allow approving another address to move the user's BPT:
 
 ```typescript
@@ -45,7 +44,7 @@ To provide liquidity to a Balancer pool, various fields must be provided in an e
 Sample code that provides the initial liquidity to a WeightedPool:
 
 ```typescript
-import { encodeJoinWeightedPool } from "@balancer-labs/balancer-js";
+import { WeightedPoolEncoder } from "@balancer-labs/balancer-js";
 
 const poolId = "0x5c6ee304399dbdb9c8ef030ab642b10820db8f56000200000000000000000014"
 const tokens = ["0x012345....", "0x789ABC...."]
@@ -59,7 +58,7 @@ const tx = await vault.joinPool(
         assets: tokens,
         maxAmountsIn: amountsIn,
         fromInternalBalance: true,
-        userData: encodeJoinWeightedPool({ kind: WeightedPoolJoinKind.INIT, amountsIn }),
+        userData: WeightedPoolEncoder.joinInit(amountsIn),
     }
 );
 ```
