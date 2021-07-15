@@ -10,7 +10,7 @@ import { actionId } from '../misc/actions';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
 import { BigNumberish } from '../../numbers';
 import { Account, NAry, TxParams } from '../types/types';
-import { ExitPool, JoinPool, RawVaultDeployment, Swap } from './types';
+import { ExitPool, JoinPool, RawVaultDeployment, MinimalSwap, GeneralSwap } from './types';
 import { deployedAt } from '../../contract';
 
 export default class Vault {
@@ -53,7 +53,7 @@ export default class Vault {
     return this.instance.getPoolTokenInfo(poolId, token.address);
   }
 
-  async minimalSwap(params: Swap): Promise<ContractTransaction> {
+  async minimalSwap(params: MinimalSwap): Promise<ContractTransaction> {
     return this.instance.callMinimalPoolSwap(
       params.poolAddress,
       {
@@ -69,6 +69,26 @@ export default class Vault {
       },
       params.balanceTokenIn,
       params.balanceTokenOut
+    );
+  }
+
+  async generalSwap(params: GeneralSwap): Promise<ContractTransaction> {
+    return this.instance.callGeneralPoolSwap(
+      params.poolAddress,
+      {
+        kind: params.kind,
+        poolId: params.poolId,
+        from: params.from ?? ZERO_ADDRESS,
+        to: params.to,
+        tokenIn: params.tokenIn,
+        tokenOut: params.tokenOut,
+        lastChangeBlock: params.lastChangeBlock,
+        userData: params.data,
+        amount: params.amount,
+      },
+      params.balances,
+      params.indexIn,
+      params.indexOut
     );
   }
 

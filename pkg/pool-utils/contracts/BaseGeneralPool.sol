@@ -33,7 +33,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) external view virtual override returns (uint256) {
+    ) public virtual override returns (uint256) {
         _validateIndexes(indexIn, indexOut, _getTotalTokens());
         uint256[] memory scalingFactors = _scalingFactors();
 
@@ -49,7 +49,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256 indexIn,
         uint256 indexOut,
         uint256[] memory scalingFactors
-    ) internal view returns (uint256) {
+    ) internal returns (uint256) {
         // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
         swapRequest.amount = _subtractSwapFeeAmount(swapRequest.amount);
 
@@ -68,7 +68,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256 indexIn,
         uint256 indexOut,
         uint256[] memory scalingFactors
-    ) internal view returns (uint256) {
+    ) internal returns (uint256) {
         _upscaleArray(balances, scalingFactors);
         swapRequest.amount = _upscale(swapRequest.amount, scalingFactors[indexOut]);
 
@@ -97,7 +97,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view virtual returns (uint256);
+    ) internal virtual returns (uint256);
 
     /*
      * @dev Called when a swap with the Pool occurs, where the amount of tokens exiting the Pool is known.
@@ -114,7 +114,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view virtual returns (uint256);
+    ) internal virtual returns (uint256);
 
     function _validateIndexes(
         uint256 indexIn,

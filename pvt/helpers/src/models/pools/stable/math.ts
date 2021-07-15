@@ -401,3 +401,30 @@ function _getTokenBalanceGivenInvariantAndAllOtherBalances(
     .add(b.pow(2).sub(c.mul(4)).squareRoot())
     .div(2);
 }
+
+export function calculateSpotPrice(amplificationParameter: BigNumberish, fpBalances: BigNumberish[]): BigNumber {
+  const invariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));
+  const [balanceX, balanceY] = fpBalances.map(fromFp);
+
+  const a = decimal(amplificationParameter).mul(2);
+  const b = invariant.sub(invariant.mul(a));
+  const axy2 = a.mul(2).mul(balanceX).mul(balanceY);
+
+  const derivativeX = axy2.add(a.mul(balanceY).mul(balanceY)).add(b.mul(balanceY));
+  const derivativeY = axy2.add(a.mul(balanceX).mul(balanceX)).add(b.mul(balanceX));
+
+  return fp(derivativeX.div(derivativeY));
+}
+
+export function calculateBptPrice(
+  amplificationParameter: BigNumberish,
+  fpBalances: BigNumberish[],
+  fpTotalSupply: BigNumberish
+): BigNumber {
+  const [balanceX, balanceY] = fpBalances.map(fromFp);
+  const spotPrice = fromFp(calculateSpotPrice(amplificationParameter, fpBalances));
+  const totalBalanceX = balanceX.add(spotPrice.mul(balanceY));
+
+  const bptPrice = totalBalanceX.div(fromFp(fpTotalSupply));
+  return fp(bptPrice);
+}
