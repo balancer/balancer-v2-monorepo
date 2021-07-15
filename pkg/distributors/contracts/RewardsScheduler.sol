@@ -26,10 +26,10 @@ import "./interfaces/IMultiRewards.sol";
 contract RewardsScheduler {
     using SafeERC20 for IERC20;
 
-    IMultiRewards public immutable multirewards;
+    IMultiRewards private immutable _multirewards;
 
-    constructor(IMultiRewards _multirewards) {
-        multirewards = _multirewards;
+    constructor() {
+        _multirewards = IMultiRewards(msg.sender);
     }
 
     struct ScheduledReward {
@@ -53,8 +53,8 @@ contract RewardsScheduler {
             require(scheduledReward.startTime != 0, "reward has not been created");
             require(scheduledReward.startTime <= block.timestamp, "reward cannot be started");
 
-            scheduledReward.rewardsToken.approve(address(multirewards), scheduledReward.amount);
-            multirewards.notifyRewardAmount(
+            scheduledReward.rewardsToken.approve(address(_multirewards), scheduledReward.amount);
+            _multirewards.notifyRewardAmount(
                 scheduledReward.pool,
                 scheduledReward.rewardsToken,
                 scheduledReward.amount,
@@ -82,7 +82,7 @@ contract RewardsScheduler {
         rewardId = getRewardId(pool, rewardsToken, msg.sender, startTime);
         require(startTime > block.timestamp, "reward can only be scheduled for the future");
         require(
-            multirewards.isAllowlistedRewarder(pool, rewardsToken, msg.sender),
+            _multirewards.isAllowlistedRewarder(pool, rewardsToken, msg.sender),
             "only allowlisted rewarders can schedule reward"
         );
 

@@ -8,7 +8,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
@@ -37,11 +37,11 @@ describe('Rewards Scheduler', () => {
     rewardsToken = contracts.rewardTokens.DAI;
     rewardTokens = contracts.rewardTokens;
 
-    rewardsScheduler = await deploy('RewardsScheduler', { args: [stakingContract.address] });
+    //rewardsScheduler = await deploy('RewardsScheduler', { args: [stakingContract.address] });
+    const rewardsSchedulerAddress = await stakingContract.rewardsScheduler();
+    rewardsScheduler = await deployedAt('RewardsScheduler', rewardsSchedulerAddress);
 
     await rewardTokens.approve({ to: rewardsScheduler.address, from: [rewarder] });
-
-    stakingContract.connect(admin).setRewardsScheduler(rewardsScheduler.address);
 
     await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardsToken.address, rewarder.address);
     await stakingContract.connect(rewarder).addReward(pool.address, rewardsToken.address, rewardsDuration);

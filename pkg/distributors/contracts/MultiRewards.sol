@@ -26,6 +26,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
+import "./RewardsScheduler.sol";
+
 import "./interfaces/IMultiRewards.sol";
 import "./interfaces/IDistributorCallback.sol";
 import "./interfaces/IDistributor.sol";
@@ -75,7 +77,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     // pool -> user -> bpt balance staked
     mapping(IERC20 => mapping(address => uint256)) private _balances;
 
-    address public rewardsScheduler;
+    RewardsScheduler public immutable rewardsScheduler;
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -85,10 +87,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         MultiRewardsAuthorization(_vault)
     {
         // solhint-disable-previous-line no-empty-blocks
-    }
-
-    function setRewardsScheduler(address rs) public onlyOwner {
-        rewardsScheduler = rs;
+        rewardsScheduler = new RewardsScheduler();
     }
 
     /**
@@ -397,7 +396,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         address rewarder
     ) external override updateReward(pool, address(0)) {
         require(
-            rewarder == msg.sender || msg.sender == rewardsScheduler,
+            rewarder == msg.sender || msg.sender == address(rewardsScheduler),
             "Rewarder must be sender, or rewards scheduler"
         );
 
@@ -405,8 +404,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
         // handle the transfer of reward tokens via `safeTransferFrom` to reduce the number
         // of transactions required and ensure correctness of the reward amount
-        address funder = (msg.sender == rewardsScheduler) ? rewardsScheduler : msg.sender;
-        rewardsToken.safeTransferFrom(funder, address(this), reward);
+        rewardsToken.safeTransferFrom(msg.sender, address(this), reward);
 
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
 
