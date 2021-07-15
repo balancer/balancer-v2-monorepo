@@ -32,33 +32,7 @@ contract MockMetaStablePool is MetaStablePool, MockPoolPriceOracle, MockStableOr
         bool oracleEnabled;
     }
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
-        uint256 amplificationParameter,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        bool oracleEnabled,
-        address owner
-    )
-        MetaStablePool(
-            vault,
-            name,
-            symbol,
-            tokens,
-            rateProviders,
-            amplificationParameter,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            oracleEnabled,
-            owner
-        )
-    {
+    constructor(NewPoolParams memory params) MetaStablePool(params) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -68,6 +42,10 @@ contract MockMetaStablePool is MetaStablePool, MockPoolPriceOracle, MockStableOr
 
     function getScalingFactor(IERC20 token) external view returns (uint256) {
         return _scalingFactor(token);
+    }
+
+    function mockCachePriceRateIfNecessary() external {
+        _cachePriceRateIfNecessary();
     }
 
     function mockOracleDisabled() external {

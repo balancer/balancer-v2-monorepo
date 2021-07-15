@@ -27,9 +27,9 @@ import "./StableMath.sol";
 import "./StablePoolUserDataHelpers.sol";
 
 contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRateProvider {
+    using WordCodec for bytes32;
     using FixedPoint for uint256;
     using StablePoolUserDataHelpers for bytes;
-    using WordCodec for bytes32;
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
