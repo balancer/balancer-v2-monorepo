@@ -1,7 +1,7 @@
 {
   "name": "@balancer-labs/balancer-js",
   "version": "1.0.0",
-  "description": "",
+  "description": "JavaScript utilities for interacting with the Balancer Protocol V2",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/balancer-js#readme",
   "repository": {
