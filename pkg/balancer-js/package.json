@@ -16,6 +16,9 @@
   "module": "dist/index.esm.js",
   "browser": "dist/index.umd.js",
   "typings": "dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
   "scripts": {
     "build": "tsc --emitDeclarationOnly && rollup -c",
     "dev": "rollup -c -w",
