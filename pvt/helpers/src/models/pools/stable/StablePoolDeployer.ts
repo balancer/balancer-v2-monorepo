@@ -8,7 +8,7 @@ import StablePool from './StablePool';
 import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
 import { RawStablePoolDeployment, StablePoolDeployment } from './types';
-import { ZERO_ADDRESS } from "../../../constants";
+import { ZERO_ADDRESS } from '../../../constants';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';

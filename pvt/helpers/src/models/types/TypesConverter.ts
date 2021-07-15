@@ -93,6 +93,7 @@ export default {
     } = params;
 
     if (!tokens) tokens = new TokenList();
+    if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!amplificationParameter) amplificationParameter = bn(200);
     if (!swapFeePercentage) swapFeePercentage = bn(0);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
