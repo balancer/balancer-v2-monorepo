@@ -26,6 +26,12 @@ import "../StablePool.sol";
 import "./OracleMiscData.sol";
 import "./StableOracleMath.sol";
 
+/**
+ * @dev StablePool suitable for assets with proportional prices (e.g. with slow-changing exchange rates between them).
+ * Requires an external feed of these exchange rates.
+ *
+ * It aditionally features a price oracle.
+ */
 contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPriceOracle {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
