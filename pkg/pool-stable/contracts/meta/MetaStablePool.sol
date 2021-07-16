@@ -461,9 +461,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
         // Given there is no generic direction for this rounding, it simply follows the same strategy as the BasePool.
         scalingFactors = super._scalingFactors();
-        uint256[] memory priceRates = _priceRates();
-        scalingFactors[0] = scalingFactors[0].mulDown(priceRates[0]);
-        scalingFactors[1] = scalingFactors[1].mulDown(priceRates[1]);
+        scalingFactors[0] = scalingFactors[0].mulDown(_priceRate[_token0]);
+        scalingFactors[1] = scalingFactors[1].mulDown(_priceRate[_token1]);
     }
 
     // Price rates
@@ -492,15 +491,6 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         if (token == _token0) return _getPriceRateCache(_priceRateCache0);
         if (token == _token1) return _getPriceRateCache(_priceRateCache1);
         _revert(Errors.INVALID_TOKEN);
-    }
-
-    /**
-     * @dev Same as `_priceRate()`, except for all registered tokens (in the same order as registered).
-     */
-    function _priceRates() internal view virtual returns (uint256[] memory priceRates) {
-        priceRates = new uint256[](2);
-        priceRates[0] = _priceRate(_token0);
-        priceRates[1] = _priceRate(_token1);
     }
 
     /**
