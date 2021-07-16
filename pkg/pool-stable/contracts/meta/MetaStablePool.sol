@@ -37,7 +37,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
     // Price rate caches are used to avoid querying the price rate for a token every time we need to work with it.
     // Data is stored with the following structure:
     //
-    // [ expires | duration | price rate value ]
+    // [ expires     | duration | price rate value ]
     // [    uint64   |  uint64  |      uint128     ]
 
     bytes32 private _priceRateCache0;
@@ -461,8 +461,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
         // Given there is no generic direction for this rounding, it simply follows the same strategy as the BasePool.
         scalingFactors = super._scalingFactors();
-        scalingFactors[0] = scalingFactors[0].mulDown(_priceRate[_token0]);
-        scalingFactors[1] = scalingFactors[1].mulDown(_priceRate[_token1]);
+        scalingFactors[0] = scalingFactors[0].mulDown(_priceRate(_token0));
+        scalingFactors[1] = scalingFactors[1].mulDown(_priceRate(_token1));
     }
 
     // Price rates
