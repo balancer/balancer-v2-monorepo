@@ -90,7 +90,7 @@ contract BatchRelayer {
         if (bpt.allowance(address(this), address(stakingContract)) < bptAmount) {
             bpt.approve(address(stakingContract), type(uint256).max);
         }
-  
+
         stakingContract.stake(bpt, bptAmount, recipient);
     }
 
