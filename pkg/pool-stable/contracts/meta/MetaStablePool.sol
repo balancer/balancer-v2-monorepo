@@ -37,7 +37,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
     // Price rate caches are used to avoid querying the price rate for a token every time we need to work with it.
     // Data is stored with the following structure:
     //
-    // [ last update | duration | price rate value ]
+    // [ expires | duration | price rate value ]
     // [    uint64   |  uint64  |      uint128     ]
 
     bytes32 private _priceRateCache0;
