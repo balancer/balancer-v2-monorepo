@@ -20,7 +20,7 @@
     "dist/"
   ],
   "scripts": {
-    "build": "tsc --emitDeclarationOnly && rollup -c",
+    "build": "yarn typechain && tsc --emitDeclarationOnly && rollup -c",
     "dev": "rollup -c -w",
     "lint": "eslint ./src --ext .ts --max-warnings 0",
     "typechain": "typechain --target ethers-v5 --out-dir src/typechain '../deployments/tasks/*/abi/*.json'"
