@@ -126,6 +126,7 @@ contract BatchRelayer {
             // Here we overwrite the bptAmountIn field of an `exactBptInForTokenOut` exit with the output of the swap
             // We are mutating the userData field within request so no explicit assignment occurs
             bytes memory userData = request.userData;
+            // solhint-disable-next-line no-inline-assembly
             assembly {
                 mstore(add(userData, _BPT_AMOUNT_IN_OFFSET), bptAmount)
             }
