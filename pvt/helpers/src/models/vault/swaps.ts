@@ -1,7 +1,6 @@
 import { TokenList } from '../../tokens';
 import { BigNumberish } from '../../numbers';
-
-export const SWAP_KIND = { GIVEN_IN: 0, GIVEN_OUT: 1 };
+import { BatchSwapStep } from '@balancer-labs/balancer-js';
 
 export type Trade = {
   poolId: string;
@@ -10,28 +9,13 @@ export type Trade = {
   amount?: number | string;
 };
 
-export type Swap = {
-  poolId: string;
-  assetInIndex: number;
-  assetOutIndex: number;
-  amount: BigNumberish;
-  userData: string;
-};
-
-export type FundManagement = {
-  sender: string;
-  recipient: string;
-  fromInternalBalance: boolean;
-  toInternalBalance: boolean;
-};
-
 export type AssetManagerTransfer = {
   token: string;
   amount: BigNumberish;
 };
 
-export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<string>, Array<Swap>] {
-  const swaps: Array<Swap> = [];
+export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<string>, Array<BatchSwapStep>] {
+  const swaps: Array<BatchSwapStep> = [];
 
   const tokenAddresses = Array.from(
     new Set(

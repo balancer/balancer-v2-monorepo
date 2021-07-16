@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { GeneralPool, TwoTokenPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -100,7 +100,9 @@ describe('StablePool', function () {
         it('uses general specialization', async () => {
           const { address, specialization } = await pool.getRegisteredInfo();
           expect(address).to.equal(pool.address);
-          expect(specialization).to.equal(numberOfTokens == 2 ? TwoTokenPool : GeneralPool);
+          expect(specialization).to.equal(
+            numberOfTokens == 2 ? PoolSpecialization.TwoTokenPool : PoolSpecialization.GeneralPool
+          );
         });
 
         it('registers tokens in the vault', async () => {

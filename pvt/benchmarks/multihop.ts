@@ -1,9 +1,10 @@
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { FundManagement, getTokensSwaps, SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
+import { getTokensSwaps } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
 import { getWeightedPool, getStablePool, printGas, setupEnvironment, tokenSymbols } from './misc';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
@@ -80,7 +81,7 @@ async function multihop(getPool: (index: number) => Promise<string>, useInternal
       await vault
         .connect(trader)
         .batchSwap(
-          SWAP_KIND.GIVEN_IN,
+          SwapKind.GivenIn,
           swaps,
           tokenAddresses,
           funds,

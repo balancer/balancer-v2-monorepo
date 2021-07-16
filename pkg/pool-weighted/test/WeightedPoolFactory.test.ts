@@ -10,7 +10,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import { toNormalizedWeights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/misc';
+import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 describe('WeightedPoolFactory', function () {

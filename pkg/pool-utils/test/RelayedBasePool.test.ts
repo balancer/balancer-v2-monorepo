@@ -3,12 +3,12 @@ import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('RelayedBasePool', function () {
@@ -28,7 +28,7 @@ describe('RelayedBasePool', function () {
     pool = await deploy('MockRelayedBasePool', {
       args: [
         vault.address,
-        GeneralPool,
+        PoolSpecialization.GeneralPool,
         'BPT',
         'BPT',
         tokens.addresses,
