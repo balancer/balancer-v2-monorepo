@@ -9,9 +9,9 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
+import { encodeJoinWeightedPool, WeightedPoolJoinKind } from '@balancer-labs/balancer-js';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { setup, tokenInitialBalance, rewardsDuration } from './MultiRewardsSharedSetup';
@@ -102,7 +102,7 @@ describe('Reinvestor', () => {
           maxAmountsIn: Array(assets.length).fill(MAX_UINT256),
           fromInternalBalance: false,
           userData: encodeJoinWeightedPool({
-            kind: 'Init',
+            kind: WeightedPoolJoinKind.INIT,
             amountsIn: Array(assets.length).fill(tokenInitialBalance),
           }),
         });

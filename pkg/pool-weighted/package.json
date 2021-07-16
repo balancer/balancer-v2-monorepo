@@ -33,6 +33,7 @@
     "@balancer-labs/v2-vault": "workspace:*"
   },
   "devDependencies": {
+    "@balancer-labs/balancer-js": "workspace:*",
     "@balancer-labs/v2-common": "workspace:*",
     "@balancer-labs/v2-helpers": "workspace:*",
     "@nomiclabs/hardhat-ethers": "^2.0.1",
@@ -49,7 +50,7 @@
     "eslint-plugin-mocha-no-only": "^1.1.1",
     "eslint-plugin-prettier": "^3.1.4",
     "ethereum-waffle": "^3.0.2",
-    "ethers": "^5.0.18",
+    "ethers": "^5.4.1",
     "hardhat": "^2.4.1",
     "lodash.frompairs": "^4.0.1",
     "lodash.pick": "^4.4.0",

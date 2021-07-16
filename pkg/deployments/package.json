@@ -19,6 +19,7 @@
     "test:fork": "yarn test --fork mainnet --block-number 12731159"
   },
   "devDependencies": {
+    "@balancer-labs/balancer-js": "workspace:*",
     "@nomiclabs/hardhat-ethers": "^2.0.1",
     "@nomiclabs/hardhat-etherscan": "^2.1.3",
     "@types/node": "^14.6.0",

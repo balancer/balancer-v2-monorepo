@@ -13,7 +13,13 @@ import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import StablePoolDeployer from './StablePoolDeployer';
 import { Account, TxParams } from '../../types/types';
-import { encodeExitStablePool, encodeJoinStablePool } from './encoding';
+import {
+  encodeJoinStablePool,
+  encodeExitStablePool,
+  StablePoolJoinKind,
+  StablePoolExitKind,
+  SwapKind,
+} from '@balancer-labs/balancer-js';
 import {
   Sample,
   MiscData,
@@ -44,8 +50,6 @@ import {
   calculateBptPrice,
 } from './math';
 import { Swap } from '../../vault/types';
-
-const SWAP_GIVEN = { IN: 0, OUT: 1 };
 
 export enum SWAP_INTERFACE {
   DEFAULT,
@@ -300,12 +304,12 @@ export default class StablePool {
   }
 
   async swapGivenIn(params: SwapStablePool, hookInterface = SWAP_INTERFACE.DEFAULT): Promise<BigNumber> {
-    const swapRequest = this._buildSwapRequest(params, SWAP_GIVEN.IN);
+    const swapRequest = this._buildSwapRequest(params, SwapKind.GivenIn);
     return this.swap(swapRequest, params.in, params.out, hookInterface);
   }
 
   async swapGivenOut(params: SwapStablePool, hookInterface = SWAP_INTERFACE.DEFAULT): Promise<BigNumber> {
-    const swapRequest = this._buildSwapRequest(params, SWAP_GIVEN.OUT);
+    const swapRequest = this._buildSwapRequest(params, SwapKind.GivenOut);
     return this.swap(swapRequest, params.in, params.out, hookInterface);
   }
 
@@ -445,7 +449,7 @@ export default class StablePool {
       recipient: params.recipient,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinStablePool({
-        kind: 'Init',
+        kind: StablePoolJoinKind.INIT,
         amountsIn,
       }),
     };
@@ -462,7 +466,7 @@ export default class StablePool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinStablePool({
-        kind: 'ExactTokensInForBPTOut',
+        kind: StablePoolJoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
         amountsIn,
         minimumBPT: params.minimumBptOut ?? 0,
       }),
@@ -477,7 +481,7 @@ export default class StablePool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinStablePool({
-        kind: 'TokenInForExactBPTOut',
+        kind: StablePoolJoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT,
         bptAmountOut: params.bptOut,
         enterTokenIndex: this.tokens.indexOf(params.token),
       }),
@@ -494,7 +498,7 @@ export default class StablePool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitStablePool({
-        kind: 'BPTInForExactTokensOut',
+        kind: StablePoolExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT,
         amountsOut,
         maxBPTAmountIn: params.maximumBptIn ?? MAX_UINT256,
       }),
@@ -509,7 +513,7 @@ export default class StablePool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitStablePool({
-        kind: 'ExactBPTInForOneTokenOut',
+        kind: StablePoolExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
         bptAmountIn: params.bptIn,
         exitTokenIndex: this.tokens.indexOf(params.token),
       }),
@@ -524,13 +528,13 @@ export default class StablePool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitStablePool({
-        kind: 'ExactBPTInForTokensOut',
+        kind: StablePoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
         bptAmountIn: params.bptIn,
       }),
     };
   }
 
-  private _buildSwapRequest(params: SwapStablePool, kind: number): Swap {
+  private _buildSwapRequest(params: SwapStablePool, kind: SwapKind): Swap {
     return {
       kind,
       poolId: this.poolId,
