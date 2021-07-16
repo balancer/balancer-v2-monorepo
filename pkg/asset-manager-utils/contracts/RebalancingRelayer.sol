@@ -95,10 +95,19 @@ contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
     ) internal {
         for (uint256 i = 0; i < tokens.length; i++) {
             (uint256 cash, , , address assetManager) = vault.getPoolTokenInfo(poolId, tokens[i]);
-            uint256 cashNeeded = minCashBalances[i];
-            if (assetManager != address(0) && cash < cashNeeded) {
-                // Withdraw the managed balance back to the pool to ensure that the cash covers the withdrawal
-                IAssetManager(assetManager).capitalOut(poolId, cashNeeded - cash);
+
+            if (assetManager != address(0)) {
+                uint256 cashNeeded = minCashBalances[i];
+                if (cash < cashNeeded) {
+                    // Withdraw the managed balance back to the pool to ensure that the cash covers the withdrawal
+                    // This will automatically update the vault with the most recent managed balance
+                    IAssetManager(assetManager).capitalOut(poolId, cashNeeded - cash);
+                } else {
+                    // We want to ensure that the pool knows about all asset manager returns
+                    // to avoid a new LP getting a share of returns earned before they joined.
+                    // We then wpdate the vault with the current managed balance manually.
+                    IAssetManager(assetManager).updateBalanceOfPool(poolId);
+                }
             }
         }
     }
