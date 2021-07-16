@@ -63,6 +63,16 @@ describe('Staking contract', () => {
     });
   });
 
+  it('reverts if a rewarder attempts to notifyRewardAmount before adding a reward', async () => {
+    await stakingContract
+      .connect(mockAssetManager)
+      .allowlistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
+
+    await expect(
+      stakingContract.connect(mockAssetManager).notifyRewardAmount(pool.address, rewardToken.address, fp(100))
+    ).to.be.revertedWith('Reward must be configured with addReward');
+  });
+
   describe('addReward', () => {
     it('sets up a reward for an asset manager', async () => {
       await stakingContract
