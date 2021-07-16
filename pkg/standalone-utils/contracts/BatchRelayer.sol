@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
 
 /**
  * @title Batch Relayer
@@ -72,6 +73,21 @@ contract BatchRelayer {
             toInternalBalance: false
         });
         return getVault().batchSwap(IVault.SwapKind.GIVEN_IN, swaps, assets, funds, limits, deadline);
+    }
+
+    function joinAndStake(
+        bytes32 poolId,
+        address payable recipient,
+        IVault.JoinPoolRequest calldata joinPoolRequest,
+        IMultiRewards stakingContract
+    ) external {
+        getVault().joinPool(poolId, msg.sender, address(this), joinPoolRequest);
+
+        IERC20 bpt = IERC20(_getPoolAddress(poolId));
+        uint256 bptAmount = bpt.balanceOf(address(this));
+
+        bpt.approve(address(stakingContract), bptAmount);
+        stakingContract.stake(bpt, bptAmount, recipient);
     }
 
     function swapAndExit(
