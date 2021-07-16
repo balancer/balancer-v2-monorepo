@@ -507,6 +507,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _scalingFactors() internal view virtual returns (uint256[] memory);
 
+    function getScalingFactors() external view returns (uint256[] memory) {
+        return _scalingFactors();
+    }
+
     /**
      * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
      * scaling or not.

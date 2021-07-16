@@ -62,10 +62,6 @@ contract MockMetaStablePool is MetaStablePool, MockPoolPriceOracle, MockStableOr
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getScalingFactors() external view returns (uint256[] memory) {
-        return _scalingFactors();
-    }
-
     function getScalingFactor(IERC20 token) external view returns (uint256) {
         return _scalingFactor(token);
     }
