@@ -36,7 +36,7 @@ export default {
 
     const owner = TypesConverter.toAddress(params.owner);
     const rateProviders = params.rateProviders || [];
-    const priceRateCacheExpirations = params.priceRateCacheExpirations || [];
+    const priceRateCacheDuration = params.priceRateCacheDuration || [];
 
     return params.meta
       ? deploy('v2-pool-stable/MockMetaStablePool', {
@@ -47,7 +47,7 @@ export default {
               symbol: SYMBOL,
               tokens: tokens.addresses,
               rateProviders: rateProviders.map(TypesConverter.toAddress),
-              priceRateCacheExpirations,
+              priceRateCacheDuration,
               amplificationParameter,
               swapFeePercentage,
               pauseWindowDuration,

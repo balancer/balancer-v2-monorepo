@@ -540,7 +540,9 @@ describe('MetaStablePool', function () {
 
   describe('price rates', () => {
     let rateProviders: Contract[];
-    const expirations = [MINUTE, MINUTE * 2];
+    const cacheDurations = [MINUTE, MINUTE * 2];
+
+    const scaleRate = (rate: BigNumber, token: Token) => rate.mul(bn(10).pow(18 - token.decimals));
 
     sharedBeforeEach('deploy tokens', async () => {
       const dai = await Token.create({ symbol: 'DAI', decimals: 18 });
@@ -560,7 +562,7 @@ describe('MetaStablePool', function () {
             tokens,
             swapFeePercentage,
             rateProviders,
-            priceRateCacheExpirations: expirations,
+            priceRateCacheDuration: cacheDurations,
             owner,
           });
         });
@@ -569,8 +571,8 @@ describe('MetaStablePool', function () {
       const itAdaptsTheScalingFactorsCorrectly = () => {
         it('adapt the scaling factors with the price rate', async () => {
           const priceRates = await Promise.all(rateProviders.map((provider) => provider.getRate()));
-          priceRates[0] = priceRates[0].mul(bn(10).pow(18 - tokens.first.decimals));
-          priceRates[1] = priceRates[1].mul(bn(10).pow(18 - tokens.second.decimals));
+          priceRates[0] = scaleRate(priceRates[0], tokens.first);
+          priceRates[1] = scaleRate(priceRates[1], tokens.second);
 
           const scalingFactors = await pool.instance.getScalingFactors();
           expect(scalingFactors[0]).to.be.equal(priceRates[0]);
@@ -588,10 +590,10 @@ describe('MetaStablePool', function () {
 
           it('initializes correctly', async () => {
             const cache0 = await pool.instance.getPriceRateCache(tokens.first.address);
-            expect(cache0.expires).to.be.equal(expirations[0]);
+            expect(cache0.duration).to.be.equal(cacheDurations[0]);
 
             const cache1 = await pool.instance.getPriceRateCache(tokens.second.address);
-            expect(cache1.expires).to.be.equal(expirations[1]);
+            expect(cache1.duration).to.be.equal(cacheDurations[1]);
 
             const providers = await pool.instance.getRateProviders();
             expect(providers[0]).to.be.equal(rateProviders[0].address);
@@ -624,12 +626,12 @@ describe('MetaStablePool', function () {
             await rateProviders[1].mockRate(fp(1.2));
 
             await advanceTime(seconds);
-            await pool.instance.mockCachePriceRateIfNecessary();
+            await pool.instance.mockCachePriceRatesIfNecessary();
           });
         };
 
         context('before the first cache expires', () => {
-          mockNewRatesAndAdvanceTime(expirations[0] / 2);
+          mockNewRatesAndAdvanceTime(cacheDurations[0] / 2);
 
           it('does not update any cache', async () => {
             const { rate: newPriceRate0 } = await pool.instance.getPriceRateCache(tokens.first.address);
@@ -639,15 +641,13 @@ describe('MetaStablePool', function () {
             expect(newPriceRate1).to.be.equal(oldPriceRate1);
 
             const scalingFactors = await pool.instance.getScalingFactors();
-            const expectedFactor0 = oldPriceRate0.mul(bn(10).pow(18 - tokens.first.decimals));
-            expect(scalingFactors[0]).to.be.equal(expectedFactor0);
-            const expectedFactor1 = oldPriceRate1.mul(bn(10).pow(18 - tokens.second.decimals));
-            expect(scalingFactors[1]).to.be.equal(expectedFactor1);
+            expect(scalingFactors[0]).to.be.equal(scaleRate(oldPriceRate0, tokens.first));
+            expect(scalingFactors[1]).to.be.equal(scaleRate(oldPriceRate1, tokens.second));
           });
         });
 
         context('after the first cache expired but before the second does', () => {
-          mockNewRatesAndAdvanceTime(expirations[0] + 1);
+          mockNewRatesAndAdvanceTime(cacheDurations[0] + 1);
 
           it('updates only the first cache', async () => {
             const { rate: newPriceRate0 } = await pool.instance.getPriceRateCache(tokens.first.address);
@@ -657,15 +657,13 @@ describe('MetaStablePool', function () {
             expect(newPriceRate1).to.be.equal(oldPriceRate1);
 
             const scalingFactors = await pool.instance.getScalingFactors();
-            const expectedFactor0 = newPriceRate0.mul(bn(10).pow(18 - tokens.first.decimals));
-            expect(scalingFactors[0]).to.be.equal(expectedFactor0);
-            const expectedFactor1 = oldPriceRate1.mul(bn(10).pow(18 - tokens.second.decimals));
-            expect(scalingFactors[1]).to.be.equal(expectedFactor1);
+            expect(scalingFactors[0]).to.be.equal(scaleRate(newPriceRate0, tokens.first));
+            expect(scalingFactors[1]).to.be.equal(scaleRate(oldPriceRate1, tokens.second));
           });
         });
 
         context('after both caches expired', () => {
-          mockNewRatesAndAdvanceTime(expirations[1] + 1);
+          mockNewRatesAndAdvanceTime(cacheDurations[1] + 1);
 
           it('updates both caches', async () => {
             const { rate: newPriceRate0 } = await pool.instance.getPriceRateCache(tokens.first.address);
@@ -675,10 +673,8 @@ describe('MetaStablePool', function () {
             expect(newPriceRate1).to.be.gt(oldPriceRate1);
 
             const scalingFactors = await pool.instance.getScalingFactors();
-            const expectedFactor0 = newPriceRate0.mul(bn(10).pow(18 - tokens.first.decimals));
-            expect(scalingFactors[0]).to.be.equal(expectedFactor0);
-            const expectedFactor1 = newPriceRate1.mul(bn(10).pow(18 - tokens.second.decimals));
-            expect(scalingFactors[1]).to.be.equal(expectedFactor1);
+            expect(scalingFactors[0]).to.be.equal(scaleRate(newPriceRate0, tokens.first));
+            expect(scalingFactors[1]).to.be.equal(scaleRate(newPriceRate1, tokens.second));
           });
         });
       });
@@ -691,8 +687,8 @@ describe('MetaStablePool', function () {
       });
 
       it('does not affect the scaling factors', async () => {
-        const expectedFactor0 = fp(1).mul(bn(10).pow(18 - tokens.first.decimals));
-        const expectedFactor1 = fp(1).mul(bn(10).pow(18 - tokens.second.decimals));
+        const expectedFactor0 = scaleRate(fp(1), tokens.first);
+        const expectedFactor1 = scaleRate(fp(1), tokens.second);
 
         const scalingFactors = await pool.instance.getScalingFactors();
         expect(scalingFactors[0]).to.be.equal(expectedFactor0);

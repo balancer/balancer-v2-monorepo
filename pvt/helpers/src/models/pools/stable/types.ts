@@ -10,7 +10,7 @@ import { Account, NAry } from '../../types/types';
 export type RawStablePoolDeployment = {
   tokens?: TokenList;
   rateProviders?: Account[];
-  priceRateCacheExpirations?: BigNumberish[];
+  priceRateCacheDuration?: BigNumberish[];
   amplificationParameter?: BigNumberish;
   swapFeePercentage?: BigNumberish;
   pauseWindowDuration?: BigNumberish;
@@ -26,7 +26,7 @@ export type RawStablePoolDeployment = {
 export type StablePoolDeployment = {
   tokens: TokenList;
   rateProviders?: Account[];
-  priceRateCacheExpirations?: BigNumberish[];
+  priceRateCacheDuration?: BigNumberish[];
   amplificationParameter: BigNumberish;
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;

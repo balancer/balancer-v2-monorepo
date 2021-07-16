@@ -44,8 +44,8 @@ contract MockMetaStablePool is MetaStablePool, MockPoolPriceOracle, MockStableOr
         return _scalingFactor(token);
     }
 
-    function mockCachePriceRateIfNecessary() external {
-        _cachePriceRateIfNecessary();
+    function mockCachePriceRatesIfNecessary() external {
+        _cachePriceRatesIfNecessary();
     }
 
     function mockOracleDisabled() external {
