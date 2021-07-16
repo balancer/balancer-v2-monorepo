@@ -192,6 +192,10 @@ export default class WeightedPool {
     return this.instance.getNormalizedWeights();
   }
 
+  async getScalingFactors(): Promise<BigNumber[]> {
+    return this.instance.getScalingFactors();
+  }
+
   async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
     return this.vault.getPoolTokens(this.poolId);
   }

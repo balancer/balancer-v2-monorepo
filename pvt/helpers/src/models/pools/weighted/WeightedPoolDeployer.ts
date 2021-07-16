@@ -83,7 +83,7 @@ export default {
           ],
           from,
         })
-      : deploy('v2-pool-weighted/WeightedPool', {
+      : deploy('v2-pool-weighted/MockWeightedPool', {
           args: [
             vault.address,
             NAME,

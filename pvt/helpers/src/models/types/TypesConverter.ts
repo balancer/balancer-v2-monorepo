@@ -120,13 +120,13 @@ export default {
    * @param from A default signer can be specified as the deployer address of the entire list, otherwise a single
    * signer per token can be defined.
    */
-  toTokenDeployments(params: RawTokensDeployment, from?: SignerWithAddress): TokenDeployment[] {
+  toTokenDeployments(params: RawTokensDeployment, from?: SignerWithAddress, varyDecimals: boolean = false): TokenDeployment[] {
     params = typeof params === 'number' ? Array(params).fill({}) : params;
     if (!Array.isArray(params)) params = [params];
 
     return params.map((param, i) => {
       if (typeof param === 'string') param = { symbol: param, from };
-      const args = Object.assign({}, { symbol: `TK${i}`, name: `Token ${i}`, from }, param);
+      const args = Object.assign({}, { symbol: `TK${i}`, name: `Token ${i}`, decimals: varyDecimals ? Math.max(18 - i, 0) : 18, from }, param);
       return this.toTokenDeployment(args);
     });
   },
