@@ -8,7 +8,6 @@ import StablePool from './StablePool';
 import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
 import { RawStablePoolDeployment, StablePoolDeployment } from './types';
-import { ZERO_ADDRESS } from '../../../constants';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -36,22 +35,26 @@ export default {
     } = params;
 
     const owner = TypesConverter.toAddress(params.owner);
-    const rateProviders = params.rateProviders || Array(tokens.length).fill(ZERO_ADDRESS);
+    const rateProviders = params.rateProviders || [];
+    const priceRateCacheDuration = params.priceRateCacheDuration || [];
 
     return params.meta
       ? deploy('v2-pool-stable/MockMetaStablePool', {
           args: [
-            vault.address,
-            NAME,
-            SYMBOL,
-            tokens.addresses,
-            rateProviders.map(TypesConverter.toAddress),
-            amplificationParameter,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            oracleEnabled,
-            owner,
+            {
+              vault: vault.address,
+              name: NAME,
+              symbol: SYMBOL,
+              tokens: tokens.addresses,
+              rateProviders: rateProviders.map(TypesConverter.toAddress),
+              priceRateCacheDuration,
+              amplificationParameter,
+              swapFeePercentage,
+              pauseWindowDuration,
+              bufferPeriodDuration,
+              oracleEnabled,
+              owner,
+            },
           ],
           from,
         })

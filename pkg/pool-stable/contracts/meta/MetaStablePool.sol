@@ -27,45 +27,78 @@ import "./OracleMiscData.sol";
 import "./StableOracleMath.sol";
 
 contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPriceOracle {
+    using WordCodec for bytes32;
     using FixedPoint for uint256;
     using OracleMiscData for bytes32;
 
     IRateProvider private immutable _rateProvider0;
     IRateProvider private immutable _rateProvider1;
 
+    // Price rate caches are used to avoid querying the price rate for a token every time we need to work with it.
+    // Data is stored with the following structure:
+    //
+    // [ expires     | duration | price rate value ]
+    // [    uint64   |  uint64  |      uint128     ]
+
+    bytes32 private _priceRateCache0;
+    bytes32 private _priceRateCache1;
+
+    uint256 private constant _PRICE_RATE_CACHE_VALUE_OFFSET = 0;
+    uint256 private constant _PRICE_RATE_CACHE_DURATION_OFFSET = 128;
+    uint256 private constant _PRICE_RATE_CACHE_EXPIRES_OFFSET = 128 + 64;
+
     event OracleEnabledChanged(bool enabled);
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        IERC20[] memory tokens,
-        IRateProvider[] memory rateProviders,
-        uint256 amplificationParameter,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        bool oracleEnabled,
-        address owner
-    )
+    // The constructor arguments are received in a struct to work around stack-too-deep issues
+    struct NewPoolParams {
+        IVault vault;
+        string name;
+        string symbol;
+        IERC20[] tokens;
+        IRateProvider[] rateProviders;
+        uint256[] priceRateCacheDuration;
+        uint256 amplificationParameter;
+        uint256 swapFeePercentage;
+        uint256 pauseWindowDuration;
+        uint256 bufferPeriodDuration;
+        bool oracleEnabled;
+        address owner;
+    }
+
+    constructor(NewPoolParams memory params)
         StablePool(
-            vault,
-            name,
-            symbol,
-            tokens,
-            amplificationParameter,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            params.vault,
+            params.name,
+            params.symbol,
+            params.tokens,
+            params.amplificationParameter,
+            params.swapFeePercentage,
+            params.pauseWindowDuration,
+            params.bufferPeriodDuration,
+            params.owner
         )
     {
-        _require(tokens.length == 2, Errors.NOT_TWO_TOKENS);
-        InputHelpers.ensureInputLengthMatch(tokens.length, rateProviders.length);
+        _require(params.tokens.length == 2, Errors.NOT_TWO_TOKENS);
 
-        _setOracleEnabled(oracleEnabled);
-        _rateProvider0 = rateProviders[0];
-        _rateProvider1 = rateProviders[1];
+        InputHelpers.ensureInputLengthMatch(
+            params.tokens.length,
+            params.rateProviders.length,
+            params.priceRateCacheDuration.length
+        );
+
+        IRateProvider rateProvider0 = params.rateProviders[0];
+        _rateProvider0 = rateProvider0;
+        if (rateProvider0 != IRateProvider(address(0))) {
+            _priceRateCache0 = _getNewPriceRateCache(rateProvider0, params.priceRateCacheDuration[0]);
+        }
+
+        IRateProvider rateProvider1 = params.rateProviders[1];
+        _rateProvider1 = rateProvider1;
+        if (rateProvider1 != IRateProvider(address(0))) {
+            _priceRateCache1 = _getNewPriceRateCache(rateProvider1, params.priceRateCacheDuration[1]);
+        }
+
+        _setOracleEnabled(params.oracleEnabled);
     }
 
     // Swap
@@ -79,6 +112,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         uint256 indexIn,
         uint256 indexOut
     ) public virtual override onlyVault(request.poolId) returns (uint256) {
+        _cachePriceRatesIfNecessary();
         return super.onSwap(request, balances, indexIn, indexOut);
     }
 
@@ -90,6 +124,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) public virtual override onlyVault(request.poolId) returns (uint256) {
+        _cachePriceRatesIfNecessary();
         return super.onSwap(request, balanceTokenIn, balanceTokenOut);
     }
 
@@ -135,6 +170,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public virtual override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
+        _cachePriceRatesIfNecessary();
+
         (amountsIn, dueProtocolFeeAmounts) = super.onJoinPool(
             poolId,
             sender,
@@ -201,6 +238,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public virtual override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
+        _cachePriceRatesIfNecessary();
+
         (amountsOut, dueProtocolFeeAmounts) = super.onExitPool(
             poolId,
             sender,
@@ -401,16 +440,11 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         }
     }
 
-    // Price rates
-
-    function getRateProviders() external view returns (IRateProvider[] memory providers) {
-        providers = new IRateProvider[](2);
-        providers[0] = _rateProvider0;
-        providers[1] = _rateProvider1;
-    }
+    // Scaling factors
 
     /**
      * @dev Overrides scaling factor getter to introduce the token's price rate
+     * Note that it may update the price rate cache if necessary.
      */
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
         uint256 baseScalingFactor = super._scalingFactor(token);
@@ -420,17 +454,43 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
     }
 
     /**
-     * @dev Overrides scaling factor getter to introduce the tokens' price rate
+     * @dev Overrides scaling factor getter to introduce the tokens' price rate.
+     * Note that it may update the price rate cache if necessary.
      */
     function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
-        scalingFactors = super._scalingFactors();
-        uint256[] memory priceRates = _priceRates();
-
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
         // Given there is no generic direction for this rounding, it simply follows the same strategy as the BasePool.
-        for (uint256 i = 0; i < scalingFactors.length; i++) {
-            scalingFactors[i] = scalingFactors[i].mulDown(priceRates[i]);
-        }
+        scalingFactors = super._scalingFactors();
+        scalingFactors[0] = scalingFactors[0].mulDown(_priceRate(_token0));
+        scalingFactors[1] = scalingFactors[1].mulDown(_priceRate(_token1));
+    }
+
+    // Price rates
+
+    /**
+     * @dev Tells the rate providers configured for each token (in the same order as registered).
+     */
+    function getRateProviders() external view returns (IRateProvider[] memory providers) {
+        providers = new IRateProvider[](2);
+        providers[0] = _rateProvider0;
+        providers[1] = _rateProvider1;
+    }
+
+    /**
+     * @dev Returns the cached value for token's rate
+     */
+    function getPriceRateCache(IERC20 token)
+        external
+        view
+        returns (
+            uint256 rate,
+            uint256 duration,
+            uint256 expires
+        )
+    {
+        if (token == _token0) return _getPriceRateCache(_priceRateCache0);
+        if (token == _token1) return _getPriceRateCache(_priceRateCache1);
+        _revert(Errors.INVALID_TOKEN);
     }
 
     /**
@@ -440,19 +500,79 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
     function _priceRate(IERC20 token) internal view virtual returns (uint256) {
         // Given that this function is only used by `onSwap` which can only be called by the vault in the case of a
         // Meta Stable Pool, we can be sure the vault will not forward a call with an invalid `token` param.
-        return _getPriceRate(token == _token0 ? _rateProvider0 : _rateProvider1);
+        if (token == _token0 && _rateProvider0 != IRateProvider(address(0))) {
+            return _getPriceRateCacheValue(_priceRateCache0);
+        } else if (token == _token1 && _rateProvider1 != IRateProvider(address(0))) {
+            return _getPriceRateCacheValue(_priceRateCache1);
+        } else {
+            return FixedPoint.ONE;
+        }
+    }
+
+    function _cachePriceRatesIfNecessary() internal {
+        _cachePriceRate0IfNecessary();
+        _cachePriceRate1IfNecessary();
+    }
+
+    function _cachePriceRate0IfNecessary() private {
+        if (_rateProvider0 != IRateProvider(address(0))) {
+            (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_priceRateCache0);
+            if (block.timestamp > expires) {
+                _priceRateCache0 = _getNewPriceRateCache(_rateProvider0, duration);
+            }
+        }
+    }
+
+    function _cachePriceRate1IfNecessary() private {
+        if (_rateProvider1 != IRateProvider(address(0))) {
+            (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_priceRateCache1);
+            if (block.timestamp > expires) {
+                _priceRateCache1 = _getNewPriceRateCache(_rateProvider1, duration);
+            }
+        }
     }
 
     /**
-     * @dev Same as `_priceRate()`, except for all registered tokens (in the same order as registered).
+     * @dev Decodes a price rate cache into rate value, duration and expiration time
      */
-    function _priceRates() internal view virtual returns (uint256[] memory priceRates) {
-        priceRates = new uint256[](2);
-        priceRates[0] = _getPriceRate(_rateProvider0);
-        priceRates[1] = _getPriceRate(_rateProvider1);
+    function _getPriceRateCache(bytes32 cache)
+        private
+        pure
+        returns (
+            uint256 rate,
+            uint256 duration,
+            uint256 expires
+        )
+    {
+        rate = _getPriceRateCacheValue(cache);
+        (duration, expires) = _getPriceRateCacheTimestamps(cache);
     }
 
-    function _getPriceRate(IRateProvider provider) internal view returns (uint256) {
-        return provider == IRateProvider(address(0)) ? FixedPoint.ONE : provider.getRate();
+    /**
+     * @dev Decodes the rate value for a price rate cache
+     */
+    function _getPriceRateCacheValue(bytes32 cache) private pure returns (uint256) {
+        return cache.decodeUint128(_PRICE_RATE_CACHE_VALUE_OFFSET);
+    }
+
+    /**
+     * @dev Decodes the duration and expiration timestamp for a price rate cache
+     */
+    function _getPriceRateCacheTimestamps(bytes32 cache) private pure returns (uint256 duration, uint256 expires) {
+        duration = cache.decodeUint64(_PRICE_RATE_CACHE_DURATION_OFFSET);
+        expires = cache.decodeUint64(_PRICE_RATE_CACHE_EXPIRES_OFFSET);
+    }
+
+    /**
+     * @dev Fetches the current from a provider and builds a new price rate cache
+     */
+    function _getNewPriceRateCache(IRateProvider provider, uint256 duration) private view returns (bytes32) {
+        uint256 rate = provider.getRate();
+        _require(rate < 2**128, Errors.PRICE_RATE_OVERFLOW);
+
+        return
+            WordCodec.encodeUint(uint128(rate), _PRICE_RATE_CACHE_VALUE_OFFSET) |
+            WordCodec.encodeUint(uint64(duration), _PRICE_RATE_CACHE_DURATION_OFFSET) |
+            WordCodec.encodeUint(uint64(block.timestamp + duration), _PRICE_RATE_CACHE_EXPIRES_OFFSET);
     }
 }

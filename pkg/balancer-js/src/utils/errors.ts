@@ -54,6 +54,7 @@ const balancerErrorCodes: Record<string, string> = {
   '326': 'GRADUAL_UPDATE_TIME_TRAVEL',
   '327': 'SWAPS_DISABLED',
   '328': 'CALLER_IS_NOT_LBP_OWNER',
+  '329': 'PRICE_RATE_OVERFLOW',
   '400': 'REENTRANCY',
   '401': 'SENDER_NOT_ALLOWED',
   '402': 'PAUSED',

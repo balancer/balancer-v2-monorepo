@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn, fp } from '../../numbers';
-import { MONTH } from '../../time';
+import { DAY, MONTH } from '../../time';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 
 import TokenList from '../tokens/TokenList';
@@ -84,6 +84,7 @@ export default {
     let {
       tokens,
       rateProviders,
+      priceRateCacheDuration,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
@@ -94,15 +95,18 @@ export default {
 
     if (!tokens) tokens = new TokenList();
     if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
+    if (!priceRateCacheDuration) priceRateCacheDuration = Array(tokens.length).fill(DAY);
     if (!amplificationParameter) amplificationParameter = bn(200);
     if (!swapFeePercentage) swapFeePercentage = bn(0);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!oracleEnabled) oracleEnabled = true;
     if (!meta) meta = false;
+
     return {
       tokens,
       rateProviders,
+      priceRateCacheDuration,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
