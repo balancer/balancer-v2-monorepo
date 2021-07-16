@@ -87,8 +87,8 @@ contract BatchRelayer {
         uint256 bptAmount = bpt.balanceOf(address(this));
 
         // If necessary, give Vault allowance to take BPT
-        if (bpt.allowance(address(this), address(getVault())) < bptAmount) {
-            bpt.approve(address(getVault()), type(uint256).max);
+        if (bpt.allowance(address(this), address(stakingContract)) < bptAmount) {
+            bpt.approve(address(stakingContract), type(uint256).max);
         }
         
         stakingContract.stake(bpt, bptAmount, recipient);
