@@ -13,8 +13,16 @@ import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import StablePoolDeployer from './StablePoolDeployer';
 import { Account, TxParams } from '../../types/types';
-import { encodeExitStablePool, encodeJoinStablePool } from './encoding';
 import {
+  encodeJoinStablePool,
+  encodeExitStablePool,
+  StablePoolJoinKind,
+  StablePoolExitKind,
+  SwapKind,
+} from '@balancer-labs/balancer-js';
+import {
+  Sample,
+  MiscData,
   JoinExitStablePool,
   InitStablePool,
   JoinGivenInStablePool,
@@ -38,9 +46,10 @@ import {
   calcOutGivenIn,
   calculateOneTokenSwapFeeAmount,
   calcInGivenOut,
+  calculateSpotPrice,
+  calculateBptPrice,
 } from './math';
-
-const SWAP_GIVEN = { IN: 0, OUT: 1 };
+import { Swap } from '../../vault/types';
 
 export enum SWAP_INTERFACE {
   DEFAULT,
@@ -55,6 +64,7 @@ export default class StablePool {
   swapFeePercentage: BigNumberish;
   amplificationParameter: BigNumberish;
   vault: Vault;
+  meta: boolean;
   owner?: SignerWithAddress;
 
   static async create(params: RawStablePoolDeployment = {}): Promise<StablePool> {
@@ -68,6 +78,7 @@ export default class StablePool {
     tokens: TokenList,
     amplificationParameter: BigNumberish,
     swapFeePercentage: BigNumberish,
+    meta: boolean,
     owner?: SignerWithAddress
   ) {
     this.instance = instance;
@@ -76,6 +87,7 @@ export default class StablePool {
     this.tokens = tokens;
     this.amplificationParameter = amplificationParameter;
     this.swapFeePercentage = swapFeePercentage;
+    this.meta = meta;
     this.owner = owner;
   }
 
@@ -115,8 +127,22 @@ export default class StablePool {
     return this.instance.getPoolId();
   }
 
-  async getLastInvariant(): Promise<BigNumber> {
+  async getLastInvariant(): Promise<{ lastInvariant: BigNumber; lastInvariantAmp: BigNumber }> {
     return this.instance.getLastInvariant();
+  }
+
+  async getOracleMiscData(): Promise<MiscData> {
+    if (!this.meta) throw Error('Cannot query misc data for non-meta stable pool');
+    return this.instance.getOracleMiscData();
+  }
+
+  async getOracleSample(oracleIndex?: BigNumberish): Promise<Sample> {
+    if (!oracleIndex) oracleIndex = (await this.getOracleMiscData()).oracleIndex;
+    return this.instance.getSample(oracleIndex);
+  }
+
+  async isOracleEnabled(): Promise<boolean> {
+    return (await this.getOracleMiscData()).oracleEnabled;
   }
 
   async getSwapFeePercentage(): Promise<BigNumber> {
@@ -146,6 +172,12 @@ export default class StablePool {
     return this.instance.getRate();
   }
 
+  async enableOracle(txParams: TxParams): Promise<void> {
+    if (!this.meta) throw Error('Cannot enable oracle for non-meta stable pool');
+    const pool = txParams.from ? this.instance.connect(txParams.from) : this.instance;
+    await pool.enableOracle();
+  }
+
   async startAmpChange(
     newAmp: BigNumberish,
     endTime?: BigNumberish,
@@ -161,6 +193,19 @@ export default class StablePool {
     const sender = txParams.from || this.owner;
     const pool = sender ? this.instance.connect(sender) : this.instance;
     return pool.stopAmplificationParameterUpdate();
+  }
+
+  async estimateSpotPrice(currentBalances?: BigNumberish[]): Promise<BigNumber> {
+    if (!this.meta) throw Error('Spot price estimation is only available for meta stable pools');
+    if (!currentBalances) currentBalances = await this.getBalances();
+    return calculateSpotPrice(this.amplificationParameter, currentBalances);
+  }
+
+  async estimateBptPrice(currentBalances?: BigNumberish[], currentSupply?: BigNumberish): Promise<BigNumber> {
+    if (!this.meta) throw Error('BPT price estimation is only available for meta stable pools');
+    if (!currentBalances) currentBalances = await this.getBalances();
+    if (!currentSupply) currentSupply = await this.totalSupply();
+    return calculateBptPrice(this.amplificationParameter, currentBalances, currentSupply);
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
@@ -259,13 +304,29 @@ export default class StablePool {
   }
 
   async swapGivenIn(params: SwapStablePool, hookInterface = SWAP_INTERFACE.DEFAULT): Promise<BigNumber> {
-    const swapRequest = this._buildSwapRequest(params, SWAP_GIVEN.IN);
-    return this._callSwapHook(swapRequest, params.in, params.out, hookInterface);
+    const swapRequest = this._buildSwapRequest(params, SwapKind.GivenIn);
+    return this.swap(swapRequest, params.in, params.out, hookInterface);
   }
 
   async swapGivenOut(params: SwapStablePool, hookInterface = SWAP_INTERFACE.DEFAULT): Promise<BigNumber> {
-    const swapRequest = this._buildSwapRequest(params, SWAP_GIVEN.OUT);
-    return this._callSwapHook(swapRequest, params.in, params.out, hookInterface);
+    const swapRequest = this._buildSwapRequest(params, SwapKind.GivenOut);
+    return this.swap(swapRequest, params.in, params.out, hookInterface);
+  }
+
+  async swap(params: Swap, tokenIn: number | Token, tokenOut: number | Token, hook: number): Promise<BigNumber> {
+    const [indexIn, indexOut] = this.tokens.indicesOf(tokenIn, tokenOut);
+    const currentBalances = await this.getBalances();
+    const balanceTokenIn = currentBalances[indexIn];
+    const balanceTokenOut = currentBalances[indexOut];
+
+    const tx =
+      (hook == SWAP_INTERFACE.DEFAULT && this.tokens.length == 2) || hook == SWAP_INTERFACE.MINIMAL_SWAP_INFO
+        ? await this.vault.minimalSwap({ ...params, balanceTokenIn, balanceTokenOut })
+        : await this.vault.generalSwap({ ...params, balances: currentBalances, indexIn, indexOut });
+
+    const receipt = await (await tx).wait();
+    const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
+    return amount;
   }
 
   async init(params: InitStablePool): Promise<JoinResult> {
@@ -388,7 +449,7 @@ export default class StablePool {
       recipient: params.recipient,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinStablePool({
-        kind: 'Init',
+        kind: StablePoolJoinKind.INIT,
         amountsIn,
       }),
     };
@@ -401,10 +462,11 @@ export default class StablePool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinStablePool({
-        kind: 'ExactTokensInForBPTOut',
+        kind: StablePoolJoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
         amountsIn,
         minimumBPT: params.minimumBptOut ?? 0,
       }),
@@ -415,10 +477,11 @@ export default class StablePool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinStablePool({
-        kind: 'TokenInForExactBPTOut',
+        kind: StablePoolJoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT,
         bptAmountOut: params.bptOut,
         enterTokenIndex: this.tokens.indexOf(params.token),
       }),
@@ -431,10 +494,11 @@ export default class StablePool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitStablePool({
-        kind: 'BPTInForExactTokensOut',
+        kind: StablePoolExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT,
         amountsOut,
         maxBPTAmountIn: params.maximumBptIn ?? MAX_UINT256,
       }),
@@ -445,10 +509,11 @@ export default class StablePool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitStablePool({
-        kind: 'ExactBPTInForOneTokenOut',
+        kind: StablePoolExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
         bptAmountIn: params.bptIn,
         exitTokenIndex: this.tokens.indexOf(params.token),
       }),
@@ -459,70 +524,29 @@ export default class StablePool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitStablePool({
-        kind: 'ExactBPTInForTokensOut',
+        kind: StablePoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
         bptAmountIn: params.bptIn,
       }),
     };
   }
 
-  private _buildSwapRequest(params: SwapStablePool, kind: number) {
+  private _buildSwapRequest(params: SwapStablePool, kind: SwapKind): Swap {
     return {
       kind,
       poolId: this.poolId,
-      from: params.from ?? ZERO_ADDRESS,
+      poolAddress: this.address,
+      from: params.from,
       to: params.recipient ?? ZERO_ADDRESS,
       tokenIn: params.in < this.tokens.length ? this.tokens.get(params.in)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
       tokenOut: params.out < this.tokens.length ? this.tokens.get(params.out)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
       lastChangeBlock: params.lastChangeBlock ?? 0,
-      userData: params.data ?? '0x',
+      data: params.data ?? '0x',
       amount: params.amount,
     };
-  }
-
-  private async _callSwapHook(
-    swapRequest: unknown,
-    tokenIn: number | Token,
-    tokenOut: number | Token,
-    hookInterface = SWAP_INTERFACE.DEFAULT
-  ): Promise<BigNumber> {
-    const [indexIn, indexOut] = this.tokens.indicesOf(tokenIn, tokenOut);
-    const currentBalances = await this.getBalances();
-
-    if (hookInterface == SWAP_INTERFACE.DEFAULT) {
-      if (this.tokens.length > 2) {
-        return this._callGeneralSwapHook(swapRequest, currentBalances, indexIn, indexOut);
-      } else {
-        return this._callMinimalSwapInfoSwapHook(swapRequest, currentBalances[indexIn], currentBalances[indexOut]);
-      }
-    } else if (hookInterface == SWAP_INTERFACE.MINIMAL_SWAP_INFO) {
-      return this._callMinimalSwapInfoSwapHook(swapRequest, currentBalances[indexIn], currentBalances[indexOut]);
-    } else {
-      return this._callGeneralSwapHook(swapRequest, currentBalances, indexIn, indexOut);
-    }
-  }
-
-  private _callMinimalSwapInfoSwapHook(
-    swapRequest: unknown,
-    currentBalanceTokenIn: BigNumber,
-    currentBalanceTokenOut: BigNumber
-  ): Promise<BigNumber> {
-    return this.instance[
-      'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256,uint256)'
-    ](swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
-  }
-
-  private _callGeneralSwapHook(
-    swapRequest: unknown,
-    currentBalances: BigNumber[],
-    indexIn: number,
-    indexOut: number
-  ): Promise<BigNumber> {
-    return this.instance[
-      'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256[],uint256,uint256)'
-    ](swapRequest, currentBalances, indexIn, indexOut);
   }
 
   async pause(): Promise<void> {

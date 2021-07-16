@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { bn, fp } from '../../numbers';
 import { MONTH } from '../../time';
-import { toNormalizedWeights } from '../pools/weighted/misc';
+import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
@@ -49,7 +49,9 @@ export default {
       pauseWindowDuration,
       bufferPeriodDuration,
       oracleEnabled,
+      swapEnabledOnStart,
       twoTokens,
+      lbp,
     } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
@@ -59,6 +61,8 @@ export default {
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!oracleEnabled) oracleEnabled = true;
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
+    if (!lbp) lbp = false;
+    if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (!twoTokens) twoTokens = false;
     else if (tokens.length !== 2) throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
     return {
@@ -69,24 +73,42 @@ export default {
       pauseWindowDuration,
       bufferPeriodDuration,
       oracleEnabled,
+      swapEnabledOnStart,
       owner: params.owner,
       twoTokens,
+      lbp,
     };
   },
 
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
-    let { tokens, amplificationParameter, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
-    if (!tokens) tokens = new TokenList();
-    if (!amplificationParameter) amplificationParameter = bn(200);
-    if (!swapFeePercentage) swapFeePercentage = bn(0);
-    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
-    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    return {
+    let {
       tokens,
+      rateProviders,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
+      oracleEnabled,
+      meta,
+    } = params;
+
+    if (!tokens) tokens = new TokenList();
+    if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
+    if (!amplificationParameter) amplificationParameter = bn(200);
+    if (!swapFeePercentage) swapFeePercentage = bn(0);
+    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
+    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!oracleEnabled) oracleEnabled = true;
+    if (!meta) meta = false;
+    return {
+      tokens,
+      rateProviders,
+      amplificationParameter,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      oracleEnabled,
+      meta,
       owner: params.owner,
     };
   },

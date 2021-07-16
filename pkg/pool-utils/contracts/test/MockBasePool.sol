@@ -44,6 +44,14 @@ contract MockBasePool is BasePool {
         )
     {}
 
+    function setMiscData(bytes32 data) external {
+        _setMiscData(data);
+    }
+
+    function getMiscData() external view returns (bytes32) {
+        return _getMiscData();
+    }
+
     function _onInitializePool(
         bytes32 poolId,
         address sender,

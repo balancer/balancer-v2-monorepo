@@ -1,16 +1,16 @@
-import { BigNumber, Contract, ContractFunction } from 'ethers';
+import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
 
-import { actionId } from '../../../models/misc/actions';
+import { actionId } from '../../misc/actions';
 import { BigNumberish, bn, fp } from '../../../numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../constants';
 
 import * as expectEvent from '../../../test/expectEvent';
 import Vault from '../../vault/Vault';
-import { Swap } from '../../vault/types';
 import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import WeightedPoolDeployer from './WeightedPoolDeployer';
+import { MinimalSwap } from '../../vault/types';
 import { Account, TxParams } from '../../types/types';
 import {
   JoinExitWeightedPool,
@@ -29,6 +29,7 @@ import {
   PoolQueryResult,
   MiscData,
   Sample,
+  GradualUpdateParams,
 } from './types';
 import {
   calculateInvariant,
@@ -42,9 +43,15 @@ import {
   calculateSpotPrice,
   calculateBPTPrice,
 } from './math';
-import { encodeExitWeightedPool, encodeJoinWeightedPool } from './encoding';
+import {
+  encodeExitWeightedPool,
+  encodeJoinWeightedPool,
+  SwapKind,
+  WeightedPoolExitKind,
+  WeightedPoolJoinKind,
+} from '@balancer-labs/balancer-js';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-const SWAP_GIVEN = { IN: 0, OUT: 1 };
 const MAX_IN_RATIO = fp(0.3);
 const MAX_OUT_RATIO = fp(0.3);
 const MAX_INVARIANT_RATIO = fp(3);
@@ -59,6 +66,8 @@ export default class WeightedPool {
   swapFeePercentage: BigNumberish;
   vault: Vault;
   twoTokens: boolean;
+  lbp: boolean;
+  swapEnabledOnStart: boolean;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
     return WeightedPoolDeployer.deploy(params);
@@ -72,7 +81,9 @@ export default class WeightedPool {
     weights: BigNumberish[],
     assetManagers: string[],
     swapFeePercentage: BigNumberish,
-    twoTokens: boolean
+    twoTokens: boolean,
+    lbp: boolean,
+    swapEnabledOnStart: boolean
   ) {
     this.instance = instance;
     this.poolId = poolId;
@@ -82,6 +93,8 @@ export default class WeightedPool {
     this.assetManagers = assetManagers;
     this.swapFeePercentage = swapFeePercentage;
     this.twoTokens = twoTokens;
+    this.lbp = lbp;
+    this.swapEnabledOnStart = swapEnabledOnStart;
   }
 
   get address(): string {
@@ -174,6 +187,10 @@ export default class WeightedPool {
 
   async getSwapFeePercentage(): Promise<BigNumber> {
     return this.instance.getSwapFeePercentage();
+  }
+
+  async getSwapEnabled(from: SignerWithAddress): Promise<boolean> {
+    return this.instance.connect(from).getSwapEnabled();
   }
 
   async getNormalizedWeights(): Promise<BigNumber[]> {
@@ -322,14 +339,14 @@ export default class WeightedPool {
   }
 
   async swapGivenIn(params: SwapWeightedPool): Promise<BigNumber> {
-    return this.swap(await this._buildSwapParams(SWAP_GIVEN.IN, params));
+    return this.swap(await this._buildSwapParams(SwapKind.GivenIn, params));
   }
 
   async swapGivenOut(params: SwapWeightedPool): Promise<BigNumber> {
-    return this.swap(await this._buildSwapParams(SWAP_GIVEN.OUT, params));
+    return this.swap(await this._buildSwapParams(SwapKind.GivenOut, params));
   }
 
-  async swap(params: Swap): Promise<BigNumber> {
+  async swap(params: MinimalSwap): Promise<BigNumber> {
     const tx = await this.vault.minimalSwap(params);
     const receipt = await (await tx).wait();
     const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
@@ -447,7 +464,7 @@ export default class WeightedPool {
     );
   }
 
-  private async _buildSwapParams(kind: number, params: SwapWeightedPool): Promise<Swap> {
+  private async _buildSwapParams(kind: number, params: SwapWeightedPool): Promise<MinimalSwap> {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
     return {
@@ -475,7 +492,7 @@ export default class WeightedPool {
       recipient: params.recipient,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinWeightedPool({
-        kind: 'Init',
+        kind: WeightedPoolJoinKind.INIT,
         amountsIn,
       }),
     };
@@ -492,7 +509,7 @@ export default class WeightedPool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinWeightedPool({
-        kind: 'ExactTokensInForBPTOut',
+        kind: WeightedPoolJoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
         amountsIn,
         minimumBPT: params.minimumBptOut ?? 0,
       }),
@@ -507,7 +524,7 @@ export default class WeightedPool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinWeightedPool({
-        kind: 'TokenInForExactBPTOut',
+        kind: WeightedPoolJoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT,
         bptAmountOut: params.bptOut,
         enterTokenIndex: this.tokens.indexOf(params.token),
       }),
@@ -524,7 +541,7 @@ export default class WeightedPool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitWeightedPool({
-        kind: 'BPTInForExactTokensOut',
+        kind: WeightedPoolExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT,
         amountsOut,
         maxBPTAmountIn: params.maximumBptIn ?? MAX_UINT256,
       }),
@@ -539,7 +556,7 @@ export default class WeightedPool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitWeightedPool({
-        kind: 'ExactBPTInForOneTokenOut',
+        kind: WeightedPoolExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
         bptAmountIn: params.bptIn,
         exitTokenIndex: this.tokens.indexOf(params.token),
       }),
@@ -554,7 +571,7 @@ export default class WeightedPool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitWeightedPool({
-        kind: 'ExactBPTInForTokensOut',
+        kind: WeightedPoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
         bptAmountIn: params.bptIn,
       }),
     };
@@ -569,5 +586,25 @@ export default class WeightedPool {
   async enableOracle(txParams: TxParams): Promise<void> {
     const pool = txParams.from ? this.instance.connect(txParams.from) : this.instance;
     await pool.enableOracle();
+  }
+
+  async setSwapEnabled(from: SignerWithAddress, swapEnabled: boolean): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.setSwapEnabled(swapEnabled);
+  }
+
+  async updateWeightsGradually(
+    from: SignerWithAddress,
+    startTime: BigNumberish,
+    endTime: BigNumberish,
+    endWeights: BigNumberish[]
+  ): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return await pool.updateWeightsGradually(startTime, endTime, endWeights);
+  }
+
+  async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualUpdateParams> {
+    const pool = from ? this.instance.connect(from) : this.instance;
+    return await pool.getGradualWeightUpdateParams();
   }
 }

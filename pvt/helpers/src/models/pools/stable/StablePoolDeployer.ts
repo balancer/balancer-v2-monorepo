@@ -8,6 +8,7 @@ import StablePool from './StablePool';
 import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
 import { RawStablePoolDeployment, StablePoolDeployment } from './types';
+import { ZERO_ADDRESS } from '../../../constants';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -18,9 +19,9 @@ export default {
     const vault = await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
-    const { owner, tokens, amplificationParameter, swapFeePercentage } = deployment;
+    const { owner, tokens, amplificationParameter, swapFeePercentage, meta } = deployment;
     const poolId = await pool.getPoolId();
-    return new StablePool(pool, poolId, vault, tokens, amplificationParameter, swapFeePercentage, owner);
+    return new StablePool(pool, poolId, vault, tokens, amplificationParameter, swapFeePercentage, meta, owner);
   },
 
   async _deployStandalone(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
@@ -30,24 +31,44 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      owner,
+      oracleEnabled,
       from,
     } = params;
 
-    return deploy('v2-pool-stable/StablePool', {
-      args: [
-        vault.address,
-        NAME,
-        SYMBOL,
-        tokens.addresses,
-        amplificationParameter,
-        swapFeePercentage,
-        pauseWindowDuration,
-        bufferPeriodDuration,
-        TypesConverter.toAddress(owner),
-      ],
-      from,
-    });
+    const owner = TypesConverter.toAddress(params.owner);
+    const rateProviders = params.rateProviders || Array(tokens.length).fill(ZERO_ADDRESS);
+
+    return params.meta
+      ? deploy('v2-pool-stable/MockMetaStablePool', {
+          args: [
+            vault.address,
+            NAME,
+            SYMBOL,
+            tokens.addresses,
+            rateProviders.map(TypesConverter.toAddress),
+            amplificationParameter,
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            oracleEnabled,
+            owner,
+          ],
+          from,
+        })
+      : deploy('v2-pool-stable/StablePool', {
+          args: [
+            vault.address,
+            NAME,
+            SYMBOL,
+            tokens.addresses,
+            amplificationParameter,
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner,
+          ],
+          from,
+        });
   },
 
   async _deployFromFactory(params: StablePoolDeployment, vault: Vault): Promise<Contract> {

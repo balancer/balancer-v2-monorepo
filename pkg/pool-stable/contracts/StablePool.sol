@@ -21,11 +21,12 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
 
 import "./StableMath.sol";
 import "./StablePoolUserDataHelpers.sol";
 
-contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
+contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRateProvider {
     using FixedPoint for uint256;
     using StablePoolUserDataHelpers for bytes;
     using WordCodec for bytes32;
@@ -49,11 +50,12 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
 
     // To track how many tokens are owed to the Vault as protocol fees, we measure and store the value of the invariant
     // after every join and exit. All invariant growth that happens between join and exit events is due to swap fees.
-    uint256 private _lastInvariant;
+    uint256 internal _lastInvariant;
+
     // Because the invariant depends on the amplification parameter, and this value may change over time, we should only
     // compare invariants that were computed using the same value. We therefore store it whenever we store
     // _lastInvariant.
-    uint256 private _lastInvariantAmp;
+    uint256 internal _lastInvariantAmp;
 
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
@@ -94,6 +96,11 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         _setAmplificationData(initialAmp);
     }
 
+    function getLastInvariant() external view returns (uint256 lastInvariant, uint256 lastInvariantAmp) {
+        lastInvariant = _lastInvariant;
+        lastInvariantAmp = _lastInvariantAmp;
+    }
+
     // Base Pool handlers
 
     // Swap - General Pool specialization (from BaseGeneralPool)
@@ -103,7 +110,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override whenNotPaused returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 amountOut = StableMath._calcOutGivenIn(currentAmp, balances, indexIn, indexOut, swapRequest.amount);
         return amountOut;
@@ -114,7 +121,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override whenNotPaused returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 amountIn = StableMath._calcInGivenOut(currentAmp, balances, indexIn, indexOut, swapRequest.amount);
         return amountIn;
@@ -126,7 +133,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         SwapRequest memory swapRequest,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) internal view virtual override returns (uint256) {
+    ) internal virtual override returns (uint256) {
         _require(_getTotalTokens() == 2, Errors.NOT_TWO_TOKENS);
 
         (uint256[] memory balances, uint256 indexIn, uint256 indexOut) = _getSwapBalanceArrays(
@@ -142,7 +149,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         SwapRequest memory swapRequest,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) internal view virtual override returns (uint256) {
+    ) internal virtual override returns (uint256) {
         _require(_getTotalTokens() == 2, Errors.NOT_TWO_TOKENS);
 
         (uint256[] memory balances, uint256 indexIn, uint256 indexOut) = _getSwapBalanceArrays(
@@ -284,7 +291,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
             balances,
             amountsIn,
             totalSupply(),
-            _swapFeePercentage
+            getSwapFeePercentage()
         );
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
@@ -310,7 +317,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
             tokenIndex,
             bptAmountOut,
             totalSupply(),
-            _swapFeePercentage
+            getSwapFeePercentage()
         );
 
         return (bptAmountOut, amountsIn);
@@ -404,7 +411,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
             tokenIndex,
             bptAmountIn,
             totalSupply(),
-            _swapFeePercentage
+            getSwapFeePercentage()
         );
 
         return (bptAmountIn, amountsOut);
@@ -444,7 +451,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
             balances,
             amountsOut,
             totalSupply(),
-            _swapFeePercentage
+            getSwapFeePercentage()
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
@@ -550,7 +557,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
      * @dev This function returns the appreciation of one BPT relative to the
      * underlying tokens. This starts at 1 when the pool is created and grows over time
      */
-    function getRate() public view returns (uint256) {
+    function getRate() public view override returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
 
         // When calculating the current BPT rate, we may not have paid the protocol fees, therefore

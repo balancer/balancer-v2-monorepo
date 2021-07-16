@@ -9,7 +9,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import { toNormalizedWeights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/misc';
+import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 
 describe('LiquidityBootstrappingPoolFactory', function () {
   let tokens: TokenList;
@@ -35,9 +35,17 @@ describe('LiquidityBootstrappingPoolFactory', function () {
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
 
-  async function createPool(): Promise<Contract> {
+  async function createPool(swapsEnabled = true): Promise<Contract> {
     const receipt = await (
-      await factory.create(NAME, SYMBOL, tokens.addresses, WEIGHTS, POOL_SWAP_FEE_PERCENTAGE, ZERO_ADDRESS)
+      await factory.create(
+        NAME,
+        SYMBOL,
+        tokens.addresses,
+        WEIGHTS,
+        POOL_SWAP_FEE_PERCENTAGE,
+        ZERO_ADDRESS,
+        swapsEnabled
+      )
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -84,6 +92,17 @@ describe('LiquidityBootstrappingPoolFactory', function () {
         const info = await vault.getPoolTokenInfo(poolId, token);
         expect(info.assetManager).to.equal(ZERO_ADDRESS);
       });
+    });
+
+    it('creates it with swaps enabled', async () => {
+      const pool = await createPool();
+
+      expect(await pool.getSwapEnabled()).to.be.true;
+    });
+    it('creates it with swaps disabled', async () => {
+      const pool = await createPool(false);
+
+      expect(await pool.getSwapEnabled()).to.be.false;
     });
   });
 });

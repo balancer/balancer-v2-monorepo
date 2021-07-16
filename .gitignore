@@ -17,3 +17,9 @@ node_modules/
 # Hardhat artifacts
 artifacts/
 cache/
+
+# Build artifacts
+dist/
+
+# typechain artifacts
+typechain/

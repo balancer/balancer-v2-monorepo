@@ -11,7 +11,7 @@
     "measure-join-exit": "hardhat run joinExit.ts",
     "benchmark": "yarn measure-deployment && yarn measure-single-pair && yarn measure-multihop && yarn measure-join-exit",
     "lint": "yarn lint:typescript",
-    "lint:typescript": "eslint . --ext .ts"
+    "lint:typescript": "eslint . --ext .ts --max-warnings 0"
   },
   "devDependencies": {
     "@balancer-labs/v2-asset-manager-utils": "workspace:*",
@@ -29,8 +29,8 @@
     "eslint": "^7.9.0",
     "eslint-plugin-mocha-no-only": "^1.1.1",
     "eslint-plugin-prettier": "^3.1.4",
-    "ethers": "^5.0.18",
-    "hardhat": "^2.2.0",
+    "ethers": "^5.4.1",
+    "hardhat": "^2.4.1",
     "lodash.frompairs": "^4.0.1",
     "lodash.pick": "^4.4.0",
     "lodash.range": "^3.2.0",

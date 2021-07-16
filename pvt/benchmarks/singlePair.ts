@@ -5,8 +5,9 @@ import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { FundManagement, getTokensSwaps, SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
+import { getTokensSwaps } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
 import { getWeightedPool, getStablePool, printGas, setupEnvironment, tokenSymbols } from './misc';
+import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 
 let vault: Contract;
 let tokens: TokenList;
@@ -103,7 +104,7 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
       vault
         .connect(trader)
         .batchSwap(
-          SWAP_KIND.GIVEN_IN,
+          SwapKind.GivenIn,
           swaps,
           tokenAddresses,
           funds,

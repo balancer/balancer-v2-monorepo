@@ -1,10 +1,10 @@
+import { range } from 'lodash';
 import { Contract } from 'ethers';
 
-import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { toNormalizedWeights } from '@balancer-labs/balancer-js';
+import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
-import { range } from 'lodash';
-import { toNormalizedWeights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/misc';
 import { calculateBPTPrice, calculateSpotPrice } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 
 const MAX_RELATIVE_ERROR = 0.00005; // 0.05%, or ~e^0.00005
@@ -20,28 +20,27 @@ describe('WeighteOracledMath', function () {
     return [0.4, 1.2, 2.9, 3.3, 4.8, 5.3, 6.1, 7.4, 8.5, 9.4].map((x) => bn(x * 10 ** power));
   }
 
-  describe('low resolution logarithm', () => {
-    function itRecoversOriginalValueWithError(minPower: number, maxPower: number, maxRelativeError: number) {
-      for (const power of range(minPower, maxPower)) {
-        it(`encodes and decodes powers of ${power}`, async () => {
-          for (const original of valuesInMagnitude(power)) {
-            const actual = await mock.fromLowResLog(await mock.toLowResLog(original));
-            expectEqualWithError(actual, original, maxRelativeError);
-          }
-        });
-      }
-    }
-
-    context('small values', () => {
-      itRecoversOriginalValueWithError(1, 5, 0.1); // Smaller values have larger error due to a lack of resolution
-    });
-
-    context('medium and large values', () => {
-      itRecoversOriginalValueWithError(5, 35, MAX_RELATIVE_ERROR);
-    });
-  });
-
   describe('spot price', () => {
+    context('with equal weights', () => {
+      const weights = toNormalizedWeights([bn(50), bn(50)]);
+      itComputesLogSpotPriceWithError(weights);
+    });
+
+    context('with different weights', () => {
+      const weights = toNormalizedWeights([bn(30), bn(70)]);
+      itComputesLogSpotPriceWithError(weights);
+    });
+
+    context('with extreme weights', () => {
+      const weights = toNormalizedWeights([bn(1), bn(99)]);
+      itComputesLogSpotPriceWithError(weights);
+    });
+
+    context('with partial weights', () => {
+      const weights = toNormalizedWeights([bn(25), bn(50), bn(25)]).slice(0, 2);
+      itComputesLogSpotPriceWithError(weights);
+    });
+
     function itComputesLogSpotPriceWithError(normWeights: BigNumberish[]) {
       const minPower = 18;
       const maxPower = 23;
@@ -65,26 +64,6 @@ describe('WeighteOracledMath', function () {
         });
       }
     }
-
-    context('with equal weights', () => {
-      const weights = toNormalizedWeights([bn(50), bn(50)]);
-      itComputesLogSpotPriceWithError(weights);
-    });
-
-    context('with different weights', () => {
-      const weights = toNormalizedWeights([bn(30), bn(70)]);
-      itComputesLogSpotPriceWithError(weights);
-    });
-
-    context('with extreme weights', () => {
-      const weights = toNormalizedWeights([bn(1), bn(99)]);
-      itComputesLogSpotPriceWithError(weights);
-    });
-
-    context('with partial weights', () => {
-      const weights = toNormalizedWeights([bn(25), bn(50), bn(25)]).slice(0, 2);
-      itComputesLogSpotPriceWithError(weights);
-    });
   });
 
   describe('BPT price', () => {

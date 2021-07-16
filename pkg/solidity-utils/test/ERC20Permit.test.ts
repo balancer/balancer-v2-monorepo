@@ -5,8 +5,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { MAX_UINT256 as MAX_DEADLINE } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_DEADLINE, signPermit } from '@balancer-labs/v2-helpers/src/models/misc/signatures';
+import { signPermit } from '@balancer-labs/balancer-js';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 
 describe('ERC20Permit', () => {
@@ -83,10 +84,9 @@ describe('ERC20Permit', () => {
 
       context('with signature for other token', () => {
         beforeEach(async () => {
-          const currentNonce = await token.nonces(holder.address);
           const otherToken = await deploy('ERC20PermitMock', { args: ['Token', 'TKN'] });
 
-          ({ v, r, s, deadline } = await signPermit(otherToken, holder, spender, amount, currentNonce));
+          ({ v, r, s, deadline } = await signPermit(otherToken, holder, spender, amount));
         });
 
         itRevertsWithInvalidSignature();
@@ -95,7 +95,7 @@ describe('ERC20Permit', () => {
       context('with signature with invalid nonce', () => {
         beforeEach(async () => {
           const currentNonce = await token.nonces(holder.address);
-          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount, currentNonce.add(1)));
+          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount, MAX_DEADLINE, currentNonce.add(1)));
         });
 
         itRevertsWithInvalidSignature();
@@ -103,10 +103,9 @@ describe('ERC20Permit', () => {
 
       context('with expired deadline', () => {
         beforeEach(async () => {
-          const nonce = await token.nonces(holder.address);
           const now = await currentTimestamp();
 
-          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount, nonce, now.sub(1)));
+          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount, now.sub(1)));
         });
 
         itRevertsWithInvalidSignature('EXPIRED_PERMIT');

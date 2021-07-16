@@ -15,11 +15,13 @@ export type RawWeightedPoolDeployment = {
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   oracleEnabled?: boolean;
+  swapEnabledOnStart?: boolean;
   owner?: SignerWithAddress;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   fromFactory?: boolean;
   twoTokens?: boolean;
+  lbp?: boolean;
 };
 
 export type WeightedPoolDeployment = {
@@ -30,7 +32,9 @@ export type WeightedPoolDeployment = {
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
   twoTokens: boolean;
+  lbp: boolean;
   oracleEnabled: boolean;
+  swapEnabledOnStart: boolean;
   owner?: SignerWithAddress;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -151,3 +155,9 @@ export type Sample = {
 };
 
 export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
+
+export type GradualUpdateParams = {
+  startTime: BigNumber;
+  endTime: BigNumber;
+  endWeights: BigNumber[];
+};

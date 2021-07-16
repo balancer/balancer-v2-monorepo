@@ -18,9 +18,20 @@ export default {
     const vault = await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
-    const { tokens, weights, assetManagers, swapFeePercentage, twoTokens } = deployment;
+    const { tokens, weights, assetManagers, swapFeePercentage, twoTokens, lbp, swapEnabledOnStart } = deployment;
     const poolId = await pool.getPoolId();
-    return new WeightedPool(pool, poolId, vault, tokens, weights, assetManagers, swapFeePercentage, twoTokens);
+    return new WeightedPool(
+      pool,
+      poolId,
+      vault,
+      tokens,
+      weights,
+      assetManagers,
+      swapFeePercentage,
+      twoTokens,
+      lbp,
+      swapEnabledOnStart
+    );
   },
 
   async _deployStandalone(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
@@ -32,11 +43,12 @@ export default {
       pauseWindowDuration,
       bufferPeriodDuration,
       oracleEnabled,
+      swapEnabledOnStart,
       owner,
       from,
     } = params;
     return params.twoTokens
-      ? deploy('v2-pool-weighted/WeightedPool2TokensMock', {
+      ? deploy('v2-pool-weighted/MockWeightedPool2Tokens', {
           args: [
             {
               vault: vault.address,
@@ -52,6 +64,22 @@ export default {
               oracleEnabled: oracleEnabled,
               owner: TypesConverter.toAddress(owner),
             },
+          ],
+          from,
+        })
+      : params.lbp
+      ? deploy('v2-pool-weighted/LiquidityBootstrappingPool', {
+          args: [
+            vault.address,
+            NAME,
+            SYMBOL,
+            tokens.addresses,
+            weights,
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            TypesConverter.toAddress(owner),
+            swapEnabledOnStart,
           ],
           from,
         })
@@ -73,7 +101,16 @@ export default {
   },
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, weights, assetManagers, swapFeePercentage, oracleEnabled, owner, from } = params;
+    const {
+      tokens,
+      weights,
+      assetManagers,
+      swapFeePercentage,
+      oracleEnabled,
+      swapEnabledOnStart,
+      owner,
+      from,
+    } = params;
 
     if (params.twoTokens) {
       const factory = await deploy('v2-pool-weighted/WeightedPool2TokensFactory', { args: [vault.address], from });
@@ -89,6 +126,23 @@ export default {
       const receipt = await tx.wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
       return deployedAt('v2-pool-weighted/WeightedPool2Tokens', event.args.pool);
+    } else if (params.lbp) {
+      const factory = await deploy('v2-pool-weighted/LiquidityBootstrappingPoolFactory', {
+        args: [vault.address],
+        from,
+      });
+      const tx = await factory.create(
+        NAME,
+        SYMBOL,
+        tokens.addresses,
+        weights,
+        swapFeePercentage,
+        TypesConverter.toAddress(owner),
+        swapEnabledOnStart
+      );
+      const receipt = await tx.wait();
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      return deployedAt('v2-pool-weighted/LiquidityBootstrappingPool', event.args.pool);
     } else {
       const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address], from });
       const tx = await factory.create(
