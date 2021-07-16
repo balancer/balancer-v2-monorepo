@@ -87,7 +87,7 @@ contract RebalancingRelayer is BaseRelayer, IBasePoolRelayer, AssetHelpers {
         uint256[] memory minCashBalances
     ) internal {
         for (uint256 i = 0; i < tokens.length; i++) {
-            (uint256 cash, , , address assetManager) = vault.getPoolTokenInfo(poolId, tokens[i]);
+            (uint256 cash, , , address assetManager) = getVault().getPoolTokenInfo(poolId, tokens[i]);
             uint256 cashNeeded = minCashBalances[i];
             if (assetManager != address(0) && cash < cashNeeded) {
                 // Withdraw the managed balance back to the pool to ensure that the cash covers the withdrawal
