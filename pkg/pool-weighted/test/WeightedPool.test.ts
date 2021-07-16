@@ -10,28 +10,7 @@ describe('WeightedPool', function () {
   let allTokens: TokenList;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-  const WEIGHTS = [
-    fp(0.01),
-    fp(0.02),
-    fp(0.03),
-    fp(0.04),
-    fp(0.05),
-    fp(0.06),
-    fp(0.07),
-    fp(0.08),
-    fp(0.09),
-    fp(0.1),
-    fp(0.11),
-    fp(0.12),
-    fp(0.03),
-    fp(0.04),
-    fp(0.05),
-    fp(0.06),
-    fp(0.01),
-    fp(0.01),
-    fp(0.01),
-    fp(0.01),
-  ];
+  const WEIGHTS = range(1000, 1020); // These will be normalized to weights that are close to each other, but different
 
   sharedBeforeEach('deploy tokens', async () => {
     allTokens = await TokenList.create(20, { sorted: true, varyDecimals: true });
