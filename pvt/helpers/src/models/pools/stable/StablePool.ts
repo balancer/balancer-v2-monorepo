@@ -13,7 +13,7 @@ import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import StablePoolDeployer from './StablePoolDeployer';
 import { Account, TxParams } from '../../types/types';
-import { StablePoolJoinKind, SwapKind, StablePoolEncoder } from '@balancer-labs/balancer-js';
+import { SwapKind, StablePoolEncoder } from '@balancer-labs/balancer-js';
 import {
   Sample,
   MiscData,
