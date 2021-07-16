@@ -9,19 +9,23 @@ import { range } from 'lodash';
 describe('WeightedPool', function () {
   let allTokens: TokenList;
 
+  const MAX_TOKENS = 20;
+
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-  const WEIGHTS = range(1000, 1020); // These will be normalized to weights that are close to each other, but different
+  const WEIGHTS = range(1000, 1000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
 
   sharedBeforeEach('deploy tokens', async () => {
-    allTokens = await TokenList.create(20, { sorted: true, varyDecimals: true });
+    allTokens = await TokenList.create(MAX_TOKENS, { sorted: true, varyDecimals: true });
   });
 
-  for (const numTokens of range(2, 21)) {
+  for (const numTokens of range(2, MAX_TOKENS + 1)) {
     context(`with ${numTokens} tokens`, () => {
       let pool: WeightedPool;
+      let tokens: TokenList;
 
       sharedBeforeEach('deploy pool', async () => {
-        const tokens = allTokens.subset(numTokens);
+        tokens = allTokens.subset(numTokens);
+
         pool = await WeightedPool.create({
           tokens,
           weights: WEIGHTS.slice(0, numTokens),
@@ -37,7 +41,7 @@ describe('WeightedPool', function () {
 
       it('sets scaling factors', async () => {
         const poolScalingFactors = await pool.getScalingFactors();
-        const tokenScalingFactors = allTokens.subset(numTokens).map((token) => fp(10 ** (18 - token.decimals)));
+        const tokenScalingFactors = tokens.map((token) => fp(10 ** (18 - token.decimals)));
 
         expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
       });
