@@ -95,6 +95,23 @@ describe('RebalancingRelayer', function () {
             await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
           });
 
+          it('updates the vault with any unrealized gains', async () => {
+            // Simulate a return by minting new tokens to the asset manager
+            const unrealizedReturn = 1000;
+            await tokens.first.mint(assetManagers[0], unrealizedReturn);
+
+            // Add this return to the balances which the Vault knows about
+            const { balances } = await vault.getPoolTokens(poolId);
+            const expectedBalances = [balances[0].add(unrealizedReturn), ...balances.slice(1)];
+
+            const receipt = await relayer.connect(sender).joinPool(poolId, recipient.address, request);
+
+            expectEvent.inIndirectReceipt(await receipt.wait(), pool.interface, 'Join', {
+              poolId,
+              balances: expectedBalances,
+            });
+          });
+
           it('joins the pool', async () => {
             const previousSenderBalance = await pool.balanceOf(sender.address);
             const previousRecipientBalance = await pool.balanceOf(recipient.address);
@@ -232,6 +249,25 @@ describe('RebalancingRelayer', function () {
           });
 
           function itExitsCorrectly() {
+            it('updates the vault with any unrealized gains', async () => {
+              // Simulate a return by minting new tokens to the asset manager
+              const unrealizedReturn = 1000;
+              await tokens.first.mint(assetManagers[0], unrealizedReturn);
+
+              // Add this return to the balances which the Vault knows about
+              const { balances } = await vault.getPoolTokens(poolId);
+              const expectedBalances = [balances[0].add(unrealizedReturn), ...balances.slice(1)];
+
+              const receipt = await relayer
+                .connect(sender)
+                .exitPool(poolId, recipient.address, exitRequest, tokenIncrements);
+
+              expectEvent.inIndirectReceipt(await receipt.wait(), pool.interface, 'Exit', {
+                poolId,
+                balances: expectedBalances,
+              });
+            });
+
             it('exits the pool', async () => {
               const previousSenderBalance = await pool.balanceOf(sender.address);
               const previousRelayerBalance = await pool.balanceOf(relayer.address);
@@ -275,10 +311,10 @@ describe('RebalancingRelayer', function () {
 
           context('when pool does not have enough cash to process exit', () => {
             sharedBeforeEach('invest funds', async () => {
-              // Config invests 95% of the pool's funds to ensure lack of cash
+              // Config invests 100% of the pool's funds to ensure lack of cash
               const investmentConfig = {
-                targetPercentage: fp(0.95),
-                upperCriticalPercentage: fp(0.95),
+                targetPercentage: fp(1),
+                upperCriticalPercentage: fp(1),
                 lowerCriticalPercentage: fp(0),
               };
               await pool

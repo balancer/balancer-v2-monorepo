@@ -23,9 +23,9 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
 
     uint256 private immutable _totalTokens;
 
-    event Join(bytes32 poolId, address sender, address recipient, bytes userData);
+    event Join(bytes32 poolId, address sender, address recipient, bytes userData, uint256[] balances);
 
-    event Exit(bytes32 poolId, address sender, address recipient, bytes userData);
+    event Exit(bytes32 poolId, address sender, address recipient, bytes userData, uint256[] balances);
 
     constructor(
         IVault vault,
@@ -66,7 +66,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public override(BasePool, RelayedBasePool) returns (uint256[] memory, uint256[] memory) {
-        emit Join(poolId, sender, recipient, userData);
+        emit Join(poolId, sender, recipient, userData, balances);
         return
             RelayedBasePool.onJoinPool(
                 poolId,
@@ -88,7 +88,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public override(BasePool, RelayedBasePool) returns (uint256[] memory, uint256[] memory) {
-        emit Exit(poolId, sender, recipient, userData);
+        emit Exit(poolId, sender, recipient, userData, balances);
         return
             RelayedBasePool.onExitPool(
                 poolId,

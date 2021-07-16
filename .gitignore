@@ -20,3 +20,6 @@ cache/
 
 # Build artifacts
 dist/
+
+# typechain artifacts
+typechain/
