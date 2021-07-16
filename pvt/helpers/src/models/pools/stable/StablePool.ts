@@ -153,6 +153,10 @@ export default class StablePool {
     return this.instance.getAmplificationParameter();
   }
 
+  async getScalingFactors(): Promise<BigNumber[]> {
+    return this.instance.getScalingFactors();
+  }
+
   async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
     return this.vault.getPoolTokens(this.poolId);
   }

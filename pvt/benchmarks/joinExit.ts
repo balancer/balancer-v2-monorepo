@@ -19,7 +19,7 @@ import {
 import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
 // setup environment
-const BPTAmount = bn(5e18);
+const BPTAmount = bn(1e18);
 const numberJoinsExits = 3;
 
 let vault: Contract;
@@ -60,8 +60,8 @@ async function main() {
     bptAmountIn: BPTAmount,
   });
 
-  // numTokens is the size of the pool: 2,4,6,8
-  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+  // numTokens is the size of the pool: 2,4,6,8,...
+  for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
@@ -89,8 +89,8 @@ async function main() {
 
   console.log(`#With user balance\n`);
 
-  // numTokens is the size of the pool: 2,4,6,8
-  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+  // numTokens is the size of the pool: 2,4,6,8,...
+  for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
@@ -120,7 +120,7 @@ async function main() {
 
   console.log(`\n#Transferring tokens\n`);
 
-  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+  for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
@@ -148,7 +148,7 @@ async function main() {
 
   console.log(`#With user balance\n`);
 
-  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+  for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),

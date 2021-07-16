@@ -31,6 +31,11 @@ async function main() {
   await singlePair(() => getWeightedPool(vault, tokens, 4), false);
   await singlePair(() => getWeightedPool(vault, tokens, 4), true);
 
+  console.log(`\n# Weighted Pools with 20 tokens`);
+
+  await singlePair(() => getWeightedPool(vault, tokens, 20), false);
+  await singlePair(() => getWeightedPool(vault, tokens, 20), true);
+
   console.log(`\n# Stable Pools with 2 tokens`);
 
   await singlePair(() => getStablePool(vault, tokens, 2), false);
