@@ -13,13 +13,12 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 /**
  * @dev This module provides an interface to store seemingly unrelated pieces of information, in particular used by
- * Weighted Pools of 2 tokens with a price oracle.
+ * pools with a price oracle.
  *
  * These pieces of information are all kept together in a single storage slot to reduce the number of storage reads. In
  * particular, we not only store configuration values (such as the swap fee percentage), but also cache

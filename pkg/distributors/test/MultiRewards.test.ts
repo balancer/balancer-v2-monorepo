@@ -12,8 +12,7 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { signPermit } from '@balancer-labs/v2-helpers/src/models/misc/signatures';
-import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
+import { encodeJoinWeightedPool, signPermit, WeightedPoolJoinKind } from '@balancer-labs/balancer-js';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 
 import { setup, tokenInitialBalance, rewardTokenInitialBalance, rewardsDuration } from './MultiRewardsSharedSetup';
@@ -62,6 +61,16 @@ describe('Staking contract', () => {
         false
       );
     });
+  });
+
+  it('reverts if a rewarder attempts to notifyRewardAmount before adding a reward', async () => {
+    await stakingContract
+      .connect(mockAssetManager)
+      .allowlistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
+
+    await expect(
+      stakingContract.connect(mockAssetManager).notifyRewardAmount(pool.address, rewardToken.address, fp(100))
+    ).to.be.revertedWith('Reward must be configured with addReward');
   });
 
   describe('addReward', () => {
@@ -298,7 +307,7 @@ describe('Staking contract', () => {
         maxAmountsIn: Array(assets.length).fill(MAX_UINT256),
         fromInternalBalance: false,
         userData: encodeJoinWeightedPool({
-          kind: 'Init',
+          kind: WeightedPoolJoinKind.INIT,
           amountsIn: Array(assets.length).fill(tokenInitialBalance),
         }),
       });

@@ -31,8 +31,8 @@ import "@balancer-labs/v2-pool-utils/contracts/oracle/Buffer.sol";
 
 import "./WeightedMath.sol";
 import "./WeightedOracleMath.sol";
-import "./WeightedPool2TokensMiscData.sol";
 import "./WeightedPoolUserDataHelpers.sol";
+import "./WeightedPool2TokensMiscData.sol";
 
 contract WeightedPool2Tokens is
     IMinimalSwapInfoPool,

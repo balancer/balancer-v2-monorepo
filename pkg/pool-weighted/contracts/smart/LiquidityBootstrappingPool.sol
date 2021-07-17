@@ -38,6 +38,22 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
     // State variables
 
+    uint256 private immutable _totalTokens;
+
+    IERC20 internal immutable _token0;
+    IERC20 internal immutable _token1;
+    IERC20 internal immutable _token2;
+    IERC20 internal immutable _token3;
+
+    // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
+    // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
+    // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
+
+    uint256 internal immutable _scalingFactor0;
+    uint256 internal immutable _scalingFactor1;
+    uint256 internal immutable _scalingFactor2;
+    uint256 internal immutable _scalingFactor3;
+
     // All swaps fail while this is false
     bool private _swapEnabled;
 
@@ -91,9 +107,20 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         )
     {
         uint256 totalTokens = tokens.length;
-
-        _require(totalTokens <= _MAX_LBP_TOKENS, Errors.MAX_TOKENS);
         InputHelpers.ensureInputLengthMatch(totalTokens, normalizedWeights.length);
+
+        _totalTokens = totalTokens;
+
+        // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
+        _token0 = tokens[0];
+        _token1 = tokens[1];
+        _token2 = totalTokens > 2 ? tokens[2] : IERC20(0);
+        _token3 = totalTokens > 3 ? tokens[3] : IERC20(0);
+
+        _scalingFactor0 = _computeScalingFactor(tokens[0]);
+        _scalingFactor1 = _computeScalingFactor(tokens[1]);
+        _scalingFactor2 = totalTokens > 2 ? _computeScalingFactor(tokens[2]) : 0;
+        _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(tokens[3]) : 0;
 
         uint256 currentTime = block.timestamp;
 
@@ -366,7 +393,6 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        // If we are initializing, start/end times are already 0
         newPoolState = newPoolState.insertUint32(startTime, _START_TIME_OFFSET);
         newPoolState = newPoolState.insertUint32(endTime, _END_TIME_OFFSET);
 
@@ -396,5 +422,39 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         _swapEnabled = swapEnabled;
 
         emit SwapEnabledSet(swapEnabled);
+    }
+
+    function _getMaxTokens() internal pure override returns (uint256) {
+        return _MAX_LBP_TOKENS;
+    }
+
+    function _getTotalTokens() internal view virtual override returns (uint256) {
+        return _totalTokens;
+    }
+
+    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
+        // prettier-ignore
+        if (token == _token0) { return _scalingFactor0; }
+        else if (token == _token1) { return _scalingFactor1; }
+        else if (token == _token2) { return _scalingFactor2; }
+        else if (token == _token3) { return _scalingFactor3; }
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+    }
+
+    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
+        uint256 totalTokens = _getTotalTokens();
+        uint256[] memory scalingFactors = new uint256[](totalTokens);
+
+        // prettier-ignore
+        {
+            if (totalTokens > 0) { scalingFactors[0] = _scalingFactor0; } else { return scalingFactors; }
+            if (totalTokens > 1) { scalingFactors[1] = _scalingFactor1; } else { return scalingFactors; }
+            if (totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
+            if (totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
+        }
+
+        return scalingFactors;
     }
 }

@@ -1,8 +1,8 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn, fp } from '../../numbers';
-import { MONTH } from '../../time';
-import { toNormalizedWeights } from '../pools/weighted/misc';
+import { DAY, MONTH } from '../../time';
+import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
@@ -81,18 +81,38 @@ export default {
   },
 
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
-    let { tokens, amplificationParameter, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
-    if (!tokens) tokens = new TokenList();
-    if (!amplificationParameter) amplificationParameter = bn(200);
-    if (!swapFeePercentage) swapFeePercentage = bn(0);
-    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
-    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    return {
+    let {
       tokens,
+      rateProviders,
+      priceRateCacheDuration,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
+      oracleEnabled,
+      meta,
+    } = params;
+
+    if (!tokens) tokens = new TokenList();
+    if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
+    if (!priceRateCacheDuration) priceRateCacheDuration = Array(tokens.length).fill(DAY);
+    if (!amplificationParameter) amplificationParameter = bn(200);
+    if (!swapFeePercentage) swapFeePercentage = bn(0);
+    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
+    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!oracleEnabled) oracleEnabled = true;
+    if (!meta) meta = false;
+
+    return {
+      tokens,
+      rateProviders,
+      priceRateCacheDuration,
+      amplificationParameter,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      oracleEnabled,
+      meta,
       owner: params.owner,
     };
   },
@@ -104,13 +124,17 @@ export default {
    * @param from A default signer can be specified as the deployer address of the entire list, otherwise a single
    * signer per token can be defined.
    */
-  toTokenDeployments(params: RawTokensDeployment, from?: SignerWithAddress): TokenDeployment[] {
+  toTokenDeployments(params: RawTokensDeployment, from?: SignerWithAddress, varyDecimals = false): TokenDeployment[] {
     params = typeof params === 'number' ? Array(params).fill({}) : params;
     if (!Array.isArray(params)) params = [params];
 
     return params.map((param, i) => {
       if (typeof param === 'string') param = { symbol: param, from };
-      const args = Object.assign({}, { symbol: `TK${i}`, name: `Token ${i}`, from }, param);
+      const args = Object.assign(
+        {},
+        { symbol: `TK${i}`, name: `Token ${i}`, decimals: varyDecimals ? Math.max(18 - i, 0) : 18, from },
+        param
+      );
       return this.toTokenDeployment(args);
     });
   },

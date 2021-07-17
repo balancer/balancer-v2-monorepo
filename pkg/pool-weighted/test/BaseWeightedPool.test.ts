@@ -26,9 +26,9 @@ describe('BaseWeightedPool', function () {
 
   context('for a too-many token pool', () => {
     it('reverts if there are too many tokens', async () => {
-      // The maximum number of tokens is 8
-      const tokens = await TokenList.create(9);
-      const weights = new Array(9).fill(fp(1));
+      // The maximum number of tokens is 20
+      const tokens = await TokenList.create(21);
+      const weights = new Array(21).fill(fp(1));
 
       await expect(WeightedPool.create({ tokens, weights })).to.be.revertedWith('MAX_TOKENS');
     });

@@ -9,7 +9,9 @@ import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constan
 import {
   encodeExitWeightedPool,
   encodeJoinWeightedPool,
-} from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
+  WeightedPoolExitKind,
+  WeightedPoolJoinKind,
+} from '@balancer-labs/balancer-js';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -47,7 +49,11 @@ describe('BalancerHelpers', function () {
       const amountsIn = [fp(1), fp(0)];
       const expectedBptOut = await pool.estimateBptOut(amountsIn, initialBalances);
 
-      const data = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', amountsIn, minimumBPT: 0 });
+      const data = encodeJoinWeightedPool({
+        kind: WeightedPoolJoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+        amountsIn,
+        minimumBPT: 0,
+      });
       const result = await helper.queryJoin(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
         assets: tokens.addresses,
         maxAmountsIn,
@@ -60,7 +66,7 @@ describe('BalancerHelpers', function () {
     });
 
     it('bubbles up revert reasons', async () => {
-      const data = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
+      const data = encodeJoinWeightedPool({ kind: WeightedPoolJoinKind.INIT, amountsIn: initialBalances });
       const tx = helper.queryJoin(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
         assets: tokens.addresses,
         maxAmountsIn: maxAmountsIn,
@@ -81,7 +87,7 @@ describe('BalancerHelpers', function () {
     sharedBeforeEach('estimate expected amounts out', async () => {
       bptIn = (await pool.totalSupply()).div(2);
       expectedAmountsOut = initialBalances.map((balance) => balance.div(2));
-      data = encodeExitWeightedPool({ kind: 'ExactBPTInForTokensOut', bptAmountIn: bptIn });
+      data = encodeExitWeightedPool({ kind: WeightedPoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn: bptIn });
     });
 
     it('can query exit results', async () => {
@@ -97,7 +103,11 @@ describe('BalancerHelpers', function () {
     });
 
     it('bubbles up revert reasons', async () => {
-      const data = encodeExitWeightedPool({ kind: 'ExactBPTInForOneTokenOut', bptAmountIn: bptIn, exitTokenIndex: 90 });
+      const data = encodeExitWeightedPool({
+        kind: WeightedPoolExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+        bptAmountIn: bptIn,
+        exitTokenIndex: 90,
+      });
       const tx = helper.queryExit(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
         assets: tokens.addresses,
         minAmountsOut,

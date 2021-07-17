@@ -19,25 +19,22 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 
-import "./BalancerPoolToken.sol";
-import "./BasePoolAuthorization.sol";
-
 import "@balancer-labs/v2-asset-manager-utils/contracts/IAssetManager.sol";
 
-// This contract relies on tons of immutable state variables to perform efficient lookup, without resorting to storage
-// reads. Because immutable arrays are not supported, we instead declare a fixed set of state variables plus a total
-// count, resulting in a large number of state variables.
+import "./BalancerPoolToken.sol";
+import "./BasePoolAuthorization.sol";
 
 // solhint-disable max-states-count
 
 /**
- * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with an immutable set
- * of registered tokens, no Asset Managers, an admin-controlled swap fee percentage, and an emergency pause mechanism.
+ * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with optional
+ * Asset Managers, an admin-controlled swap fee percentage, and an emergency pause mechanism.
  *
  * Note that neither swap fees nor the pause mechanism are used by this contract. They are passed through so that
  * derived contracts can use them via the `_addSwapFeeAmount` and `_subtractSwapFeeAmount` functions, and the
@@ -50,10 +47,10 @@ import "@balancer-labs/v2-asset-manager-utils/contracts/IAssetManager.sol";
  * and implement the swap callbacks themselves.
  */
 abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable {
+    using WordCodec for bytes32;
     using FixedPoint for uint256;
 
     uint256 private constant _MIN_TOKENS = 2;
-    uint256 private constant _MAX_TOKENS = 8;
 
     // 1e18 corresponds to 1.0, or a 100% fee
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
@@ -61,33 +58,15 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     uint256 private constant _MINIMUM_BPT = 1e6;
 
-    uint256 internal _swapFeePercentage;
+    // Storage slot that can be used to store unrelated pieces of information. In particular, by default is used
+    // to store only the swap fee percentage of a pool. But it can be extended to store some more pieces of information.
+    // The swap fee percentage is stored in the most-significant 64 bits, therefore the remaining 192 bits can be
+    // used to store any other piece of information.
+    bytes32 private _miscData;
+    uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
-    uint256 private immutable _totalTokens;
-
-    IERC20 internal immutable _token0;
-    IERC20 internal immutable _token1;
-    IERC20 internal immutable _token2;
-    IERC20 internal immutable _token3;
-    IERC20 internal immutable _token4;
-    IERC20 internal immutable _token5;
-    IERC20 internal immutable _token6;
-    IERC20 internal immutable _token7;
-
-    // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
-    // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
-    // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
-
-    uint256 private immutable _scalingFactor0;
-    uint256 private immutable _scalingFactor1;
-    uint256 private immutable _scalingFactor2;
-    uint256 private immutable _scalingFactor3;
-    uint256 private immutable _scalingFactor4;
-    uint256 private immutable _scalingFactor5;
-    uint256 private immutable _scalingFactor6;
-    uint256 private immutable _scalingFactor7;
 
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
 
@@ -114,7 +93,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
     {
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
-        _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
+        _require(tokens.length <= _getMaxTokens(), Errors.MAX_TOKENS);
 
         // The Vault only requires the token list to be ordered for the Two Token Pools specialization. However,
         // to make the developer experience consistent, we are requiring this condition for all the native pools.
@@ -130,29 +109,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         vault.registerTokens(poolId, tokens, assetManagers);
 
         // Set immutable state variables - these cannot be read from during construction
-        uint256 totalTokens = tokens.length;
         _vault = vault;
         _poolId = poolId;
-        _totalTokens = totalTokens;
-
-        // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _token0 = totalTokens > 0 ? tokens[0] : IERC20(0);
-        _token1 = totalTokens > 1 ? tokens[1] : IERC20(0);
-        _token2 = totalTokens > 2 ? tokens[2] : IERC20(0);
-        _token3 = totalTokens > 3 ? tokens[3] : IERC20(0);
-        _token4 = totalTokens > 4 ? tokens[4] : IERC20(0);
-        _token5 = totalTokens > 5 ? tokens[5] : IERC20(0);
-        _token6 = totalTokens > 6 ? tokens[6] : IERC20(0);
-        _token7 = totalTokens > 7 ? tokens[7] : IERC20(0);
-
-        _scalingFactor0 = totalTokens > 0 ? _computeScalingFactor(tokens[0]) : 0;
-        _scalingFactor1 = totalTokens > 1 ? _computeScalingFactor(tokens[1]) : 0;
-        _scalingFactor2 = totalTokens > 2 ? _computeScalingFactor(tokens[2]) : 0;
-        _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(tokens[3]) : 0;
-        _scalingFactor4 = totalTokens > 4 ? _computeScalingFactor(tokens[4]) : 0;
-        _scalingFactor5 = totalTokens > 5 ? _computeScalingFactor(tokens[5]) : 0;
-        _scalingFactor6 = totalTokens > 6 ? _computeScalingFactor(tokens[6]) : 0;
-        _scalingFactor7 = totalTokens > 7 ? _computeScalingFactor(tokens[7]) : 0;
     }
 
     // Getters / Setters
@@ -165,15 +123,15 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _poolId;
     }
 
-    function _getTotalTokens() internal view returns (uint256) {
-        return _totalTokens;
+    function _getTotalTokens() internal view virtual returns (uint256);
+
+    function _getMaxTokens() internal pure virtual returns (uint256);
+
+    function getSwapFeePercentage() public view returns (uint256) {
+        return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
     }
 
-    function getSwapFeePercentage() external view returns (uint256) {
-        return _swapFeePercentage;
-    }
-
-    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual authenticate whenNotPaused {
+    function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
 
@@ -181,7 +139,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
-        _swapFeePercentage = swapFeePercentage;
+        _miscData = _miscData.insertUint64(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET);
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
@@ -209,6 +167,18 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return
             (actionId == getActionId(this.setSwapFeePercentage.selector)) ||
             (actionId == getActionId(this.setAssetManagerPoolConfig.selector));
+    }
+
+    function _getMiscData() internal view returns (bytes32) {
+        return _miscData;
+    }
+
+    /**
+     * Inserts data into the least-significant 192 bits of the misc data storage slot.
+     * Note that the remaining 64 bits are used for the swap fee percentage and cannot be overloaded.
+     */
+    function _setMiscData(bytes32 newData) internal {
+        _miscData = _miscData.insertBits192(newData, 0);
     }
 
     // Join / Exit Hooks
@@ -489,7 +459,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(FixedPoint.ONE.sub(_swapFeePercentage));
+        return amount.divUp(FixedPoint.ONE.sub(getSwapFeePercentage()));
     }
 
     /**
@@ -497,7 +467,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount - fee amount, so we round up (favoring a higher fee amount).
-        uint256 feeAmount = amount.mulUp(_swapFeePercentage);
+        uint256 feeAmount = amount.mulUp(getSwapFeePercentage());
         return amount.sub(feeAmount);
     }
 
@@ -507,7 +477,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @dev Returns a scaling factor that, when multiplied to a token amount for `token`, normalizes its balance as if
      * it had 18 decimals.
      */
-    function _computeScalingFactor(IERC20 token) private view returns (uint256) {
+    function _computeScalingFactor(IERC20 token) internal view returns (uint256) {
         // Tokens that don't implement the `decimals` method are not supported.
         uint256 tokenDecimals = ERC20(address(token)).decimals();
 
@@ -529,42 +499,16 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      *
      * The 1e7 figure is the result of 2**256 / (1e18 * 1e18 * 2**112).
      */
-    function _scalingFactor(IERC20 token) internal view virtual returns (uint256) {
-        // prettier-ignore
-        if (token == _token0) { return _scalingFactor0; }
-        else if (token == _token1) { return _scalingFactor1; }
-        else if (token == _token2) { return _scalingFactor2; }
-        else if (token == _token3) { return _scalingFactor3; }
-        else if (token == _token4) { return _scalingFactor4; }
-        else if (token == _token5) { return _scalingFactor5; }
-        else if (token == _token6) { return _scalingFactor6; }
-        else if (token == _token7) { return _scalingFactor7; }
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-    }
+    function _scalingFactor(IERC20 token) internal view virtual returns (uint256);
 
     /**
      * @dev Same as `_scalingFactor()`, except for all registered tokens (in the same order as registered). The Vault
      * will always pass balances in this order when calling any of the Pool hooks.
      */
-    function _scalingFactors() internal view virtual returns (uint256[] memory) {
-        uint256 totalTokens = _getTotalTokens();
-        uint256[] memory scalingFactors = new uint256[](totalTokens);
+    function _scalingFactors() internal view virtual returns (uint256[] memory);
 
-        // prettier-ignore
-        {
-            if (totalTokens > 0) { scalingFactors[0] = _scalingFactor0; } else { return scalingFactors; }
-            if (totalTokens > 1) { scalingFactors[1] = _scalingFactor1; } else { return scalingFactors; }
-            if (totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
-            if (totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
-            if (totalTokens > 4) { scalingFactors[4] = _scalingFactor4; } else { return scalingFactors; }
-            if (totalTokens > 5) { scalingFactors[5] = _scalingFactor5; } else { return scalingFactors; }
-            if (totalTokens > 6) { scalingFactors[6] = _scalingFactor6; } else { return scalingFactors; }
-            if (totalTokens > 7) { scalingFactors[7] = _scalingFactor7; } else { return scalingFactors; }
-        }
-
-        return scalingFactors;
+    function getScalingFactors() external view returns (uint256[] memory) {
+        return _scalingFactors();
     }
 
     /**

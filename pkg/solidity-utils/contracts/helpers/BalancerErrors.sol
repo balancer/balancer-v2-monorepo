@@ -143,7 +143,8 @@ library Errors {
     uint256 internal constant GRADUAL_UPDATE_TIME_TRAVEL = 326;
     uint256 internal constant SWAPS_DISABLED = 327;
     uint256 internal constant CALLER_IS_NOT_LBP_OWNER = 328;
-    
+    uint256 internal constant PRICE_RATE_OVERFLOW = 329;
+
     // Lib
     uint256 internal constant REENTRANCY = 400;
     uint256 internal constant SENDER_NOT_ALLOWED = 401;

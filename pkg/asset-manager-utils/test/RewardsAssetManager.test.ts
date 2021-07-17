@@ -9,7 +9,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
@@ -26,7 +26,7 @@ const setup = async () => {
   const vault = await Vault.create();
 
   // Deploy Pool
-  const pool = await deploy('MockAssetManagedPool', { args: [vault.address, GeneralPool] });
+  const pool = await deploy('MockAssetManagedPool', { args: [vault.address, PoolSpecialization.GeneralPool] });
   const poolId = await pool.getPoolId();
 
   // Deploy Asset manager
@@ -145,17 +145,6 @@ describe('Rewards Asset manager', function () {
       await expect(
         pool.setAssetManagerPoolConfig(assetManager.address, encodeInvestmentConfig(badConfig))
       ).to.be.revertedWith('Target must be less than or equal to upper critical level');
-    });
-
-    it('reverts when setting target above 95%', async () => {
-      const badConfig = {
-        targetPercentage: fp(0.95).add(1),
-        upperCriticalPercentage: fp(1),
-        lowerCriticalPercentage: 0,
-      };
-      await expect(
-        pool.setAssetManagerPoolConfig(assetManager.address, encodeInvestmentConfig(badConfig))
-      ).to.be.revertedWith('Target must be less than or equal to 95%');
     });
 
     it('reverts when setting lower critical above target', async () => {

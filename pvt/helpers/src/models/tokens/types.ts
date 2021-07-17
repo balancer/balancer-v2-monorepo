@@ -8,6 +8,7 @@ export type RawTokensDeployment = number | NAry<RawTokenDeployment>;
 
 export type TokensDeploymentOptions = {
   sorted?: boolean;
+  varyDecimals?: boolean;
   from?: SignerWithAddress;
 };
 
