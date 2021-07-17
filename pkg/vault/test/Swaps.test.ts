@@ -11,14 +11,12 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { Comparison, expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
 import {
-  encodeCalldataAuthorization,
-  signBatchSwapAuthorization,
-  signSwapAuthorization,
   BatchSwapStep,
   FundManagement,
   SingleSwap,
   SwapKind,
   PoolSpecialization,
+  RelayerAuthorization,
 } from '@balancer-labs/balancer-js';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
@@ -454,7 +452,7 @@ describe('Swaps', () => {
 
             if (input.signature) {
               const nonce = await vault.getNextNonce(trader.address);
-              const authorization = await signSwapAuthorization(
+              const authorization = await RelayerAuthorization.signSwapAuthorization(
                 vault,
                 trader,
                 sender.address,
@@ -463,7 +461,7 @@ describe('Swaps', () => {
                 nonce
               );
               const signature = typeof input.signature === 'string' ? input.signature : authorization;
-              calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
+              calldata = RelayerAuthorization.encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
             }
 
             await assertSwap(calldata, sender, [{ account: recipient, changes }]);
@@ -481,7 +479,7 @@ describe('Swaps', () => {
 
           if (input.signature) {
             const nonce = await vault.getNextNonce(trader.address);
-            const authorization = await signBatchSwapAuthorization(
+            const authorization = await RelayerAuthorization.signBatchSwapAuthorization(
               vault,
               trader,
               sender.address,
@@ -490,7 +488,7 @@ describe('Swaps', () => {
               nonce
             );
             const signature = typeof input.signature === 'string' ? input.signature : authorization;
-            calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
+            calldata = RelayerAuthorization.encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
           }
 
           await assertSwap(calldata, sender, [{ account: recipient, changes }]);

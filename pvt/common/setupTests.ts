@@ -5,7 +5,7 @@ import chai, { expect } from 'chai';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 
-import { encodeBalancerErrorCode, isBalancerErrorCode, parseBalancerErrorCode } from '@balancer-labs/balancer-js';
+import { BalancerErrors } from '@balancer-labs/balancer-js';
 import { NAry } from '@balancer-labs/v2-helpers/src/models/types/types';
 import { expectEqualWithError, expectLessThanOrEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 
@@ -104,8 +104,8 @@ chai.use(function (chai, utils) {
           const actualErrorCode: string = matches[4];
 
           let actualReason: string;
-          if (isBalancerErrorCode(actualErrorCode)) {
-            actualReason = parseBalancerErrorCode(actualErrorCode);
+          if (BalancerErrors.isErrorCode(actualErrorCode)) {
+            actualReason = BalancerErrors.parseErrorCode(actualErrorCode);
           } else {
             if (actualErrorCode.includes('BAL#')) {
               // If we failed to decode the error but it looks like a Balancer error code
@@ -118,9 +118,9 @@ chai.use(function (chai, utils) {
           }
 
           let expectedErrorCode: string;
-          try {
-            expectedErrorCode = encodeBalancerErrorCode(expectedReason);
-          } catch {
+          if (BalancerErrors.isBalancerError(expectedReason)) {
+            expectedErrorCode = BalancerErrors.encodeError(expectedReason);
+          } else {
             // If there is no balancer error matching the expected revert reason re-throw the error
             error.message = `${error.message} (${actualReason})`;
             throw error;

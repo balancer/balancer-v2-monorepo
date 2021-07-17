@@ -118,39 +118,66 @@ const balancerErrorCodes: Record<string, string> = {
   '602': 'INSUFFICIENT_FLASH_LOAN_FEE_AMOUNT',
 };
 
-export const isBalancerErrorCode = (error: string): boolean => {
-  if (!error.includes('BAL#')) return false;
+export class BalancerErrors {
+  /**
+   * Cannot be constructed.
+   */
+  private constructor() {
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+  }
 
-  const errorCode = error.replace('BAL#', '');
-  return Object.keys(balancerErrorCodes).includes(errorCode);
-};
+  static isErrorCode = (error: string): boolean => {
+    if (!error.includes('BAL#')) return false;
 
-/**
- * Decodes a Balancer error code into the corresponding reason
- * @param error - a Balancer error code of the form `BAL#000`
- * @returns The decoded error reason
- */
-export const parseBalancerErrorCode = (error: string): string => {
-  if (!error.includes('BAL#')) return error;
-  const errorCode = error.replace('BAL#', '');
+    const errorCode = error.replace('BAL#', '');
+    return Object.keys(balancerErrorCodes).includes(errorCode);
+  };
 
-  const actualError = balancerErrorCodes[errorCode];
+  /**
+   * Decodes a Balancer error code into the corresponding reason
+   * @param error - a Balancer error code of the form `BAL#000`
+   * @returns The decoded error reason
+   */
+  static parseErrorCode = (error: string): string => {
+    if (!error.includes('BAL#')) throw new Error('Error code not found');
+    const errorCode = error.replace('BAL#', '');
 
-  // If we can't find a matching error code then pass back input
-  if (!actualError) return error;
+    const actualError = balancerErrorCodes[errorCode];
 
-  return actualError;
-};
+    if (!actualError) throw new Error('Error code not found');
 
-/**
- * Encodes an error string into the corresponding error code
- * @param error - a Balancer error message string
- * @returns a Balancer error code of the form `BAL#000`
- */
-export const encodeBalancerErrorCode = (error: string): string => {
-  const encodedError = Object.entries(balancerErrorCodes).find(([, message]) => message === error);
+    return actualError;
+  };
 
-  if (!encodedError) throw Error('Error message not found');
+  /**
+   * Decodes a Balancer error code into the corresponding reason
+   * @param error - a Balancer error code of the form `BAL#000`
+   * @returns The decoded error reason if passed a valid error code, otherwise returns passed input
+   */
+  static tryParseErrorCode = (error: string): string => {
+    try {
+      return BalancerErrors.parseErrorCode(error);
+    } catch {
+      return error;
+    }
+  };
 
-  return `BAL#${encodedError[0]}`;
-};
+  /**
+   * Tests whether a string is a known Balancer error message
+   * @param error - a string to be checked verified as a Balancer error message
+   */
+  static isBalancerError = (error: string): boolean => Object.values(balancerErrorCodes).includes(error);
+
+  /**
+   * Encodes an error string into the corresponding error code
+   * @param error - a Balancer error message string
+   * @returns a Balancer error code of the form `BAL#000`
+   */
+  static encodeError = (error: string): string => {
+    const encodedError = Object.entries(balancerErrorCodes).find(([, message]) => message === error);
+
+    if (!encodedError) throw Error('Error message not found');
+
+    return `BAL#${encodedError[0]}`;
+  };
+}

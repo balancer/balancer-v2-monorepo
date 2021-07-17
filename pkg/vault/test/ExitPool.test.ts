@@ -16,7 +16,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { arrayAdd, arraySub, BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { encodeCalldataAuthorization, PoolSpecialization, signExitAuthorization } from '@balancer-labs/balancer-js';
+import { PoolSpecialization, RelayerAuthorization } from '@balancer-labs/balancer-js';
 
 describe('Exit Pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
@@ -148,8 +148,15 @@ describe('Exit Pool', () => {
 
         if (data.signature) {
           const nonce = await vault.getNextNonce(lp.address);
-          const signature = await signExitAuthorization(vault, lp, relayer.address, calldata, MAX_UINT256, nonce);
-          calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
+          const signature = await RelayerAuthorization.signExitAuthorization(
+            vault,
+            lp,
+            relayer.address,
+            calldata,
+            MAX_UINT256,
+            nonce
+          );
+          calldata = RelayerAuthorization.encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
         }
 
         // Hardcoding a gas limit prevents (slow) gas estimation
