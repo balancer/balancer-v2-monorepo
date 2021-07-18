@@ -86,7 +86,7 @@ contract BatchRelayer {
         IERC20 bpt = IERC20(_getPoolAddress(poolId));
         uint256 bptAmount = bpt.balanceOf(address(this));
 
-        // If necessary, give Vault allowance to take BPT
+        // If necessary, give staking contract allowance to take BPT
         if (bpt.allowance(address(this), address(stakingContract)) < bptAmount) {
             bpt.approve(address(stakingContract), type(uint256).max);
         }
