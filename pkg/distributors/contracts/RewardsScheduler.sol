@@ -32,12 +32,15 @@ contract RewardsScheduler {
         _multirewards = IMultiRewards(msg.sender);
     }
 
+    enum RewardStatus { PENDING, STARTED }
+
     struct ScheduledReward {
         IERC20 pool;
         IERC20 rewardsToken;
         uint256 startTime;
         address rewarder;
         uint256 amount;
+        RewardStatus status;
     }
 
     event RewardScheduled(
@@ -59,6 +62,10 @@ contract RewardsScheduler {
 
     mapping(bytes32 => ScheduledReward) private _rewards;
 
+    function getScheduledRewardInfo(bytes32 rewardId) external view returns (ScheduledReward memory reward) {
+        return _rewards[rewardId];
+    }
+
     function startRewards(bytes32[] calldata rewardIds) external {
         for (uint256 r; r < rewardIds.length; r++) {
             bytes32 rewardId = rewardIds[r];
@@ -66,6 +73,7 @@ contract RewardsScheduler {
 
             require(scheduledReward.startTime != 0, "reward has not been created");
             require(scheduledReward.startTime <= block.timestamp, "reward cannot be started");
+            require(scheduledReward.status == RewardStatus.PENDING, "scheduled reward already activated");
 
             scheduledReward.rewardsToken.approve(address(_multirewards), scheduledReward.amount);
             _multirewards.notifyRewardAmount(
@@ -82,7 +90,8 @@ contract RewardsScheduler {
                 scheduledReward.startTime,
                 scheduledReward.amount
             );
-            delete _rewards[rewardId];
+
+            _rewards[rewardId].status = RewardStatus.STARTED;
         }
     }
 
@@ -117,7 +126,8 @@ contract RewardsScheduler {
             rewardsToken: rewardsToken,
             rewarder: msg.sender,
             amount: amount,
-            startTime: startTime
+            startTime: startTime,
+            status: RewardStatus.PENDING
         });
 
         emit RewardScheduled(rewardId, msg.sender, address(pool), address(rewardsToken), startTime, amount);

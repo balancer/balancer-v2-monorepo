@@ -103,6 +103,17 @@ describe('Rewards Scheduler', () => {
       );
     });
 
+    it('responds to getScheduledRewardInfo', async () => {
+      const response = await rewardsScheduler.getScheduledRewardInfo(rewardId);
+
+      expect(response.pool).to.equal(pool.address);
+      expect(response.rewardsToken).to.equal(rewardsToken.address);
+      expect(response.startTime).to.equal(time);
+      expect(response.rewarder).to.equal(rewarder.address);
+      expect(response.amount).to.equal(rewardAmount);
+      expect(response.status).to.equal(0);
+    });
+
     describe('when time has passed', async () => {
       sharedBeforeEach(async () => {
         await advanceTime(3600 * 25);
