@@ -56,13 +56,6 @@ contract RewardsScheduler {
         uint256 startTime,
         uint256 amount
     );
-    event RewardUnscheduled(
-        bytes32 rewardId,
-        address indexed scheduler,
-        address indexed pool,
-        address indexed rewardsToken,
-        uint256 startTime
-    );
 
     mapping(bytes32 => ScheduledReward) private _rewards;
 
@@ -128,26 +121,5 @@ contract RewardsScheduler {
         });
 
         emit RewardScheduled(rewardId, msg.sender, address(pool), address(rewardsToken), startTime, amount);
-    }
-
-    function unscheduleReward(bytes32 rewardId) external {
-        ScheduledReward memory scheduledReward = _rewards[rewardId];
-
-        require(scheduledReward.rewarder == msg.sender, "only rewarder can unschedule a reward");
-
-        require(scheduledReward.startTime != 0, "reward has not been created");
-        require(scheduledReward.startTime > block.timestamp, "reward cannot be cancelled once reward period has begun");
-
-        IERC20 rewardsToken = IERC20(scheduledReward.rewardsToken);
-
-        rewardsToken.safeTransfer(scheduledReward.rewarder, scheduledReward.amount);
-        emit RewardUnscheduled(
-            rewardId,
-            scheduledReward.rewarder,
-            address(scheduledReward.pool),
-            address(scheduledReward.rewardsToken),
-            scheduledReward.startTime
-        );
-        delete _rewards[rewardId];
     }
 }

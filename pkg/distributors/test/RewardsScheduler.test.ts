@@ -103,23 +103,6 @@ describe('Rewards Scheduler', () => {
       );
     });
 
-    it('allows you to unschedule a reward that hasnt started', async () => {
-      await expectBalanceChange(() => rewardsScheduler.connect(rewarder).unscheduleReward(rewardId), rewardTokens, [
-        { account: rewarder.address, changes: { DAI: ['very-near', fp(1)] } },
-      ]);
-    });
-
-    it('emits RewardUnscheduled', async () => {
-      const receipt = await (await rewardsScheduler.connect(rewarder).unscheduleReward(rewardId)).wait();
-
-      expectEvent.inReceipt(receipt, 'RewardUnscheduled', {
-        rewardId,
-        scheduler: rewarder.address,
-        rewardsToken: rewardsToken.address,
-        startTime: time,
-      });
-    });
-
     describe('when time has passed', async () => {
       sharedBeforeEach(async () => {
         await advanceTime(3600 * 25);
@@ -143,12 +126,6 @@ describe('Rewards Scheduler', () => {
           token: rewardsToken.address,
           amount: rewardAmount,
         });
-      });
-
-      it('prevents unscheduling a reward that is past its start time', async () => {
-        await expect(rewardsScheduler.connect(rewarder).unscheduleReward(rewardId)).to.be.revertedWith(
-          'reward cannot be cancelled once reward period has begun'
-        );
       });
     });
   });
