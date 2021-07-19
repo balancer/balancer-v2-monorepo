@@ -716,9 +716,23 @@ describe('MetaStablePool', function () {
         });
 
         const setNewPriceRateCache = () => {
+          let forceUpdateAt: BigNumber;
+          const newDuration = MINUTE * 10;
+
           sharedBeforeEach('update price rate cache', async () => {
-            await pool.setPriceRateCacheDuration(tokens.first, MINUTE * 10, { from: admin });
-            await pool.setPriceRateCacheDuration(tokens.second, MINUTE * 10, { from: admin });
+            forceUpdateAt = await currentTimestamp();
+            await pool.setPriceRateCacheDuration(tokens.first, newDuration, { from: admin });
+            await pool.setPriceRateCacheDuration(tokens.second, newDuration, { from: admin });
+          });
+
+          it('updates the cache duration', async () => {
+            const cache0 = await pool.instance.getPriceRateCache(tokens.first.address);
+            expect(cache0.duration).to.be.equal(newDuration);
+            expect(cache0.expires).to.be.at.least(forceUpdateAt.add(newDuration));
+
+            const cache1 = await pool.instance.getPriceRateCache(tokens.second.address);
+            expect(cache1.duration).to.be.equal(newDuration);
+            expect(cache1.expires).to.be.at.least(forceUpdateAt.add(newDuration));
           });
         };
 
