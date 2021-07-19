@@ -269,10 +269,6 @@ async function joinAndExitPool(
   let receipt;
   let bpt;
 
-  if (numTokens == 100) {
-    console.log('IN JOIN AND EXIT');
-    console.log(await pool.getNormalizedWeights());
-  }
   for (let idx = 1; idx <= stageIdx; idx++) {
     receipt = await (await vault.connect(trader).joinPool(poolId, trader.address, trader.address, joinRequest)).wait();
     console.log(`${printGas(receipt.gasUsed)} gas for join ${idx}`);
