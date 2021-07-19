@@ -19,7 +19,8 @@ describe('BatchRelayer', function () {
   let tokens: TokenList, basePoolTokens: TokenList, metaPoolTokens: TokenList;
   let basePoolId: string, metaPoolId: string;
   let sender: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
-  let vault: Vault, relayer: Contract, basePool: StablePool, metaPool: StablePool;
+  let vault: Vault, basePool: StablePool, metaPool: StablePool;
+  let relayer: Contract, stakingContract: Contract;
 
   // An array of token amounts which will be added/removed to pool's balance on joins/exits
   let tokenIncrements: BigNumber[];
@@ -30,7 +31,10 @@ describe('BatchRelayer', function () {
 
   sharedBeforeEach('deploy relayer', async () => {
     vault = await Vault.create({ admin });
-    relayer = await deploy('BatchRelayer', { args: [vault.address] });
+    stakingContract = await deploy('v2-distributors/MultiRewards', {
+      args: [vault.address],
+    });
+    relayer = await deploy('BatchRelayer', { args: [vault.address, stakingContract.address] });
 
     const DAI = await Token.create('DAI');
     const wethContract = await deployedAt('TestWETH', await vault.instance.WETH());
@@ -223,7 +227,6 @@ describe('BatchRelayer', function () {
 
   describe('joinAndStake', () => {
     let joinRequest: { assets: string[]; maxAmountsIn: BigNumberish[]; userData: string; fromInternalBalance: boolean };
-    let stakingContract: Contract;
 
     sharedBeforeEach('build join request, relayer and staking contract', async () => {
       joinRequest = {
@@ -236,10 +239,6 @@ describe('BatchRelayer', function () {
       const joinAction = await actionId(vault.instance, 'joinPool');
 
       await vault.authorizer?.connect(admin).grantRoles([joinAction], relayer.address);
-
-      stakingContract = await deploy('v2-distributors/MultiRewards', {
-        args: [vault.address],
-      });
     });
 
     context('when the user did allow the relayer', () => {
@@ -249,9 +248,7 @@ describe('BatchRelayer', function () {
 
       it('joins the pool and stakes the bpt', async () => {
         const receipt = await (
-          await relayer
-            .connect(sender)
-            .joinAndStake(basePoolId, recipient.address, joinRequest, stakingContract.address)
+          await relayer.connect(sender).joinAndStake(basePoolId, recipient.address, joinRequest)
         ).wait();
 
         expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
@@ -261,7 +258,7 @@ describe('BatchRelayer', function () {
 
         expectEvent.inIndirectReceipt(receipt, stakingContract.interface, 'Staked', {
           pool: basePool.address,
-          account: sender.address,
+          account: recipient.address,
         });
       });
     });

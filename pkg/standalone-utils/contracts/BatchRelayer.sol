@@ -25,15 +25,21 @@ import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
  */
 contract BatchRelayer {
     IVault private immutable _vault;
+    IMultiRewards private immutable _stakingContract;
 
     uint256 private constant _BPT_AMOUNT_IN_OFFSET = 64;
 
-    constructor(IVault vault) {
+    constructor(IVault vault, IMultiRewards stakingContract) {
         _vault = vault;
+        _stakingContract = stakingContract;
     }
 
     function getVault() public view returns (IVault) {
         return _vault;
+    }
+
+    function getStakingContract() public view returns (IMultiRewards) {
+        return _stakingContract;
     }
 
     function _getPoolAddress(bytes32 poolId) private pure returns (address) {
@@ -78,8 +84,7 @@ contract BatchRelayer {
     function joinAndStake(
         bytes32 poolId,
         address payable recipient,
-        IVault.JoinPoolRequest calldata joinPoolRequest,
-        IMultiRewards stakingContract
+        IVault.JoinPoolRequest calldata joinPoolRequest
     ) external {
         getVault().joinPool(poolId, msg.sender, address(this), joinPoolRequest);
 
@@ -87,11 +92,11 @@ contract BatchRelayer {
         uint256 bptAmount = bpt.balanceOf(address(this));
 
         // If necessary, give staking contract allowance to take BPT
-        if (bpt.allowance(address(this), address(stakingContract)) < bptAmount) {
-            bpt.approve(address(stakingContract), type(uint256).max);
+        if (bpt.allowance(address(this), address(getStakingContract())) < bptAmount) {
+            bpt.approve(address(getStakingContract()), type(uint256).max);
         }
 
-        stakingContract.stake(bpt, bptAmount, recipient);
+        getStakingContract().stake(bpt, bptAmount, recipient);
     }
 
     function swapAndExit(
