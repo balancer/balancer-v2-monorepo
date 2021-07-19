@@ -176,6 +176,16 @@ export default class StablePool {
     await pool.enableOracle();
   }
 
+  async setPriceRateCacheDuration(
+    token: Token,
+    duration: BigNumberish,
+    { from }: TxParams = {}
+  ): Promise<ContractTransaction> {
+    if (!this.meta) throw Error('Cannot set price rate cache duration for non-meta stable pool');
+    const pool = from ? this.instance.connect(from) : this.instance;
+    return pool.setPriceRateCacheDuration(token.address, duration);
+  }
+
   async startAmpChange(
     newAmp: BigNumberish,
     endTime?: BigNumberish,
