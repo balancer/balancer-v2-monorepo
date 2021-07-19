@@ -8,7 +8,7 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { RawWeightedPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { RawWeightedPoolDeployment, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
 export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoTokenPool = false): void {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -26,9 +26,10 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
   async function deployPool(params: RawWeightedPoolDeployment = {}): Promise<void> {
     const assetManagers = Array(numberOfTokens).fill(assetManager.address);
 
+    const poolTypeParam = useCustomTwoTokenPool ? WeightedPoolType.WEIGHTED_POOL_2TOKENS : WeightedPoolType.WEIGHTED_POOL;
     params = Object.assign(
       {},
-      { tokens, weights, assetManagers, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, twoTokens: useCustomTwoTokenPool },
+      { tokens, weights, assetManagers, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, poolType: poolTypeParam },
       params
     );
     pool = await WeightedPool.create(params);

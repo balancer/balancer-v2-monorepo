@@ -30,6 +30,7 @@ import {
   MiscData,
   Sample,
   GradualUpdateParams,
+  WeightedPoolType,
 } from './types';
 import {
   calculateInvariant,
@@ -65,8 +66,7 @@ export default class WeightedPool {
   assetManagers: string[];
   swapFeePercentage: BigNumberish;
   vault: Vault;
-  twoTokens: boolean;
-  lbp: boolean;
+  poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
@@ -81,8 +81,7 @@ export default class WeightedPool {
     weights: BigNumberish[],
     assetManagers: string[],
     swapFeePercentage: BigNumberish,
-    twoTokens: boolean,
-    lbp: boolean,
+    poolType: WeightedPoolType,
     swapEnabledOnStart: boolean
   ) {
     this.instance = instance;
@@ -92,8 +91,7 @@ export default class WeightedPool {
     this.weights = weights;
     this.assetManagers = assetManagers;
     this.swapFeePercentage = swapFeePercentage;
-    this.twoTokens = twoTokens;
-    this.lbp = lbp;
+    this.poolType = poolType;
     this.swapEnabledOnStart = swapEnabledOnStart;
   }
 
@@ -171,12 +169,12 @@ export default class WeightedPool {
   }
 
   async isOracleEnabled(): Promise<boolean> {
-    if (!this.twoTokens) throw Error('Cannot query misc data for non-2-tokens weighted pool');
+    if (this.poolType != WeightedPoolType.WEIGHTED_POOL_2TOKENS) throw Error('Cannot query misc data for non-2-tokens weighted pool');
     return (await this.getMiscData()).oracleEnabled;
   }
 
   async getMiscData(): Promise<MiscData> {
-    if (!this.twoTokens) throw Error('Cannot query misc data for non-2-tokens weighted pool');
+    if (this.poolType != WeightedPoolType.WEIGHTED_POOL_2TOKENS) throw Error('Cannot query misc data for non-2-tokens weighted pool');
     return this.instance.getMiscData();
   }
 

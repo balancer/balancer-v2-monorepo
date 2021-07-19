@@ -12,33 +12,16 @@ import {
   toNormalizedWeights,
   WeightedPoolJoinKind,
 } from '@balancer-labs/balancer-js';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS, MAX_WEIGHTED_TOKENS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploySortedTokens, mintTokens, TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { advanceTime, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { range } from 'lodash';
 
-export const tokenSymbols = [
-  'AAA',
-  'BBB',
-  'CCC',
-  'DDD',
-  'EEE',
-  'FFF',
-  'GGG',
-  'HHH',
-  'III',
-  'JJJ',
-  'KKK',
-  'LLL',
-  'MMM',
-  'NNN',
-  'OOO',
-  'PPP',
-  'QQQ',
-  'RRR',
-  'SSS',
-  'TTT',
-];
+export const tokenSymbols = Array(MAX_WEIGHTED_TOKENS);
+for (let i = 0; i < MAX_WEIGHTED_TOKENS; i++) {
+  tokenSymbols[i] = `TKN${i}`;
+}
 
 export async function setupEnvironment(): Promise<{
   vault: Contract;
@@ -101,14 +84,27 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   let pool: Contract;
   let joinUserData: string;
 
-  if (poolName == 'WeightedPool' || poolName == 'WeightedPool2Tokens') {
-    const weights = toNormalizedWeights(symbols.map(() => fp(1))); // Equal weights for all tokens
+  if (poolName == 'WeightedPool' || poolName == 'WeightedPool2Tokens' || poolName == 'InvestmentPool') {
+    const WEIGHTS = range(10000, 10000 + symbols.length);
+    const weights = toNormalizedWeights(WEIGHTS.map(bn)); // Equal weights for all tokens
     const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
 
-    const params =
-      poolName == 'WeightedPool2Tokens'
-        ? [tokenAddresses, weights, swapFeePercentage, true]
-        : [tokenAddresses, weights, assetManagers, swapFeePercentage];
+    let params;
+
+    switch(poolName) {
+      case 'InvestmentPool': {
+        params = [tokenAddresses, weights, swapFeePercentage];
+        break;
+      }
+      case 'WeightedPool2Tokens': {
+        params = [tokenAddresses, weights, swapFeePercentage, true];
+        break;
+      }
+      default: {
+        params = [tokenAddresses, weights, assetManagers, swapFeePercentage];
+      }
+    }
+
     pool = await deployPoolFromFactory(vault, poolName, {
       from: creator,
       parameters: params,
@@ -157,7 +153,7 @@ export async function getWeightedPool(
 ): Promise<string> {
   return size === 2
     ? deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool2Tokens')
-    : deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool');
+    : size > 20 ? deployPool(vault, pickTokens(tokens, size, offset), 'InvestmentPool') : deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool');
 }
 
 export async function getStablePool(
@@ -195,7 +191,7 @@ export function printGas(gas: number | BigNumber): string {
   return `${(gas / 1000).toFixed(1)}k`;
 }
 
-type PoolName = 'WeightedPool' | 'WeightedPool2Tokens' | 'StablePool';
+type PoolName = 'WeightedPool' | 'WeightedPool2Tokens' | 'StablePool' | 'InvestmentPool';
 
 async function deployPoolFromFactory(
   vault: Contract,
