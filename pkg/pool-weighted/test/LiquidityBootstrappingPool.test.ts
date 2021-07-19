@@ -37,17 +37,32 @@ describe('LiquidityBootstrappingPool', function () {
     const tooManyWeights = [fp(0.3), fp(0.25), fp(0.3), fp(0.1), fp(0.05)];
 
     it('fails with < 2 tokens', async () => {
-      const params = { tokens: allTokens.subset(1), weights: [fp(0.3)], owner, poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL };
+      const params = {
+        tokens: allTokens.subset(1),
+        weights: [fp(0.3)],
+        owner,
+        poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
+      };
       await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
     });
 
     it('fails with > 4 tokens', async () => {
-      const params = { tokens: allTokens, weights: tooManyWeights, owner, poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL };
+      const params = {
+        tokens: allTokens,
+        weights: tooManyWeights,
+        owner,
+        poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
+      };
       await expect(WeightedPool.create(params)).to.be.revertedWith('MAX_TOKENS');
     });
 
     it('fails with mismatched tokens/weights', async () => {
-      const params = { tokens, weights: tooManyWeights, owner, poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL };
+      const params = {
+        tokens,
+        weights: tooManyWeights,
+        owner,
+        poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
+      };
       await expect(WeightedPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
     });
   });
@@ -88,7 +103,13 @@ describe('LiquidityBootstrappingPool', function () {
 
   context('when deployed from factory', () => {
     sharedBeforeEach('deploy pool', async () => {
-      const params = { tokens, weights, owner, poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL, fromFactory: true };
+      const params = {
+        tokens,
+        weights,
+        owner,
+        poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
+        fromFactory: true,
+      };
       pool = await WeightedPool.create(params);
     });
 
@@ -103,7 +124,13 @@ describe('LiquidityBootstrappingPool', function () {
   describe('with valid creation parameters', () => {
     context('when initialized with swaps disabled', () => {
       sharedBeforeEach('deploy pool', async () => {
-        const params = { tokens, weights, owner, poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL, swapEnabledOnStart: false };
+        const params = {
+          tokens,
+          weights,
+          owner,
+          poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
+          swapEnabledOnStart: false,
+        };
         pool = await WeightedPool.create(params);
       });
 
@@ -118,7 +145,13 @@ describe('LiquidityBootstrappingPool', function () {
 
     context('when initialized with swaps enabled', () => {
       sharedBeforeEach('deploy pool', async () => {
-        const params = { tokens, weights, owner, poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL, swapEnabledOnStart: true };
+        const params = {
+          tokens,
+          weights,
+          owner,
+          poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
+          swapEnabledOnStart: true,
+        };
         pool = await WeightedPool.create(params);
       });
 

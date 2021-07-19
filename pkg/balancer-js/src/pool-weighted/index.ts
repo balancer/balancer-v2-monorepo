@@ -1,3 +1,2 @@
-export * from './joinEncoding';
-export * from './exitEncoding';
+export * from './encoder';
 export * from './normalizedWeights';

@@ -51,7 +51,7 @@ export default {
 
     let result: Promise<Contract>;
 
-    switch(poolType) {
+    switch (poolType) {
       case WeightedPoolType.WEIGHTED_POOL_2TOKENS: {
         result = deploy('v2-pool-weighted/MockWeightedPool2Tokens', {
           args: [
@@ -89,7 +89,7 @@ export default {
             swapEnabledOnStart,
           ],
           from,
-        })
+        });
         break;
       }
       case WeightedPoolType.INVESTMENT_POOL: {
@@ -106,7 +106,7 @@ export default {
             TypesConverter.toAddress(owner),
           ],
           from,
-        })
+        });
         break;
       }
       default: {

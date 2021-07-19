@@ -26,7 +26,9 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
   async function deployPool(params: RawWeightedPoolDeployment = {}): Promise<void> {
     const assetManagers = Array(numberOfTokens).fill(assetManager.address);
 
-    const poolTypeParam = useCustomTwoTokenPool ? WeightedPoolType.WEIGHTED_POOL_2TOKENS : WeightedPoolType.WEIGHTED_POOL;
+    const poolTypeParam = useCustomTwoTokenPool
+      ? WeightedPoolType.WEIGHTED_POOL_2TOKENS
+      : WeightedPoolType.WEIGHTED_POOL;
     params = Object.assign(
       {},
       { tokens, weights, assetManagers, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, poolType: poolTypeParam },

@@ -90,7 +90,7 @@ jobs:
       - name: Compile
         run: yarn build
       - name: Test
-        run: yarn workspace @balancer-labs/v2-solidity-utils test
+        run: yarn workspace @balancer-labs/v2-standalone-utils test
 
   test-vault:
     runs-on: ubuntu-latest

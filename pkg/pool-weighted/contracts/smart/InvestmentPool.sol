@@ -100,7 +100,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
-      return _totalTokens;
+        return _totalTokens;
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -182,8 +182,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
      * if necessary. Time travel elements commented out.
      */
     function _startGradualWeightChange(
-        uint256,// startTime,
-        uint256,// endTime,
+        uint256, // startTime,
+        uint256, // endTime,
         uint256[] memory startWeights,
         uint256[] memory endWeights,
         IERC20[] memory tokens
@@ -192,8 +192,6 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         bytes32 tokenState;
 
         uint256 normalizedSum = 0;
-        uint256 tokenDecimals;
-        uint256 decimalsDifference;
 
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
@@ -207,7 +205,10 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             // Tokens with more than 18 decimals are not supported.
             uint256 decimalsDifference = 18; //Math.sub(18, ERC20(address(token)).decimals());
 
-            tokenState = tokenState.insertUint5(decimalsDifference.sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
+            tokenState = tokenState.insertUint5(
+                decimalsDifference.sub(ERC20(address(token)).decimals()),
+                _DECIMAL_DIFF_OFFSET
+            );
 
             _poolState[token] = tokenState;
 
@@ -252,7 +253,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
         // In the degenerate case of a zero duration change, consider it completed (and avoid division by zero)
         return totalSeconds == 0 ? FixedPoint.ONE : secondsElapsed.divDown(totalSeconds);*/
-        
+
         return 0;
     }
 
