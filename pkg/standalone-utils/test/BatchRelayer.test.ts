@@ -19,7 +19,8 @@ describe('BatchRelayer', function () {
   let tokens: TokenList, basePoolTokens: TokenList, metaPoolTokens: TokenList;
   let basePoolId: string, metaPoolId: string;
   let sender: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
-  let vault: Vault, relayer: Contract, basePool: StablePool, metaPool: StablePool;
+  let vault: Vault, basePool: StablePool, metaPool: StablePool;
+  let relayer: Contract, stakingContract: Contract;
 
   // An array of token amounts which will be added/removed to pool's balance on joins/exits
   let tokenIncrements: BigNumber[];
@@ -30,7 +31,10 @@ describe('BatchRelayer', function () {
 
   sharedBeforeEach('deploy relayer', async () => {
     vault = await Vault.create({ admin });
-    relayer = await deploy('BatchRelayer', { args: [vault.address] });
+    stakingContract = await deploy('v2-distributors/MultiRewards', {
+      args: [vault.address],
+    });
+    relayer = await deploy('BatchRelayer', { args: [vault.address, stakingContract.address] });
 
     const DAI = await Token.create('DAI');
     const wethContract = await deployedAt('TestWETH', await vault.instance.WETH());
@@ -217,6 +221,45 @@ describe('BatchRelayer', function () {
             .connect(sender)
             .joinAndSwap(basePoolId, recipient.address, joinRequest, swaps, assets, limits, deadline)
         ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+    });
+  });
+
+  describe('joinAndStake', () => {
+    let joinRequest: { assets: string[]; maxAmountsIn: BigNumberish[]; userData: string; fromInternalBalance: boolean };
+
+    sharedBeforeEach('build join request, relayer and staking contract', async () => {
+      joinRequest = {
+        assets: basePoolTokens.addresses,
+        maxAmountsIn: tokenIncrements,
+        userData: encodeJoinStablePool({ kind: 'ExactTokensInForBPTOut', amountsIn: tokenIncrements, minimumBPT: 0 }),
+        fromInternalBalance: false,
+      };
+
+      const joinAction = await actionId(vault.instance, 'joinPool');
+
+      await vault.authorizer?.connect(admin).grantRoles([joinAction], relayer.address);
+    });
+
+    context('when the user did allow the relayer', () => {
+      sharedBeforeEach('allow relayer', async () => {
+        await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
+      });
+
+      it('joins the pool and stakes the bpt', async () => {
+        const receipt = await (
+          await relayer.connect(sender).joinAndStake(basePoolId, recipient.address, joinRequest)
+        ).wait();
+
+        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+          poolId: basePoolId,
+          liquidityProvider: sender.address,
+        });
+
+        expectEvent.inIndirectReceipt(receipt, stakingContract.interface, 'Staked', {
+          pool: basePool.address,
+          account: recipient.address,
+        });
       });
     });
   });

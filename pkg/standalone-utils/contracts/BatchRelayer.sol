@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
 
 /**
  * @title Batch Relayer
@@ -24,15 +25,21 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
  */
 contract BatchRelayer {
     IVault private immutable _vault;
+    IMultiRewards private immutable _stakingContract;
 
     uint256 private constant _BPT_AMOUNT_IN_OFFSET = 64;
 
-    constructor(IVault vault) {
+    constructor(IVault vault, IMultiRewards stakingContract) {
         _vault = vault;
+        _stakingContract = stakingContract;
     }
 
     function getVault() public view returns (IVault) {
         return _vault;
+    }
+
+    function getStakingContract() public view returns (IMultiRewards) {
+        return _stakingContract;
     }
 
     function _getPoolAddress(bytes32 poolId) private pure returns (address) {
@@ -74,6 +81,24 @@ contract BatchRelayer {
         return getVault().batchSwap(IVault.SwapKind.GIVEN_IN, swaps, assets, funds, limits, deadline);
     }
 
+    function joinAndStake(
+        bytes32 poolId,
+        address payable recipient,
+        IVault.JoinPoolRequest calldata joinPoolRequest
+    ) external {
+        getVault().joinPool(poolId, msg.sender, address(this), joinPoolRequest);
+
+        IERC20 bpt = IERC20(_getPoolAddress(poolId));
+        uint256 bptAmount = bpt.balanceOf(address(this));
+
+        // If necessary, give staking contract allowance to take BPT
+        if (bpt.allowance(address(this), address(getStakingContract())) < bptAmount) {
+            bpt.approve(address(getStakingContract()), type(uint256).max);
+        }
+
+        getStakingContract().stake(bpt, bptAmount, recipient);
+    }
+
     function swapAndExit(
         bytes32 poolId,
         address payable recipient,
@@ -110,6 +135,7 @@ contract BatchRelayer {
             // Here we overwrite the bptAmountIn field of an `exactBptInForTokenOut` exit with the output of the swap
             // We are mutating the userData field within request so no explicit assignment occurs
             bytes memory userData = request.userData;
+            // solhint-disable-next-line no-inline-assembly
             assembly {
                 mstore(add(userData, _BPT_AMOUNT_IN_OFFSET), bptAmount)
             }
