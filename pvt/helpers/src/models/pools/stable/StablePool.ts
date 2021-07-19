@@ -186,6 +186,11 @@ export default class StablePool {
     return pool.setPriceRateCacheDuration(token.address, duration);
   }
 
+  async updatePriceRateCache(token: Token): Promise<ContractTransaction> {
+    if (!this.meta) throw Error('Cannot update price rate cache for non-meta stable pool');
+    return this.instance.updatePriceRateCache(token.address);
+  }
+
   async startAmpChange(
     newAmp: BigNumberish,
     endTime?: BigNumberish,

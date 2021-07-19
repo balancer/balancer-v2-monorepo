@@ -519,6 +519,16 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         }
     }
 
+    function updatePriceRateCache(IERC20 token) external {
+        if (token == _token0 && _rateProvider0 != IRateProvider(address(0))) {
+            _priceRateCache0 = _getNewPriceRateCache(_rateProvider0, _getPriceRateCacheDuration(_priceRateCache0));
+        } else if (token == _token1 && _rateProvider1 != IRateProvider(address(0))) {
+            _priceRateCache1 = _getNewPriceRateCache(_rateProvider1, _getPriceRateCacheDuration(_priceRateCache1));
+        } else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+    }
+
     /**
      * @dev Tells the list of price rates for each token. All price rates are fixed-point values with 18 decimals.
      * In case there is no rate provider for a token it returns 1e18.
@@ -582,10 +592,17 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
     }
 
     /**
+     * @dev Decodes the duration for a price rate cache
+     */
+    function _getPriceRateCacheDuration(bytes32 cache) private pure returns (uint256) {
+        return cache.decodeUint64(_PRICE_RATE_CACHE_DURATION_OFFSET);
+    }
+
+    /**
      * @dev Decodes the duration and expiration timestamp for a price rate cache
      */
     function _getPriceRateCacheTimestamps(bytes32 cache) private pure returns (uint256 duration, uint256 expires) {
-        duration = cache.decodeUint64(_PRICE_RATE_CACHE_DURATION_OFFSET);
+        duration = _getPriceRateCacheDuration(cache);
         expires = cache.decodeUint64(_PRICE_RATE_CACHE_EXPIRES_OFFSET);
     }
 
