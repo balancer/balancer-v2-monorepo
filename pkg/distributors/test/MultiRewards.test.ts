@@ -243,9 +243,6 @@ describe('Staking contract', () => {
 
         await stakingContract
           .connect(rewarder)
-          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
-        await stakingContract
-          .connect(rewarder)
           .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount);
       });
 

@@ -364,27 +364,6 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      */
     function exitWithCallback(
         IERC20[] calldata pools,
-        address callbackContract,
-        bytes calldata callbackData
-    ) public {
-        for (uint256 p; p < pools.length; p++) {
-            IERC20 pool = pools[p];
-            unstake(pool, _balances[pool][msg.sender], callbackContract);
-        }
-
-        (bool success, ) = callbackContract.call(callbackData);
-        // solhint-disable-previous-line avoid-low-level-calls
-        require(success, "callback failed");
-
-        getReward(pools);
-    }
-
-    /**
-     * @notice Allows a user to unstake all their bpt to exit pools
-     *         and transfers them all the rewards
-     */
-    function exitWithCallback(
-        IERC20[] calldata pools,
         IRewardsCallback callbackContract,
         bytes calldata callbackData
     ) public {
