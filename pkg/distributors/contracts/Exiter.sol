@@ -20,27 +20,36 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 import "@balancer-labs/v2-pool-weighted/contracts/BaseWeightedPool.sol";
 
 import "./PoolTokenManipulator.sol";
+import "./interfaces/IRewardsCallback.sol";
 
-contract Exiter is PoolTokenManipulator {
+contract Exiter is PoolTokenManipulator, IRewardsCallback {
     constructor(IVault _vault) PoolTokenManipulator(_vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    struct CallbackParams {
+        address[] pools;
+        address payable recipient;
+    }
+
     /**
      * @notice Exits specified pool with all bpt
-     * @param recipient - the recipient of the pool tokens
-     * @param pools - The pools to exit from (addresses)
+     * @param callbackData are the encoded function arguments:
+     * recipient - the recipient of the pool tokens
+     * pools - The pools to exit from (addresses)
      */
-    function callback(IERC20[] calldata pools, address payable recipient) external {
-        for (uint256 p; p < pools.length; p++) {
-            address poolAddress = address(pools[p]);
+    function callback(bytes calldata callbackData) external override {
+        CallbackParams memory params = abi.decode(callbackData, (CallbackParams));
+
+        for (uint256 p; p < params.pools.length; p++) {
+            address poolAddress = params.pools[p];
 
             IBasePool poolContract = IBasePool(poolAddress);
             bytes32 poolId = poolContract.getPoolId();
             ensurePoolTokenSetSaved(poolId);
 
             IERC20 pool = IERC20(poolAddress);
-            _exitPool(pool, poolId, recipient);
+            _exitPool(pool, poolId, params.recipient);
         }
     }
 

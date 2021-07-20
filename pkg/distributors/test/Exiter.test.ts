@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { Contract, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -67,7 +67,7 @@ describe('Exiter', () => {
 
     it('emits PoolBalanceChanged when an LP exitsWithCallback', async () => {
       const args = [[pool.address], lp.address];
-      const calldata = callbackContract.interface.encodeFunctionData('callback', args);
+      const calldata = utils.defaultAbiCoder.encode(['(address[], address)'], [args]);
 
       const receipt = await (
         await stakingContract.connect(lp).exitWithCallback([pool.address], callbackContract.address, calldata)
@@ -86,7 +86,7 @@ describe('Exiter', () => {
 
     it('sends the underlying asset to the LP', async () => {
       const args = [[pool.address], lp.address];
-      const calldata = callbackContract.interface.encodeFunctionData('callback', args);
+      const calldata = utils.defaultAbiCoder.encode(['(address[],address)'], [args]);
 
       await expectBalanceChange(
         () => stakingContract.connect(lp).exitWithCallback([pool.address], callbackContract.address, calldata),

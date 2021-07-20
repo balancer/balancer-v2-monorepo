@@ -118,26 +118,6 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     /* ========== VIEWS ========== */
 
     /**
-<<<<<<< HEAD
-=======
-     * @notice Checks if a user is an asset manager (and can therefore be allowlisted by anyone)
-     */
-    function isAssetManager(IERC20 pool, address rewarder) public view returns (bool) {
-        IBasePool poolContract = IBasePool(address(pool));
-        bytes32 poolId = poolContract.getPoolId();
-        (IERC20[] memory poolTokens, , ) = vault.getPoolTokens(poolId);
-
-        for (uint256 pt; pt < poolTokens.length; pt++) {
-            (, , , address assetManager) = vault.getPoolTokenInfo(poolId, poolTokens[pt]);
-            if (assetManager == rewarder) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
->>>>>>> 1965f638... track unpaidRewards without rewarder
      * @notice Total supply of a staking token being added
      */
     function totalSupply(IERC20 pool) external view returns (uint256) {
@@ -152,7 +132,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice this time is used when determining up until what time a reward has been accounted for
+     * @notice This time is used when determining up until what time a reward has been accounted for
      */
     function lastTimeRewardApplicable(
         IERC20 pool,
@@ -384,19 +364,15 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      */
     function exitWithCallback(
         IERC20[] calldata pools,
-        address callbackContract,
+        IRewardsCallback callbackContract,
         bytes calldata callbackData
     ) public {
         for (uint256 p; p < pools.length; p++) {
             IERC20 pool = pools[p];
-            unstake(pool, _balances[pool][msg.sender], callbackContract);
+            unstake(pool, _balances[pool][msg.sender], address(callbackContract));
         }
-
-        (bool success, ) = callbackContract.call(callbackData);
-        // solhint-disable-previous-line avoid-low-level-calls
-        require(success, "callback failed");
-
         getReward(pools);
+        callbackContract.callback(callbackData);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
