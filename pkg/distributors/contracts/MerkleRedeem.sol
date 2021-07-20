@@ -43,7 +43,7 @@ contract MerkleRedeem is IDistributor, Ownable {
     constructor(IVault _vault, IERC20 _rewardToken) {
         vault = _vault;
         rewardToken = _rewardToken;
-        IERC20(_rewardToken).approve(address(_vault), type(uint256).max);
+        _rewardToken.approve(address(_vault), type(uint256).max);
     }
 
     function _disburse(address recipient, uint256 balance) private {
