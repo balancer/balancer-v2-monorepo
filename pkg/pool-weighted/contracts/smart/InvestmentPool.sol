@@ -37,6 +37,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     // The current number of tokens in the pool
     // Technically redundant; cached here to avoid calling getTokens on the pool,
     //   which would be very gas-intensive for large numbers of tokens
+    // Can only change if tokens are added/removed
     uint256 private _totalTokens;
 
     // Store scaling factor and start/end weights for each token
@@ -106,7 +107,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
         bytes32 tokenData = _poolState[token];
 
-        // A valid token can't be zero (would have scaling at least)
+        // A valid token can't be zero (must have non-zero weights)
         if (tokenData == 0) {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -128,7 +129,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
         bytes32 tokenData = _poolState[token];
 
-        // A valid token can't be zero (would have timestamps at least)
+        // A valid token can't be zero (must have non-zero weights)
         if (tokenData == 0) {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -189,9 +190,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         IERC20[] memory tokens
     ) internal virtual {
         //bytes32 newTimestamps = _gradualUpdateTimestamps;
-        bytes32 tokenState;
-
         uint256 normalizedSum = 0;
+        bytes32 tokenState;
 
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
@@ -202,11 +202,11 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             tokenState = tokenState.insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET);
             tokenState = tokenState.insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET);
 
-            // Tokens with more than 18 decimals are not supported.
-            uint256 decimalsDifference = 18; //Math.sub(18, ERC20(address(token)).decimals());
-
+            // Tokens with more than 18 decimals are not supported
+            // Scaling calculations must be exact/lossless
+            // Store decimal difference instead of actual scaling factor
             tokenState = tokenState.insertUint5(
-                decimalsDifference.sub(ERC20(address(token)).decimals()),
+                uint256(18).sub(ERC20(address(token)).decimals()),
                 _DECIMAL_DIFF_OFFSET
             );
 
@@ -254,6 +254,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         // In the degenerate case of a zero duration change, consider it completed (and avoid division by zero)
         return totalSeconds == 0 ? FixedPoint.ONE : secondsElapsed.divDown(totalSeconds);*/
 
+        // For now, just return 0 (constant weights)
         return 0;
     }
 
