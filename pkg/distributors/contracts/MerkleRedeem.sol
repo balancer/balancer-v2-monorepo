@@ -78,7 +78,7 @@ contract MerkleRedeem is IDistributor, Ownable {
         uint256 week,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
-    ) public {
+    ) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
         require(!claimed[week][liquidityProvider], "cannot claim twice");
         require(verifyClaim(liquidityProvider, week, claimedBalance, merkleProof), "Incorrect merkle proof");
@@ -115,7 +115,7 @@ contract MerkleRedeem is IDistributor, Ownable {
     /**
      * @notice Allows a user to claim multiple weeks of reward
      */
-    function claimWeeks(address payable liquidityProvider, Claim[] memory claims) public {
+    function claimWeeks(address payable liquidityProvider, Claim[] memory claims) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
 
         uint256 totalBalance = _processClaims(liquidityProvider, claims);
@@ -125,7 +125,7 @@ contract MerkleRedeem is IDistributor, Ownable {
     /**
      * @notice Allows a user to claim multiple weeks of reward to internal balance
      */
-    function claimWeeksToInternalBalance(address payable liquidityProvider, Claim[] memory claims) public {
+    function claimWeeksToInternalBalance(address payable liquidityProvider, Claim[] memory claims) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
 
         uint256 totalBalance = _processClaims(liquidityProvider, claims);
@@ -141,7 +141,7 @@ contract MerkleRedeem is IDistributor, Ownable {
         address payable callbackContract,
         bytes calldata callbackData,
         Claim[] memory claims
-    ) public returns (bytes memory) {
+    ) external returns (bytes memory) {
         require(msg.sender == liquidityProvider, "user must claim own balance");
         uint256 totalBalance = _processClaims(liquidityProvider, claims);
 
