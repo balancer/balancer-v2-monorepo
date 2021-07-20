@@ -45,7 +45,7 @@ library WordCodec {
      * @dev Inserts a boolean value shifted by an offset into a 256 bit word, replacing the old value. Returns the new
      * word.
      */
-    function insertBoolean(
+    function insertBool(
         bytes32 word,
         bool value,
         uint256 offset

@@ -54,20 +54,18 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     uint256 internal immutable _scalingFactor2;
     uint256 internal immutable _scalingFactor3;
 
-    // All swaps fail while this is false
-    bool private _swapEnabled;
-
     // For gas optimization, store start/end weights and timestamps in one bytes32
     // Start weights need to be high precision, since restarting the update resets them to "spot"
     // values. Target end weights do not need as much precision.
-    // [     32 bits   |     32 bits     |      64 bits     |      128 bits      |
-    // [ end timestamp | start timestamp | 4x16 end weights | 4x32 start weights |
-    // |MSB                                                                   LSB|
+    // [     32 bits   |     32 bits     |      64 bits     |      124 bits      |    3 bits    |     1 bit    ]
+    // [ end timestamp | start timestamp | 4x16 end weights | 4x31 start weights |   not used   | swap enabled ]
+    // |MSB                                                                                                 LSB|
 
     bytes32 private _poolState;
 
     // Offsets for data elements in _poolState
-    uint256 private constant _START_WEIGHT_OFFSET = 0;
+    uint256 private constant _SWAP_ENABLED_OFFSET = 0;
+    uint256 private constant _START_WEIGHT_OFFSET = 4;
     uint256 private constant _END_WEIGHT_OFFSET = 128;
     uint256 private constant _START_TIME_OFFSET = 192;
     uint256 private constant _END_TIME_OFFSET = 224;
@@ -133,10 +131,10 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     // External functions
 
     /**
-     * @dev Getter for _swapEnabled. If false, trading is disabled.
+     * @dev Tells whether swaps are enabled or not for the given pool.
      */
-    function getSwapEnabled() external view returns (bool) {
-        return _swapEnabled;
+    function getSwapEnabled() public view returns (bool) {
+        return _poolState.decodeBool(_SWAP_ENABLED_OFFSET);
     }
 
     /**
@@ -216,7 +214,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
-        uint256 startWeight = poolState.decodeUint32(_START_WEIGHT_OFFSET + i * 32).uncompress32();
+        uint256 startWeight = poolState.decodeUint31(_START_WEIGHT_OFFSET + i * 31).uncompress31();
         uint256 endWeight = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).uncompress16();
 
         uint256 pctProgress = _calculateWeightChangeProgress(poolState);
@@ -319,7 +317,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view override returns (uint256) {
-        _require(_swapEnabled, Errors.SWAPS_DISABLED);
+        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         return super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
@@ -329,7 +327,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view override returns (uint256) {
-        _require(_swapEnabled, Errors.SWAPS_DISABLED);
+        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
@@ -385,7 +383,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
 
-            newPoolState = newPoolState.insertUint32(startWeights[i].compress32(), _START_WEIGHT_OFFSET + i * 32);
+            newPoolState = newPoolState.insertUint31(startWeights[i].compress31(), _START_WEIGHT_OFFSET + i * 31);
             newPoolState = newPoolState.insertUint16(endWeight.compress16(), _END_WEIGHT_OFFSET + i * 16);
 
             normalizedSum = normalizedSum.add(endWeight);
@@ -419,8 +417,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _setSwapEnabled(bool swapEnabled) private {
-        _swapEnabled = swapEnabled;
-
+        _poolState = _poolState.insertBool(swapEnabled, _SWAP_ENABLED_OFFSET);
         emit SwapEnabledSet(swapEnabled);
     }
 
