@@ -18,7 +18,8 @@
     "dist/"
   ],
   "scripts": {
-    "build": "rm -rf dist/ && typechain --target ethers-v5 --out-dir dist/ '../deployments/tasks/*/abi/*.json' 'abi/*.json'"
+    "build": "rm -rf dist/ && yarn typechain && tsc && cp src/*.d.ts dist/",
+    "typechain": "typechain --target ethers-v5 --out-dir src/ '../deployments/tasks/*/abi/*.json' 'abi/*.json'"
   },
   "devDependencies": {
     "@typechain/ethers-v5": "^7.0.1",
