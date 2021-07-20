@@ -405,16 +405,16 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 startWeight,
         uint256 endWeight,
         uint256 pctProgress
-    ) private pure returns (uint256 finalWeight) {
-        if (pctProgress == 0) return startWeight;
+    ) private pure returns (uint256) {
+        if (pctProgress == 0 || startWeight == endWeight) return startWeight;
         if (pctProgress >= FixedPoint.ONE) return endWeight;
 
-        if (endWeight < startWeight) {
-            uint256 weightDelta = pctProgress.mulDown(startWeight.sub(endWeight));
-            finalWeight = startWeight.sub(weightDelta);
+        if (startWeight > endWeight) {
+            uint256 weightDelta = pctProgress.mulDown(startWeight - endWeight);
+            return startWeight.sub(weightDelta);
         } else {
-            uint256 weightDelta = pctProgress.mulDown(endWeight.sub(startWeight));
-            finalWeight = startWeight.add(weightDelta);
+            uint256 weightDelta = pctProgress.mulDown(endWeight - startWeight);
+            return startWeight.add(weightDelta);
         }
     }
 
