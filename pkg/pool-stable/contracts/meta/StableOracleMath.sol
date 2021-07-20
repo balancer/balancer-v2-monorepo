@@ -18,7 +18,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/LogCompression.sol";
 
 import "../StableMath.sol";
-import "hardhat/console.sol";
 
 contract StableOracleMath is StableMath {
     using FixedPoint for uint256;

@@ -107,6 +107,6 @@ library OracleMiscData {
      * @dev Enables or disables the oracle in `data`, returning the updated value.
      */
     function setOracleEnabled(bytes32 data, bool _oracleEnabled) internal pure returns (bytes32) {
-        return data.insertBoolean(_oracleEnabled, _ORACLE_ENABLED_OFFSET);
+        return data.insertBool(_oracleEnabled, _ORACLE_ENABLED_OFFSET);
     }
 }
