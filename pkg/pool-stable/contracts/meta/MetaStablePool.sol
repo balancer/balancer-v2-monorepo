@@ -481,8 +481,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
      */
     function getRateProviders() external view returns (IRateProvider[] memory providers) {
         providers = new IRateProvider[](2);
-        providers[0] = _rateProvider0;
-        providers[1] = _rateProvider1;
+        providers[0] = _getRateProvider0();
+        providers[1] = _getRateProvider1();
     }
 
     /**
@@ -497,8 +497,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
             uint256 expires
         )
     {
-        if (token == _token0) return _getPriceRateCache(_priceRateCache0);
-        if (token == _token1) return _getPriceRateCache(_priceRateCache1);
+        if (_isToken0(token)) return _getPriceRateCache(_priceRateCache0);
+        if (_isToken1(token)) return _getPriceRateCache(_priceRateCache1);
         _revert(Errors.INVALID_TOKEN);
     }
 
@@ -508,22 +508,22 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
      * @param duration Number of seconds until the current rate of token price is fetched again.
      */
     function setPriceRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
-        if (token == _token0 && _rateProvider0 != IRateProvider(address(0))) {
-            _priceRateCache0 = _getNewPriceRateCache(_rateProvider0, duration);
-            emit PriceRateProviderSet(token, _rateProvider0, duration);
-        } else if (token == _token1 && _rateProvider1 != IRateProvider(address(0))) {
-            _priceRateCache1 = _getNewPriceRateCache(_rateProvider1, duration);
-            emit PriceRateProviderSet(token, _rateProvider1, duration);
+        if (_isToken0WithRateProvider(token)) {
+            _priceRateCache0 = _getNewPriceRateCache(_getRateProvider0(), duration);
+            emit PriceRateProviderSet(token, _getRateProvider0(), duration);
+        } else if (_isToken1WithRateProvider(token)) {
+            _priceRateCache1 = _getNewPriceRateCache(_getRateProvider1(), duration);
+            emit PriceRateProviderSet(token, _getRateProvider1(), duration);
         } else {
             _revert(Errors.INVALID_TOKEN);
         }
     }
 
     function updatePriceRateCache(IERC20 token) external {
-        if (token == _token0 && _rateProvider0 != IRateProvider(address(0))) {
-            _priceRateCache0 = _getNewPriceRateCache(_rateProvider0, _getPriceRateCacheDuration(_priceRateCache0));
-        } else if (token == _token1 && _rateProvider1 != IRateProvider(address(0))) {
-            _priceRateCache1 = _getNewPriceRateCache(_rateProvider1, _getPriceRateCacheDuration(_priceRateCache1));
+        if (_isToken0WithRateProvider(token)) {
+            _priceRateCache0 = _getNewPriceRateCache(_getRateProvider0(), _getPriceRateCacheDuration(_priceRateCache0));
+        } else if (_isToken1WithRateProvider(token)) {
+            _priceRateCache1 = _getNewPriceRateCache(_getRateProvider1(), _getPriceRateCacheDuration(_priceRateCache1));
         } else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -536,9 +536,9 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
     function _priceRate(IERC20 token) internal view virtual returns (uint256) {
         // Given that this function is only used by `onSwap` which can only be called by the vault in the case of a
         // Meta Stable Pool, we can be sure the vault will not forward a call with an invalid `token` param.
-        if (token == _token0 && _rateProvider0 != IRateProvider(address(0))) {
+        if (_isToken0WithRateProvider(token)) {
             return _getPriceRateCacheValue(_priceRateCache0);
-        } else if (token == _token1 && _rateProvider1 != IRateProvider(address(0))) {
+        } else if (_isToken1WithRateProvider(token)) {
             return _getPriceRateCacheValue(_priceRateCache1);
         } else {
             return FixedPoint.ONE;
@@ -551,19 +551,19 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
     }
 
     function _cachePriceRate0IfNecessary() private {
-        if (_rateProvider0 != IRateProvider(address(0))) {
+        if (_getRateProvider0() != IRateProvider(address(0))) {
             (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_priceRateCache0);
             if (block.timestamp > expires) {
-                _priceRateCache0 = _getNewPriceRateCache(_rateProvider0, duration);
+                _priceRateCache0 = _getNewPriceRateCache(_getRateProvider0(), duration);
             }
         }
     }
 
     function _cachePriceRate1IfNecessary() private {
-        if (_rateProvider1 != IRateProvider(address(0))) {
+        if (_getRateProvider1() != IRateProvider(address(0))) {
             (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_priceRateCache1);
             if (block.timestamp > expires) {
-                _priceRateCache1 = _getNewPriceRateCache(_rateProvider1, duration);
+                _priceRateCache1 = _getNewPriceRateCache(_getRateProvider1(), duration);
             }
         }
     }
@@ -617,5 +617,21 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
             WordCodec.encodeUint(uint128(rate), _PRICE_RATE_CACHE_VALUE_OFFSET) |
             WordCodec.encodeUint(uint64(duration), _PRICE_RATE_CACHE_DURATION_OFFSET) |
             WordCodec.encodeUint(uint64(block.timestamp + duration), _PRICE_RATE_CACHE_EXPIRES_OFFSET);
+    }
+
+    function _isToken0WithRateProvider(IERC20 token) internal view returns (bool) {
+        return _isToken0(token) && _getRateProvider0() != IRateProvider(address(0));
+    }
+
+    function _isToken1WithRateProvider(IERC20 token) internal view returns (bool) {
+        return _isToken1(token) && _getRateProvider1() != IRateProvider(address(0));
+    }
+
+    function _getRateProvider0() internal view returns (IRateProvider) {
+        return _rateProvider0;
+    }
+
+    function _getRateProvider1() internal view returns (IRateProvider) {
+        return _rateProvider1;
     }
 }
