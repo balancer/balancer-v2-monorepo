@@ -196,8 +196,8 @@ contract MerkleRedeem is IDistributor, Ownable {
         uint256 amount
     ) external onlyOwner {
         require(weekMerkleRoots[week] == bytes32(0), "cannot rewrite merkle root");
-        rewardToken.safeTransferFrom(msg.sender, address(this), amount);
         weekMerkleRoots[week] = _merkleRoot;
+        rewardToken.safeTransferFrom(msg.sender, address(this), amount);
         emit RewardAdded(address(rewardToken), amount);
     }
 }
