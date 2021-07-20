@@ -18,6 +18,8 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
+import "../interfaces/IBaseRelayerImplementation.sol";
+
 /**
  * @title RelayerEntrypoint
  * @notice Allows safe multicall execution of a relayer's functions
@@ -28,8 +30,8 @@ contract RelayerEntrypoint is ReentrancyGuard {
     address private immutable _vault;
     address private immutable _implementation;
 
-    constructor(address vault, address implementation) {
-        _vault = vault;
+    constructor(address implementation) {
+        _vault = address(IBaseRelayerImplementation(implementation).getVault());
         _implementation = implementation;
     }
 
@@ -65,6 +67,10 @@ contract RelayerEntrypoint is ReentrancyGuard {
             results[i] = result;
         }
 
+        _refundETH();
+    }
+
+    function _refundETH() private {
         uint256 remainingEth = address(this).balance;
         if (remainingEth > 0) {
             msg.sender.sendValue(remainingEth);

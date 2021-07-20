@@ -16,19 +16,20 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "../interfaces/IBaseRelayerImplementation.sol";
 
 /**
  * @title BaseRelayerImplementation
  * @notice Core functionality of a relayer allowing users to approve it to take further actions using a signature
  */
-abstract contract BaseRelayerImplementation {
+abstract contract BaseRelayerImplementation is IBaseRelayerImplementation {
     IVault private immutable _vault;
 
     constructor(IVault vault) {
         _vault = vault;
     }
 
-    function getVault() public view returns (IVault) {
+    function getVault() public view override returns (IVault) {
         return _vault;
     }
 

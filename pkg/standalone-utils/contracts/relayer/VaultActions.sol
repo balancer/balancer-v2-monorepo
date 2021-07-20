@@ -18,14 +18,14 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20PermitDAI.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-import "../BaseRelayerImplementation.sol";
+import "../interfaces/IBaseRelayerImplementation.sol";
 
 /**
- * @title PermitRelayer
+ * @title VaultActions
  * @notice Allows users to atomically perform multiple Balancer Vault actions in sequence
  * including token approvals using permit (where supported)
  */
-abstract contract VaultActions is BaseRelayerImplementation {
+abstract contract VaultActions is IBaseRelayerImplementation {
     function swap(
         IVault.SingleSwap calldata singleSwap,
         IVault.FundManagement calldata funds,
