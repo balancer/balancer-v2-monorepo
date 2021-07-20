@@ -77,19 +77,14 @@ contract MerkleRedeem is IDistributor, Ownable {
         address payable liquidityProvider,
         uint256 week,
         uint256 claimedBalance,
-        bytes32[] memory merkleProof,
-        bool internalBalance
+        bytes32[] memory merkleProof
     ) public {
         require(msg.sender == liquidityProvider, "user must claim own balance");
         require(!claimed[week][liquidityProvider], "cannot claim twice");
         require(verifyClaim(liquidityProvider, week, claimedBalance, merkleProof), "Incorrect merkle proof");
 
         claimed[week][liquidityProvider] = true;
-        if (internalBalance) {
-            _disburseToInternalBalance(liquidityProvider, claimedBalance);
-        } else {
-            _disburse(liquidityProvider, claimedBalance);
-        }
+        _disburse(liquidityProvider, claimedBalance);
     }
 
     struct Claim {
@@ -118,22 +113,24 @@ contract MerkleRedeem is IDistributor, Ownable {
     }
 
     /**
-     * @notice Allows a user to claim a particular week's worth of rewards
+     * @notice Allows a user to claim multiple weeks of reward
      */
-    function claimWeeks(
-        address payable liquidityProvider,
-        Claim[] memory claims,
-        bool useInternalBalance
-    ) public {
+    function claimWeeks(address payable liquidityProvider, Claim[] memory claims) public {
+        require(msg.sender == liquidityProvider, "user must claim own balance");
+
+        uint256 totalBalance = _processClaims(liquidityProvider, claims);
+        _disburse(liquidityProvider, totalBalance);
+    }
+
+    /**
+     * @notice Allows a user to claim multiple weeks of reward to internal balance
+     */
+    function claimWeeksToInternalBalance(address payable liquidityProvider, Claim[] memory claims) public {
         require(msg.sender == liquidityProvider, "user must claim own balance");
 
         uint256 totalBalance = _processClaims(liquidityProvider, claims);
 
-        if (useInternalBalance) {
-            _disburseToInternalBalance(liquidityProvider, totalBalance);
-        } else {
-            _disburse(liquidityProvider, totalBalance);
-        }
+        _disburseToInternalBalance(liquidityProvider, totalBalance);
     }
 
     /**
