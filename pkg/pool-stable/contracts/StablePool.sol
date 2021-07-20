@@ -699,8 +699,8 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
         // prettier-ignore
-        if (token == _token0) { return _scalingFactor0; }
-        else if (token == _token1) { return _scalingFactor1; }
+        if (_isToken0(token)) { return _scalingFactor0; }
+        else if (_isToken1(token)) { return _scalingFactor1; }
         else if (token == _token2) { return _scalingFactor2; }
         else if (token == _token3) { return _scalingFactor3; }
         else if (token == _token4) { return _scalingFactor4; }
@@ -760,5 +760,13 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
         endValue = _packedAmplificationData.decodeUint64(64);
         startTime = _packedAmplificationData.decodeUint64(64 * 2);
         endTime = _packedAmplificationData.decodeUint64(64 * 3);
+    }
+
+    function _isToken0(IERC20 token) internal view returns (bool) {
+        return token == _token0;
+    }
+
+    function _isToken1(IERC20 token) internal view returns (bool) {
+        return token == _token1;
     }
 }

@@ -15,6 +15,7 @@
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/MerkleProof.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
@@ -76,19 +77,14 @@ contract MerkleRedeem is IDistributor, Ownable {
         address payable liquidityProvider,
         uint256 week,
         uint256 claimedBalance,
-        bytes32[] memory merkleProof,
-        bool internalBalance
-    ) public {
+        bytes32[] memory merkleProof
+    ) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
         require(!claimed[week][liquidityProvider], "cannot claim twice");
         require(verifyClaim(liquidityProvider, week, claimedBalance, merkleProof), "Incorrect merkle proof");
 
         claimed[week][liquidityProvider] = true;
-        if (internalBalance) {
-            _disburseToInternalBalance(liquidityProvider, claimedBalance);
-        } else {
-            _disburse(liquidityProvider, claimedBalance);
-        }
+        _disburse(liquidityProvider, claimedBalance);
     }
 
     struct Claim {
@@ -97,16 +93,10 @@ contract MerkleRedeem is IDistributor, Ownable {
         bytes32[] merkleProof;
     }
 
-    /**
-     * @notice Allows a user to claim a particular week's worth of rewards
-     */
-    function claimWeeks(
-        address payable liquidityProvider,
-        Claim[] memory claims,
-        bool useInternalBalance
-    ) public {
-        require(msg.sender == liquidityProvider, "user must claim own balance");
-        uint256 totalBalance = 0;
+    function _processClaims(address payable liquidityProvider, Claim[] memory claims)
+        internal
+        returns (uint256 totalBalance)
+    {
         Claim memory claim;
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
@@ -120,12 +110,44 @@ contract MerkleRedeem is IDistributor, Ownable {
             totalBalance = totalBalance.add(claim.balance);
             claimed[claim.week][liquidityProvider] = true;
         }
+    }
 
-        if (useInternalBalance) {
-            _disburseToInternalBalance(liquidityProvider, totalBalance);
-        } else {
-            _disburse(liquidityProvider, totalBalance);
-        }
+    /**
+     * @notice Allows a user to claim multiple weeks of reward
+     */
+    function claimWeeks(address payable liquidityProvider, Claim[] memory claims) external {
+        require(msg.sender == liquidityProvider, "user must claim own balance");
+
+        uint256 totalBalance = _processClaims(liquidityProvider, claims);
+        _disburse(liquidityProvider, totalBalance);
+    }
+
+    /**
+     * @notice Allows a user to claim multiple weeks of reward to internal balance
+     */
+    function claimWeeksToInternalBalance(address payable liquidityProvider, Claim[] memory claims) external {
+        require(msg.sender == liquidityProvider, "user must claim own balance");
+
+        uint256 totalBalance = _processClaims(liquidityProvider, claims);
+
+        _disburseToInternalBalance(liquidityProvider, totalBalance);
+    }
+
+    /**
+     * @notice Allows a user to claim several weeks of rewards to a callback
+     */
+    function claimWeeksWithCallback(
+        address payable liquidityProvider,
+        address payable callbackContract,
+        bytes calldata callbackData,
+        Claim[] memory claims
+    ) external returns (bytes memory) {
+        require(msg.sender == liquidityProvider, "user must claim own balance");
+        uint256 totalBalance = _processClaims(liquidityProvider, claims);
+
+        _disburseToInternalBalance(callbackContract, totalBalance);
+
+        return Address.functionCall(callbackContract, callbackData);
     }
 
     function claimStatus(
