@@ -4,7 +4,7 @@ import { AddressZero, Zero } from '@ethersproject/constants';
 import { ContractTransaction, PayableOverrides } from '@ethersproject/contracts';
 import { Provider } from '@ethersproject/providers';
 import invariant from 'tiny-invariant';
-import { Vault, Vault__factory } from '../typechain';
+import { Vault, Vault__factory, WETH, WETH__factory } from '@balancer-labs/typechain';
 import { BatchSwapStep, FundManagement, SingleSwap, SwapKind } from '../types';
 
 /**
@@ -65,7 +65,8 @@ export const convertBatchToSingleSwap = (
 };
 
 export class Swapper {
-  private vault: Vault;
+  private readonly vault: Vault;
+  private weth: WETH | null = null;
 
   constructor(vaultAddress: string, provider: Signer | Provider) {
     this.vault = Vault__factory.connect(vaultAddress, provider);
@@ -128,5 +129,21 @@ export class Swapper {
       overrides.value = ethLimit.gt(0) ? ethLimit : 0;
     }
     return this.vault.batchSwap(kind, swaps, assets, funds, limits, deadline, overrides);
+  };
+
+  private getWETH = async (): Promise<WETH> => {
+    if (this.weth !== null) {
+      return this.weth;
+    }
+    this.weth = WETH__factory.connect(await this.vault.WETH(), this.vault.provider);
+    return this.weth;
+  };
+
+  wrap = async (amount: BigNumberish): Promise<ContractTransaction> => {
+    return (await this.getWETH()).deposit({ value: amount });
+  };
+
+  unwrap = async (amount: BigNumberish): Promise<ContractTransaction> => {
+    return (await this.getWETH()).withdraw(amount);
   };
 }
