@@ -195,10 +195,19 @@ async function deployPoolFromFactory(
   const name = 'Balancer Pool Token';
   const symbol = 'BPT';
   const owner = ZERO_ADDRESS;
+  const swapEnabledOnStart = true;
+  let receipt: ContractReceipt;
 
-  const receipt: ContractReceipt = await (
-    await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)
-  ).wait();
+  if (poolName == 'InvestmentPool') {
+    receipt = await (
+      await factory.connect(args.from).create(name, symbol, ...args.parameters, owner, swapEnabledOnStart)
+    ).wait();
+  }
+  else {
+    receipt = await (
+      await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)
+    ).wait();
+  }
 
   const event = receipt.events?.find((e) => e.event == 'PoolCreated');
   if (event == undefined) {

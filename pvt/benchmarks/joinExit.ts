@@ -48,7 +48,7 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = 40; numTokens <= 90; numTokens += 10) {
+  for (let numTokens = 40; numTokens <= 80; numTokens += 10) {
     printTokens('Investment pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
@@ -59,7 +59,7 @@ async function main() {
     );
   }
   console.log('\n');
-  const maxInvestmentTokens = 94;
+  const maxInvestmentTokens = 88;
 
   printTokens('Investment pool', maxInvestmentTokens);
   await joinAndExitPool(
@@ -100,7 +100,7 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = 40; numTokens <= 90; numTokens += 10) {
+  for (let numTokens = 40; numTokens <= 80; numTokens += 10) {
     printTokens('Investment pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
@@ -153,7 +153,7 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = 40; numTokens <= 90; numTokens += 10) {
+  for (let numTokens = 40; numTokens <= 80; numTokens += 10) {
     printTokens('Investment pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
@@ -205,7 +205,7 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = 40; numTokens <= 90; numTokens += 10) {
+  for (let numTokens = 40; numTokens <= 80; numTokens += 10) {
     printTokens('Investment pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
