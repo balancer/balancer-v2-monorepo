@@ -12,7 +12,6 @@ import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativ
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { range } from 'lodash';
-import { start } from 'repl';
 
 describe('InvestmentPool', function () {
   let allTokens: TokenList;
@@ -311,10 +310,10 @@ describe('InvestmentPool', function () {
                 for (let i = 0; i < poolWeights.length; i++) {
                   if (startWeights[i] < endWeights[i]) {
                     // Weight is increasing
-                    intermediateWeights[i] = startWeights[i].add((endWeights[i].sub(startWeights[i])).mul(pct).div(100));
+                    intermediateWeights[i] = startWeights[i].add(endWeights[i].sub(startWeights[i]).mul(pct).div(100));
                   } else {
                     // Weight is decreasing (or not changing)
-                    intermediateWeights[i] = startWeights[i].sub((startWeights[i].sub(endWeights[i])).mul(pct).div(100));
+                    intermediateWeights[i] = startWeights[i].sub(startWeights[i].sub(endWeights[i]).mul(pct).div(100));
                   }
                 }
 
