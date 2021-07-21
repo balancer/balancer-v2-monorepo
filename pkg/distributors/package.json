@@ -14,7 +14,7 @@
   },
   "scripts": {
     "build": "yarn compile",
-    "compile": "hardhat compile",
+    "compile": "hardhat compile && rm -rf artifacts/build-info",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity && yarn lint:typescript",
     "lint:solidity": "solhint 'contracts/**/*.sol'",
