@@ -35,13 +35,13 @@ describe('InvestmentPoolFactory', function () {
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
 
-  async function createPool(): Promise<Contract> {
+  async function createPool(swapsEnabled = true): Promise<Contract> {
     const receipt = await (
-      await factory.create(NAME, SYMBOL, tokens.addresses, WEIGHTS, POOL_SWAP_FEE_PERCENTAGE, ZERO_ADDRESS)
+      await factory.create(NAME, SYMBOL, tokens.addresses, WEIGHTS, POOL_SWAP_FEE_PERCENTAGE, ZERO_ADDRESS, swapsEnabled)
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-    return deployedAt('LiquidityBootstrappingPool', event.args.pool);
+    return deployedAt('InvestmentPool', event.args.pool);
   }
 
   describe('temporarily pausable', () => {
@@ -84,6 +84,18 @@ describe('InvestmentPoolFactory', function () {
         const info = await vault.getPoolTokenInfo(poolId, token);
         expect(info.assetManager).to.equal(ZERO_ADDRESS);
       });
+    });
+
+    it('creates it with swaps enabled', async () => {
+      const pool = await createPool();
+
+      expect(await pool.getSwapEnabled()).to.be.true;
+    });
+
+    it('creates it with swaps disabled', async () => {
+      const pool = await createPool(false);
+
+      expect(await pool.getSwapEnabled()).to.be.false;
     });
   });
 });
