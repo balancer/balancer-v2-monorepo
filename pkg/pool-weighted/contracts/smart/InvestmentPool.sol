@@ -199,28 +199,22 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
             IERC20 token = tokens[i];
 
-            tokenState = tokenState.insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET);
-            tokenState = tokenState.insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET);
-
             // Tokens with more than 18 decimals are not supported
             // Scaling calculations must be exact/lossless
             // Store decimal difference instead of actual scaling factor
-            tokenState = tokenState.insertUint5(
-                uint256(18).sub(ERC20(address(token)).decimals()),
-                _DECIMAL_DIFF_OFFSET
-            );
-
-            _poolState[token] = tokenState;
+            _poolState[token] = tokenState
+                .insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET)
+                .insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET)
+                .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
 
             normalizedSum = normalizedSum.add(endWeight);
         }
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        //newTimestamps = newTimestamps.insertUint32(startTime, _START_TIME_OFFSET);
-        //newTimestamps = newTimestamps.insertUint32(endTime, _END_TIME_OFFSET);
-
-        //_gradualUpdateTimestamps = newTimestamps;
+        //_gradualUpdateTimestamps = newTimestamps
+        //    .insertUint32(startTime, _START_TIME_OFFSET)
+        //    .insertUint32(endTime, _END_TIME_OFFSET);
 
         //emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
@@ -248,8 +242,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             return 0;
         }
 
-        uint256 totalSeconds = endTime.sub(startTime);
-        uint256 secondsElapsed = currentTime.sub(startTime);
+        uint256 totalSeconds = endTime - startTime;
+        uint256 secondsElapsed = currentTime - startTime;
 
         // In the degenerate case of a zero duration change, consider it completed (and avoid division by zero)
         return totalSeconds == 0 ? FixedPoint.ONE : secondsElapsed.divDown(totalSeconds);*/
@@ -263,15 +257,15 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 endWeight,
         uint256 pctProgress
     ) private pure returns (uint256 finalWeight) {
-        if (pctProgress == 0) return startWeight;
+        if (pctProgress == 0 || startWeight == endWeight) return startWeight;
         if (pctProgress >= FixedPoint.ONE) return endWeight;
 
-        if (endWeight < startWeight) {
-            uint256 weightDelta = pctProgress.mulDown(startWeight.sub(endWeight));
-            finalWeight = startWeight.sub(weightDelta);
+        if (startWeight > endWeight) {
+            uint256 weightDelta = pctProgress.mulDown(startWeight - endWeight);
+            return startWeight.sub(weightDelta);
         } else {
-            uint256 weightDelta = pctProgress.mulDown(endWeight.sub(startWeight));
-            finalWeight = startWeight.add(weightDelta);
+            uint256 weightDelta = pctProgress.mulDown(endWeight - startWeight);
+            return startWeight.add(weightDelta);
         }
     }
 }
