@@ -41,7 +41,7 @@ describe('InvestmentPoolFactory', function () {
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-    return deployedAt('LiquidityBootstrappingPool', event.args.pool);
+    return deployedAt('InvestmentPool', event.args.pool);
   }
 
   describe('temporarily pausable', () => {
