@@ -104,7 +104,7 @@ export default {
             pauseWindowDuration,
             bufferPeriodDuration,
             TypesConverter.toAddress(owner),
-            swapEnabledOnStart
+            swapEnabledOnStart,
           ],
           from,
         });
