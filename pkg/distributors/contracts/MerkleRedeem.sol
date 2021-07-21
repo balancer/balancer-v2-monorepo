@@ -43,7 +43,7 @@ contract MerkleRedeem is IDistributor, Ownable {
     constructor(IVault _vault, IERC20 _rewardToken) {
         vault = _vault;
         rewardToken = _rewardToken;
-        IERC20(_rewardToken).approve(address(_vault), type(uint256).max);
+        _rewardToken.approve(address(_vault), type(uint256).max);
     }
 
     function _disburse(address recipient, uint256 balance) private {
@@ -196,8 +196,8 @@ contract MerkleRedeem is IDistributor, Ownable {
         uint256 amount
     ) external onlyOwner {
         require(weekMerkleRoots[week] == bytes32(0), "cannot rewrite merkle root");
-        rewardToken.safeTransferFrom(msg.sender, address(this), amount);
         weekMerkleRoots[week] = _merkleRoot;
+        rewardToken.safeTransferFrom(msg.sender, address(this), amount);
         emit RewardAdded(address(rewardToken), amount);
     }
 }
