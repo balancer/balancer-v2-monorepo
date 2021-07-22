@@ -15,6 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
 
@@ -24,6 +26,8 @@ import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
  *      Users may atomically join a pool and use the BPT as the input to a swap or swap for BPT and exit the pool.
  */
 contract BatchRelayer {
+    using Address for address payable;
+
     IVault private immutable _vault;
     IMultiRewards private immutable _stakingContract;
 
@@ -54,8 +58,8 @@ contract BatchRelayer {
         IAsset[] calldata assets,
         int256[] calldata limits,
         uint256 deadline
-    ) external returns (int256[] memory) {
-        getVault().joinPool(poolId, msg.sender, address(this), request);
+    ) external payable returns (int256[] memory swapAmounts) {
+        getVault().joinPool{value: msg.value}(poolId, msg.sender, address(this), request);
 
         // Ensure that the BPT gained from the join is all used in the swap
         require(assets[swaps[0].assetInIndex] == IAsset(_getPoolAddress(poolId)), "Must use BPT as input to swap");
@@ -78,15 +82,17 @@ contract BatchRelayer {
             recipient: recipient,
             toInternalBalance: false
         });
-        return getVault().batchSwap(IVault.SwapKind.GIVEN_IN, swaps, assets, funds, limits, deadline);
+
+        swapAmounts = getVault().batchSwap(IVault.SwapKind.GIVEN_IN, swaps, assets, funds, limits, deadline);
+        sweepETH();
     }
 
     function joinAndStake(
         bytes32 poolId,
         address payable recipient,
         IVault.JoinPoolRequest calldata joinPoolRequest
-    ) external {
-        getVault().joinPool(poolId, msg.sender, address(this), joinPoolRequest);
+    ) external payable {
+        getVault().joinPool{value: msg.value}(poolId, msg.sender, address(this), joinPoolRequest);
 
         IERC20 bpt = IERC20(_getPoolAddress(poolId));
         uint256 bptAmount = bpt.balanceOf(address(this));
@@ -97,6 +103,7 @@ contract BatchRelayer {
         }
 
         getStakingContract().stake(bpt, bptAmount, recipient);
+        sweepETH();
     }
 
     function swapAndExit(
@@ -108,7 +115,7 @@ contract BatchRelayer {
         IAsset[] calldata assets,
         int256[] calldata limits,
         uint256 deadline
-    ) external {
+    ) external payable {
         // We can't output tokens to the user's internal balance
         // as they need to have BPT on their address for the exit
         IVault.FundManagement memory funds = IVault.FundManagement({
@@ -117,7 +124,7 @@ contract BatchRelayer {
             recipient: msg.sender,
             toInternalBalance: false
         });
-        int256[] memory swapAmounts = getVault().batchSwap(kind, swaps, assets, funds, limits, deadline);
+        int256[] memory swapAmounts = getVault().batchSwap{value: msg.value}(kind, swaps, assets, funds, limits, deadline);
 
         // Prevent stack-too-deep
         {
@@ -142,5 +149,13 @@ contract BatchRelayer {
         }
 
         getVault().exitPool(poolId, msg.sender, recipient, request);
+        sweepETH();
+    }
+
+    function sweepETH() private {
+        uint256 remainingEth = address(this).balance;
+        if (remainingEth > 0) {
+            msg.sender.sendValue(remainingEth);
+        }
     }
 }
