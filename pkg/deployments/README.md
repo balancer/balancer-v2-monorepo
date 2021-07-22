@@ -15,4 +15,5 @@ Note that some protocol contracts are created dynamically: for example, `Weighte
 - Pool factories:
   - [Weighted Pools of up to 8 tokens](./tasks/20210418-weighted-pool)
   - [Weighted Pools with two tokens and price oracle](./tasks/20210418-weighted-pool)
+  - [Liquidity Bootstrapping Pools of up to 4 tokens](./tasks/20210721-liquidity-bootstrapping-pool)
   - [Stable Pools of up to 5 tokens](./tasks/20210624-stable-pool)
