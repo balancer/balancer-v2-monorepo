@@ -59,7 +59,7 @@ contract BatchRelayer {
         int256[] calldata limits,
         uint256 deadline
     ) external payable returns (int256[] memory swapAmounts) {
-        getVault().joinPool{value: msg.value}(poolId, msg.sender, address(this), request);
+        getVault().joinPool{ value: msg.value }(poolId, msg.sender, address(this), request);
 
         // Ensure that the BPT gained from the join is all used in the swap
         require(assets[swaps[0].assetInIndex] == IAsset(_getPoolAddress(poolId)), "Must use BPT as input to swap");
@@ -84,7 +84,7 @@ contract BatchRelayer {
         });
 
         swapAmounts = getVault().batchSwap(IVault.SwapKind.GIVEN_IN, swaps, assets, funds, limits, deadline);
-        sweepETH();
+        _sweepETH();
     }
 
     function joinAndStake(
@@ -92,7 +92,7 @@ contract BatchRelayer {
         address payable recipient,
         IVault.JoinPoolRequest calldata joinPoolRequest
     ) external payable {
-        getVault().joinPool{value: msg.value}(poolId, msg.sender, address(this), joinPoolRequest);
+        getVault().joinPool{ value: msg.value }(poolId, msg.sender, address(this), joinPoolRequest);
 
         IERC20 bpt = IERC20(_getPoolAddress(poolId));
         uint256 bptAmount = bpt.balanceOf(address(this));
@@ -103,7 +103,7 @@ contract BatchRelayer {
         }
 
         getStakingContract().stake(bpt, bptAmount, recipient);
-        sweepETH();
+        _sweepETH();
     }
 
     function swapAndExit(
@@ -124,7 +124,14 @@ contract BatchRelayer {
             recipient: msg.sender,
             toInternalBalance: false
         });
-        int256[] memory swapAmounts = getVault().batchSwap{value: msg.value}(kind, swaps, assets, funds, limits, deadline);
+        int256[] memory swapAmounts = getVault().batchSwap{ value: msg.value }(
+            kind,
+            swaps,
+            assets,
+            funds,
+            limits,
+            deadline
+        );
 
         // Prevent stack-too-deep
         {
@@ -149,10 +156,10 @@ contract BatchRelayer {
         }
 
         getVault().exitPool(poolId, msg.sender, recipient, request);
-        sweepETH();
+        _sweepETH();
     }
 
-    function sweepETH() private {
+    function _sweepETH() private {
         uint256 remainingEth = address(this).balance;
         if (remainingEth > 0) {
             msg.sender.sendValue(remainingEth);
