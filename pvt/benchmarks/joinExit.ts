@@ -6,15 +6,11 @@ import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { printGas, setupEnvironment, getWeightedPool, getStablePool, pickTokenAddresses } from './misc';
-import { encodeJoinStablePool, encodeExitStablePool } from '@balancer-labs/v2-helpers/src/models/pools/stable/encoding';
-import {
-  encodeJoinWeightedPool,
-  encodeExitWeightedPool,
-} from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
+import { WeightedPoolEncoder, StablePoolEncoder } from '@balancer-labs/balancer-js';
 import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
 // setup environment
-const BPTAmount = bn(5e18);
+const BPTAmount = bn(1e18);
 const numberJoinsExits = 3;
 
 let vault: Contract;
@@ -35,22 +31,14 @@ async function main() {
 
   console.log(`\n#Transferring tokens\n`);
 
-  const joinWeightedUserData = encodeJoinWeightedPool({
-    kind: 'TokenInForExactBPTOut',
-    bptAmountOut: BPTAmount,
-    enterTokenIndex: 0,
-  });
-  const exitWeightedUserData = encodeExitWeightedPool({ kind: 'ExactBPTInForTokensOut', bptAmountIn: BPTAmount });
+  const joinWeightedUserData = WeightedPoolEncoder.joinTokenInForExactBPTOut(BPTAmount, 0);
+  const exitWeightedUserData = WeightedPoolEncoder.exitExactBPTInForTokensOut(BPTAmount);
 
-  const joinStableUserData = encodeJoinStablePool({
-    kind: 'TokenInForExactBPTOut',
-    bptAmountOut: BPTAmount,
-    enterTokenIndex: 0,
-  });
-  const exitStableUserData = encodeExitStablePool({ kind: 'ExactBPTInForTokensOut', bptAmountIn: BPTAmount });
+  const joinStableUserData = StablePoolEncoder.joinTokenInForExactBPTOut(BPTAmount, 0);
+  const exitStableUserData = StablePoolEncoder.exitExactBPTInForTokensOut(BPTAmount);
 
-  // numTokens is the size of the pool: 2,4,6,8
-  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+  // numTokens is the size of the pool: 2,4,6,8,...
+  for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
@@ -78,8 +66,8 @@ async function main() {
 
   console.log(`#With user balance\n`);
 
-  // numTokens is the size of the pool: 2,4,6,8
-  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+  // numTokens is the size of the pool: 2,4,6,8,...
+  for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
@@ -109,7 +97,7 @@ async function main() {
 
   console.log(`\n#Transferring tokens\n`);
 
-  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+  for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
@@ -137,7 +125,7 @@ async function main() {
 
   console.log(`#With user balance\n`);
 
-  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+  for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),

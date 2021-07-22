@@ -16,16 +16,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { arrayAdd, arraySub, BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import {
-  encodeCalldataAuthorization,
-  signExitAuthorization,
-} from '@balancer-labs/v2-helpers/src/models/misc/signatures';
-import {
-  GeneralPool,
-  MinimalSwapInfoPool,
-  PoolSpecializationSetting,
-  TwoTokenPool,
-} from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import { PoolSpecialization, RelayerAuthorization } from '@balancer-labs/balancer-js';
 
 describe('Exit Pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
@@ -57,18 +48,18 @@ describe('Exit Pool', () => {
   });
 
   describe('with general pool', () => {
-    itExitsSpecializedPoolCorrectly(GeneralPool, 4);
+    itExitsSpecializedPoolCorrectly(PoolSpecialization.GeneralPool, 4);
   });
 
   describe('with minimal swap info pool', () => {
-    itExitsSpecializedPoolCorrectly(MinimalSwapInfoPool, 3);
+    itExitsSpecializedPoolCorrectly(PoolSpecialization.MinimalSwapInfoPool, 3);
   });
 
   describe('with two token pool', () => {
-    itExitsSpecializedPoolCorrectly(TwoTokenPool, 2);
+    itExitsSpecializedPoolCorrectly(PoolSpecialization.TwoTokenPool, 2);
   });
 
-  function itExitsSpecializedPoolCorrectly(specialization: PoolSpecializationSetting, tokenAmount: number) {
+  function itExitsSpecializedPoolCorrectly(specialization: PoolSpecialization, tokenAmount: number) {
     let pool: Contract;
     let poolId: string;
     let tokens: TokenList;
@@ -157,8 +148,15 @@ describe('Exit Pool', () => {
 
         if (data.signature) {
           const nonce = await vault.getNextNonce(lp.address);
-          const signature = await signExitAuthorization(vault, lp, relayer, calldata, nonce, MAX_UINT256);
-          calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
+          const signature = await RelayerAuthorization.signExitAuthorization(
+            vault,
+            lp,
+            relayer.address,
+            calldata,
+            MAX_UINT256,
+            nonce
+          );
+          calldata = RelayerAuthorization.encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
         }
 
         // Hardcoding a gas limit prevents (slow) gas estimation

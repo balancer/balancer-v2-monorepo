@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { GeneralPool, TwoTokenPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -18,6 +18,7 @@ import {
   setNextBlockTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { range } from 'lodash';
 
 describe('StablePool', function () {
   let allTokens: TokenList;
@@ -27,6 +28,8 @@ describe('StablePool', function () {
     other: SignerWithAddress,
     lp: SignerWithAddress;
 
+  const MAX_TOKENS = 5;
+
   const AMP_PRECISION = 1e3;
   const AMPLIFICATION_PARAMETER = bn(200);
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -34,6 +37,33 @@ describe('StablePool', function () {
 
   before('setup signers', async () => {
     [, owner, lp, trader, recipient, other] = await ethers.getSigners();
+  });
+
+  describe('scaling factors', () => {
+    let tokens: TokenList;
+
+    sharedBeforeEach('deploy tokens', async () => {
+      tokens = await TokenList.create(MAX_TOKENS, { sorted: true, varyDecimals: true });
+    });
+
+    for (const numTokens of range(2, MAX_TOKENS + 1)) {
+      context(`with ${numTokens} tokens`, () => {
+        let pool: StablePool;
+        let poolTokens: TokenList;
+
+        sharedBeforeEach('deploy pool', async () => {
+          poolTokens = tokens.subset(numTokens);
+          pool = await StablePool.create({ tokens: poolTokens, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE });
+        });
+
+        it('sets scaling factors', async () => {
+          const poolScalingFactors = await pool.getScalingFactors();
+          const tokenScalingFactors = poolTokens.map((token) => fp(10 ** (18 - token.decimals)));
+
+          expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
+        });
+      });
+    }
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -63,7 +93,7 @@ describe('StablePool', function () {
       const tokens = await TokenList.create(6, { sorted: true });
 
       await expect(StablePool.create({ tokens, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE })).to.be.revertedWith(
-        'MAX_STABLE_TOKENS'
+        'MAX_TOKENS'
       );
     });
   });
@@ -100,7 +130,9 @@ describe('StablePool', function () {
         it('uses general specialization', async () => {
           const { address, specialization } = await pool.getRegisteredInfo();
           expect(address).to.equal(pool.address);
-          expect(specialization).to.equal(numberOfTokens == 2 ? TwoTokenPool : GeneralPool);
+          expect(specialization).to.equal(
+            numberOfTokens == 2 ? PoolSpecialization.TwoTokenPool : PoolSpecialization.GeneralPool
+          );
         });
 
         it('registers tokens in the vault', async () => {

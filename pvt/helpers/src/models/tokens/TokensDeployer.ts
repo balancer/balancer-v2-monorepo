@@ -8,10 +8,17 @@ import TypesConverter from '../types/TypesConverter';
 import { RawTokenDeployment, RawTokensDeployment, TokenDeployment, TokensDeploymentOptions } from './types';
 
 class TokensDeployer {
-  async deploy(params: RawTokensDeployment, { sorted, from }: TokensDeploymentOptions = {}): Promise<TokenList> {
+  async deploy(
+    params: RawTokensDeployment,
+    { sorted, varyDecimals, from }: TokensDeploymentOptions = {}
+  ): Promise<TokenList> {
     const defaultSender = from || (await ethers.getSigners())[0];
     const trimmedParams = sorted ? this._trimParamsForSortedDeploy(params) : params;
-    const deployments: TokenDeployment[] = TypesConverter.toTokenDeployments(trimmedParams, defaultSender);
+    const deployments: TokenDeployment[] = TypesConverter.toTokenDeployments(
+      trimmedParams,
+      defaultSender,
+      varyDecimals
+    );
     const tokens = await Promise.all(deployments.map(this.deployToken));
     const sortedTokens = sorted ? this._sortTokensDeployment(tokens, params) : tokens;
     return new TokenList(sortedTokens);

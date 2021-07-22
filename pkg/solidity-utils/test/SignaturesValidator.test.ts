@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { Contract } from '@ethersproject/contracts';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -8,7 +8,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_GAS_LIMIT, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
-import { encodeCalldataAuthorization, signAuthorization } from '@balancer-labs/v2-helpers/src/models/misc/signatures';
+import { RelayerAuthorization, RelayerAction } from '@balancer-labs/balancer-js';
 
 describe('SignaturesValidator', () => {
   let validator: Contract;
@@ -48,7 +48,11 @@ describe('SignaturesValidator', () => {
 
       it('decodes it properly', async () => {
         const signature = await user.signMessage('message');
-        const calldataWithSignature = await encodeCalldataAuthorization(calldata, deadline, signature);
+        const calldataWithSignature = await RelayerAuthorization.encodeCalldataAuthorization(
+          calldata,
+          deadline,
+          signature
+        );
 
         const tx = await user.sendTransaction({
           to: validator.address,
@@ -89,8 +93,16 @@ describe('SignaturesValidator', () => {
         ? validator.interface.encodeFunctionData(allowedFunction, [user.address])
         : calldata;
 
-      const signature = await signAuthorization(validator, user, allowedSender, allowedCalldata, nonce, deadline);
-      return encodeCalldataAuthorization(calldata, deadline, signature);
+      const signature = await RelayerAuthorization.signAuthorizationFor(
+        'Authorization' as RelayerAction,
+        validator,
+        user,
+        allowedSender,
+        allowedCalldata,
+        deadline,
+        nonce
+      );
+      return RelayerAuthorization.encodeCalldataAuthorization(calldata, deadline, signature);
     };
 
     const setAllowedFunction = (fnName: string) => {

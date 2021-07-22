@@ -8,10 +8,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import {
-  encodeCalldataAuthorization,
-  signSetRelayerApprovalAuthorization,
-} from '@balancer-labs/v2-helpers/src/models/misc/signatures';
+import { RelayerAuthorization } from '@balancer-labs/balancer-js';
 
 describe('VaultAuthorization', function () {
   let authorizer: Contract, vault: Contract;
@@ -221,8 +218,13 @@ describe('VaultAuthorization', function () {
           ]);
 
           if (withSignature) {
-            const signature = await signSetRelayerApprovalAuthorization(vault, user, sender, calldata);
-            calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
+            const signature = await RelayerAuthorization.signSetRelayerApprovalAuthorization(
+              vault,
+              user,
+              sender.address,
+              calldata
+            );
+            calldata = RelayerAuthorization.encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
           }
 
           // Hardcoding a gas limit prevents (slow) gas estimation

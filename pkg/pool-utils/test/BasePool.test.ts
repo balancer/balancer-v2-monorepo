@@ -8,7 +8,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
@@ -67,7 +67,7 @@ describe('BasePool', function () {
       from: params.from,
       args: [
         vault.address,
-        GeneralPool,
+        PoolSpecialization.GeneralPool,
         'Balancer Pool Token',
         'BPT',
         Array.isArray(poolTokens) ? poolTokens : poolTokens.addresses,
@@ -96,7 +96,7 @@ describe('BasePool', function () {
 
       const [poolAddress, poolSpecialization] = await vault.getPool(poolId);
       expect(poolAddress).to.equal(pool.address);
-      expect(poolSpecialization).to.equal(GeneralPool);
+      expect(poolSpecialization).to.equal(PoolSpecialization.GeneralPool);
 
       const { tokens: poolTokens } = await vault.getPoolTokens(poolId);
       expect(poolTokens).to.have.same.members(tokens.addresses);

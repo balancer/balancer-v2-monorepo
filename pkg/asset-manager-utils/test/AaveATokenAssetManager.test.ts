@@ -9,7 +9,7 @@ import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
+import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 
 const tokenInitialBalance = bn(200e18);
@@ -75,10 +75,7 @@ const setup = async () => {
     assets: tokens.addresses,
     maxAmountsIn: Array(assets.length).fill(MAX_UINT256),
     fromInternalBalance: false,
-    userData: encodeJoinWeightedPool({
-      kind: 'Init',
-      amountsIn: Array(assets.length).fill(tokenInitialBalance),
-    }),
+    userData: WeightedPoolEncoder.joinInit(Array(assets.length).fill(tokenInitialBalance)),
   });
 
   return {

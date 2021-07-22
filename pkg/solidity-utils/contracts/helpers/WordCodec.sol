@@ -32,6 +32,7 @@ library WordCodec {
     uint256 private constant _MASK_32 = 2**(32) - 1;
     uint256 private constant _MASK_53 = 2**(53) - 1;
     uint256 private constant _MASK_64 = 2**(64) - 1;
+    uint256 private constant _MASK_128 = 2**(128) - 1;
     uint256 private constant _MASK_192 = 2**(192) - 1;
 
     // Largest positive values that can be represented as N bits signed integers.
@@ -44,7 +45,7 @@ library WordCodec {
      * @dev Inserts a boolean value shifted by an offset into a 256 bit word, replacing the old value. Returns the new
      * word.
      */
-    function insertBoolean(
+    function insertBool(
         bytes32 word,
         bool value,
         uint256 offset
@@ -244,6 +245,13 @@ library WordCodec {
      */
     function decodeUint64(bytes32 word, uint256 offset) internal pure returns (uint256) {
         return uint256(word >> offset) & _MASK_64;
+    }
+
+    /**
+     * @dev Decodes and returns a 128 bit unsigned integer shifted by an offset from a 256 bit word.
+     */
+    function decodeUint128(bytes32 word, uint256 offset) internal pure returns (uint256) {
+        return uint256(word >> offset) & _MASK_128;
     }
 
     // Signed

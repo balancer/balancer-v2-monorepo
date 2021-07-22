@@ -21,14 +21,15 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
 
 import "./StableMath.sol";
 import "./StablePoolUserDataHelpers.sol";
 
-contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
+contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRateProvider {
+    using WordCodec for bytes32;
     using FixedPoint for uint256;
     using StablePoolUserDataHelpers for bytes;
-    using WordCodec for bytes32;
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
@@ -46,6 +47,24 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
 
     event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
     event AmpUpdateStopped(uint256 currentValue);
+
+    uint256 private immutable _totalTokens;
+
+    IERC20 internal immutable _token0;
+    IERC20 internal immutable _token1;
+    IERC20 internal immutable _token2;
+    IERC20 internal immutable _token3;
+    IERC20 internal immutable _token4;
+
+    // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
+    // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
+    // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
+
+    uint256 internal immutable _scalingFactor0;
+    uint256 internal immutable _scalingFactor1;
+    uint256 internal immutable _scalingFactor2;
+    uint256 internal immutable _scalingFactor3;
+    uint256 internal immutable _scalingFactor4;
 
     // To track how many tokens are owed to the Vault as protocol fees, we measure and store the value of the invariant
     // after every join and exit. All invariant growth that happens between join and exit events is due to swap fees.
@@ -86,13 +105,32 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
             owner
         )
     {
-        _require(tokens.length <= _MAX_STABLE_TOKENS, Errors.MAX_STABLE_TOKENS);
-
         _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
         _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
 
+        uint256 totalTokens = tokens.length;
+        _totalTokens = totalTokens;
+
+        // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
+        _token0 = tokens[0];
+        _token1 = tokens[1];
+        _token2 = totalTokens > 2 ? tokens[2] : IERC20(0);
+        _token3 = totalTokens > 3 ? tokens[3] : IERC20(0);
+        _token4 = totalTokens > 4 ? tokens[4] : IERC20(0);
+
+        _scalingFactor0 = _computeScalingFactor(tokens[0]);
+        _scalingFactor1 = _computeScalingFactor(tokens[1]);
+        _scalingFactor2 = totalTokens > 2 ? _computeScalingFactor(tokens[2]) : 0;
+        _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(tokens[3]) : 0;
+        _scalingFactor4 = totalTokens > 4 ? _computeScalingFactor(tokens[4]) : 0;
+
         uint256 initialAmp = Math.mul(amplificationParameter, _AMP_PRECISION);
         _setAmplificationData(initialAmp);
+    }
+
+    function getLastInvariant() external view returns (uint256 lastInvariant, uint256 lastInvariantAmp) {
+        lastInvariant = _lastInvariant;
+        lastInvariantAmp = _lastInvariantAmp;
     }
 
     // Base Pool handlers
@@ -104,7 +142,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override whenNotPaused returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 amountOut = StableMath._calcOutGivenIn(currentAmp, balances, indexIn, indexOut, swapRequest.amount);
         return amountOut;
@@ -115,7 +153,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override whenNotPaused returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 amountIn = StableMath._calcInGivenOut(currentAmp, balances, indexIn, indexOut, swapRequest.amount);
         return amountIn;
@@ -127,7 +165,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         SwapRequest memory swapRequest,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) internal view virtual override returns (uint256) {
+    ) internal virtual override returns (uint256) {
         _require(_getTotalTokens() == 2, Errors.NOT_TWO_TOKENS);
 
         (uint256[] memory balances, uint256 indexIn, uint256 indexOut) = _getSwapBalanceArrays(
@@ -143,7 +181,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         SwapRequest memory swapRequest,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) internal view virtual override returns (uint256) {
+    ) internal virtual override returns (uint256) {
         _require(_getTotalTokens() == 2, Errors.NOT_TWO_TOKENS);
 
         (uint256[] memory balances, uint256 indexIn, uint256 indexOut) = _getSwapBalanceArrays(
@@ -551,7 +589,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
      * @dev This function returns the appreciation of one BPT relative to the
      * underlying tokens. This starts at 1 when the pool is created and grows over time
      */
-    function getRate() public view returns (uint256) {
+    function getRate() public view override returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
 
         // When calculating the current BPT rate, we may not have paid the protocol fees, therefore
@@ -651,6 +689,42 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         }
     }
 
+    function _getMaxTokens() internal pure override returns (uint256) {
+        return _MAX_STABLE_TOKENS;
+    }
+
+    function _getTotalTokens() internal view virtual override returns (uint256) {
+        return _totalTokens;
+    }
+
+    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
+        // prettier-ignore
+        if (_isToken0(token)) { return _scalingFactor0; }
+        else if (_isToken1(token)) { return _scalingFactor1; }
+        else if (token == _token2) { return _scalingFactor2; }
+        else if (token == _token3) { return _scalingFactor3; }
+        else if (token == _token4) { return _scalingFactor4; }
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+    }
+
+    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
+        uint256 totalTokens = _getTotalTokens();
+        uint256[] memory scalingFactors = new uint256[](totalTokens);
+
+        // prettier-ignore
+        {
+            if (totalTokens > 0) { scalingFactors[0] = _scalingFactor0; } else { return scalingFactors; }
+            if (totalTokens > 1) { scalingFactors[1] = _scalingFactor1; } else { return scalingFactors; }
+            if (totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
+            if (totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
+            if (totalTokens > 4) { scalingFactors[4] = _scalingFactor4; } else { return scalingFactors; }
+        }
+
+        return scalingFactors;
+    }
+
     function _setAmplificationData(uint256 value) private {
         _setAmplificationData(value, value, block.timestamp, block.timestamp);
 
@@ -686,5 +760,13 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath {
         endValue = _packedAmplificationData.decodeUint64(64);
         startTime = _packedAmplificationData.decodeUint64(64 * 2);
         endTime = _packedAmplificationData.decodeUint64(64 * 3);
+    }
+
+    function _isToken0(IERC20 token) internal view returns (bool) {
+        return token == _token0;
+    }
+
+    function _isToken1(IERC20 token) internal view returns (bool) {
+        return token == _token1;
     }
 }

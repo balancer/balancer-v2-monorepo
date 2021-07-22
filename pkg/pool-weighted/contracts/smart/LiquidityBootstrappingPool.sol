@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "../BaseWeightedPool.sol";
 import "./WeightCompression.sol";
@@ -38,20 +39,34 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
     // State variables
 
-    // All swaps fail while this is false
-    bool private _swapEnabled;
+    uint256 private immutable _totalTokens;
+
+    IERC20 internal immutable _token0;
+    IERC20 internal immutable _token1;
+    IERC20 internal immutable _token2;
+    IERC20 internal immutable _token3;
+
+    // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
+    // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
+    // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
+
+    uint256 internal immutable _scalingFactor0;
+    uint256 internal immutable _scalingFactor1;
+    uint256 internal immutable _scalingFactor2;
+    uint256 internal immutable _scalingFactor3;
 
     // For gas optimization, store start/end weights and timestamps in one bytes32
     // Start weights need to be high precision, since restarting the update resets them to "spot"
     // values. Target end weights do not need as much precision.
-    // [     32 bits   |     32 bits     |      64 bits     |      128 bits      |
-    // [ end timestamp | start timestamp | 4x16 end weights | 4x32 start weights |
-    // |MSB                                                                   LSB|
+    // [     32 bits   |     32 bits     |      64 bits     |      124 bits      |    3 bits    |     1 bit    ]
+    // [ end timestamp | start timestamp | 4x16 end weights | 4x31 start weights |   not used   | swap enabled ]
+    // |MSB                                                                                                 LSB|
 
     bytes32 private _poolState;
 
     // Offsets for data elements in _poolState
-    uint256 private constant _START_WEIGHT_OFFSET = 0;
+    uint256 private constant _SWAP_ENABLED_OFFSET = 0;
+    uint256 private constant _START_WEIGHT_OFFSET = 4;
     uint256 private constant _END_WEIGHT_OFFSET = 128;
     uint256 private constant _START_TIME_OFFSET = 192;
     uint256 private constant _END_TIME_OFFSET = 224;
@@ -91,9 +106,20 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         )
     {
         uint256 totalTokens = tokens.length;
-
-        _require(totalTokens <= _MAX_LBP_TOKENS, Errors.MAX_TOKENS);
         InputHelpers.ensureInputLengthMatch(totalTokens, normalizedWeights.length);
+
+        _totalTokens = totalTokens;
+
+        // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
+        _token0 = tokens[0];
+        _token1 = tokens[1];
+        _token2 = totalTokens > 2 ? tokens[2] : IERC20(0);
+        _token3 = totalTokens > 3 ? tokens[3] : IERC20(0);
+
+        _scalingFactor0 = _computeScalingFactor(tokens[0]);
+        _scalingFactor1 = _computeScalingFactor(tokens[1]);
+        _scalingFactor2 = totalTokens > 2 ? _computeScalingFactor(tokens[2]) : 0;
+        _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(tokens[3]) : 0;
 
         uint256 currentTime = block.timestamp;
 
@@ -106,10 +132,10 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     // External functions
 
     /**
-     * @dev Getter for _swapEnabled. If false, trading is disabled.
+     * @dev Tells whether swaps are enabled or not for the given pool.
      */
-    function getSwapEnabled() external view returns (bool) {
-        return _swapEnabled;
+    function getSwapEnabled() public view returns (bool) {
+        return _poolState.decodeBool(_SWAP_ENABLED_OFFSET);
     }
 
     /**
@@ -160,7 +186,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         // This avoids discontinuities in the weight curve. Otherwise, if you set the start/end times with
         // only 10% of the period in the future, the weights would immediately jump 90%
         uint256 currentTime = block.timestamp;
-        startTime = currentTime > startTime ? currentTime : startTime;
+        startTime = Math.max(currentTime, startTime);
 
         _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
 
@@ -183,13 +209,11 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             _revert(Errors.INVALID_TOKEN);
         }
 
-        bytes32 poolState = _poolState;
-
-        return _getNormalizedWeightByIndex(i, poolState);
+        return _getNormalizedWeightByIndex(i, _poolState);
     }
 
     function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
-        uint256 startWeight = poolState.decodeUint32(_START_WEIGHT_OFFSET + i * 32).uncompress32();
+        uint256 startWeight = poolState.decodeUint31(_START_WEIGHT_OFFSET + i * 31).uncompress31();
         uint256 endWeight = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).uncompress16();
 
         uint256 pctProgress = _calculateWeightChangeProgress(poolState);
@@ -224,9 +248,10 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     {
         normalizedWeights = _getNormalizedWeights();
 
-        uint256 maxNormalizedWeight = 0;
+        maxWeightTokenIndex = 0;
+        uint256 maxNormalizedWeight = normalizedWeights[0];
 
-        for (uint256 i = 0; i < normalizedWeights.length; i++) {
+        for (uint256 i = 1; i < normalizedWeights.length; i++) {
             if (normalizedWeights[i] > maxNormalizedWeight) {
                 maxWeightTokenIndex = i;
                 maxNormalizedWeight = normalizedWeights[i];
@@ -292,7 +317,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view override returns (uint256) {
-        _require(_swapEnabled, Errors.SWAPS_DISABLED);
+        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         return super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
@@ -302,7 +327,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view override returns (uint256) {
-        _require(_swapEnabled, Errors.SWAPS_DISABLED);
+        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
@@ -334,8 +359,9 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             return 0;
         }
 
-        uint256 totalSeconds = endTime.sub(startTime);
-        uint256 secondsElapsed = currentTime.sub(startTime);
+        // No need for SafeMath as it was checked right above: endTime >= currentTime >= startTime
+        uint256 totalSeconds = endTime - startTime;
+        uint256 secondsElapsed = currentTime - startTime;
 
         // In the degenerate case of a zero duration change, consider it completed (and avoid division by zero)
         return totalSeconds == 0 ? FixedPoint.ONE : secondsElapsed.divDown(totalSeconds);
@@ -358,19 +384,16 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
 
-            newPoolState = newPoolState.insertUint32(startWeights[i].compress32(), _START_WEIGHT_OFFSET + i * 32);
-            newPoolState = newPoolState.insertUint16(endWeight.compress16(), _END_WEIGHT_OFFSET + i * 16);
+            newPoolState = newPoolState
+                .insertUint31(startWeights[i].compress31(), _START_WEIGHT_OFFSET + i * 31)
+                .insertUint16(endWeight.compress16(), _END_WEIGHT_OFFSET + i * 16);
 
             normalizedSum = normalizedSum.add(endWeight);
         }
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        // If we are initializing, start/end times are already 0
-        newPoolState = newPoolState.insertUint32(startTime, _START_TIME_OFFSET);
-        newPoolState = newPoolState.insertUint32(endTime, _END_TIME_OFFSET);
-
-        _poolState = newPoolState;
+        _poolState = newPoolState.insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET);
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
@@ -379,22 +402,55 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 startWeight,
         uint256 endWeight,
         uint256 pctProgress
-    ) private pure returns (uint256 finalWeight) {
-        if (pctProgress == 0) return startWeight;
+    ) private pure returns (uint256) {
+        if (pctProgress == 0 || startWeight == endWeight) return startWeight;
         if (pctProgress >= FixedPoint.ONE) return endWeight;
 
-        if (endWeight < startWeight) {
-            uint256 weightDelta = pctProgress.mulDown(startWeight.sub(endWeight));
-            finalWeight = startWeight.sub(weightDelta);
+        if (startWeight > endWeight) {
+            uint256 weightDelta = pctProgress.mulDown(startWeight - endWeight);
+            return startWeight.sub(weightDelta);
         } else {
-            uint256 weightDelta = pctProgress.mulDown(endWeight.sub(startWeight));
-            finalWeight = startWeight.add(weightDelta);
+            uint256 weightDelta = pctProgress.mulDown(endWeight - startWeight);
+            return startWeight.add(weightDelta);
         }
     }
 
     function _setSwapEnabled(bool swapEnabled) private {
-        _swapEnabled = swapEnabled;
-
+        _poolState = _poolState.insertBool(swapEnabled, _SWAP_ENABLED_OFFSET);
         emit SwapEnabledSet(swapEnabled);
+    }
+
+    function _getMaxTokens() internal pure override returns (uint256) {
+        return _MAX_LBP_TOKENS;
+    }
+
+    function _getTotalTokens() internal view virtual override returns (uint256) {
+        return _totalTokens;
+    }
+
+    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
+        // prettier-ignore
+        if (token == _token0) { return _scalingFactor0; }
+        else if (token == _token1) { return _scalingFactor1; }
+        else if (token == _token2) { return _scalingFactor2; }
+        else if (token == _token3) { return _scalingFactor3; }
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+    }
+
+    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
+        uint256 totalTokens = _getTotalTokens();
+        uint256[] memory scalingFactors = new uint256[](totalTokens);
+
+        // prettier-ignore
+        {
+            if (totalTokens > 0) { scalingFactors[0] = _scalingFactor0; } else { return scalingFactors; }
+            if (totalTokens > 1) { scalingFactors[1] = _scalingFactor1; } else { return scalingFactors; }
+            if (totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
+            if (totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
+        }
+
+        return scalingFactors;
     }
 }

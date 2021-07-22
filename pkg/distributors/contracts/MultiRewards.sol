@@ -398,6 +398,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         IERC20 rewardsToken,
         uint256 reward
     ) external override updateReward(pool, address(0)) {
+        require(_rewarders[pool][rewardsToken].contains(msg.sender), "Reward must be configured with addReward");
+
         // handle the transfer of reward tokens via `safeTransferFrom` to reduce the number
         // of transactions required and ensure correctness of the reward amount
         rewardsToken.safeTransferFrom(msg.sender, address(this), reward);

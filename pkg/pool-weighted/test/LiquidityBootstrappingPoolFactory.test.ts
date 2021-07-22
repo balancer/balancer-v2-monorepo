@@ -2,14 +2,14 @@ import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import { toNormalizedWeights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/misc';
+import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 
 describe('LiquidityBootstrappingPoolFactory', function () {
   let tokens: TokenList;
@@ -99,6 +99,7 @@ describe('LiquidityBootstrappingPoolFactory', function () {
 
       expect(await pool.getSwapEnabled()).to.be.true;
     });
+
     it('creates it with swaps disabled', async () => {
       const pool = await createPool(false);
 
