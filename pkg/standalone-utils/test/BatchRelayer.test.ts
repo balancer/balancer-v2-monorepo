@@ -7,13 +7,13 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 
+import { StablePoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '../../../pvt/helpers/src/models/vault/Vault';
-import { encodeExitStablePool, encodeJoinStablePool } from '../../../pvt/helpers/src/models/pools/stable/encoding';
 
 describe('BatchRelayer', function () {
   let tokens: TokenList, basePoolTokens: TokenList, metaPoolTokens: TokenList;
@@ -92,7 +92,7 @@ describe('BatchRelayer', function () {
       joinRequest = {
         assets: basePoolTokens.addresses,
         maxAmountsIn: tokenIncrements,
-        userData: encodeJoinStablePool({ kind: 'ExactTokensInForBPTOut', amountsIn: tokenIncrements, minimumBPT: 0 }),
+        userData: StablePoolEncoder.joinExactTokensInForBPTOut(tokenIncrements, 0),
         fromInternalBalance: false,
       };
 
@@ -232,7 +232,7 @@ describe('BatchRelayer', function () {
       joinRequest = {
         assets: basePoolTokens.addresses,
         maxAmountsIn: tokenIncrements,
-        userData: encodeJoinStablePool({ kind: 'ExactTokensInForBPTOut', amountsIn: tokenIncrements, minimumBPT: 0 }),
+        userData: StablePoolEncoder.joinExactTokensInForBPTOut(tokenIncrements, 0),
         fromInternalBalance: false,
       };
 
@@ -283,7 +283,7 @@ describe('BatchRelayer', function () {
         assets: basePoolTokens.addresses,
         minAmountsOut: basePoolTokens.map(() => 0),
         // bptAmountIn is overwritten by the relayer
-        userData: encodeExitStablePool({ kind: 'ExactBPTInForOneTokenOut', bptAmountIn: 0, exitTokenIndex: 1 }),
+        userData: StablePoolEncoder.exitExactBPTInForOneTokenOut(0, 1),
         toInternalBalance: false,
       };
 
