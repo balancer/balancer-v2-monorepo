@@ -59,7 +59,7 @@ async function main() {
     );
   }
   console.log('\n');
-  const maxInvestmentTokens = 94;
+  const maxInvestmentTokens = 93;
 
   printTokens('Investment pool', maxInvestmentTokens);
   await joinAndExitPool(
