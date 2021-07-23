@@ -27,10 +27,10 @@ import "./OracleMiscData.sol";
 import "./StableOracleMath.sol";
 
 /**
- * @dev StablePool suitable for assets with proportional prices (e.g. with slow-changing exchange rates between them).
+ * @dev StablePool suitable for assets with proportional prices (i.e. with slow-changing exchange rates between them).
  * Requires an external feed of these exchange rates.
  *
- * It aditionally features a price oracle.
+ * It additionally features a price oracle.
  */
 contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPriceOracle {
     using WordCodec for bytes32;
@@ -43,8 +43,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
     // Price rate caches are used to avoid querying the price rate for a token every time we need to work with it.
     // Data is stored with the following structure:
     //
-    // [ expires     | duration | price rate value ]
-    // [    uint64   |  uint64  |      uint128     ]
+    // [   expires   | duration | price rate value ]
+    // [   uint64    |  uint64  |      uint128     ]
 
     bytes32 private _priceRateCache0;
     bytes32 private _priceRateCache1;
@@ -477,7 +477,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
     // Price rates
 
     /**
-     * @dev Tells the rate providers configured for each token (in the same order as registered).
+     * @dev Returns the rate providers configured for each token (in the same order as registered).
      */
     function getRateProviders() external view returns (IRateProvider[] memory providers) {
         providers = new IRateProvider[](2);
@@ -530,7 +530,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
     }
 
     /**
-     * @dev Tells the list of price rates for each token. All price rates are fixed-point values with 18 decimals.
+     * @dev Returns the list of price rates for each token. All price rates are fixed-point values with 18 decimals.
      * In case there is no rate provider for a token it returns 1e18.
      */
     function _priceRate(IERC20 token) internal view virtual returns (uint256) {
@@ -607,7 +607,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
     }
 
     /**
-     * @dev Fetches the current from a provider and builds a new price rate cache
+     * @dev Fetches the current price rate from a provider and builds a new price rate cache
      */
     function _getNewPriceRateCache(IRateProvider provider, uint256 duration) private view returns (bytes32) {
         uint256 rate = provider.getRate();
