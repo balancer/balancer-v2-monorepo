@@ -18,7 +18,6 @@ describe('InvestmentPool', function () {
   let allTokens: TokenList;
   let assetManager: SignerWithAddress;
   let owner: SignerWithAddress;
-  let assetManagers: string[];
 
   const MAX_TOKENS = 100;
 
@@ -31,7 +30,6 @@ describe('InvestmentPool', function () {
 
   sharedBeforeEach('deploy tokens', async () => {
     allTokens = await TokenList.create(MAX_TOKENS, { sorted: true, varyDecimals: true });
-    assetManagers = Array(MAX_TOKENS).fill(assetManager.address);
   });
 
   describe('asset managers', () => {
@@ -44,19 +42,28 @@ describe('InvestmentPool', function () {
     sharedBeforeEach('deploy factory & tokens', async () => {
       vault = await Vault.create();
       factory = await deploy('InvestmentPoolFactory', { args: [vault.address] });
-  
+
       tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
       validWeights = Array(tokens.length).fill(fp(1 / tokens.length));
       validManagers = Array(tokens.length).fill(assetManager.address);
     });
 
-    async function createPool(weights: BigNumber[] = validWeights, assetManagers: string[] = validManagers): Promise<Contract> {
+    async function createPool(
+      weights: BigNumber[] = validWeights,
+      assetManagers: string[] = validManagers
+    ): Promise<Contract> {
       const receipt = await (
-        await factory.create("Balancer Investment Pool", "INV-BPT", tokens.addresses,
-                              weights, assetManagers,
-                              POOL_SWAP_FEE_PERCENTAGE, owner.address)
+        await factory.create(
+          'Balancer Investment Pool',
+          'INV-BPT',
+          tokens.addresses,
+          weights,
+          assetManagers,
+          POOL_SWAP_FEE_PERCENTAGE,
+          owner.address
+        )
       ).wait();
-  
+
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
       return deployedAt('InvestmentPool', event.args.pool);
     }
