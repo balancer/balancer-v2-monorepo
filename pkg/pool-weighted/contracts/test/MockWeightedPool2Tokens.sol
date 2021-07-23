@@ -15,12 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/test/oracle/MockPoolPriceOracle.sol";
-
 import "./MockWeightedOracleMath.sol";
 import "../WeightedPool2Tokens.sol";
 
-contract MockWeightedPool2Tokens is WeightedPool2Tokens, MockPoolPriceOracle, MockWeightedOracleMath {
+contract MockWeightedPool2Tokens is WeightedPool2Tokens, MockWeightedOracleMath {
     using WeightedPool2TokensMiscData for bytes32;
 
     struct MiscData {
@@ -56,15 +54,5 @@ contract MockWeightedPool2Tokens is WeightedPool2Tokens, MockPoolPriceOracle, Mo
         data = data.setOracleSampleCreationTimestamp(_data.oracleSampleCreationTimestamp);
         data = data.setLogTotalSupply(_data.logTotalSupply);
         data = data.setLogInvariant(_data.logInvariant);
-    }
-
-    function _getOracleIndex()
-        internal
-        view
-        virtual
-        override(WeightedPool2Tokens, MockPoolPriceOracle)
-        returns (uint256)
-    {
-        return WeightedPool2Tokens._getOracleIndex();
     }
 }

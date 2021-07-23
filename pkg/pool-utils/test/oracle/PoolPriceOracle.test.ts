@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, decimal, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { advanceTime, currentTimestamp, MINUTE } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, advanceToTimestamp, currentTimestamp, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 
 describe('PoolPriceOracle', () => {
   let oracle: Contract;
@@ -403,5 +403,127 @@ describe('PoolPriceOracle', () => {
         });
       }
     }
+  });
+
+  describe('queries', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let samples: any[];
+
+    const MAX_BUFFER_SIZE = 1024;
+    const OLDEST = 0;
+    const MID = MAX_BUFFER_SIZE / 2;
+    const LATEST = MAX_BUFFER_SIZE - 1;
+
+    const ago = (index: number) => (LATEST - index) * 2 * MINUTE;
+
+    const VARIABLES = {
+      PAIR_PRICE: 0,
+      BPT_PRICE: 1,
+      INVARIANT: 2,
+    };
+
+    const mockSamples = (ascending: boolean) => {
+      sharedBeforeEach('mock samples', async () => {
+        const now = await currentTimestamp();
+        const ZEROS = Array(MAX_BUFFER_SIZE).fill(0);
+        const indexes = ZEROS.map((_, i) => i);
+
+        samples = ZEROS.map((_, i) => ({
+          timestamp: now.add(i * 2 * MINUTE),
+          instant: (ascending ? i : MAX_BUFFER_SIZE - i) * 5,
+          accumulator: (ascending ? i : MAX_BUFFER_SIZE - i) * 100,
+        })).map((x) => ({
+          logPairPrice: x.instant + VARIABLES.PAIR_PRICE,
+          logBptPrice: x.instant + VARIABLES.BPT_PRICE,
+          logInvariant: x.instant + VARIABLES.INVARIANT,
+          accLogPairPrice: x.accumulator + VARIABLES.PAIR_PRICE,
+          accLogBptPrice: x.accumulator + VARIABLES.BPT_PRICE,
+          accLogInvariant: x.accumulator + VARIABLES.INVARIANT,
+          timestamp: x.timestamp,
+        }));
+
+        for (let from = 0, to = from + 100; from < MAX_BUFFER_SIZE; from += 100, to = from + 100) {
+          await oracle.mockSamples(indexes.slice(from, to), samples.slice(from, to));
+        }
+
+        await oracle.mockOracleIndex(LATEST);
+        await advanceToTimestamp(samples[LATEST].timestamp);
+      });
+    };
+
+    const itAnswersQueriesCorrectly = (ascendingAccumulators: boolean) => {
+      mockSamples(ascendingAccumulators);
+
+      describe('getLatest', () => {
+        it('returns the latest pair price', async () => {
+          const actual = await oracle.getLatest(VARIABLES.PAIR_PRICE);
+          const expected = fp(decimal(samples[LATEST].logPairPrice).div(1e4).exp());
+          expect(actual).to.be.equal(expected);
+        });
+
+        it('returns the latest BPT price', async () => {
+          const actual = await oracle.getLatest(VARIABLES.BPT_PRICE);
+          const expected = fp(decimal(samples[LATEST].logBptPrice).div(1e4).exp());
+          expect(actual).to.be.equal(expected);
+        });
+
+        it('returns the latest pair price', async () => {
+          const actual = await oracle.getLatest(VARIABLES.INVARIANT);
+          const expected = fp(decimal(samples[LATEST].logInvariant).div(1e4).exp());
+          expect(actual).to.be.equal(expected);
+        });
+      });
+
+      describe('getPastAccumulators', () => {
+        const queries = [
+          { variable: VARIABLES.PAIR_PRICE, ago: ago(LATEST) },
+          { variable: VARIABLES.BPT_PRICE, ago: ago(OLDEST) },
+          { variable: VARIABLES.INVARIANT, ago: ago(MID) },
+        ];
+
+        it('returns the expected values', async () => {
+          const results = await oracle.getPastAccumulators(queries);
+
+          expect(results.length).to.be.equal(3);
+
+          expect(results[0]).to.be.equal(samples[LATEST].accLogPairPrice);
+          expect(results[1]).to.be.equal(samples[OLDEST].accLogBptPrice);
+          expect(results[2]).to.be.equal(samples[MID].accLogInvariant);
+        });
+      });
+
+      describe('getTimeWeightedAverage', () => {
+        const secs = 2 * MINUTE;
+
+        const queries = [
+          { variable: VARIABLES.PAIR_PRICE, secs, ago: ago(LATEST) },
+          { variable: VARIABLES.BPT_PRICE, secs, ago: ago(OLDEST + 1) },
+          { variable: VARIABLES.INVARIANT, secs, ago: ago(MID) },
+        ];
+
+        const assertAverage = (actual: BigNumber, diff: number) => {
+          const expectedAverage = fp(decimal(diff).div(secs).div(1e4).exp());
+          expect(actual).to.be.equalWithError(expectedAverage, 0.0001);
+        };
+
+        it('returns the expected values', async () => {
+          const results = await oracle.getTimeWeightedAverage(queries);
+
+          expect(results.length).to.be.equal(3);
+
+          assertAverage(results[0], samples[LATEST].accLogPairPrice - samples[LATEST - 1].accLogPairPrice);
+          assertAverage(results[1], samples[OLDEST + 1].accLogBptPrice - samples[OLDEST].accLogBptPrice);
+          assertAverage(results[2], samples[MID].accLogInvariant - samples[MID - 1].accLogInvariant);
+        });
+      });
+    };
+
+    context('with positive values', () => {
+      itAnswersQueriesCorrectly(true);
+    });
+
+    context('with negative values', () => {
+      itAnswersQueriesCorrectly(false);
+    });
   });
 });

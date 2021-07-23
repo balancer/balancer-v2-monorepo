@@ -403,7 +403,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
         }
     }
 
-    function _getOracleIndex() internal view virtual override returns (uint256) {
+    function _getOracleIndex() internal view override returns (uint256) {
         return _getMiscData().oracleIndex();
     }
 

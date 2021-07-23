@@ -15,13 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/test/oracle/MockPoolPriceOracle.sol";
-
 import "./MockStableOracleMath.sol";
 import "../../meta/MetaStablePool.sol";
 import "../../meta/OracleMiscData.sol";
 
-contract MockMetaStablePool is MetaStablePool, MockPoolPriceOracle, MockStableOracleMath {
+contract MockMetaStablePool is MetaStablePool, MockStableOracleMath {
     using OracleMiscData for bytes32;
 
     struct MiscData {
@@ -62,9 +60,5 @@ contract MockMetaStablePool is MetaStablePool, MockPoolPriceOracle, MockStableOr
         data = data.setOracleSampleCreationTimestamp(_data.oracleSampleCreationTimestamp);
         data = data.setLogTotalSupply(_data.logTotalSupply);
         data = data.setLogInvariant(_data.logInvariant);
-    }
-
-    function _getOracleIndex() internal view override(MetaStablePool, MockPoolPriceOracle) returns (uint256) {
-        return MetaStablePool._getOracleIndex();
     }
 }

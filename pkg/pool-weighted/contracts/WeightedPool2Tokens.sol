@@ -841,7 +841,7 @@ contract WeightedPool2Tokens is
         }
     }
 
-    function _getOracleIndex() internal view virtual override returns (uint256) {
+    function _getOracleIndex() internal view override returns (uint256) {
         return _miscData.oracleIndex();
     }
 
