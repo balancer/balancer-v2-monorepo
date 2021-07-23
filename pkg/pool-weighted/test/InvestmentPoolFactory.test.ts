@@ -15,6 +15,7 @@ describe('InvestmentPoolFactory', function () {
   let tokens: TokenList;
   let factory: Contract;
   let vault: Vault;
+  let assetManagers: string[];
 
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
@@ -33,6 +34,7 @@ describe('InvestmentPoolFactory', function () {
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
+    assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
   });
 
   async function createPool(swapsEnabled = true): Promise<Contract> {
@@ -42,6 +44,7 @@ describe('InvestmentPoolFactory', function () {
         SYMBOL,
         tokens.addresses,
         WEIGHTS,
+        assetManagers,
         POOL_SWAP_FEE_PERCENTAGE,
         ZERO_ADDRESS,
         swapsEnabled
