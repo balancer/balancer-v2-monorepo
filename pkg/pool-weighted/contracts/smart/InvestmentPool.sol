@@ -22,7 +22,8 @@ import "../BaseWeightedPool.sol";
 import "./WeightCompression.sol";
 
 /**
- * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping
+ * @dev Weighted Pool with mutable weights, designed to support investment use cases: large token counts,
+ * rebalancing through gradual weight updates, and enabling/disabling trading.
  */
 contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
@@ -34,11 +35,9 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     // State variables
 
-    // The current number of tokens in the pool
-    // Technically redundant; cached here to avoid calling getTokens on the pool,
-    //   which would be very gas-intensive for large numbers of tokens
+    // Cached here to avoid calling getTokens on the pool, which would be very gas-intensive for large numbers of tokens
     // Can only change if tokens are added/removed
-    uint256 private _totalTokens;
+    uint256 private _tokenCountCache;
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
@@ -89,7 +88,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
 
-        _totalTokens = numTokens;
+        _tokenCountCache = numTokens;
 
         // I'm time-traveling a bit here - storing the weights in a form where they can be changed
         uint256 currentTime = block.timestamp;
@@ -101,18 +100,11 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _totalTokens;
+        return _tokenCountCache;
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        bytes32 tokenData = _poolState[token];
-
-        // A valid token can't be zero (must have non-zero weights)
-        if (tokenData == 0) {
-            _revert(Errors.INVALID_TOKEN);
-        }
-
-        return _computeScalingFactor(tokenData);
+        return _computeScalingFactor(_getValidTokenData(token));
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
@@ -127,19 +119,10 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
-        bytes32 tokenData = _poolState[token];
-
-        // A valid token can't be zero (must have non-zero weights)
-        if (tokenData == 0) {
-            _revert(Errors.INVALID_TOKEN);
-        }
-
-        uint256 startWeight = tokenData.decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
-        uint256 endWeight = tokenData.decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
-
         uint256 pctProgress = _calculateWeightChangeProgress();
+        bytes32 tokenData = _getValidTokenData(token);
 
-        return _interpolateWeight(startWeight, endWeight, pctProgress);
+        return _interpolateWeight(tokenData, pctProgress);
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
@@ -153,29 +136,27 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         for (uint256 i = 0; i < numTokens; i++) {
             bytes32 tokenData = _poolState[tokens[i]];
 
-            uint256 startWeight = tokenData.decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
-            uint256 endWeight = tokenData.decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
-
-            normalizedWeights[i] = _interpolateWeight(startWeight, endWeight, pctProgress);
+            normalizedWeights[i] = _interpolateWeight(tokenData, pctProgress);
         }
     }
 
-    function _getNormalizedWeightsAndMaxWeightIndex() internal view override returns (uint256[] memory, uint256) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
+    function _getNormalizedWeightsAndMaxWeightIndex()
+        internal
+        view
+        override
+        returns (uint256[] memory normalizedWeights, uint256 maxWeightTokenIndex)
+    {
+        normalizedWeights = _getNormalizedWeights();
 
-        uint256 maxNormalizedWeight = 0;
-        uint256 maxWeightTokenIndex;
+        maxWeightTokenIndex = 0;
+        uint256 maxNormalizedWeight = normalizedWeights[0];
 
-        // NOTE: could cache this in the _getNormalizedWeights function and avoid double iteratio,
-        // but it's a view function
-        for (uint256 i = 0; i < normalizedWeights.length; i++) {
+        for (uint256 i = 1; i < normalizedWeights.length; i++) {
             if (normalizedWeights[i] > maxNormalizedWeight) {
                 maxWeightTokenIndex = i;
                 maxNormalizedWeight = normalizedWeights[i];
             }
         }
-
-        return (normalizedWeights, maxWeightTokenIndex);
     }
 
     /**
@@ -252,11 +233,10 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         return 0;
     }
 
-    function _interpolateWeight(
-        uint256 startWeight,
-        uint256 endWeight,
-        uint256 pctProgress
-    ) private pure returns (uint256 finalWeight) {
+    function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private pure returns (uint256 finalWeight) {
+        uint256 startWeight = tokenData.decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
+        uint256 endWeight = tokenData.decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
+
         if (pctProgress == 0 || startWeight == endWeight) return startWeight;
         if (pctProgress >= FixedPoint.ONE) return endWeight;
 
@@ -266,6 +246,15 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         } else {
             uint256 weightDelta = pctProgress.mulDown(endWeight - startWeight);
             return startWeight.add(weightDelta);
+        }
+    }
+
+    function _getValidTokenData(IERC20 token) private view returns (bytes32 tokenData) {
+        tokenData = _poolState[token];
+
+        // A valid token can't be zero (must have non-zero weights)
+        if (tokenData == 0) {
+            _revert(Errors.INVALID_TOKEN);
         }
     }
 }
