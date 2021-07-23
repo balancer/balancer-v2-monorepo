@@ -79,6 +79,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         string memory symbol,
         IERC20[] memory tokens,
         uint256[] memory normalizedWeights,
+        address[] memory assetManagers,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
@@ -90,7 +91,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             name,
             symbol,
             tokens,
-            new address[](tokens.length), // Pass the zero address: Investment Pools can't have asset managers
+            assetManagers,
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -98,7 +99,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         )
     {
         uint256 totalTokens = tokens.length;
-        InputHelpers.ensureInputLengthMatch(totalTokens, normalizedWeights.length);
+        InputHelpers.ensureInputLengthMatch(totalTokens, normalizedWeights.length, assetManagers.length);
 
         _poolState = _poolState.insertUint7(totalTokens, _TOTAL_TOKENS_OFFSET);
 

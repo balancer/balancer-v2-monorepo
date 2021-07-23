@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -18,10 +18,11 @@ describe('InvestmentPool', function () {
   let poolTokens: TokenList;
   let tooManyWeights: BigNumber[];
   let owner: SignerWithAddress, other: SignerWithAddress;
+  let assetManager: SignerWithAddress;
   let pool: WeightedPool;
 
   before('setup signers', async () => {
-    [, owner, other] = await ethers.getSigners();
+    [, owner, other, assetManager] = await ethers.getSigners();
   });
 
   const MAX_TOKENS = 100;
@@ -112,6 +113,7 @@ describe('InvestmentPool', function () {
       const params = {
         tokens: poolTokens,
         weights: poolWeights,
+        assetManagers: Array(poolTokens.length).fill(assetManager.address),
         owner,
         poolType: WeightedPoolType.INVESTMENT_POOL,
         fromFactory: true,
@@ -119,10 +121,10 @@ describe('InvestmentPool', function () {
       pool = await WeightedPool.create(params);
     });
 
-    it('has no asset managers', async () => {
+    it('has asset managers', async () => {
       await poolTokens.asyncEach(async (token) => {
-        const { assetManager } = await pool.getTokenInfo(token);
-        expect(assetManager).to.be.zeroAddress;
+        const info = await pool.getTokenInfo(token);
+        expect(info.assetManager).to.eq(assetManager.address);
       });
     });
   });

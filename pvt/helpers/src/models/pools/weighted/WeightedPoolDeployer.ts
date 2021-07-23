@@ -100,6 +100,7 @@ export default {
             SYMBOL,
             tokens.addresses,
             weights,
+            assetManagers,
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -193,6 +194,7 @@ export default {
           SYMBOL,
           tokens.addresses,
           weights,
+          assetManagers,
           swapFeePercentage,
           TypesConverter.toAddress(owner),
           swapEnabledOnStart
