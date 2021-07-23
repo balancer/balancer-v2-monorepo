@@ -253,8 +253,6 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         tokenData = _poolState[token];
 
         // A valid token can't be zero (must have non-zero weights)
-        if (tokenData == 0) {
-            _revert(Errors.INVALID_TOKEN);
-        }
+        _require(tokenData != 0, Errors.INVALID_TOKEN);
     }
 }
