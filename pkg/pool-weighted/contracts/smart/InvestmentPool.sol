@@ -193,7 +193,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        return _computeScalingFactor(_getValidTokenData(token));
+        return _computeScalingFactor(_getTokenData(token));
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
@@ -209,7 +209,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
         uint256 pctProgress = _calculateWeightChangeProgress();
-        bytes32 tokenData = _getValidTokenData(token);
+        bytes32 tokenData = _getTokenData(token);
 
         return _interpolateWeight(tokenData, pctProgress);
     }
@@ -366,12 +366,10 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
-    function _getValidTokenData(IERC20 token) private view returns (bytes32 tokenData) {
+    function _getTokenData(IERC20 token) private view returns (bytes32 tokenData) {
         tokenData = _tokenState[token];
 
         // A valid token can't be zero (must have non-zero weights)
-        if (tokenData == 0) {
-            _revert(Errors.INVALID_TOKEN);
-        }
+        _require(tokenData != 0, Errors.INVALID_TOKEN);
     }
 }
