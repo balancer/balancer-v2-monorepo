@@ -100,6 +100,7 @@ export default {
             SYMBOL,
             tokens.addresses,
             weights,
+            assetManagers,
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
