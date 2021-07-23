@@ -57,4 +57,14 @@ contract MockWeightedPool2Tokens is WeightedPool2Tokens, MockPoolPriceOracle, Mo
         data = data.setLogTotalSupply(_data.logTotalSupply);
         data = data.setLogInvariant(_data.logInvariant);
     }
+
+    function _getOracleIndex()
+        internal
+        view
+        virtual
+        override(WeightedPool2Tokens, MockPoolPriceOracle)
+        returns (uint256)
+    {
+        return WeightedPool2Tokens._getOracleIndex();
+    }
 }

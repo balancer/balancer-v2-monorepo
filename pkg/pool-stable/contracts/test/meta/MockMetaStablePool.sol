@@ -63,4 +63,8 @@ contract MockMetaStablePool is MetaStablePool, MockPoolPriceOracle, MockStableOr
         data = data.setLogTotalSupply(_data.logTotalSupply);
         data = data.setLogInvariant(_data.logInvariant);
     }
+
+    function _getOracleIndex() internal view override(MetaStablePool, MockPoolPriceOracle) returns (uint256) {
+        return MetaStablePool._getOracleIndex();
+    }
 }

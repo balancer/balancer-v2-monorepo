@@ -78,4 +78,8 @@ contract MockPoolPriceOracle is MockSamples, PoolPriceOracle {
     ) external view returns (int256) {
         return _getPastAccumulator(variable, currentIndex, block.timestamp - timestamp);
     }
+
+    function _getOracleIndex() internal view virtual override returns (uint256) {
+        return 0;
+    }
 }

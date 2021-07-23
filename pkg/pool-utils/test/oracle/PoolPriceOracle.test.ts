@@ -12,7 +12,9 @@ describe('PoolPriceOracle', () => {
   const MAX_BUFFER_SIZE = 1024;
 
   sharedBeforeEach('deploy oracle', async () => {
-    oracle = await deploy('MockPoolPriceOracle');
+    oracle = await deploy('MockPoolPriceOracle', {
+      libraries: { QueryProcessor: (await deploy('QueryProcessor')).address },
+    });
   });
 
   describe('process', () => {

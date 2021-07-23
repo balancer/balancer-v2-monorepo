@@ -15,7 +15,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/interfaces/IPriceOracle.sol";
 import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
 import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
@@ -32,7 +31,7 @@ import "./StableOracleMath.sol";
  *
  * It aditionally features a price oracle.
  */
-contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPriceOracle {
+contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using OracleMiscData for bytes32;
@@ -346,51 +345,6 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
         emit OracleEnabledChanged(enabled);
     }
 
-    function getLargestSafeQueryWindow() external pure override returns (uint256) {
-        return 34 hours;
-    }
-
-    function getLatest(Variable variable) external view override returns (uint256) {
-        int256 instantValue = _getInstantValue(variable, _getMiscData().oracleIndex());
-        return LogCompression.fromLowResLog(instantValue);
-    }
-
-    function getTimeWeightedAverage(OracleAverageQuery[] memory queries)
-        external
-        view
-        override
-        returns (uint256[] memory results)
-    {
-        results = new uint256[](queries.length);
-        uint256 oracleIndex = _getMiscData().oracleIndex();
-
-        OracleAverageQuery memory query;
-        for (uint256 i = 0; i < queries.length; ++i) {
-            query = queries[i];
-            _require(query.secs != 0, Errors.ORACLE_BAD_SECS);
-
-            int256 beginAccumulator = _getPastAccumulator(query.variable, oracleIndex, query.ago + query.secs);
-            int256 endAccumulator = _getPastAccumulator(query.variable, oracleIndex, query.ago);
-            results[i] = LogCompression.fromLowResLog((endAccumulator - beginAccumulator) / int256(query.secs));
-        }
-    }
-
-    function getPastAccumulators(OracleAccumulatorQuery[] memory queries)
-        external
-        view
-        override
-        returns (int256[] memory results)
-    {
-        results = new int256[](queries.length);
-        uint256 oracleIndex = _getMiscData().oracleIndex();
-
-        OracleAccumulatorQuery memory query;
-        for (uint256 i = 0; i < queries.length; ++i) {
-            query = queries[i];
-            results[i] = _getPastAccumulator(query.variable, oracleIndex, query.ago);
-        }
-    }
-
     /**
      * @dev Updates the Price Oracle based on the Pool's current state (balances, BPT supply and invariant). Must be
      * called on *all* state-changing functions with the balances *before* the state change happens, and with
@@ -447,6 +401,10 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle, IPrice
             miscData = miscData.setLogTotalSupply(LogCompression.toLowResLog(totalSupply()));
             _setMiscData(miscData);
         }
+    }
+
+    function _getOracleIndex() internal view virtual override returns (uint256) {
+        return _getMiscData().oracleIndex();
     }
 
     // Scaling factors
