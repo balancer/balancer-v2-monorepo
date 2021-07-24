@@ -200,7 +200,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        return _computeScalingFactor(_getTokenData(token));
+        return _readScalingFactor(_getTokenData(token));
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
@@ -210,7 +210,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         scalingFactors = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; i++) {
-            scalingFactors[i] = _computeScalingFactor(_tokenState[tokens[i]]);
+            scalingFactors[i] = _readScalingFactor(_tokenState[tokens[i]]);
         }
     }
 
@@ -293,7 +293,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
-    function _computeScalingFactor(bytes32 tokenState) private pure returns (uint256) {
+    function _readScalingFactor(bytes32 tokenState) private view returns (uint256) {
         uint256 decimalsDifference = tokenState.decodeUint5(_DECIMAL_DIFF_OFFSET);
 
         return FixedPoint.ONE * 10**decimalsDifference;

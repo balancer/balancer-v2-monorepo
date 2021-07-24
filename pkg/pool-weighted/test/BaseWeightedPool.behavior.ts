@@ -10,7 +10,10 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { RawWeightedPoolDeployment, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
-export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoTokenPool = false): void {
+export function itBehavesAsWeightedPool(
+  numberOfTokens: number,
+  poolType: WeightedPoolType = WeightedPoolType.WEIGHTED_POOL
+): void {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
@@ -26,12 +29,9 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
   async function deployPool(params: RawWeightedPoolDeployment = {}): Promise<void> {
     const assetManagers = Array(numberOfTokens).fill(assetManager.address);
 
-    const poolTypeParam = useCustomTwoTokenPool
-      ? WeightedPoolType.WEIGHTED_POOL_2TOKENS
-      : WeightedPoolType.WEIGHTED_POOL;
     params = Object.assign(
       {},
-      { tokens, weights, assetManagers, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, poolType: poolTypeParam },
+      { tokens, weights, assetManagers, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, poolType },
       params
     );
     pool = await WeightedPool.create(params);
@@ -83,7 +83,9 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
       it('sets the asset managers', async () => {
         await tokens.asyncEach(async (token) => {
           const info = await pool.getTokenInfo(token);
-          expect(info.assetManager).to.equal(useCustomTwoTokenPool ? ZERO_ADDRESS : assetManager.address);
+          expect(info.assetManager).to.equal(
+            poolType == WeightedPoolType.WEIGHTED_POOL_2TOKENS ? ZERO_ADDRESS : assetManager.address
+          );
         });
       });
 
@@ -105,7 +107,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
     });
 
     context('when the creation fails', () => {
-      if (!useCustomTwoTokenPool) {
+      if (poolType != WeightedPoolType.WEIGHTED_POOL_2TOKENS) {
         it('reverts if the number of tokens and weights do not match', async () => {
           const badWeights = weights.slice(1);
 
@@ -116,7 +118,8 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
       it('reverts if there are repeated tokens', async () => {
         const badTokens = new TokenList(Array(numberOfTokens).fill(tokens.first));
 
-        const error = useCustomTwoTokenPool ? 'TOKEN_ALREADY_REGISTERED' : 'UNSORTED_ARRAY';
+        const error =
+          poolType == WeightedPoolType.WEIGHTED_POOL_2TOKENS ? 'TOKEN_ALREADY_REGISTERED' : 'UNSORTED_ARRAY';
         await expect(deployPool({ tokens: badTokens, fromFactory: true })).to.be.revertedWith(error);
       });
 
@@ -511,7 +514,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
         await expect(pool.swapGivenIn({ in: 1, out: 0, amount })).to.be.revertedWith('MAX_IN_RATIO');
       });
 
-      if (!useCustomTwoTokenPool) {
+      if (poolType != WeightedPoolType.WEIGHTED_POOL_2TOKENS) {
         it('reverts if token in is not in the pool', async () => {
           await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
@@ -553,7 +556,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
         await expect(pool.swapGivenOut({ in: 1, out: 0, amount })).to.be.revertedWith('MAX_OUT_RATIO');
       });
 
-      if (!useCustomTwoTokenPool) {
+      if (poolType != WeightedPoolType.WEIGHTED_POOL_2TOKENS) {
         it('reverts if token in is not in the pool when given out', async () => {
           await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });

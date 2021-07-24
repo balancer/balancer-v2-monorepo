@@ -21,7 +21,7 @@ import { itBehavesAsWeightedPool } from './BaseWeightedPool.behavior';
 
 describe('WeightedPool2Tokens', function () {
   describe('as a 2 token weighted pool', () => {
-    itBehavesAsWeightedPool(2, true);
+    itBehavesAsWeightedPool(2, WeightedPoolType.WEIGHTED_POOL_2TOKENS);
   });
 
   let trader: SignerWithAddress,

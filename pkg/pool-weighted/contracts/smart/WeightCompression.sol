@@ -23,8 +23,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
  */
 library WeightCompression {
     uint256 private constant _UINT31_MAX = 2**(31) - 1;
-    uint256 private constant _UINT32_MAX = 2**(32) - 1;
-    uint256 private constant _UINT64_MAX = 2**(64) - 1;
 
     using FixedPoint for uint256;
 
@@ -60,27 +58,27 @@ library WeightCompression {
      * @dev Convert a 32-bit value to full FixedPoint
      */
     function uncompress32(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(FixedPoint.ONE).divUp(_UINT32_MAX);
+        return value.mulUp(FixedPoint.ONE).divUp(type(uint32).max);
     }
 
     /**
      * @dev Compress a FixedPoint value to 32 bits
      */
     function compress32(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(_UINT32_MAX).divUp(FixedPoint.ONE);
+        return value.mulUp(type(uint32).max).divUp(FixedPoint.ONE);
     }
 
     /**
      * @dev Convert a 64-bit value to full FixedPoint
      */
     function uncompress64(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(FixedPoint.ONE).divUp(_UINT64_MAX);
+        return value.mulUp(FixedPoint.ONE).divUp(type(uint64).max);
     }
 
     /**
      * @dev Compress a FixedPoint value to 64 bits
      */
     function compress64(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(_UINT64_MAX).divUp(FixedPoint.ONE);
+        return value.mulUp(type(uint64).max).divUp(FixedPoint.ONE);
     }
 }
