@@ -10,7 +10,10 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { RawWeightedPoolDeployment, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
-export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: WeightedPoolType = WeightedPoolType.WEIGHTED_POOL): void {
+export function itBehavesAsWeightedPool(
+  numberOfTokens: number,
+  poolType: WeightedPoolType = WeightedPoolType.WEIGHTED_POOL
+): void {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
@@ -80,7 +83,9 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: Weight
       it('sets the asset managers', async () => {
         await tokens.asyncEach(async (token) => {
           const info = await pool.getTokenInfo(token);
-          expect(info.assetManager).to.equal(poolType == WeightedPoolType.WEIGHTED_POOL_2TOKENS ? ZERO_ADDRESS : assetManager.address);
+          expect(info.assetManager).to.equal(
+            poolType == WeightedPoolType.WEIGHTED_POOL_2TOKENS ? ZERO_ADDRESS : assetManager.address
+          );
         });
       });
 
@@ -113,7 +118,8 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, poolType: Weight
       it('reverts if there are repeated tokens', async () => {
         const badTokens = new TokenList(Array(numberOfTokens).fill(tokens.first));
 
-        const error = poolType == WeightedPoolType.WEIGHTED_POOL_2TOKENS ? 'TOKEN_ALREADY_REGISTERED' : 'UNSORTED_ARRAY';
+        const error =
+          poolType == WeightedPoolType.WEIGHTED_POOL_2TOKENS ? 'TOKEN_ALREADY_REGISTERED' : 'UNSORTED_ARRAY';
         await expect(deployPool({ tokens: badTokens, fromFactory: true })).to.be.revertedWith(error);
       });
 
