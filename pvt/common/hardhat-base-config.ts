@@ -23,6 +23,10 @@ const contractSettings: ContractSettings = {
     version: '0.7.1',
     runs: 200,
   },
+  '@balancer-labs/v2-pool-stable/contracts/meta/MetaStablePoolFactory.sol': {
+    version: '0.7.1',
+    runs: 200,
+  },
 };
 
 type SolcConfig = {
