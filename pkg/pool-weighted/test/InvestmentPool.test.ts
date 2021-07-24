@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
@@ -228,6 +228,73 @@ describe('InvestmentPool', function () {
             await expect(pool.exitGivenOut({ from: owner, amountsOut: initialBalances })).to.not.be.reverted;
             const bptAfterExit = await pool.balanceOf(owner.address);
             expect(bptAfterExit).to.lt(bptAfterJoin);
+          });
+
+          context('when swaps disabled', () => {
+            sharedBeforeEach(async () => {
+              await pool.setSwapEnabled(sender, false)
+            });
+
+            it('disallows disproportionate joins (single token)', async () => {
+              const bptOut = await pool.balanceOf(sender);
+
+              await expect(pool.joinGivenOut({from: sender, bptOut, token: poolTokens.get(0)})).to.be.revertedWith('DISPROPORTIONATE_JOIN_OR_EXIT');
+            });
+
+            it('allows proportionate joins', async () => {
+              const startingBpt = await pool.balanceOf(sender);
+
+              await expect(pool.joinGivenIn({from: sender, amountsIn: initialBalances})).to.not.be.reverted;
+
+              const endingBpt = await pool.balanceOf(sender);
+              expect(endingBpt).to.be.gt(startingBpt);
+            });
+
+            it('allows close to proportionate joins (multi-token)', async () => {
+              const amountsIn = [...initialBalances];
+              amountsIn[0] = fp(0.98);
+
+              await expect(pool.joinGivenIn({from: sender, amountsIn})).to.not.be.reverted;
+            });
+
+            it('disallows disproportionate joins (multi-token, 95%)', async () => {
+              const amountsIn = [...initialBalances];
+              amountsIn[0] = fp(0.95);
+
+              await expect(pool.joinGivenIn({from: sender, amountsIn})).to.be.revertedWith('DISPROPORTIONATE_JOIN_OR_EXIT');
+            });
+
+            it('disallows disproportionate joins (multi-token; one is zero)', async () => {
+              const amountsIn = [...initialBalances];
+              amountsIn[0] = 0;
+
+              await expect(pool.joinGivenIn({from: sender, amountsIn})).to.be.revertedWith('DISPROPORTIONATE_JOIN_OR_EXIT');
+            });
+
+            it('disallows disproportionate exits (single token)', async () => {
+              const previousBptBalance = await pool.balanceOf(sender);
+              const bptIn = pct(previousBptBalance, 0.5);
+
+              await expect(pool.singleExitGivenIn({from: sender, bptIn, token: poolTokens.get(0)})).to.be.revertedWith('DISPROPORTIONATE_JOIN_OR_EXIT');
+            });
+
+            it('disallows disproportionate exits (multi token)', async () => {
+              const amountsOut = [...initialBalances];
+              // Make it disproportionate (though it will fail with this exit type even if it's technically proportionate)
+              amountsOut[0] = 0;
+
+              await expect(pool.exitGivenOut({from: sender, amountsOut})).to.be.revertedWith('DISPROPORTIONATE_JOIN_OR_EXIT');
+            });
+
+            it('allows proportional exit', async () => {
+              const previousBptBalance = await pool.balanceOf(sender);
+              const bptIn = pct(previousBptBalance, 0.8);
+
+              await expect(pool.multiExitGivenIn({ from: sender, bptIn })).to.not.be.reverted;
+
+              const newBptBalance = await pool.balanceOf(sender);
+              expect(newBptBalance).to.equalWithError(pct(previousBptBalance, 0.2), 0.001)
+            });
           });
 
           describe('update weights gradually', () => {

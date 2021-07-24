@@ -19,6 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "../BaseWeightedPool.sol";
+import "../WeightedPoolUserDataHelpers.sol";
 import "./WeightCompression.sol";
 
 /**
@@ -32,6 +33,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     using FixedPoint for uint256;
     using WordCodec for bytes32;
     using WeightCompression for uint256;
+    using WeightedPoolUserDataHelpers for bytes;
 
     // State variables
 
@@ -62,6 +64,10 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _START_WEIGHT_OFFSET = 0;
     uint256 private constant _END_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
+
+    // Adding or removing liquidity while paused must be proportional
+    // Proportional join is defined as one where the BPT prices are all similar
+    uint256 private constant _PROPORTIONAL_TOLERANCE_PCT = 1e16; // 1%
 
     // Event declarations
 
@@ -323,6 +329,101 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             (actionId == getActionId(InvestmentPool.setSwapEnabled.selector)) ||
             (actionId == getActionId(InvestmentPool.updateWeightsGradually.selector)) ||
             super._isOwnerOnlyAction(actionId);
+    }
+
+    function _onJoinPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    )
+        internal
+        override
+        returns (
+            uint256 bptAmountOut,
+            uint256[] memory amountsIn,
+            uint256[] memory dueProtocolFeeAmounts
+        )
+    {
+        // TokenInForExactBPTOut is not proportional - so fail immediately if swaps are disabled
+        _require(
+            getSwapEnabled() || userData.joinKind() != JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT,
+            Errors.DISPROPORTIONATE_JOIN_OR_EXIT
+        );
+
+        (bptAmountOut, amountsIn, dueProtocolFeeAmounts) = super._onJoinPool(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            scalingFactors,
+            userData
+        );
+    
+        // If the pool is paused, only allow proportional join
+        if (!getSwapEnabled()) {
+            // We know the bptOut from the join - so proportional exit with that bptOut should reproduce amountsIn,
+            // if the join was proportional
+            uint256[] memory amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(
+                balances,
+                bptAmountOut,
+                totalSupply().add(bptAmountOut)
+            );
+            uint256 diff;
+
+            for (uint256 i = 0; i < amountsOut.length; i++) {
+                diff = amountsOut[i] > amountsIn[i] ? amountsOut[i].sub(amountsIn[i]) : amountsIn[i].sub(amountsOut[i]);
+
+                _require(
+                    amountsIn[i] > 0 && diff.divUp(amountsIn[i]) <= _PROPORTIONAL_TOLERANCE_PCT,
+                    Errors.DISPROPORTIONATE_JOIN_OR_EXIT
+                );
+            }
+        }
+    }
+
+    function _onExitPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    )
+        internal
+        virtual
+        override
+        returns (
+            uint256,
+            uint256[] memory,
+            uint256[] memory
+        )
+    {
+        // If swaps are disabled, require proportional exit
+        _require(
+            getSwapEnabled() || userData.exitKind() == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+            Errors.DISPROPORTIONATE_JOIN_OR_EXIT
+        );
+
+        return
+            super._onExitPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                scalingFactors,
+                userData
+            );
     }
 
     // Private functions
