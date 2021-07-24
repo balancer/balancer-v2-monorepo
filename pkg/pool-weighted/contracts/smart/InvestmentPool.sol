@@ -365,7 +365,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             scalingFactors,
             userData
         );
-    
+
         // If the pool is paused, only allow proportional join
         if (!getSwapEnabled()) {
             // We know the bptOut from the join - so proportional exit with that bptOut should reproduce amountsIn,
