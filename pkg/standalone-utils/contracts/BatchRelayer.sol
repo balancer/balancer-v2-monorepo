@@ -69,9 +69,7 @@ contract BatchRelayer is ReentrancyGuard {
         require(assets[swaps[0].assetInIndex] == IAsset(address(bpt)), "Must use BPT as input to swap");
 
         // If necessary, give Vault allowance to take BPT
-        if (bpt.allowance(address(this), address(getVault())) < bptAmount) {
-            bpt.approve(address(getVault()), type(uint256).max);
-        }
+        _approveToken(bpt, address(getVault()), bptAmount);
 
         // Ensure that all BPT gained from join is used as input to swap
         swaps[0].amount = bptAmount;
@@ -99,9 +97,7 @@ contract BatchRelayer is ReentrancyGuard {
         uint256 bptAmount = bpt.balanceOf(address(this));
 
         // If necessary, give staking contract allowance to take BPT
-        if (bpt.allowance(address(this), address(getStakingContract())) < bptAmount) {
-            bpt.approve(address(getStakingContract()), type(uint256).max);
-        }
+        _approveToken(bpt, address(getStakingContract()), bptAmount);
 
         getStakingContract().stake(bpt, bptAmount, recipient);
         _sweepETH();
@@ -155,6 +151,12 @@ contract BatchRelayer is ReentrancyGuard {
 
         getVault().exitPool(poolId, msg.sender, recipient, request);
         _sweepETH();
+    }
+
+    function _approveToken(IERC20 token, address spender, uint256 amount) private {
+        if (token.allowance(address(this), spender) < amount) {
+            token.approve(spender, type(uint256).max);
+        }
     }
 
     function _sweepETH() private {
