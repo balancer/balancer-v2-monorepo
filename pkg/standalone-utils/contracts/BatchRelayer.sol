@@ -32,7 +32,7 @@ contract BatchRelayer is ReentrancyGuard {
     IVault private immutable _vault;
     IMultiRewards private immutable _stakingContract;
 
-    uint256 private constant _BPT_AMOUNT_IN_OFFSET = 64;
+    uint256 private constant _EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0;
 
     constructor(IVault vault, IMultiRewards stakingContract) {
         _vault = vault;
@@ -147,13 +147,10 @@ contract BatchRelayer is ReentrancyGuard {
                 }
             }
 
-            // Here we overwrite the bptAmountIn field of an `exactBptInForTokenOut` exit with the output of the swap
-            // We are mutating the userData field within request so no explicit assignment occurs
-            bytes memory userData = request.userData;
-            // solhint-disable-next-line no-inline-assembly
-            assembly {
-                mstore(add(userData, _BPT_AMOUNT_IN_OFFSET), bptAmount)
-            }
+            // Here we overwrite the bptAmountIn field of an `exactBptInForTokenOut`
+            // or `exactBptInForTokensOut` exit with the output of the swap
+            (uint exitKind,, uint256 tokenOutIndex) = abi.decode(request.userData, (uint256, uint256, uint256));
+            request.userData = abi.encode(exitKind, bptAmount, tokenOutIndex);
         }
 
         getVault().exitPool(poolId, msg.sender, recipient, request);
