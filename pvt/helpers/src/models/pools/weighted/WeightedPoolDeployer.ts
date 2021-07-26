@@ -66,6 +66,7 @@ export default {
             },
           ],
           from,
+          libraries: { QueryProcessor: (await deploy('QueryProcessor')).address },
         })
       : params.lbp
       ? deploy('v2-pool-weighted/LiquidityBootstrappingPool', {
@@ -113,7 +114,11 @@ export default {
     } = params;
 
     if (params.twoTokens) {
-      const factory = await deploy('v2-pool-weighted/WeightedPool2TokensFactory', { args: [vault.address], from });
+      const factory = await deploy('v2-pool-weighted/WeightedPool2TokensFactory', {
+        args: [vault.address],
+        from,
+        libraries: { QueryProcessor: await (await deploy('QueryProcessor')).address },
+      });
       const tx = await factory.create(
         NAME,
         SYMBOL,

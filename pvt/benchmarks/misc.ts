@@ -191,7 +191,11 @@ async function deployPoolFromFactory(
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
   const fullName = `${poolName == 'StablePool' ? 'v2-pool-stable' : 'v2-pool-weighted'}/${poolName}`;
-  const factory = await deploy(`${fullName}Factory`, { args: [vault.address] });
+  const libraries =
+    poolName == 'WeightedPool2Tokens'
+      ? { QueryProcessor: await (await deploy('v2-pool-utils/QueryProcessor')).address }
+      : undefined;
+  const factory = await deploy(`${fullName}Factory`, { args: [vault.address], libraries });
   // We could reuse this factory if we saved it across pool deployments
 
   const name = 'Balancer Pool Token';
