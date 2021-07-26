@@ -1,12 +1,13 @@
 import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 export const tokenInitialBalance = bn(200e18);
 export const rewardTokenInitialBalance = bn(100e18);
@@ -21,6 +22,7 @@ interface SetupContracts {
   pool: Contract;
   stakingContract: Contract;
   vault: Contract;
+  authorizer: Contract;
 }
 
 export const setup = async (): Promise<{ data: SetupData; contracts: SetupContracts }> => {
@@ -30,8 +32,10 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
   const rewardTokens = await TokenList.create(['DAI'], { sorted: true });
 
   // Deploy Balancer Vault
-  const vaultHelper = await Vault.create({ admin });
-  const vault = vaultHelper.instance;
+  const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
+
+  const vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
+
   const assetManagers = Array(tokens.length).fill(mockAssetManager.address);
 
   const pool = await deploy('v2-pool-weighted/WeightedPool', {
@@ -55,6 +59,10 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
   const stakingContract = await deploy('MultiRewards', {
     args: [vault.address],
   });
+
+  // authorize vault authorizer to allowlistRewarders
+  const action = await actionId(stakingContract, 'allowlistRewarder');
+  await authorizer.connect(admin).grantRole(action, admin.address);
 
   await tokens.mint({ to: lp, amount: tokenInitialBalance });
   await tokens.approve({ to: vault.address, from: [lp] });
@@ -80,6 +88,7 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
       pool,
       stakingContract,
       vault,
+      authorizer,
     },
   };
 };

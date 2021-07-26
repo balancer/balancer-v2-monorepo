@@ -17,7 +17,6 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
@@ -27,10 +26,11 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 
 import "./interfaces/IMultiRewards.sol";
 import "./interfaces/IDistributor.sol";
+
+import "./MultiRewardsAuthorization.sol";
 
 // solhint-disable not-rely-on-time
 
@@ -40,7 +40,7 @@ import "./interfaces/IDistributor.sol";
  * https://github.com/curvefi/multi-rewards/blob/master/contracts/MultiRewards.sol commit #9947623
  */
 
-contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, TemporarilyPausable, Ownable {
+contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, TemporarilyPausable, MultiRewardsAuthorization {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -55,13 +55,14 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         uint256 rewardPerTokenStored;
     }
 
-    IVault public immutable vault;
+    // delegate ownership to the vault
+    address private constant _DELEGATE_OWNER = 0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B;
+
     mapping(IERC20 => mapping(address => mapping(IERC20 => Reward))) public rewardData;
     mapping(IERC20 => EnumerableSet.AddressSet) private _rewardTokens;
 
     // pool -> rewardToken -> rewarders
     mapping(IERC20 => mapping(IERC20 => EnumerableSet.AddressSet)) private _rewarders;
-    mapping(IERC20 => mapping(IERC20 => mapping(address => bool))) private _allowlist;
 
     // pool -> rewarder ->  user -> reward token -> amount
     mapping(IERC20 => mapping(address => mapping(address => mapping(IERC20 => uint256)))) public userRewardPerTokenPaid;
@@ -72,36 +73,30 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(IVault _vault) Ownable() TemporarilyPausable(3600, 3600) {
-        vault = _vault;
+    constructor(IVault _vault)
+        /* disambiguate based on who is deploying staking contract */
+        Authentication(bytes32(uint256(msg.sender)))
+        MultiRewardsAuthorization(_DELEGATE_OWNER, _vault)
+        TemporarilyPausable(3600, 3600)
+    {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
-    modifier onlyAllowlistedRewarder(IERC20 pool, IERC20 rewardsToken) {
-        require(isAllowlistedRewarder(pool, rewardsToken, msg.sender), "only accessible by allowlisted rewarders");
-        _;
+    function _getAuthorizer() internal view override returns (IAuthorizer) {
+        // Access control management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which
+        // accounts can call permissioned functions: for example, to perform emergency pauses.
+        return getVault().getAuthorizer();
     }
 
     /**
-     * @notice Allows a rewarder to be explicitly added to a allowlist of rewarders
+     * @notice Allows a rewarder to be explicitly added to an allowlist of rewarders
      */
     function allowlistRewarder(
         IERC20 pool,
         IERC20 rewardsToken,
         address rewarder
-    ) external override {
-        require(
-            msg.sender == owner() || msg.sender == address(pool) || isAssetManager(pool, msg.sender),
-            "only accessible by governance, pool or it's asset managers"
-        );
-        _allowlist[pool][rewardsToken][rewarder] = true;
-    }
-
-    function isAllowlistedRewarder(
-        IERC20 pool,
-        IERC20 rewardsToken,
-        address rewarder
-    ) public view returns (bool) {
-        return _allowlist[pool][rewardsToken][rewarder];
+    ) external override onlyAllowlisters(pool) {
+        _allowlistRewarder(pool, rewardsToken, rewarder);
     }
 
     /**
@@ -120,28 +115,10 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         _rewardTokens[pool].add(address(rewardsToken));
         _rewarders[pool][rewardsToken].add(msg.sender);
         rewardData[pool][msg.sender][rewardsToken].rewardsDuration = rewardsDuration;
-        rewardsToken.approve(address(vault), type(uint256).max);
+        rewardsToken.approve(address(getVault()), type(uint256).max);
     }
 
     /* ========== VIEWS ========== */
-
-    /**
-     * @notice Checks if a rewarder has been explicitly allowlisted, or implicitly allowlisted
-     * by virtue of being an asset manager
-     */
-    function isAssetManager(IERC20 pool, address rewarder) public view returns (bool) {
-        IBasePool poolContract = IBasePool(address(pool));
-        bytes32 poolId = poolContract.getPoolId();
-        (IERC20[] memory poolTokens, , ) = vault.getPoolTokens(poolId);
-
-        for (uint256 pt; pt < poolTokens.length; pt++) {
-            (, , , address assetManager) = vault.getPoolTokenInfo(poolId, poolTokens[pt]);
-            if (assetManager == rewarder) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     /**
      * @notice Total supply of a staking token being added
@@ -353,7 +330,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
                 }
             }
         }
-        vault.manageUserBalance(ops);
+        getVault().manageUserBalance(ops);
     }
 
     /**
@@ -414,7 +391,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
             kind: IVault.UserBalanceOpKind.DEPOSIT_INTERNAL
         });
 
-        vault.manageUserBalance(ops);
+        getVault().manageUserBalance(ops);
 
         if (block.timestamp >= rewardData[pool][msg.sender][rewardsToken].periodFinish) {
             rewardData[pool][msg.sender][rewardsToken].rewardRate = Math.divDown(

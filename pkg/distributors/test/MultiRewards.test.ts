@@ -10,6 +10,7 @@ import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { signPermit, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
@@ -21,10 +22,8 @@ describe('Staking contract', () => {
   let admin: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress, mockAssetManager: SignerWithAddress;
 
   let rewardTokens: TokenList;
-  let vault: Contract;
-  let stakingContract: Contract;
+  let authorizer: Contract, vault: Contract, stakingContract: Contract, pool: Contract;
   let rewardToken: Token;
-  let pool: Contract;
 
   before('deploy base contracts', async () => {
     [, admin, lp, mockAssetManager, other] = await ethers.getSigners();
@@ -33,11 +32,27 @@ describe('Staking contract', () => {
   sharedBeforeEach('set up asset manager', async () => {
     const { contracts } = await setup();
 
+    authorizer = contracts.authorizer;
     pool = contracts.pool;
     vault = contracts.vault;
     stakingContract = contracts.stakingContract;
     rewardToken = contracts.rewardTokens.DAI;
     rewardTokens = contracts.rewardTokens;
+  });
+
+  describe('authorizer', () => {
+    it('uses the authorizer of the vault', async () => {
+      expect(await stakingContract.getAuthorizer()).to.equal(authorizer.address);
+    });
+
+    it('tracks authorizer changes in the vault', async () => {
+      const action = await actionId(vault, 'setAuthorizer');
+      await authorizer.connect(admin).grantRole(action, admin.address);
+
+      await vault.connect(admin).setAuthorizer(other.address);
+
+      expect(await stakingContract.getAuthorizer()).to.equal(other.address);
+    });
   });
 
   describe('isAllowlistedRewarder', async () => {
@@ -51,7 +66,7 @@ describe('Staking contract', () => {
     });
 
     it('allows the owner to allowlist someone', async () => {
-      await stakingContract.allowlistRewarder(pool.address, rewardToken.address, lp.address);
+      await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardToken.address, lp.address);
 
       expect(await stakingContract.isAllowlistedRewarder(pool.address, rewardToken.address, lp.address)).to.equal(true);
     });
@@ -60,6 +75,29 @@ describe('Staking contract', () => {
       expect(await stakingContract.isAllowlistedRewarder(pool.address, rewardToken.address, other.address)).to.equal(
         false
       );
+    });
+
+    it('reverts if a random user attempts to allowlist themselves', async () => {
+      await expect(
+        stakingContract.connect(other).allowlistRewarder(pool.address, rewardToken.address, other.address)
+      ).to.be.revertedWith("only accessible by governance, pool or it's asset managers");
+    });
+
+    it('allows the vaults authorizer to allowlist rewarders after changing', async () => {
+      let action = await actionId(vault, 'setAuthorizer');
+      await authorizer.connect(admin).grantRole(action, admin.address);
+
+      // set new authorizer on the vault
+      const newAuthorizer = await deploy('v2-vault/Authorizer', { args: [other.address] });
+      await vault.connect(admin).setAuthorizer(newAuthorizer.address);
+
+      action = await actionId(stakingContract, 'allowlistRewarder');
+      await newAuthorizer.connect(other).grantRole(action, other.address);
+
+      // that authorizer allowlists a rewarder
+      await stakingContract.connect(other).allowlistRewarder(pool.address, rewardToken.address, lp.address);
+
+      expect(await stakingContract.isAllowlistedRewarder(pool.address, rewardToken.address, lp.address)).to.equal(true);
     });
   });
 
@@ -239,12 +277,12 @@ describe('Staking contract', () => {
           .connect(mockAssetManager)
           .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
 
-        await stakingContract.allowlistRewarder(pool.address, rewardToken.address, other.address);
+        await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardToken.address, other.address);
 
         await rewardTokens.mint({ to: other, amount: rewardTokenInitialBalance });
         await rewardTokens.approve({ to: stakingContract.address, from: [other] });
 
-        await stakingContract.allowlistRewarder(pool.address, rewardToken.address, other.address);
+        await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardToken.address, other.address);
         await stakingContract.connect(other).addReward(pool.address, rewardToken.address, rewardsDuration);
 
         await stakingContract.connect(other).notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount);
