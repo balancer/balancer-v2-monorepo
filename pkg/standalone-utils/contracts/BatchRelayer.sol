@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
@@ -25,7 +26,7 @@ import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
  * @dev This relayer acts as a first step to generalising swaps, joins and exits.
  *      Users may atomically join a pool and use the BPT as the input to a swap or swap for BPT and exit the pool.
  */
-contract BatchRelayer {
+contract BatchRelayer is ReentrancyGuard {
     using Address for address payable;
 
     IVault private immutable _vault;
@@ -58,7 +59,7 @@ contract BatchRelayer {
         IAsset[] calldata assets,
         int256[] calldata limits,
         uint256 deadline
-    ) external payable returns (int256[] memory swapAmounts) {
+    ) external payable nonReentrant returns (int256[] memory swapAmounts) {
         getVault().joinPool{ value: msg.value }(poolId, msg.sender, address(this), request);
 
         IERC20 bpt = IERC20(_getPoolAddress(poolId));
@@ -91,7 +92,7 @@ contract BatchRelayer {
         bytes32 poolId,
         address payable recipient,
         IVault.JoinPoolRequest calldata joinPoolRequest
-    ) external payable {
+    ) external payable nonReentrant {
         getVault().joinPool{ value: msg.value }(poolId, msg.sender, address(this), joinPoolRequest);
 
         IERC20 bpt = IERC20(_getPoolAddress(poolId));
@@ -115,7 +116,7 @@ contract BatchRelayer {
         IAsset[] calldata assets,
         int256[] calldata limits,
         uint256 deadline
-    ) external payable {
+    ) external payable nonReentrant {
         // We can't output tokens to the user's internal balance
         // as they need to have BPT on their address for the exit
         IVault.FundManagement memory funds = IVault.FundManagement({
