@@ -119,6 +119,7 @@ contract BatchRelayer is ReentrancyGuard {
     ) external payable nonReentrant {
         // We can't output tokens to the user's internal balance
         // as they need to have BPT on their address for the exit
+        // Similarly, accepting ETH requires us to pull from external balances
         IVault.FundManagement memory funds = IVault.FundManagement({
             sender: msg.sender,
             fromInternalBalance: false,
