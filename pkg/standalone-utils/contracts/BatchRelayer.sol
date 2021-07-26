@@ -61,11 +61,11 @@ contract BatchRelayer {
     ) external payable returns (int256[] memory swapAmounts) {
         getVault().joinPool{ value: msg.value }(poolId, msg.sender, address(this), request);
 
-        // Ensure that the BPT gained from the join is all used in the swap
-        require(assets[swaps[0].assetInIndex] == IAsset(_getPoolAddress(poolId)), "Must use BPT as input to swap");
-
         IERC20 bpt = IERC20(_getPoolAddress(poolId));
         uint256 bptAmount = bpt.balanceOf(address(this));
+
+        // Ensure that the BPT gained from the join is all used in the swap
+        require(assets[swaps[0].assetInIndex] == IAsset(address(bpt)), "Must use BPT as input to swap");
 
         // If necessary, give Vault allowance to take BPT
         if (bpt.allowance(address(this), address(getVault())) < bptAmount) {
