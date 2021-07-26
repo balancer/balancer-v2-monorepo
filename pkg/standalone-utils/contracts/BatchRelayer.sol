@@ -149,7 +149,7 @@ contract BatchRelayer is ReentrancyGuard {
             }
 
             // Here we overwrite the bptAmountIn field of an `exactBptInForTokenOut` exit with the output of the swap
-            (uint exitKind,, uint256 tokenOutIndex) = abi.decode(request.userData, (uint256, uint256, uint256));
+            (uint256 exitKind, , uint256 tokenOutIndex) = abi.decode(request.userData, (uint256, uint256, uint256));
             request.userData = abi.encode(exitKind, bptAmount, tokenOutIndex);
         }
 
