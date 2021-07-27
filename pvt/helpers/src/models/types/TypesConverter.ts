@@ -21,8 +21,8 @@ import {
 import { ZERO_ADDRESS } from '../../constants';
 
 export function computeDecimalsFromIndex(i: number): number {
-  // Produces sequential series (18,17,16,...,0,17,16,15,...,1,18,17,16,15,...)
-  return i > 18 ? 18 - ((i - 18) % 18) : 18 - i;
+  // Produces repeating series (18..0)
+  return 18 - (i % 19);
 }
 
 export default {
