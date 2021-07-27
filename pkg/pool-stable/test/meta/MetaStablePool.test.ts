@@ -13,6 +13,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { Sample } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('MetaStablePool', function () {
   let pool: StablePool;
@@ -470,8 +471,19 @@ describe('MetaStablePool', function () {
 
       const forceManualUpdate = () => {
         sharedBeforeEach('force update', async () => {
-          await pool.updatePriceRateCache(tokens.first);
-          await pool.updatePriceRateCache(tokens.second);
+          const priceRates = await Promise.all(rateProviders.map((provider) => provider.getRate()));
+
+          const firstReceipt = await pool.updatePriceRateCache(tokens.first);
+          expectEvent.inIndirectReceipt(await firstReceipt.wait(), pool.instance.interface, 'PriceRateCacheUpdated', {
+            token: tokens.first.address,
+            rate: priceRates[0],
+          });
+
+          const secondReceipt = await pool.updatePriceRateCache(tokens.second);
+          expectEvent.inIndirectReceipt(await secondReceipt.wait(), pool.instance.interface, 'PriceRateCacheUpdated', {
+            token: tokens.second.address,
+            rate: priceRates[1],
+          });
         });
       };
 
@@ -593,8 +605,20 @@ describe('MetaStablePool', function () {
 
           sharedBeforeEach('update price rate cache', async () => {
             forceUpdateAt = await currentTimestamp();
-            await pool.setPriceRateCacheDuration(tokens.first, newDuration, { from: admin });
-            await pool.setPriceRateCacheDuration(tokens.second, newDuration, { from: admin });
+
+            const firstReceipt = await pool.setPriceRateCacheDuration(tokens.first, newDuration, { from: admin });
+            expectEvent.inReceipt(await firstReceipt.wait(), 'PriceRateProviderSet', {
+              token: tokens.first.address,
+              provider: rateProviders[0].address,
+              cacheDuration: newDuration,
+            });
+
+            const secondReceipt = await pool.setPriceRateCacheDuration(tokens.second, newDuration, { from: admin });
+            expectEvent.inReceipt(await secondReceipt.wait(), 'PriceRateProviderSet', {
+              token: tokens.second.address,
+              provider: rateProviders[1].address,
+              cacheDuration: newDuration,
+            });
           });
 
           it('updates the cache duration', async () => {
