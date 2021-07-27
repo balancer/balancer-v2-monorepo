@@ -463,8 +463,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
             uint256 expires
         )
     {
-        if (_isToken0(token)) return _getPriceRateCache(_priceRateCache0);
-        if (_isToken1(token)) return _getPriceRateCache(_priceRateCache1);
+        if (_isToken0(token)) return _getPriceRateCache(_getPriceRateCache0());
+        if (_isToken1(token)) return _getPriceRateCache(_getPriceRateCache1());
         _revert(Errors.INVALID_TOKEN);
     }
 
@@ -503,9 +503,9 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
         // Given that this function is only used by `onSwap` which can only be called by the vault in the case of a
         // Meta Stable Pool, we can be sure the vault will not forward a call with an invalid `token` param.
         if (_isToken0WithRateProvider(token)) {
-            return _getPriceRateCacheValue(_priceRateCache0);
+            return _getPriceRateCacheValue(_getPriceRateCache0());
         } else if (_isToken1WithRateProvider(token)) {
-            return _getPriceRateCacheValue(_priceRateCache1);
+            return _getPriceRateCacheValue(_getPriceRateCache1());
         } else {
             return FixedPoint.ONE;
         }
@@ -518,7 +518,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
 
     function _cachePriceRate0IfNecessary() private {
         if (_getRateProvider0() != IRateProvider(address(0))) {
-            (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_priceRateCache0);
+            (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_getPriceRateCache0());
             if (block.timestamp > expires) {
                 _updateToken0PriceRateCache(duration);
             }
@@ -527,7 +527,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
 
     function _cachePriceRate1IfNecessary() private {
         if (_getRateProvider1() != IRateProvider(address(0))) {
-            (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_priceRateCache1);
+            (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_getPriceRateCache1());
             if (block.timestamp > expires) {
                 _updateToken1PriceRateCache(duration);
             }
@@ -573,7 +573,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
     }
 
     function _updateToken0PriceRateCache() private {
-        _updateToken0PriceRateCache(_getPriceRateCacheDuration(_priceRateCache0));
+        _updateToken0PriceRateCache(_getPriceRateCacheDuration(_getPriceRateCache0()));
     }
 
     function _updateToken0PriceRateCache(uint256 duration) private {
@@ -582,7 +582,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
     }
 
     function _updateToken1PriceRateCache() private {
-        _updateToken1PriceRateCache(_getPriceRateCacheDuration(_priceRateCache1));
+        _updateToken1PriceRateCache(_getPriceRateCacheDuration(_getPriceRateCache1()));
     }
 
     function _updateToken1PriceRateCache(uint256 duration) private {
@@ -631,5 +631,13 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
 
     function _getRateProvider1() internal view returns (IRateProvider) {
         return _rateProvider1;
+    }
+
+    function _getPriceRateCache0() internal view returns (bytes32) {
+        return _priceRateCache0;
+    }
+
+    function _getPriceRateCache1() internal view returns (bytes32) {
+        return _priceRateCache1;
     }
 }
