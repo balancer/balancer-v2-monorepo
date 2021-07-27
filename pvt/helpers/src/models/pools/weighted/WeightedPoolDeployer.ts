@@ -208,7 +208,7 @@ export default {
         break;
       }
       default: {
-        const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address], from });        
+        const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address], from });
         const tx = await factory.create(
           NAME,
           SYMBOL,
