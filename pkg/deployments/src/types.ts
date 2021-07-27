@@ -40,6 +40,8 @@ export type RawOutput = {
   [key: string]: string | Contract;
 };
 
+export type Libraries = { [key: string]: string };
+
 export type Artifact = {
   abi: unknown[];
   evm: {
