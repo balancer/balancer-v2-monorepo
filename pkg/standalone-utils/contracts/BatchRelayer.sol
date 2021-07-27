@@ -153,7 +153,11 @@ contract BatchRelayer is ReentrancyGuard {
         _sweepETH();
     }
 
-    function _approveToken(IERC20 token, address spender, uint256 amount) private {
+    function _approveToken(
+        IERC20 token,
+        address spender,
+        uint256 amount
+    ) private {
         if (token.allowance(address(this), spender) < amount) {
             token.approve(spender, type(uint256).max);
         }
