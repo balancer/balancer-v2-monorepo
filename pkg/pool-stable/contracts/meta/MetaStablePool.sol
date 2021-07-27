@@ -53,8 +53,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
     uint256 private constant _PRICE_RATE_CACHE_EXPIRES_OFFSET = 128 + 64;
 
     event OracleEnabledChanged(bool enabled);
-    event PriceRateProviderSet(IERC20 token, IRateProvider provider, uint256 cacheDuration);
-    event PriceRateCacheUpdated(IERC20 token, uint256 price);
+    event PriceRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
+    event PriceRateCacheUpdated(IERC20 indexed token, uint256 rate);
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
