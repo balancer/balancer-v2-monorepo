@@ -46,8 +46,8 @@ contract RewardsScheduler {
     event RewardScheduled(
         bytes32 rewardId,
         address indexed scheduler,
-        address indexed pool,
-        address indexed rewardsToken,
+        IERC20 indexed pool,
+        IERC20 indexed rewardsToken,
         uint256 startTime,
         uint256 amount
     );
