@@ -11,6 +11,7 @@ import { deploy, instanceAt } from './contracts';
 import {
   NETWORKS,
   Network,
+  Libraries,
   Artifact,
   Input,
   Output,
@@ -78,8 +79,8 @@ export default class Task {
     return task.instanceAt(artifactName, address);
   }
 
-  async deploy(name: string, args: Array<Param> = [], from?: SignerWithAddress): Promise<Contract> {
-    const instance = await deploy(this.artifact(name), args, from);
+  async deploy(name: string, args: Array<Param> = [], from?: SignerWithAddress, libs?: Libraries): Promise<Contract> {
+    const instance = await deploy(this.artifact(name), args, from, libs);
     logger.success(`Deployed ${name} at ${instance.address}`);
     return instance;
   }
