@@ -19,14 +19,14 @@ import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { setup, tokenInitialBalance, rewardTokenInitialBalance, rewardsDuration } from './MultiRewardsSharedSetup';
 
 describe('Staking contract', () => {
-  let admin: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress, mockAssetManager: SignerWithAddress;
+  let admin: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress, rewarder: SignerWithAddress;
 
   let rewardTokens: TokenList;
   let authorizer: Contract, vault: Contract, stakingContract: Contract, pool: Contract;
   let rewardToken: Token;
 
   before('deploy base contracts', async () => {
-    [, admin, lp, mockAssetManager, other] = await ethers.getSigners();
+    [, admin, lp, rewarder, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('set up asset manager', async () => {
@@ -57,12 +57,10 @@ describe('Staking contract', () => {
 
   describe('isAllowlistedRewarder', async () => {
     it('allows thet asset managers to allowlist themselves', async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .allowlistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
-      expect(
-        await stakingContract.isAllowlistedRewarder(pool.address, rewardToken.address, mockAssetManager.address)
-      ).to.equal(true);
+      await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
+      expect(await stakingContract.isAllowlistedRewarder(pool.address, rewardToken.address, rewarder.address)).to.equal(
+        true
+      );
     });
 
     it('allows the owner to allowlist someone', async () => {
@@ -85,33 +83,27 @@ describe('Staking contract', () => {
   });
 
   it('reverts if a rewarder attempts to notifyRewardAmount before adding a reward', async () => {
-    await stakingContract
-      .connect(mockAssetManager)
-      .allowlistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
+    await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
 
     await expect(
-      stakingContract.connect(mockAssetManager).notifyRewardAmount(pool.address, rewardToken.address, fp(100))
+      stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, fp(100))
     ).to.be.revertedWith('Reward must be configured with addReward');
   });
 
   describe('addReward', () => {
     it('sets up a reward for an asset manager', async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .allowlistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
-      await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
-      expect(
-        await stakingContract.isAllowlistedRewarder(pool.address, rewardToken.address, mockAssetManager.address)
-      ).to.equal(true);
+      await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
+      await stakingContract.connect(rewarder).addReward(pool.address, rewardToken.address, rewardsDuration);
+      expect(await stakingContract.isAllowlistedRewarder(pool.address, rewardToken.address, rewarder.address)).to.equal(
+        true
+      );
     });
   });
 
   describe('stakeWithPermit', () => {
     sharedBeforeEach(async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .allowlistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
-      await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
+      await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
+      await stakingContract.connect(rewarder).addReward(pool.address, rewardToken.address, rewardsDuration);
     });
 
     it('stakes with a permit signature', async () => {
@@ -138,10 +130,8 @@ describe('Staking contract', () => {
   describe('with two stakes', () => {
     const rewardAmount = fp(1);
     sharedBeforeEach(async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .allowlistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
-      await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
+      await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
+      await stakingContract.connect(rewarder).addReward(pool.address, rewardToken.address, rewardsDuration);
 
       const bptBalance = await pool.balanceOf(lp.address);
 
@@ -155,8 +145,7 @@ describe('Staking contract', () => {
 
     it('sends expected amount of reward token to the rewards contract', async () => {
       await expectBalanceChange(
-        () =>
-          stakingContract.connect(mockAssetManager).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount),
+        () => stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount),
         rewardTokens,
         [{ account: stakingContract, changes: { DAI: rewardAmount } }],
         vault
@@ -165,9 +154,7 @@ describe('Staking contract', () => {
 
     it('emits RewardAdded when an allocation is stored', async () => {
       const receipt = await (
-        await stakingContract
-          .connect(mockAssetManager)
-          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount)
+        await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount)
       ).wait();
 
       expectEvent.inReceipt(receipt, 'RewardAdded', {
@@ -178,9 +165,7 @@ describe('Staking contract', () => {
 
     describe('when the rewarder has called notifyRewardAmount', () => {
       sharedBeforeEach(async () => {
-        await stakingContract
-          .connect(mockAssetManager)
-          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+        await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
         await advanceTime(10);
       });
 
@@ -234,11 +219,9 @@ describe('Staking contract', () => {
       const secondRewardAmount = fp(2);
 
       sharedBeforeEach(async () => {
+        await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
         await stakingContract
-          .connect(mockAssetManager)
-          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
-        await stakingContract
-          .connect(mockAssetManager)
+          .connect(rewarder)
           .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount);
         // total reward = fp(3)
       });
@@ -258,11 +241,9 @@ describe('Staking contract', () => {
       sharedBeforeEach(async () => {
         await stakingContract.connect(other).getReward([pool.address]);
 
+        await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
         await stakingContract
-          .connect(mockAssetManager)
-          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
-        await stakingContract
-          .connect(mockAssetManager)
+          .connect(rewarder)
           .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount);
       });
 
@@ -279,9 +260,7 @@ describe('Staking contract', () => {
       const secondRewardAmount = fp(2);
 
       sharedBeforeEach(async () => {
-        await stakingContract
-          .connect(mockAssetManager)
-          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+        await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
 
         await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardToken.address, other.address);
 
@@ -310,12 +289,10 @@ describe('Staking contract', () => {
     const rewardAmount = fp(1);
 
     sharedBeforeEach('deploy another pool', async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .allowlistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
-      await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
+      await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
+      await stakingContract.connect(rewarder).addReward(pool.address, rewardToken.address, rewardsDuration);
       const poolTokens = await TokenList.create(['BAT', 'SNX'], { sorted: true });
-      const assetManagers = Array(poolTokens.length).fill(mockAssetManager.address);
+      const assetManagers = Array(poolTokens.length).fill(rewarder.address);
 
       pool2 = await deploy('v2-pool-weighted/WeightedPool', {
         args: [
@@ -333,16 +310,14 @@ describe('Staking contract', () => {
       });
       const poolId = await pool2.getPoolId();
 
-      await stakingContract
-        .connect(mockAssetManager)
-        .allowlistRewarder(pool2.address, rewardToken.address, mockAssetManager.address);
-      await stakingContract.connect(mockAssetManager).addReward(pool2.address, rewardToken.address, rewardsDuration);
+      await stakingContract.connect(rewarder).allowlistRewarder(pool2.address, rewardToken.address, rewarder.address);
+      await stakingContract.connect(rewarder).addReward(pool2.address, rewardToken.address, rewardsDuration);
 
       await poolTokens.mint({ to: lp, amount: tokenInitialBalance });
       await poolTokens.approve({ to: vault.address, from: [lp] });
 
-      await rewardTokens.mint({ to: mockAssetManager, amount: rewardTokenInitialBalance });
-      await rewardTokens.approve({ to: stakingContract.address, from: [mockAssetManager] });
+      await rewardTokens.mint({ to: rewarder, amount: rewardTokenInitialBalance });
+      await rewardTokens.approve({ to: stakingContract.address, from: [rewarder] });
 
       const assets = poolTokens.addresses;
 
@@ -363,13 +338,9 @@ describe('Staking contract', () => {
     });
 
     it('allows you to claim across multiple pools', async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+      await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
       const rewardAmount2 = fp(0.75);
-      await stakingContract
-        .connect(mockAssetManager)
-        .notifyRewardAmount(pool2.address, rewardToken.address, rewardAmount2);
+      await stakingContract.connect(rewarder).notifyRewardAmount(pool2.address, rewardToken.address, rewardAmount2);
 
       await advanceTime(10);
 
@@ -383,13 +354,9 @@ describe('Staking contract', () => {
     });
 
     it.skip('emits RewardPaid for each pool', async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+      await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
       const rewardAmount2 = fp(0.75);
-      await stakingContract
-        .connect(mockAssetManager)
-        .notifyRewardAmount(pool2.address, rewardToken.address, rewardAmount2);
+      await stakingContract.connect(rewarder).notifyRewardAmount(pool2.address, rewardToken.address, rewardAmount2);
       await advanceTime(10);
 
       const receipt = await (await stakingContract.connect(lp).getReward([pool.address])).wait();

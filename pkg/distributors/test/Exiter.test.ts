@@ -14,7 +14,7 @@ import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { setup, rewardsDuration } from './MultiRewardsSharedSetup';
 
 describe('Exiter', () => {
-  let lp: SignerWithAddress, mockAssetManager: SignerWithAddress;
+  let lp: SignerWithAddress, rewarder: SignerWithAddress;
 
   let poolTokens: TokenList;
   let vault: Contract;
@@ -24,7 +24,7 @@ describe('Exiter', () => {
   let pool: Contract;
 
   before('deploy base contracts', async () => {
-    [, , lp, mockAssetManager] = await ethers.getSigners();
+    [, , lp, rewarder] = await ethers.getSigners();
   });
 
   sharedBeforeEach('set up asset manager and exiter', async () => {
@@ -45,10 +45,8 @@ describe('Exiter', () => {
     let poolId: string;
 
     sharedBeforeEach(async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .allowlistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
-      await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
+      await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
+      await stakingContract.connect(rewarder).addReward(pool.address, rewardToken.address, rewardsDuration);
 
       const bptBalance = await pool.balanceOf(lp.address);
 
@@ -56,9 +54,7 @@ describe('Exiter', () => {
 
       await stakingContract.connect(lp)['stake(address,uint256)'](pool.address, bptBalance);
 
-      await stakingContract
-        .connect(mockAssetManager)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+      await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
       await advanceTime(10);
 
       assets = poolTokens.map((pt) => pt.address);
