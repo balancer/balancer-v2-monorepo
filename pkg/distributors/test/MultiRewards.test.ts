@@ -241,6 +241,7 @@ describe('Staking contract', () => {
       sharedBeforeEach(async () => {
         await stakingContract.connect(other).getReward([pool.address]);
 
+        await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
         await stakingContract
           .connect(rewarder)
           .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount);
