@@ -71,6 +71,7 @@ export default {
             },
           ],
           from,
+          libraries: { QueryProcessor: (await deploy('QueryProcessor')).address },
         });
         break;
       }
@@ -149,7 +150,11 @@ export default {
 
     switch (poolType) {
       case WeightedPoolType.WEIGHTED_POOL_2TOKENS: {
-        const factory = await deploy('v2-pool-weighted/WeightedPool2TokensFactory', { args: [vault.address], from });
+        const factory = await deploy('v2-pool-weighted/WeightedPool2TokensFactory', {
+          args: [vault.address],
+          from,
+          libraries: { QueryProcessor: await (await deploy('QueryProcessor')).address },
+        });
         const tx = await factory.create(
           NAME,
           SYMBOL,
@@ -203,7 +208,7 @@ export default {
         break;
       }
       default: {
-        const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address], from });
+        const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address], from });        
         const tx = await factory.create(
           NAME,
           SYMBOL,
