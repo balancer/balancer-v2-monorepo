@@ -27,7 +27,6 @@ import "./WeightCompression.sol";
  * rebalancing through gradual weight updates, and enabling/disabling trading.
  */
 contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
-    // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
 
     using FixedPoint for uint256;
@@ -293,7 +292,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
-    function _readScalingFactor(bytes32 tokenState) private view returns (uint256) {
+    function _readScalingFactor(bytes32 tokenState) private pure returns (uint256) {
         uint256 decimalsDifference = tokenState.decodeUint5(_DECIMAL_DIFF_OFFSET);
 
         return FixedPoint.ONE * 10**decimalsDifference;

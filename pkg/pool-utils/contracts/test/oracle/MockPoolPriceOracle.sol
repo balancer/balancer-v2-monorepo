@@ -31,6 +31,16 @@ contract MockPoolPriceOracle is MockSamples, PoolPriceOracle {
 
     event PriceDataProcessed(bool newSample, uint256 sampleIndex);
 
+    uint256 private _mockedOracleIndex;
+
+    function mockOracleIndex(uint256 index) external {
+        _mockedOracleIndex = index;
+    }
+
+    function _getOracleIndex() internal view virtual override returns (uint256) {
+        return _mockedOracleIndex;
+    }
+
     function mockSample(uint256 index, Sample memory sample) public {
         _samples[index] = encode(sample);
     }
