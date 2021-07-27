@@ -397,7 +397,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         address rewarder
     ) external override updateReward(pool, address(0)) {
         require(
-            rewarder == msg.sender || msg.sender == address(rewardsScheduler),
+            msg.sender == rewarder || msg.sender == address(rewardsScheduler),
             "Rewarder must be sender, or rewards scheduler"
         );
 
