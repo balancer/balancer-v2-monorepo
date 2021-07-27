@@ -87,6 +87,7 @@ library QueryProcessor {
         uint256 latestIndex,
         uint256 ago
     ) public view returns (int256) {
+        // solhint-disable not-rely-on-time
         // `ago` must not be before the epoch.
         _require(block.timestamp >= ago, Errors.ORACLE_INVALID_SECONDS_QUERY);
         uint256 lookUpTime = block.timestamp - ago;
