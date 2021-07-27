@@ -7,6 +7,13 @@ import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import { Account, NAry } from '../../types/types';
 
+export enum WeightedPoolType {
+  WEIGHTED_POOL = 0,
+  WEIGHTED_POOL_2TOKENS,
+  LIQUIDITY_BOOTSTRAPPING_POOL,
+  INVESTMENT_POOL,
+}
+
 export type RawWeightedPoolDeployment = {
   tokens?: TokenList;
   weights?: BigNumberish[];
@@ -20,8 +27,7 @@ export type RawWeightedPoolDeployment = {
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   fromFactory?: boolean;
-  twoTokens?: boolean;
-  lbp?: boolean;
+  poolType?: WeightedPoolType;
 };
 
 export type WeightedPoolDeployment = {
@@ -31,8 +37,7 @@ export type WeightedPoolDeployment = {
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
-  twoTokens: boolean;
-  lbp: boolean;
+  poolType: WeightedPoolType;
   oracleEnabled: boolean;
   swapEnabledOnStart: boolean;
   owner?: SignerWithAddress;

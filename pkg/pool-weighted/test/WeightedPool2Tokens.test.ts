@@ -9,13 +9,13 @@ import { MINUTE, advanceTime, currentTimestamp, lastBlockNumber } from '@balance
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { Sample } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { Sample, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
 import { itBehavesAsWeightedPool } from './BaseWeightedPool.behavior';
 
 describe('WeightedPool2Tokens', function () {
   describe('as a 2 token weighted pool', () => {
-    itBehavesAsWeightedPool(2, true);
+    itBehavesAsWeightedPool(2, WeightedPoolType.WEIGHTED_POOL_2TOKENS);
   });
 
   let trader: SignerWithAddress,
@@ -40,7 +40,7 @@ describe('WeightedPool2Tokens', function () {
   const initialBalances = [fp(0.9), fp(1.8)];
 
   sharedBeforeEach('deploy pool', async () => {
-    const params = { twoTokens: true, tokens, weights, owner };
+    const params = { poolType: WeightedPoolType.WEIGHTED_POOL_2TOKENS, tokens, weights, owner };
     pool = await WeightedPool.create(params);
   });
 

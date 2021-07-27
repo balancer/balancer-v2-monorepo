@@ -7,7 +7,7 @@ import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
-import { RawWeightedPoolDeployment, WeightedPoolDeployment } from '../pools/weighted/types';
+import { RawWeightedPoolDeployment, WeightedPoolDeployment, WeightedPoolType } from '../pools/weighted/types';
 import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
 import {
   RawTokenApproval,
@@ -19,6 +19,11 @@ import {
   RawTokenDeployment,
 } from '../tokens/types';
 import { ZERO_ADDRESS } from '../../constants';
+
+export function computeDecimalsFromIndex(i: number): number {
+  // Produces repeating series (18..0)
+  return 18 - (i % 19);
+}
 
 export default {
   toVaultDeployment(params: RawVaultDeployment): VaultDeployment {
@@ -50,8 +55,7 @@ export default {
       bufferPeriodDuration,
       oracleEnabled,
       swapEnabledOnStart,
-      twoTokens,
-      lbp,
+      poolType,
     } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
@@ -61,10 +65,10 @@ export default {
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!oracleEnabled) oracleEnabled = true;
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
-    if (!lbp) lbp = false;
+    if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
-    if (!twoTokens) twoTokens = false;
-    else if (tokens.length !== 2) throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
+    if (poolType === WeightedPoolType.WEIGHTED_POOL_2TOKENS && tokens.length !== 2)
+      throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
     return {
       tokens,
       weights,
@@ -75,8 +79,7 @@ export default {
       oracleEnabled,
       swapEnabledOnStart,
       owner: params.owner,
-      twoTokens,
-      lbp,
+      poolType,
     };
   },
 
@@ -132,7 +135,7 @@ export default {
       if (typeof param === 'string') param = { symbol: param, from };
       const args = Object.assign(
         {},
-        { symbol: `TK${i}`, name: `Token ${i}`, decimals: varyDecimals ? Math.max(18 - i, 0) : 18, from },
+        { symbol: `TK${i}`, name: `Token ${i}`, decimals: varyDecimals ? computeDecimalsFromIndex(i) : 18, from },
         param
       );
       return this.toTokenDeployment(args);
