@@ -32,7 +32,7 @@ contract RewardsScheduler {
         _multirewards = IMultiRewards(msg.sender);
     }
 
-    enum RewardStatus { PENDING, STARTED }
+    enum RewardStatus { UNINITIALIZED, PENDING, STARTED }
 
     struct ScheduledReward {
         IERC20 pool;
@@ -71,9 +71,8 @@ contract RewardsScheduler {
             bytes32 rewardId = rewardIds[r];
             ScheduledReward memory scheduledReward = _rewards[rewardId];
 
-            require(scheduledReward.startTime != 0, "reward has not been created");
-            require(scheduledReward.startTime <= block.timestamp, "reward cannot be started");
-            require(scheduledReward.status == RewardStatus.PENDING, "scheduled reward already activated");
+            require(scheduledReward.status == RewardStatus.PENDING, "Reward cannot be started");
+            require(scheduledReward.startTime <= block.timestamp, "Reward start time is in the future");
 
             scheduledReward.rewardsToken.approve(address(_multirewards), scheduledReward.amount);
             _multirewards.notifyRewardAmount(
@@ -111,13 +110,13 @@ contract RewardsScheduler {
         uint256 startTime
     ) public returns (bytes32 rewardId) {
         rewardId = getRewardId(pool, rewardsToken, msg.sender, startTime);
-        require(startTime > block.timestamp, "reward can only be scheduled for the future");
+        require(startTime > block.timestamp, "Reward can only be scheduled for the future");
         require(
             _multirewards.isAllowlistedRewarder(pool, rewardsToken, msg.sender),
-            "only allowlisted rewarders can schedule reward"
+            "Only allowlisted rewarders can schedule reward"
         );
 
-        require(_rewards[rewardId].startTime == 0, "reward has already been scheduled");
+        require(_rewards[rewardId].status == RewardStatus.UNINITIALIZED, "Reward has already been scheduled");
 
         rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
 

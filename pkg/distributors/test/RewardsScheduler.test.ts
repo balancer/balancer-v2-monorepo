@@ -80,7 +80,7 @@ describe('Rewards Scheduler', () => {
     const rewardAmount = fp(1);
     await expect(
       rewardsScheduler.connect(lp).scheduleReward(pool.address, rewardsToken.address, rewardAmount, time)
-    ).to.be.revertedWith('only allowlisted rewarders can schedule reward');
+    ).to.be.revertedWith('Only allowlisted rewarders can schedule reward');
   });
 
   describe('with a scheduled reward', () => {
@@ -98,7 +98,7 @@ describe('Rewards Scheduler', () => {
 
     it('doesnt reward before time has passed', async () => {
       await expect(rewardsScheduler.connect(lp).startRewards([rewardId])).to.be.revertedWith(
-        'reward cannot be started'
+        'Reward start time is in the future'
       );
     });
 
@@ -110,7 +110,7 @@ describe('Rewards Scheduler', () => {
       expect(response.startTime).to.equal(time);
       expect(response.rewarder).to.equal(rewarder.address);
       expect(response.amount).to.equal(rewardAmount);
-      expect(response.status).to.equal(0);
+      expect(response.status).to.equal(1);
     });
 
     describe('when time has passed', async () => {
