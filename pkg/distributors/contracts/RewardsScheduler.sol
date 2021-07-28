@@ -54,8 +54,8 @@ contract RewardsScheduler {
     event RewardStarted(
         bytes32 rewardId,
         address indexed scheduler,
-        address indexed pool,
-        address indexed rewardsToken,
+        IERC20 indexed pool,
+        IERC20 indexed rewardsToken,
         uint256 startTime,
         uint256 amount
     );
@@ -85,8 +85,8 @@ contract RewardsScheduler {
             emit RewardStarted(
                 rewardId,
                 msg.sender,
-                address(scheduledReward.pool),
-                address(scheduledReward.rewardsToken),
+                scheduledReward.pool,
+                scheduledReward.rewardsToken,
                 scheduledReward.startTime,
                 scheduledReward.amount
             );
@@ -130,6 +130,6 @@ contract RewardsScheduler {
             status: RewardStatus.PENDING
         });
 
-        emit RewardScheduled(rewardId, msg.sender, address(pool), address(rewardsToken), startTime, amount);
+        emit RewardScheduled(rewardId, msg.sender, pool, rewardsToken, startTime, amount);
     }
 }
