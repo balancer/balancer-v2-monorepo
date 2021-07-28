@@ -74,8 +74,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
     /* ========== CONSTRUCTOR ========== */
 
     constructor(IVault _vault)
-        /* disambiguate based on who is deploying staking contract */
-        Authentication(bytes32(uint256(msg.sender)))
+        // Multirewards is a singleton, so it simply uses its own address to disambiguate action identifiers.
+        Authentication(bytes32(uint256(address(this))))
         MultiRewardsAuthorization(_DELEGATE_OWNER, _vault)
         TemporarilyPausable(3600, 3600)
     {
