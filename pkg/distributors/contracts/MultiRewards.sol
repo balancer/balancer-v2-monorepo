@@ -79,12 +79,6 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function _getAuthorizer() internal view override returns (IAuthorizer) {
-        // Access control management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which
-        // accounts can call permissioned functions: for example, to perform emergency pauses.
-        return getVault().getAuthorizer();
-    }
-
     /**
      * @notice Allows a rewarder to be explicitly added to an allowlist of rewarders
      */

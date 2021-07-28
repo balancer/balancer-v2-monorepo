@@ -55,6 +55,12 @@ abstract contract MultiRewardsAuthorization is Authentication {
         return _getAuthorizer();
     }
 
+    function _getAuthorizer() internal view returns (IAuthorizer) {
+        // Access control management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which
+        // accounts can call permissioned functions: for example, to perform emergency pauses.
+        return getVault().getAuthorizer();
+    }
+
     /**
      * @notice Allows a rewarder to be explicitly added to an allowlist of rewarders
      */
@@ -94,6 +100,4 @@ abstract contract MultiRewardsAuthorization is Authentication {
     function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
         return _getAuthorizer().canPerform(actionId, account, address(this));
     }
-
-    function _getAuthorizer() internal view virtual returns (IAuthorizer);
 }
