@@ -55,9 +55,6 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         uint256 rewardPerTokenStored;
     }
 
-    // delegate ownership to the vault
-    address private constant _DELEGATE_OWNER = 0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B;
-
     mapping(IERC20 => mapping(address => mapping(IERC20 => Reward))) public rewardData;
     mapping(IERC20 => EnumerableSet.AddressSet) private _rewardTokens;
 
@@ -76,7 +73,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
     constructor(IVault _vault)
         // Multirewards is a singleton, so it simply uses its own address to disambiguate action identifiers.
         Authentication(bytes32(uint256(address(this))))
-        MultiRewardsAuthorization(_DELEGATE_OWNER, _vault)
+        MultiRewardsAuthorization(_vault)
         TemporarilyPausable(3600, 3600)
     {
         // solhint-disable-previous-line no-empty-blocks

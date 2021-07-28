@@ -24,13 +24,11 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
  * @dev Base authorization layer implementation for MultiRewards
  */
 abstract contract MultiRewardsAuthorization is Authentication {
-    address private immutable _owner;
     IVault private immutable _vault;
 
     mapping(IERC20 => mapping(IERC20 => mapping(address => bool))) private _allowlist;
 
-    constructor(address owner, IVault vault) {
-        _owner = owner;
+    constructor(IVault vault) {
         _vault = vault;
     }
 
