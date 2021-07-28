@@ -60,7 +60,7 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
     args: [vault.address],
   });
 
-  // authorize vault authorizer to allowlistRewarders
+  // authorize admin to allowlistRewarders
   const action = await actionId(stakingContract, 'allowlistRewarder');
   await authorizer.connect(admin).grantRole(action, admin.address);
 
