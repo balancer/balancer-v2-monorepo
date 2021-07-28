@@ -15,7 +15,6 @@
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/MerkleProof.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
@@ -25,6 +24,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
 import "./interfaces/IDistributor.sol";
+import "./interfaces/IRewardsCallback.sol";
 
 pragma solidity ^0.7.0;
 
@@ -138,16 +138,16 @@ contract MerkleRedeem is IDistributor, Ownable {
      */
     function claimWeeksWithCallback(
         address payable liquidityProvider,
-        address payable callbackContract,
+        IRewardsCallback callbackContract,
         bytes calldata callbackData,
         Claim[] memory claims
-    ) external returns (bytes memory) {
+    ) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
         uint256 totalBalance = _processClaims(liquidityProvider, claims);
 
-        _disburseToInternalBalance(callbackContract, totalBalance);
+        _disburseToInternalBalance(payable(address(callbackContract)), totalBalance);
 
-        return Address.functionCall(callbackContract, callbackData);
+        callbackContract.callback(callbackData);
     }
 
     function claimStatus(
