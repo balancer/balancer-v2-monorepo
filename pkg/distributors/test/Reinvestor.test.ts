@@ -9,7 +9,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { AssetHelpers, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
@@ -76,7 +76,7 @@ describe('Reinvestor', () => {
         await rewardTokens.mint({ to: lp, amount: tokenInitialBalance });
         await rewardTokens.approve({ to: vault.address, from: [lp] });
 
-        assets = [rewardToken.address, tokens.BAT.address].sort((a, b) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
+        [assets] = new AssetHelpers(ZERO_ADDRESS).sortTokens([rewardToken.address, tokens.BAT.address]);
         const weights = [fp(0.5), fp(0.5)];
         const assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS];
 
