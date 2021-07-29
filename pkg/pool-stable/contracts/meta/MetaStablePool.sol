@@ -496,8 +496,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
     }
 
     /**
-     * @dev Returns the list of price rates for each token. All price rates are fixed-point values with 18 decimals.
-     * In case there is no rate provider for a token it returns 1e18.
+     * @dev Returns the price rate for token. All price rates are fixed-point values with 18 decimals.
+     * In case there is no rate provider for the provided token it returns 1e18.
      */
     function _priceRate(IERC20 token) internal view virtual returns (uint256) {
         // Given that this function is only used by `onSwap` which can only be called by the vault in the case of a
