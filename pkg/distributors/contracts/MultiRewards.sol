@@ -313,7 +313,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
      */
     function _getReward(
         IERC20[] calldata pools,
-        address payable recipient,
+        address recipient,
         bool asInternalBalance
     ) internal {
         IVault.UserBalanceOpKind kind = asInternalBalance
@@ -347,7 +347,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
                         asset: IAsset(address(rewardsToken)),
                         amount: reward,
                         sender: address(this),
-                        recipient: recipient,
+                        recipient: payable(recipient),
                         kind: kind
                     });
                     idx++;
@@ -369,7 +369,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         IRewardsCallback callbackContract,
         bytes calldata callbackData
     ) public nonReentrant {
-        _getReward(pools, payable(address(callbackContract)), true);
+        _getReward(pools, address(callbackContract), true);
 
         callbackContract.callback(callbackData);
     }
