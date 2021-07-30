@@ -53,7 +53,7 @@ contract MerkleRedeem is IDistributor, Ownable {
         }
     }
 
-    function _disburseToInternalBalance(address payable recipient, uint256 balance) private {
+    function _disburseToInternalBalance(address recipient, uint256 balance) private {
         if (balance > 0) {
             IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
 
@@ -61,7 +61,7 @@ contract MerkleRedeem is IDistributor, Ownable {
                 asset: IAsset(address(rewardToken)),
                 amount: balance,
                 sender: address(this),
-                recipient: recipient,
+                recipient: payable(recipient),
                 kind: IVault.UserBalanceOpKind.DEPOSIT_INTERNAL
             });
 
@@ -74,7 +74,7 @@ contract MerkleRedeem is IDistributor, Ownable {
      * @notice Allows a user to claim a particular week's worth of rewards
      */
     function claimWeek(
-        address payable liquidityProvider,
+        address liquidityProvider,
         uint256 week,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
@@ -93,10 +93,7 @@ contract MerkleRedeem is IDistributor, Ownable {
         bytes32[] merkleProof;
     }
 
-    function _processClaims(address payable liquidityProvider, Claim[] memory claims)
-        internal
-        returns (uint256 totalBalance)
-    {
+    function _processClaims(address liquidityProvider, Claim[] memory claims) internal returns (uint256 totalBalance) {
         Claim memory claim;
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
@@ -115,7 +112,7 @@ contract MerkleRedeem is IDistributor, Ownable {
     /**
      * @notice Allows a user to claim multiple weeks of reward
      */
-    function claimWeeks(address payable liquidityProvider, Claim[] memory claims) external {
+    function claimWeeks(address liquidityProvider, Claim[] memory claims) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
 
         uint256 totalBalance = _processClaims(liquidityProvider, claims);
@@ -125,7 +122,7 @@ contract MerkleRedeem is IDistributor, Ownable {
     /**
      * @notice Allows a user to claim multiple weeks of reward to internal balance
      */
-    function claimWeeksToInternalBalance(address payable liquidityProvider, Claim[] memory claims) external {
+    function claimWeeksToInternalBalance(address liquidityProvider, Claim[] memory claims) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
 
         uint256 totalBalance = _processClaims(liquidityProvider, claims);
@@ -137,7 +134,7 @@ contract MerkleRedeem is IDistributor, Ownable {
      * @notice Allows a user to claim several weeks of rewards to a callback
      */
     function claimWeeksWithCallback(
-        address payable liquidityProvider,
+        address liquidityProvider,
         IRewardsCallback callbackContract,
         bytes calldata callbackData,
         Claim[] memory claims
@@ -145,7 +142,7 @@ contract MerkleRedeem is IDistributor, Ownable {
         require(msg.sender == liquidityProvider, "user must claim own balance");
         uint256 totalBalance = _processClaims(liquidityProvider, claims);
 
-        _disburseToInternalBalance(payable(address(callbackContract)), totalBalance);
+        _disburseToInternalBalance(address(callbackContract), totalBalance);
 
         callbackContract.callback(callbackData);
     }

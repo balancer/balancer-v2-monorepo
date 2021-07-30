@@ -51,7 +51,7 @@ contract Reinvestor is PoolTokenManipulator, IRewardsCallback {
 
     function _populateArrays(
         bytes32 poolId,
-        address payable recipient,
+        address recipient,
         IERC20[] memory tokens,
         uint256[] memory internalBalances,
         uint256[] memory amountsIn,
@@ -70,7 +70,7 @@ contract Reinvestor is PoolTokenManipulator, IRewardsCallback {
                     asset: IAsset(token),
                     amount: internalBalances[t], // callbackAmounts have been subtracted
                     sender: address(this),
-                    recipient: recipient,
+                    recipient: payable(recipient),
                     kind: IVault.UserBalanceOpKind.WITHDRAW_INTERNAL
                 });
                 leftoverOpsIdx++;
@@ -113,7 +113,7 @@ contract Reinvestor is PoolTokenManipulator, IRewardsCallback {
 
     function _joinPool(
         bytes32 poolId,
-        address payable recipient,
+        address recipient,
         IAsset[] memory assets,
         uint256[] memory amountsIn
     ) internal {
