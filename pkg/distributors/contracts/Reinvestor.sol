@@ -20,63 +20,39 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
-contract Reinvestor {
+import "./PoolTokenManipulator.sol";
+import "./interfaces/IRewardsCallback.sol";
+
+contract Reinvestor is PoolTokenManipulator, IRewardsCallback {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    IVault public immutable vault;
-
-    mapping(bytes32 => EnumerableSet.AddressSet) private _poolTokenSets;
-    mapping(bytes32 => bool) private __poolTokenSetSaved;
-
-    constructor(IVault _vault) {
-        vault = _vault;
+    constructor(IVault _vault) PoolTokenManipulator(_vault) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
-    modifier withPoolTokenSetSaved(bytes32 poolId) {
-        // create a set of the pool tokens if it doesn't exist
-        if (!__poolTokenSetSaved[poolId]) {
-            (IERC20[] memory poolTokens, , ) = vault.getPoolTokens(poolId);
-            for (uint256 pt; pt < poolTokens.length; pt++) {
-                _poolTokenSets[poolId].add(address(poolTokens[pt]));
-            }
-        }
-        _;
-    }
-
-    function _initializeArrays(bytes32 poolId, IERC20[] calldata tokens)
+    function _initializeArrays(bytes32 poolId, IERC20[] memory tokens)
         internal
         view
-        returns (
-            IAsset[] memory assets,
-            uint256[] memory amountsIn,
-            IVault.UserBalanceOp[] memory leftoverOps
-        )
+        returns (uint256[] memory amountsIn, IVault.UserBalanceOp[] memory leftoverOps)
     {
-        uint256 poolTokensLength = _poolTokenSets[poolId].length();
-
-        assets = new IAsset[](poolTokensLength);
-        for (uint256 pt; pt < poolTokensLength; pt++) {
-            assets[pt] = IAsset(_poolTokenSets[poolId].unchecked_at(pt));
-        }
-
         uint256 joinTokensCount;
         uint256 leftoverTokensCount;
         for (uint256 t; t < tokens.length; t++) {
-            if (_poolTokenSets[poolId].contains(address(tokens[t]))) {
+            if (poolHasToken(poolId, address(tokens[t]))) {
                 joinTokensCount++;
             }
         }
         leftoverTokensCount = tokens.length - joinTokensCount;
 
-        amountsIn = new uint256[](poolTokensLength);
+        amountsIn = new uint256[](poolTokensLength(poolId));
 
         leftoverOps = new IVault.UserBalanceOp[](leftoverTokensCount);
     }
 
     function _populateArrays(
         bytes32 poolId,
-        address payable recipient,
-        IERC20[] calldata tokens,
+        address recipient,
+        IERC20[] memory tokens,
         uint256[] memory internalBalances,
         uint256[] memory amountsIn,
         IVault.UserBalanceOp[] memory leftoverOps
@@ -87,14 +63,14 @@ contract Reinvestor {
             address token = address(tokens[t]);
             require(internalBalances[t] >= 0, "Token provided was not sent to the reinvestor");
 
-            if (_poolTokenSets[poolId].contains(token)) {
-                amountsIn[_poolTokenSets[poolId].rawIndexOf(token)] = internalBalances[t];
+            if (poolHasToken(poolId, token)) {
+                amountsIn[poolTokenIndex(poolId, token)] = internalBalances[t];
             } else {
                 leftoverOps[leftoverOpsIdx] = IVault.UserBalanceOp({
                     asset: IAsset(token),
                     amount: internalBalances[t], // callbackAmounts have been subtracted
                     sender: address(this),
-                    recipient: recipient,
+                    recipient: payable(recipient),
                     kind: IVault.UserBalanceOpKind.WITHDRAW_INTERNAL
                 });
                 leftoverOpsIdx++;
@@ -102,34 +78,42 @@ contract Reinvestor {
         }
     }
 
+    struct CallbackParams {
+        address payable recipient;
+        bytes32 poolId;
+        IERC20[] tokens;
+    }
+
     /**
      * @notice Reinvests tokens in a specified pool
-     * @param recipient - the recipient of the bpt and leftover funds
-     * @param poolId - The pool to receive the tokens
-     * @param tokens - The tokens that were received
+     * @param callbackData - the encoded function arguments
+     * recipient - the recipient of the bpt and leftover funds
+     * poolId - The pool to receive the tokens
+     * tokens - The tokens that were received
      */
-    function callback(
-        address payable recipient,
-        bytes32 poolId,
-        IERC20[] calldata tokens // all assets that were transfered over
-    ) external withPoolTokenSetSaved(poolId) {
-        (
-            IAsset[] memory assets,
-            uint256[] memory amountsIn,
-            IVault.UserBalanceOp[] memory leftoverOps
-        ) = _initializeArrays(poolId, tokens);
+    function callback(bytes calldata callbackData) external override {
+        CallbackParams memory params = abi.decode(callbackData, (CallbackParams));
 
-        uint256[] memory internalBalances = vault.getInternalBalance(address(this), tokens);
-        _populateArrays(poolId, recipient, tokens, internalBalances, amountsIn, leftoverOps);
+        ensurePoolTokenSetSaved(params.poolId);
 
-        _joinPool(poolId, recipient, assets, amountsIn);
+        IAsset[] memory assets = _getAssets(params.poolId);
+
+        (uint256[] memory amountsIn, IVault.UserBalanceOp[] memory leftoverOps) = _initializeArrays(
+            params.poolId,
+            params.tokens
+        );
+
+        uint256[] memory internalBalances = vault.getInternalBalance(address(this), params.tokens);
+        _populateArrays(params.poolId, params.recipient, params.tokens, internalBalances, amountsIn, leftoverOps);
+
+        _joinPool(params.poolId, params.recipient, assets, amountsIn);
         vault.manageUserBalance(leftoverOps);
         return;
     }
 
     function _joinPool(
         bytes32 poolId,
-        address payable recipient,
+        address recipient,
         IAsset[] memory assets,
         uint256[] memory amountsIn
     ) internal {

@@ -13,15 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "../interfaces/IRewardsCallback.sol";
-
-contract MockRewardCallback is IRewardsCallback {
-    event CallbackReceived();
-
-    function callback(bytes calldata) external override {
-        emit CallbackReceived();
-        return;
-    }
+interface IRewardsCallback {
+    function callback(bytes calldata callbackData) external;
 }

@@ -102,8 +102,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
             (bytes32 cache, uint256 rate) = _getNewPriceRateCache(rateProvider0, params.priceRateCacheDuration[0]);
             _priceRateCache0 = cache;
             emit PriceRateCacheUpdated(params.tokens[0], rate);
-            emit PriceRateProviderSet(params.tokens[0], rateProvider0, params.priceRateCacheDuration[0]);
         }
+        emit PriceRateProviderSet(params.tokens[0], rateProvider0, params.priceRateCacheDuration[0]);
 
         IRateProvider rateProvider1 = params.rateProviders[1];
         _rateProvider1 = rateProvider1;
@@ -111,8 +111,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
             (bytes32 cache, uint256 rate) = _getNewPriceRateCache(rateProvider1, params.priceRateCacheDuration[1]);
             _priceRateCache1 = cache;
             emit PriceRateCacheUpdated(params.tokens[1], rate);
-            emit PriceRateProviderSet(params.tokens[1], rateProvider1, params.priceRateCacheDuration[1]);
         }
+        emit PriceRateProviderSet(params.tokens[1], rateProvider1, params.priceRateCacheDuration[1]);
 
         _setOracleEnabled(params.oracleEnabled);
     }
@@ -496,8 +496,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
     }
 
     /**
-     * @dev Returns the list of price rates for each token. All price rates are fixed-point values with 18 decimals.
-     * In case there is no rate provider for a token it returns 1e18.
+     * @dev Returns the price rate for token. All price rates are fixed-point values with 18 decimals.
+     * In case there is no rate provider for the provided token it returns 1e18.
      */
     function _priceRate(IERC20 token) internal view virtual returns (uint256) {
         // Given that this function is only used by `onSwap` which can only be called by the vault in the case of a

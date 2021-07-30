@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { BytesLike, BigNumber } from 'ethers';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { Contract, utils } from 'ethers';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -308,7 +308,7 @@ describe('MerkleRedeem', () => {
 
       it('allows a user to claim the reward to a callback contract', async () => {
         const expectedReward = claimBalance1.add(claimBalance2);
-        const calldata = callbackContract.interface.encodeFunctionData('testCallback', []);
+        const calldata = utils.defaultAbiCoder.encode([], []);
 
         await expectBalanceChange(
           () =>
@@ -320,7 +320,7 @@ describe('MerkleRedeem', () => {
       });
 
       it('calls the callback on the contract', async () => {
-        const calldata = callbackContract.interface.encodeFunctionData('testCallback', []);
+        const calldata = utils.defaultAbiCoder.encode([], []);
 
         const receipt = await (
           await merkleRedeem
