@@ -30,6 +30,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 
 import "./interfaces/IMultiRewards.sol";
+import "./interfaces/IRewardsCallback.sol";
 import "./interfaces/IDistributor.sol";
 
 // solhint-disable not-rely-on-time
@@ -312,7 +313,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
      */
     function _getReward(
         IERC20[] calldata pools,
-        address payable recipient,
+        address recipient,
         bool asInternalBalance
     ) internal {
         IVault.UserBalanceOpKind kind = asInternalBalance
@@ -346,7 +347,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
                         asset: IAsset(address(rewardsToken)),
                         amount: reward,
                         sender: address(this),
-                        recipient: recipient,
+                        recipient: payable(recipient),
                         kind: kind
                     });
                     idx++;
@@ -360,19 +361,17 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
      * @notice Allows the user to claim rewards to a callback contract
      * @param pools - An array of pools from which rewards will be claimed
      * @param callbackContract - the contract where rewards will be transferred
-     * @param callbackData - the data that is used to call the callback contract
+     * @param callbackData - the data that is used to call the callback contract's 'callback' method
      */
 
     function getRewardWithCallback(
         IERC20[] calldata pools,
-        address callbackContract,
+        IRewardsCallback callbackContract,
         bytes calldata callbackData
     ) public nonReentrant {
-        _getReward(pools, payable(callbackContract), true);
+        _getReward(pools, address(callbackContract), true);
 
-        (bool success, ) = callbackContract.call(callbackData);
-        // solhint-disable-previous-line avoid-low-level-calls
-        require(success, "callback failed");
+        callbackContract.callback(callbackData);
     }
 
     /**

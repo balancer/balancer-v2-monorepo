@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { Contract, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -13,7 +13,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { setup, rewardsDuration } from './MultiRewardsSharedSetup';
 
-describe('Staking contract', () => {
+describe('Staking contract - callbacks', () => {
   let lp: SignerWithAddress, mockAssetManager: SignerWithAddress;
 
   let rewardTokens: TokenList;
@@ -61,7 +61,7 @@ describe('Staking contract', () => {
 
     it('allows a user to claim the reward to a callback contract', async () => {
       const expectedReward = fp(1);
-      const calldata = callbackContract.interface.encodeFunctionData('testCallback', []);
+      const calldata = utils.defaultAbiCoder.encode([], []);
 
       await expectBalanceChange(
         () => stakingContract.connect(lp).getRewardWithCallback([pool.address], callbackContract.address, calldata),
@@ -72,7 +72,7 @@ describe('Staking contract', () => {
     });
 
     it('calls the callback on the contract', async () => {
-      const calldata = callbackContract.interface.encodeFunctionData('testCallback', []);
+      const calldata = utils.defaultAbiCoder.encode([], []);
 
       const receipt = await (
         await stakingContract.connect(lp).getRewardWithCallback([pool.address], callbackContract.address, calldata)
