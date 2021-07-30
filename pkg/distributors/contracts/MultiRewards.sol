@@ -19,7 +19,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol";
@@ -40,7 +39,7 @@ import "./MultiRewardsAuthorization.sol";
  * https://github.com/curvefi/multi-rewards/blob/master/contracts/MultiRewards.sol commit #9947623
  */
 
-contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, TemporarilyPausable, MultiRewardsAuthorization {
+contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewardsAuthorization {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -74,7 +73,6 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, Temporari
         // Multirewards is a singleton, so it simply uses its own address to disambiguate action identifiers.
         Authentication(bytes32(uint256(address(this))))
         MultiRewardsAuthorization(_vault)
-        TemporarilyPausable(3600, 3600)
     {
         // solhint-disable-previous-line no-empty-blocks
     }
