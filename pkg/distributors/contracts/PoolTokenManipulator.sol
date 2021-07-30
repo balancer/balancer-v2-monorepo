@@ -47,10 +47,10 @@ contract PoolTokenManipulator {
     }
 
     function _getAssets(bytes32 poolId) internal view returns (IAsset[] memory assets) {
-        uint256 poolTokensLength = _poolTokenSets[poolId].length();
+        uint256 numTokens = poolTokensLength(poolId);
 
-        assets = new IAsset[](poolTokensLength);
-        for (uint256 pt; pt < poolTokensLength; pt++) {
+        assets = new IAsset[](numTokens);
+        for (uint256 pt; pt < numTokens; pt++) {
             assets[pt] = IAsset(_poolTokenSets[poolId].unchecked_at(pt));
         }
     }
