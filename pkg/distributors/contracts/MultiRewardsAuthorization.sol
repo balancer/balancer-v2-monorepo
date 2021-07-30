@@ -33,7 +33,7 @@ abstract contract MultiRewardsAuthorization is Authentication {
     }
 
     modifier onlyAllowlistedRewarder(IERC20 pool, IERC20 rewardsToken) {
-        require(isAllowlistedRewarder(pool, rewardsToken, msg.sender), "only accessible by allowlisted rewarders");
+        require(isAllowlistedRewarder(pool, rewardsToken, msg.sender), "Only accessible by allowlisted rewarders");
         _;
     }
 
@@ -42,7 +42,7 @@ abstract contract MultiRewardsAuthorization is Authentication {
             _canPerform(getActionId(msg.sig), msg.sender) ||
                 msg.sender == address(pool) ||
                 isAssetManager(pool, msg.sender),
-            "only accessible by governance, pool or it's asset managers"
+            "Only accessible by governance, pool or it's asset managers"
         );
         _;
     }

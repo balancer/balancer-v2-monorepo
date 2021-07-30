@@ -80,7 +80,7 @@ describe('Staking contract', () => {
     it('reverts if a random user attempts to allowlist themselves', async () => {
       await expect(
         stakingContract.connect(other).allowlistRewarder(pool.address, rewardToken.address, other.address)
-      ).to.be.revertedWith("only accessible by governance, pool or it's asset managers");
+      ).to.be.revertedWith("Only accessible by governance, pool or it's asset managers");
     });
 
     it('allows the vaults authorizer to allowlist rewarders after changing', async () => {
