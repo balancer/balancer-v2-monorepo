@@ -82,23 +82,6 @@ describe('Staking contract', () => {
         stakingContract.connect(other).allowlistRewarder(pool.address, rewardToken.address, other.address)
       ).to.be.revertedWith("Only accessible by governance, pool or it's asset managers");
     });
-
-    it('allows the vaults authorizer to allowlist rewarders after changing', async () => {
-      let action = await actionId(vault, 'setAuthorizer');
-      await authorizer.connect(admin).grantRole(action, admin.address);
-
-      // set new authorizer on the vault
-      const newAuthorizer = await deploy('v2-vault/Authorizer', { args: [other.address] });
-      await vault.connect(admin).setAuthorizer(newAuthorizer.address);
-
-      action = await actionId(stakingContract, 'allowlistRewarder');
-      await newAuthorizer.connect(other).grantRole(action, other.address);
-
-      // that authorizer allowlists a rewarder
-      await stakingContract.connect(other).allowlistRewarder(pool.address, rewardToken.address, lp.address);
-
-      expect(await stakingContract.isAllowlistedRewarder(pool.address, rewardToken.address, lp.address)).to.equal(true);
-    });
   });
 
   it('reverts if a rewarder attempts to notifyRewardAmount before adding a reward', async () => {
