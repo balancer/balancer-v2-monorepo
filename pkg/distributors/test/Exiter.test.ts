@@ -52,7 +52,7 @@ describe('Exiter', () => {
 
       await pool.connect(lp).approve(stakingContract.address, bptBalance);
 
-      await stakingContract.connect(lp)['stake(address,uint256)'](pool.address, bptBalance);
+      await stakingContract.connect(lp).stake(pool.address, bptBalance);
 
       await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
       await advanceTime(10);
