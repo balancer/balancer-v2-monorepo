@@ -215,7 +215,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20 pool,
         uint256 amount,
         address receiver
-    ) public nonReentrant whenNotPaused updateReward(pool, receiver) {
+    ) public nonReentrant updateReward(pool, receiver) {
         require(amount > 0, "Cannot stake 0");
         _totalSupply[pool] = _totalSupply[pool].add(amount);
         _balances[pool][receiver] = _balances[pool][receiver].add(amount);
