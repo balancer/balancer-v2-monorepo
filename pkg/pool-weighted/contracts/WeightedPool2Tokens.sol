@@ -195,7 +195,9 @@ contract WeightedPool2Tokens is
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
             (actionId == getActionId(BasePool.setSwapFeePercentage.selector)) ||
-            (actionId == getActionId(BasePool.setAssetManagerPoolConfig.selector));
+            (actionId == getActionId(BasePool.setAssetManagerPoolConfig.selector)) ||
+            (actionId == getActionId(WeightedPool2Tokens.extendOracleBuffer.selector)) ||
+            (actionId == getActionId(WeightedPool2Tokens.setOracleSampleDuration.selector));
     }
 
     /**
@@ -211,6 +213,14 @@ contract WeightedPool2Tokens is
         if (totalSupply() > 0) {
             _cacheInvariantAndSupply();
         }
+    }
+
+    function extendOracleBuffer(uint256 newBufferSize) external whenNotPaused authenticate {
+        _extendOracleBuffer(newBufferSize);
+    }
+
+    function setOracleSampleDuration(uint256 newDuration) external whenNotPaused authenticate {
+        _setOracleSampleDuration(newDuration);
     }
 
     function _setOracleEnabled(bool enabled) internal {

@@ -35,4 +35,9 @@ interface IPoolPriceOracle {
      * @dev Returns the total number of samples.
      */
     function getTotalSamples() external view returns (uint256);
+
+    /**
+     * @dev Returns the current sample duration
+     */
+    function getSampleDuration() external view returns (uint256);
 }

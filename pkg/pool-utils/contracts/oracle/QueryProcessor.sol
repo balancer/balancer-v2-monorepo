@@ -54,13 +54,14 @@ library QueryProcessor {
      */
     function getTimeWeightedAverage(
         mapping(uint256 => bytes32) storage samples,
+        uint256 bufferSize,
         IPriceOracle.OracleAverageQuery memory query,
         uint256 latestIndex
     ) external view returns (uint256) {
         _require(query.secs != 0, Errors.ORACLE_BAD_SECS);
 
-        int256 beginAccumulator = getPastAccumulator(samples, query.variable, latestIndex, query.ago + query.secs);
-        int256 endAccumulator = getPastAccumulator(samples, query.variable, latestIndex, query.ago);
+        int256 beginAccumulator = getPastAccumulator(samples,bufferSize, query.variable, latestIndex, query.ago + query.secs);
+        int256 endAccumulator = getPastAccumulator(samples, bufferSize, query.variable, latestIndex, query.ago);
         return LogCompression.fromLowResLog((endAccumulator - beginAccumulator) / int256(query.secs));
     }
 
@@ -83,6 +84,7 @@ library QueryProcessor {
      */
     function getPastAccumulator(
         mapping(uint256 => bytes32) storage samples,
+        uint256 bufferSize,
         IPriceOracle.Variable variable,
         uint256 latestIndex,
         uint256 ago
@@ -111,7 +113,7 @@ library QueryProcessor {
             // sample as well.
 
             // Since we use a circular buffer, the oldest sample is simply the next one.
-            uint256 oldestIndex = latestIndex.next();
+            uint256 oldestIndex = latestIndex.next(bufferSize);
             {
                 // Local scope used to prevent stack-too-deep errors.
                 bytes32 oldestSample = samples[oldestIndex];
@@ -126,7 +128,7 @@ library QueryProcessor {
             }
 
             // Perform binary search to find nearest samples to the desired timestamp.
-            (bytes32 prev, bytes32 next) = findNearestSample(samples, lookUpTime, oldestIndex);
+            (bytes32 prev, bytes32 next) = findNearestSample(samples, bufferSize, lookUpTime, oldestIndex);
 
             // `next`'s timestamp is guaranteed to be larger than `prev`'s, so we can skip checked arithmetic.
             uint256 samplesTimeDiff = next.timestamp() - prev.timestamp();
@@ -153,10 +155,12 @@ library QueryProcessor {
      * both `prev` and `next` will be it. `offset` is the index of the oldest sample in the buffer.
      *
      * Assumes `lookUpDate` is greater or equal than the timestamp of the oldest sample, and less or equal than the
-     * timestamp of the latest sample.
+     * timestamp of the latest sample. Assumes bufferSize is correct (will revert if it tries to access non-existent
+     * samples)
      */
     function findNearestSample(
         mapping(uint256 => bytes32) storage samples,
+        uint256 bufferSize,
         uint256 lookUpDate,
         uint256 offset
     ) public view returns (bytes32 prev, bytes32 next) {
@@ -167,7 +171,7 @@ library QueryProcessor {
         // periodically increasing `low` or decreasing `high` until we either find a match or determine the element is
         // not in the array.
         uint256 low = 0;
-        uint256 high = Buffer.SIZE - 1;
+        uint256 high = bufferSize - 1;
         uint256 mid;
 
         // If the search fails and no sample has a timestamp of `lookUpDate` (as is the most common scenario), `sample`
@@ -181,7 +185,7 @@ library QueryProcessor {
             uint256 midWithoutOffset = (high + low) / 2;
 
             // Recall that the buffer is not actually sorted: we need to apply the offset to access it in a sorted way.
-            mid = midWithoutOffset.add(offset);
+            mid = midWithoutOffset.add(offset, bufferSize);
             sample = samples[mid];
             sampleTimestamp = sample.timestamp();
 
@@ -202,6 +206,6 @@ library QueryProcessor {
         }
 
         // In case we reach here, it means we didn't find exactly the sample we where looking for.
-        return sampleTimestamp < lookUpDate ? (sample, samples[mid.next()]) : (samples[mid.prev()], sample);
+        return sampleTimestamp < lookUpDate ? (sample, samples[mid.next(bufferSize)]) : (samples[mid.prev(bufferSize)], sample);
     }
 }

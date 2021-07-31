@@ -27,13 +27,13 @@ import "./QueryProcessor.sol";
 /**
  * @dev This module allows Pools to access historical pricing information.
  *
- * It uses a 1024 long circular buffer to store past data, where the data within each sample is the result of
+ * It uses a circular buffer to store past data, where the data within each sample is the result of
  * accumulating live data for no more than two minutes. Therefore, assuming the worst case scenario where new data is
  * updated in every single block, the oldest samples in the buffer (and therefore largest queryable period) will
- * be slightly over 34 hours old.
+ * be 2 minutes * the buffer size: 34 hours for the default size of 1024.
  *
  * Usage of this module requires the caller to keep track of two variables: the latest circular buffer index, and the
- * timestamp when the index last changed. Aditionally, access to the latest circular buffer index must be exposed by
+ * timestamp when the index last changed. Additionally, access to the latest circular buffer index must be exposed by
  * implementing `_getOracleIndex`.
  *
  * This contract relies on the `QueryProcessor` linked library to reduce bytecode size.
@@ -41,15 +41,35 @@ import "./QueryProcessor.sol";
 abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
     using Buffer for uint256;
     using Samples for bytes32;
+    using WordCodec for bytes32;
 
     // Each sample in the buffer accumulates information for up to 2 minutes. This is simply to reduce the size of the
     // buffer: small time deviations will not have any significant effect.
     // solhint-disable not-rely-on-time
     uint256 private constant _MAX_SAMPLE_DURATION = 2 minutes;
+    uint256 private constant _DEFAULT_BUFFER_SIZE = 1024;
 
-    // We use a mapping to simulate an array: the buffer won't grow or shrink, and since we will always use valid
-    // indexes using a mapping saves gas by skipping the bounds checks.
+    // We use a mapping to simulate an array: since we will always use valid indexes using a mapping saves gas
+    // by skipping the bounds checks.
     mapping(uint256 => bytes32) internal _samples;
+
+    // [ 208 bits |   32 bits   |     16 bits     |
+    // [ unused   | buffer size | sample duration |
+    // |MSB                                    LSB|
+    bytes32 private _oracleState;
+
+    uint256 private constant _SAMPLE_DURATION_OFFSET = 0;
+    uint256 private constant _BUFFER_SIZE_OFFSET = 16;
+
+    // Event declarations
+
+    event OracleSampleDurationChanged(uint256 sampleDuration);
+    event OracleBufferSizeChanged(uint256 bufferSize);
+
+    constructor() {
+        _setOracleSampleDuration(_MAX_SAMPLE_DURATION);
+        _setOracleBufferSize(_DEFAULT_BUFFER_SIZE);
+   }
 
     // IPoolPriceOracle
 
@@ -67,20 +87,68 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
             uint256 timestamp
         )
     {
-        _require(index < Buffer.SIZE, Errors.ORACLE_INVALID_INDEX);
+        _require(index < getTotalSamples(), Errors.ORACLE_INVALID_INDEX);
 
         bytes32 sample = _getSample(index);
         return sample.unpack();
     }
 
-    function getTotalSamples() external pure override returns (uint256) {
-        return Buffer.SIZE;
+    function getTotalSamples() public view override returns (uint256) {
+        return _oracleState.decodeUint32(_BUFFER_SIZE_OFFSET);
+    }
+
+    function getSampleDuration() public view override returns (uint256) {
+        return _oracleState.decodeUint16(_SAMPLE_DURATION_OFFSET);
+    }
+
+    // Create mapping entries for all slots from the current one up to the buffer size
+    // Timestamp will be 0, so these entries will not be used until overwritten with real data
+    function initialize() public {       
+        uint256 bufferSize =  getTotalSamples();
+
+        bytes32 lastSample = _getSample(bufferSize - 1);
+        bytes32 nullSample;
+
+        // NOOP if already initialized - don't overwrite valid data
+        // If the oracle is fully initialized, _samples[bufferSize - 1] will have a timestamp,
+        // and therefore a non-zero value
+        if (lastSample == 0) {
+            for (uint256 i = _getOracleIndex() + 1; i < bufferSize; i++) {
+                _samples[i] = nullSample;
+            }
+        }
+    }
+
+    // Set a new buffer size - can only be bigger - and initialize it
+    // Gas cost should discourage extremely large buffer sizes
+    function _extendOracleBuffer(uint256 newBufferSize) internal {        
+        _setOracleBufferSize(newBufferSize);
+
+        initialize();
+    }
+
+    function _setOracleBufferSize(uint256 newBufferSize) private {
+        _require(newBufferSize > getTotalSamples(), Errors.ORACLE_BUFFER_SIZE_TOO_SMALL);
+
+        _oracleState = _oracleState.insertUint32(newBufferSize, _BUFFER_SIZE_OFFSET);
+
+        emit OracleBufferSizeChanged(newBufferSize);
+    }
+
+    function _setOracleSampleDuration(uint256 newDuration) internal {
+        _require(newDuration <= _MAX_SAMPLE_DURATION, Errors.ORACLE_SAMPLE_DURATION_TOO_LONG);
+
+        _oracleState = _oracleState.insertUint16(newDuration, _SAMPLE_DURATION_OFFSET);
+
+        emit OracleSampleDurationChanged(newDuration);
     }
 
     // IPriceOracle
 
-    function getLargestSafeQueryWindow() external pure override returns (uint256) {
-        return 34 hours;
+    function getLargestSafeQueryWindow() external view override returns (uint256) {
+        bytes32 oracleState = _oracleState;
+
+        return oracleState.decodeUint16(_SAMPLE_DURATION_OFFSET) * oracleState.decodeUint32(_BUFFER_SIZE_OFFSET);
     }
 
     function getLatest(Variable variable) external view override returns (uint256) {
@@ -97,7 +165,7 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
         uint256 latestIndex = _getOracleIndex();
 
         for (uint256 i = 0; i < queries.length; ++i) {
-            results[i] = QueryProcessor.getTimeWeightedAverage(_samples, queries[i], latestIndex);
+            results[i] = QueryProcessor.getTimeWeightedAverage(_samples, getTotalSamples(), queries[i], latestIndex);
         }
     }
 
@@ -138,10 +206,10 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
         // Read latest sample, and compute the next one by updating it with the newly received data.
         bytes32 sample = _getSample(latestIndex).update(logPairPrice, logBptPrice, logInvariant, block.timestamp);
 
-        // We create a new sample if more than _MAX_SAMPLE_DURATION seconds have elapsed since the creation of the
-        // latest one. In other words, no sample accumulates data over a period larger than _MAX_SAMPLE_DURATION.
-        bool newSample = block.timestamp - latestSampleCreationTimestamp >= _MAX_SAMPLE_DURATION;
-        latestIndex = newSample ? latestIndex.next() : latestIndex;
+        // We create a new sample if more than _sampleDuration seconds have elapsed since the creation of the
+        // latest one. In other words, no sample accumulates data over a period larger than _sampleDuration.
+        bool newSample = block.timestamp - latestSampleCreationTimestamp >= getSampleDuration();
+        latestIndex = newSample ? latestIndex.next(getTotalSamples()) : latestIndex;
 
         // Store the updated or new sample.
         _samples[latestIndex] = sample;
@@ -154,11 +222,11 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
         uint256 latestIndex,
         uint256 ago
     ) internal view returns (int256) {
-        return QueryProcessor.getPastAccumulator(_samples, variable, latestIndex, ago);
+        return QueryProcessor.getPastAccumulator(_samples, getTotalSamples(), variable, latestIndex, ago);
     }
 
     function _findNearestSample(uint256 lookUpDate, uint256 offset) internal view returns (bytes32 prev, bytes32 next) {
-        return QueryProcessor.findNearestSample(_samples, lookUpDate, offset);
+        return QueryProcessor.findNearestSample(_samples, getTotalSamples(), lookUpDate, offset);
     }
 
     /**

@@ -569,6 +569,28 @@ export default class WeightedPool {
     return pool.setSwapEnabled(swapEnabled);
   }
 
+  async getSampleDuration(): Promise<BigNumber> {
+    return this.instance.getSampleDuration();
+  }
+
+  async getTotalSamples(): Promise<BigNumber> {
+    return this.instance.getTotalSamples();
+  }
+
+  async extendOracleBuffer(from: SignerWithAddress, bufferSize: BigNumberish): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return await pool.extendOracleBuffer(bufferSize);
+  }
+
+  async setOracleSampleDuration(from: SignerWithAddress, sampleDuration: BigNumberish): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return await pool.setOracleSampleDuration(sampleDuration);
+  }
+
+  async initialize(): Promise<ContractTransaction> {
+    return await this.instance.initialize();
+  }
+
   async updateWeightsGradually(
     from: SignerWithAddress,
     startTime: BigNumberish,
