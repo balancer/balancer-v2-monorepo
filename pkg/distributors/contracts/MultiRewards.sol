@@ -203,7 +203,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
     /* ========== MUTATIVE FUNCTIONS ========== */
     function stake(IERC20 pool, uint256 amount) external {
-        stake(pool, amount, msg.sender);
+        stakeFor(pool, amount, msg.sender);
     }
 
     /**
@@ -212,7 +212,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @param amount Amount of `pool` to stake
      * @param receiver The recipient of claimed rewards
      */
-    function stake(
+    function stakeFor(
         IERC20 pool,
         uint256 amount,
         address receiver
@@ -243,7 +243,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         bytes32 s
     ) public {
         IERC20Permit(address(pool)).permit(msg.sender, address(this), amount, deadline, v, r, s);
-        stake(pool, amount, recipient);
+        stakeFor(pool, amount, recipient);
     }
 
     function unstake(IERC20 pool, uint256 amount) public nonReentrant updateReward(pool, msg.sender) {

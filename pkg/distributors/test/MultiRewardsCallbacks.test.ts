@@ -51,7 +51,7 @@ describe('Staking contract - callbacks', () => {
 
       await pool.connect(lp).approve(stakingContract.address, bptBalance);
 
-      await stakingContract.connect(lp)['stake(address,uint256)'](pool.address, bptBalance);
+      await stakingContract.connect(lp).stake(pool.address, bptBalance);
 
       await stakingContract
         .connect(mockAssetManager)
