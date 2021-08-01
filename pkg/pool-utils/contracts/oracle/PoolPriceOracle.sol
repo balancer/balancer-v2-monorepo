@@ -103,7 +103,7 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
 
     // Create mapping entries for all slots from the current one up to the buffer size
     // Timestamp will be 0, so these entries will not be used until overwritten with real data
-    function initialize() public {       
+    function initializeOracle() public {       
         uint256 bufferSize =  getTotalSamples();
 
         bytes32 lastSample = _getSample(bufferSize - 1);
@@ -124,7 +124,7 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
     function _extendOracleBuffer(uint256 newBufferSize) internal {        
         _setOracleBufferSize(newBufferSize);
 
-        initialize();
+        initializeOracle();
     }
 
     function _setOracleBufferSize(uint256 newBufferSize) private {

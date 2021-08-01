@@ -359,7 +359,7 @@ describe('WeightedPool2Tokens', function () {
       });
 
       it('can be initialized', async () => {
-        const tx = await pool.initialize();
+        const tx = await pool.initializeOracle();
         const receipt = await tx.wait();
 
         console.log(`${printGas(receipt.gasUsed)} (initialize oracle)`);    
