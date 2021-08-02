@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 
 library Buffer {
-    // The buffer is a circular storage structure with 1024 slots.
+    // The buffer is a circular storage structure.
     // solhint-disable-next-line private-vars-leading-underscore
 
     /**

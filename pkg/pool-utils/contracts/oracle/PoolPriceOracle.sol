@@ -28,9 +28,10 @@ import "./QueryProcessor.sol";
  * @dev This module allows Pools to access historical pricing information.
  *
  * It uses a circular buffer to store past data, where the data within each sample is the result of
- * accumulating live data for no more than two minutes. Therefore, assuming the worst case scenario where new data is
- * updated in every single block, the oldest samples in the buffer (and therefore largest queryable period) will
- * be 2 minutes * the buffer size: 34 hours for the default size of 1024.
+ * accumulating live data for no more than the sample duration (two minutes by default). Therefore, assuming the
+ * worst case scenario where new data is updated in every single block, the oldest samples in the buffer
+ * (and therefore largest queryable period) will be the sample duration * the buffer size: 34 hours given the
+ * default duration of 2 mimutes, and default buffer size of 1024.
  *
  * Usage of this module requires the caller to keep track of two variables: the latest circular buffer index, and the
  * timestamp when the index last changed. Additionally, access to the latest circular buffer index must be exposed by
@@ -206,8 +207,8 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
         // Read latest sample, and compute the next one by updating it with the newly received data.
         bytes32 sample = _getSample(latestIndex).update(logPairPrice, logBptPrice, logInvariant, block.timestamp);
 
-        // We create a new sample if more than _sampleDuration seconds have elapsed since the creation of the
-        // latest one. In other words, no sample accumulates data over a period larger than _sampleDuration.
+        // We create a new sample if more than the sample duration seconds have elapsed since the creation of the
+        // latest one. In other words, no sample accumulates data over a period longer than the sample duration.
         bool newSample = block.timestamp - latestSampleCreationTimestamp >= getSampleDuration();
         latestIndex = newSample ? latestIndex.next(getTotalSamples()) : latestIndex;
 
