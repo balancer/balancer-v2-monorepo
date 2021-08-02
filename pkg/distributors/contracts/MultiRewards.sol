@@ -153,9 +153,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         if (_totalSupply[pool] == 0) {
             return rewardData[pool][rewarder][rewardsToken].rewardPerTokenStored;
         }
-        uint256 unrewardedDuration = lastTimeRewardApplicable(pool, rewarder, rewardsToken).sub(
-            rewardData[pool][rewarder][rewardsToken].lastUpdateTime
-        );
+        uint256 unrewardedDuration = lastTimeRewardApplicable(pool, rewarder, rewardsToken) -
+            rewardData[pool][rewarder][rewardsToken].lastUpdateTime;
 
         return
             rewardData[pool][rewarder][rewardsToken].rewardPerTokenStored.add(
