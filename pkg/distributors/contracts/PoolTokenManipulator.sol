@@ -30,13 +30,20 @@ contract PoolTokenManipulator {
     mapping(bytes32 => EnumerableSet.AddressSet) private _poolTokenSets;
     mapping(bytes32 => bool) private _poolTokenSetSaved;
 
+    function savePoolTokenSet(bytes32 poolId) public {
+        (IERC20[] memory poolTokens, , ) = vault.getPoolTokens(poolId);
+        if (_poolTokenSetSaved[poolId]) {
+            delete _poolTokenSets[poolId];
+        }
+        for (uint256 pt; pt < poolTokens.length; pt++) {
+            _poolTokenSets[poolId].add(address(poolTokens[pt]));
+        }
+        _poolTokenSetSaved[poolId] = true;
+    }
+
     function ensurePoolTokenSetSaved(bytes32 poolId) public {
         if (!_poolTokenSetSaved[poolId]) {
-            (IERC20[] memory poolTokens, , ) = vault.getPoolTokens(poolId);
-            for (uint256 pt; pt < poolTokens.length; pt++) {
-                _poolTokenSets[poolId].add(address(poolTokens[pt]));
-            }
-            _poolTokenSetSaved[poolId] = true;
+            savePoolTokenSet(poolId);
         }
     }
 
