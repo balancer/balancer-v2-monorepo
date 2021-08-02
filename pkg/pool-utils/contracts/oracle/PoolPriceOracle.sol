@@ -69,7 +69,7 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
     constructor() {
         _setOracleSampleDuration(_MAX_SAMPLE_DURATION);
         _setOracleBufferSize(_DEFAULT_BUFFER_SIZE);
-   }
+    }
 
     // IPoolPriceOracle
 
@@ -105,14 +105,14 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
     // Timestamp will be 0, so these entries will not be used until overwritten with real data
     function initializeOracle() public {       
         uint256 bufferSize =  getTotalSamples();
-
         bytes32 lastSample = _getSample(bufferSize - 1);
-        bytes32 nullSample;
-
+ 
         // NOOP if already initialized - don't overwrite valid data
         // If the oracle is fully initialized, _samples[bufferSize - 1] will have a timestamp,
         // and therefore a non-zero value
         if (lastSample == 0) {
+            bytes32 nullSample;
+
             for (uint256 i = _getOracleIndex() + 1; i < bufferSize; i++) {
                 _samples[i] = nullSample;
             }

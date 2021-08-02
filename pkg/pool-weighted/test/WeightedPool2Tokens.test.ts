@@ -55,7 +55,7 @@ describe('WeightedPool2Tokens', function () {
     if (typeof gas !== 'number') {
       gas = gas.toNumber();
     }
-  
+
     return `${(gas / 1000).toFixed(1)}k`;
   }
 
@@ -362,14 +362,14 @@ describe('WeightedPool2Tokens', function () {
         const tx = await pool.initializeOracle();
         const receipt = await tx.wait();
 
-        console.log(`${printGas(receipt.gasUsed)} (initialize oracle)`);    
+        console.log(`${printGas(receipt.gasUsed)} (initialize oracle)`);
       });
 
       context('when sender is owner', () => {
         sharedBeforeEach('set sender to owner', async () => {
           sender = owner;
         });
-  
+
         context('when parameters are correct', () => {
           it('can grow the buffer', async () => {
             const NEW_BUFFER_SIZE = DEFAULT_BUFFER_SIZE * 3;
@@ -397,31 +397,39 @@ describe('WeightedPool2Tokens', function () {
 
             const sampleDuration = await pool.getSampleDuration();
             expect(sampleDuration).to.equal(NEW_SAMPLE_DURATION);
-          })
+          });
         });
 
         context('when parameters are incorrect', () => {
           it('does not allow shrinking buffer', async () => {
-            await expect(pool.extendOracleBuffer(sender, DEFAULT_BUFFER_SIZE / 2)).to.be.revertedWith('ORACLE_BUFFER_SIZE_TOO_SMALL');
+            await expect(pool.extendOracleBuffer(sender, DEFAULT_BUFFER_SIZE / 2)).to.be.revertedWith(
+              'ORACLE_BUFFER_SIZE_TOO_SMALL'
+            );
           });
-  
+
           it('requires buffer to grow', async () => {
-            await expect(pool.extendOracleBuffer(sender, DEFAULT_BUFFER_SIZE)).to.be.revertedWith('ORACLE_BUFFER_SIZE_TOO_SMALL');
+            await expect(pool.extendOracleBuffer(sender, DEFAULT_BUFFER_SIZE)).to.be.revertedWith(
+              'ORACLE_BUFFER_SIZE_TOO_SMALL'
+            );
           });
-  
+
           it('does not allow increasing sample duration', async () => {
-            await expect(pool.setOracleSampleDuration(sender, TWO_MINUTES + 1)).to.be.revertedWith('ORACLE_SAMPLE_DURATION_TOO_LONG');
-          });  
+            await expect(pool.setOracleSampleDuration(sender, TWO_MINUTES + 1)).to.be.revertedWith(
+              'ORACLE_SAMPLE_DURATION_TOO_LONG'
+            );
+          });
         });
       });
 
       context('when sender is not owner', () => {
         sharedBeforeEach('set sender to lp', async () => {
           sender = lp;
-        })
+        });
 
         it('does not allow extending buffer', async () => {
-          await expect(pool.extendOracleBuffer(sender, DEFAULT_BUFFER_SIZE * 2)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          await expect(pool.extendOracleBuffer(sender, DEFAULT_BUFFER_SIZE * 2)).to.be.revertedWith(
+            'SENDER_NOT_ALLOWED'
+          );
         });
 
         it('does not allow setting sample duration', async () => {
