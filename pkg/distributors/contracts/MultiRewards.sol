@@ -106,7 +106,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20 pool,
         IERC20 rewardsToken,
         uint256 rewardsDuration
-    ) public override onlyAllowlistedRewarder(pool, rewardsToken) {
+    ) external override onlyAllowlistedRewarder(pool, rewardsToken) {
         require(rewardsDuration > 0, "reward rate must be nonzero");
         require(rewardData[pool][msg.sender][rewardsToken].rewardsDuration == 0, "Duplicate rewards token");
         _rewardTokens[pool].add(address(rewardsToken));
@@ -252,7 +252,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public {
+    ) external {
         IERC20Permit(address(pool)).permit(msg.sender, address(this), amount, deadline, v, r, s);
         stakeFor(pool, amount, recipient);
     }
@@ -269,12 +269,11 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         emit Withdrawn(address(pool), receiver, amount);
     }
 
-    // todo accept array of claims [{pool, rewardToken}]
-    function getReward(IERC20[] calldata pools) public nonReentrant {
+    function getReward(IERC20[] calldata pools) external nonReentrant {
         _getReward(pools, msg.sender, false);
     }
 
-    function getRewardAsInternalBalance(IERC20[] calldata pools) public nonReentrant {
+    function getRewardAsInternalBalance(IERC20[] calldata pools) external nonReentrant {
         _getReward(pools, msg.sender, true);
     }
 
@@ -341,7 +340,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20[] calldata pools,
         IRewardsCallback callbackContract,
         bytes calldata callbackData
-    ) public nonReentrant {
+    ) external nonReentrant {
         _getReward(pools, address(callbackContract), true);
 
         callbackContract.callback(callbackData);
@@ -355,7 +354,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             IERC20 pool = pools[p];
             unstake(pool, _balances[pool][msg.sender], msg.sender);
         }
-        getReward(pools);
+        _getReward(pools, msg.sender, false);
     }
 
     /**
@@ -366,12 +365,12 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20[] calldata pools,
         IRewardsCallback callbackContract,
         bytes calldata callbackData
-    ) public {
+    ) external {
         for (uint256 p; p < pools.length; p++) {
             IERC20 pool = pools[p];
             unstake(pool, _balances[pool][msg.sender], address(callbackContract));
         }
-        getReward(pools);
+        _getReward(pools, msg.sender, false);
         callbackContract.callback(callbackData);
     }
 
