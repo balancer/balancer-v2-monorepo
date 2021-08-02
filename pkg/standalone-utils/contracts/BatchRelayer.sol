@@ -113,10 +113,15 @@ contract BatchRelayer is ReentrancyGuard {
             }
         }
 
-        uint256 stETHAmount = _wstETH.unwrap(wstETHAmount);
-        _stETH.transfer(recipient, stETHAmount);
+        _pushSteETH(recipient, wstETHAmount);
 
         _sweepETH();
+    }
+
+
+    function _pushSteETH(address recipient, uint256 wstETHAmount) internal {
+        uint256 stETHAmount = _wstETH.unwrap(wstETHAmount);
+        _stETH.transfer(recipient, stETHAmount);
     }
 
     function _joinAndSwap(
@@ -201,13 +206,8 @@ contract BatchRelayer is ReentrancyGuard {
         // Ensure that wstETH is used in the swap
         require(assets[swaps[0].assetInIndex] == IAsset(address(_wstETH)), "Must use wstETH as input to swap");
 
-        // Calculate amount of stETH necessary for wstETH used by swap
-        uint256 stETHAmount = _wstETH.getStETHByWstETH(swaps[0].amount);
-
-        // wrap stETH into wstETH
-        _stETH.transferFrom(msg.sender, address(this), stETHAmount);
-        _approveToken(_stETH, address(_wstETH), stETHAmount);
-        _wstETH.wrap(stETHAmount);
+        uint256 wstETHAmount = swaps[0].amount;
+        _pullSteETH(msg.sender, wstETHAmount);
 
         // We can't output tokens to the user's internal balance
         // as they need to have BPT on their address for the exit
@@ -218,6 +218,16 @@ contract BatchRelayer is ReentrancyGuard {
             toInternalBalance: false
         });
         _swapAndExit(poolId, recipient, request, kind, swaps, funds, assets, limits, deadline);
+    }
+
+    function _pullSteETH(address sender, uint256 wstETHAmount) internal {
+        // Calculate amount of stETH necessary for wstETH used by swap
+        uint256 stETHAmount = _wstETH.getStETHByWstETH(wstETHAmount);
+
+        // wrap stETH into wstETH
+        _stETH.transferFrom(msg.sender, address(this), stETHAmount);
+        _approveToken(_stETH, address(_wstETH), stETHAmount);
+        _wstETH.wrap(stETHAmount);
     }
 
     function _swapAndExit(
