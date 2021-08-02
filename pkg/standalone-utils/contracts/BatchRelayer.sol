@@ -208,6 +208,7 @@ contract BatchRelayer is ReentrancyGuard {
 
         uint256 wstETHAmount = swaps[0].amount;
         _pullSteETH(msg.sender, wstETHAmount);
+        _approveToken(_wstETH, address(getVault()), wstETHAmount);
 
         // We can't output tokens to the user's internal balance
         // as they need to have BPT on their address for the exit
