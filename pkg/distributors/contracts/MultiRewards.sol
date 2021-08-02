@@ -78,7 +78,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     /* ========== CONSTRUCTOR ========== */
 
     constructor(IVault _vault)
-        // Multirewards is a singleton, so it simply uses its own address to disambiguate action identifiers.
+        // MultiRewards is a singleton, so it simply uses its own address to disambiguate action identifiers
         Authentication(bytes32(uint256(address(this))))
         MultiRewardsAuthorization(_vault)
     {
@@ -143,7 +143,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice Calculates the amount of reward per staked bpt for a rewardToken
+     * @notice Calculates the amount of reward token per staked bpt
      */
     function rewardPerToken(
         IERC20 pool,
@@ -287,7 +287,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice Allows a user to claim any rewards to internal balance
+     * @notice Allows a user to claim any rewards to an internal balance or EOA
      */
     function _getReward(
         IERC20[] calldata pools,
