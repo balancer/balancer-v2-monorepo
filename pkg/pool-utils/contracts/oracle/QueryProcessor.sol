@@ -121,15 +121,16 @@ library QueryProcessor {
                 if (oldestTimestamp > 0) {
                     // If the oldest timestamp is not zero, it means the buffer was fully initialized.
                     bufferLength = Buffer.SIZE;
-                    // The only remaining condition to check is for the look up time to be between the oldest and latest
-                    // timestamps.
-                    _require(oldestTimestamp <= lookUpTime, Errors.ORACLE_QUERY_TOO_OLD);
                 } else {
                     // If the buffer was not fully initialized, we can assume the oldest index is the first item in
                     // the buffer. We can overwrite this variable since it is no longer used ahead.
                     bufferLength = oldestIndex;
                     oldestIndex = 0;
+                    oldestTimestamp = samples[0].timestamp();
                 }
+
+                // Finally check that the look up time is not previous to the oldest timestamp.
+                _require(oldestTimestamp <= lookUpTime, Errors.ORACLE_QUERY_TOO_OLD);
             }
 
             // Perform binary search to find nearest samples to the desired timestamp.

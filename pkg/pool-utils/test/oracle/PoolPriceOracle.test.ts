@@ -362,45 +362,57 @@ describe('PoolPriceOracle', () => {
           });
         });
 
-        context('with incomplete buffer', () => {
-          sharedBeforeEach(async () => {
-            await oracle.mockSample(indexAt(0), {
-              logPairPrice: 0,
-              accLogPairPrice: 0,
-              logBptPrice: 0,
-              accLogBptPrice: 0,
-              logInvariant: 0,
-              accLogInvariant: 0,
-              timestamp: 0,
+        if (offset === 0) {
+          context.only('with incomplete buffer', () => {
+            const latestIndex = currentIndex - 1;
+
+            sharedBeforeEach('simulate last sample missing', async () => {
+              await oracle.mockSample(currentIndex, {
+                logPairPrice: 0,
+                accLogPairPrice: 0,
+                logBptPrice: 0,
+                accLogBptPrice: 0,
+                logInvariant: 0,
+                accLogInvariant: 0,
+                timestamp: 0,
+              });
+            });
+
+            context('when querying latest and future timestamps', () => {
+              it('can find the latest accumulator', async () => {
+                const accumulator = await oracle.getPastAccumulator(variable, latestIndex, timestampAt(latestIndex));
+                expect(accumulator).to.equal(accumAt(latestIndex));
+              });
+
+              it('extrapolates future accumulators', async () => {
+                const elapsed = 3;
+                const futureTimestamp = timestampAt(latestIndex) + elapsed;
+
+                const expectedAccum = accumAt(latestIndex) + instantAt(latestIndex) * elapsed;
+                const actualAccum = await oracle.getPastAccumulator(variable, latestIndex, futureTimestamp);
+                expect(actualAccum).to.equal(expectedAccum);
+              });
+            });
+
+            context('when querying past timestamps', () => {
+              it('can find past accumulators', async () => {
+                const pastIndex = latestIndex - 10;
+                const pastTimestamp = timestampAt(pastIndex);
+
+                const accumulator = await oracle.getPastAccumulator(variable, latestIndex, pastTimestamp);
+                expect(accumulator).to.equal(accumAt(pastIndex));
+              });
+
+              it('reverts with too old timestamp', async () => {
+                const tooOldTimestamp = timestampAt(0) - 1;
+
+                await expect(oracle.getPastAccumulator(variable, latestIndex, tooOldTimestamp)).to.be.revertedWith(
+                  'ORACLE_QUERY_TOO_OLD'
+                );
+              });
             });
           });
-
-          context('when querying latest and future timestamps', () => {
-            it('can find the latest accumulator', async () => {
-              const accumulator = await oracle.getPastAccumulator(variable, currentIndex, timestampAt(currentIndex));
-              expect(accumulator).to.equal(accumAt(currentIndex));
-            });
-
-            it('extrapolates future accumulators', async () => {
-              const elapsed = 3;
-              const futureTimestamp = timestampAt(currentIndex) + elapsed;
-
-              const expectedAccum = accumAt(currentIndex) + instantAt(currentIndex) * elapsed;
-              const actualAccum = await oracle.getPastAccumulator(variable, currentIndex, futureTimestamp);
-              expect(actualAccum).to.equal(expectedAccum);
-            });
-          });
-
-          context('when querying past timestamps', () => {
-            it('can find past accumulators', async () => {
-              const pastIndex = currentIndex - 1;
-              const pastTimestamp = timestampAt(pastIndex);
-
-              const accumulator = await oracle.getPastAccumulator(variable, currentIndex, pastTimestamp);
-              expect(accumulator).to.equal(accumAt(pastIndex));
-            });
-          });
-        });
+        }
       }
     }
   });
