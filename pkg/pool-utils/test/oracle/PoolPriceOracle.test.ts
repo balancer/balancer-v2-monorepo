@@ -363,7 +363,7 @@ describe('PoolPriceOracle', () => {
         });
 
         if (offset === 0) {
-          context.only('with incomplete buffer', () => {
+          context('with incomplete buffer', () => {
             const latestIndex = currentIndex - 1;
 
             sharedBeforeEach('simulate last sample missing', async () => {
