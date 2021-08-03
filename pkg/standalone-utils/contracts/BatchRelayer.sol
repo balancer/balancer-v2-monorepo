@@ -33,20 +33,12 @@ contract BatchRelayer is ReentrancyGuard {
 
     IVault private immutable _vault;
     IMultiRewards private immutable _stakingContract;
-    IERC20 private immutable _stETH;
-    IwstETH private immutable _wstETH;
 
     uint256 private constant _EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0;
 
-    constructor(
-        IVault vault,
-        IMultiRewards stakingContract,
-        IwstETH wstETH
-    ) {
+    constructor(IVault vault, IMultiRewards stakingContract) {
         _vault = vault;
         _stakingContract = stakingContract;
-        _stETH = IERC20(wstETH.stETH());
-        _wstETH = wstETH;
     }
 
     function getVault() public view returns (IVault) {
@@ -79,49 +71,6 @@ contract BatchRelayer is ReentrancyGuard {
 
         swapAmounts = _joinAndSwap(poolId, request, swaps, funds, assets, limits, deadline);
         _sweepETH();
-    }
-
-    /**
-     * @dev Specialised version of joinAndSwap where we expect the output of the swap to be wstETH
-     * Any wstETH received will be unwrapped into stETH before forwarding it onto the user
-     */
-    function lidoJoinAndSwap(
-        bytes32 poolId,
-        address payable recipient,
-        IVault.JoinPoolRequest calldata request,
-        IVault.BatchSwapStep[] memory swaps,
-        IAsset[] calldata assets,
-        int256[] calldata limits,
-        uint256 deadline
-    ) external payable {
-        IVault.FundManagement memory funds = IVault.FundManagement({
-            sender: address(this),
-            fromInternalBalance: false,
-            recipient: payable(address(this)),
-            toInternalBalance: false
-        });
-
-        int256[] memory swapAmounts = _joinAndSwap(poolId, request, swaps, funds, assets, limits, deadline);
-
-        // Unwrap any received wstETH and forward onto recipient
-        uint256 wstETHAmount;
-        for (uint256 i; i < assets.length; i++) {
-            if (assets[i] == IAsset(address(_wstETH))) {
-                require(swapAmounts[i] < 0, "Invalid amount of wstETH");
-                wstETHAmount = uint256(-swapAmounts[i]);
-                break;
-            }
-        }
-
-        _pushSteETH(recipient, wstETHAmount);
-
-        _sweepETH();
-    }
-
-
-    function _pushSteETH(address recipient, uint256 wstETHAmount) internal {
-        uint256 stETHAmount = _wstETH.unwrap(wstETHAmount);
-        _stETH.transfer(recipient, stETHAmount);
     }
 
     function _joinAndSwap(
@@ -189,48 +138,6 @@ contract BatchRelayer is ReentrancyGuard {
         _swapAndExit(poolId, recipient, request, kind, swaps, funds, assets, limits, deadline);
     }
 
-    /**
-     * @dev Specialised version of swapAndExit where we expect the input of the swap to be wstETH
-     * The required amount of stETH will be automatically transferred from the user and wrapped
-     */
-    function lidoSwapAndExit(
-        bytes32 poolId,
-        address payable recipient,
-        IVault.ExitPoolRequest memory request,
-        IVault.SwapKind kind,
-        IVault.BatchSwapStep[] calldata swaps,
-        IAsset[] calldata assets,
-        int256[] calldata limits,
-        uint256 deadline
-    ) external {
-        // Ensure that wstETH is used in the swap
-        require(assets[swaps[0].assetInIndex] == IAsset(address(_wstETH)), "Must use wstETH as input to swap");
-
-        uint256 wstETHAmount = swaps[0].amount;
-        _pullSteETH(msg.sender, wstETHAmount);
-        _approveToken(_wstETH, address(getVault()), wstETHAmount);
-
-        // We can't output tokens to the user's internal balance
-        // as they need to have BPT on their address for the exit
-        IVault.FundManagement memory funds = IVault.FundManagement({
-            sender: address(this),
-            fromInternalBalance: false,
-            recipient: msg.sender,
-            toInternalBalance: false
-        });
-        _swapAndExit(poolId, recipient, request, kind, swaps, funds, assets, limits, deadline);
-    }
-
-    function _pullSteETH(address sender, uint256 wstETHAmount) internal {
-        // Calculate amount of stETH necessary for wstETH used by swap
-        uint256 stETHAmount = _wstETH.getStETHByWstETH(wstETHAmount);
-
-        // wrap stETH into wstETH
-        _stETH.transferFrom(msg.sender, address(this), stETHAmount);
-        _approveToken(_stETH, address(_wstETH), stETHAmount);
-        _wstETH.wrap(stETHAmount);
-    }
-
     function _swapAndExit(
         bytes32 poolId,
         address payable recipient,
@@ -277,16 +184,48 @@ contract BatchRelayer is ReentrancyGuard {
         IERC20 token,
         address spender,
         uint256 amount
-    ) private {
+    ) internal {
         if (token.allowance(address(this), spender) < amount) {
             token.approve(spender, type(uint256).max);
         }
     }
 
-    function _sweepETH() private {
+    function _sweepETH() internal {
         uint256 remainingEth = address(this).balance;
         if (remainingEth > 0) {
             msg.sender.sendValue(remainingEth);
         }
+    }
+
+    function pullToken(
+        address sender,
+        IERC20 token,
+        uint256 amount
+    ) internal {
+        IERC20[] memory tokens = new IERC20[](1);
+        tokens[0] = token;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = amount;
+
+        pullTokens(sender, tokens, amounts);
+    }
+
+    function pullTokens(
+        address sender,
+        IERC20[] memory tokens,
+        uint256[] memory amounts
+    ) internal {
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](tokens.length);
+        for (uint256 i; i < tokens.length; i++) {
+            ops[i] = IVault.UserBalanceOp({
+                asset: IAsset(address(tokens[i])),
+                amount: amounts[i],
+                sender: sender,
+                recipient: payable(address(this)),
+                kind: IVault.UserBalanceOpKind.TRANSFER_EXTERNAL
+            });
+        }
+
+        getVault().manageUserBalance(ops);
     }
 }

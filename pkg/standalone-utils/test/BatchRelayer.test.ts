@@ -17,7 +17,6 @@ import Vault from '../../../pvt/helpers/src/models/vault/Vault';
 
 describe('BatchRelayer', function () {
   let tokens: TokenList, basePoolTokens: TokenList, metaPoolTokens: TokenList;
-  let wstETH: Token;
   let basePoolId: string, metaPoolId: string;
   let sender: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault, basePool: StablePool, metaPool: StablePool;
@@ -35,24 +34,16 @@ describe('BatchRelayer', function () {
     stakingContract = await deploy('v2-distributors/MultiRewards', {
       args: [vault.address],
     });
+    relayer = await deploy('BatchRelayer', { args: [vault.address, stakingContract.address] });
 
     const DAI = await Token.create('DAI');
     const wethContract = await deployedAt('TestWETH', await vault.instance.WETH());
     const WETH = new Token('WETH', 'WETH', 18, wethContract);
     tokens = new TokenList([DAI, WETH].sort());
 
-    const wstETHContract = await deploy('TestWstETH', { args: [WETH.address] });
-    wstETH = new Token('wstETH', 'wstETH', 18, wstETHContract);
-
-    relayer = await deploy('BatchRelayer', { args: [vault.address, stakingContract.address, wstETH.address] });
-
     await tokens.mint({ to: sender, amount: fp(100) });
     await tokens.approve({ to: vault.address, amount: fp(100), from: sender });
 
-    await WETH.mint(sender, fp(150));
-    await WETH.approve(wstETHContract.address, fp(150), { from: sender });
-    await wstETHContract.connect(sender).wrap(fp(150));
-    await wstETHContract.connect(sender).approve(vault.address, fp(100));
     tokenIncrements = Array(tokens.length).fill(fp(1));
   });
 
@@ -65,7 +56,7 @@ describe('BatchRelayer', function () {
     const bptToken = new Token('BPT', 'BPT', 18, basePool.instance);
     await bptToken.approve(vault.address, fp(100), { from: sender });
 
-    metaPoolTokens = new TokenList([wstETH, bptToken].sort());
+    metaPoolTokens = new TokenList([bptToken, tokens.WETH].sort());
     metaPool = await StablePool.create({ tokens: metaPoolTokens, vault });
     metaPoolId = metaPool.poolId;
 
@@ -73,11 +64,6 @@ describe('BatchRelayer', function () {
 
     await tokens.mint({ to: admin, amount: fp(200) });
     await tokens.approve({ to: vault.address, amount: MAX_UINT256, from: admin });
-    await tokens.WETH.mint(admin, fp(150));
-    await tokens.WETH.approve(wstETH.address, fp(150), { from: admin });
-    await wstETH.instance.connect(admin).wrap(fp(150));
-
-    await wstETH.approve(vault.address, MAX_UINT256, { from: admin });
     await bptToken.approve(vault.address, MAX_UINT256, { from: admin });
 
     await basePool.init({ initialBalances: fp(100), from: admin });
@@ -114,8 +100,8 @@ describe('BatchRelayer', function () {
       swaps = [
         {
           poolId: metaPoolId,
-          assetInIndex: 1,
-          assetOutIndex: 0,
+          assetInIndex: 0,
+          assetOutIndex: 1,
           amount: 0,
           userData: '0x',
         },
@@ -305,15 +291,15 @@ describe('BatchRelayer', function () {
       swaps = [
         {
           poolId: metaPoolId,
-          assetInIndex: 0,
-          assetOutIndex: 1,
+          assetInIndex: 1,
+          assetOutIndex: 0,
           amount: fp(1),
           userData: '0x',
         },
       ];
 
       assets = metaPoolTokens.addresses;
-      limits = [MAX_INT256, 0];
+      limits = [0, MAX_INT256];
     });
 
     context('when the relayer is allowed to swap/exit', () => {
