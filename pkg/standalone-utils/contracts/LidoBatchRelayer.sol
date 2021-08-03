@@ -85,8 +85,8 @@ contract LidoBatchRelayer is BatchRelayer {
     }
 
     function lidoBatchSwap(
-        IVault.BatchSwapStep[] memory swaps,
         IVault.SwapKind kind,
+        IVault.BatchSwapStep[] memory swaps,
         IAsset[] calldata assets,
         int256[] calldata limits,
         uint256 deadline
