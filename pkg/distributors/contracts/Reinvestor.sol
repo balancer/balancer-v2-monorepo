@@ -107,7 +107,6 @@ contract Reinvestor is PoolTokenCache, IDistributorCallback {
 
         _joinPool(params.poolId, params.recipient, assets, amountsIn);
         vault.manageUserBalance(leftoverOps);
-        return;
     }
 
     function _joinPool(
