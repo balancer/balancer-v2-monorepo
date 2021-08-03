@@ -82,7 +82,7 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
      * cost less gas. Initialize by range, since filling a slot costs roughly 20k gas, so trying to fill the
      * entire buffer at once would run out of gas.
      */
-    function initializeOracle(uint256 startSlot, uint256 endSlot) public {
+    function initializeOracle(uint256 startSlot, uint256 endSlot) external {
         _require(startSlot < endSlot && endSlot <= Buffer.SIZE, Errors.OUT_OF_BOUNDS);
 
         // Cannot use zero, or it will not actually do anything (uninitialized entries are already 0)
