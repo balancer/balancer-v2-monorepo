@@ -493,7 +493,7 @@ export function itBehavesAsWeightedPool(
 
         const result = await pool.swapGivenIn({ in: 1, out: 0, amount: amountWithFees });
 
-        expect(result).to.be.equalWithError(expectedAmountOut, 0.01);
+        expect(result.amount).to.be.equalWithError(expectedAmountOut, 0.01);
       });
 
       it('calculates max amount out', async () => {
@@ -503,7 +503,7 @@ export function itBehavesAsWeightedPool(
 
         const result = await pool.swapGivenIn({ in: 1, out: 0, amount: maxAmountInWithFees });
 
-        expect(result).to.be.equalWithError(expectedAmountOut, 0.05);
+        expect(result.amount).to.be.equalWithError(expectedAmountOut, 0.05);
       });
 
       it('reverts if token in exceeds max in ratio', async () => {
@@ -538,7 +538,7 @@ export function itBehavesAsWeightedPool(
 
         const result = await pool.swapGivenOut({ in: 1, out: 0, amount });
 
-        expect(result).to.be.equalWithError(expectedAmountIn, 0.1);
+        expect(result.amount).to.be.equalWithError(expectedAmountIn, 0.1);
       });
 
       it('calculates max amount in', async () => {
@@ -547,7 +547,7 @@ export function itBehavesAsWeightedPool(
 
         const result = await pool.swapGivenOut({ in: 1, out: 0, amount });
 
-        expect(result).to.be.equalWithError(expectedAmountIn, 0.1);
+        expect(result.amount).to.be.equalWithError(expectedAmountIn, 0.1);
       });
 
       it('reverts if token in exceeds max out ratio', async () => {

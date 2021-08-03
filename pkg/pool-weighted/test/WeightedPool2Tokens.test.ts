@@ -1,9 +1,9 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
+import { BigNumber, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp, printGas } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_INT22, MAX_UINT10, MAX_UINT31, MAX_UINT64, MIN_INT22 } from '@balancer-labs/v2-helpers/src/constants';
 import { MINUTE, advanceTime, currentTimestamp, lastBlockNumber } from '@balancer-labs/v2-helpers/src/time';
 
@@ -61,12 +61,23 @@ describe('WeightedPool2Tokens', function () {
   describe('oracle', () => {
     const MAX_RELATIVE_ERROR = 0.00005;
 
-    type PoolHook = (lastChangeBlock: number) => Promise<unknown>;
+    type PoolHook = (lastChangeBlock: number) => Promise<{ receipt: ContractReceipt }>;
 
     const calcLastChangeBlock = async (offset: number): Promise<number> => {
       const nextBlockNumber = (await lastBlockNumber()) + 1;
       return nextBlockNumber - offset;
     };
+
+    context('initialize with invalid arguments', () => {
+      it('does not allow end <= start', async () => {
+        expect(pool.initializeOracle(200, 100)).to.be.revertedWith('OUT_OF_BOUNDS');
+        expect(pool.initializeOracle(100, 100)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
+
+      it('does not allow end > buffer size', async () => {
+        expect(pool.initializeOracle(100, 10000)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
+    });
 
     const itUpdatesTheOracleData = (action: PoolHook, lastChangeBlockOffset = 0) => {
       context('without updated oracle', () => {
@@ -115,6 +126,38 @@ describe('WeightedPool2Tokens', function () {
           const actual = await pool.instance.fromLowResLog(newSample.logInvariant);
 
           expect(actual).to.equalWithError(expectedInvariant, MAX_RELATIVE_ERROR);
+        });
+      });
+    };
+
+    const itUpdatesTheOracleDataAndMeasuresGas = (action: PoolHook, lastChangeBlockOffset = 0) => {
+      context('without updated oracle', () => {
+        it('updates the oracle data (and measures gas)', async () => {
+          const previousData = await pool.getMiscData();
+
+          await advanceTime(MINUTE * 10); // force index update
+          const { receipt } = await action(await calcLastChangeBlock(lastChangeBlockOffset));
+          const uninitializedGasUsed = receipt.gasUsed;
+          let initializedGasUsed;
+          console.log(`Gas used (uninitialized oracle): ${printGas(uninitializedGasUsed)}`);
+
+          {
+            const { receipt } = await pool.initializeOracle(previousData.oracleIndex.toNumber() + 1, 100);
+            console.log(`Gas used for initialization: ${printGas(receipt.gasUsed)}`);
+          }
+
+          {
+            await advanceTime(MINUTE * 10); // force index update
+            const { receipt } = await action(await calcLastChangeBlock(lastChangeBlockOffset + 1));
+            initializedGasUsed = receipt.gasUsed;
+            console.log(`Gas used (initialized oracle): ${printGas(initializedGasUsed)}`);
+          }
+
+          const currentMiscData = await pool.getMiscData();
+          expect(currentMiscData.oracleIndex).to.equal(previousData.oracleIndex.add(2));
+          expect(currentMiscData.oracleSampleCreationTimestamp).to.equal(await currentTimestamp());
+
+          expect(initializedGasUsed).to.be.lt(uninitializedGasUsed);
         });
       });
     };
@@ -220,7 +263,7 @@ describe('WeightedPool2Tokens', function () {
     describe('exit', () => {
       const action = async (lastChangeBlock: number) => {
         const balance = await pool.balanceOf(lp);
-        await pool.multiExitGivenIn({ bptIn: balance.div(2), lastChangeBlock, from: lp });
+        return await pool.multiExitGivenIn({ bptIn: balance.div(2), lastChangeBlock, from: lp });
       };
 
       initializePool();
@@ -320,15 +363,19 @@ describe('WeightedPool2Tokens', function () {
       };
 
       context('given in', () => {
+        const lastChangeBlockOffset = 1;
         const action = (lastChangeBlock: number) => pool.swapGivenIn({ in: 0, out: 1, amount, lastChangeBlock });
 
         itUpdatesOracleOnSwapCorrectly(action);
+        itUpdatesTheOracleDataAndMeasuresGas(action, lastChangeBlockOffset);
       });
 
       context('given out', () => {
+        const lastChangeBlockOffset = 1;
         const action = (lastChangeBlock: number) => pool.swapGivenOut({ in: 1, out: 0, amount, lastChangeBlock });
 
         itUpdatesOracleOnSwapCorrectly(action);
+        itUpdatesTheOracleDataAndMeasuresGas(action, lastChangeBlockOffset);
       });
     });
 

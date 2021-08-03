@@ -77,6 +77,24 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
         return Buffer.SIZE;
     }
 
+    /**
+     * @dev Manually fill oracle slots with dummy data, so that subsequent swaps filling them with real data
+     * cost less gas. Initialize by range, since filling a slot costs roughly 20k gas, so trying to fill the
+     * entire buffer at once would run out of gas.
+     */
+    function initializeOracle(uint256 startSlot, uint256 endSlot) public {
+        _require(startSlot < endSlot && endSlot <= Buffer.SIZE, Errors.OUT_OF_BOUNDS);
+
+        // Cannot use zero, or it will not actually do anything (uninitialized entries are already 0)
+        // Cannot use 0x01, since the timestamp is in the LSB position, and needs to be zero for invalid entries
+        bytes32 initSample = bytes32(0xba10000000000000000000000000000000000000000000000000000000000000);
+        for (uint256 i = startSlot; i < endSlot; i++) {
+            if (_samples[i] == 0) {
+                _samples[i] = initSample;
+            }
+        }
+    }
+
     // IPriceOracle
 
     function getLargestSafeQueryWindow() external pure override returns (uint256) {

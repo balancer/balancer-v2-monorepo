@@ -1,4 +1,4 @@
-import { BigNumber } from 'ethers';
+import { BigNumber, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { BigNumberish } from '../../../numbers';
@@ -123,11 +123,18 @@ export type MultiExitGivenInWeightedPool = {
 export type JoinResult = {
   amountsIn: BigNumber[];
   dueProtocolFeeAmounts: BigNumber[];
+  receipt: ContractReceipt;
 };
 
 export type ExitResult = {
   amountsOut: BigNumber[];
   dueProtocolFeeAmounts: BigNumber[];
+  receipt: ContractReceipt;
+};
+
+export type SwapResult = {
+  amount: BigNumber;
+  receipt: ContractReceipt;
 };
 
 export type JoinQueryResult = {
@@ -138,6 +145,10 @@ export type JoinQueryResult = {
 export type ExitQueryResult = {
   bptIn: BigNumber;
   amountsOut: BigNumber[];
+};
+
+export type VoidResult = {
+  receipt: ContractReceipt;
 };
 
 export type MiscData = {
