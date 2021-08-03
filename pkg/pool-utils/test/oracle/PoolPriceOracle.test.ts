@@ -324,8 +324,8 @@ describe('PoolPriceOracle', () => {
             const pastIndex = indexAt(MAX_BUFFER_SIZE / 2);
             const pastTimestamp = timestampAt(pastIndex);
 
-            const accum = await oracle.getPastAccumulator(variable, currentIndex, pastTimestamp);
-            expect(accum).to.equal(accumAt(pastIndex));
+            const accumulator = await oracle.getPastAccumulator(variable, currentIndex, pastTimestamp);
+            expect(accumulator).to.equal(accumAt(pastIndex));
           });
 
           it('interpolates between past accumulators', async () => {
@@ -377,8 +377,8 @@ describe('PoolPriceOracle', () => {
 
           context('when querying latest and future timestamps', () => {
             it('can find the latest accumulator', async () => {
-              const expectedAccum = await oracle.getPastAccumulator(variable, currentIndex, timestampAt(currentIndex));
-              expect(expectedAccum).to.equal(accumAt(currentIndex));
+              const accumulator = await oracle.getPastAccumulator(variable, currentIndex, timestampAt(currentIndex));
+              expect(accumulator).to.equal(accumAt(currentIndex));
             });
 
             it('extrapolates future accumulators', async () => {
@@ -392,12 +392,12 @@ describe('PoolPriceOracle', () => {
           });
 
           context('when querying past timestamps', () => {
-            it('reverts', async () => {
-              const pastTimestamp = timestampAt(currentIndex) - 1;
+            it('can find past accumulators', async () => {
+              const pastIndex = currentIndex - 1;
+              const pastTimestamp = timestampAt(pastIndex);
 
-              await expect(oracle.getPastAccumulator(variable, currentIndex, pastTimestamp)).to.be.revertedWith(
-                'ORACLE_NOT_INITIALIZED'
-              );
+              const accumulator = await oracle.getPastAccumulator(variable, currentIndex, pastTimestamp);
+              expect(accumulator).to.equal(accumAt(pastIndex));
             });
           });
         });
