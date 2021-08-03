@@ -174,7 +174,7 @@ contract LidoBatchRelayer is BatchRelayer {
 
         // Pull in wstETH, unwrap and return to user
         uint256 wstETHAmount = wstETHBalanceAfter - wstETHBalanceBefore;
-        pullToken(recipient, IERC20(address(_wstETH)), wstETHAmount);
+        _pullToken(recipient, IERC20(address(_wstETH)), wstETHAmount);
         _unwrapAndPushStETH(recipient, wstETHAmount);
     }
 
@@ -252,7 +252,7 @@ contract LidoBatchRelayer is BatchRelayer {
         uint256 stETHAmount = _wstETH.getStETHByWstETH(wstETHAmount);
 
         // wrap stETH into wstETH
-        pullToken(sender, _stETH, stETHAmount);
+        _pullToken(sender, _stETH, stETHAmount);
         _approveToken(_stETH, address(_wstETH), stETHAmount);
 
         return _wstETH.wrap(stETHAmount);

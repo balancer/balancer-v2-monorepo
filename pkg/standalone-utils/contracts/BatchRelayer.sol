@@ -21,6 +21,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
 
+import "./relayer/RelayerAssetHelpers.sol";
+
 import "./interfaces/IwstETH.sol";
 
 /**
@@ -28,7 +30,7 @@ import "./interfaces/IwstETH.sol";
  * @dev This relayer acts as a first step to generalising swaps, joins and exits.
  *      Users may atomically join a pool and use the BPT as the input to a swap or swap for BPT and exit the pool.
  */
-contract BatchRelayer is ReentrancyGuard {
+contract BatchRelayer is RelayerAssetHelpers, ReentrancyGuard {
     using Address for address payable;
 
     IVault private immutable _vault;
@@ -41,7 +43,7 @@ contract BatchRelayer is ReentrancyGuard {
         _stakingContract = stakingContract;
     }
 
-    function getVault() public view returns (IVault) {
+    function getVault() public view override returns (IVault) {
         return _vault;
     }
 
@@ -178,54 +180,5 @@ contract BatchRelayer is ReentrancyGuard {
 
         getVault().exitPool(poolId, msg.sender, recipient, request);
         _sweepETH();
-    }
-
-    function _approveToken(
-        IERC20 token,
-        address spender,
-        uint256 amount
-    ) internal {
-        if (token.allowance(address(this), spender) < amount) {
-            token.approve(spender, type(uint256).max);
-        }
-    }
-
-    function _sweepETH() internal {
-        uint256 remainingEth = address(this).balance;
-        if (remainingEth > 0) {
-            msg.sender.sendValue(remainingEth);
-        }
-    }
-
-    function pullToken(
-        address sender,
-        IERC20 token,
-        uint256 amount
-    ) internal {
-        IERC20[] memory tokens = new IERC20[](1);
-        tokens[0] = token;
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = amount;
-
-        pullTokens(sender, tokens, amounts);
-    }
-
-    function pullTokens(
-        address sender,
-        IERC20[] memory tokens,
-        uint256[] memory amounts
-    ) internal {
-        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](tokens.length);
-        for (uint256 i; i < tokens.length; i++) {
-            ops[i] = IVault.UserBalanceOp({
-                asset: IAsset(address(tokens[i])),
-                amount: amounts[i],
-                sender: sender,
-                recipient: payable(address(this)),
-                kind: IVault.UserBalanceOpKind.TRANSFER_EXTERNAL
-            });
-        }
-
-        getVault().manageUserBalance(ops);
     }
 }
