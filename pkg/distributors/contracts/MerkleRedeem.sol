@@ -35,6 +35,7 @@ contract MerkleRedeem is IDistributor, Ownable {
     IERC20 public immutable rewardToken;
 
     // Recorded weeks
+    uint256 public currentWeek;
     mapping(uint256 => bytes32) public weekMerkleRoots;
     mapping(uint256 => mapping(address => bool)) public claimed;
 
@@ -193,8 +194,10 @@ contract MerkleRedeem is IDistributor, Ownable {
         uint256 amount
     ) external onlyOwner {
         require(weekMerkleRoots[week] == bytes32(0), "cannot rewrite merkle root");
+        require(week == currentWeek, "Weeks must be added consecutively");
         weekMerkleRoots[week] = _merkleRoot;
         rewardToken.safeTransferFrom(msg.sender, address(this), amount);
         emit RewardAdded(address(rewardToken), amount);
+        currentWeek++;
     }
 }
