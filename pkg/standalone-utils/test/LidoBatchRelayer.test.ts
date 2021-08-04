@@ -335,6 +335,14 @@ describe('LidoBatchRelayer', function () {
           });
         });
 
+        it('does not take wstETH from the sender', async () => {
+          const wstETHBalanceBefore = await wstETH.balanceOf(sender);
+          await relayer.connect(sender).lidoJoin(basePoolId, sender.address, joinRequest);
+
+          const wstETHBalanceAfter = await wstETH.balanceOf(sender);
+          expect(wstETHBalanceAfter).to.be.eq(wstETHBalanceBefore);
+        });
+
         it('does not leave dust on the relayer', async () => {
           await relayer.connect(sender).lidoJoin(basePoolId, sender.address, joinRequest);
 
