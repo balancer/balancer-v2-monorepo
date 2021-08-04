@@ -36,8 +36,6 @@ contract BatchRelayer is RelayerAssetHelpers, ReentrancyGuard {
     IVault private immutable _vault;
     IMultiRewards private immutable _stakingContract;
 
-    uint256 private constant _EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0;
-
     constructor(IVault vault, IMultiRewards stakingContract) {
         _vault = vault;
         _stakingContract = stakingContract;
