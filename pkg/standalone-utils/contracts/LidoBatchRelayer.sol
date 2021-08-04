@@ -40,32 +40,27 @@ contract LidoBatchRelayer is BatchRelayer {
 
     function lidoSwap(
         IVault.SingleSwap memory singleSwap,
+        IVault.FundManagement memory funds,
         uint256 limit,
         uint256 deadline
     ) external payable returns (uint256 swapAmount) {
-        IVault.FundManagement memory funds;
+        require(funds.sender == msg.sender, "Invalid sender");
+        // Cache recipient as we sometimes overwrite this
+        address recipient = funds.recipient;
 
         if (singleSwap.assetIn == IAsset(address(_wstETH))) {
             // If wstETH is an input then we want to send it from the relayer
             // as we wrap it there.
+            funds.sender = address(this);
+            require(!funds.fromInternalBalance, "Cannot send from internal balance");
+
             _pullStETHAndWrap(msg.sender, singleSwap.amount);
             _approveToken(IERC20(address(_wstETH)), address(getVault()), singleSwap.amount);
-
-            funds = IVault.FundManagement({
-                sender: address(this),
-                fromInternalBalance: false,
-                recipient: msg.sender,
-                toInternalBalance: false
-            });
         } else if (singleSwap.assetOut == IAsset(address(_wstETH))) {
             // If wstETH is an output then we want to receive it on the relayer
             // so we can unwrap it before forwarding stETH to the user
-            funds = IVault.FundManagement({
-                sender: msg.sender,
-                fromInternalBalance: false,
-                recipient: payable(address(this)),
-                toInternalBalance: false
-            });
+            funds.recipient = payable(address(this));
+            require(!funds.toInternalBalance, "Cannot send to internal balance");
         } else {
             revert("Does not require wstETH");
         }
@@ -74,11 +69,11 @@ contract LidoBatchRelayer is BatchRelayer {
 
         if (singleSwap.assetOut == IAsset(address(_wstETH))) {
             // Unwrap any received wstETH for the user automatically
-            _unwrapAndPushStETH(msg.sender, swapAmount);
+            _unwrapAndPushStETH(recipient, swapAmount);
         } else if (singleSwap.kind == IVault.SwapKind.GIVEN_OUT) {
             // GIVEN_OUT swaps with wstETH input may leave some dust on the relayer
             // This should be forwarded on to the user
-            _unwrapAndPushStETH(msg.sender, IERC20(address(_wstETH)).balanceOf(address(this)));
+            _unwrapAndPushStETH(recipient, IERC20(address(_wstETH)).balanceOf(address(this)));
         }
 
         _sweepETH();
@@ -88,10 +83,13 @@ contract LidoBatchRelayer is BatchRelayer {
         IVault.SwapKind kind,
         IVault.BatchSwapStep[] memory swaps,
         IAsset[] calldata assets,
+        IVault.FundManagement memory funds,
         int256[] calldata limits,
         uint256 deadline
     ) external payable returns (int256[] memory swapAmounts) {
-        IVault.FundManagement memory funds;
+        require(funds.sender == msg.sender, "Invalid sender");
+        // Cache recipient as we sometimes overwrite this
+        address recipient = funds.recipient;
 
         // Find the index of wstETH in the assets array
         uint256 wstETHIndex;
@@ -104,25 +102,19 @@ contract LidoBatchRelayer is BatchRelayer {
         }
 
         int256 wstETHLimit = limits[wstETHIndex];
-
-        // If wstETH is being used as an input then automatically wrap it for user
         if (wstETHLimit > 0) {
+            // If wstETH is an input then we want to send it from the relayer
+            // as we wrap it there.
+            funds.sender = address(this);
+            require(!funds.fromInternalBalance, "Cannot send from internal balance");
+
             _pullStETHAndWrap(msg.sender, uint256(wstETHLimit));
             _approveToken(IERC20(address(_wstETH)), address(getVault()), uint256(wstETHLimit));
-
-            funds = IVault.FundManagement({
-                sender: address(this),
-                fromInternalBalance: false,
-                recipient: msg.sender,
-                toInternalBalance: false
-            });
         } else {
-            funds = IVault.FundManagement({
-                sender: msg.sender,
-                fromInternalBalance: false,
-                recipient: payable(address(this)),
-                toInternalBalance: false
-            });
+            // If wstETH is an output then we want to receive it on the relayer
+            // so we can unwrap it before forwarding stETH to the user
+            funds.recipient = payable(address(this));
+            require(!funds.toInternalBalance, "Cannot send to internal balance");
         }
 
         swapAmounts = getVault().batchSwap{ value: msg.value }(kind, swaps, assets, funds, limits, deadline);
@@ -130,11 +122,11 @@ contract LidoBatchRelayer is BatchRelayer {
         if (swapAmounts[wstETHIndex] < 0) {
             // Unwrap any received wstETH for the user automatically
             uint256 wstETHAmount = uint256(-swapAmounts[wstETHIndex]);
-            _unwrapAndPushStETH(msg.sender, wstETHAmount);
+            _unwrapAndPushStETH(recipient, wstETHAmount);
         } else if (kind == IVault.SwapKind.GIVEN_OUT) {
             // GIVEN_OUT swaps with wstETH input may leave some dust on the relayer
             // This should be forwarded on to the user
-            _unwrapAndPushStETH(msg.sender, IERC20(address(_wstETH)).balanceOf(address(this)));
+            _unwrapAndPushStETH(recipient, IERC20(address(_wstETH)).balanceOf(address(this)));
         }
 
         _sweepETH();
@@ -142,9 +134,12 @@ contract LidoBatchRelayer is BatchRelayer {
 
     function lidoJoinPool(
         bytes32 poolId,
-        address payable recipient,
+        address sender,
+        address recipient,
         IVault.JoinPoolRequest calldata request
     ) external payable {
+        require(sender == msg.sender, "Invalid sender");
+
         // Pull in wstETH, wrap and return to user
         uint256 wstETHAmount;
         for (uint256 i; i < request.assets.length; i++) {
@@ -154,21 +149,24 @@ contract LidoBatchRelayer is BatchRelayer {
             }
             require(i < request.assets.length, "Does not require wstETH");
         }
-        _pullStETHAndWrap(msg.sender, wstETHAmount);
-        IERC20(address(_wstETH)).transfer(msg.sender, wstETHAmount);
+        _pullStETHAndWrap(sender, wstETHAmount);
+        IERC20(address(_wstETH)).transfer(sender, wstETHAmount);
 
-        getVault().joinPool{ value: msg.value }(poolId, msg.sender, recipient, request);
+        getVault().joinPool{ value: msg.value }(poolId, sender, recipient, request);
         _sweepETH();
     }
 
     function lidoExitPool(
         bytes32 poolId,
+        address sender,
         address payable recipient,
         IVault.ExitPoolRequest calldata request
     ) external payable {
+        require(sender == msg.sender, "Invalid sender");
+
         uint256 wstETHBalanceBefore = IERC20(address(_wstETH)).balanceOf(recipient);
 
-        getVault().exitPool(poolId, msg.sender, recipient, request);
+        getVault().exitPool(poolId, sender, recipient, request);
 
         uint256 wstETHBalanceAfter = IERC20(address(_wstETH)).balanceOf(recipient);
 

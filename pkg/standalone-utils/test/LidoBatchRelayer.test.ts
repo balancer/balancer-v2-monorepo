@@ -10,6 +10,7 @@ import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/Stable
 import {
   BatchSwapStep,
   ExitPoolRequest,
+  FundManagement,
   JoinPoolRequest,
   SingleSwap,
   SwapKind,
@@ -78,8 +79,18 @@ describe('LidoBatchRelayer', function () {
   });
 
   describe('lidoSwap', () => {
+    let funds: FundManagement;
     const limit = 0;
     const deadline = MAX_UINT256;
+
+    sharedBeforeEach('build fund management', async () => {
+      funds = {
+        sender: sender.address,
+        fromInternalBalance: false,
+        recipient: sender.address,
+        toInternalBalance: false,
+      };
+    });
 
     context('when the relayer is authorized', () => {
       sharedBeforeEach('allow relayer', async () => {
@@ -109,7 +120,7 @@ describe('LidoBatchRelayer', function () {
           });
 
           it('performs the given swap', async () => {
-            const receipt = await relayer.connect(sender).lidoSwap(singleSwap, limit, deadline);
+            const receipt = await relayer.connect(sender).lidoSwap(singleSwap, funds, limit, deadline);
 
             expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'Swap', {
               poolId: singleSwap.poolId,
@@ -121,7 +132,7 @@ describe('LidoBatchRelayer', function () {
           });
 
           it('does not leave dust on the relayer', async () => {
-            await relayer.connect(sender).lidoSwap(singleSwap, limit, deadline);
+            await relayer.connect(sender).lidoSwap(singleSwap, funds, limit, deadline);
 
             expect(await tokens.WETH.balanceOf(relayer)).to.be.eq(0);
             expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
@@ -143,7 +154,7 @@ describe('LidoBatchRelayer', function () {
           });
 
           it('performs the given swap', async () => {
-            const receipt = await relayer.connect(sender).lidoSwap(singleSwap, limit, deadline);
+            const receipt = await relayer.connect(sender).lidoSwap(singleSwap, funds, limit, deadline);
 
             expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'Swap', {
               poolId: singleSwap.poolId,
@@ -155,7 +166,7 @@ describe('LidoBatchRelayer', function () {
           });
 
           it('does not leave dust on the relayer', async () => {
-            await relayer.connect(sender).lidoSwap(singleSwap, limit, deadline);
+            await relayer.connect(sender).lidoSwap(singleSwap, funds, limit, deadline);
 
             expect(await tokens.WETH.balanceOf(relayer)).to.be.eq(0);
             expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
@@ -178,7 +189,7 @@ describe('LidoBatchRelayer', function () {
         });
 
         it('reverts', async () => {
-          await expect(relayer.connect(sender).lidoSwap(singleSwap, limit, deadline)).to.be.revertedWith(
+          await expect(relayer.connect(sender).lidoSwap(singleSwap, funds, limit, deadline)).to.be.revertedWith(
             'USER_DOESNT_ALLOW_RELAYER'
           );
         });
@@ -190,8 +201,17 @@ describe('LidoBatchRelayer', function () {
     let swaps: BatchSwapStep[];
     let limits: BigNumberish[];
     let assets: string[];
-
+    let funds: FundManagement;
     const deadline = MAX_UINT256;
+
+    sharedBeforeEach('build fund management', async () => {
+      funds = {
+        sender: sender.address,
+        fromInternalBalance: false,
+        recipient: sender.address,
+        toInternalBalance: false,
+      };
+    });
 
     context('when the relayer is authorized', () => {
       sharedBeforeEach('allow relayer', async () => {
@@ -225,7 +245,7 @@ describe('LidoBatchRelayer', function () {
           it('performs the given swap', async () => {
             const receipt = await relayer
               .connect(sender)
-              .lidoBatchSwap(SwapKind.GivenIn, swaps, assets, limits, deadline);
+              .lidoBatchSwap(SwapKind.GivenIn, swaps, assets, funds, limits, deadline);
 
             expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'Swap', {
               poolId: swaps[0].poolId,
@@ -237,7 +257,7 @@ describe('LidoBatchRelayer', function () {
           });
 
           it('does not leave dust on the relayer', async () => {
-            await relayer.connect(sender).lidoBatchSwap(SwapKind.GivenIn, swaps, assets, limits, deadline);
+            await relayer.connect(sender).lidoBatchSwap(SwapKind.GivenIn, swaps, assets, funds, limits, deadline);
 
             expect(await tokens.WETH.balanceOf(relayer)).to.be.eq(0);
             expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
@@ -263,7 +283,7 @@ describe('LidoBatchRelayer', function () {
           it('performs the given swap', async () => {
             const receipt = await relayer
               .connect(sender)
-              .lidoBatchSwap(SwapKind.GivenIn, swaps, assets, limits, deadline);
+              .lidoBatchSwap(SwapKind.GivenIn, swaps, assets, funds, limits, deadline);
 
             expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'Swap', {
               poolId: swaps[0].poolId,
@@ -275,7 +295,7 @@ describe('LidoBatchRelayer', function () {
           });
 
           it('does not leave dust on the relayer', async () => {
-            await relayer.connect(sender).lidoBatchSwap(SwapKind.GivenIn, swaps, assets, limits, deadline);
+            await relayer.connect(sender).lidoBatchSwap(SwapKind.GivenIn, swaps, assets, funds, limits, deadline);
 
             expect(await tokens.WETH.balanceOf(relayer)).to.be.eq(0);
             expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
@@ -301,7 +321,7 @@ describe('LidoBatchRelayer', function () {
 
         it('reverts', async () => {
           await expect(
-            relayer.connect(sender).lidoBatchSwap(SwapKind.GivenIn, swaps, assets, limits, deadline)
+            relayer.connect(sender).lidoBatchSwap(SwapKind.GivenIn, swaps, assets, funds, limits, deadline)
           ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
         });
       });
@@ -334,7 +354,9 @@ describe('LidoBatchRelayer', function () {
         });
 
         it('joins the pool', async () => {
-          const receipt = await relayer.connect(sender).lidoJoinPool(basePoolId, sender.address, joinRequest);
+          const receipt = await relayer
+            .connect(sender)
+            .lidoJoinPool(basePoolId, sender.address, sender.address, joinRequest);
 
           expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'PoolBalanceChanged', {
             poolId: basePoolId,
@@ -344,14 +366,14 @@ describe('LidoBatchRelayer', function () {
 
         it('does not take wstETH from the sender', async () => {
           const wstETHBalanceBefore = await wstETH.balanceOf(sender);
-          await relayer.connect(sender).lidoJoinPool(basePoolId, sender.address, joinRequest);
+          await relayer.connect(sender).lidoJoinPool(basePoolId, sender.address, sender.address, joinRequest);
 
           const wstETHBalanceAfter = await wstETH.balanceOf(sender);
           expect(wstETHBalanceAfter).to.be.eq(wstETHBalanceBefore);
         });
 
         it('does not leave dust on the relayer', async () => {
-          await relayer.connect(sender).lidoJoinPool(basePoolId, sender.address, joinRequest);
+          await relayer.connect(sender).lidoJoinPool(basePoolId, sender.address, sender.address, joinRequest);
 
           expect(await tokens.WETH.balanceOf(relayer)).to.be.eq(0);
           expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
@@ -361,7 +383,7 @@ describe('LidoBatchRelayer', function () {
       context('when the user did not allow the relayer', () => {
         it('reverts', async () => {
           await expect(
-            relayer.connect(sender).lidoJoinPool(basePoolId, sender.address, joinRequest)
+            relayer.connect(sender).lidoJoinPool(basePoolId, sender.address, sender.address, joinRequest)
           ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
         });
       });
@@ -371,7 +393,7 @@ describe('LidoBatchRelayer', function () {
   describe('lidoExitPool', () => {
     let exitRequest: ExitPoolRequest;
 
-    sharedBeforeEach('build join request', async () => {
+    sharedBeforeEach('build exit request', async () => {
       exitRequest = {
         assets: basePoolTokens.addresses,
         minAmountsOut: [0, 0],
@@ -397,7 +419,9 @@ describe('LidoBatchRelayer', function () {
         });
 
         it('exits the pool', async () => {
-          const receipt = await relayer.connect(sender).lidoExitPool(basePoolId, sender.address, exitRequest);
+          const receipt = await relayer
+            .connect(sender)
+            .lidoExitPool(basePoolId, sender.address, sender.address, exitRequest);
 
           expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'PoolBalanceChanged', {
             poolId: basePoolId,
@@ -407,14 +431,14 @@ describe('LidoBatchRelayer', function () {
 
         it('does not send wstETH to the recipient', async () => {
           const wstETHBalanceBefore = await wstETH.balanceOf(sender);
-          await relayer.connect(sender).lidoExitPool(basePoolId, sender.address, exitRequest);
+          await relayer.connect(sender).lidoExitPool(basePoolId, sender.address, sender.address, exitRequest);
 
           const wstETHBalanceAfter = await wstETH.balanceOf(sender);
           expect(wstETHBalanceAfter).to.be.eq(wstETHBalanceBefore);
         });
 
         it('does not leave dust on the relayer', async () => {
-          await relayer.connect(sender).lidoExitPool(basePoolId, sender.address, exitRequest);
+          await relayer.connect(sender).lidoExitPool(basePoolId, sender.address, sender.address, exitRequest);
 
           expect(await tokens.WETH.balanceOf(relayer)).to.be.eq(0);
           expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
@@ -424,7 +448,7 @@ describe('LidoBatchRelayer', function () {
       context('when the user did not allow the relayer', () => {
         it('reverts', async () => {
           await expect(
-            relayer.connect(sender).lidoExitPool(basePoolId, sender.address, exitRequest)
+            relayer.connect(sender).lidoExitPool(basePoolId, sender.address, sender.address, exitRequest)
           ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
         });
       });
