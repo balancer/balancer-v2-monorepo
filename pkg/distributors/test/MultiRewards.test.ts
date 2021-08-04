@@ -148,9 +148,9 @@ describe('Staking contract', () => {
       await pool.connect(lp).approve(stakingContract.address, bptBalance);
 
       // Stake 3/4 of the bpt to the LP and 1/4 to another address
-      await stakingContract.connect(lp)['stake(address,uint256)'](pool.address, bptBalance.mul(3).div(4));
+      await stakingContract.connect(lp).stake(pool.address, bptBalance.mul(3).div(4));
       const args = [pool.address, bptBalance.div(4), other.address];
-      await stakingContract.connect(lp)['stake(address,uint256,address)'](...args);
+      await stakingContract.connect(lp).stakeFor(...args);
     });
 
     it('sends expected amount of reward token to the rewards contract', async () => {
@@ -332,11 +332,11 @@ describe('Staking contract', () => {
 
       const bptBalance = await pool2.balanceOf(lp.address);
       await pool.connect(lp).approve(stakingContract.address, bptBalance);
-      await stakingContract.connect(lp)['stake(address,uint256)'](pool.address, bptBalance);
+      await stakingContract.connect(lp).stake(pool.address, bptBalance);
 
       const bptBalance2 = await pool2.balanceOf(lp.address);
       await pool2.connect(lp).approve(stakingContract.address, bptBalance2);
-      await stakingContract.connect(lp)['stake(address,uint256)'](pool2.address, bptBalance2);
+      await stakingContract.connect(lp).stake(pool2.address, bptBalance2);
     });
 
     it('allows you to claim across multiple pools', async () => {
