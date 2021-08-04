@@ -43,6 +43,13 @@ contract BatchRelayer is RelayerAssetHelpers, ReentrancyGuard {
         _stakingContract = stakingContract;
     }
 
+    receive() external payable {
+        // Accept ETH transfers coming from the Vault only. This is only expected to happen when joining a pool,
+        // performing a swap or managing a user's balance does not use the full amount of ETH provided.
+        // Any remaining ETH value will be transferred back to this contract and forwarded back to the original sender.
+        _require(msg.sender == address(_vault), Errors.ETH_TRANSFER);
+    }
+
     function getVault() public view override returns (IVault) {
         return _vault;
     }
