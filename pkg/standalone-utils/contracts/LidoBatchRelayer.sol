@@ -140,7 +140,7 @@ contract LidoBatchRelayer is BatchRelayer {
         _sweepETH();
     }
 
-    function lidoJoin(
+    function lidoJoinPool(
         bytes32 poolId,
         address payable recipient,
         IVault.JoinPoolRequest calldata request
@@ -161,7 +161,7 @@ contract LidoBatchRelayer is BatchRelayer {
         _sweepETH();
     }
 
-    function lidoExit(
+    function lidoExitPool(
         bytes32 poolId,
         address payable recipient,
         IVault.ExitPoolRequest calldata request
