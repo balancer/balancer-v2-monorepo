@@ -154,30 +154,26 @@ describe('LidoBatchRelayer', function () {
             expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
           });
         });
+      });
 
-        context('when the user did not allow the relayer', () => {
-          let singleSwap: SingleSwap;
+      context('when the user did not allow the relayer', () => {
+        let singleSwap: SingleSwap;
 
-          sharedBeforeEach('build swap request', async () => {
-            singleSwap = {
-              kind: SwapKind.GivenIn,
-              poolId: basePoolId,
-              assetIn: basePoolTokens.WETH.address,
-              assetOut: basePoolTokens.findBySymbol('wstETH').address,
-              amount: fp(1),
-              userData: '0x',
-            };
-          });
+        sharedBeforeEach('build swap request', async () => {
+          singleSwap = {
+            kind: SwapKind.GivenIn,
+            poolId: basePoolId,
+            assetIn: basePoolTokens.WETH.address,
+            assetOut: basePoolTokens.findBySymbol('wstETH').address,
+            amount: fp(1),
+            userData: '0x',
+          };
+        });
 
-          sharedBeforeEach('disallow relayer', async () => {
-            await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, false);
-          });
-
-          it('reverts', async () => {
-            await expect(relayer.connect(sender).lidoSwap(singleSwap, limit, deadline)).to.be.revertedWith(
-              'USER_DOESNT_ALLOW_RELAYER'
-            );
-          });
+        it('reverts', async () => {
+          await expect(relayer.connect(sender).lidoSwap(singleSwap, limit, deadline)).to.be.revertedWith(
+            'USER_DOESNT_ALLOW_RELAYER'
+          );
         });
       });
     });
@@ -278,32 +274,28 @@ describe('LidoBatchRelayer', function () {
             expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
           });
         });
+      });
 
-        context('when the user did not allow the relayer', () => {
-          sharedBeforeEach('build swap request', async () => {
-            swaps = [
-              {
-                poolId: basePoolId,
-                assetInIndex: basePoolTokens.findIndexBySymbol('WETH'),
-                assetOutIndex: basePoolTokens.findIndexBySymbol('wstETH'),
-                amount: fp(1),
-                userData: '0x',
-              },
-            ];
+      context('when the user did not allow the relayer', () => {
+        sharedBeforeEach('build swap request', async () => {
+          swaps = [
+            {
+              poolId: basePoolId,
+              assetInIndex: basePoolTokens.findIndexBySymbol('WETH'),
+              assetOutIndex: basePoolTokens.findIndexBySymbol('wstETH'),
+              amount: fp(1),
+              userData: '0x',
+            },
+          ];
 
-            assets = basePoolTokens.addresses;
-            limits = [fp(1), 0];
-          });
+          assets = basePoolTokens.addresses;
+          limits = [fp(1), 0];
+        });
 
-          sharedBeforeEach('disallow relayer', async () => {
-            await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, false);
-          });
-
-          it('reverts', async () => {
-            await expect(
-              relayer.connect(sender).lidoBatchSwap(SwapKind.GivenIn, swaps, assets, limits, deadline)
-            ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
-          });
+        it('reverts', async () => {
+          await expect(
+            relayer.connect(sender).lidoBatchSwap(SwapKind.GivenIn, swaps, assets, limits, deadline)
+          ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
         });
       });
     });
@@ -349,17 +341,13 @@ describe('LidoBatchRelayer', function () {
           expect(await tokens.WETH.balanceOf(relayer)).to.be.eq(0);
           expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
         });
+      });
 
-        context('when the user did not allow the relayer', () => {
-          sharedBeforeEach('disallow relayer', async () => {
-            await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, false);
-          });
-
-          it('reverts', async () => {
-            await expect(relayer.connect(sender).lidoJoin(basePoolId, sender.address, joinRequest)).to.be.revertedWith(
-              'USER_DOESNT_ALLOW_RELAYER'
-            );
-          });
+      context('when the user did not allow the relayer', () => {
+        it('reverts', async () => {
+          await expect(relayer.connect(sender).lidoJoin(basePoolId, sender.address, joinRequest)).to.be.revertedWith(
+            'USER_DOESNT_ALLOW_RELAYER'
+          );
         });
       });
     });
