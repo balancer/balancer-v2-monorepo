@@ -7,7 +7,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 
-import { BatchSwapStep, SingleSwap, SwapKind } from '@balancer-labs/balancer-js';
+import { BatchSwapStep, JoinPoolRequest, SingleSwap, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -309,7 +309,61 @@ describe('LidoBatchRelayer', function () {
     });
   });
 
-  // describe('lidoJoin');
+  describe('lidoJoin', () => {
+    let joinRequest: JoinPoolRequest;
+
+    sharedBeforeEach('build join request', async () => {
+      joinRequest = {
+        assets: basePoolTokens.addresses,
+        maxAmountsIn: [0, fp(1)],
+        userData: WeightedPoolEncoder.joinExactTokensInForBPTOut([0, fp(1)], 0),
+        fromInternalBalance: false,
+      };
+    });
+
+    context('when the relayer is authorized', () => {
+      sharedBeforeEach('allow relayer', async () => {
+        const manageUserBalanceAction = await actionId(vault.instance, 'manageUserBalance');
+        const joinAction = await actionId(vault.instance, 'joinPool');
+
+        await vault.authorizer?.connect(admin).grantRoles([manageUserBalanceAction, joinAction], relayer.address);
+      });
+
+      context('when the user did allow the relayer', () => {
+        sharedBeforeEach('allow relayer', async () => {
+          await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
+        });
+
+        it('joins the pool', async () => {
+          const receipt = await relayer.connect(sender).lidoJoin(basePoolId, sender.address, joinRequest);
+
+          expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'PoolBalanceChanged', {
+            poolId: basePoolId,
+            liquidityProvider: sender.address,
+          });
+        });
+
+        it('does not leave dust on the relayer', async () => {
+          await relayer.connect(sender).lidoJoin(basePoolId, sender.address, joinRequest);
+
+          expect(await tokens.WETH.balanceOf(relayer)).to.be.eq(0);
+          expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
+        });
+
+        context('when the user did not allow the relayer', () => {
+          sharedBeforeEach('disallow relayer', async () => {
+            await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, false);
+          });
+
+          it('reverts', async () => {
+            await expect(relayer.connect(sender).lidoJoin(basePoolId, sender.address, joinRequest)).to.be.revertedWith(
+              'USER_DOESNT_ALLOW_RELAYER'
+            );
+          });
+        });
+      });
+    });
+  });
 
   // describe('lidoExit');
 
