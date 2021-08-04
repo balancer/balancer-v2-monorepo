@@ -216,7 +216,7 @@ contract WeightedPool2Tokens is
     }
 
     function extendOracleBuffer(uint256 newBufferSize) external whenNotPaused authenticate {
-        _extendOracleBuffer(newBufferSize);
+        _setOracleBufferSize(newBufferSize);
     }
 
     function setOracleSampleDuration(uint256 newDuration) external whenNotPaused authenticate {

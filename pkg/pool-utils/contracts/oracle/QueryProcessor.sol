@@ -60,7 +60,13 @@ library QueryProcessor {
     ) external view returns (uint256) {
         _require(query.secs != 0, Errors.ORACLE_BAD_SECS);
 
-        int256 beginAccumulator = getPastAccumulator(samples,bufferSize, query.variable, latestIndex, query.ago + query.secs);
+        int256 beginAccumulator = getPastAccumulator(
+            samples,
+            bufferSize,
+            query.variable,
+            latestIndex,
+            query.ago + query.secs
+        );
         int256 endAccumulator = getPastAccumulator(samples, bufferSize, query.variable, latestIndex, query.ago);
         return LogCompression.fromLowResLog((endAccumulator - beginAccumulator) / int256(query.secs));
     }
@@ -206,6 +212,9 @@ library QueryProcessor {
         }
 
         // In case we reach here, it means we didn't find exactly the sample we where looking for.
-        return sampleTimestamp < lookUpDate ? (sample, samples[mid.next(bufferSize)]) : (samples[mid.prev(bufferSize)], sample);
+        return
+            sampleTimestamp < lookUpDate
+                ? (sample, samples[mid.next(bufferSize)])
+                : (samples[mid.prev(bufferSize)], sample);
     }
 }

@@ -35,14 +35,22 @@ library Buffer {
     /**
      * @dev Returns the index of an element `offset` slots after the one pointed by `index`.
      */
-    function add(uint256 index, uint256 offset, uint256 bufferSize) internal pure returns (uint256) {
+    function add(
+        uint256 index,
+        uint256 offset,
+        uint256 bufferSize
+    ) internal pure returns (uint256) {
         return (index + offset) % bufferSize;
     }
 
     /**
      * @dev Returns the index of an element `offset` slots before the one pointed by `index`.
      */
-    function sub(uint256 index, uint256 offset, uint256 bufferSize) internal pure returns (uint256) {
+    function sub(
+        uint256 index,
+        uint256 offset,
+        uint256 bufferSize
+    ) internal pure returns (uint256) {
         return (index + bufferSize - offset) % bufferSize;
     }
 }

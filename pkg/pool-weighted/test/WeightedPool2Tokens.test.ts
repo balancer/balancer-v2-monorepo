@@ -51,14 +51,6 @@ describe('WeightedPool2Tokens', function () {
     });
   };
 
-  function printGas(gas: number | BigNumber): string {
-    if (typeof gas !== 'number') {
-      gas = gas.toNumber();
-    }
-
-    return `${(gas / 1000).toFixed(1)}k`;
-  }
-
   describe('weights', () => {
     it('sets token weights', async () => {
       const normalizedWeights = await pool.getNormalizedWeights();
@@ -342,27 +334,20 @@ describe('WeightedPool2Tokens', function () {
     });
 
     describe('oracle configuration', () => {
-      const TWO_MINUTES = 120;
+      const DEFAULT_SAMPLE_DURATION = 120;
       const DEFAULT_BUFFER_SIZE = 1024;
       let sender: SignerWithAddress;
 
       it('starts with default sample duration', async () => {
         const sampleDuration = await pool.getSampleDuration();
 
-        expect(sampleDuration).to.equal(TWO_MINUTES);
+        expect(sampleDuration).to.equal(DEFAULT_SAMPLE_DURATION);
       });
 
       it('starts with the default buffer size', async () => {
         const bufferSize = await pool.getTotalSamples();
 
         expect(bufferSize).to.equal(DEFAULT_BUFFER_SIZE);
-      });
-
-      it('can be initialized', async () => {
-        const tx = await pool.initializeOracle();
-        const receipt = await tx.wait();
-
-        console.log(`${printGas(receipt.gasUsed)} (initialize oracle)`);
       });
 
       context('when sender is owner', () => {
@@ -386,7 +371,7 @@ describe('WeightedPool2Tokens', function () {
           });
 
           it('can shorten the sample duration', async () => {
-            const NEW_SAMPLE_DURATION = TWO_MINUTES / 2;
+            const NEW_SAMPLE_DURATION = DEFAULT_SAMPLE_DURATION / 2;
 
             const tx = await pool.setOracleSampleDuration(sender, NEW_SAMPLE_DURATION);
             const receipt = await tx.wait();
@@ -398,23 +383,49 @@ describe('WeightedPool2Tokens', function () {
             const sampleDuration = await pool.getSampleDuration();
             expect(sampleDuration).to.equal(NEW_SAMPLE_DURATION);
           });
+
+          it('can set the sample duration to zero and raise it', async () => {
+            const NEW_SAMPLE_DURATION = DEFAULT_SAMPLE_DURATION / 2;
+
+            let tx = await pool.setOracleSampleDuration(sender, 0);
+
+            let sampleDuration = await pool.getSampleDuration();
+            expect(sampleDuration).to.equal(0);
+
+            tx = await pool.setOracleSampleDuration(sender, NEW_SAMPLE_DURATION);
+            const receipt = await tx.wait();
+            expectEvent.inReceipt(receipt, 'OracleSampleDurationChanged', {
+              sampleDuration: NEW_SAMPLE_DURATION,
+            });
+
+            sampleDuration = await pool.getSampleDuration();
+            expect(sampleDuration).to.equal(NEW_SAMPLE_DURATION);
+          });
         });
 
         context('when parameters are incorrect', () => {
-          it('does not allow shrinking buffer', async () => {
+          const MAX_BUFFER_SIZE = 1024 * 128;
+
+          it('does not allow shrinking the buffer', async () => {
             await expect(pool.extendOracleBuffer(sender, DEFAULT_BUFFER_SIZE / 2)).to.be.revertedWith(
-              'ORACLE_BUFFER_SIZE_TOO_SMALL'
+              'ORACLE_BUFFER_NOT_GT_CURRENT_SIZE'
             );
           });
 
-          it('requires buffer to grow', async () => {
+          it('requires the buffer to grow beyond current size', async () => {
             await expect(pool.extendOracleBuffer(sender, DEFAULT_BUFFER_SIZE)).to.be.revertedWith(
-              'ORACLE_BUFFER_SIZE_TOO_SMALL'
+              'ORACLE_BUFFER_NOT_GT_CURRENT_SIZE'
             );
           });
 
-          it('does not allow increasing sample duration', async () => {
-            await expect(pool.setOracleSampleDuration(sender, TWO_MINUTES + 1)).to.be.revertedWith(
+          it('cannot exceed maximum buffer size', async () => {
+            await expect(pool.extendOracleBuffer(sender, MAX_BUFFER_SIZE + 1)).to.be.revertedWith(
+              'ORACLE_BUFFER_SIZE_TOO_LARGE'
+            );
+          });
+
+          it('does not allow sample duration above max', async () => {
+            await expect(pool.setOracleSampleDuration(sender, DEFAULT_SAMPLE_DURATION + 1)).to.be.revertedWith(
               'ORACLE_SAMPLE_DURATION_TOO_LONG'
             );
           });
@@ -433,7 +444,9 @@ describe('WeightedPool2Tokens', function () {
         });
 
         it('does not allow setting sample duration', async () => {
-          await expect(pool.setOracleSampleDuration(sender, TWO_MINUTES / 2)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          await expect(pool.setOracleSampleDuration(sender, DEFAULT_SAMPLE_DURATION / 2)).to.be.revertedWith(
+            'SENDER_NOT_ALLOWED'
+          );
         });
       });
     });

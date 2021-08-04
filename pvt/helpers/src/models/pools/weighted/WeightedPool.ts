@@ -587,10 +587,6 @@ export default class WeightedPool {
     return await pool.setOracleSampleDuration(sampleDuration);
   }
 
-  async initializeOracle(): Promise<ContractTransaction> {
-    return await this.instance.initializeOracle();
-  }
-
   async updateWeightsGradually(
     from: SignerWithAddress,
     startTime: BigNumberish,

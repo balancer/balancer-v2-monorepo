@@ -49,6 +49,7 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
     // solhint-disable not-rely-on-time
     uint256 private constant _MAX_SAMPLE_DURATION = 2 minutes;
     uint256 private constant _DEFAULT_BUFFER_SIZE = 1024;
+    uint256 private constant _MAX_BUFFER_SIZE = 1024 * 128;
 
     // We use a mapping to simulate an array: since we will always use valid indexes using a mapping saves gas
     // by skipping the bounds checks.
@@ -102,34 +103,9 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
         return _oracleState.decodeUint16(_SAMPLE_DURATION_OFFSET);
     }
 
-    // Create mapping entries for all slots from the current one up to the buffer size
-    // Timestamp will be 0, so these entries will not be used until overwritten with real data
-    function initializeOracle() public {       
-        uint256 bufferSize =  getTotalSamples();
-        bytes32 lastSample = _getSample(bufferSize - 1);
- 
-        // NOOP if already initialized - don't overwrite valid data
-        // If the oracle is fully initialized, _samples[bufferSize - 1] will have a timestamp,
-        // and therefore a non-zero value
-        if (lastSample == 0) {
-            bytes32 nullSample;
-
-            for (uint256 i = _getOracleIndex() + 1; i < bufferSize; i++) {
-                _samples[i] = nullSample;
-            }
-        }
-    }
-
-    // Set a new buffer size - can only be bigger - and initialize it
-    // Gas cost should discourage extremely large buffer sizes
-    function _extendOracleBuffer(uint256 newBufferSize) internal {        
-        _setOracleBufferSize(newBufferSize);
-
-        initializeOracle();
-    }
-
-    function _setOracleBufferSize(uint256 newBufferSize) private {
-        _require(newBufferSize > getTotalSamples(), Errors.ORACLE_BUFFER_SIZE_TOO_SMALL);
+    function _setOracleBufferSize(uint256 newBufferSize) internal {
+        _require(newBufferSize > getTotalSamples(), Errors.ORACLE_BUFFER_NOT_GT_CURRENT_SIZE);
+        _require(newBufferSize <= _MAX_BUFFER_SIZE, Errors.ORACLE_BUFFER_SIZE_TOO_LARGE);
 
         _oracleState = _oracleState.insertUint32(newBufferSize, _BUFFER_SIZE_OFFSET);
 
