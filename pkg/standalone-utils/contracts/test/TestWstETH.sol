@@ -53,4 +53,12 @@ contract TestWstETH is AccessControl, ERC20, IwstETH {
     function getStETHByWstETH(uint256 _wstETHAmount) public view override returns (uint256) {
         return _wstETHAmount.mulDown(rate);
     }
+
+    function stEthPerToken() external view override returns (uint256) {
+        return getStETHByWstETH(1 ether);
+    }
+
+    function tokensPerStEth() external view override returns (uint256) {
+        return getWstETHByStETH(1 ether);
+    }
 }

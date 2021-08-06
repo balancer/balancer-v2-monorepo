@@ -72,4 +72,16 @@ interface IwstETH {
      * @return Amount of stETH for a given wstETH amount
      */
     function getStETHByWstETH(uint256 _wstETHAmount) external view returns (uint256);
+
+    /**
+     * @notice Get amount of wstETH for a one stETH
+     * @return Amount of stETH for 1 wstETH
+     */
+    function stEthPerToken() external view returns (uint256);
+
+    /**
+     * @notice Get amount of stETH for a one wstETH
+     * @return Amount of wstETH for a 1 stETH
+     */
+    function tokensPerStEth() external view returns (uint256);
 }
