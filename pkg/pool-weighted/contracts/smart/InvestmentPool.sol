@@ -66,7 +66,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     // Adding or removing liquidity while paused must be proportional
     // Proportional join is defined as one where the BPT prices are all similar
-    uint256 private constant _PROPORTIONAL_TOLERANCE_PCT = 1e16; // 1%
+    uint256 private constant _PROPORTIONAL_TOLERANCE_PCT = 1e15; // 0.1%
 
     // Event declarations
 
@@ -321,7 +321,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     /**
-     * @dev Extend ownerOnly functions to include the LBP control functions
+     * @dev Extend ownerOnly functions to include the Investment Pool control functions
      */
     function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
         return
@@ -351,7 +351,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         // TokenInForExactBPTOut is not proportional - so fail immediately if swaps are disabled
         _require(
             getSwapEnabled() || userData.joinKind() != JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT,
-            Errors.DISPROPORTIONATE_JOIN_OR_EXIT
+            Errors.INVALID_JOIN_EXIT_WHILE_PAUSED
         );
 
         (bptAmountOut, amountsIn, dueProtocolFeeAmounts) = super._onJoinPool(
@@ -381,7 +381,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
                 _require(
                     amountsIn[i] > 0 && diff.divUp(amountsIn[i]) <= _PROPORTIONAL_TOLERANCE_PCT,
-                    Errors.DISPROPORTIONATE_JOIN_OR_EXIT
+                    Errors.INVALID_JOIN_EXIT_WHILE_PAUSED
                 );
             }
         }
@@ -409,7 +409,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         // If swaps are disabled, require proportional exit
         _require(
             getSwapEnabled() || userData.exitKind() == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
-            Errors.DISPROPORTIONATE_JOIN_OR_EXIT
+            Errors.INVALID_JOIN_EXIT_WHILE_PAUSED
         );
 
         return

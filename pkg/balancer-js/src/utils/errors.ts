@@ -55,7 +55,7 @@ const balancerErrorCodes: Record<string, string> = {
   '327': 'SWAPS_DISABLED',
   '328': 'CALLER_IS_NOT_LBP_OWNER',
   '329': 'PRICE_RATE_OVERFLOW',
-  '330': 'DISPROPORTIONATE_JOIN_OR_EXIT',
+  '330': 'INVALID_JOIN_EXIT_WHILE_PAUSED',
   '400': 'REENTRANCY',
   '401': 'SENDER_NOT_ALLOWED',
   '402': 'PAUSED',

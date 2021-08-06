@@ -239,7 +239,7 @@ describe('InvestmentPool', function () {
               const bptOut = await pool.balanceOf(sender);
 
               await expect(pool.joinGivenOut({ from: sender, bptOut, token: poolTokens.get(0) })).to.be.revertedWith(
-                'DISPROPORTIONATE_JOIN_OR_EXIT'
+                'INVALID_JOIN_EXIT_WHILE_PAUSED'
               );
             });
 
@@ -254,7 +254,7 @@ describe('InvestmentPool', function () {
 
             it('allows close to proportionate joins (multi-token)', async () => {
               const amountsIn = [...initialBalances];
-              amountsIn[0] = fp(0.98);
+              amountsIn[0] = fp(0.999);
 
               await expect(pool.joinGivenIn({ from: sender, amountsIn })).to.not.be.reverted;
             });
@@ -264,7 +264,7 @@ describe('InvestmentPool', function () {
               amountsIn[0] = fp(0.95);
 
               await expect(pool.joinGivenIn({ from: sender, amountsIn })).to.be.revertedWith(
-                'DISPROPORTIONATE_JOIN_OR_EXIT'
+                'INVALID_JOIN_EXIT_WHILE_PAUSED'
               );
             });
 
@@ -273,7 +273,7 @@ describe('InvestmentPool', function () {
               amountsIn[0] = 0;
 
               await expect(pool.joinGivenIn({ from: sender, amountsIn })).to.be.revertedWith(
-                'DISPROPORTIONATE_JOIN_OR_EXIT'
+                'INVALID_JOIN_EXIT_WHILE_PAUSED'
               );
             });
 
@@ -283,7 +283,7 @@ describe('InvestmentPool', function () {
 
               await expect(
                 pool.singleExitGivenIn({ from: sender, bptIn, token: poolTokens.get(0) })
-              ).to.be.revertedWith('DISPROPORTIONATE_JOIN_OR_EXIT');
+              ).to.be.revertedWith('INVALID_JOIN_EXIT_WHILE_PAUSED');
             });
 
             it('disallows disproportionate exits (multi token)', async () => {
@@ -292,7 +292,7 @@ describe('InvestmentPool', function () {
               amountsOut[0] = 0;
 
               await expect(pool.exitGivenOut({ from: sender, amountsOut })).to.be.revertedWith(
-                'DISPROPORTIONATE_JOIN_OR_EXIT'
+                'INVALID_JOIN_EXIT_WHILE_PAUSED'
               );
             });
 
