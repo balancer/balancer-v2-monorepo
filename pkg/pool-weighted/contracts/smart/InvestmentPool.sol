@@ -370,6 +370,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             // We know the bptOut from the join - so proportional exit with that bptOut should reproduce amountsIn,
             // if the join was proportional
             uint256[] memory amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(
+                // This assumes balances were mutated properly by the base class `_onJoinPool`
                 balances,
                 bptAmountOut,
                 totalSupply().add(bptAmountOut)
