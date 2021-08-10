@@ -98,6 +98,28 @@ describe('Staking contract', () => {
         true
       );
     });
+
+    describe('when a maximum number of rewards is added', () => {
+      sharedBeforeEach(async () => {
+        const tokenSymbols = [...Array(64).keys()].map((k) => k.toString());
+        const tokens = await TokenList.create(tokenSymbols, { sorted: true });
+
+        for (let i = 0; i < 64; i++) {
+          const rewardTokenAddress = tokens.get(i).address;
+          await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardTokenAddress, rewarder.address);
+          await stakingContract.connect(rewarder).addReward(pool.address, rewardTokenAddress, rewardsDuration);
+        }
+      });
+
+      it('reverts when maximum number of rewards are added', async () => {
+        const tokens = await TokenList.create(['TEST'], { sorted: true });
+        const rewardTokenAddress = tokens.get(0).address;
+        await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardTokenAddress, rewarder.address);
+        await expect(
+          stakingContract.connect(rewarder).addReward(pool.address, rewardTokenAddress, rewardsDuration)
+        ).to.be.revertedWith('Exceeds maximum number of reward tokens per pool');
+      });
+    });
   });
 
   describe('stakeWithPermit', () => {

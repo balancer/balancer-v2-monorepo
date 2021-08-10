@@ -75,6 +75,9 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     // pool -> user -> bpt balance staked
     mapping(IERC20 => mapping(address => uint256)) private _balances;
 
+    // a maximum number of reward tokens ensures against gas limits when looping through rewards
+    uint256 private constant _MAX_REWARD_TOKENS_PER_POOL = 64;
+
     /* ========== CONSTRUCTOR ========== */
 
     constructor(IVault _vault)
@@ -109,6 +112,10 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     ) external override onlyAllowlistedRewarder(pool, rewardsToken) {
         require(rewardsDuration > 0, "reward rate must be nonzero");
         require(rewardData[pool][msg.sender][rewardsToken].rewardsDuration == 0, "Duplicate rewards token");
+        require(
+            _rewardTokens[pool].length() < _MAX_REWARD_TOKENS_PER_POOL,
+            "Exceeds maximum number of reward tokens per pool"
+        );
         _rewardTokens[pool].add(address(rewardsToken));
         _rewarders[pool][rewardsToken].add(msg.sender);
         rewardData[pool][msg.sender][rewardsToken].rewardsDuration = rewardsDuration;
