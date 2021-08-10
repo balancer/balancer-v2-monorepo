@@ -49,7 +49,7 @@ export default class Verifier {
       return contractURL.toString();
     } else if (intent < MAX_VERIFICATION_INTENTS && response.isBytecodeMissingInNetworkError()) {
       logger.info(`Could not find deployed bytecode in network, retrying ${intent++}/${MAX_VERIFICATION_INTENTS}...`);
-      delay(300);
+      delay(5000);
       return this.call(task, name, address, constructorArguments, intent++);
     } else {
       throw new Error(`The contract verification failed. Reason: ${response.message}`);

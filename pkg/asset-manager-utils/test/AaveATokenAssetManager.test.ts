@@ -7,6 +7,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
@@ -65,7 +66,9 @@ const setup = async () => {
 
   await assetManager.initialize(poolId, distributor.address);
 
-  await distributor.allowlistRewarder(pool.address, admin.address, lp.address);
+  const action = await actionId(distributor, 'allowlistRewarder');
+  await authorizer.connect(admin).grantRole(action, admin.address);
+  await distributor.connect(admin).allowlistRewarder(pool.address, admin.address, lp.address);
 
   await tokens.mint({ to: lp, amount: tokenInitialBalance });
   await tokens.approve({ to: vault.address, from: [lp] });
@@ -119,10 +122,10 @@ describe('Aave Asset manager', function () {
     beforeEach(async () => {
       const bptBalance = await pool.balanceOf(lp.address);
       await pool.connect(lp).approve(distributor.address, bptBalance);
-      await distributor.connect(lp)['stake(address,uint256)'](pool.address, bptBalance.mul(3).div(4));
+      await distributor.connect(lp).stake(pool.address, bptBalance.mul(3).div(4));
 
       // Stake half of the BPT to another address
-      await distributor.connect(lp)['stake(address,uint256,address)'](pool.address, bptBalance.div(4), other.address);
+      await distributor.connect(lp).stakeFor(pool.address, bptBalance.div(4), other.address);
     });
 
     it('sends expected amount of stkAave to the rewards contract', async () => {

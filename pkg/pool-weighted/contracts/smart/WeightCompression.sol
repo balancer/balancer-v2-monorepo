@@ -22,6 +22,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
  * so heavier compression (fewer bits) results in fewer decimals.
  */
 library WeightCompression {
+    uint256 private constant _UINT31_MAX = 2**(31) - 1;
+
     using FixedPoint for uint256;
 
     /**
@@ -39,6 +41,20 @@ library WeightCompression {
     }
 
     /**
+     * @dev Convert a 31-bit value to full FixedPoint
+     */
+    function uncompress31(uint256 value) internal pure returns (uint256) {
+        return value.mulUp(FixedPoint.ONE).divUp(_UINT31_MAX);
+    }
+
+    /**
+     * @dev Compress a FixedPoint value to 31 bits
+     */
+    function compress31(uint256 value) internal pure returns (uint256) {
+        return value.mulUp(_UINT31_MAX).divUp(FixedPoint.ONE);
+    }
+
+    /**
      * @dev Convert a 32-bit value to full FixedPoint
      */
     function uncompress32(uint256 value) internal pure returns (uint256) {
@@ -50,5 +66,19 @@ library WeightCompression {
      */
     function compress32(uint256 value) internal pure returns (uint256) {
         return value.mulUp(type(uint32).max).divUp(FixedPoint.ONE);
+    }
+
+    /**
+     * @dev Convert a 64-bit value to full FixedPoint
+     */
+    function uncompress64(uint256 value) internal pure returns (uint256) {
+        return value.mulUp(FixedPoint.ONE).divUp(type(uint64).max);
+    }
+
+    /**
+     * @dev Compress a FixedPoint value to 64 bits
+     */
+    function compress64(uint256 value) internal pure returns (uint256) {
+        return value.mulUp(type(uint64).max).divUp(FixedPoint.ONE);
     }
 }

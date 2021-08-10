@@ -3,15 +3,9 @@ import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { BigNumberish, bn, decimal, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_INT22, MAX_UINT10, MAX_UINT31, MIN_INT22, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import {
-  MINUTE,
-  advanceTime,
-  currentTimestamp,
-  lastBlockNumber,
-  advanceToTimestamp,
-} from '@balancer-labs/v2-helpers/src/time';
+import { MINUTE, advanceTime, currentTimestamp, lastBlockNumber } from '@balancer-labs/v2-helpers/src/time';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
@@ -19,6 +13,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { Sample } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('MetaStablePool', function () {
   let pool: StablePool;
@@ -416,128 +411,6 @@ describe('MetaStablePool', function () {
     });
   });
 
-  describe('queries', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let samples: any[];
-
-    const MAX_BUFFER_SIZE = 1024;
-    const OLDEST = 0;
-    const MID = MAX_BUFFER_SIZE / 2;
-    const LATEST = MAX_BUFFER_SIZE - 1;
-
-    const ago = (index: number) => (LATEST - index) * 2 * MINUTE;
-
-    const VARIABLES = {
-      PAIR_PRICE: 0,
-      BPT_PRICE: 1,
-      INVARIANT: 2,
-    };
-
-    const mockSamples = (ascending: boolean) => {
-      sharedBeforeEach('mock samples', async () => {
-        const now = await currentTimestamp();
-        const ZEROS = Array(MAX_BUFFER_SIZE).fill(0);
-        const indexes = ZEROS.map((_, i) => i);
-
-        samples = ZEROS.map((_, i) => ({
-          timestamp: now.add(i * 2 * MINUTE),
-          instant: (ascending ? i : MAX_BUFFER_SIZE - i) * 5,
-          accumulator: (ascending ? i : MAX_BUFFER_SIZE - i) * 100,
-        })).map((x) => ({
-          logPairPrice: x.instant + VARIABLES.PAIR_PRICE,
-          logBptPrice: x.instant + VARIABLES.BPT_PRICE,
-          logInvariant: x.instant + VARIABLES.INVARIANT,
-          accLogPairPrice: x.accumulator + VARIABLES.PAIR_PRICE,
-          accLogBptPrice: x.accumulator + VARIABLES.BPT_PRICE,
-          accLogInvariant: x.accumulator + VARIABLES.INVARIANT,
-          timestamp: x.timestamp,
-        }));
-
-        for (let from = 0, to = from + 100; from < MAX_BUFFER_SIZE; from += 100, to = from + 100) {
-          await pool.instance.mockSamples(indexes.slice(from, to), samples.slice(from, to));
-        }
-
-        await pool.instance.mockOracleIndex(LATEST);
-        await advanceToTimestamp(samples[LATEST].timestamp);
-      });
-    };
-
-    const itAnswersQueriesCorrectly = (ascendingAccumulators: boolean) => {
-      mockSamples(ascendingAccumulators);
-
-      describe('getLatest', () => {
-        it('returns the latest pair price', async () => {
-          const actual = await pool.instance.getLatest(VARIABLES.PAIR_PRICE);
-          const expected = fp(decimal(samples[LATEST].logPairPrice).div(1e4).exp());
-          expect(actual).to.be.equal(expected);
-        });
-
-        it('returns the latest BPT price', async () => {
-          const actual = await pool.instance.getLatest(VARIABLES.BPT_PRICE);
-          const expected = fp(decimal(samples[LATEST].logBptPrice).div(1e4).exp());
-          expect(actual).to.be.equal(expected);
-        });
-
-        it('returns the latest pair price', async () => {
-          const actual = await pool.instance.getLatest(VARIABLES.INVARIANT);
-          const expected = fp(decimal(samples[LATEST].logInvariant).div(1e4).exp());
-          expect(actual).to.be.equal(expected);
-        });
-      });
-
-      describe('getPastAccumulators', () => {
-        const queries = [
-          { variable: VARIABLES.PAIR_PRICE, ago: ago(LATEST) },
-          { variable: VARIABLES.BPT_PRICE, ago: ago(OLDEST) },
-          { variable: VARIABLES.INVARIANT, ago: ago(MID) },
-        ];
-
-        it('returns the expected values', async () => {
-          const results = await pool.instance.getPastAccumulators(queries);
-
-          expect(results.length).to.be.equal(3);
-
-          expect(results[0]).to.be.equal(samples[LATEST].accLogPairPrice);
-          expect(results[1]).to.be.equal(samples[OLDEST].accLogBptPrice);
-          expect(results[2]).to.be.equal(samples[MID].accLogInvariant);
-        });
-      });
-
-      describe('getTimeWeightedAverage', () => {
-        const secs = 2 * MINUTE;
-
-        const queries = [
-          { variable: VARIABLES.PAIR_PRICE, secs, ago: ago(LATEST) },
-          { variable: VARIABLES.BPT_PRICE, secs, ago: ago(OLDEST + 1) },
-          { variable: VARIABLES.INVARIANT, secs, ago: ago(MID) },
-        ];
-
-        const assertAverage = (actual: BigNumber, diff: number) => {
-          const expectedAverage = fp(decimal(diff).div(secs).div(1e4).exp());
-          expect(actual).to.be.equalWithError(expectedAverage, 0.0001);
-        };
-
-        it('returns the expected values', async () => {
-          const results = await pool.instance.getTimeWeightedAverage(queries);
-
-          expect(results.length).to.be.equal(3);
-
-          assertAverage(results[0], samples[LATEST].accLogPairPrice - samples[LATEST - 1].accLogPairPrice);
-          assertAverage(results[1], samples[OLDEST + 1].accLogBptPrice - samples[OLDEST].accLogBptPrice);
-          assertAverage(results[2], samples[MID].accLogInvariant - samples[MID - 1].accLogInvariant);
-        });
-      });
-    };
-
-    context('with positive values', () => {
-      itAnswersQueriesCorrectly(true);
-    });
-
-    context('with negative values', () => {
-      itAnswersQueriesCorrectly(false);
-    });
-  });
-
   describe('price rates', () => {
     let rateProviders: Contract[], oldPriceRate0: BigNumber, oldPriceRate1: BigNumber;
     const cacheDurations = [MINUTE, MINUTE * 2];
@@ -598,8 +471,19 @@ describe('MetaStablePool', function () {
 
       const forceManualUpdate = () => {
         sharedBeforeEach('force update', async () => {
-          await pool.updatePriceRateCache(tokens.first);
-          await pool.updatePriceRateCache(tokens.second);
+          const priceRates = await Promise.all(rateProviders.map((provider) => provider.getRate()));
+
+          const firstReceipt = await pool.updatePriceRateCache(tokens.first);
+          expectEvent.inIndirectReceipt(await firstReceipt.wait(), pool.instance.interface, 'PriceRateCacheUpdated', {
+            token: tokens.first.address,
+            rate: priceRates[0],
+          });
+
+          const secondReceipt = await pool.updatePriceRateCache(tokens.second);
+          expectEvent.inIndirectReceipt(await secondReceipt.wait(), pool.instance.interface, 'PriceRateCacheUpdated', {
+            token: tokens.second.address,
+            rate: priceRates[1],
+          });
         });
       };
 
@@ -721,8 +605,20 @@ describe('MetaStablePool', function () {
 
           sharedBeforeEach('update price rate cache', async () => {
             forceUpdateAt = await currentTimestamp();
-            await pool.setPriceRateCacheDuration(tokens.first, newDuration, { from: admin });
-            await pool.setPriceRateCacheDuration(tokens.second, newDuration, { from: admin });
+
+            const firstReceipt = await pool.setPriceRateCacheDuration(tokens.first, newDuration, { from: admin });
+            expectEvent.inReceipt(await firstReceipt.wait(), 'PriceRateProviderSet', {
+              token: tokens.first.address,
+              provider: rateProviders[0].address,
+              cacheDuration: newDuration,
+            });
+
+            const secondReceipt = await pool.setPriceRateCacheDuration(tokens.second, newDuration, { from: admin });
+            expectEvent.inReceipt(await secondReceipt.wait(), 'PriceRateProviderSet', {
+              token: tokens.second.address,
+              provider: rateProviders[1].address,
+              cacheDuration: newDuration,
+            });
           });
 
           it('updates the cache duration', async () => {

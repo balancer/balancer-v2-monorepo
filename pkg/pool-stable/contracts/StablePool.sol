@@ -207,7 +207,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
     {
         balances = new uint256[](2);
 
-        if (_token0 == swapRequest.tokenIn) {
+        if (_isToken0(swapRequest.tokenIn)) {
             indexIn = 0;
             indexOut = 1;
 
@@ -699,11 +699,11 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
         // prettier-ignore
-        if (token == _token0) { return _scalingFactor0; }
-        else if (token == _token1) { return _scalingFactor1; }
-        else if (token == _token2) { return _scalingFactor2; }
-        else if (token == _token3) { return _scalingFactor3; }
-        else if (token == _token4) { return _scalingFactor4; }
+        if (_isToken0(token)) { return _getScalingFactor0(); }
+        else if (_isToken1(token)) { return _getScalingFactor1(); }
+        else if (token == _token2) { return _getScalingFactor2(); }
+        else if (token == _token3) { return _getScalingFactor3(); }
+        else if (token == _token4) { return _getScalingFactor4(); }
         else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -715,11 +715,11 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { scalingFactors[0] = _scalingFactor0; } else { return scalingFactors; }
-            if (totalTokens > 1) { scalingFactors[1] = _scalingFactor1; } else { return scalingFactors; }
-            if (totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
-            if (totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
-            if (totalTokens > 4) { scalingFactors[4] = _scalingFactor4; } else { return scalingFactors; }
+            if (totalTokens > 0) { scalingFactors[0] = _getScalingFactor0(); } else { return scalingFactors; }
+            if (totalTokens > 1) { scalingFactors[1] = _getScalingFactor1(); } else { return scalingFactors; }
+            if (totalTokens > 2) { scalingFactors[2] = _getScalingFactor2(); } else { return scalingFactors; }
+            if (totalTokens > 3) { scalingFactors[3] = _getScalingFactor3(); } else { return scalingFactors; }
+            if (totalTokens > 4) { scalingFactors[4] = _getScalingFactor4(); } else { return scalingFactors; }
         }
 
         return scalingFactors;
@@ -760,5 +760,33 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
         endValue = _packedAmplificationData.decodeUint64(64);
         startTime = _packedAmplificationData.decodeUint64(64 * 2);
         endTime = _packedAmplificationData.decodeUint64(64 * 3);
+    }
+
+    function _isToken0(IERC20 token) internal view returns (bool) {
+        return token == _token0;
+    }
+
+    function _isToken1(IERC20 token) internal view returns (bool) {
+        return token == _token1;
+    }
+
+    function _getScalingFactor0() internal view returns (uint256) {
+        return _scalingFactor0;
+    }
+
+    function _getScalingFactor1() internal view returns (uint256) {
+        return _scalingFactor1;
+    }
+
+    function _getScalingFactor2() internal view returns (uint256) {
+        return _scalingFactor2;
+    }
+
+    function _getScalingFactor3() internal view returns (uint256) {
+        return _scalingFactor3;
+    }
+
+    function _getScalingFactor4() internal view returns (uint256) {
+        return _scalingFactor4;
     }
 }

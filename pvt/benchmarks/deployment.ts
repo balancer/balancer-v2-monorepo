@@ -13,16 +13,20 @@ async function main() {
 
   await measureDeployment('v2-pool-stable/StablePoolFactory');
 
+  await measureDeployment('v2-pool-weighted/LiquidityBootstrappingPoolFactory');
+
   await measureDeployment('v2-pool-stable/meta/MetaStablePool');
+
+  await measureDeployment('v2-pool-weighted/InvestmentPoolFactory');
 }
 
 async function measureDeployment(name: string) {
   console.log(`\n# ${name}`);
 
   const artifact = await getArtifact(name);
-  const bytecodeSizeKb = (artifact.deployedBytecode.slice(2).length / 2 / 1024).toFixed(3);
+  const bytecodeSizeBytes = artifact.deployedBytecode.slice(2).length / 2;
 
-  console.log(`Deployed bytecode size is ${bytecodeSizeKb} kB`);
+  console.log(`Deployed bytecode size is ${bytecodeSizeBytes} bytes`);
 }
 
 main()
