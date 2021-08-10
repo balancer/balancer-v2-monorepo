@@ -12,6 +12,11 @@
   "bugs": {
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },
+  "files": [
+    "tasks/**/abi/*",
+    "tasks/**/output/*",
+    "!test.json"
+  ],
   "scripts": {
     "lint": "eslint . --ext .ts --max-warnings 0",
     "test": "hardhat test ./**/test/*.ts",
