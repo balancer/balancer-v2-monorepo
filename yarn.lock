@@ -23,10 +23,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@babel/code-frame@npm:^7.12.13":
+  version: 7.14.5
+  resolution: "@babel/code-frame@npm:7.14.5"
+  dependencies:
+    "@babel/highlight": ^7.14.5
+  checksum: 48c584cad9aa05ff16fa965b4572deae0343d51abe658a2fb72640e924c229d47f71f880a474cc1e14e613f88a4bfd576609b1e0d8073bbc4e50e60f7e678626
+  languageName: node
+  linkType: hard
+
 "@babel/helper-validator-identifier@npm:^7.14.0":
   version: 7.14.0
   resolution: "@babel/helper-validator-identifier@npm:7.14.0"
   checksum: bd67b4a1a49eba151aa0fe95508579638287fee0a3e7a3bf8c5ab480de8eaad4b4231c523d7db401eb0cecc7cf03b76ee72453fab53bab8cb8ccd154bb67feb7
+  languageName: node
+  linkType: hard
+
+"@babel/helper-validator-identifier@npm:^7.14.5":
+  version: 7.14.5
+  resolution: "@babel/helper-validator-identifier@npm:7.14.5"
+  checksum: 778312189a7c5228daac9f7767795a74f11d1eac595ca38bfea248324666459b24aaae6aef43c957ce01bbe61672039ea1c08c5623067c3701beeb1bb1f1ee33
   languageName: node
   linkType: hard
 
@@ -41,10 +57,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@babel/highlight@npm:^7.14.5":
+  version: 7.14.5
+  resolution: "@babel/highlight@npm:7.14.5"
+  dependencies:
+    "@babel/helper-validator-identifier": ^7.14.5
+    chalk: ^2.0.0
+    js-tokens: ^4.0.0
+  checksum: a1ed599c2655eb0b13134875ba2626b547a2634940e532c86a02896fb403f197cd56d1adaa474c7859ae4f53fabc5f1621e90770e75d235ca3350952ba78aa5c
+  languageName: node
+  linkType: hard
+
 "@balancer-labs/balancer-js@workspace:*, @balancer-labs/balancer-js@workspace:pkg/balancer-js":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/balancer-js@workspace:pkg/balancer-js"
   dependencies:
+    "@balancer-labs/typechain": "workspace:*"
     "@ethersproject/abi": ^5.4.0
     "@ethersproject/abstract-signer": ^5.4.0
     "@ethersproject/address": ^5.4.0
@@ -67,10 +95,27 @@ __metadata:
     mocha: ^8.2.1
     prettier: ^2.1.2
     rollup: ^2.52.8
+    rollup-plugin-dts: ^3.0.2
     tiny-invariant: ^1.1.0
     ts-node: ^10.0.0
     typechain: ^5.1.1
     typescript: ^4.0.2
+  languageName: unknown
+  linkType: soft
+
+"@balancer-labs/typechain@workspace:*, @balancer-labs/typechain@workspace:pkg/typechain":
+  version: 0.0.0-use.local
+  resolution: "@balancer-labs/typechain@workspace:pkg/typechain"
+  dependencies:
+    "@typechain/ethers-v5": ^7.0.1
+    typechain: ^5.1.2
+    typescript: ^4.0.2
+  peerDependencies:
+    "@ethersproject/abi": ^5.4.0
+    "@ethersproject/bytes": ^5.4.0
+    "@ethersproject/constants": ^5.4.0
+    "@ethersproject/providers": ^5.4.0
+    ethers: ^5.4.1
   languageName: unknown
   linkType: soft
 
@@ -11484,6 +11529,22 @@ fsevents@~2.1.1:
   languageName: node
   linkType: hard
 
+"rollup-plugin-dts@npm:^3.0.2":
+  version: 3.0.2
+  resolution: "rollup-plugin-dts@npm:3.0.2"
+  dependencies:
+    "@babel/code-frame": ^7.12.13
+    magic-string: ^0.25.7
+  peerDependencies:
+    rollup: ^2.48.0
+    typescript: ^4.2.4
+  dependenciesMeta:
+    "@babel/code-frame":
+      optional: true
+  checksum: 11e32d247652210bbf052ef8d09551a031f774ee7dfd4f3c7d11e3fd6ee60f1856ebebdbd041104ea049f86ab1e413c3f8db6c1bab015895fe82707b9f1ce251
+  languageName: node
+  linkType: hard
+
 "rollup@npm:^2.52.8":
   version: 2.52.8
   resolution: "rollup@npm:2.52.8"
@@ -12982,6 +13043,26 @@ fsevents@~2.1.1:
   bin:
     typechain: dist/cli/cli.js
   checksum: 04ee65cc70fdedc82ed27a3e1b6e13b9ad507d06ea31bdf593d7d192da08da082bf81b27d40ba435e95beab01926beca0cbcc2e761eb6b73a08d8ba8e76bad76
+  languageName: node
+  linkType: hard
+
+"typechain@npm:^5.1.2":
+  version: 5.1.2
+  resolution: "typechain@npm:5.1.2"
+  dependencies:
+    "@types/prettier": ^2.1.1
+    command-line-args: ^4.0.7
+    debug: ^4.1.1
+    fs-extra: ^7.0.0
+    glob: ^7.1.6
+    js-sha3: ^0.8.0
+    lodash: ^4.17.15
+    mkdirp: ^1.0.4
+    prettier: ^2.1.2
+    ts-essentials: ^7.0.1
+  bin:
+    typechain: dist/cli/cli.js
+  checksum: 4c39203a225c819e1962f4be8f65d83266f754d3c8c34d5fba6e940d0774d8b21214f47ccef232645f164cc081820e9bef5b48a6f890a6f29b151d57d3d5b0ea
   languageName: node
   linkType: hard
 
