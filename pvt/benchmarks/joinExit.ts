@@ -19,9 +19,7 @@ let tokens: TokenList;
 let trader: SignerWithAddress;
 
 const printTokens = (poolType: string, numTokens: number) => {
-  if (numTokens % 2 == 0) {
-    console.log(`${poolType} with ${numTokens} tokens`);
-  }
+  console.log(`${poolType} with ${numTokens} tokens`);
 };
 
 async function main() {
@@ -48,6 +46,29 @@ async function main() {
       exitWeightedUserData
     );
   }
+  console.log('\n');
+
+  for (let numTokens = 40; numTokens <= 90; numTokens += 10) {
+    printTokens('Investment pool', numTokens);
+    await joinAndExitPool(
+      () => getWeightedPool(vault, tokens, numTokens),
+      numTokens,
+      true,
+      joinWeightedUserData,
+      exitWeightedUserData
+    );
+  }
+  console.log('\n');
+  const maxInvestmentTokens = 93;
+
+  printTokens('Investment pool', maxInvestmentTokens);
+  await joinAndExitPool(
+    () => getWeightedPool(vault, tokens, maxInvestmentTokens),
+    maxInvestmentTokens,
+    true,
+    joinWeightedUserData,
+    exitWeightedUserData
+  );
   console.log('\n');
 
   // numTokens is the size of the pool: 2,4
@@ -77,6 +98,28 @@ async function main() {
       exitWeightedUserData
     );
   }
+  console.log('\n');
+
+  for (let numTokens = 40; numTokens <= 90; numTokens += 10) {
+    printTokens('Investment pool', numTokens);
+    await joinAndExitPool(
+      () => getWeightedPool(vault, tokens, numTokens),
+      numTokens,
+      false,
+      joinWeightedUserData,
+      exitWeightedUserData
+    );
+  }
+  console.log('\n');
+
+  printTokens('Investment pool', maxInvestmentTokens);
+  await joinAndExitPool(
+    () => getWeightedPool(vault, tokens, maxInvestmentTokens),
+    maxInvestmentTokens,
+    false,
+    joinWeightedUserData,
+    exitWeightedUserData
+  );
   console.log('\n');
 
   // numTokens is the size of the pool: 2,4
@@ -110,6 +153,30 @@ async function main() {
   }
   console.log('\n');
 
+  for (let numTokens = 40; numTokens <= 90; numTokens += 10) {
+    printTokens('Investment pool', numTokens);
+    await joinAndExitPool(
+      () => getWeightedPool(vault, tokens, numTokens),
+      numTokens,
+      true,
+      joinWeightedUserData,
+      exitWeightedUserData,
+      numberJoinsExits
+    );
+  }
+  console.log('\n');
+
+  printTokens('Investment pool', maxInvestmentTokens);
+  await joinAndExitPool(
+    () => getWeightedPool(vault, tokens, maxInvestmentTokens),
+    maxInvestmentTokens,
+    true,
+    joinWeightedUserData,
+    exitWeightedUserData,
+    numberJoinsExits
+  );
+  console.log('\n');
+
   for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
     printTokens('Stable pool', numTokens);
     await joinAndExitPool(
@@ -136,6 +203,30 @@ async function main() {
       numberJoinsExits
     );
   }
+  console.log('\n');
+
+  for (let numTokens = 40; numTokens <= 90; numTokens += 10) {
+    printTokens('Investment pool', numTokens);
+    await joinAndExitPool(
+      () => getWeightedPool(vault, tokens, numTokens),
+      numTokens,
+      false,
+      joinWeightedUserData,
+      exitWeightedUserData,
+      numberJoinsExits
+    );
+  }
+  console.log('\n');
+
+  printTokens('Investment pool', maxInvestmentTokens);
+  await joinAndExitPool(
+    () => getWeightedPool(vault, tokens, maxInvestmentTokens),
+    maxInvestmentTokens,
+    false,
+    joinWeightedUserData,
+    exitWeightedUserData,
+    numberJoinsExits
+  );
   console.log('\n');
 
   for (let numTokens = 2; numTokens <= 4; numTokens += 2) {

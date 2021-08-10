@@ -25,7 +25,6 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IMinimalSwapInfoPool.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePoolAuthorization.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BalancerPoolToken.sol";
-import "@balancer-labs/v2-pool-utils/contracts/interfaces/IPriceOracle.sol";
 import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
 import "@balancer-labs/v2-pool-utils/contracts/oracle/Buffer.sol";
 
@@ -36,7 +35,6 @@ import "./WeightedPool2TokensMiscData.sol";
 
 contract WeightedPool2Tokens is
     IMinimalSwapInfoPool,
-    IPriceOracle,
     BasePoolAuthorization,
     BalancerPoolToken,
     TemporarilyPausable,
@@ -781,53 +779,6 @@ contract WeightedPool2Tokens is
 
     // Oracle functions
 
-    function getLargestSafeQueryWindow() external pure override returns (uint256) {
-        return 34 hours;
-    }
-
-    function getLatest(Variable variable) external view override returns (uint256) {
-        int256 instantValue = _getInstantValue(variable, _miscData.oracleIndex());
-        return LogCompression.fromLowResLog(instantValue);
-    }
-
-    function getTimeWeightedAverage(OracleAverageQuery[] memory queries)
-        external
-        view
-        override
-        returns (uint256[] memory results)
-    {
-        results = new uint256[](queries.length);
-
-        uint256 oracleIndex = _miscData.oracleIndex();
-
-        OracleAverageQuery memory query;
-        for (uint256 i = 0; i < queries.length; ++i) {
-            query = queries[i];
-            _require(query.secs != 0, Errors.ORACLE_BAD_SECS);
-
-            int256 beginAccumulator = _getPastAccumulator(query.variable, oracleIndex, query.ago + query.secs);
-            int256 endAccumulator = _getPastAccumulator(query.variable, oracleIndex, query.ago);
-            results[i] = LogCompression.fromLowResLog((endAccumulator - beginAccumulator) / int256(query.secs));
-        }
-    }
-
-    function getPastAccumulators(OracleAccumulatorQuery[] memory queries)
-        external
-        view
-        override
-        returns (int256[] memory results)
-    {
-        results = new int256[](queries.length);
-
-        uint256 oracleIndex = _miscData.oracleIndex();
-
-        OracleAccumulatorQuery memory query;
-        for (uint256 i = 0; i < queries.length; ++i) {
-            query = queries[i];
-            results[i] = _getPastAccumulator(query.variable, oracleIndex, query.ago);
-        }
-    }
-
     /**
      * @dev Updates the Price Oracle based on the Pool's current state (balances, BPT supply and invariant). Must be
      * called on *all* state-changing functions with the balances *before* the state change happens, and with
@@ -888,6 +839,10 @@ contract WeightedPool2Tokens is
             miscData = miscData.setLogTotalSupply(LogCompression.toLowResLog(totalSupply()));
             _miscData = miscData;
         }
+    }
+
+    function _getOracleIndex() internal view override returns (uint256) {
+        return _miscData.oracleIndex();
     }
 
     // Query functions

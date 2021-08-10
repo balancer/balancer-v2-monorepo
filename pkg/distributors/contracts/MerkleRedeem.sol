@@ -15,7 +15,6 @@
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/MerkleProof.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
@@ -25,6 +24,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
 import "./interfaces/IDistributor.sol";
+import "./interfaces/IDistributorCallback.sol";
 
 pragma solidity ^0.7.0;
 
@@ -53,7 +53,7 @@ contract MerkleRedeem is IDistributor, Ownable {
         }
     }
 
-    function _disburseToInternalBalance(address payable recipient, uint256 balance) private {
+    function _disburseToInternalBalance(address recipient, uint256 balance) private {
         if (balance > 0) {
             IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
 
@@ -61,7 +61,7 @@ contract MerkleRedeem is IDistributor, Ownable {
                 asset: IAsset(address(rewardToken)),
                 amount: balance,
                 sender: address(this),
-                recipient: recipient,
+                recipient: payable(recipient),
                 kind: IVault.UserBalanceOpKind.DEPOSIT_INTERNAL
             });
 
@@ -74,7 +74,7 @@ contract MerkleRedeem is IDistributor, Ownable {
      * @notice Allows a user to claim a particular week's worth of rewards
      */
     function claimWeek(
-        address payable liquidityProvider,
+        address liquidityProvider,
         uint256 week,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
@@ -93,10 +93,7 @@ contract MerkleRedeem is IDistributor, Ownable {
         bytes32[] merkleProof;
     }
 
-    function _processClaims(address payable liquidityProvider, Claim[] memory claims)
-        internal
-        returns (uint256 totalBalance)
-    {
+    function _processClaims(address liquidityProvider, Claim[] memory claims) internal returns (uint256 totalBalance) {
         Claim memory claim;
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
@@ -115,7 +112,7 @@ contract MerkleRedeem is IDistributor, Ownable {
     /**
      * @notice Allows a user to claim multiple weeks of reward
      */
-    function claimWeeks(address payable liquidityProvider, Claim[] memory claims) external {
+    function claimWeeks(address liquidityProvider, Claim[] memory claims) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
 
         uint256 totalBalance = _processClaims(liquidityProvider, claims);
@@ -125,7 +122,7 @@ contract MerkleRedeem is IDistributor, Ownable {
     /**
      * @notice Allows a user to claim multiple weeks of reward to internal balance
      */
-    function claimWeeksToInternalBalance(address payable liquidityProvider, Claim[] memory claims) external {
+    function claimWeeksToInternalBalance(address liquidityProvider, Claim[] memory claims) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
 
         uint256 totalBalance = _processClaims(liquidityProvider, claims);
@@ -137,17 +134,17 @@ contract MerkleRedeem is IDistributor, Ownable {
      * @notice Allows a user to claim several weeks of rewards to a callback
      */
     function claimWeeksWithCallback(
-        address payable liquidityProvider,
-        address payable callbackContract,
+        address liquidityProvider,
+        IDistributorCallback callbackContract,
         bytes calldata callbackData,
         Claim[] memory claims
-    ) external returns (bytes memory) {
+    ) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
         uint256 totalBalance = _processClaims(liquidityProvider, claims);
 
-        _disburseToInternalBalance(callbackContract, totalBalance);
+        _disburseToInternalBalance(address(callbackContract), totalBalance);
 
-        return Address.functionCall(callbackContract, callbackData);
+        callbackContract.distributorCallback(callbackData);
     }
 
     function claimStatus(

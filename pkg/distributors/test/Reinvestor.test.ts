@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { Contract, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -9,7 +9,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { AssetHelpers, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
@@ -76,7 +76,7 @@ describe('Reinvestor', () => {
         await rewardTokens.mint({ to: lp, amount: tokenInitialBalance });
         await rewardTokens.approve({ to: vault.address, from: [lp] });
 
-        assets = [rewardToken.address, tokens.BAT.address].sort((a, b) => (a.toLowerCase() > b.toLowerCase() ? 1 : -1));
+        [assets] = new AssetHelpers(ZERO_ADDRESS).sortTokens([rewardToken.address, tokens.BAT.address]);
         const weights = [fp(0.5), fp(0.5)];
         const assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS];
 
@@ -107,7 +107,7 @@ describe('Reinvestor', () => {
 
       it('emits PoolBalanceChanged when a LP claims to weighted pool', async () => {
         const args = [lp.address, destinationPoolId, [rewardToken.address]];
-        const calldata = callbackContract.interface.encodeFunctionData('callback', args);
+        const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
 
         const receipt = await (
           await stakingContract.connect(lp).getRewardWithCallback([pool.address], callbackContract.address, calldata)
@@ -127,11 +127,8 @@ describe('Reinvestor', () => {
 
       it('mints bpt to a LP when they claim to weighted pool', async () => {
         const bptBalanceBefore = await destinationPool.balanceOf(lp.address);
-        const calldata = callbackContract.interface.encodeFunctionData('callback', [
-          lp.address,
-          destinationPoolId,
-          [rewardToken.address],
-        ]);
+        const args = [lp.address, destinationPoolId, [rewardToken.address]];
+        const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
 
         await stakingContract.connect(lp).getRewardWithCallback([pool.address], callbackContract.address, calldata);
         const bptBalanceAfter = await destinationPool.balanceOf(lp.address);
@@ -165,11 +162,9 @@ describe('Reinvestor', () => {
 
         it('returns rewards that are unused in reinvestment', async () => {
           const rewardTokenAddresses = [rewardToken.address, otherRewardToken.address];
-          const calldata = callbackContract.interface.encodeFunctionData('callback', [
-            lp.address,
-            destinationPoolId,
-            rewardTokenAddresses,
-          ]);
+          const args = [lp.address, destinationPoolId, rewardTokenAddresses];
+          const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
+
           await expectBalanceChange(
             () => stakingContract.connect(lp).getRewardWithCallback([pool.address], callbackContract.address, calldata),
             otherRewardTokens,

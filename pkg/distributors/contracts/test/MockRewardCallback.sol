@@ -15,10 +15,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-contract MockRewardCallback {
+import "../interfaces/IDistributorCallback.sol";
+
+contract MockRewardCallback is IDistributorCallback {
     event CallbackReceived();
 
-    function testCallback() external {
+    function distributorCallback(bytes calldata) external override {
         emit CallbackReceived();
         return;
     }

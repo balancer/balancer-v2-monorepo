@@ -34,6 +34,11 @@ async function main() {
   await multihop((index: number) => getWeightedPool(vault, tokens, 20, index), false);
   await multihop((index: number) => getWeightedPool(vault, tokens, 20, index), true);
 
+  console.log(`\n# Investment Pool with 93 tokens`);
+
+  await multihop((index: number) => getWeightedPool(vault, tokens, 93, index), false);
+  await multihop((index: number) => getWeightedPool(vault, tokens, 93, index), true);
+
   console.log(`\n# Stable Pool with 2 tokens`);
 
   await multihop((index: number) => getStablePool(vault, tokens, 2, index), false);

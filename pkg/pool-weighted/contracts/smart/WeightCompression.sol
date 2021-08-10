@@ -53,4 +53,32 @@ library WeightCompression {
     function compress31(uint256 value) internal pure returns (uint256) {
         return value.mulUp(_UINT31_MAX).divUp(FixedPoint.ONE);
     }
+
+    /**
+     * @dev Convert a 32-bit value to full FixedPoint
+     */
+    function uncompress32(uint256 value) internal pure returns (uint256) {
+        return value.mulUp(FixedPoint.ONE).divUp(type(uint32).max);
+    }
+
+    /**
+     * @dev Compress a FixedPoint value to 32 bits
+     */
+    function compress32(uint256 value) internal pure returns (uint256) {
+        return value.mulUp(type(uint32).max).divUp(FixedPoint.ONE);
+    }
+
+    /**
+     * @dev Convert a 64-bit value to full FixedPoint
+     */
+    function uncompress64(uint256 value) internal pure returns (uint256) {
+        return value.mulUp(FixedPoint.ONE).divUp(type(uint64).max);
+    }
+
+    /**
+     * @dev Compress a FixedPoint value to 64 bits
+     */
+    function compress64(uint256 value) internal pure returns (uint256) {
+        return value.mulUp(type(uint64).max).divUp(FixedPoint.ONE);
+    }
 }

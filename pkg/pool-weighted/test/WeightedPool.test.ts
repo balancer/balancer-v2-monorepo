@@ -3,6 +3,7 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
+import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
 import { range } from 'lodash';
 
@@ -28,6 +29,7 @@ describe('WeightedPool', function () {
           tokens = allTokens.subset(numTokens);
 
           pool = await WeightedPool.create({
+            poolType: WeightedPoolType.WEIGHTED_POOL,
             tokens,
             weights: WEIGHTS.slice(0, numTokens),
             swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
