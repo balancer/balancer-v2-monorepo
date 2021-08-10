@@ -27,12 +27,12 @@ describe('LidoRelayer', function () {
   let WETH: Token, wstETH: Token;
   let basePoolId: string;
   let basePoolTokens: TokenList;
-  let sender: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
+  let sender: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault, basePool: StablePool;
   let relayer: Contract;
 
   before('setup signer', async () => {
-    [, admin, sender, recipient] = await ethers.getSigners();
+    [, admin, sender] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy Vault', async () => {
