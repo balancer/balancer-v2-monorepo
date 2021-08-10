@@ -14,6 +14,6 @@
 
 pragma solidity ^0.7.0;
 
-interface IRewardsCallback {
-    function callback(bytes calldata callbackData) external;
+interface IDistributorCallback {
+    function distributorCallback(bytes calldata callbackData) external;
 }

@@ -24,7 +24,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
 import "./interfaces/IDistributor.sol";
-import "./interfaces/IRewardsCallback.sol";
+import "./interfaces/IDistributorCallback.sol";
 
 pragma solidity ^0.7.0;
 
@@ -135,7 +135,7 @@ contract MerkleRedeem is IDistributor, Ownable {
      */
     function claimWeeksWithCallback(
         address liquidityProvider,
-        IRewardsCallback callbackContract,
+        IDistributorCallback callbackContract,
         bytes calldata callbackData,
         Claim[] memory claims
     ) external {
@@ -144,7 +144,7 @@ contract MerkleRedeem is IDistributor, Ownable {
 
         _disburseToInternalBalance(address(callbackContract), totalBalance);
 
-        callbackContract.callback(callbackData);
+        callbackContract.distributorCallback(callbackData);
     }
 
     function claimStatus(
