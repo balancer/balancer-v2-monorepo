@@ -15,35 +15,51 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./BatchRelayer.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+
+import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
+
+import "./relayer/RelayerAssetHelpers.sol";
 import "./interfaces/IwstETH.sol";
 
 /**
- * @title Batch Relayer
- * @dev This relayer acts as a first step to generalising swaps, joins and exits.
- *      Users may atomically join a pool and use the BPT as the input to a swap or swap for BPT and exit the pool.
+ * @title Lido Relayer
+ * @dev This relayer allows users to use stETH on Balancer without needing to wrap separately.
+ *      Users may atomically wrap stETH into wstETH (and vice versa) while performing
+ *      swaps, joins and exits on the Vault.
  */
-contract LidoBatchRelayer is BatchRelayer {
+contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
     using Address for address payable;
 
+    IVault private immutable _vault;
     IERC20 private immutable _stETH;
     IwstETH private immutable _wstETH;
 
-    constructor(
-        IVault vault,
-        IMultiRewards stakingContract,
-        IwstETH wstETH
-    ) BatchRelayer(vault, stakingContract) {
+    constructor(IVault vault, IwstETH wstETH) {
+        _vault = vault;
         _stETH = IERC20(wstETH.stETH());
         _wstETH = wstETH;
     }
 
-    function lidoSwap(
+    receive() external payable {
+        // Accept ETH transfers coming from the Vault only. This is only expected to happen when joining a pool,
+        // performing a swap or managing a user's balance does not use the full amount of ETH provided.
+        // Any remaining ETH value will be transferred back to this contract and forwarded back to the original sender.
+        _require(msg.sender == address(_vault), Errors.ETH_TRANSFER);
+    }
+
+    function getVault() public view override returns (IVault) {
+        return _vault;
+    }
+
+    function swap(
         IVault.SingleSwap memory singleSwap,
         IVault.FundManagement memory funds,
         uint256 limit,
         uint256 deadline
-    ) external payable returns (uint256 swapAmount) {
+    ) external payable nonReentrant returns (uint256 swapAmount) {
         require(funds.sender == msg.sender, "Invalid sender");
         // Cache recipient as we sometimes overwrite this
         address recipient = funds.recipient;
@@ -79,14 +95,14 @@ contract LidoBatchRelayer is BatchRelayer {
         _sweepETH();
     }
 
-    function lidoBatchSwap(
+    function batchSwap(
         IVault.SwapKind kind,
-        IVault.BatchSwapStep[] memory swaps,
+        IVault.BatchSwapStep[] calldata swaps,
         IAsset[] calldata assets,
         IVault.FundManagement memory funds,
         int256[] calldata limits,
         uint256 deadline
-    ) external payable returns (int256[] memory swapAmounts) {
+    ) external payable nonReentrant returns (int256[] memory swapAmounts) {
         require(funds.sender == msg.sender, "Invalid sender");
         // Cache recipient as we sometimes overwrite this
         address recipient = funds.recipient;
@@ -132,12 +148,12 @@ contract LidoBatchRelayer is BatchRelayer {
         _sweepETH();
     }
 
-    function lidoJoinPool(
+    function joinPool(
         bytes32 poolId,
         address sender,
         address recipient,
         IVault.JoinPoolRequest calldata request
-    ) external payable {
+    ) external payable nonReentrant {
         require(sender == msg.sender, "Invalid sender");
 
         // Pull in wstETH, wrap and return to user
@@ -156,12 +172,12 @@ contract LidoBatchRelayer is BatchRelayer {
         _sweepETH();
     }
 
-    function lidoExitPool(
+    function exitPool(
         bytes32 poolId,
         address sender,
         address payable recipient,
         IVault.ExitPoolRequest calldata request
-    ) external payable {
+    ) external payable nonReentrant {
         require(sender == msg.sender, "Invalid sender");
 
         uint256 wstETHBalanceBefore = IERC20(address(_wstETH)).balanceOf(recipient);
@@ -174,75 +190,6 @@ contract LidoBatchRelayer is BatchRelayer {
         uint256 wstETHAmount = wstETHBalanceAfter - wstETHBalanceBefore;
         _pullToken(recipient, IERC20(address(_wstETH)), wstETHAmount);
         _unwrapAndPushStETH(recipient, wstETHAmount);
-    }
-
-    /**
-     * @dev Specialised version of joinAndSwap where we expect the output of the swap to be wstETH
-     * Any wstETH received will be unwrapped into stETH before forwarding it onto the user
-     */
-    function lidoJoinAndSwap(
-        bytes32 poolId,
-        address payable recipient,
-        IVault.JoinPoolRequest calldata request,
-        IVault.BatchSwapStep[] memory swaps,
-        IAsset[] calldata assets,
-        int256[] calldata limits,
-        uint256 deadline
-    ) external payable {
-        IVault.FundManagement memory funds = IVault.FundManagement({
-            sender: address(this),
-            fromInternalBalance: false,
-            recipient: payable(address(this)),
-            toInternalBalance: false
-        });
-
-        int256[] memory swapAmounts = _joinAndSwap(poolId, request, swaps, funds, assets, limits, deadline);
-
-        // Unwrap any received wstETH and forward onto recipient
-        uint256 wstETHAmount;
-        for (uint256 i; i < assets.length; i++) {
-            if (assets[i] == IAsset(address(_wstETH))) {
-                require(swapAmounts[i] < 0, "Invalid amount of wstETH");
-                wstETHAmount = uint256(-swapAmounts[i]);
-                break;
-            }
-        }
-
-        _unwrapAndPushStETH(recipient, wstETHAmount);
-
-        _sweepETH();
-    }
-
-    /**
-     * @dev Specialised version of swapAndExit where we expect the input of the swap to be wstETH
-     * The required amount of stETH will be automatically transferred from the user and wrapped
-     */
-    function lidoSwapAndExit(
-        bytes32 poolId,
-        address payable recipient,
-        IVault.ExitPoolRequest memory request,
-        IVault.SwapKind kind,
-        IVault.BatchSwapStep[] calldata swaps,
-        IAsset[] calldata assets,
-        int256[] calldata limits,
-        uint256 deadline
-    ) external {
-        // Ensure that wstETH is used in the swap
-        require(assets[swaps[0].assetInIndex] == IAsset(address(_wstETH)), "Must use wstETH as input to swap");
-
-        uint256 wstETHAmount = swaps[0].amount;
-        _pullStETHAndWrap(msg.sender, wstETHAmount);
-        _approveToken(IERC20(address(_wstETH)), address(getVault()), wstETHAmount);
-
-        // We can't output tokens to the user's internal balance
-        // as they need to have BPT on their address for the exit
-        IVault.FundManagement memory funds = IVault.FundManagement({
-            sender: address(this),
-            fromInternalBalance: false,
-            recipient: msg.sender,
-            toInternalBalance: false
-        });
-        _swapAndExit(poolId, recipient, request, kind, swaps, funds, assets, limits, deadline);
     }
 
     function _pullStETHAndWrap(address sender, uint256 wstETHAmount) private returns (uint256) {
