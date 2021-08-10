@@ -20,9 +20,9 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 import "@balancer-labs/v2-pool-weighted/contracts/BaseWeightedPool.sol";
 
 import "./PoolTokenManipulator.sol";
-import "./interfaces/IRewardsCallback.sol";
+import "./interfaces/IDistributorCallback.sol";
 
-contract Exiter is PoolTokenManipulator, IRewardsCallback {
+contract Exiter is PoolTokenManipulator, IDistributorCallback {
     constructor(IVault _vault) PoolTokenManipulator(_vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -38,7 +38,7 @@ contract Exiter is PoolTokenManipulator, IRewardsCallback {
      * recipient - the recipient of the pool tokens
      * pools - The pools to exit from (addresses)
      */
-    function callback(bytes calldata callbackData) external override {
+    function distributorCallback(bytes calldata callbackData) external override {
         CallbackParams memory params = abi.decode(callbackData, (CallbackParams));
 
         for (uint256 p; p < params.pools.length; p++) {

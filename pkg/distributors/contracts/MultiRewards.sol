@@ -27,7 +27,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
 import "./interfaces/IMultiRewards.sol";
-import "./interfaces/IRewardsCallback.sol";
+import "./interfaces/IDistributorCallback.sol";
 import "./interfaces/IDistributor.sol";
 
 import "./MultiRewardsAuthorization.sol";
@@ -339,12 +339,12 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
     function getRewardWithCallback(
         IERC20[] calldata pools,
-        IRewardsCallback callbackContract,
+        IDistributorCallback callbackContract,
         bytes calldata callbackData
     ) public nonReentrant {
         _getReward(pools, address(callbackContract), true);
 
-        callbackContract.callback(callbackData);
+        callbackContract.distributorCallback(callbackData);
     }
 
     /**
@@ -364,7 +364,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      */
     function exitWithCallback(
         IERC20[] calldata pools,
-        IRewardsCallback callbackContract,
+        IDistributorCallback callbackContract,
         bytes calldata callbackData
     ) public {
         for (uint256 p; p < pools.length; p++) {
@@ -372,7 +372,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             unstake(pool, _balances[pool][msg.sender], address(callbackContract));
         }
         getReward(pools);
-        callbackContract.callback(callbackData);
+        callbackContract.distributorCallback(callbackData);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
