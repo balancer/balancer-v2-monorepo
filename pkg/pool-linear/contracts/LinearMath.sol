@@ -38,9 +38,9 @@ contract LinearMath {
             return _toNominal(mainIn);
         }
 
-        uint256 previousNominalMain = _toNominal(mainBalance); 
+        uint256 previousNominalMain = _toNominal(mainBalance);
         uint256 afterNominalMain = _toNominal(mainBalance.add(mainIn));
-        uint256 deltaNominalMain = afterNominalMain.sub(previousNominalMain); 
+        uint256 deltaNominalMain = afterNominalMain.sub(previousNominalMain);
         uint256 invariant = _calcInvariantUp(previousNominalMain, wrappedBalance, rate);
         uint256 newBptSupply = bptSupply.mulDown(FixedPoint.ONE.add(deltaNominalMain.divDown(invariant)));
         return newBptSupply.sub(bptSupply);
@@ -58,7 +58,7 @@ contract LinearMath {
         uint256 previousNominalMain = _toNominal(mainBalance);
         uint256 afterNominalMain = _toNominal(mainBalance.sub(mainOut));
         uint256 deltaNominalMain = previousNominalMain.sub(afterNominalMain);
-        uint256 invariant = _calcInvariantDown(previousNominalMain, wrappedBalance, rate); 
+        uint256 invariant = _calcInvariantDown(previousNominalMain, wrappedBalance, rate);
         uint256 newBptSupply = bptSupply.mulDown(deltaNominalMain.divUp(invariant).complement());
         return bptSupply.sub(newBptSupply);
     }
@@ -70,7 +70,7 @@ contract LinearMath {
         uint256 rate
     ) internal pure returns (uint256) {
         // Amount out, so we round down overall.
-        
+
         uint256 previousNominalMain = _toNominal(mainBalance);
         uint256 afterNominalMain = _toNominal(mainBalance.add(mainIn));
         uint256 deltaNominalMain = afterNominalMain.sub(previousNominalMain);
