@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
@@ -37,6 +38,7 @@ import "./interfaces/IwstETH.sol";
  */
 contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
     using Address for address payable;
+    using SafeMath for uint256;
 
     IERC20 private immutable _stETH;
     IwstETH private immutable _wstETH;
@@ -183,7 +185,7 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
         uint256 wstETHBalanceAfter = IERC20(address(_wstETH)).balanceOf(recipient);
 
         // Pull in wstETH, unwrap and return to user
-        uint256 wstETHAmount = wstETHBalanceAfter - wstETHBalanceBefore;
+        uint256 wstETHAmount = wstETHBalanceAfter.sub(wstETHBalanceBefore);
         _pullToken(recipient, IERC20(address(_wstETH)), wstETHAmount);
         _unwrapAndPushStETH(recipient, wstETHAmount);
     }
