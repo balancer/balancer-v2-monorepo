@@ -166,6 +166,7 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
             require(i < request.assets.length, "Does not require wstETH");
         }
         _pullStETHAndWrap(sender, wstETHAmount);
+        // Send wstETH to the sender, as they will be the sender of the join
         IERC20(address(_wstETH)).transfer(sender, wstETHAmount);
 
         getVault().joinPool{ value: msg.value }(poolId, sender, recipient, request);
@@ -177,7 +178,7 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
         address sender,
         address payable recipient,
         IVault.ExitPoolRequest calldata request
-    ) external payable nonReentrant {
+    ) external nonReentrant {
         require(sender == msg.sender, "Invalid sender");
 
         uint256 wstETHBalanceBefore = IERC20(address(_wstETH)).balanceOf(recipient);
