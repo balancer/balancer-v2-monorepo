@@ -25,7 +25,6 @@ import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
 import "./relayer/RelayerAssetHelpers.sol";
 import "./interfaces/IwstETH.sol";
 
-
 // solhint-disable max-line-length
 /**
  * @title Lido Relayer
@@ -182,10 +181,12 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
 
         uint256 wstETHBalanceAfter = IERC20(address(_wstETH)).balanceOf(recipient);
 
-        // Pull in wstETH, unwrap and return to user
         uint256 wstETHAmount = wstETHBalanceAfter.sub(wstETHBalanceBefore);
-        _pullToken(recipient, IERC20(address(_wstETH)), wstETHAmount);
-        _unwrapAndPushStETH(recipient, wstETHAmount);
+        if (wstETHAmount > 0) {
+            // Pull in wstETH, unwrap and return to user
+            _pullToken(recipient, IERC20(address(_wstETH)), wstETHAmount);
+            _unwrapAndPushStETH(recipient, wstETHAmount);
+        }
     }
 
     function _pullStETHAndWrap(address sender, uint256 wstETHAmount) private returns (uint256) {
