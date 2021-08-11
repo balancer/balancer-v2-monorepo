@@ -62,8 +62,11 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
             funds.sender = address(this);
             require(!funds.fromInternalBalance, "Cannot send from internal balance");
 
-            _pullStETHAndWrap(msg.sender, singleSwap.amount);
-            _approveToken(IERC20(address(_wstETH)), address(getVault()), singleSwap.amount);
+            // For GIVEN_IN swaps we can pull the exact amount necessary
+            // otherwise we need to pull the full limit to allow for slippage
+            uint256 wstETHAmount = singleSwap.kind == IVault.SwapKind.GIVEN_IN ? singleSwap.amount : limit;
+            _pullStETHAndWrap(msg.sender, wstETHAmount);
+            _approveToken(IERC20(address(_wstETH)), address(getVault()), wstETHAmount);
         } else if (singleSwap.assetOut == IAsset(address(_wstETH))) {
             // If wstETH is an output then we want to receive it on the relayer
             // so we can unwrap it before forwarding stETH to the user
