@@ -25,6 +25,8 @@ import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
 import "./relayer/RelayerAssetHelpers.sol";
 import "./interfaces/IwstETH.sol";
 
+
+// solhint-disable max-line-length
 /**
  * @title Lido Relayer
  * @dev This relayer allows users to use stETH on Balancer without needing to wrap separately.
@@ -37,6 +39,7 @@ import "./interfaces/IwstETH.sol";
  *
  */
 contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
+    // solhint-enable max-line-length
     using Address for address payable;
     using SafeMath for uint256;
 
