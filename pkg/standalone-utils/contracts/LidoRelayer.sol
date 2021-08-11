@@ -34,7 +34,7 @@ import "./interfaces/IwstETH.sol";
  *
  *      The functions of this relayer are designed to match the interface of the underlying Vault equivalent.
  *      For more documentation, reference the Balancer Vault interface:
- *      https://github.com/balancer-labs/balancer-v2-monorepo/blob/4233f67035223fe5e7cf079624b9044dafe6e98f/pkg/vault/contracts/interfaces/IVault.sol
+ *      https://github.com/balancer-labs/balancer-v2-monorepo/blob/vault-deployment/contracts/vault/interfaces/IVault.sol
  *
  */
 contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
