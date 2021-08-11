@@ -15,5 +15,8 @@
   "exclude": [
     "tasks/**/test",
     "tasks/**/output/test.json"
+  ],
+  "files": [
+    "./hardhat.config.ts"
   ]
 }
