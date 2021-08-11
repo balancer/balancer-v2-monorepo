@@ -18,15 +18,8 @@ pragma experimental ABIEncoderV2;
 import "../relayer/RelayerAssetHelpers.sol";
 
 contract RelayerAssetHelpersMock is RelayerAssetHelpers {
-    IVault private immutable _vault;
-
-    constructor(IVault vault) {
-        _vault = vault;
-    }
-
-    function getVault() public view override returns (IVault) {
-        return _vault;
-    }
+    
+    constructor(IVault vault) RelayerAssetHelpers(vault) {}
 
     function approveToken(
         IERC20 token,

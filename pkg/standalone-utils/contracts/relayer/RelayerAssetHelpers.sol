@@ -19,10 +19,25 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-abstract contract RelayerAssetHelpers {
+contract RelayerAssetHelpers {
     using Address for address payable;
 
-    function getVault() public view virtual returns (IVault);
+    IVault private immutable _vault;
+    
+    constructor(IVault vault) {
+        _vault = vault;
+    }
+
+    receive() external payable {
+        // Accept ETH transfers coming from the Vault only. This is only expected to happen when joining a pool,
+        // performing a swap or managing a user's balance does not use the full amount of ETH provided.
+        // Any remaining ETH value will be transferred back to this contract and forwarded back to the original sender.
+        _require(msg.sender == address(_vault), Errors.ETH_TRANSFER);
+    }
+
+    function getVault() public view returns (IVault) {
+        return _vault;
+    }
 
     function _approveToken(
         IERC20 token,

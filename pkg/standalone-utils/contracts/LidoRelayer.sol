@@ -33,25 +33,12 @@ import "./interfaces/IwstETH.sol";
 contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
     using Address for address payable;
 
-    IVault private immutable _vault;
     IERC20 private immutable _stETH;
     IwstETH private immutable _wstETH;
 
-    constructor(IVault vault, IwstETH wstETH) {
-        _vault = vault;
+    constructor(IVault vault, IwstETH wstETH) RelayerAssetHelpers(vault) {
         _stETH = IERC20(wstETH.stETH());
         _wstETH = wstETH;
-    }
-
-    receive() external payable {
-        // Accept ETH transfers coming from the Vault only. This is only expected to happen when joining a pool,
-        // performing a swap or managing a user's balance does not use the full amount of ETH provided.
-        // Any remaining ETH value will be transferred back to this contract and forwarded back to the original sender.
-        _require(msg.sender == address(_vault), Errors.ETH_TRANSFER);
-    }
-
-    function getVault() public view override returns (IVault) {
-        return _vault;
     }
 
     function swap(
