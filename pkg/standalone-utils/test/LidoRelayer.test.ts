@@ -41,7 +41,7 @@ describe('LidoRelayer', function () {
     const wethContract = await deployedAt('TestWETH', await vault.instance.WETH());
     WETH = new Token('WETH', 'WETH', 18, wethContract);
 
-    const wstETHContract = await deploy('TestWstETH', { args: [WETH.address] });
+    const wstETHContract = await deploy('MockWstETH', { args: [WETH.address] });
     wstETH = new Token('wstETH', 'wstETH', 18, wstETHContract);
 
     relayer = await deploy('LidoRelayer', { args: [vault.address, wstETH.address] });

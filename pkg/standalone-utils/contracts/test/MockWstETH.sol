@@ -18,11 +18,10 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/AccessControl.sol";
 
 import "../interfaces/IwstETH.sol";
 
-contract TestWstETH is AccessControl, ERC20, IwstETH {
+contract MockWstETH is ERC20, IwstETH {
     using FixedPoint for uint256;
 
     IERC20 public override stETH;
