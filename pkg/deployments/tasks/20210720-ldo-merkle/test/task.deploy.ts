@@ -8,18 +8,16 @@ describe('MerkleRedeem', function () {
 
   it('references the vault correctly', async () => {
     const input = task.input();
-    const output = task.output();
 
-    const distributor = await task.instanceAt('MerkleRedeem', output.distributor);
+    const distributor = await task.deployedInstance('MerkleRedeem');
 
-    expect(await distributor.vault()).to.be.equal(input.vault);
+    expect(await distributor.vault()).to.be.equal(input.Vault);
   });
 
   it('references the LDO token correctly', async () => {
     const input = task.input();
-    const output = task.output();
 
-    const distributor = await task.instanceAt('MerkleRedeem', output.distributor);
+    const distributor = await task.deployedInstance('MerkleRedeem');
 
     expect(await distributor.rewardToken()).to.be.equal(input.ldoToken);
   });

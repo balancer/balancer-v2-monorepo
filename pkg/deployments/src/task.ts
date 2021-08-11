@@ -69,6 +69,12 @@ export default class Task {
     return instanceAt(this.artifact(name), address);
   }
 
+  async deployedInstance(name: string): Promise<Contract> {
+    const address = this.output()[name];
+    if (!address) throw Error(`Could not find deployed address for ${name}`);
+    return this.instanceAt(name, address);
+  }
+
   async inputInstance(artifactName: string, inputName: string): Promise<Contract> {
     const rawInput = this.rawInput();
     const input = rawInput[inputName];
@@ -77,6 +83,26 @@ export default class Task {
     task.network = this.network;
     const address = this._parseRawInput(rawInput)[inputName];
     return task.instanceAt(artifactName, address);
+  }
+
+  async deployAndVerify(
+    name: string,
+    args: Array<Param> = [],
+    from?: SignerWithAddress,
+    force?: boolean,
+    libs?: Libraries
+  ): Promise<Contract> {
+    const output = this.output({ ensure: false });
+    if (force || !output[name]) {
+      const instance = await this.deploy(name, args, from, libs);
+      this.save({ [name]: instance });
+      await this.verify(name, instance.address, args);
+      return instance;
+    } else {
+      logger.info(`${name} already deployed at ${output[name]}`);
+      await this.verify(name, output[name], args);
+      return this.instanceAt(name, output[name]);
+    }
   }
 
   async deploy(name: string, args: Array<Param> = [], from?: SignerWithAddress, libs?: Libraries): Promise<Contract> {

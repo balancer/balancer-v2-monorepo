@@ -1,14 +1,15 @@
 import Task from '../../src/task';
 
 export type MerkleRedeemDeployment = {
-  vault: string;
+  Vault: string;
   ldoToken: string;
 };
 
-const vault = new Task('20210418-vault');
-const ldoToken = '0x5a98fcbea516cf06857215779fd812ca3bef1b32'; // Ethereum mainnet
+const Vault = new Task('20210418-vault');
 
 export default {
-  vault,
-  ldoToken,
+  mainnet: {
+    Vault,
+    ldoToken: '0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32',
+  },
 };
