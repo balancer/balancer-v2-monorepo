@@ -190,7 +190,8 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
 
     function _pullStETHAndWrap(address sender, uint256 wstETHAmount) private returns (uint256) {
         // Calculate amount of stETH necessary for wstETH used by swap
-        uint256 stETHAmount = _wstETH.getStETHByWstETH(wstETHAmount);
+        // We add 1 extra wei to account for rounding errors when ensuring we have enough tokens to wrap
+        uint256 stETHAmount = _wstETH.getStETHByWstETH(wstETHAmount) + 1;
 
         // wrap stETH into wstETH
         _pullToken(sender, _stETH, stETHAmount);
