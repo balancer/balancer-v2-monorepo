@@ -29,6 +29,11 @@ import "./interfaces/IwstETH.sol";
  * @dev This relayer allows users to use stETH on Balancer without needing to wrap separately.
  *      Users may atomically wrap stETH into wstETH (and vice versa) while performing
  *      swaps, joins and exits on the Vault.
+ *  
+ *      The functions of this relayer are designed to match the interface of the underlying Vault equivalent.
+ *      For more documentation, reference the Balancer Vault interface:
+ *      https://github.com/balancer-labs/balancer-v2-monorepo/blob/4233f67035223fe5e7cf079624b9044dafe6e98f/pkg/vault/contracts/interfaces/IVault.sol
+ *
  */
 contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
     using Address for address payable;
@@ -82,6 +87,11 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
         _sweepETH();
     }
 
+    /**
+     * @dev This function assumes that if stETH is an input then it is the only input (and similarly for outputs)
+     *      Attempting to use multiple inputs of which one is stETH will result in a revert.
+     *      Attempting to use multiple outputs of which one is stETH will result in loss of funds.
+     */
     function batchSwap(
         IVault.SwapKind kind,
         IVault.BatchSwapStep[] calldata swaps,
@@ -106,7 +116,7 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
 
         int256 wstETHLimit = limits[wstETHIndex];
         if (wstETHLimit > 0) {
-            // If wstETH is an input then we want to send it from the relayer
+            // If wstETH is being used as input then we want to send it from the relayer
             // as we wrap it there.
             funds.sender = address(this);
             require(!funds.fromInternalBalance, "Cannot send from internal balance");
@@ -114,7 +124,7 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
             _pullStETHAndWrap(msg.sender, uint256(wstETHLimit));
             _approveToken(IERC20(address(_wstETH)), address(getVault()), uint256(wstETHLimit));
         } else {
-            // If wstETH is an output then we want to receive it on the relayer
+            // If wstETH is being used as output then we want to receive it on the relayer
             // so we can unwrap it before forwarding stETH to the user
             funds.recipient = payable(address(this));
             require(!funds.toInternalBalance, "Cannot send to internal balance");
