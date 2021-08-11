@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "declaration": true,
+    "outDir": "dist",
+    "resolveJsonModule": true
+  },
+  "include": [
+    "src",
+    "tasks",
+    "tasks/**/abi/*.json",
+    "tasks/**/output/*.json"
+  ],
+  "exclude": [
+    "tasks/**/test",
+    "tasks/**/output/test.json"
+  ]
+}
