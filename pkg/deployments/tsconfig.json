@@ -7,8 +7,8 @@
     "resolveJsonModule": true
   },
   "include": [
+    "index.ts",
     "src",
-    "tasks",
     "tasks/**/abi/*.json",
     "tasks/**/output/*.json"
   ],
