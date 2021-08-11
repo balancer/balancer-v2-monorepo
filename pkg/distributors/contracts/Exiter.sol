@@ -19,11 +19,11 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 import "@balancer-labs/v2-pool-weighted/contracts/BaseWeightedPool.sol";
 
-import "./PoolTokenManipulator.sol";
+import "./PoolTokenCache.sol";
 import "./interfaces/IDistributorCallback.sol";
 
-contract Exiter is PoolTokenManipulator, IDistributorCallback {
-    constructor(IVault _vault) PoolTokenManipulator(_vault) {
+contract Exiter is PoolTokenCache, IDistributorCallback {
+    constructor(IVault _vault) PoolTokenCache(_vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

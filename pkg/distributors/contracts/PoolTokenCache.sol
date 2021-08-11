@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
-contract PoolTokenManipulator {
+contract PoolTokenCache {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     IVault public immutable vault;
