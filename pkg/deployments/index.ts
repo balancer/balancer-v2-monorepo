@@ -6,7 +6,7 @@ import { Contract } from 'ethers';
  * @param contract Name of the contract to be fetched
  * @param network Name of the network looking the deployment for (e.g. mainnet, rinkeby, ropsten, etc)
  */
-export async function getBalancerDeployedContract(task: string, contract: string, network: string): Promise<Contract> {
+export async function getBalancerContract(task: string, contract: string, network: string): Promise<Contract> {
   const address = await getBalancerContractAddress(task, contract, network);
   return getBalancerContractAt(task, contract, address);
 }
@@ -58,7 +58,7 @@ export async function getBalancerDeployment(task: string, network: string): Prom
  * @param task ID of the task to look the path of the ABI of the required contract
  * @param contract Name of the contract to look the path of it's ABI
  */
-export function getBalancerContractAbiPath(task: string, contract: string): string {
+function getBalancerContractAbiPath(task: string, contract: string): string {
   return `@balancer-labs/v2-deployments/tasks/${task}/abi/${contract}.json`;
 }
 
@@ -67,6 +67,6 @@ export function getBalancerContractAbiPath(task: string, contract: string): stri
  * @param task ID of the task to look the deployment path for the required network
  * @param network Name of the network looking the deployment path for (e.g. mainnet, rinkeby, ropsten, etc)
  */
-export function getBalancerDeploymentPath(task: string, network: string): string {
+function getBalancerDeploymentPath(task: string, network: string): string {
   return `@balancer-labs/v2-deployments/tasks/${task}/output/${network}.json`;
 }
