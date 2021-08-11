@@ -5,7 +5,7 @@
 [![NPM Package](https://img.shields.io/npm/v/@balancer-labs/v2-deployments.svg)](https://www.npmjs.org/package/@balancer-labs/v2-deployments)
 [![GitHub Repository](https://img.shields.io/badge/github-master-lightgrey?logo=github)](https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/deployments)
 
-This package contains the addresses and ABIs of all Balancer V2 deployed contracts, for Ethereum and Polygon mainnet, as well as various test networks. Each deployment consists of a deployment script (called 'task'), inputs (script configuration, such as dependencies), outputs (typically contract addresses), and ABIs of related contracts. All tasks are found in the [`tasks`](./tasks) directory, where each subdirectory represents an individual deployment.
+This package contains the addresses and ABIs of all Balancer V2 deployed contracts, for Ethereum and Polygon mainnet, as well as various test networks. Each deployment consists of a deployment script (called 'task'), inputs (script configuration, such as dependencies), outputs (typically contract addresses), and ABIs of related contracts.
 
 Note that some protocol contracts are created dynamically: for example, `WeightedPool` contracts are deployed by the canonical `WeightedPoolFactory`. While the ABIs of these contracts are stored in the `abi` directory of each deployment, their addresses are not. Those can be retrieved by querying the on-chain state or processing emitted events.
 
@@ -19,36 +19,33 @@ $ npm install @balancer-labs/v2-deployments
 
 ### Usage
 
-Using [Hardhat](https://hardhat.org/):
+Import `@balancer-labs/v2-deployments` to access the different ABIs and deployed addresses. To see all Task IDs and their associated contracts, head to [Past Deployments](#past-deployments).
 
-```typescript
-import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+----
 
-// Creates an ethers Contract object for a canonical contract deployed on a specific network
-export function getBalancerDeployedContract(
-  task: string,
-  contract: string,
-  network: string
-): Promise<Contract> {
-  const contracts = require(`@balancer-labs/v2-deployments/tasks/${task}/output/${network}.json`);
-  const address = contracts[contract];
+* **async function getBalancerContract(taskID, contract, network)**
 
-  return getBalancerContractAtAddress(task, contract, address);
-}
+Returns an [Ethers](https://docs.ethers.io/v5/) contract object for a canonical deployment (e.g. the Vault, or a Pool factory).
 
-// Creates an ethers Contract object from a dynamically created contract at a known address
-export function getBalancerContractAtAddress(
-  task: string,
-  contract: string,
-  address: string
-): Promise<Contract> {
-  const {
-    abi,
-  } = require(`@balancer-labs/v2-deployments/tasks/${task}/abi/${contract}.json`);
-  return ethers.getContractAt(abi, address);
-}
-```
+_Note: requires using [Hardhat](https://hardhat.org/) with the [`hardhat-ethers`](https://hardhat.org/plugins/nomiclabs-hardhat-ethers.html) plugin._
+
+* **async function getBalancerContractAt(taskID, contract, address)**
+
+Returns an [Ethers](https://docs.ethers.io/v5/) contract object for a contract dynamically created at a known address (e.g. a Pool created from a factory).
+
+_Note: requires using [Hardhat](https://hardhat.org/) with the [`hardhat-ethers`](https://hardhat.org/plugins/nomiclabs-hardhat-ethers.html) plugin._
+
+* **async function getBalancerContractAbi(taskID, contract)**
+
+Returns a contract's [ABI](https://docs.soliditylang.org/en/latest/abi-spec.html).
+
+* **async function getBalancerContractAddress(taskID, contract, network)**
+
+Returns the address of a contract's canonical deployment.
+
+* **async function getBalancerDeployment(taskID, network)**
+
+Returns an object with all contracts from a deployment and their addresses.
 
 ## Past Deployments
 
