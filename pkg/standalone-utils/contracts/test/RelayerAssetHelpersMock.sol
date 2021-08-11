@@ -18,7 +18,6 @@ pragma experimental ABIEncoderV2;
 import "../relayer/RelayerAssetHelpers.sol";
 
 contract RelayerAssetHelpersMock is RelayerAssetHelpers {
-    
     constructor(IVault vault) RelayerAssetHelpers(vault) {}
 
     function approveToken(

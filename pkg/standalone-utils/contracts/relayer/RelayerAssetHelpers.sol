@@ -23,7 +23,7 @@ contract RelayerAssetHelpers {
     using Address for address payable;
 
     IVault private immutable _vault;
-    
+
     constructor(IVault vault) {
         _vault = vault;
     }

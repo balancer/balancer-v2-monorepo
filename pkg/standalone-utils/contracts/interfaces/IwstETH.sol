@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+
 // Based on https://github.com/lidofinance/lido-dao/blob/2b46615a11dee77d4d22066f942f6c6afab9b87a/contracts/0.6.12/WstETH.sol
 
 /**
