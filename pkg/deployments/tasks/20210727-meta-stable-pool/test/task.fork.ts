@@ -35,7 +35,7 @@ describe('MetaStablePoolFactory', function () {
 
   before('run task', async () => {
     await task.run({ force: true });
-    factory = await task.instanceAt('MetaStablePoolFactory', task.output().factory);
+    factory = await task.deployedInstance('MetaStablePoolFactory');
   });
 
   before('load signers', async () => {

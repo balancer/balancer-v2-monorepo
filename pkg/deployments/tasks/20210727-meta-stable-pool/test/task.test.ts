@@ -12,12 +12,12 @@ describe('MetaStablePoolFactory', function () {
         await task.run({ force });
 
         const output = task.output();
-        expect(output.factory).not.to.be.null;
+        expect(output.MetaStablePoolFactory).not.to.be.null;
         expect(output.timestamp).not.to.be.null;
 
         const input = task.input();
-        const factory = await task.instanceAt('MetaStablePoolFactory', output.factory);
-        expect(await factory.getVault()).to.be.equal(input.vault);
+        const factory = await task.deployedInstance('MetaStablePoolFactory');
+        expect(await factory.getVault()).to.be.equal(input.Vault);
       });
     };
 
@@ -49,7 +49,7 @@ describe('MetaStablePoolFactory', function () {
         await task.run({ force });
 
         const output = task.output();
-        expect(output.factory).not.to.be.equal(previousDeploy.factory);
+        expect(output.MetaStablePoolFactory).not.to.be.equal(previousDeploy.MetaStablePoolFactory);
         expect(output.timestamp).to.be.gt(previousDeploy.timestamp);
       });
     });
@@ -61,7 +61,7 @@ describe('MetaStablePoolFactory', function () {
         await task.run({ force });
 
         const output = task.output();
-        expect(output.factory).to.be.equal(previousDeploy.factory);
+        expect(output.MetaStablePoolFactory).to.be.equal(previousDeploy.MetaStablePoolFactory);
         expect(output.timestamp).to.be.equal(previousDeploy.timestamp);
       });
     });
