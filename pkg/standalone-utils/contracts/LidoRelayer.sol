@@ -135,15 +135,10 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
 
         swapAmounts = getVault().batchSwap{ value: msg.value }(kind, swaps, assets, funds, limits, deadline);
 
-        if (swapAmounts[wstETHIndex] < 0) {
-            // Unwrap any received wstETH for the user automatically
-            uint256 wstETHAmount = uint256(-swapAmounts[wstETHIndex]);
-            _unwrapAndPushStETH(recipient, wstETHAmount);
-        } else if (kind == IVault.SwapKind.GIVEN_OUT) {
-            // GIVEN_OUT swaps with wstETH input may leave some dust on the relayer
-            // This should be forwarded on to the user
-            _unwrapAndPushStETH(recipient, IERC20(address(_wstETH)).balanceOf(address(this)));
-        }
+        // Unwrap any received wstETH for the user automatically
+        // GIVEN_OUT trades and certains choices of limits can leave an unknown amount of wstETH
+        // We then must refund the full relayer balance
+        _unwrapAndPushStETH(recipient, IERC20(address(_wstETH)).balanceOf(address(this)));
 
         _sweepETH();
     }
