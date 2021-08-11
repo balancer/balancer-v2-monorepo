@@ -114,7 +114,7 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
                 wstETHIndex = i;
                 break;
             }
-            require(i < assets.length, "Does not require wstETH");
+            require(i < assets.length - 1, "Does not require wstETH");
         }
 
         int256 wstETHLimit = limits[wstETHIndex];
@@ -158,7 +158,7 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
                 wstETHAmount = request.maxAmountsIn[i];
                 break;
             }
-            require(i < request.assets.length, "Does not require wstETH");
+            require(i < request.assets.length - 1, "Does not require wstETH");
         }
         _pullStETHAndWrap(sender, wstETHAmount);
         // Send wstETH to the sender, as they will be the sender of the join
