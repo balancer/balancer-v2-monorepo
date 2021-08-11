@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import Task from '../../../src/task';
 
 describe('MerkleRedeem', function () {
-  const task = Task.fromHRE('20210810-ldo-merkle', hre);
+  const task = Task.fromHRE('20210811-ldo-merkle', hre);
 
   it('references the vault correctly', async () => {
     const input = task.input();
