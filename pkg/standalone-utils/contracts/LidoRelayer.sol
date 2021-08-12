@@ -52,11 +52,11 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
 
     function getStETH() external view returns (address) {
         return address(_stETH);
-    } 
+    }
 
     function getWstETH() external view returns (address) {
         return address(_wstETH);
-    } 
+    }
 
     function swap(
         IVault.SingleSwap memory singleSwap,
