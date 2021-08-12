@@ -137,7 +137,7 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
 
             // GIVEN_OUT trades and certains choices of limits can leave an unknown amount of wstETH
             // We then must refund the full relayer balance
-            _unwrapAndPushStETH(msg.sender,IERC20(address(_wstETH)).balanceOf(address(this)));
+            _unwrapAndPushStETH(msg.sender, IERC20(address(_wstETH)).balanceOf(address(this)));
         } else {
             // If wstETH is being used as output then we want to receive it on the relayer
             // so we can unwrap it before forwarding stETH to the user
