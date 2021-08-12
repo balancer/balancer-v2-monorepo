@@ -1,6 +1,6 @@
-# 2021-08-02 - Merkle Redeem for LDO rewards
+# 2021-08-11 - Merkle Redeem for LDO rewards
 
-Redeployment of the distributor contract for LDO rewards.
+Distributor contract for LDO rewards.
 
 ## Useful Files
 
