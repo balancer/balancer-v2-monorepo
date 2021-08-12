@@ -12,12 +12,12 @@ describe('StablePoolFactory', function () {
         await task.run({ force });
 
         const output = task.output();
-        expect(output.factory).not.to.be.null;
+        expect(output.StablePoolFactory).not.to.be.null;
         expect(output.timestamp).not.to.be.null;
 
         const input = task.input();
-        const factory = await task.instanceAt('StablePoolFactory', output.factory);
-        expect(await factory.getVault()).to.be.equal(input.vault);
+        const factory = await task.deployedInstance('StablePoolFactory');
+        expect(await factory.getVault()).to.be.equal(input.Vault);
       });
     };
 
@@ -49,7 +49,7 @@ describe('StablePoolFactory', function () {
         await task.run({ force });
 
         const output = task.output();
-        expect(output.factory).not.to.be.equal(previousDeploy.factory);
+        expect(output.StablePoolFactory).not.to.be.equal(previousDeploy.StablePoolFactory);
         expect(output.timestamp).to.be.gt(previousDeploy.timestamp);
       });
     });
@@ -61,7 +61,7 @@ describe('StablePoolFactory', function () {
         await task.run({ force });
 
         const output = task.output();
-        expect(output.factory).to.be.equal(previousDeploy.factory);
+        expect(output.StablePoolFactory).to.be.equal(previousDeploy.StablePoolFactory);
         expect(output.timestamp).to.be.equal(previousDeploy.timestamp);
       });
     });

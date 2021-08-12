@@ -69,6 +69,12 @@ export default class Task {
     return instanceAt(this.artifact(name), address);
   }
 
+  async deployedInstance(name: string): Promise<Contract> {
+    const address = this.output()[name];
+    if (!address) throw Error(`Could not find deployed address for ${name}`);
+    return this.instanceAt(name, address);
+  }
+
   async inputInstance(artifactName: string, inputName: string): Promise<Contract> {
     const rawInput = this.rawInput();
     const input = rawInput[inputName];
@@ -79,16 +85,36 @@ export default class Task {
     return task.instanceAt(artifactName, address);
   }
 
+  async deployAndVerify(
+    name: string,
+    args: Array<Param> = [],
+    from?: SignerWithAddress,
+    force?: boolean,
+    libs?: Libraries
+  ): Promise<Contract> {
+    const output = this.output({ ensure: false });
+    if (force || !output[name]) {
+      const instance = await this.deploy(name, args, from, libs);
+      this.save({ [name]: instance });
+      await this.verify(name, instance.address, args, libs);
+      return instance;
+    } else {
+      logger.info(`${name} already deployed at ${output[name]}`);
+      await this.verify(name, output[name], args, libs);
+      return this.instanceAt(name, output[name]);
+    }
+  }
+
   async deploy(name: string, args: Array<Param> = [], from?: SignerWithAddress, libs?: Libraries): Promise<Contract> {
     const instance = await deploy(this.artifact(name), args, from, libs);
     logger.success(`Deployed ${name} at ${instance.address}`);
     return instance;
   }
 
-  async verify(name: string, address: string, constructorArguments: unknown): Promise<void> {
+  async verify(name: string, address: string, constructorArguments: unknown, libs?: Libraries): Promise<void> {
     try {
       if (!this._verifier) return logger.warn('Skipping contract verification, no verifier defined');
-      const url = await this._verifier.call(this, name, address, constructorArguments);
+      const url = await this._verifier.call(this, name, address, constructorArguments, libs);
       logger.success(`Verified contract ${name} at ${url}`);
     } catch (error) {
       logger.error(`Failed trying to verify ${name} at ${address}: ${error}`);

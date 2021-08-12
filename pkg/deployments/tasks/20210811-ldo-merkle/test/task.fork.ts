@@ -27,7 +27,7 @@ describe('MerkleRedeem', function () {
 
   before('run task', async () => {
     await task.run({ force: true });
-    distributor = await task.instanceAt('MerkleRedeem', task.output().distributor);
+    distributor = await task.instanceAt('MerkleRedeem', task.output().MerkleRedeem);
   });
 
   before('load signers and transfer ownership', async () => {

@@ -7,4 +7,5 @@ This contract is expected to be eventually replaced by one with a) native suppor
 ## Useful Files
 
 - [Ethereum mainnet address](./output/mainnet.json)
+- [Polygon mainnet address](./output/polygon.json)
 - [`Authorizer` ABI](./abi/Authorizer.json)
