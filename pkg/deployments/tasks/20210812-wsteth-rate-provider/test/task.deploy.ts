@@ -6,12 +6,11 @@ import Task from '../../../src/task';
 describe('WstETHRateProvider', function () {
   const task = Task.fromHRE('20210812-wsteth-rate-provider', hre);
 
-  it('references the vault correctly', async () => {
-    const input = task.input();
+  it("doesn't revert on querying the rate", async () => {
     const output = task.output();
 
-    const relayer = await task.instanceAt('WstETHRateProvider', output.relayer);
+    const rateProvider = await task.instanceAt('WstETHRateProvider', output.WstETHRateProvider);
 
-    expect(await relayer.wstETH()).to.be.equal(input.wsteth);
+    await expect(rateProvider.getRate()).to.be.not.reverted;
   });
 });
