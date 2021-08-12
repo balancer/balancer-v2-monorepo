@@ -96,11 +96,11 @@ export default class Task {
     if (force || !output[name]) {
       const instance = await this.deploy(name, args, from, libs);
       this.save({ [name]: instance });
-      await this.verify(name, instance.address, args);
+      await this.verify(name, instance.address, args, libs);
       return instance;
     } else {
       logger.info(`${name} already deployed at ${output[name]}`);
-      await this.verify(name, output[name], args);
+      await this.verify(name, output[name], args, libs);
       return this.instanceAt(name, output[name]);
     }
   }
@@ -111,10 +111,10 @@ export default class Task {
     return instance;
   }
 
-  async verify(name: string, address: string, constructorArguments: unknown): Promise<void> {
+  async verify(name: string, address: string, constructorArguments: unknown, libs?: Libraries): Promise<void> {
     try {
       if (!this._verifier) return logger.warn('Skipping contract verification, no verifier defined');
-      const url = await this._verifier.call(this, name, address, constructorArguments);
+      const url = await this._verifier.call(this, name, address, constructorArguments, libs);
       logger.success(`Verified contract ${name} at ${url}`);
     } catch (error) {
       logger.error(`Failed trying to verify ${name} at ${address}: ${error}`);

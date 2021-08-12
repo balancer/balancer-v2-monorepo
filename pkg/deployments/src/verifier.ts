@@ -1,7 +1,9 @@
 import fetch, { Response } from 'node-fetch';
 import { BuildInfo, CompilerInput, Network } from 'hardhat/types';
+
 import { getLongVersion } from '@nomiclabs/hardhat-etherscan/dist/src/solc/version';
 import { encodeArguments } from '@nomiclabs/hardhat-etherscan/dist/src/ABIEncoder';
+import { getLibraryLinks, Libraries } from '@nomiclabs/hardhat-etherscan/dist/src/solc/libraries';
 
 import {
   Bytecode,
@@ -40,8 +42,15 @@ export default class Verifier {
     this.apiKey = _apiKey;
   }
 
-  async call(task: Task, name: string, address: string, constructorArguments: unknown, intent = 1): Promise<string> {
-    const response = await this.verify(task, name, address, constructorArguments);
+  async call(
+    task: Task,
+    name: string,
+    address: string,
+    constructorArguments: unknown,
+    libraries: Libraries = {},
+    intent = 1
+  ): Promise<string> {
+    const response = await this.verify(task, name, address, constructorArguments, libraries);
 
     if (response.isVerificationSuccess()) {
       const etherscanAPIEndpoints = await getEtherscanEndpoints(this.network.provider, this.network.name);
@@ -50,19 +59,28 @@ export default class Verifier {
     } else if (intent < MAX_VERIFICATION_INTENTS && response.isBytecodeMissingInNetworkError()) {
       logger.info(`Could not find deployed bytecode in network, retrying ${intent++}/${MAX_VERIFICATION_INTENTS}...`);
       delay(5000);
-      return this.call(task, name, address, constructorArguments, intent++);
+      return this.call(task, name, address, constructorArguments, libraries, intent++);
     } else {
       throw new Error(`The contract verification failed. Reason: ${response.message}`);
     }
   }
 
-  private async verify(task: Task, name: string, address: string, args: unknown): Promise<EtherscanResponse> {
+  private async verify(
+    task: Task,
+    name: string,
+    address: string,
+    args: unknown,
+    libraries: Libraries = {}
+  ): Promise<EtherscanResponse> {
     const deployedBytecodeHex = await retrieveContractBytecode(address, this.network.provider, this.network.name);
     const deployedBytecode = new Bytecode(deployedBytecodeHex);
     const buildInfo = await task.buildInfo(name);
     const sourceName = this.findContractSourceName(buildInfo, name);
     const contractInformation = await extractMatchingContractInformation(sourceName, name, buildInfo, deployedBytecode);
     if (!contractInformation) throw Error('Could not find a bytecode matching the requested contract');
+
+    const { libraryLinks } = await getLibraryLinks(contractInformation, libraries);
+    contractInformation.libraryLinks = libraryLinks;
 
     const deployArgumentsEncoded = await encodeArguments(
       contractInformation.contract.abi,
