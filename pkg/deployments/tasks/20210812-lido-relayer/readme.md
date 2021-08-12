@@ -5,5 +5,4 @@ Deployment of the `LidoRelayer`, for using stETH with the Balancer Vault without
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [Polygon mainnet addresses](./output/polygon.json)
 - [`LidoRelayer` ABI](./abi/LidoRelayer.json)

@@ -3,7 +3,7 @@ import { expect } from 'chai';
 
 import Task from '../../../src/task';
 
-describe('BatchRelayer', function () {
+describe('LidoRelayer', function () {
   const task = Task.fromHRE('20210812-lido-relayer', hre);
 
   it('references the vault correctly', async () => {

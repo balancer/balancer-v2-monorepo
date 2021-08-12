@@ -21,29 +21,29 @@ $ npm install @balancer-labs/v2-deployments
 
 Import `@balancer-labs/v2-deployments` to access the different ABIs and deployed addresses. To see all Task IDs and their associated contracts, head to [Past Deployments](#past-deployments).
 
-----
+---
 
-* **async function getBalancerContract(taskID, contract, network)**
+- **async function getBalancerContract(taskID, contract, network)**
 
 Returns an [Ethers](https://docs.ethers.io/v5/) contract object for a canonical deployment (e.g. the Vault, or a Pool factory).
 
 _Note: requires using [Hardhat](https://hardhat.org/) with the [`hardhat-ethers`](https://hardhat.org/plugins/nomiclabs-hardhat-ethers.html) plugin._
 
-* **async function getBalancerContractAt(taskID, contract, address)**
+- **async function getBalancerContractAt(taskID, contract, address)**
 
 Returns an [Ethers](https://docs.ethers.io/v5/) contract object for a contract dynamically created at a known address (e.g. a Pool created from a factory).
 
 _Note: requires using [Hardhat](https://hardhat.org/) with the [`hardhat-ethers`](https://hardhat.org/plugins/nomiclabs-hardhat-ethers.html) plugin._
 
-* **async function getBalancerContractAbi(taskID, contract)**
+- **async function getBalancerContractAbi(taskID, contract)**
 
 Returns a contract's [ABI](https://docs.soliditylang.org/en/latest/abi-spec.html).
 
-* **async function getBalancerContractAddress(taskID, contract, network)**
+- **async function getBalancerContractAddress(taskID, contract, network)**
 
 Returns the address of a contract's canonical deployment.
 
-* **async function getBalancerDeployment(taskID, network)**
+- **async function getBalancerDeployment(taskID, network)**
 
 Returns an object with all contracts from a deployment and their addresses.
 
@@ -57,3 +57,5 @@ Returns an object with all contracts from a deployment and their addresses.
 | Weighted Pools with two tokens and price oracle | [`20210418-weighted-pool`](./tasks/20210418-weighted-pool)                               |
 | Liquidity Bootstrapping Pools of up to 4 tokens | [`20210721-liquidity-bootstrapping-pool`](./tasks/20210721-liquidity-bootstrapping-pool) |
 | Stable Pools of up to 5 tokens                  | [`20210624-stable-pool`](./tasks/20210624-stable-pool)                                   |
+| Relayer for Lido stETH wrapping/unwrapping      | [`20210812-lido-relayer`](./tasks/20210812-lido-relayer)                                 |
+| Rate Provider for wstETH                        | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                 |
