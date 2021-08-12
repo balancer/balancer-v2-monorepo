@@ -61,4 +61,5 @@ Returns an object with all contracts from a deployment and their addresses.
 | Stable Pools of up to 5 tokens                   | [`20210624-stable-pool`](./tasks/20210624-stable-pool)                                   |
 | Meta Stable Pools with 2 tokens and price oracle | [`20210727-meta-stable-pool`](./tasks/20210727-meta-stable-pool)                         |
 | Relayer for Lido stETH wrapping/unwrapping       | [`20210812-lido-relayer`](./tasks/20210812-lido-relayer)                                 |
+| Distributor contract for LDO rewards             | [`20210811-ldo-merkle`](./tasks/20210811-ldo-merkle)                                     |
 | Rate Provider for wstETH                         | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                 |

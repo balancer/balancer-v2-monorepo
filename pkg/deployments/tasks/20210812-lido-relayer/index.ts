@@ -6,5 +6,5 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
   const input = task.input() as LidoRelayerDeployment;
 
   const relayerArgs = [input.vault, input.wstETH];
-  task.deployAndVerify('LidoRelayer', relayerArgs, from, force);
+  await task.deployAndVerify('LidoRelayer', relayerArgs, from, force);
 };

@@ -6,5 +6,5 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
   const input = task.input() as WstETHRateProviderDeployment;
 
   const rateProviderArgs = [input.wstETH];
-  task.deployAndVerify('WstETHRateProvider', rateProviderArgs, from, force);
+  await task.deployAndVerify('WstETHRateProvider', rateProviderArgs, from, force);
 };
