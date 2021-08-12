@@ -61,6 +61,7 @@ contract RelayerAssetHelpers {
         IERC20 token,
         uint256 amount
     ) internal {
+        if (amount == 0) return;
         IERC20[] memory tokens = new IERC20[](1);
         tokens[0] = token;
         uint256[] memory amounts = new uint256[](1);
