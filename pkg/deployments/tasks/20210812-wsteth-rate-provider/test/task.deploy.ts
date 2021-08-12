@@ -2,15 +2,24 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 
 import Task from '../../../src/task';
+import { WstETHRateProviderDeployment } from '../input';
 
 describe('WstETHRateProvider', function () {
   const task = Task.fromHRE('20210812-wsteth-rate-provider', hre);
 
-  it("doesn't revert on querying the rate", async () => {
+  it('returns the same value as wstETH.stEthPerToken()', async () => {
+    const input = task.input() as WstETHRateProviderDeployment;
     const output = task.output();
 
-    const rateProvider = await task.instanceAt('WstETHRateProvider', output.WstETHRateProvider);
+    const wstETH = await hre.ethers.getContractAt(
+      ['function stEthPerToken() external view returns (uint256)'],
+      input.wstETH
+    );
+    const expectedRate = await wstETH.stEthPerToken();
 
-    await expect(rateProvider.getRate()).to.be.not.reverted;
+    const rateProvider = await task.instanceAt('WstETHRateProvider', output.WstETHRateProvider);
+    const actualRate = await rateProvider.getRate();
+
+    expect(actualRate).to.be.eq(expectedRate);
   });
 });
