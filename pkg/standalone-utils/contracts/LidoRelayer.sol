@@ -153,6 +153,11 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
         _sweepETH();
     }
 
+    /**
+     * @dev This function will wrap enough stETH to satisfy the maximum amount which may be used.
+     *      Certain join types (e.g. TOKEN_IN_FOR_EXACT_BPT_OUT) may result in a residual
+     *      amount of wstETH being left on the sender's address.
+     */
     function joinPool(
         bytes32 poolId,
         address sender,
