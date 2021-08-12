@@ -7,6 +7,7 @@
 - `StablePoolFactory`
 - `LiquidityBootstrappingPoolFactory`
 - `MetaStablePoolFactory`
+- `MerkleRedeem` (for the LDO token)
 - `LidoRelayer`
 - `WstETHRateProvider`
 
