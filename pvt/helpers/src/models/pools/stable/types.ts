@@ -6,6 +6,7 @@ import { BigNumberish } from '../../../numbers';
 import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import { Account, NAry } from '../../types/types';
+import Vault from '../../vault/Vault';
 
 export type RawStablePoolDeployment = {
   tokens?: TokenList;
@@ -18,6 +19,7 @@ export type RawStablePoolDeployment = {
   owner?: SignerWithAddress;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
+  vault?: Vault;
   fromFactory?: boolean;
   oracleEnabled?: boolean;
   meta?: boolean;
