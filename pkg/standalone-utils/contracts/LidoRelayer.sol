@@ -71,20 +71,25 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
             uint256 wstETHAmount = singleSwap.kind == IVault.SwapKind.GIVEN_IN ? singleSwap.amount : limit;
             _pullStETHAndWrap(msg.sender, wstETHAmount);
             _approveToken(IERC20(address(_wstETH)), address(getVault()), wstETHAmount);
+
+            swapAmount = getVault().swap{ value: msg.value }(singleSwap, funds, limit, deadline);
+
+            // GIVEN_OUT trades can leave an unknown amount of wstETH
+            // We then must refund the full relayer balance
+            _unwrapAndPushStETH(msg.sender, IERC20(address(_wstETH)).balanceOf(address(this)));
         } else if (singleSwap.assetOut == IAsset(address(_wstETH))) {
             // If wstETH is an output then we want to receive it on the relayer
             // so we can unwrap it before forwarding stETH to the user
             funds.recipient = payable(address(this));
             require(!funds.toInternalBalance, "Cannot send to internal balance");
+
+            swapAmount = getVault().swap{ value: msg.value }(singleSwap, funds, limit, deadline);
+
+            // Unwrap the wstETH and forward onto the recipient
+            _unwrapAndPushStETH(recipient, IERC20(address(_wstETH)).balanceOf(address(this)));
         } else {
             revert("Does not require wstETH");
         }
-
-        swapAmount = getVault().swap{ value: msg.value }(singleSwap, funds, limit, deadline);
-
-        // GIVEN_OUT trades can leave an unknown amount of wstETH
-        // We then must refund the full relayer balance
-        _unwrapAndPushStETH(recipient, IERC20(address(_wstETH)).balanceOf(address(this)));
 
         _sweepETH();
     }
@@ -125,19 +130,23 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
 
             _pullStETHAndWrap(msg.sender, uint256(wstETHLimit));
             _approveToken(IERC20(address(_wstETH)), address(getVault()), uint256(wstETHLimit));
+
+            swapAmounts = getVault().batchSwap{ value: msg.value }(kind, swaps, assets, funds, limits, deadline);
+
+            // GIVEN_OUT trades and certains choices of limits can leave an unknown amount of wstETH
+            // We then must refund the full relayer balance
+            _unwrapAndPushStETH(msg.sender,IERC20(address(_wstETH)).balanceOf(address(this)));
         } else {
             // If wstETH is being used as output then we want to receive it on the relayer
             // so we can unwrap it before forwarding stETH to the user
             funds.recipient = payable(address(this));
             require(!funds.toInternalBalance, "Cannot send to internal balance");
+
+            swapAmounts = getVault().batchSwap{ value: msg.value }(kind, swaps, assets, funds, limits, deadline);
+
+            // Unwrap the wstETH and forward onto the recipient
+            _unwrapAndPushStETH(recipient, IERC20(address(_wstETH)).balanceOf(address(this)));
         }
-
-        swapAmounts = getVault().batchSwap{ value: msg.value }(kind, swaps, assets, funds, limits, deadline);
-
-        // Unwrap any received wstETH for the user automatically
-        // GIVEN_OUT trades and certains choices of limits can leave an unknown amount of wstETH
-        // We then must refund the full relayer balance
-        _unwrapAndPushStETH(recipient, IERC20(address(_wstETH)).balanceOf(address(this)));
 
         _sweepETH();
     }
@@ -181,12 +190,10 @@ contract LidoRelayer is RelayerAssetHelpers, ReentrancyGuard {
 
         uint256 wstETHBalanceAfter = IERC20(address(_wstETH)).balanceOf(recipient);
 
+        // Pull in wstETH, unwrap and return to user
         uint256 wstETHAmount = wstETHBalanceAfter.sub(wstETHBalanceBefore);
-        if (wstETHAmount > 0) {
-            // Pull in wstETH, unwrap and return to user
-            _pullToken(recipient, IERC20(address(_wstETH)), wstETHAmount);
-            _unwrapAndPushStETH(recipient, wstETHAmount);
-        }
+        _pullToken(recipient, IERC20(address(_wstETH)), wstETHAmount);
+        _unwrapAndPushStETH(recipient, wstETHAmount);
     }
 
     function _pullStETHAndWrap(address sender, uint256 wstETHAmount) private returns (uint256) {
