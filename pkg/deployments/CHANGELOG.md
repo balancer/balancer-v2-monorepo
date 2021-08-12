@@ -2,7 +2,13 @@
 
 ## 2.0.0 (unreleased)
 
-- Added deployments for `StablePoolFactory` and `LiquidityBootstrappingPoolFactory`
+### New Deployments
+
+- `StablePoolFactory`
+- `LiquidityBootstrappingPoolFactory`
+- `MetaStablePoolFactory`
+- `LidoRelayer`
+- `WstETHRateProvider`
 
 ### Breaking Changes
 

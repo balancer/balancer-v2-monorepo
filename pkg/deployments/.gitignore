@@ -1,2 +1,5 @@
 # Deployment outputs on local test networks
 test.json
+
+# Build directory
+dist
