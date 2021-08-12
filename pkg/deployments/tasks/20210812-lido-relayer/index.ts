@@ -12,14 +12,24 @@ const wstETHMap: Record<string, string> = {
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const output = task.output({ ensure: false });
   const input = task.input() as LidoRelayerDeployment;
-  const args = [input.vault, wstETHMap[task.network]];
 
-  if (force || !output.relayer) {
-    const relayer = await task.deploy('LidoRelayer', args, from);
-    task.save({ relayer });
-    await task.verify('LidoRelayer', relayer.address, args);
+  const rateProviderArgs = [wstETHMap[task.network]];
+  if (force || !output.wstETHRateProvider) {
+    const wstETHRateProvider = await task.deploy('WstETHRateProvider', rateProviderArgs, from);
+    task.save({ wstETHRateProvider });
+    await task.verify('WstETHRateProvider', wstETHRateProvider.address, rateProviderArgs);
   } else {
-    logger.info(`LidoRelayer already deployed at ${output.relayer}`);
-    await task.verify('LidoRelayer', output.relayer, args);
+    logger.info(`WstETHRateProvider already deployed at ${output.wstETHRateProvider}`);
+    await task.verify('WstETHRateProvider', output.wstETHRateProvider, rateProviderArgs);
+  }
+
+  const relayerArgs = [input.vault, wstETHMap[task.network]];
+  if (force || !output.lidoRelayer) {
+    const lidoRelayer = await task.deploy('LidoRelayer', relayerArgs, from);
+    task.save({ lidoRelayer });
+    await task.verify('LidoRelayer', lidoRelayer.address, relayerArgs);
+  } else {
+    logger.info(`LidoRelayer already deployed at ${output.lidoRelayer}`);
+    await task.verify('LidoRelayer', output.lidoRelayer, relayerArgs);
   }
 };
