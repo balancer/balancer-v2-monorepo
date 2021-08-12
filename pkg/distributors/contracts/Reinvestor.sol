@@ -20,13 +20,13 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
-import "./PoolTokenManipulator.sol";
+import "./PoolTokenCache.sol";
 import "./interfaces/IDistributorCallback.sol";
 
-contract Reinvestor is PoolTokenManipulator, IDistributorCallback {
+contract Reinvestor is PoolTokenCache, IDistributorCallback {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    constructor(IVault _vault) PoolTokenManipulator(_vault) {
+    constructor(IVault _vault) PoolTokenCache(_vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
