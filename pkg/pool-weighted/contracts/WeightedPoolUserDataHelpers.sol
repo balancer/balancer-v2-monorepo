@@ -41,11 +41,7 @@ library WeightedPoolUserDataHelpers {
         (, amountsIn, minBPTAmountOut) = abi.decode(self, (BaseWeightedPool.JoinKind, uint256[], uint256));
     }
 
-    function tokenInForExactBptOut(bytes memory self)
-        internal
-        pure
-        returns (uint256 bptAmountOut, uint256 tokenIndex)
-    {
+    function tokenInForExactBptOut(bytes memory self) internal pure returns (uint256 bptAmountOut, uint256 tokenIndex) {
         (, bptAmountOut, tokenIndex) = abi.decode(self, (BaseWeightedPool.JoinKind, uint256, uint256));
     }
 
