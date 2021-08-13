@@ -17,13 +17,13 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
+import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "./WeightedPool2Tokens.sol";
 
-contract WeightedPool2TokensFactory is BasePoolFactory, FactoryWidePauseWindow {
-    constructor(IVault vault) BasePoolFactory(vault) {
+contract WeightedPool2TokensFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(WeightedPool2Tokens).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -57,8 +57,6 @@ contract WeightedPool2TokensFactory is BasePoolFactory, FactoryWidePauseWindow {
             owner: owner
         });
 
-        address pool = address(new WeightedPool2Tokens(params));
-        _register(pool);
-        return pool;
+        return _create(abi.encode(params));
     }
 }

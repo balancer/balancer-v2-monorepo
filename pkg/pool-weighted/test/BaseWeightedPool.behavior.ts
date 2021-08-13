@@ -216,7 +216,7 @@ export function itBehavesAsWeightedPool(
           // Protocol fees should be zero
           expect(result.dueProtocolFeeAmounts).to.be.zeros;
 
-          // Make sure received BPT is closed to what we expect
+          // Make sure received BPT is close to what we expect
           const currentBptBalance = await pool.balanceOf(recipient);
           expect(currentBptBalance.sub(previousBptBalance)).to.be.equalWithError(expectedBptOut, 0.0001);
         });
@@ -271,12 +271,12 @@ export function itBehavesAsWeightedPool(
           // Protocol fees should be zero
           expect(result.dueProtocolFeeAmounts).to.be.zeros;
 
-          // Make sure received BPT is closed to what we expect
+          // Make sure received BPT is close to what we expect
           const currentBptBalance = await pool.balanceOf(recipient);
           expect(currentBptBalance.sub(previousBptBalance)).to.be.equal(bptOut);
         });
 
-        it('can tell how many token amounts it will have to receive', async () => {
+        it('can tell what token amounts it will have to receive', async () => {
           const expectedAmountIn = await pool.estimateTokenIn(token, bptOut, initialBalances);
 
           const result = await pool.queryJoinGivenOut({ bptOut, token });
@@ -299,6 +299,61 @@ export function itBehavesAsWeightedPool(
           await pool.pause();
 
           await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('PAUSED');
+        });
+      });
+    });
+
+    context('join tokens in for exact BPT out', () => {
+      it('fails if not initialized', async () => {
+        await expect(pool.multiJoinGivenOut({ bptOut: fp(2) })).to.be.revertedWith('UNINITIALIZED');
+      });
+
+      context('once initialized', () => {
+        sharedBeforeEach('initialize pool', async () => {
+          await pool.init({ recipient, initialBalances });
+        });
+
+        it('grants exact BPT for tokens in', async () => {
+          const previousBptBalance = await pool.balanceOf(recipient);
+          // We want to join with half the initial balances, for half the BPT
+          const bptOut = previousBptBalance.div(2);
+
+          const expectedAmountsIn = initialBalances.map((balance) => balance.div(2));
+
+          const result = await pool.multiJoinGivenOut({ recipient, bptOut });
+
+          // Only token in should be the one transferred
+          for (let i = 0; i < expectedAmountsIn.length; i++) {
+            expect(result.amountsIn[i]).to.be.equalWithError(expectedAmountsIn[i], 0.001);
+          }
+
+          // Protocol fees should be zero
+          expect(result.dueProtocolFeeAmounts).to.be.zeros;
+
+          // Make sure received BPT is close to what we expect
+          const currentBptBalance = await pool.balanceOf(recipient);
+          expect(currentBptBalance.sub(previousBptBalance)).to.be.equal(bptOut);
+        });
+
+        it('can tell what token amounts it will have to receive', async () => {
+          const expectedAmountsIn = initialBalances.map((balance) => balance.div(2));
+          const previousBptBalance = await pool.balanceOf(recipient);
+          // We want to join with half the initial balances, for half the BPT
+          const bptOut = previousBptBalance.div(2);
+
+          const result = await pool.queryMultiJoinGivenOut({ bptOut });
+
+          expect(result.bptOut).to.be.equal(bptOut);
+
+          for (let i = 0; i < expectedAmountsIn.length; i++) {
+            expect(result.amountsIn[i]).to.be.equalWithError(expectedAmountsIn[i], 0.001);
+          }
+        });
+
+        it('reverts if paused', async () => {
+          await pool.pause();
+
+          await expect(pool.multiJoinGivenOut({ bptOut: fp(2) })).to.be.revertedWith('PAUSED');
         });
       });
     });
@@ -414,7 +469,7 @@ export function itBehavesAsWeightedPool(
         expect(await pool.balanceOf(lp)).to.equal(0);
       });
 
-      it('can tell how many token amounts it will give in return', async () => {
+      it('can tell what token amounts it will give in return', async () => {
         const totalBPT = await pool.totalSupply();
         const expectedAmountsOut = initialBalances.map((balance) => balance.mul(previousBptBalance).div(totalBPT));
 
@@ -588,6 +643,9 @@ export function itBehavesAsWeightedPool(
         expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
 
         joinResult = await pool.joinGivenOut({ from: lp, bptOut: fp(1), token: 0, protocolFeePercentage });
+        expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
+
+        joinResult = await pool.multiJoinGivenOut({ from: lp, bptOut: fp(0.1) });
         expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
 
         let exitResult = await pool.singleExitGivenIn({ from: lp, bptIn: fp(10), token: 0, protocolFeePercentage });

@@ -17,6 +17,7 @@ import {
   InitWeightedPool,
   JoinGivenInWeightedPool,
   JoinGivenOutWeightedPool,
+  MultiJoinGivenOutWeightedPool,
   JoinResult,
   RawWeightedPoolDeployment,
   ExitResult,
@@ -371,6 +372,14 @@ export default class WeightedPool {
     return this.queryJoin(this._buildJoinGivenOutParams(params));
   }
 
+  async multiJoinGivenOut(params: MultiJoinGivenOutWeightedPool): Promise<JoinResult> {
+    return this.join(this._buildMultiJoinGivenOutParams(params));
+  }
+
+  async queryMultiJoinGivenOut(params: MultiJoinGivenOutWeightedPool): Promise<JoinQueryResult> {
+    return this.queryJoin(this._buildMultiJoinGivenOutParams(params));
+  }
+
   async exitGivenOut(params: ExitGivenOutWeightedPool): Promise<ExitResult> {
     return this.exit(this._buildExitGivenOutParams(params));
   }
@@ -515,6 +524,17 @@ export default class WeightedPool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: WeightedPoolEncoder.joinTokenInForExactBPTOut(params.bptOut, this.tokens.indexOf(params.token)),
+    };
+  }
+
+  private _buildMultiJoinGivenOutParams(params: MultiJoinGivenOutWeightedPool): JoinExitWeightedPool {
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: WeightedPoolEncoder.joinAllTokensInForExactBPTOut(params.bptOut),
     };
   }
 
