@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { BigNumberish, fp, printGas } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_INT22, MAX_UINT10, MAX_UINT31, MAX_UINT64, MIN_INT22 } from '@balancer-labs/v2-helpers/src/constants';
 import { MINUTE, advanceTime, currentTimestamp, lastBlockNumber } from '@balancer-labs/v2-helpers/src/time';
 
@@ -97,7 +97,7 @@ describe('WeightedPool2Tokens', function () {
         let previousBalances: BigNumber[], previousTotalSupply: BigNumber, newSample: Sample;
         let sampleIndex: number;
         const SLOTS_INITIALIZED = 10;
-        const ZERO_SAMPLE = [fp(0), fp(0), fp(0), fp(0), fp(0), fp(0), fp(0)]
+        const ZERO_SAMPLE = [fp(0), fp(0), fp(0), fp(0), fp(0), fp(0), fp(0)];
 
         sharedBeforeEach(async () => {
           previousBalances = await pool.getBalances();
