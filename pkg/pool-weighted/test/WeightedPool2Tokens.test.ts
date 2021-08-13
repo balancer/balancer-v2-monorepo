@@ -70,12 +70,12 @@ describe('WeightedPool2Tokens', function () {
 
     context('initialize with invalid arguments', () => {
       it('does not allow end <= start', async () => {
-        expect(pool.initializeOracle(200, 100)).to.be.revertedWith('OUT_OF_BOUNDS');
-        expect(pool.initializeOracle(100, 100)).to.be.revertedWith('OUT_OF_BOUNDS');
+        expect(pool.initializeOracleStorage(200, 100)).to.be.revertedWith('OUT_OF_BOUNDS');
+        expect(pool.initializeOracleStorage(100, 100)).to.be.revertedWith('OUT_OF_BOUNDS');
       });
 
       it('does not allow end > buffer size', async () => {
-        expect(pool.initializeOracle(100, 10000)).to.be.revertedWith('OUT_OF_BOUNDS');
+        expect(pool.initializeOracleStorage(100, 10000)).to.be.revertedWith('OUT_OF_BOUNDS');
       });
     });
 
@@ -95,6 +95,9 @@ describe('WeightedPool2Tokens', function () {
 
       context('with updated oracle', () => {
         let previousBalances: BigNumber[], previousTotalSupply: BigNumber, newSample: Sample;
+        let sampleIndex: number;
+        const SLOTS_INITIALIZED = 10;
+        const ZERO_SAMPLE = [fp(0), fp(0), fp(0), fp(0), fp(0), fp(0), fp(0)]
 
         sharedBeforeEach(async () => {
           previousBalances = await pool.getBalances();
@@ -104,6 +107,7 @@ describe('WeightedPool2Tokens', function () {
           await action(await calcLastChangeBlock(lastChangeBlockOffset));
 
           newSample = await pool.getOracleSample();
+          sampleIndex = (await pool.getMiscData()).oracleIndex.toNumber();
         });
 
         it('stores the pre-action spot price', async () => {
@@ -127,37 +131,21 @@ describe('WeightedPool2Tokens', function () {
 
           expect(actual).to.equalWithError(expectedInvariant, MAX_RELATIVE_ERROR);
         });
-      });
-    };
 
-    const itUpdatesTheOracleDataAndMeasuresGas = (action: PoolHook, lastChangeBlockOffset = 0) => {
-      context('without updated oracle', () => {
-        it('updates the oracle data (and measures gas)', async () => {
-          const previousData = await pool.getMiscData();
+        it('cannot be overwritten by storage initialization', async () => {
+          await pool.initializeOracleStorage(sampleIndex, sampleIndex + SLOTS_INITIALIZED);
 
-          await advanceTime(MINUTE * 10); // force index update
-          const { receipt } = await action(await calcLastChangeBlock(lastChangeBlockOffset));
-          const uninitializedGasUsed = receipt.gasUsed;
-          let initializedGasUsed;
-          console.log(`Gas used (uninitialized oracle): ${printGas(uninitializedGasUsed)}`);
+          const afterSample = await pool.getOracleSample(sampleIndex);
+          expect(afterSample).to.deep.equal(newSample);
 
-          {
-            const { receipt } = await pool.initializeOracle(previousData.oracleIndex.toNumber() + 1, 100);
-            console.log(`Gas used for initialization: ${printGas(receipt.gasUsed)}`);
-          }
+          // One in the middle should be initialized to non-zero (but timestamp is 0)
+          const initializedSample = await pool.getOracleSample(sampleIndex + SLOTS_INITIALIZED / 2);
+          expect(initializedSample.timestamp).to.equal(0);
+          expect(initializedSample).to.not.deep.equal(ZERO_SAMPLE);
 
-          {
-            await advanceTime(MINUTE * 10); // force index update
-            const { receipt } = await action(await calcLastChangeBlock(lastChangeBlockOffset + 1));
-            initializedGasUsed = receipt.gasUsed;
-            console.log(`Gas used (initialized oracle): ${printGas(initializedGasUsed)}`);
-          }
-
-          const currentMiscData = await pool.getMiscData();
-          expect(currentMiscData.oracleIndex).to.equal(previousData.oracleIndex.add(2));
-          expect(currentMiscData.oracleSampleCreationTimestamp).to.equal(await currentTimestamp());
-
-          expect(initializedGasUsed).to.be.lt(uninitializedGasUsed);
+          // One near the end should be uninitialized
+          const uninitializedSample = await pool.getOracleSample(1000);
+          expect(uninitializedSample).to.deep.equal(ZERO_SAMPLE);
         });
       });
     };
@@ -367,7 +355,6 @@ describe('WeightedPool2Tokens', function () {
         const action = (lastChangeBlock: number) => pool.swapGivenIn({ in: 0, out: 1, amount, lastChangeBlock });
 
         itUpdatesOracleOnSwapCorrectly(action);
-        itUpdatesTheOracleDataAndMeasuresGas(action, lastChangeBlockOffset);
       });
 
       context('given out', () => {
@@ -375,7 +362,6 @@ describe('WeightedPool2Tokens', function () {
         const action = (lastChangeBlock: number) => pool.swapGivenOut({ in: 1, out: 0, amount, lastChangeBlock });
 
         itUpdatesOracleOnSwapCorrectly(action);
-        itUpdatesTheOracleDataAndMeasuresGas(action, lastChangeBlockOffset);
       });
     });
 
