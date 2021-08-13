@@ -19,6 +19,7 @@ interface SetupData {
 
 interface SetupContracts {
   rewardTokens: TokenList;
+  tokens: TokenList;
   pool: Contract;
   stakingContract: Contract;
   vault: Contract;
@@ -85,6 +86,7 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
     },
     contracts: {
       rewardTokens,
+      tokens,
       pool,
       stakingContract,
       vault,

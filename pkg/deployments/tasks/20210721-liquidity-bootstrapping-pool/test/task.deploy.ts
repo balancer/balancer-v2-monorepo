@@ -8,10 +8,9 @@ describe('LiquidityBootstrappingPoolFactory', function () {
 
   it('references the vault correctly', async () => {
     const input = task.input();
-    const output = task.output();
 
-    const factory = await task.instanceAt('LiquidityBootstrappingPoolFactory', output.factory);
+    const factory = await task.deployedInstance('LiquidityBootstrappingPoolFactory');
 
-    expect(await factory.getVault()).to.be.equal(input.vault);
+    expect(await factory.getVault()).to.be.equal(input.Vault);
   });
 });

@@ -5,4 +5,5 @@ Deployment of the `StablePoolFactory`, for Stable Pools of up to 5 tokens.
 ## Useful Files
 
 - [Ethereum mainnet address](./output/mainnet.json)
+- [Polygon mainnet address](./output/polygon.json)
 - [`StablePool` ABI](./abi/StablePool.json)
