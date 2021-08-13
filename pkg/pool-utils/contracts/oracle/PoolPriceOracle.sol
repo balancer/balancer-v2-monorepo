@@ -157,8 +157,12 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
         return QueryProcessor.getPastAccumulator(_samples, variable, latestIndex, ago);
     }
 
-    function _findNearestSample(uint256 lookUpDate, uint256 offset) internal view returns (bytes32 prev, bytes32 next) {
-        return QueryProcessor.findNearestSample(_samples, lookUpDate, offset);
+    function _findNearestSample(
+        uint256 lookUpDate,
+        uint256 offset,
+        uint256 length
+    ) internal view returns (bytes32 prev, bytes32 next) {
+        return QueryProcessor.findNearestSample(_samples, lookUpDate, offset, length);
     }
 
     /**
