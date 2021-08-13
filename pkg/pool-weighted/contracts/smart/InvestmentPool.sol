@@ -64,10 +64,6 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _END_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
 
-    // Adding or removing liquidity while paused must be proportional
-    // Proportional join is defined as one where the BPT prices are all similar
-    uint256 private constant _PROPORTIONAL_TOLERANCE_PCT = 1e15; // 0.1%
-
     // Event declarations
 
     event SwapEnabledSet(bool swapEnabled);
@@ -343,49 +339,28 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         internal
         override
         returns (
-            uint256 bptAmountOut,
-            uint256[] memory amountsIn,
-            uint256[] memory dueProtocolFeeAmounts
+            uint256,
+            uint256[] memory,
+            uint256[] memory
         )
     {
-        // TokenInForExactBPTOut is not proportional - so fail immediately if swaps are disabled
+        // If swaps are disabled, require proportional join
         _require(
-            getSwapEnabled() || userData.joinKind() != JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT,
+            getSwapEnabled() || userData.joinKind() == JoinKind.TOKENS_IN_FOR_EXACT_BPT_OUT,
             Errors.INVALID_JOIN_EXIT_WHILE_PAUSED
         );
 
-        (bptAmountOut, amountsIn, dueProtocolFeeAmounts) = super._onJoinPool(
-            poolId,
-            sender,
-            recipient,
-            balances,
-            lastChangeBlock,
-            protocolSwapFeePercentage,
-            scalingFactors,
-            userData
-        );
-
-        // If the pool is paused, only allow proportional join
-        if (!getSwapEnabled()) {
-            // We know the bptOut from the join - so proportional exit with that bptOut should reproduce amountsIn,
-            // if the join was proportional
-            uint256[] memory amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(
-                // This assumes balances were mutated properly by the base class `_onJoinPool`
+        return
+            super._onJoinPool(
+                poolId,
+                sender,
+                recipient,
                 balances,
-                bptAmountOut,
-                totalSupply().add(bptAmountOut)
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                scalingFactors,
+                userData
             );
-            uint256 diff;
-
-            for (uint256 i = 0; i < amountsOut.length; i++) {
-                diff = amountsOut[i] > amountsIn[i] ? amountsOut[i].sub(amountsIn[i]) : amountsIn[i].sub(amountsOut[i]);
-
-                _require(
-                    amountsIn[i] > 0 && diff.divUp(amountsIn[i]) <= _PROPORTIONAL_TOLERANCE_PCT,
-                    Errors.INVALID_JOIN_EXIT_WHILE_PAUSED
-                );
-            }
-        }
     }
 
     function _onExitPool(

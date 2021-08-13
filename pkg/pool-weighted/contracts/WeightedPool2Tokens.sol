@@ -529,7 +529,7 @@ contract WeightedPool2Tokens is
 
         if (kind == BaseWeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(balances, normalizedWeights, userData);
-        } else if (kind == BaseWeightedPool.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+        } else if (kind == BaseWeightedPool.JoinKind.ONE_TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(balances, normalizedWeights, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
@@ -564,7 +564,7 @@ contract WeightedPool2Tokens is
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
+        (uint256 bptAmountOut, uint256 tokenIndex) = userData.oneTokenInForExactBptOut();
         // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
 
         _require(tokenIndex < 2, Errors.OUT_OF_BOUNDS);

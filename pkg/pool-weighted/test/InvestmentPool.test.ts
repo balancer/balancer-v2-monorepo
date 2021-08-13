@@ -246,17 +246,11 @@ describe('InvestmentPool', function () {
             it('allows proportionate joins', async () => {
               const startingBpt = await pool.balanceOf(sender);
 
-              await expect(pool.joinGivenIn({ from: sender, amountsIn: initialBalances })).to.not.be.reverted;
+              const { amountsIn } = await pool.multiJoinGivenOut({ from: sender, bptOut: startingBpt });
 
               const endingBpt = await pool.balanceOf(sender);
               expect(endingBpt).to.be.gt(startingBpt);
-            });
-
-            it('allows close to proportionate joins (multi-token)', async () => {
-              const amountsIn = [...initialBalances];
-              amountsIn[0] = fp(0.999);
-
-              await expect(pool.joinGivenIn({ from: sender, amountsIn })).to.not.be.reverted;
+              expect(amountsIn).to.deep.equal(initialBalances);
             });
 
             it('disallows disproportionate joins (multi-token, 95%)', async () => {

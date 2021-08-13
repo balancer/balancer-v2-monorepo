@@ -34,7 +34,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
     uint256 private _lastInvariant;
 
-    enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
+    enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, ONE_TOKEN_IN_FOR_EXACT_BPT_OUT, TOKENS_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     constructor(
@@ -243,8 +243,10 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         if (kind == JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(balances, normalizedWeights, scalingFactors, userData);
-        } else if (kind == JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokenInForExactBPTOut(balances, normalizedWeights, userData);
+        } else if (kind == JoinKind.ONE_TOKEN_IN_FOR_EXACT_BPT_OUT) {
+            return _joinOneTokenInForExactBPTOut(balances, normalizedWeights, userData);
+        } else if (kind == JoinKind.TOKENS_IN_FOR_EXACT_BPT_OUT) {
+            return _joinTokensInForExactBPTOut(balances, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
@@ -274,12 +276,12 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         return (bptAmountOut, amountsIn);
     }
 
-    function _joinTokenInForExactBPTOut(
+    function _joinOneTokenInForExactBPTOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
+        (uint256 bptAmountOut, uint256 tokenIndex) = userData.oneTokenInForExactBptOut();
         // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
 
         _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
@@ -292,6 +294,19 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             totalSupply(),
             getSwapFeePercentage()
         );
+
+        return (bptAmountOut, amountsIn);
+    }
+
+    function _joinTokensInForExactBPTOut(uint256[] memory balances, bytes memory userData)
+        private
+        view
+        returns (uint256, uint256[] memory)
+    {
+        uint256 bptAmountOut = userData.tokensInForExactBptOut();
+        // Note that there is no maximum amountsIn parameter: this is handled by `IVault.joinPool`.
+
+        uint256[] memory amountsIn = WeightedMath._calcTokensInGivenExactBptOut(balances, bptAmountOut, totalSupply());
 
         return (bptAmountOut, amountsIn);
     }
