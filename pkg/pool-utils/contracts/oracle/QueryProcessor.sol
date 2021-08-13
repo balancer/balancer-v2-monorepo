@@ -122,9 +122,9 @@ library QueryProcessor {
                     // If the oldest timestamp is not zero, it means the buffer was fully initialized.
                     bufferLength = Buffer.SIZE;
                 } else {
-                    // If the buffer was not fully initialized, we can assume the oldest index is the first item in
-                    // the buffer. We can overwrite this variable since it is no longer used ahead.
-                    bufferLength = oldestIndex;
+                    // If the buffer was not fully initialized, we haven't wrapped around it yet and can treat it as a regular array
+                    // where the oldest index is the first one, and the length the number of samples.
+                    bufferLength = oldestIndex; // Equal to latestIndex.next()
                     oldestIndex = 0;
                     oldestTimestamp = samples[0].timestamp();
                 }
