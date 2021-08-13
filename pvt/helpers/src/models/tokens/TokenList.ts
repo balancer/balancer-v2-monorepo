@@ -128,4 +128,10 @@ export default class TokenList {
     if (index == -1) throw Error(`Could not find token with symbol ${symbol}`);
     return index;
   }
+
+  sort(): TokenList {
+    return new TokenList(
+      this.tokens.sort((tokenA, tokenB) => (tokenA.address.toLowerCase() > tokenB.address.toLowerCase() ? 1 : -1))
+    );
+  }
 }

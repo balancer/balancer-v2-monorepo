@@ -1,6 +1,6 @@
 {
   "name": "@balancer-labs/v2-deployments",
-  "version": "1.1.1",
+  "version": "2.0.0-rc.1",
   "description": "Addresses and ABIs of all Balancer V2 deployed contracts",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/deployments#readme",
@@ -12,7 +12,15 @@
   "bugs": {
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "browser": "dist/index.umd.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
   "scripts": {
+    "build": "tsc",
     "lint": "eslint . --ext .ts --max-warnings 0",
     "test": "hardhat test ./**/test/*.ts",
     "test:deployed": "yarn test --network mainnet",
@@ -34,5 +42,9 @@
     "prettier": "^2.1.2",
     "ts-node": "^8.10.2",
     "typescript": "^4.0.2"
+  },
+  "peerDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "hardhat": "^2.4.1"
   }
 }

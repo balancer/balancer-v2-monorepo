@@ -20,11 +20,10 @@
     "dist/"
   ],
   "scripts": {
-    "build": "yarn typechain && tsc --emitDeclarationOnly && rollup -c",
+    "build": "rollup -c",
     "dev": "rollup -c -w",
     "test": "mocha --extension test.ts -r ts-node/register --recursive",
-    "lint": "eslint ./src --ext .ts --max-warnings 0",
-    "typechain": "typechain --target ethers-v5 --out-dir src/typechain '../deployments/tasks/*/abi/*.json'"
+    "lint": "eslint ./src --ext .ts --max-warnings 0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^19.0.0",
@@ -42,12 +41,14 @@
     "mocha": "^8.2.1",
     "prettier": "^2.1.2",
     "rollup": "^2.52.8",
+    "rollup-plugin-dts": "^3.0.2",
     "tiny-invariant": "^1.1.0",
     "ts-node": "^10.0.0",
     "typechain": "^5.1.1",
     "typescript": "^4.0.2"
   },
   "dependencies": {
+    "@balancer-labs/typechain": "workspace:*",
     "@ethersproject/abi": "^5.4.0",
     "@ethersproject/abstract-signer": "^5.4.0",
     "@ethersproject/address": "^5.4.0",
