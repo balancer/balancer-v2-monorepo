@@ -111,22 +111,31 @@ library QueryProcessor {
             // sample as well.
 
             // Since we use a circular buffer, the oldest sample is simply the next one.
+            uint256 bufferLength;
             uint256 oldestIndex = latestIndex.next();
             {
                 // Local scope used to prevent stack-too-deep errors.
                 bytes32 oldestSample = samples[oldestIndex];
                 uint256 oldestTimestamp = oldestSample.timestamp();
 
-                // For simplicity's sake, we only perform past queries if the buffer has been fully initialized. This
-                // means the oldest sample must have a non-zero timestamp.
-                _require(oldestTimestamp > 0, Errors.ORACLE_NOT_INITIALIZED);
-                // The only remaining condition to check is for the look up time to be between the oldest and latest
-                // timestamps.
+                if (oldestTimestamp > 0) {
+                    // If the oldest timestamp is not zero, it means the buffer was fully initialized.
+                    bufferLength = Buffer.SIZE;
+                } else {
+                    // If the buffer was not fully initialized, we haven't wrapped around it yet,
+                    // and can treat it as a regular array where the oldest index is the first one,
+                    // and the length the number of samples.
+                    bufferLength = oldestIndex; // Equal to latestIndex.next()
+                    oldestIndex = 0;
+                    oldestTimestamp = samples[0].timestamp();
+                }
+
+                // Finally check that the look up time is not previous to the oldest timestamp.
                 _require(oldestTimestamp <= lookUpTime, Errors.ORACLE_QUERY_TOO_OLD);
             }
 
             // Perform binary search to find nearest samples to the desired timestamp.
-            (bytes32 prev, bytes32 next) = findNearestSample(samples, lookUpTime, oldestIndex);
+            (bytes32 prev, bytes32 next) = findNearestSample(samples, lookUpTime, oldestIndex, bufferLength);
 
             // `next`'s timestamp is guaranteed to be larger than `prev`'s, so we can skip checked arithmetic.
             uint256 samplesTimeDiff = next.timestamp() - prev.timestamp();
@@ -150,7 +159,8 @@ library QueryProcessor {
 
     /**
      * @dev Finds the two samples with timestamps before and after `lookUpDate`. If one of the samples matches exactly,
-     * both `prev` and `next` will be it. `offset` is the index of the oldest sample in the buffer.
+     * both `prev` and `next` will be it. `offset` is the index of the oldest sample in the buffer. `length` is the size
+     * of the samples list.
      *
      * Assumes `lookUpDate` is greater or equal than the timestamp of the oldest sample, and less or equal than the
      * timestamp of the latest sample.
@@ -158,7 +168,8 @@ library QueryProcessor {
     function findNearestSample(
         mapping(uint256 => bytes32) storage samples,
         uint256 lookUpDate,
-        uint256 offset
+        uint256 offset,
+        uint256 length
     ) public view returns (bytes32 prev, bytes32 next) {
         // We're going to perform a binary search in the circular buffer, which requires it to be sorted. To achieve
         // this, we offset all buffer accesses by `offset`, making the first element the oldest one.
@@ -167,7 +178,7 @@ library QueryProcessor {
         // periodically increasing `low` or decreasing `high` until we either find a match or determine the element is
         // not in the array.
         uint256 low = 0;
-        uint256 high = Buffer.SIZE - 1;
+        uint256 high = length - 1;
         uint256 mid;
 
         // If the search fails and no sample has a timestamp of `lookUpDate` (as is the most common scenario), `sample`
