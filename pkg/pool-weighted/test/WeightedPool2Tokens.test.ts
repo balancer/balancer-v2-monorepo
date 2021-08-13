@@ -351,14 +351,12 @@ describe('WeightedPool2Tokens', function () {
       };
 
       context('given in', () => {
-        const lastChangeBlockOffset = 1;
         const action = (lastChangeBlock: number) => pool.swapGivenIn({ in: 0, out: 1, amount, lastChangeBlock });
 
         itUpdatesOracleOnSwapCorrectly(action);
       });
 
       context('given out', () => {
-        const lastChangeBlockOffset = 1;
         const action = (lastChangeBlock: number) => pool.swapGivenOut({ in: 1, out: 0, amount, lastChangeBlock });
 
         itUpdatesOracleOnSwapCorrectly(action);
