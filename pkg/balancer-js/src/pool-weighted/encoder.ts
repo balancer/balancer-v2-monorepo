@@ -56,7 +56,10 @@ export class WeightedPoolEncoder {
    * @param bptAmountOut - the amount of BPT to be minted
    */
   static joinAllTokensInForExactBPTOut = (bptAmountOut: BigNumberish): string =>
-    defaultAbiCoder.encode(['uint256', 'uint256'], [WeightedPoolJoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT, bptAmountOut]);
+    defaultAbiCoder.encode(
+      ['uint256', 'uint256'],
+      [WeightedPoolJoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT, bptAmountOut]
+    );
 
   /**
    * Encodes the userData parameter for exiting a WeightedPool by removing a single token in return for an exact amount of BPT
