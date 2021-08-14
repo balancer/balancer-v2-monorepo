@@ -17,7 +17,6 @@ import {
   InitWeightedPool,
   JoinGivenInWeightedPool,
   JoinGivenOutWeightedPool,
-  MultiJoinGivenOutWeightedPool,
   JoinResult,
   RawWeightedPoolDeployment,
   ExitResult,
