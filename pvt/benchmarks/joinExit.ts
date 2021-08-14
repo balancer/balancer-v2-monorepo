@@ -32,7 +32,7 @@ async function main() {
 
   console.log(`\n#Transferring tokens\n`);
 
-  const joinWeightedUserData = WeightedPoolEncoder.joinOneTokenInForExactBPTOut(BPTAmount, 0);
+  const joinWeightedUserData = WeightedPoolEncoder.joinTokenInForExactBPTOut(BPTAmount, 0);
   const exitWeightedUserData = WeightedPoolEncoder.exitExactBPTInForTokensOut(BPTAmount);
 
   const joinStableUserData = StablePoolEncoder.joinTokenInForExactBPTOut(BPTAmount, 0);

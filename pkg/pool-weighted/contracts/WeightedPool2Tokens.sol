@@ -529,7 +529,7 @@ contract WeightedPool2Tokens is
 
         if (kind == BaseWeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(balances, normalizedWeights, userData);
-        } else if (kind == BaseWeightedPool.JoinKind.ONE_TOKEN_IN_FOR_EXACT_BPT_OUT) {
+        } else if (kind == BaseWeightedPool.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(balances, normalizedWeights, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);

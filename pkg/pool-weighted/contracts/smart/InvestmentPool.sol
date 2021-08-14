@@ -344,11 +344,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             uint256[] memory
         )
     {
-        // If swaps are disabled, require proportional join
-        _require(
-            getSwapEnabled() || userData.joinKind() == JoinKind.TOKENS_IN_FOR_EXACT_BPT_OUT,
-            Errors.INVALID_JOIN_EXIT_WHILE_PAUSED
-        );
+        // If swaps are disabled, require proportional join (future)
 
         return
             super._onJoinPool(

@@ -235,6 +235,7 @@ describe('InvestmentPool', function () {
               await pool.setSwapEnabled(sender, false);
             });
 
+            /* future
             it('disallows disproportionate joins (single token)', async () => {
               const bptOut = await pool.balanceOf(sender);
 
@@ -260,16 +261,7 @@ describe('InvestmentPool', function () {
               await expect(pool.joinGivenIn({ from: sender, amountsIn })).to.be.revertedWith(
                 'INVALID_JOIN_EXIT_WHILE_PAUSED'
               );
-            });
-
-            it('disallows disproportionate joins (multi-token; one is zero)', async () => {
-              const amountsIn = [...initialBalances];
-              amountsIn[0] = 0;
-
-              await expect(pool.joinGivenIn({ from: sender, amountsIn })).to.be.revertedWith(
-                'INVALID_JOIN_EXIT_WHILE_PAUSED'
-              );
-            });
+            });;*/
 
             it('disallows disproportionate exits (single token)', async () => {
               const previousBptBalance = await pool.balanceOf(sender);

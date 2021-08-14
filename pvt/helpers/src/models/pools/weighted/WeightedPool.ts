@@ -368,10 +368,6 @@ export default class WeightedPool {
     return this.join(this._buildJoinGivenOutParams(params));
   }
 
-  async multiJoinGivenOut(params: MultiJoinGivenOutWeightedPool): Promise<JoinResult> {
-    return this.join(this._buildMultiJoinGivenOutParams(params));
-  }
-
   async queryJoinGivenOut(params: JoinGivenOutWeightedPool): Promise<JoinQueryResult> {
     return this.queryJoin(this._buildJoinGivenOutParams(params));
   }
@@ -519,18 +515,7 @@ export default class WeightedPool {
       lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: WeightedPoolEncoder.joinOneTokenInForExactBPTOut(params.bptOut, this.tokens.indexOf(params.token)),
-    };
-  }
-
-  private _buildMultiJoinGivenOutParams(params: MultiJoinGivenOutWeightedPool): JoinExitWeightedPool {
-    return {
-      from: params.from,
-      recipient: params.recipient,
-      lastChangeBlock: params.lastChangeBlock,
-      currentBalances: params.currentBalances,
-      protocolFeePercentage: params.protocolFeePercentage,
-      data: WeightedPoolEncoder.joinTokensInForExactBPTOut(params.bptOut),
+      data: WeightedPoolEncoder.joinTokenInForExactBPTOut(params.bptOut, this.tokens.indexOf(params.token)),
     };
   }
 

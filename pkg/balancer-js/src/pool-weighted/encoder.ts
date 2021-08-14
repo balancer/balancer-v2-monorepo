@@ -4,8 +4,7 @@ import { BigNumberish } from '@ethersproject/bignumber';
 export enum WeightedPoolJoinKind {
   INIT = 0,
   EXACT_TOKENS_IN_FOR_BPT_OUT,
-  ONE_TOKEN_IN_FOR_EXACT_BPT_OUT,
-  TOKENS_IN_FOR_EXACT_BPT_OUT,
+  TOKEN_IN_FOR_EXACT_BPT_OUT
 }
 
 export enum WeightedPoolExitKind {
@@ -45,18 +44,11 @@ export class WeightedPoolEncoder {
    * @param bptAmountOut - the amount of BPT to be minted
    * @param enterTokenIndex - the index of the token to be provided as liquidity
    */
-  static joinOneTokenInForExactBPTOut = (bptAmountOut: BigNumberish, enterTokenIndex: number): string =>
+  static joinTokenInForExactBPTOut = (bptAmountOut: BigNumberish, enterTokenIndex: number): string =>
     defaultAbiCoder.encode(
       ['uint256', 'uint256', 'uint256'],
-      [WeightedPoolJoinKind.ONE_TOKEN_IN_FOR_EXACT_BPT_OUT, bptAmountOut, enterTokenIndex]
+      [WeightedPoolJoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT, bptAmountOut, enterTokenIndex]
     );
-
-  /**
-   * Encodes the userData parameter for joining a WeightedPool proportionally to receive an exact amount of BPT
-   * @param bptAmountOut - the amount of BPT to be minted
-   */
-  static joinTokensInForExactBPTOut = (bptAmountOut: BigNumberish): string =>
-    defaultAbiCoder.encode(['uint256', 'uint256'], [WeightedPoolJoinKind.TOKENS_IN_FOR_EXACT_BPT_OUT, bptAmountOut]);
 
   /**
    * Encodes the userData parameter for exiting a WeightedPool by removing a single token in return for an exact amount of BPT
