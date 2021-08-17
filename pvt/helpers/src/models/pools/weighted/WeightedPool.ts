@@ -353,8 +353,8 @@ export default class WeightedPool {
     return { amount, receipt };
   }
 
-  async initializeOracleStorage(startSlot: number, endSlot: number): Promise<VoidResult> {
-    const tx = await this.instance.initializeOracleStorage(startSlot, endSlot);
+  async dirtyUninitializedOracleSamples(startSlot: number, endSlot: number): Promise<VoidResult> {
+    const tx = await this.instance.dirtyUninitializedOracleSamples(startSlot, endSlot);
     const receipt = await tx.wait();
     return { receipt };
   }

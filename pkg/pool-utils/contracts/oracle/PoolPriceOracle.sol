@@ -78,18 +78,18 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
     }
 
     /**
-     * @dev Manually fill oracle slots with dummy data, so that subsequent swaps filling them with real data
-     * cost less gas. Initialize by range, since filling a slot costs roughly 20k gas, so trying to fill the
+     * @dev Manually fill oracle samples with dummy data, so that subsequent swaps filling them with real data
+     * cost less gas. Fill by range, since storing a sample costs roughly 20k gas, so trying to fill the
      * entire buffer at once would run out of gas.
      */
-    function initializeOracleStorage(uint256 startSlot, uint256 endSlot) external {
-        _require(startSlot < endSlot && endSlot <= Buffer.SIZE, Errors.OUT_OF_BOUNDS);
+    function dirtyUninitializedOracleSamples(uint256 startIndex, uint256 endIndex) external {
+        _require(startIndex < endIndex && endIndex <= Buffer.SIZE, Errors.OUT_OF_BOUNDS);
 
         // Uninitialized samples are identified by a zero timestamp -- all other fields are ignored,
         // so any non-zero value with a zero timestamp suffices.
         bytes32 initSample = Samples.pack(1, 0, 0, 0, 0, 0, 0);
-        for (uint256 i = startSlot; i < endSlot; i++) {
-            if (_samples[i] == 0) {
+        for (uint256 i = startIndex; i < endIndex; i++) {
+            if (_samples[i].timestamp() == 0) {
                 _samples[i] = initSample;
             }
         }

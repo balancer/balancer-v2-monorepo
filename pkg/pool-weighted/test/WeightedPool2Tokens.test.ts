@@ -70,12 +70,12 @@ describe('WeightedPool2Tokens', function () {
 
     context('initialize with invalid arguments', () => {
       it('does not allow end <= start', async () => {
-        expect(pool.initializeOracleStorage(200, 100)).to.be.revertedWith('OUT_OF_BOUNDS');
-        expect(pool.initializeOracleStorage(100, 100)).to.be.revertedWith('OUT_OF_BOUNDS');
+        expect(pool.dirtyUninitializedOracleSamples(200, 100)).to.be.revertedWith('OUT_OF_BOUNDS');
+        expect(pool.dirtyUninitializedOracleSamples(100, 100)).to.be.revertedWith('OUT_OF_BOUNDS');
       });
 
       it('does not allow end > buffer size', async () => {
-        expect(pool.initializeOracleStorage(100, 10000)).to.be.revertedWith('OUT_OF_BOUNDS');
+        expect(pool.dirtyUninitializedOracleSamples(100, 10000)).to.be.revertedWith('OUT_OF_BOUNDS');
       });
     });
 
@@ -132,8 +132,8 @@ describe('WeightedPool2Tokens', function () {
           expect(actual).to.equalWithError(expectedInvariant, MAX_RELATIVE_ERROR);
         });
 
-        it('cannot be overwritten by storage initialization', async () => {
-          await pool.initializeOracleStorage(sampleIndex, sampleIndex + SLOTS_INITIALIZED);
+        it('cannot be overwritten by invalid samples', async () => {
+          await pool.dirtyUninitializedOracleSamples(sampleIndex, sampleIndex + SLOTS_INITIALIZED);
 
           const afterSample = await pool.getOracleSample(sampleIndex);
           expect(afterSample).to.deep.equal(newSample);
