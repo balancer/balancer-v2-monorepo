@@ -591,7 +591,11 @@ contract WeightedPool2Tokens is
         uint256 bptAmountOut = userData.allTokensInForExactBptOut();
         // Note that there is no maximum amountsIn parameter: this is handled by `IVault.joinPool`.
 
-        uint256[] memory amountsIn = WeightedMath._calcTokensInGivenExactBptOut(balances, bptAmountOut, totalSupply());
+        uint256[] memory amountsIn = WeightedMath._calcAllTokensInGivenExactBptOut(
+            balances,
+            bptAmountOut,
+            totalSupply()
+        );
 
         return (bptAmountOut, amountsIn);
     }

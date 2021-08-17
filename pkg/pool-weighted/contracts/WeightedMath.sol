@@ -214,7 +214,7 @@ contract WeightedMath {
         return nonTaxableAmount.add(taxableAmount.divUp(FixedPoint.ONE.sub(swapFeePercentage)));
     }
 
-    function _calcTokensInGivenExactBptOut(
+    function _calcAllTokensInGivenExactBptOut(
         uint256[] memory balances,
         uint256 bptAmountOut,
         uint256 totalBPT

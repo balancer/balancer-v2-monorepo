@@ -93,7 +93,7 @@ export type JoinGivenOutWeightedPool = {
   protocolFeePercentage?: BigNumberish;
 };
 
-export type MultiJoinGivenOutWeightedPool = {
+export type JoinAllGivenOutWeightedPool = {
   bptOut: BigNumberish;
   from?: SignerWithAddress;
   recipient?: Account;

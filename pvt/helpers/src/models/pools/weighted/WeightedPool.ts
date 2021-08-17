@@ -17,7 +17,7 @@ import {
   InitWeightedPool,
   JoinGivenInWeightedPool,
   JoinGivenOutWeightedPool,
-  MultiJoinGivenOutWeightedPool,
+  JoinAllGivenOutWeightedPool,
   JoinResult,
   RawWeightedPoolDeployment,
   ExitResult,
@@ -372,12 +372,12 @@ export default class WeightedPool {
     return this.queryJoin(this._buildJoinGivenOutParams(params));
   }
 
-  async multiJoinGivenOut(params: MultiJoinGivenOutWeightedPool): Promise<JoinResult> {
-    return this.join(this._buildMultiJoinGivenOutParams(params));
+  async joinAllGivenOut(params: JoinAllGivenOutWeightedPool): Promise<JoinResult> {
+    return this.join(this._buildJoinAllGivenOutParams(params));
   }
 
-  async queryMultiJoinGivenOut(params: MultiJoinGivenOutWeightedPool): Promise<JoinQueryResult> {
-    return this.queryJoin(this._buildMultiJoinGivenOutParams(params));
+  async queryJoinAllGivenOut(params: JoinAllGivenOutWeightedPool): Promise<JoinQueryResult> {
+    return this.queryJoin(this._buildJoinAllGivenOutParams(params));
   }
 
   async exitGivenOut(params: ExitGivenOutWeightedPool): Promise<ExitResult> {
@@ -527,7 +527,7 @@ export default class WeightedPool {
     };
   }
 
-  private _buildMultiJoinGivenOutParams(params: MultiJoinGivenOutWeightedPool): JoinExitWeightedPool {
+  private _buildJoinAllGivenOutParams(params: JoinAllGivenOutWeightedPool): JoinExitWeightedPool {
     return {
       from: params.from,
       recipient: params.recipient,
