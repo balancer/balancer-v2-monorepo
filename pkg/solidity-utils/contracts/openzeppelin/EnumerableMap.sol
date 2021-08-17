@@ -119,15 +119,15 @@ library EnumerableMap {
             uint256 toDeleteIndex = keyIndex - 1;
             uint256 lastIndex = map._length - 1;
 
-            // When the entry to delete is the last one, the swap operation is unnecessary. However, since this occurs
-            // so rarely, we still do the swap anyway to avoid the gas cost of adding an 'if' statement.
+            // The swap is only necessary if we're not removing the last element
+            if (toDeleteIndex != lastIndex) {
+                IERC20ToBytes32MapEntry storage lastEntry = map._entries[lastIndex];
 
-            IERC20ToBytes32MapEntry storage lastEntry = map._entries[lastIndex];
-
-            // Move the last entry to the index where the entry to delete is
-            map._entries[toDeleteIndex] = lastEntry;
-            // Update the index for the moved entry
-            map._indexes[lastEntry._key] = toDeleteIndex + 1; // All indexes are 1-based
+                // Move the last entry to the index where the entry to delete is
+                map._entries[toDeleteIndex] = lastEntry;
+                // Update the index for the moved entry
+                map._indexes[lastEntry._key] = toDeleteIndex + 1; // All indexes are 1-based
+            }
 
             // Delete the slot where the moved entry was stored
             delete map._entries[lastIndex];
