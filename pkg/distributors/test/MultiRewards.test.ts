@@ -280,6 +280,14 @@ describe('Staking contract', () => {
         const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
         expect(expectedReward.sub(actualReward).abs()).to.be.lte(300);
       });
+
+      it('calculates totalEarned from both distributions for the other user', async () => {
+        const expectedReward = fp(0.75).mul(3);
+        await advanceTime(10);
+
+        const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
+        expect(expectedReward.sub(actualReward).abs()).to.be.lte(300);
+      });
     });
   });
 

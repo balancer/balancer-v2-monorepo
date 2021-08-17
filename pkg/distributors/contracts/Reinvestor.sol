@@ -61,7 +61,6 @@ contract Reinvestor is PoolTokenCache, IDistributorCallback {
 
         for (uint256 t; t < tokens.length; t++) {
             address token = address(tokens[t]);
-            require(internalBalances[t] >= 0, "Token provided was not sent to the reinvestor");
 
             if (poolHasToken(poolId, token)) {
                 amountsIn[poolTokenIndex(poolId, token)] = internalBalances[t];
@@ -108,7 +107,6 @@ contract Reinvestor is PoolTokenCache, IDistributorCallback {
 
         _joinPool(params.poolId, params.recipient, assets, amountsIn);
         vault.manageUserBalance(leftoverOps);
-        return;
     }
 
     function _joinPool(
