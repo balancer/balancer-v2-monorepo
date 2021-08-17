@@ -30,13 +30,25 @@ contract PoolTokenCache {
     mapping(bytes32 => EnumerableSet.AddressSet) private _poolTokenSets;
     mapping(bytes32 => bool) private _poolTokenSetSaved;
 
+    function savePoolTokenSet(bytes32 poolId) public {
+        (IERC20[] memory poolTokens, , ) = vault.getPoolTokens(poolId);
+        if (_poolTokenSetSaved[poolId]) {
+            uint256 numTokens = _poolTokenSets[poolId].length();
+            for (uint256 t; t < numTokens; t++) {
+                // always the 0 index since we're removing all elements
+                address tokenAddress = _poolTokenSets[poolId].unchecked_at(0);
+                _poolTokenSets[poolId].remove(tokenAddress);
+            }
+        }
+        for (uint256 pt; pt < poolTokens.length; pt++) {
+            _poolTokenSets[poolId].add(address(poolTokens[pt]));
+        }
+        _poolTokenSetSaved[poolId] = true;
+    }
+
     function ensurePoolTokenSetSaved(bytes32 poolId) public {
         if (!_poolTokenSetSaved[poolId]) {
-            (IERC20[] memory poolTokens, , ) = vault.getPoolTokens(poolId);
-            for (uint256 pt; pt < poolTokens.length; pt++) {
-                _poolTokenSets[poolId].add(address(poolTokens[pt]));
-            }
-            _poolTokenSetSaved[poolId] = true;
+            savePoolTokenSet(poolId);
         }
     }
 
