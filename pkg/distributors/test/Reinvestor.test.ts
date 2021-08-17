@@ -15,6 +15,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { setup, tokenInitialBalance, rewardsDuration } from './MultiRewardsSharedSetup';
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
 
 describe('Reinvestor', () => {
   let admin: SignerWithAddress, lp: SignerWithAddress, mockAssetManager: SignerWithAddress;
@@ -171,6 +172,30 @@ describe('Reinvestor', () => {
             [{ account: lp, changes: { GRT: ['very-near', fp(3)] } }]
           );
         });
+      });
+    });
+
+    describe('with a pool with mutable tokens', () => {
+      let mutablePool: Contract, mutablePoolId: string, tokens: TokenList;
+
+      sharedBeforeEach(async () => {
+        const specialization = PoolSpecialization.GeneralPool;
+        mutablePool = await deploy('v2-vault/MockPool', { args: [vault.address, specialization] });
+        mutablePoolId = await mutablePool.getPoolId();
+
+        tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT']);
+        const tokenAddresses = tokens.subset(3).map((t: Token) => t.address);
+
+        const assetManagers = Array(3).fill(ZERO_ADDRESS);
+        await mutablePool.registerTokens(tokenAddresses, assetManagers);
+        await callbackContract.savePoolTokenSet(mutablePoolId);
+      });
+
+      it('allows anyone to update the poolTokens list', async () => {
+        expect(await callbackContract.poolHasToken(mutablePoolId, tokens.DAI.address)).to.be.true;
+        await mutablePool.deregisterTokens([tokens.first.address]);
+        await callbackContract.savePoolTokenSet(mutablePoolId);
+        expect(await callbackContract.poolHasToken(mutablePoolId, tokens.DAI.address)).to.be.false;
       });
     });
   });
