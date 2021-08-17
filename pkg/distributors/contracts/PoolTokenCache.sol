@@ -32,18 +32,23 @@ contract PoolTokenCache {
 
     function savePoolTokenSet(bytes32 poolId) public {
         (IERC20[] memory poolTokens, , ) = vault.getPoolTokens(poolId);
+
         if (_poolTokenSetSaved[poolId]) {
+            // Purge potentially stale cached data
             uint256 numTokens = _poolTokenSets[poolId].length();
+
+            // Clear the set by removing the zeroeth element n times
             for (uint256 t; t < numTokens; t++) {
-                // always the 0 index since we're removing all elements
                 address tokenAddress = _poolTokenSets[poolId].unchecked_at(0);
                 _poolTokenSets[poolId].remove(tokenAddress);
             }
+        } else {
+            _poolTokenSetSaved[poolId] = true;
         }
+
         for (uint256 pt; pt < poolTokens.length; pt++) {
             _poolTokenSets[poolId].add(address(poolTokens[pt]));
         }
-        _poolTokenSetSaved[poolId] = true;
     }
 
     function ensurePoolTokenSetSaved(bytes32 poolId) public {
