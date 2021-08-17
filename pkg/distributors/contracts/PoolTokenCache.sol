@@ -75,15 +75,19 @@ contract PoolTokenCache {
         }
     }
 
+    function _poolTokenIndex(bytes32 poolId, address token) internal view returns (uint256) {
+        return _poolTokenSets[poolId].rawIndexOf(token);
+    }
+
     function poolHasToken(bytes32 poolId, address token) public view returns (bool) {
         return _poolTokenSets[poolId].contains(token);
     }
 
-    function poolTokenIndex(bytes32 poolId, address token) public view returns (uint256) {
-        return _poolTokenSets[poolId].rawIndexOf(token);
-    }
-
     function poolTokensLength(bytes32 poolId) public view returns (uint256) {
         return _poolTokenSets[poolId].length();
+    }
+
+    function poolTokenAtIndex(bytes32 poolId, uint256 index) public view returns (address) {
+        return _poolTokenSets[poolId].at(index);
     }
 }
