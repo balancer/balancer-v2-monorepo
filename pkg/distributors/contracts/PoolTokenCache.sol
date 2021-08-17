@@ -37,10 +37,13 @@ contract PoolTokenCache {
             // Purge potentially stale cached data
             uint256 numTokens = _poolTokenSets[poolId].length();
 
-            // Clear the set by removing the zeroeth element n times
-            for (uint256 t; t < numTokens; t++) {
-                address tokenAddress = _poolTokenSets[poolId].unchecked_at(0);
-                _poolTokenSets[poolId].remove(tokenAddress);
+            // Clear the set by removing the last element n times, which uses less gas than removing elements in any
+            // other order.
+            for (uint256 i = 0; i < numTokens; i++) {
+                uint256 lastIndex = numTokens - 1 - i;
+
+                address lastIndexAddress = _poolTokenSets[poolId].unchecked_at(0);
+                _poolTokenSets[poolId].remove(lastIndexAddress);
             }
         } else {
             _poolTokenSetSaved[poolId] = true;
