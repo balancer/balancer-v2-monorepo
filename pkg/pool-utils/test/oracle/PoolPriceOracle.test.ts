@@ -6,7 +6,7 @@ import { bn, decimal, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { advanceTime, advanceToTimestamp, currentTimestamp, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 
-describe.only('PoolPriceOracle', () => {
+describe('PoolPriceOracle', () => {
   let oracle: Contract;
 
   const MAX_BUFFER_SIZE = 1024;

@@ -84,7 +84,6 @@ describe('WeightedPool2Tokens', function () {
 
       context('with updated oracle', () => {
         let previousBalances: BigNumber[], previousTotalSupply: BigNumber, newSample: Sample;
-        let sampleIndex: number;
 
         sharedBeforeEach(async () => {
           previousBalances = await pool.getBalances();
@@ -94,7 +93,6 @@ describe('WeightedPool2Tokens', function () {
           await action(await calcLastChangeBlock(lastChangeBlockOffset));
 
           newSample = await pool.getOracleSample();
-          sampleIndex = (await pool.getMiscData()).oracleIndex.toNumber();
         });
 
         it('stores the pre-action spot price', async () => {
