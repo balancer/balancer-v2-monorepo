@@ -78,9 +78,8 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
     }
 
     /**
-     * @dev Manually fill oracle samples with dummy data, so that subsequent swaps filling them with real data
-     * cost less gas. Fill by range, since storing a sample costs roughly 20k gas, so trying to fill the
-     * entire buffer at once would run out of gas.
+     * @dev Manually dirty oracle sample storage slots with dummy data, to reduce the gas cost of the future swaps
+     * that will initialize them. This function is only useful before the oracle has been fully initialized.
      */
     function dirtyUninitializedOracleSamples(uint256 startIndex, uint256 endIndex) external {
         _require(startIndex < endIndex && endIndex <= Buffer.SIZE, Errors.OUT_OF_BOUNDS);
