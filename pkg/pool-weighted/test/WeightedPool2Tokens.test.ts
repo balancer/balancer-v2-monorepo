@@ -68,13 +68,13 @@ describe('WeightedPool2Tokens', function () {
       return nextBlockNumber - offset;
     };
 
-    context('initialize with invalid arguments', () => {
-      it('does not allow end <= start', async () => {
+    describe('dirtyUninitializedOracleSamples', () => {
+      it('reverts if end <= start', async () => {
         expect(pool.dirtyUninitializedOracleSamples(200, 100)).to.be.revertedWith('OUT_OF_BOUNDS');
         expect(pool.dirtyUninitializedOracleSamples(100, 100)).to.be.revertedWith('OUT_OF_BOUNDS');
       });
 
-      it('does not allow end > buffer size', async () => {
+      it('reverts if  end > buffer size', async () => {
         expect(pool.dirtyUninitializedOracleSamples(100, 10000)).to.be.revertedWith('OUT_OF_BOUNDS');
       });
     });
