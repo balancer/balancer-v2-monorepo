@@ -68,29 +68,6 @@ describe('WeightedPool2Tokens', function () {
       return nextBlockNumber - offset;
     };
 
-    describe('dirtyUninitializedOracleSamples', () => {
-      it('reverts if end <= start', async () => {
-        await expect(pool.dirtyUninitializedOracleSamples(1, 1)).to.be.revertedWith('OUT_OF_BOUNDS');
-        await expect(pool.dirtyUninitializedOracleSamples(1, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
-      });
-
-      it('reverts if  end > buffer size', async () => {
-        await expect(pool.dirtyUninitializedOracleSamples(0, 1025)).to.be.revertedWith('OUT_OF_BOUNDS');
-      });
-
-      it('dirty samples have zero timestamp but non-zero data (dirty storage slot)', async () => {
-        const ZERO_SAMPLE = [fp(0), fp(0), fp(0), fp(0), fp(0), fp(0), fp(0)];
-
-        const sampleIndex = 0;
-        await pool.dirtyUninitializedOracleSamples(sampleIndex, sampleIndex + 2); // +2 since endIndex is non-inclusive
-
-        // One in the middle should be initialized to non-zero (but timestamp is 0)
-        const dirtySample = await pool.getOracleSample(sampleIndex);
-        expect(dirtySample.timestamp).to.equal(0);
-        expect(dirtySample).to.not.deep.equal(ZERO_SAMPLE);
-      });
-    });
-
     const itUpdatesTheOracleData = (action: PoolHook, lastChangeBlockOffset = 0) => {
       context('without updated oracle', () => {
         it('updates the oracle data', async () => {
@@ -140,13 +117,6 @@ describe('WeightedPool2Tokens', function () {
           const actual = await pool.instance.fromLowResLog(newSample.logInvariant);
 
           expect(actual).to.equalWithError(expectedInvariant, MAX_RELATIVE_ERROR);
-        });
-
-        it('sampe is unaffected by attempts to dirty uninitialized samples', async () => {
-          await pool.dirtyUninitializedOracleSamples(sampleIndex, sampleIndex + 2); // +2 since endIndex is non-inclusive
-
-          const afterSample = await pool.getOracleSample(sampleIndex);
-          expect(afterSample).to.deep.equal(newSample);
         });
       });
     };

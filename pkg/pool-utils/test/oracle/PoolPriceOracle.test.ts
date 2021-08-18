@@ -6,10 +6,14 @@ import { bn, decimal, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { advanceTime, advanceToTimestamp, currentTimestamp, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 
-describe('PoolPriceOracle', () => {
+describe.only('PoolPriceOracle', () => {
   let oracle: Contract;
 
   const MAX_BUFFER_SIZE = 1024;
+
+  const newLogPairPrice = 100;
+  const newLogBptPrice = 200;
+  const newLogInvariant = 300;
 
   sharedBeforeEach('deploy oracle', async () => {
     oracle = await deploy('MockPoolPriceOracle', {
@@ -18,10 +22,6 @@ describe('PoolPriceOracle', () => {
   });
 
   describe('process', () => {
-    const newLogPairPrice = 100;
-    const newLogBptPrice = 200;
-    const newLogInvariant = 300;
-
     const itUpdatesTheExistingSample = (index: number, elapsed: number) => {
       it('updates the existing sample', async () => {
         const previousSample = await oracle.getSample(index);
@@ -66,30 +66,44 @@ describe('PoolPriceOracle', () => {
         expect(sameSample.timestamp).to.be.equal(previousSample.timestamp);
       });
 
-      it('creates another sample', async () => {
-        const previousSample = await oracle.getSample(index);
+      const expectedIndex = (index + 1) % MAX_BUFFER_SIZE;
+      const itCreatesANewSample = (index: number, elapsed: number) => {
+        it('creates a new sample', async () => {
+          const previousSample = await oracle.getSample(index);
 
-        if (elapsed > 0) await advanceTime(elapsed);
-        const tx = await oracle.processPriceData(elapsed, index, newLogPairPrice, newLogBptPrice, newLogInvariant);
+          if (elapsed > 0) await advanceTime(elapsed);
+          const tx = await oracle.processPriceData(elapsed, index, newLogPairPrice, newLogBptPrice, newLogInvariant);
 
-        const expectedIndex = (index + 1) % MAX_BUFFER_SIZE;
-        expectEvent.inReceipt(await tx.wait(), 'PriceDataProcessed', { newSample: true, sampleIndex: expectedIndex });
+          expectEvent.inReceipt(await tx.wait(), 'PriceDataProcessed', { newSample: true, sampleIndex: expectedIndex });
 
-        const newSample = await oracle.getSample(expectedIndex);
-        expect(newSample.timestamp).to.be.equal(await currentTimestamp());
-        const actualElapsed = newSample.timestamp.sub(previousSample.timestamp);
+          const newSample = await oracle.getSample(expectedIndex);
+          expect(newSample.timestamp).to.be.equal(await currentTimestamp());
+          const actualElapsed = newSample.timestamp.sub(previousSample.timestamp);
 
-        expect(newSample.logPairPrice).to.be.equal(newLogPairPrice);
-        const expectedAccLogPairPrice = previousSample.accLogPairPrice.add(bn(newLogPairPrice).mul(actualElapsed));
-        expect(newSample.accLogPairPrice).to.be.equal(expectedAccLogPairPrice);
+          expect(newSample.logPairPrice).to.be.equal(newLogPairPrice);
+          const expectedAccLogPairPrice = previousSample.accLogPairPrice.add(bn(newLogPairPrice).mul(actualElapsed));
+          expect(newSample.accLogPairPrice).to.be.equal(expectedAccLogPairPrice);
 
-        expect(newSample.logBptPrice).to.be.equal(newLogBptPrice);
-        const expectedAccLogBptPrice = previousSample.accLogBptPrice.add(bn(newLogBptPrice).mul(actualElapsed));
-        expect(newSample.accLogBptPrice).to.be.equal(expectedAccLogBptPrice);
+          expect(newSample.logBptPrice).to.be.equal(newLogBptPrice);
+          const expectedAccLogBptPrice = previousSample.accLogBptPrice.add(bn(newLogBptPrice).mul(actualElapsed));
+          expect(newSample.accLogBptPrice).to.be.equal(expectedAccLogBptPrice);
 
-        expect(newSample.logInvariant).to.be.equal(newLogInvariant);
-        const expectedAccLogInvariant = previousSample.accLogInvariant.add(bn(newLogInvariant).mul(actualElapsed));
-        expect(newSample.accLogInvariant).to.be.equal(expectedAccLogInvariant);
+          expect(newSample.logInvariant).to.be.equal(newLogInvariant);
+          const expectedAccLogInvariant = previousSample.accLogInvariant.add(bn(newLogInvariant).mul(actualElapsed));
+          expect(newSample.accLogInvariant).to.be.equal(expectedAccLogInvariant);
+        });
+      };
+
+      context('with clean storage slot', () => {
+        itCreatesANewSample(index, elapsed);
+      });
+
+      context('with dirty storage slot', () => {
+        sharedBeforeEach(async () => {
+          await oracle.dirtyUninitializedOracleSamples(expectedIndex, expectedIndex + 1);
+        });
+
+        itCreatesANewSample(index, elapsed);
       });
     };
 
@@ -536,6 +550,45 @@ describe('PoolPriceOracle', () => {
 
     context('with negative values', () => {
       itAnswersQueriesCorrectly(false);
+    });
+  });
+
+  describe('dirty', () => {
+    it('reverts if end <= start', async () => {
+      await expect(oracle.dirtyUninitializedOracleSamples(1, 1)).to.be.revertedWith('OUT_OF_BOUNDS');
+      await expect(oracle.dirtyUninitializedOracleSamples(1, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
+    });
+
+    it('reverts if  end > buffer size', async () => {
+      await expect(oracle.dirtyUninitializedOracleSamples(0, 1025)).to.be.revertedWith('OUT_OF_BOUNDS');
+    });
+
+    it('dirty samples have zero timestamp but non-zero data (dirty storage slot)', async () => {
+      const ZERO_SAMPLE = [fp(0), fp(0), fp(0), fp(0), fp(0), fp(0), fp(0)];
+
+      const sampleIndex = 0;
+      await oracle.dirtyUninitializedOracleSamples(sampleIndex, sampleIndex + 1);
+
+      const dirtySample = await oracle.getSample(sampleIndex);
+      expect(dirtySample.timestamp).to.equal(0);
+      expect(dirtySample).to.not.deep.equal(ZERO_SAMPLE);
+    });
+
+    context('with initialized sample', () => {
+      const index = 5;
+
+      sharedBeforeEach(async () => {
+        await oracle.processPriceData(0, index, newLogPairPrice, newLogBptPrice, newLogInvariant);
+      });
+
+      it('does not modify initialized samples', async () => {
+        const lastSample = await oracle.getSample(index);
+
+        await oracle.dirtyUninitializedOracleSamples(index, index + 1);
+        const unmodifiedSample = await oracle.getSample(index);
+
+        expect(unmodifiedSample).to.deep.equal(lastSample);
+      });
     });
   });
 });
