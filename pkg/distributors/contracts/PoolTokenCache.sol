@@ -42,7 +42,7 @@ contract PoolTokenCache {
             for (uint256 i = 0; i < numTokens; i++) {
                 uint256 lastIndex = numTokens - 1 - i;
 
-                address lastIndexAddress = _poolTokenSets[poolId].unchecked_at(0);
+                address lastIndexAddress = _poolTokenSets[poolId].unchecked_at(lastIndex);
                 _poolTokenSets[poolId].remove(lastIndexAddress);
             }
         } else {
