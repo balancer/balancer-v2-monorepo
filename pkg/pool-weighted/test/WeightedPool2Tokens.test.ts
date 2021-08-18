@@ -70,12 +70,12 @@ describe('WeightedPool2Tokens', function () {
 
     describe('dirtyUninitializedOracleSamples', () => {
       it('reverts if end <= start', async () => {
-        expect(pool.dirtyUninitializedOracleSamples(200, 100)).to.be.revertedWith('OUT_OF_BOUNDS');
-        expect(pool.dirtyUninitializedOracleSamples(100, 100)).to.be.revertedWith('OUT_OF_BOUNDS');
+        expect(pool.dirtyUninitializedOracleSamples(1, 1)).to.be.revertedWith('OUT_OF_BOUNDS');
+        expect(pool.dirtyUninitializedOracleSamples(1, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
       });
 
       it('reverts if  end > buffer size', async () => {
-        expect(pool.dirtyUninitializedOracleSamples(100, 10000)).to.be.revertedWith('OUT_OF_BOUNDS');
+        expect(pool.dirtyUninitializedOracleSamples(0, 1025)).to.be.revertedWith('OUT_OF_BOUNDS');
       });
     });
 
