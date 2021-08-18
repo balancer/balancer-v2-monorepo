@@ -77,6 +77,25 @@ abstract contract PoolPriceOracle is IPoolPriceOracle, IPriceOracle {
         return Buffer.SIZE;
     }
 
+    /**
+     * @dev Manually dirty oracle sample storage slots with dummy data, to reduce the gas cost of the future swaps
+     * that will initialize them. This function is only useful before the oracle has been fully initialized.
+     *
+     * `endIndex` is non-inclusive.
+     */
+    function dirtyUninitializedOracleSamples(uint256 startIndex, uint256 endIndex) external {
+        _require(startIndex < endIndex && endIndex <= Buffer.SIZE, Errors.OUT_OF_BOUNDS);
+
+        // Uninitialized samples are identified by a zero timestamp -- all other fields are ignored,
+        // so any non-zero value with a zero timestamp suffices.
+        bytes32 initSample = Samples.pack(1, 0, 0, 0, 0, 0, 0);
+        for (uint256 i = startIndex; i < endIndex; i++) {
+            if (_samples[i].timestamp() == 0) {
+                _samples[i] = initSample;
+            }
+        }
+    }
+
     // IPriceOracle
 
     function getLargestSafeQueryWindow() external pure override returns (uint256) {
