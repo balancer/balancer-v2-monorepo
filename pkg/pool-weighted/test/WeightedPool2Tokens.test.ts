@@ -70,12 +70,24 @@ describe('WeightedPool2Tokens', function () {
 
     describe('dirtyUninitializedOracleSamples', () => {
       it('reverts if end <= start', async () => {
-        expect(pool.dirtyUninitializedOracleSamples(1, 1)).to.be.revertedWith('OUT_OF_BOUNDS');
-        expect(pool.dirtyUninitializedOracleSamples(1, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
+        await expect(pool.dirtyUninitializedOracleSamples(1, 1)).to.be.revertedWith('OUT_OF_BOUNDS');
+        await expect(pool.dirtyUninitializedOracleSamples(1, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
       });
 
       it('reverts if  end > buffer size', async () => {
-        expect(pool.dirtyUninitializedOracleSamples(0, 1025)).to.be.revertedWith('OUT_OF_BOUNDS');
+        await expect(pool.dirtyUninitializedOracleSamples(0, 1025)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
+
+      it('dirty samples have zero timestamp but non-zero data (dirty storage slot)', async () => {
+        const ZERO_SAMPLE = [fp(0), fp(0), fp(0), fp(0), fp(0), fp(0), fp(0)];
+
+        const sampleIndex = 0;
+        await pool.dirtyUninitializedOracleSamples(sampleIndex, sampleIndex + 2); // +2 since endIndex is non-inclusive
+
+        // One in the middle should be initialized to non-zero (but timestamp is 0)
+        const dirtySample = await pool.getOracleSample(sampleIndex);
+        expect(dirtySample.timestamp).to.equal(0);
+        expect(dirtySample).to.not.deep.equal(ZERO_SAMPLE);
       });
     });
 
@@ -96,8 +108,6 @@ describe('WeightedPool2Tokens', function () {
       context('with updated oracle', () => {
         let previousBalances: BigNumber[], previousTotalSupply: BigNumber, newSample: Sample;
         let sampleIndex: number;
-        const SLOTS_INITIALIZED = 10;
-        const ZERO_SAMPLE = [fp(0), fp(0), fp(0), fp(0), fp(0), fp(0), fp(0)];
 
         sharedBeforeEach(async () => {
           previousBalances = await pool.getBalances();
@@ -132,20 +142,11 @@ describe('WeightedPool2Tokens', function () {
           expect(actual).to.equalWithError(expectedInvariant, MAX_RELATIVE_ERROR);
         });
 
-        it('cannot be overwritten by invalid samples', async () => {
-          await pool.dirtyUninitializedOracleSamples(sampleIndex, sampleIndex + SLOTS_INITIALIZED);
+        it('sampe is unaffected by attempts to dirty uninitialized samples', async () => {
+          await pool.dirtyUninitializedOracleSamples(sampleIndex, sampleIndex + 2); // +2 since endIndex is non-inclusive
 
           const afterSample = await pool.getOracleSample(sampleIndex);
           expect(afterSample).to.deep.equal(newSample);
-
-          // One in the middle should be initialized to non-zero (but timestamp is 0)
-          const initializedSample = await pool.getOracleSample(sampleIndex + SLOTS_INITIALIZED / 2);
-          expect(initializedSample.timestamp).to.equal(0);
-          expect(initializedSample).to.not.deep.equal(ZERO_SAMPLE);
-
-          // One near the end should be uninitialized
-          const uninitializedSample = await pool.getOracleSample(1000);
-          expect(uninitializedSample).to.deep.equal(ZERO_SAMPLE);
         });
       });
     };
