@@ -29,8 +29,7 @@ export async function getBalancerContractAt(task: string, contract: string, addr
  * @param contract Name of the contract to looking the ABI of
  */
 export async function getBalancerContractAbi(task: string, contract: string): Promise<unknown[]> {
-  const { abi } = await import(getBalancerContractAbiPath(task, contract));
-  return abi;
+  return import(getBalancerContractAbiPath(task, contract));
 }
 
 /**

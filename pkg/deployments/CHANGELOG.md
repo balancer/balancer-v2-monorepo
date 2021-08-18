@@ -2,7 +2,14 @@
 
 ## 2.0.0 (unreleased)
 
-- Added deployments for `StablePoolFactory` and `LiquidityBootstrappingPoolFactory`
+### New Deployments
+
+- `StablePoolFactory`
+- `LiquidityBootstrappingPoolFactory`
+- `MetaStablePoolFactory`
+- `MerkleRedeem` (for the LDO token)
+- `LidoRelayer`
+- `WstETHRateProvider`
 
 ### Breaking Changes
 

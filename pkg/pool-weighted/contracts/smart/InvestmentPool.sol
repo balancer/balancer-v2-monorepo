@@ -200,7 +200,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         //emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
-    function _readScalingFactor(bytes32 tokenState) private view returns (uint256) {
+    function _readScalingFactor(bytes32 tokenState) private pure returns (uint256) {
         uint256 decimalsDifference = tokenState.decodeUint5(_DECIMAL_DIFF_OFFSET);
 
         return FixedPoint.ONE * 10**decimalsDifference;
@@ -212,7 +212,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
      * @dev Returns a fixed-point number representing how far along the current weight change is, where 0 means the
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
-    function _calculateWeightChangeProgress() private view returns (uint256) {
+    function _calculateWeightChangeProgress() private pure returns (uint256) {
         /*uint256 currentTime = block.timestamp;
         uint256 startTime = _gradualUpdateTimestamps.decodeUint32(_START_TIME_OFFSET);
         uint256 endTime = _gradualUpdateTimestamps.decodeUint32(_END_TIME_OFFSET);
