@@ -105,7 +105,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20 pool,
         IERC20 rewardsToken,
         address rewarder
-    ) public override view returns (bool) {
+    ) public view override returns (bool) {
         return _isAllowlistedRewarder(pool, rewardsToken, rewarder);
     }
 
