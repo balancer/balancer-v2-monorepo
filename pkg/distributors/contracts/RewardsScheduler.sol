@@ -122,8 +122,6 @@ contract RewardsScheduler {
 
         require(_rewards[rewardId].status == RewardStatus.UNINITIALIZED, "Reward has already been scheduled");
 
-        rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
-
         _rewards[rewardId] = ScheduledReward({
             pool: pool,
             rewardsToken: rewardsToken,
@@ -132,6 +130,8 @@ contract RewardsScheduler {
             startTime: startTime,
             status: RewardStatus.PENDING
         });
+
+        rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
 
         emit RewardScheduled(rewardId, msg.sender, pool, rewardsToken, startTime, amount);
     }
