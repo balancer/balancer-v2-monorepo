@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
+import { BigNumber, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
@@ -61,7 +61,7 @@ describe('WeightedPool2Tokens', function () {
   describe('oracle', () => {
     const MAX_RELATIVE_ERROR = 0.00005;
 
-    type PoolHook = (lastChangeBlock: number) => Promise<unknown>;
+    type PoolHook = (lastChangeBlock: number) => Promise<{ receipt: ContractReceipt }>;
 
     const calcLastChangeBlock = async (offset: number): Promise<number> => {
       const nextBlockNumber = (await lastBlockNumber()) + 1;
@@ -220,7 +220,7 @@ describe('WeightedPool2Tokens', function () {
     describe('exit', () => {
       const action = async (lastChangeBlock: number) => {
         const balance = await pool.balanceOf(lp);
-        await pool.multiExitGivenIn({ bptIn: balance.div(2), lastChangeBlock, from: lp });
+        return await pool.multiExitGivenIn({ bptIn: balance.div(2), lastChangeBlock, from: lp });
       };
 
       initializePool();

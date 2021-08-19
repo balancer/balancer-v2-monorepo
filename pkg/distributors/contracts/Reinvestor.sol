@@ -63,7 +63,7 @@ contract Reinvestor is PoolTokenCache, IDistributorCallback {
             address token = address(tokens[t]);
 
             if (poolHasToken(poolId, token)) {
-                amountsIn[poolTokenIndex(poolId, token)] = internalBalances[t];
+                amountsIn[_poolTokenIndex(poolId, token)] = internalBalances[t];
             } else {
                 leftoverOps[leftoverOpsIdx] = IVault.UserBalanceOp({
                     asset: IAsset(token),
