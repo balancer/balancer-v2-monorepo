@@ -413,6 +413,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
         // handle the transfer of reward tokens via `safeTransferFrom` to reduce the number
         // of transactions required and ensure correctness of the reward amount
+        // Tokens always come from msg.sender because either `msg.sender == rewarder`
+        // or the`rewardsScheduler` is holding tokens on behalf of the `rewarder`
         rewardsToken.safeTransferFrom(msg.sender, address(this), reward);
 
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
