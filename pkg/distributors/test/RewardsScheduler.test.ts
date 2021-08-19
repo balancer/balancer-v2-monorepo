@@ -25,7 +25,7 @@ describe('Rewards Scheduler', () => {
   let pool: Contract;
 
   before('deploy base contracts', async () => {
-    [admin, , lp, , rewarder] = await ethers.getSigners();
+    [, admin, lp, rewarder] = await ethers.getSigners();
   });
 
   sharedBeforeEach('set up asset manager and mock callback', async () => {
@@ -37,7 +37,6 @@ describe('Rewards Scheduler', () => {
     rewardsToken = contracts.rewardTokens.DAI;
     rewardTokens = contracts.rewardTokens;
 
-    //rewardsScheduler = await deploy('RewardsScheduler', { args: [stakingContract.address] });
     const rewardsSchedulerAddress = await stakingContract.rewardsScheduler();
     rewardsScheduler = await deployedAt('RewardsScheduler', rewardsSchedulerAddress);
 

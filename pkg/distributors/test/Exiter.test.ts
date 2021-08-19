@@ -54,7 +54,7 @@ describe('Exiter', () => {
 
       await stakingContract.connect(lp).stake(pool.address, bptBalance);
 
-      await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+      await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address);
       await advanceTime(10);
 
       assets = poolTokens.map((pt) => pt.address);
