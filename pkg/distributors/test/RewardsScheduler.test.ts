@@ -69,9 +69,10 @@ describe('Rewards Scheduler', () => {
 
     expectEvent.inReceipt(receipt, 'RewardScheduled', {
       rewardId,
-      scheduler: rewarder.address,
+      rewarder: rewarder.address,
       rewardsToken: rewardsToken.address,
       startTime: time,
+      amount: rewardAmount
     });
   });
 
@@ -129,6 +130,19 @@ describe('Rewards Scheduler', () => {
         );
       });
 
+      it('emits RewardStarted', async () => {
+        const receipt = await (await rewardsScheduler.connect(lp).startRewards([rewardId])).wait();
+
+        expectEvent.inReceipt(receipt, 'RewardStarted', {
+          rewardId,
+          rewarder: rewarder.address,
+          pool: pool.address,
+          rewardsToken: rewardsToken.address,
+          startTime: time,
+          amount: rewardAmount
+        });
+      });
+
       it('emits RewardAdded in MultiRewards', async () => {
         const receipt = await (await rewardsScheduler.connect(lp).startRewards([rewardId])).wait();
 
@@ -137,6 +151,24 @@ describe('Rewards Scheduler', () => {
           amount: rewardAmount,
         });
       });
+
+      describe('and a reward has been started', async () => {
+
+        sharedBeforeEach(async () => {
+          await rewardsScheduler.connect(lp).startRewards([rewardId])
+        })
+
+        it('cannot be started again', async () => {
+          await expect(rewardsScheduler.connect(lp).startRewards([rewardId])).to.be.revertedWith(
+            'Reward cannot be started'
+          );
+        })
+
+        it('has reward status set to STARTED', async () => {
+          const response = await rewardsScheduler.getScheduledRewardInfo(rewardId);
+          expect(response.status).to.equal(2);
+        })
+      })
     });
   });
 });

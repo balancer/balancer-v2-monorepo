@@ -45,7 +45,7 @@ contract RewardsScheduler {
 
     event RewardScheduled(
         bytes32 rewardId,
-        address indexed scheduler,
+        address indexed rewarder,
         IERC20 indexed pool,
         IERC20 indexed rewardsToken,
         uint256 startTime,
@@ -53,7 +53,7 @@ contract RewardsScheduler {
     );
     event RewardStarted(
         bytes32 rewardId,
-        address indexed scheduler,
+        address indexed rewarder,
         IERC20 indexed pool,
         IERC20 indexed rewardsToken,
         uint256 startTime,
@@ -89,7 +89,7 @@ contract RewardsScheduler {
             );
             emit RewardStarted(
                 rewardId,
-                msg.sender,
+                scheduledReward.rewarder,
                 scheduledReward.pool,
                 scheduledReward.rewardsToken,
                 scheduledReward.startTime,
