@@ -74,6 +74,8 @@ contract RewardsScheduler {
             require(scheduledReward.status == RewardStatus.PENDING, "Reward cannot be started");
             require(scheduledReward.startTime <= block.timestamp, "Reward start time is in the future");
 
+            _rewards[rewardId].status = RewardStatus.STARTED;
+
             if (
                 scheduledReward.rewardsToken.allowance(address(this), address(_multirewards)) < scheduledReward.amount
             ) {
@@ -93,8 +95,6 @@ contract RewardsScheduler {
                 scheduledReward.startTime,
                 scheduledReward.amount
             );
-
-            _rewards[rewardId].status = RewardStatus.STARTED;
         }
     }
 
