@@ -177,6 +177,10 @@ library Errors {
     uint256 internal constant CODE_DEPLOYMENT_FAILED = 428;
     uint256 internal constant CALL_TO_NON_CONTRACT = 429;
     uint256 internal constant LOW_LEVEL_CALL_FAILED = 430;
+    uint256 internal constant ERC20_TRANSFER_FROM_PROHIBITED_ADDRESS = 431;
+    uint256 internal constant ERC20_TRANSFER_TO_PROHIBITED_ADDRESS = 432;
+    uint256 internal constant ADDRESS_ALREADY_ALLOWLISTED = 433;
+    uint256 internal constant ADDRESS_NOT_ALLOWLISTED = 434;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;
