@@ -5,6 +5,7 @@ export enum WeightedPoolJoinKind {
   INIT = 0,
   EXACT_TOKENS_IN_FOR_BPT_OUT,
   TOKEN_IN_FOR_EXACT_BPT_OUT,
+  ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
 }
 
 export enum WeightedPoolExitKind {
@@ -48,6 +49,16 @@ export class WeightedPoolEncoder {
     defaultAbiCoder.encode(
       ['uint256', 'uint256', 'uint256'],
       [WeightedPoolJoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT, bptAmountOut, enterTokenIndex]
+    );
+
+  /**
+   * Encodes the userData parameter for joining a WeightedPool proportionally to receive an exact amount of BPT
+   * @param bptAmountOut - the amount of BPT to be minted
+   */
+  static joinAllTokensInForExactBPTOut = (bptAmountOut: BigNumberish): string =>
+    defaultAbiCoder.encode(
+      ['uint256', 'uint256'],
+      [WeightedPoolJoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT, bptAmountOut]
     );
 
   /**

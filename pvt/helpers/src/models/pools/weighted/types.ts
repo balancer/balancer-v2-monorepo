@@ -93,6 +93,15 @@ export type JoinGivenOutWeightedPool = {
   protocolFeePercentage?: BigNumberish;
 };
 
+export type JoinAllGivenOutWeightedPool = {
+  bptOut: BigNumberish;
+  from?: SignerWithAddress;
+  recipient?: Account;
+  lastChangeBlock?: BigNumberish;
+  currentBalances?: BigNumberish[];
+  protocolFeePercentage?: BigNumberish;
+};
+
 export type ExitGivenOutWeightedPool = {
   amountsOut: NAry<BigNumberish>;
   maximumBptIn?: BigNumberish;

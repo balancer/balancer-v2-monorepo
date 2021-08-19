@@ -214,31 +214,29 @@ contract WeightedMath {
         return nonTaxableAmount.add(taxableAmount.divUp(FixedPoint.ONE.sub(swapFeePercentage)));
     }
 
-    function _calcTokensInGivenExactBptOut(
+    function _calcAllTokensInGivenExactBptOut(
         uint256[] memory balances,
         uint256 bptAmountOut,
-        uint256 bptTotalSupply
-    ) internal pure returns (uint256[] memory amountsIn) {
-        /*************************************************************************************************
-        // tokensInForExactBptOut                                                                       //
-        // (per token)                                                                                  //
-        // aI = amountIn                   /  totalBPT + bptOut      \                                  //
-        // b = balance           aI = b * | --------------------- - 1 |                                 //
-        // bptOut = bptAmountOut           \       totalBPT          /                                  //
-        // bpt = totalBPT                                                                               //
-        *************************************************************************************************/
+        uint256 totalBPT
+    ) internal pure returns (uint256[] memory) {
+        /************************************************************************************
+        // tokensInForExactBptOut                                                          //
+        // (per token)                                                                     //
+        // aI = amountIn                   /   bptOut   \                                  //
+        // b = balance           aI = b * | ------------ |                                 //
+        // bptOut = bptAmountOut           \  totalBPT  /                                  //
+        // bpt = totalBPT                                                                  //
+        ************************************************************************************/
 
         // Tokens in, so we round up overall.
+        uint256 bptRatio = bptAmountOut.divUp(totalBPT);
 
-        amountsIn = new uint256[](balances.length);
-
-        // Calculate the factor by which the invariant will increase after minting BPTAmountOut
-        uint256 balanceMultiplier = bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply).sub(FixedPoint.ONE);
-
-        // Balances need to increase by (invariantRatio - 1)
+        uint256[] memory amountsIn = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
-            amountsIn[i] = balanceMultiplier.mulUp(balances[i]);
+            amountsIn[i] = balances[i].mulUp(bptRatio);
         }
+
+        return amountsIn;
     }
 
     function _calcBptInGivenExactTokensOut(
