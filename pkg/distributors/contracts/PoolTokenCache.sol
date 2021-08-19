@@ -32,18 +32,26 @@ contract PoolTokenCache {
 
     function savePoolTokenSet(bytes32 poolId) public {
         (IERC20[] memory poolTokens, , ) = vault.getPoolTokens(poolId);
+
         if (_poolTokenSetSaved[poolId]) {
+            // Purge potentially stale cached data
             uint256 numTokens = _poolTokenSets[poolId].length();
-            for (uint256 t; t < numTokens; t++) {
-                // always the 0 index since we're removing all elements
-                address tokenAddress = _poolTokenSets[poolId].unchecked_at(0);
-                _poolTokenSets[poolId].remove(tokenAddress);
+
+            // Clear the set by removing the last element n times, which uses less gas than removing elements in any
+            // other order.
+            for (uint256 i = 0; i < numTokens; i++) {
+                uint256 lastIndex = numTokens - 1 - i;
+
+                address lastIndexAddress = _poolTokenSets[poolId].unchecked_at(lastIndex);
+                _poolTokenSets[poolId].remove(lastIndexAddress);
             }
+        } else {
+            _poolTokenSetSaved[poolId] = true;
         }
+
         for (uint256 pt; pt < poolTokens.length; pt++) {
             _poolTokenSets[poolId].add(address(poolTokens[pt]));
         }
-        _poolTokenSetSaved[poolId] = true;
     }
 
     function ensurePoolTokenSetSaved(bytes32 poolId) public {
@@ -67,15 +75,19 @@ contract PoolTokenCache {
         }
     }
 
+    function _poolTokenIndex(bytes32 poolId, address token) internal view returns (uint256) {
+        return _poolTokenSets[poolId].rawIndexOf(token);
+    }
+
     function poolHasToken(bytes32 poolId, address token) public view returns (bool) {
         return _poolTokenSets[poolId].contains(token);
     }
 
-    function poolTokenIndex(bytes32 poolId, address token) public view returns (uint256) {
-        return _poolTokenSets[poolId].rawIndexOf(token);
-    }
-
     function poolTokensLength(bytes32 poolId) public view returns (uint256) {
         return _poolTokenSets[poolId].length();
+    }
+
+    function poolTokenAtIndex(bytes32 poolId, uint256 index) public view returns (address) {
+        return _poolTokenSets[poolId].at(index);
     }
 }
