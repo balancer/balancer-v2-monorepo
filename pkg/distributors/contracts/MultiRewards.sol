@@ -101,6 +101,14 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         _allowlistRewarder(pool, rewardsToken, rewarder);
     }
 
+    function isAllowlistedRewarder(
+        IERC20 pool,
+        IERC20 rewardsToken,
+        address rewarder
+    ) public override view returns (bool) {
+        return _isAllowlistedRewarder(pool, rewardsToken, rewarder);
+    }
+
     /**
      * @notice Adds a new reward token to be distributed
      * @param pool - The bpt of the pool that will receive rewards
@@ -401,7 +409,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             "Rewarder must be sender, or rewards scheduler"
         );
 
-        require(_rewarders[pool][rewardsToken].contains(msg.sender), "Reward must be configured with addReward");
+        require(_rewarders[pool][rewardsToken].contains(rewarder), "Reward must be configured with addReward");
 
         // handle the transfer of reward tokens via `safeTransferFrom` to reduce the number
         // of transactions required and ensure correctness of the reward amount
