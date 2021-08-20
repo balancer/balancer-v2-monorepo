@@ -20,6 +20,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "../BaseWeightedPool.sol";
 import "./WeightCompression.sol";
+import "../WeightedPoolUserDataHelpers.sol";
 
 /**
  * @dev Weighted Pool with mutable weights, designed to support investment use cases: large token counts,
@@ -31,6 +32,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     using FixedPoint for uint256;
     using WordCodec for bytes32;
     using WeightCompression for uint256;
+    using WeightedPoolUserDataHelpers for bytes;
 
     // State variables
 
@@ -70,8 +72,6 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     //uint256 private constant _START_TIME_OFFSET = 0;
     //uint256 private constant _END_TIME_OFFSET = 32;
-
-    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT, MANAGEMENT_FEE_TOKENS_OUT }
 
     constructor(
         IVault vault,
@@ -229,6 +229,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] memory balances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
         bytes memory userData
     )
         internal
@@ -256,6 +257,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
                         balances,
                         lastChangeBlock,
                         protocolSwapFeePercentage,
+                        scalingFactors,
                         userData
                     );
 
@@ -279,6 +281,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
                 balances,
                 lastChangeBlock,
                 protocolSwapFeePercentage,
+                scalingFactors,
                 userData
             );
     }
@@ -290,6 +293,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] memory balances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
         bytes memory userData
     )
         internal
@@ -300,21 +304,26 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        if (userData.exitKind() == MANAGEMENT_FEE_TOKENS_OUT)
-            uint256[] memory normalizedWeights = _getNormalizedWeights();
-            (bptAmountIn, amountsOut) = _doExit(balances, normalizedWeights, userData);
-            dueProtocolFeeAmounts = new uint256[](balances.length);
-        }
-        else {
+        if (userData.exitKind() == ExitKind.MANAGEMENT_FEE_TOKENS_OUT) {
+            _require(sender == getOwner(), Errors.SENDER_NOT_ALLOWED);
+
+            (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+            amountsOut = new uint256[](_getTotalTokens());
+
+            for (uint256 i = 0; i < _getTotalTokens(); i++) {
+                amountsOut[i] = _collectedManagementFees[tokens[i]];
+            }
+
+            return (0, amountsOut, new uint256[](_getTotalTokens()));
+        } else {
             if (_managementFeePercentage != 0) {
                 // If there is no protocol fee, dueProtocolFeeAmounts will be zero, so we need to do all the same calculations
                 if (protocolSwapFeePercentage == 0) {
                     _collectManagementFeesFromBalances(balances);
-                }
-                else {
+                } else {
                     // If there was a protocol fee, we can let the superclass do all the calculations, and just use the results
                     (bptAmountIn, amountsOut, dueProtocolFeeAmounts) =
-                        super._onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
+                        super._onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, scalingFactors, userData);
 
                     // dueProtocolFeeAmounts[maxWeightTokenIndex] will have a non-zero value
                     // The management fee amount will be: managementFeePercentage / protocolSwapFeePercentage * dueProtocolFeeAmounts
@@ -325,25 +334,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             }
             
             (bptAmountIn, amountsOut, dueProtocolFeeAmounts) =
-                super._onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
-        }
-    }
-
-    function _doExit(
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256[] memory scalingFactors,
-        bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
-        ExitKind kind = userData.exitKind();
-
-        if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForTokenOut(balances, normalizedWeights, userData);
-        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            return _exitExactBPTInForTokensOut(balances, userData);
-        } else {
-            // ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT
-            return _exitBPTInForExactTokensOut(balances, normalizedWeights, scalingFactors, userData);
+                super._onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, scalingFactors, userData);
         }
     }
 
@@ -357,41 +348,29 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         // computing them on each individual swap
         uint256 invariantBeforeJoin = WeightedMath._calculateInvariant(normalizedWeights, balances);
 
-        //(IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-
         uint256 feeAmount = WeightedMath._calcDueTokenProtocolSwapFeeAmount(
             balances[maxWeightTokenIndex],
             normalizedWeights[maxWeightTokenIndex],
-            _lastInvariant,
+            getLastInvariant(),
             invariantBeforeJoin,
-            _swapFeePercentage.mulDown(managementFeePercentage)
+            getSwapFeePercentage().mulDown(_managementFeePercentage)
         );
-        _maxWeightTokenIndex = maxWeightTokenIndex;
 
-        _deliverManagementFees(feeAmount);
-        // or deliverManagementFees instead of storing
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        IERC20 token = tokens[maxWeightTokenIndex];
+
+        _collectedManagementFees[token] = _collectedManagementFees[token].add(feeAmount);
     }
 
    function _collectManagementFeesFromAmounts(uint256[] memory dueProtocolFeeAmounts, uint256 protocolSwapFeePercentage) private {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
-        // We have both a protocol fee and a management fee. On deployment, Pf + Mf < 1. 
-        // But protocol fees can change. What if the protocol fee was changed since deployment, such that the sum of the fees
-        // is now > 1? We need to reduce the management fee.
-        // uint256 effectiveManagementFeePct = Math.max(FixedPoint.ONE - protocolSwapFeePercentage, managementFeePercentage);
-
         // We have set the maximum in ManagementFeeEnabled to 1 - MaxProtocolFee, so we're sure (management fee + max protocol fee) <= 1
-        deliverManagementFees(tokens, _maxWeightTokenIndex, amount.mulDown(managementFeePercentage.divUp(protocolSwapFeePercentage)));
 
-        /* Don't need to iterate if cached
-        for (uint8 i = 0; i < dueProtocolFeeAmounts.length; i++) {
+        for (uint256 i = 0; i < dueProtocolFeeAmounts.length; i++) {
            uint256 amount = dueProtocolFeeAmounts[i];
            if (amount != 0) {
-               _collectedManagementFees[tokens[i]] = amount.mulDown(managementFeePercentage.divUp(protocolSwapFeePercentage));
-               // OR
-               // send directly to internal balance of owner
-               deliverManagementFees(tokens, i, amount.mulDown(managementFeePercentage.divUp(protocolSwapFeePercentage)));
-               break;
+               _collectedManagementFees[tokens[i]] = amount.mulDown(_managementFeePercentage.divUp(protocolSwapFeePercentage));
            }
         }
    }
