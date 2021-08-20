@@ -240,7 +240,7 @@ describe('InvestmentPool', function () {
               const bptOut = await pool.balanceOf(sender);
 
               await expect(pool.joinGivenOut({ from: sender, bptOut, token: poolTokens.get(0) })).to.be.revertedWith(
-                'INVALID_JOIN_EXIT_WHILE_PAUSED'
+                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
               );
             });
 
@@ -259,7 +259,7 @@ describe('InvestmentPool', function () {
               amountsIn[0] = fp(0.95);
 
               await expect(pool.joinGivenIn({ from: sender, amountsIn })).to.be.revertedWith(
-                'INVALID_JOIN_EXIT_WHILE_PAUSED'
+                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
               );
             });;*/
 
@@ -269,7 +269,7 @@ describe('InvestmentPool', function () {
 
               await expect(
                 pool.singleExitGivenIn({ from: sender, bptIn, token: poolTokens.get(0) })
-              ).to.be.revertedWith('INVALID_JOIN_EXIT_WHILE_PAUSED');
+              ).to.be.revertedWith('INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED');
             });
 
             it('disallows disproportionate exits (multi token)', async () => {
@@ -278,7 +278,7 @@ describe('InvestmentPool', function () {
               amountsOut[0] = 0;
 
               await expect(pool.exitGivenOut({ from: sender, amountsOut })).to.be.revertedWith(
-                'INVALID_JOIN_EXIT_WHILE_PAUSED'
+                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
               );
             });
 

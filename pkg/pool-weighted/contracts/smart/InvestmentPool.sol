@@ -347,7 +347,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         // If swaps are disabled, require proportional join
         _require(
             getSwapEnabled() || userData.joinKind() == JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
-            Errors.INVALID_JOIN_EXIT_WHILE_PAUSED
+            Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
         return
@@ -385,7 +385,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         // If swaps are disabled, require proportional exit
         _require(
             getSwapEnabled() || userData.exitKind() == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
-            Errors.INVALID_JOIN_EXIT_WHILE_PAUSED
+            Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
         return
