@@ -25,6 +25,7 @@ import "./BasePoolAuthorization.sol";
  *   and burns) to addresses on an allowlist
  * - Includes permissioned functions for adding/removing members to/from the
  *   allowlist
+ * - Allowlist enforcement is activated via a boolean flag at construction time
  */
 abstract contract RestrictedBalancerPoolToken is BalancerPoolToken, BasePoolAuthorization {
     bool private immutable _useAllowlist;
@@ -41,7 +42,7 @@ abstract contract RestrictedBalancerPoolToken is BalancerPoolToken, BasePoolAuth
     // Overrides
 
     /**
-     * @dev Override to enforce address allowlist.
+     * @dev Override to enforce address allowlist (if applicable).
      */
     function _beforeTokenTransfer(
         address from,
@@ -56,7 +57,7 @@ abstract contract RestrictedBalancerPoolToken is BalancerPoolToken, BasePoolAuth
     }
 
     /**
-     * @dev Override to enforce address allowlist
+     * @dev Override to include allowlist manipulation.
      */
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
