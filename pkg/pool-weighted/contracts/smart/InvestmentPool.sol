@@ -24,7 +24,7 @@ import "./WeightCompression.sol";
 
 /**
  * @dev Weighted Pool with mutable weights, designed to support investment use cases: large token counts,
- * rebalancing through gradual weight updates, and enabling/disabling trading.
+ * rebalancing through gradual weight updates.
  */
 contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     // solhint-disable not-rely-on-time
@@ -36,16 +36,15 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     // State variables
 
+    // Use the _miscData slot in BasePool
+    // First 64 bits are reserved for the swap fee
+    //
     // Store non-token-based values:
     // Start/end timestamps for gradual weight update
     // Cache total tokens
-    // Swap enabled flag
-    // [ 184 bits |  32 bits  |   32 bits  |    7 bits    |    1 bit     ]
-    // [  unused  | end time  | start time | total tokens | swap enabled ]
-    // |MSB                                                           LSB|
-    bytes32 private _poolState;
-
-    uint256 private constant _SWAP_ENABLED_OFFSET = 0;
+    // [ 64 bits  |  120 bits |  32 bits  |   32 bits  |    7 bits    |    1 bit     ]
+    // [ reserved |  unused   | end time  | start time | total tokens |   unused     ]
+    // |MSB                                                                       LSB|
     uint256 private constant _TOTAL_TOKENS_OFFSET = 1;
     uint256 private constant _START_TIME_OFFSET = 8;
     uint256 private constant _END_TIME_OFFSET = 40;
@@ -66,7 +65,6 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     // Event declarations
 
-    event SwapEnabledSet(bool swapEnabled);
     event GradualWeightUpdateScheduled(
         uint256 startTime,
         uint256 endTime,
@@ -84,8 +82,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        address owner,
-        bool swapEnabledOnStart
+        address owner
     )
         BaseWeightedPool(
             vault,
@@ -102,23 +99,13 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 totalTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, normalizedWeights.length, assetManagers.length);
 
-        _poolState = _poolState.insertUint7(totalTokens, _TOTAL_TOKENS_OFFSET);
+        _setMiscData(_getMiscData().insertUint7(totalTokens, _TOTAL_TOKENS_OFFSET));
 
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights, tokens);
-
-        // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction)
-        _setSwapEnabled(swapEnabledOnStart);
     }
 
     // External functions
-
-    /**
-     * @dev Tells whether swaps are enabled or not for the given pool.
-     */
-    function getSwapEnabled() public view returns (bool) {
-        return _poolState.decodeBool(_SWAP_ENABLED_OFFSET);
-    }
 
     /**
      * @dev Return start time, end time, and endWeights as an array.
@@ -134,7 +121,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         )
     {
         // Load current pool state from storage
-        bytes32 poolState = _poolState;
+        bytes32 poolState = _getMiscData();
 
         startTime = poolState.decodeUint32(_START_TIME_OFFSET);
         endTime = poolState.decodeUint32(_END_TIME_OFFSET);
@@ -154,20 +141,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _poolState.decodeUint7(_TOTAL_TOKENS_OFFSET);
-    }
-
-    /**
-     * @dev Can pause/unpause trading
-     */
-    function setSwapEnabled(bool swapEnabled) external authenticate whenNotPaused nonReentrant {
-        _setSwapEnabled(swapEnabled);
-    }
-
-    function _setSwapEnabled(bool swapEnabled) private {
-        _poolState = _poolState.insertBool(swapEnabled, _SWAP_ENABLED_OFFSET);
-
-        emit SwapEnabledSet(swapEnabled);
+        return _getMiscData().decodeUint7(_TOTAL_TOKENS_OFFSET);
     }
 
     /**
@@ -283,7 +257,9 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        _poolState = _poolState.insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET);
+        _setMiscData(
+            _getMiscData().insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET)
+        );
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
@@ -294,111 +270,13 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         return FixedPoint.ONE * 10**decimalsDifference;
     }
 
-    // Swap overrides - revert unless swaps are enabled
-
-    function _onSwapGivenIn(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) internal view override returns (uint256) {
-        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
-
-        return super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
-    }
-
-    function _onSwapGivenOut(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) internal view override returns (uint256) {
-        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
-
-        return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
-    }
-
     /**
      * @dev Extend ownerOnly functions to include the Investment Pool control functions
      */
     function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
         return
-            (actionId == getActionId(InvestmentPool.setSwapEnabled.selector)) ||
             (actionId == getActionId(InvestmentPool.updateWeightsGradually.selector)) ||
             super._isOwnerOnlyAction(actionId);
-    }
-
-    function _onJoinPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        uint256[] memory scalingFactors,
-        bytes memory userData
-    )
-        internal
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {
-        // If swaps are disabled, require proportional join
-        _require(
-            getSwapEnabled() || userData.joinKind() == JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
-            Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
-        );
-
-        return
-            super._onJoinPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                protocolSwapFeePercentage,
-                scalingFactors,
-                userData
-            );
-    }
-
-    function _onExitPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        uint256[] memory scalingFactors,
-        bytes memory userData
-    )
-        internal
-        virtual
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {
-        // If swaps are disabled, require proportional exit
-        _require(
-            getSwapEnabled() || userData.exitKind() == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
-            Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
-        );
-
-        return
-            super._onExitPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                protocolSwapFeePercentage,
-                scalingFactors,
-                userData
-            );
     }
 
     // Private functions
@@ -409,7 +287,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
      */
     function _calculateWeightChangeProgress() private view returns (uint256) {
         uint256 currentTime = block.timestamp;
-        bytes32 poolState = _poolState;
+        bytes32 poolState = _getMiscData();
 
         uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);

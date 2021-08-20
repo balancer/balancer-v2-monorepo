@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
-import { fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
@@ -130,47 +130,15 @@ describe('InvestmentPool', function () {
   });
 
   describe('with valid creation parameters', () => {
-    context('when initialized with swaps disabled', () => {
+    context('when initialized', () => {
       sharedBeforeEach('deploy pool', async () => {
         const params = {
           tokens: poolTokens,
           weights: poolWeights,
           owner,
           poolType: WeightedPoolType.INVESTMENT_POOL,
-          swapEnabledOnStart: false,
         };
         pool = await WeightedPool.create(params);
-      });
-
-      it('swaps show disabled on start', async () => {
-        expect(await pool.instance.getSwapEnabled()).to.be.false;
-      });
-
-      it('swaps are blocked', async () => {
-        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.be.revertedWith('SWAPS_DISABLED');
-      });
-    });
-
-    context('when initialized with swaps enabled', () => {
-      sharedBeforeEach('deploy pool', async () => {
-        const params = {
-          tokens: poolTokens,
-          weights: poolWeights,
-          owner,
-          poolType: WeightedPoolType.INVESTMENT_POOL,
-          swapEnabledOnStart: true,
-        };
-        pool = await WeightedPool.create(params);
-      });
-
-      it('swaps show enabled on start', async () => {
-        expect(await pool.instance.getSwapEnabled()).to.be.true;
-      });
-
-      it('swaps are not blocked', async () => {
-        await pool.init({ from: owner, initialBalances });
-
-        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.not.be.reverted;
       });
 
       it('sets token weights', async () => {
@@ -194,30 +162,6 @@ describe('InvestmentPool', function () {
             await pool.init({ from: owner, initialBalances });
           });
 
-          it('swaps can be enabled and disabled', async () => {
-            await pool.setSwapEnabled(sender, false);
-            expect(await pool.instance.getSwapEnabled()).to.be.false;
-
-            await pool.setSwapEnabled(sender, true);
-            expect(await pool.instance.getSwapEnabled()).to.be.true;
-          });
-
-          it('disabling swaps emits an event', async () => {
-            const receipt = await pool.setSwapEnabled(sender, false);
-
-            expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledSet', {
-              swapEnabled: false,
-            });
-          });
-
-          it('enabling swaps emits an event', async () => {
-            const receipt = await pool.setSwapEnabled(sender, true);
-
-            expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledSet', {
-              swapEnabled: true,
-            });
-          });
-
           it('owner can join and receive BPT, then exit', async () => {
             const bptBeforeJoin = await pool.balanceOf(owner.address);
             await expect(pool.joinGivenIn({ from: owner, amountsIn: initialBalances })).to.not.be.reverted;
@@ -228,69 +172,6 @@ describe('InvestmentPool', function () {
             await expect(pool.exitGivenOut({ from: owner, amountsOut: initialBalances })).to.not.be.reverted;
             const bptAfterExit = await pool.balanceOf(owner.address);
             expect(bptAfterExit).to.lt(bptAfterJoin);
-          });
-
-          context('when swaps disabled', () => {
-            sharedBeforeEach(async () => {
-              await pool.setSwapEnabled(sender, false);
-            });
-
-            /* future
-            it('disallows disproportionate joins (single token)', async () => {
-              const bptOut = await pool.balanceOf(sender);
-
-              await expect(pool.joinGivenOut({ from: sender, bptOut, token: poolTokens.get(0) })).to.be.revertedWith(
-                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
-              );
-            });
-
-            it('allows proportionate joins', async () => {
-              const startingBpt = await pool.balanceOf(sender);
-
-              const { amountsIn } = await pool.multiJoinGivenOut({ from: sender, bptOut: startingBpt });
-
-              const endingBpt = await pool.balanceOf(sender);
-              expect(endingBpt).to.be.gt(startingBpt);
-              expect(amountsIn).to.deep.equal(initialBalances);
-            });
-
-            it('disallows disproportionate joins (multi-token, 95%)', async () => {
-              const amountsIn = [...initialBalances];
-              amountsIn[0] = fp(0.95);
-
-              await expect(pool.joinGivenIn({ from: sender, amountsIn })).to.be.revertedWith(
-                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
-              );
-            });;*/
-
-            it('disallows disproportionate exits (single token)', async () => {
-              const previousBptBalance = await pool.balanceOf(sender);
-              const bptIn = pct(previousBptBalance, 0.5);
-
-              await expect(
-                pool.singleExitGivenIn({ from: sender, bptIn, token: poolTokens.get(0) })
-              ).to.be.revertedWith('INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED');
-            });
-
-            it('disallows disproportionate exits (multi token)', async () => {
-              const amountsOut = [...initialBalances];
-              // Make it disproportionate (though it will fail with this exit type even if it's technically proportionate)
-              amountsOut[0] = 0;
-
-              await expect(pool.exitGivenOut({ from: sender, amountsOut })).to.be.revertedWith(
-                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
-              );
-            });
-
-            it('allows proportional exit', async () => {
-              const previousBptBalance = await pool.balanceOf(sender);
-              const bptIn = pct(previousBptBalance, 0.8);
-
-              await expect(pool.multiExitGivenIn({ from: sender, bptIn })).to.not.be.reverted;
-
-              const newBptBalance = await pool.balanceOf(sender);
-              expect(newBptBalance).to.equalWithError(pct(previousBptBalance, 0.2), 0.001);
-            });
           });
 
           describe('update weights gradually', () => {
