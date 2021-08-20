@@ -32,11 +32,6 @@ abstract contract RestrictedBalancerPoolToken is BalancerPoolToken, BasePoolAuth
     event AddressAdded(address member);
     event AddressRemoved(address member);
 
-    constructor() {
-        // Add zero address to allowlist to avoid blocking mints and burns
-        _allowedAddresses[address(0)] = true;
-    }
-
     // Overrides
 
     /**
@@ -47,8 +42,8 @@ abstract contract RestrictedBalancerPoolToken is BalancerPoolToken, BasePoolAuth
         address to,
         uint256 amount
     ) internal virtual override {
-        _require(isAllowedAddress(from), Errors.ERC20_TRANSFER_FROM_PROHIBITED_ADDRESS);
-        _require(isAllowedAddress(to), Errors.ERC20_TRANSFER_TO_PROHIBITED_ADDRESS);
+        _require(from == address(0) || isAllowedAddress(from), Errors.ERC20_TRANSFER_FROM_PROHIBITED_ADDRESS);
+        _require(to == address(0) || isAllowedAddress(to), Errors.ERC20_TRANSFER_TO_PROHIBITED_ADDRESS);
         super._beforeTokenTransfer(from, to, amount);
     }
 
