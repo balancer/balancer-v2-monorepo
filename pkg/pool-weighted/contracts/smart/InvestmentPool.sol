@@ -19,11 +19,11 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "../BaseWeightedPool.sol";
+import "../WeightedPoolUserDataHelpers.sol";
 import "./WeightCompression.sol";
 
 /**
- * @dev Weighted Pool with mutable weights, designed to support investment use cases: large token counts,
- * rebalancing through gradual weight updates, and enabling/disabling trading.
+ * @dev Weighted Pool with mutable weights, designed to support investment use cases: enabling/disabling trading.
  */
 contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     // solhint-disable not-rely-on-time
@@ -31,35 +31,35 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     using FixedPoint for uint256;
     using WordCodec for bytes32;
     using WeightCompression for uint256;
+    using WeightedPoolUserDataHelpers for bytes;
 
     // State variables
 
-    // Cached here to avoid calling getTokens on the pool, which would be very gas-intensive for large numbers of tokens
-    // Can only change if tokens are added/removed
-    uint256 private _tokenCountCache;
+    // Use the _miscData slot in BasePool
+    // First 64 bits are reserved for the swap fee
+    //
+    // Store non-token-based values:
+    //
+    // [ 64 bits  | 184 bits |    7 bits   |   1 bit   ]
+    // [ reserved | unused   | token count | swap flag ]
+    // |MSB                                         LSB|
+    uint256 private constant _SWAP_ENABLED_OFFSET = 0;
+    uint256 private constant _TOTAL_TOKENS_OFFSET = 1;
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
-    // into a fixed array of bytes32 or something like that, especially
-    // since tokens can be added/removed - and re-ordered in the process
-    // For each token, we store:
     // [ 155 bits|   5 bits |  32 bits   |   64 bits    |
     // [ unused  | decimals | end weight | start weight |
     // |MSB                                          LSB|
-    mapping(IERC20 => bytes32) private _poolState;
+    mapping(IERC20 => bytes32) private _tokenState;
 
     uint256 private constant _START_WEIGHT_OFFSET = 0;
     uint256 private constant _END_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
 
-    // Time travel comment
-    // [ 192 bits | 32 bits  |  32 bits   |
-    // [  unused  | end time | start time |
-    // |MSB                            LSB|
-    //bytes32 private _gradualUpdateTimestamps;
+    // Event declarations
 
-    //uint256 private constant _START_TIME_OFFSET = 0;
-    //uint256 private constant _END_TIME_OFFSET = 32;
+    event SwapEnabledSet(bool swapEnabled);
 
     constructor(
         IVault vault,
@@ -71,7 +71,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        address owner
+        address owner,
+        bool swapEnabledOnStart
     )
         BaseWeightedPool(
             vault,
@@ -88,11 +89,23 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length, assetManagers.length);
 
-        _tokenCountCache = numTokens;
+        _setMiscData(_getMiscData().insertUint7(numTokens, _TOTAL_TOKENS_OFFSET));
 
         // I'm time-traveling a bit here - storing the weights in a form where they can be changed
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights, tokens);
+
+        // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction)
+        _setSwapEnabled(swapEnabledOnStart);
+    }
+
+    // External functions
+
+    /**
+     * @dev Tells whether swaps are enabled or not for the given pool.
+     */
+    function getSwapEnabled() public view returns (bool) {
+        return _getMiscData().decodeBool(_SWAP_ENABLED_OFFSET);
     }
 
     function _getMaxTokens() internal pure virtual override returns (uint256) {
@@ -100,7 +113,20 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _tokenCountCache;
+        return _getMiscData().decodeUint7(_TOTAL_TOKENS_OFFSET);
+    }
+
+    /**
+     * @dev Can enable/disable trading
+     */
+    function setSwapEnabled(bool swapEnabled) external authenticate whenNotPaused nonReentrant {
+        _setSwapEnabled(swapEnabled);
+    }
+
+    function _setSwapEnabled(bool swapEnabled) private {
+        _setMiscData(_getMiscData().insertBool(swapEnabled, _SWAP_ENABLED_OFFSET));
+
+        emit SwapEnabledSet(swapEnabled);
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -114,7 +140,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         scalingFactors = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; i++) {
-            scalingFactors[i] = _readScalingFactor(_poolState[tokens[i]]);
+            scalingFactors[i] = _readScalingFactor(_tokenState[tokens[i]]);
         }
     }
 
@@ -134,7 +160,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 pctProgress = _calculateWeightChangeProgress();
 
         for (uint256 i = 0; i < numTokens; i++) {
-            bytes32 tokenData = _poolState[tokens[i]];
+            bytes32 tokenData = _tokenState[tokens[i]];
 
             normalizedWeights[i] = _interpolateWeight(tokenData, pctProgress);
         }
@@ -157,6 +183,110 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
                 maxNormalizedWeight = normalizedWeights[i];
             }
         }
+    }
+
+    // Swap overrides - revert unless swaps are enabled
+
+    function _onSwapGivenIn(
+        SwapRequest memory swapRequest,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) internal view override returns (uint256) {
+        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
+
+        return super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+    }
+
+    function _onSwapGivenOut(
+        SwapRequest memory swapRequest,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) internal view override returns (uint256) {
+        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
+
+        return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+    }
+
+    function _onJoinPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    )
+        internal
+        override
+        returns (
+            uint256,
+            uint256[] memory,
+            uint256[] memory
+        )
+    {
+        // If swaps are disabled, require proportional join
+        _require(
+            getSwapEnabled() || userData.joinKind() == JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
+            Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
+        );
+
+        return
+            super._onJoinPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                scalingFactors,
+                userData
+            );
+    }
+
+    function _onExitPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    )
+        internal
+        virtual
+        override
+        returns (
+            uint256,
+            uint256[] memory,
+            uint256[] memory
+        )
+    {
+        // If swaps are disabled, require proportional exit
+        _require(
+            getSwapEnabled() || userData.exitKind() == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+            Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
+        );
+
+        return
+            super._onExitPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                scalingFactors,
+                userData
+            );
+    }
+
+    /**
+     * @dev Extend ownerOnly functions to include the Investment Pool control functions
+     */
+    function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
+        return (actionId == getActionId(InvestmentPool.setSwapEnabled.selector)) || super._isOwnerOnlyAction(actionId);
     }
 
     /**
@@ -183,7 +313,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             // Tokens with more than 18 decimals are not supported
             // Scaling calculations must be exact/lossless
             // Store decimal difference instead of actual scaling factor
-            _poolState[token] = tokenState
+            _tokenState[token] = tokenState
                 .insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET)
                 .insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET)
                 .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
@@ -250,7 +380,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _getTokenData(IERC20 token) private view returns (bytes32 tokenData) {
-        tokenData = _poolState[token];
+        tokenData = _tokenState[token];
 
         // A valid token can't be zero (must have non-zero weights)
         _require(tokenData != 0, Errors.INVALID_TOKEN);
