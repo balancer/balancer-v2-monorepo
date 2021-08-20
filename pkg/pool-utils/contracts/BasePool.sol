@@ -46,7 +46,7 @@ import "./BasePoolAuthorization.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable {
+abstract contract BasePool is IBasePool, BalancerPoolToken, BasePoolAuthorization, TemporarilyPausable {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
 

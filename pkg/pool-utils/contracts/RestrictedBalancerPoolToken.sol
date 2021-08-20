@@ -32,10 +32,7 @@ abstract contract RestrictedBalancerPoolToken is BalancerPoolToken, BasePoolAuth
     event AddressAdded(address member);
     event AddressRemoved(address member);
 
-    constructor(string memory tokenName, string memory tokenSymbol, address owner)
-        BalancerPoolToken(tokenName, tokenSymbol)
-        BasePoolAuthorization(owner)
-    {
+    constructor() {
         // Add zero address to allowlist to avoid blocking mints and burns
         _allowedAddresses[address(0)] = true;
     }
