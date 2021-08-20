@@ -166,7 +166,8 @@ abstract contract BasePool is IBasePool, BalancerPoolToken, BasePoolAuthorizatio
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
             (actionId == getActionId(this.setSwapFeePercentage.selector)) ||
-            (actionId == getActionId(this.setAssetManagerPoolConfig.selector));
+            (actionId == getActionId(this.setAssetManagerPoolConfig.selector)) ||
+            super._isOwnerOnlyAction(actionId);
     }
 
     function _getMiscData() internal view returns (bytes32) {

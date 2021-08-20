@@ -45,10 +45,11 @@ abstract contract RestrictedBalancerPoolToken is BalancerPoolToken, BasePoolAuth
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256
+        uint256 amount
     ) internal virtual override {
         _require(isAllowedAddress(from), Errors.ERC20_TRANSFER_FROM_PROHIBITED_ADDRESS);
         _require(isAllowedAddress(to), Errors.ERC20_TRANSFER_TO_PROHIBITED_ADDRESS);
+        super._beforeTokenTransfer(from, to, amount);
     }
 
     /**
@@ -57,7 +58,8 @@ abstract contract RestrictedBalancerPoolToken is BalancerPoolToken, BasePoolAuth
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
             (actionId == getActionId(this.addAllowedAddress.selector)) ||
-            (actionId == getActionId(this.removeAllowedAddress.selector));
+            (actionId == getActionId(this.removeAllowedAddress.selector)) ||
+            super._isOwnerOnlyAction(actionId);
     }
 
     // Public functions
