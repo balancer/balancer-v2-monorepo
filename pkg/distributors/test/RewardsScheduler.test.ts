@@ -1,4 +1,3 @@
-import { ethers } from 'hardhat';
 import { Contract, BigNumber } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -24,18 +23,18 @@ describe('Rewards Scheduler', () => {
   let rewardsToken: Token;
   let pool: Contract;
 
-  before('deploy base contracts', async () => {
-    [, admin, lp, rewarder] = await ethers.getSigners();
-  });
-
   sharedBeforeEach('set up asset manager and mock callback', async () => {
-    const { contracts } = await setup();
+    const { contracts, users } = await setup();
 
     pool = contracts.pool;
     vault = contracts.vault;
     stakingContract = contracts.stakingContract;
     rewardsToken = contracts.rewardTokens.DAI;
     rewardTokens = contracts.rewardTokens;
+
+    admin = users.admin;
+    lp = users.lp;
+    rewarder = users.rewarder;
 
     const rewardsSchedulerAddress = await stakingContract.rewardsScheduler();
     rewardsScheduler = await deployedAt('RewardsScheduler', rewardsSchedulerAddress);
@@ -72,7 +71,7 @@ describe('Rewards Scheduler', () => {
       rewarder: rewarder.address,
       rewardsToken: rewardsToken.address,
       startTime: time,
-      amount: rewardAmount
+      amount: rewardAmount,
     });
   });
 
@@ -139,7 +138,7 @@ describe('Rewards Scheduler', () => {
           pool: pool.address,
           rewardsToken: rewardsToken.address,
           startTime: time,
-          amount: rewardAmount
+          amount: rewardAmount,
         });
       });
 
@@ -153,22 +152,21 @@ describe('Rewards Scheduler', () => {
       });
 
       describe('and a reward has been started', async () => {
-
         sharedBeforeEach(async () => {
-          await rewardsScheduler.connect(lp).startRewards([rewardId])
-        })
+          await rewardsScheduler.connect(lp).startRewards([rewardId]);
+        });
 
         it('cannot be started again', async () => {
           await expect(rewardsScheduler.connect(lp).startRewards([rewardId])).to.be.revertedWith(
             'Reward cannot be started'
           );
-        })
+        });
 
         it('has reward status set to STARTED', async () => {
           const response = await rewardsScheduler.getScheduledRewardInfo(rewardId);
           expect(response.status).to.equal(2);
-        })
-      })
+        });
+      });
     });
   });
 });

@@ -1,5 +1,6 @@
 import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -26,7 +27,14 @@ interface SetupContracts {
   authorizer: Contract;
 }
 
-export const setup = async (): Promise<{ data: SetupData; contracts: SetupContracts }> => {
+interface SetupUsers {
+  admin: SignerWithAddress;
+  lp: SignerWithAddress;
+  mockAssetManager: SignerWithAddress;
+  rewarder: SignerWithAddress;
+}
+
+export const setup = async (): Promise<{ data: SetupData; contracts: SetupContracts; users: SetupUsers }> => {
   const [, admin, lp, mockAssetManager, rewarder] = await ethers.getSigners();
 
   const tokens = await TokenList.create(['SNX', 'MKR'], { sorted: true });
@@ -92,6 +100,12 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
       stakingContract,
       vault,
       authorizer,
+    },
+    users: {
+      admin,
+      lp,
+      mockAssetManager,
+      rewarder,
     },
   };
 };
