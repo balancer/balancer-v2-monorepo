@@ -27,10 +27,16 @@ import "./BasePoolAuthorization.sol";
  *   allowlist
  */
 abstract contract RestrictedBalancerPoolToken is BalancerPoolToken, BasePoolAuthorization {
+    bool private immutable _useAllowlist;
+
     mapping(address => bool) private _allowedAddresses;
 
     event AddressAdded(address member);
     event AddressRemoved(address member);
+
+    constructor(bool useAllowlist) {
+        _useAllowlist = useAllowlist;
+    }
 
     // Overrides
 
@@ -42,8 +48,10 @@ abstract contract RestrictedBalancerPoolToken is BalancerPoolToken, BasePoolAuth
         address to,
         uint256 amount
     ) internal virtual override {
-        _require(from == address(0) || isAllowedAddress(from), Errors.ERC20_TRANSFER_FROM_PROHIBITED_ADDRESS);
-        _require(to == address(0) || isAllowedAddress(to), Errors.ERC20_TRANSFER_TO_PROHIBITED_ADDRESS);
+        if (_useAllowlist) {
+            _require(from == address(0) || isAllowedAddress(from), Errors.ERC20_TRANSFER_FROM_PROHIBITED_ADDRESS);
+            _require(to == address(0) || isAllowedAddress(to), Errors.ERC20_TRANSFER_TO_PROHIBITED_ADDRESS);
+        }
         super._beforeTokenTransfer(from, to, amount);
     }
 
