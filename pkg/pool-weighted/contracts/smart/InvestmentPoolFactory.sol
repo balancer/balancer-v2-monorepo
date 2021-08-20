@@ -37,8 +37,7 @@ contract InvestmentPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWind
         uint256[] memory weights,
         address[] memory assetManagers,
         uint256 swapFeePercentage,
-        address owner,
-        bool swapEnabledOnStart
+        address owner
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -54,8 +53,7 @@ contract InvestmentPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWind
                     swapFeePercentage,
                     pauseWindowDuration,
                     bufferPeriodDuration,
-                    owner,
-                    swapEnabledOnStart
+                    owner
                 )
             );
     }
