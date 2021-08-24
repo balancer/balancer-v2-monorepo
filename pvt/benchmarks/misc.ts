@@ -199,13 +199,9 @@ async function deployPoolFromFactory(
     receipt = await (
       await factory.connect(args.from).create(name, symbol, ...args.parameters, owner, swapEnabledOnStart)
     ).wait();
+  } else {
+    receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)).wait();
   }
-  else {
-    receipt = await (
-      await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)
-    ).wait();
-  }
-
 
   const event = receipt.events?.find((e) => e.event == 'PoolCreated');
   if (event == undefined) {
