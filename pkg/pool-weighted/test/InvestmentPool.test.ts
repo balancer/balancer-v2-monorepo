@@ -235,7 +235,7 @@ describe('InvestmentPool', function () {
                   const updateParams = await pool.getGradualWeightUpdateParams();
 
                   // Start time should be fast-forwarded to now
-                  expect(updateParams.startTime).to.equalWithError(now, 0.001);
+                  expect(updateParams.startTime).to.equal(await currentTimestamp());
                 });
               });
             });
