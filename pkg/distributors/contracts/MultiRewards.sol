@@ -26,6 +26,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
+import "./RewardsScheduler.sol";
+
 import "./interfaces/IMultiRewards.sol";
 import "./interfaces/IDistributorCallback.sol";
 import "./interfaces/IDistributor.sol";
@@ -75,6 +77,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     // pool -> user -> bpt balance staked
     mapping(IERC20 => mapping(address => uint256)) private _balances;
 
+    RewardsScheduler public immutable rewardsScheduler;
+
     /* ========== CONSTRUCTOR ========== */
 
     constructor(IVault _vault)
@@ -83,6 +87,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         MultiRewardsAuthorization(_vault)
     {
         // solhint-disable-previous-line no-empty-blocks
+        rewardsScheduler = new RewardsScheduler();
     }
 
     /**
@@ -94,6 +99,14 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         address rewarder
     ) external override onlyAllowlisters(pool) {
         _allowlistRewarder(pool, rewardsToken, rewarder);
+    }
+
+    function isAllowlistedRewarder(
+        IERC20 pool,
+        IERC20 rewardsToken,
+        address rewarder
+    ) public view override returns (bool) {
+        return _isAllowlistedRewarder(pool, rewardsToken, rewarder);
     }
 
     /**
@@ -118,14 +131,14 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     /* ========== VIEWS ========== */
 
     /**
-     * @notice Total supply of a staking token being added
+     * @notice Total supply of a pools bpt that has been added
      */
     function totalSupply(IERC20 pool) external view returns (uint256) {
         return _totalSupply[pool];
     }
 
     /**
-     * @notice The balance of a staking token than `account` has staked
+     * @notice The balance of a pools bpt that `account` has staked
      */
     function balanceOf(IERC20 pool, address account) external view returns (uint256) {
         return _balances[pool][account];
@@ -378,19 +391,30 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     /**
-     * @notice Allows a rewards distributor to deposit more tokens to be distributed as rewards
+     * @notice Allows a rewards distributor, or the reward scheduler
+     * to deposit more tokens to be distributed as rewards
+     * @param pool - the pool bpt that is staked in this contract
      * @param rewardsToken - the token to deposit into staking contract for distribution
      * @param reward - the amount of tokens to deposit
+     * @param rewarder - the address issuing the reward (usually msg.sender)
      */
     function notifyRewardAmount(
         IERC20 pool,
         IERC20 rewardsToken,
-        uint256 reward
+        uint256 reward,
+        address rewarder
     ) external override updateReward(pool, address(0)) {
-        require(_rewarders[pool][rewardsToken].contains(msg.sender), "Reward must be configured with addReward");
+        require(
+            msg.sender == rewarder || msg.sender == address(rewardsScheduler),
+            "Rewarder must be sender, or rewards scheduler"
+        );
+
+        require(_rewarders[pool][rewardsToken].contains(rewarder), "Reward must be configured with addReward");
 
         // handle the transfer of reward tokens via `safeTransferFrom` to reduce the number
         // of transactions required and ensure correctness of the reward amount
+        // Tokens always come from msg.sender because either `msg.sender == rewarder`
+        // or the`rewardsScheduler` is holding tokens on behalf of the `rewarder`
         rewardsToken.safeTransferFrom(msg.sender, address(this), reward);
 
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
@@ -405,23 +429,23 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
         getVault().manageUserBalance(ops);
 
-        if (block.timestamp >= rewardData[pool][msg.sender][rewardsToken].periodFinish) {
-            rewardData[pool][msg.sender][rewardsToken].rewardRate = Math.divDown(
+        if (block.timestamp >= rewardData[pool][rewarder][rewardsToken].periodFinish) {
+            rewardData[pool][rewarder][rewardsToken].rewardRate = Math.divDown(
                 reward,
-                rewardData[pool][msg.sender][rewardsToken].rewardsDuration
+                rewardData[pool][rewarder][rewardsToken].rewardsDuration
             );
         } else {
-            uint256 remaining = rewardData[pool][msg.sender][rewardsToken].periodFinish.sub(block.timestamp);
-            uint256 leftover = remaining.mulDown(rewardData[pool][msg.sender][rewardsToken].rewardRate);
-            rewardData[pool][msg.sender][rewardsToken].rewardRate = Math.divDown(
+            uint256 remaining = rewardData[pool][rewarder][rewardsToken].periodFinish.sub(block.timestamp);
+            uint256 leftover = remaining.mulDown(rewardData[pool][rewarder][rewardsToken].rewardRate);
+            rewardData[pool][rewarder][rewardsToken].rewardRate = Math.divDown(
                 reward.add(leftover),
-                rewardData[pool][msg.sender][rewardsToken].rewardsDuration
+                rewardData[pool][rewarder][rewardsToken].rewardsDuration
             );
         }
 
-        rewardData[pool][msg.sender][rewardsToken].lastUpdateTime = block.timestamp;
-        rewardData[pool][msg.sender][rewardsToken].periodFinish = block.timestamp.add(
-            rewardData[pool][msg.sender][rewardsToken].rewardsDuration
+        rewardData[pool][rewarder][rewardsToken].lastUpdateTime = block.timestamp;
+        rewardData[pool][rewarder][rewardsToken].periodFinish = block.timestamp.add(
+            rewardData[pool][rewarder][rewardsToken].rewardsDuration
         );
         emit RewardAdded(address(rewardsToken), reward);
     }
