@@ -229,7 +229,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             uint256[] memory
         )
     {
-        // If swaps are disabled, the only join kind that is allowed is the proportional one, as all others involve 
+        // If swaps are disabled, the only join kind that is allowed is the proportional one, as all others involve
         // implicit swaps and alter token prices.
         _require(
             getSwapEnabled() || userData.joinKind() == JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
@@ -268,7 +268,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             uint256[] memory
         )
     {
-        // If swaps are disabled, the only exit kind that is allowed is the proportional one, as all others involve 
+        // If swaps are disabled, the only exit kind that is allowed is the proportional one, as all others involve
         // implicit swaps and alter token prices.
         _require(
             getSwapEnabled() || userData.exitKind() == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
