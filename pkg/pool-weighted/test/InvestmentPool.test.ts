@@ -42,7 +42,7 @@ describe('InvestmentPool', function () {
   });
 
   describe('weights and scaling factors', () => {
-    for (const numTokens of range(2, MAX_TOKENS + 1)) {
+    for (const numTokens of range(98, MAX_TOKENS + 1)) {
       context(`with ${numTokens} tokens`, () => {
         let tokens: TokenList;
 
@@ -148,28 +148,28 @@ describe('InvestmentPool', function () {
       it('swaps are blocked', async () => {
         await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.be.revertedWith('SWAPS_DISABLED');
       });
+    });
 
-      context('when initialized with swaps enabled', () => {
-        sharedBeforeEach('deploy pool', async () => {
-          const params = {
-            tokens: poolTokens,
-            weights: poolWeights,
-            owner,
-            poolType: WeightedPoolType.INVESTMENT_POOL,
-            swapEnabledOnStart: true,
-          };
-          pool = await WeightedPool.create(params);
-        });
+    context('when initialized with swaps enabled', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        const params = {
+          tokens: poolTokens,
+          weights: poolWeights,
+          owner,
+          poolType: WeightedPoolType.INVESTMENT_POOL,
+          swapEnabledOnStart: true,
+        };
+        pool = await WeightedPool.create(params);
+      });
 
-        it('swaps show enabled on start', async () => {
-          expect(await pool.instance.getSwapEnabled()).to.be.true;
-        });
+      it('swaps show enabled on start', async () => {
+        expect(await pool.instance.getSwapEnabled()).to.be.true;
+      });
 
-        it('swaps are not blocked', async () => {
-          await pool.init({ from: owner, initialBalances });
+      it('swaps are not blocked', async () => {
+        await pool.init({ from: owner, initialBalances });
 
-          await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.not.be.reverted;
-        });
+        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.not.be.reverted;
       });
 
       it('sets token weights', async () => {
@@ -179,11 +179,17 @@ describe('InvestmentPool', function () {
         expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
       });
 
-      describe.skip('permissioned actions', () => {
+      describe('permissioned actions', () => {
+        context('when the sender is not the owner', () => {
+          it('non-owners cannot disable swaps', async () => {
+            await expect(pool.setSwapEnabled(other, false)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
+        });
+
         context('when the sender is the owner', () => {
           sharedBeforeEach('set sender to owner', async () => {
             sender = owner;
-            await pool.init({ from: owner, initialBalances });
+            await pool.init({ from: sender, initialBalances });
           });
 
           it('swaps can be enabled and disabled', async () => {
@@ -273,12 +279,6 @@ describe('InvestmentPool', function () {
               const newBptBalance = await pool.balanceOf(sender);
               expect(newBptBalance).to.equalWithError(pct(previousBptBalance, 0.2), 0.001);
             });
-          });
-        });
-
-        context('when the sender is not the owner', () => {
-          it('non-owners cannot disable swaps', async () => {
-            await expect(pool.setSwapEnabled(other, false)).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
         });
       });

@@ -23,7 +23,8 @@ import "../WeightedPoolUserDataHelpers.sol";
 import "./WeightCompression.sol";
 
 /**
- * @dev Weighted Pool with mutable weights, designed to support investment use cases: enabling/disabling trading.
+ * @dev Weighted Pool with mutable weights, designed to support investment use cases: large token counts,
+ * rebalancing through gradual weight updates, and enabling/disabling trading.
  */
 contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     // solhint-disable not-rely-on-time
@@ -37,6 +38,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     // Use the _miscData slot in BasePool
     // First 64 bits are reserved for the swap fee
+    // 7 bits is enough for the token count, since MAX_WEIGHTED_TOKENS is 100
     //
     // Store non-token-based values:
     //
@@ -90,6 +92,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length, assetManagers.length);
 
         _setMiscData(_getMiscData().insertUint7(numTokens, _TOTAL_TOKENS_OFFSET));
+        // Double check it fits in 7 bits
+        _require(_getTotalTokens() == numTokens, Errors.MAX_TOKENS);
 
         // I'm time-traveling a bit here - storing the weights in a form where they can be changed
         uint256 currentTime = block.timestamp;
@@ -225,7 +229,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             uint256[] memory
         )
     {
-        // If swaps are disabled, require proportional join
+        // If swaps are disabled, the only join kind that is allowed is the proportional one, as all others involve 
+        // implicit swaps and alter token prices.
         _require(
             getSwapEnabled() || userData.joinKind() == JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
@@ -263,7 +268,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             uint256[] memory
         )
     {
-        // If swaps are disabled, require proportional exit
+        // If swaps are disabled, the only exit kind that is allowed is the proportional one, as all others involve 
+        // implicit swaps and alter token prices.
         _require(
             getSwapEnabled() || userData.exitKind() == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
