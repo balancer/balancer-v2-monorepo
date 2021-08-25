@@ -5,7 +5,7 @@
 [![NPM Package](https://img.shields.io/npm/v/@balancer-labs/v2-deployments.svg)](https://www.npmjs.org/package/@balancer-labs/v2-deployments)
 [![GitHub Repository](https://img.shields.io/badge/github-deployments-lightgrey?logo=github)](https://github.com/balancer-labs/balancer-v2-monorepo/tree/deployments-latest/pkg/deployments)
 
-This package contains the addresses and ABIs of all Balancer V2 deployed contracts, for Ethereum and Polygon mainnet, as well as various test networks. Each deployment consists of a deployment script (called 'task'), inputs (script configuration, such as dependencies), outputs (typically contract addresses), and ABIs of related contracts.
+This package contains the addresses and ABIs of all Balancer V2 deployed contracts, for Ethereum, Polygon and Arbitrum mainnet, as well as various test networks. Each deployment consists of a deployment script (called 'task'), inputs (script configuration, such as dependencies), outputs (typically contract addresses), and ABIs of related contracts.
 
 Addresses and ABIs can be used consumed from the package in JavaScript environments, or manually retrieved from the [GitHub](https://github.com/balancer-labs/balancer-v2-monorepo/tree/deployments-latest/pkg/deployments) repository.
 

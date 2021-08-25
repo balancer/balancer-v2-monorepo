@@ -531,6 +531,8 @@ contract WeightedPool2Tokens is
             return _joinExactTokensInForBPTOut(balances, normalizedWeights, userData);
         } else if (kind == BaseWeightedPool.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(balances, normalizedWeights, userData);
+        } else if (kind == BaseWeightedPool.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
+            return _joinAllTokensInForExactBPTOut(balances, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
@@ -576,6 +578,23 @@ contract WeightedPool2Tokens is
             bptAmountOut,
             totalSupply(),
             getSwapFeePercentage()
+        );
+
+        return (bptAmountOut, amountsIn);
+    }
+
+    function _joinAllTokensInForExactBPTOut(uint256[] memory balances, bytes memory userData)
+        private
+        view
+        returns (uint256, uint256[] memory)
+    {
+        uint256 bptAmountOut = userData.allTokensInForExactBptOut();
+        // Note that there is no maximum amountsIn parameter: this is handled by `IVault.joinPool`.
+
+        uint256[] memory amountsIn = WeightedMath._calcAllTokensInGivenExactBptOut(
+            balances,
+            bptAmountOut,
+            totalSupply()
         );
 
         return (bptAmountOut, amountsIn);

@@ -2,10 +2,10 @@ import { assert } from 'console';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, printGas } from '@balancer-labs/v2-helpers/src/numbers';
 import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { printGas, setupEnvironment, getWeightedPool, getStablePool, pickTokenAddresses } from './misc';
+import { setupEnvironment, getWeightedPool, getStablePool, pickTokenAddresses } from './misc';
 import { WeightedPoolEncoder, StablePoolEncoder } from '@balancer-labs/balancer-js';
 import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
@@ -48,7 +48,7 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = 40; numTokens <= 90; numTokens += 10) {
+  for (let numTokens = 40; numTokens <= 80; numTokens += 10) {
     printTokens('Investment pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
@@ -59,7 +59,7 @@ async function main() {
     );
   }
   console.log('\n');
-  const maxInvestmentTokens = 93;
+  const maxInvestmentTokens = 86;
 
   printTokens('Investment pool', maxInvestmentTokens);
   await joinAndExitPool(
@@ -100,7 +100,7 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = 40; numTokens <= 90; numTokens += 10) {
+  for (let numTokens = 40; numTokens <= 80; numTokens += 10) {
     printTokens('Investment pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
@@ -153,7 +153,7 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = 40; numTokens <= 90; numTokens += 10) {
+  for (let numTokens = 40; numTokens <= 80; numTokens += 10) {
     printTokens('Investment pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),

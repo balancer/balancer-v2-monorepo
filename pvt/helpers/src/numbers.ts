@@ -54,6 +54,14 @@ export const divCeil = (x: BigNumber, y: BigNumber): BigNumber =>
 
 export const FP_SCALING_FACTOR = bn(SCALING_FACTOR);
 
+export function printGas(gas: number | BigNumber): string {
+  if (typeof gas !== 'number') {
+    gas = gas.toNumber();
+  }
+
+  return `${(gas / 1000).toFixed(1)}k`;
+}
+
 function parseScientific(num: string): string {
   // If the number is not in scientific notation return it as it is
   if (!/\d+\.?\d*e[+-]*\d+/i.test(num)) return num;

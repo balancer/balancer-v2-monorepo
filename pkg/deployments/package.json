@@ -1,6 +1,6 @@
 {
   "name": "@balancer-labs/v2-deployments",
-  "version": "2.0.0-rc.1",
+  "version": "2.1.1",
   "description": "Addresses and ABIs of all Balancer V2 deployed contracts",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/deployments#readme",
@@ -21,7 +21,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "lint": "eslint . --ext .ts --max-warnings 0",
+    "lint": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
+    "prepack": "yarn build",
     "test": "hardhat test ./**/test/*.ts",
     "test:deployed": "yarn test --network mainnet",
     "test:fork": "yarn test --fork mainnet --block-number 12731159"

@@ -17,9 +17,11 @@ import {
   InitWeightedPool,
   JoinGivenInWeightedPool,
   JoinGivenOutWeightedPool,
+  JoinAllGivenOutWeightedPool,
   JoinResult,
   RawWeightedPoolDeployment,
   ExitResult,
+  SwapResult,
   SingleExitGivenInWeightedPool,
   MultiExitGivenInWeightedPool,
   ExitGivenOutWeightedPool,
@@ -31,6 +33,7 @@ import {
   Sample,
   GradualUpdateParams,
   WeightedPoolType,
+  VoidResult,
 } from './types';
 import {
   calculateInvariant,
@@ -336,19 +339,25 @@ export default class WeightedPool {
     );
   }
 
-  async swapGivenIn(params: SwapWeightedPool): Promise<BigNumber> {
+  async swapGivenIn(params: SwapWeightedPool): Promise<SwapResult> {
     return this.swap(await this._buildSwapParams(SwapKind.GivenIn, params));
   }
 
-  async swapGivenOut(params: SwapWeightedPool): Promise<BigNumber> {
+  async swapGivenOut(params: SwapWeightedPool): Promise<SwapResult> {
     return this.swap(await this._buildSwapParams(SwapKind.GivenOut, params));
   }
 
-  async swap(params: MinimalSwap): Promise<BigNumber> {
+  async swap(params: MinimalSwap): Promise<SwapResult> {
     const tx = await this.vault.minimalSwap(params);
-    const receipt = await (await tx).wait();
+    const receipt = await tx.wait();
     const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
-    return amount;
+    return { amount, receipt };
+  }
+
+  async dirtyUninitializedOracleSamples(startSlot: number, endSlot: number): Promise<VoidResult> {
+    const tx = await this.instance.dirtyUninitializedOracleSamples(startSlot, endSlot);
+    const receipt = await tx.wait();
+    return { receipt };
   }
 
   async init(params: InitWeightedPool): Promise<JoinResult> {
@@ -369,6 +378,14 @@ export default class WeightedPool {
 
   async queryJoinGivenOut(params: JoinGivenOutWeightedPool): Promise<JoinQueryResult> {
     return this.queryJoin(this._buildJoinGivenOutParams(params));
+  }
+
+  async joinAllGivenOut(params: JoinAllGivenOutWeightedPool): Promise<JoinResult> {
+    return this.join(this._buildJoinAllGivenOutParams(params));
+  }
+
+  async queryJoinAllGivenOut(params: JoinAllGivenOutWeightedPool): Promise<JoinQueryResult> {
+    return this.queryJoin(this._buildJoinAllGivenOutParams(params));
   }
 
   async exitGivenOut(params: ExitGivenOutWeightedPool): Promise<ExitResult> {
@@ -418,7 +435,7 @@ export default class WeightedPool {
 
     const receipt = await (await tx).wait();
     const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFees };
+    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFees, receipt };
   }
 
   async queryExit(params: JoinExitWeightedPool): Promise<ExitQueryResult> {
@@ -444,7 +461,7 @@ export default class WeightedPool {
 
     const receipt = await (await tx).wait();
     const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees };
+    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees, receipt };
   }
 
   private async _executeQuery(params: JoinExitWeightedPool, fn: ContractFunction): Promise<PoolQueryResult> {
@@ -518,6 +535,17 @@ export default class WeightedPool {
     };
   }
 
+  private _buildJoinAllGivenOutParams(params: JoinAllGivenOutWeightedPool): JoinExitWeightedPool {
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: WeightedPoolEncoder.joinAllTokensInForExactBPTOut(params.bptOut),
+    };
+  }
+
   private _buildExitGivenOutParams(params: ExitGivenOutWeightedPool): JoinExitWeightedPool {
     const { amountsOut: amounts } = params;
     const amountsOut = Array.isArray(amounts) ? amounts : Array(this.tokens.length).fill(amounts);
@@ -559,9 +587,11 @@ export default class WeightedPool {
     await this.instance.setPaused(true);
   }
 
-  async enableOracle(txParams: TxParams): Promise<void> {
+  async enableOracle(txParams: TxParams): Promise<VoidResult> {
     const pool = txParams.from ? this.instance.connect(txParams.from) : this.instance;
-    await pool.enableOracle();
+    const tx = await pool.enableOracle();
+    const receipt = await tx.wait();
+    return { receipt };
   }
 
   async setSwapEnabled(from: SignerWithAddress, swapEnabled: boolean): Promise<ContractTransaction> {

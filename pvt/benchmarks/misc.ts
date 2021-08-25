@@ -1,6 +1,6 @@
 import { pick } from 'lodash';
 import { ethers } from 'hardhat';
-import { BigNumber, Contract, ContractReceipt } from 'ethers';
+import { Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
@@ -173,14 +173,6 @@ export async function getSigners(): Promise<{
   return { admin, creator, trader };
 }
 
-export function printGas(gas: number | BigNumber): string {
-  if (typeof gas !== 'number') {
-    gas = gas.toNumber();
-  }
-
-  return `${(gas / 1000).toFixed(1)}k`;
-}
-
 type PoolName = 'WeightedPool' | 'WeightedPool2Tokens' | 'StablePool' | 'InvestmentPool';
 
 async function deployPoolFromFactory(
@@ -199,10 +191,17 @@ async function deployPoolFromFactory(
   const name = 'Balancer Pool Token';
   const symbol = 'BPT';
   const owner = ZERO_ADDRESS;
+  let receipt: ContractReceipt;
 
-  const receipt: ContractReceipt = await (
-    await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)
-  ).wait();
+  if (poolName == 'InvestmentPool') {
+    const swapEnabledOnStart = true;
+
+    receipt = await (
+      await factory.connect(args.from).create(name, symbol, ...args.parameters, owner, swapEnabledOnStart)
+    ).wait();
+  } else {
+    receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)).wait();
+  }
 
   const event = receipt.events?.find((e) => e.event == 'PoolCreated');
   if (event == undefined) {

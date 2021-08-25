@@ -5,8 +5,8 @@ import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { getTokensSwaps } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
-import { getWeightedPool, getStablePool, printGas, setupEnvironment, tokenSymbols } from './misc';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { getWeightedPool, getStablePool, setupEnvironment, tokenSymbols } from './misc';
+import { fp, printGas } from '@balancer-labs/v2-helpers/src/numbers';
 
 let vault: Contract;
 let tokens: TokenList;
@@ -34,10 +34,10 @@ async function main() {
   await multihop((index: number) => getWeightedPool(vault, tokens, 20, index), false);
   await multihop((index: number) => getWeightedPool(vault, tokens, 20, index), true);
 
-  console.log(`\n# Investment Pool with 93 tokens`);
+  console.log(`\n# Investment Pool with 86 tokens`);
 
-  await multihop((index: number) => getWeightedPool(vault, tokens, 93, index), false);
-  await multihop((index: number) => getWeightedPool(vault, tokens, 93, index), true);
+  await multihop((index: number) => getWeightedPool(vault, tokens, 86, index), false);
+  await multihop((index: number) => getWeightedPool(vault, tokens, 86, index), true);
 
   console.log(`\n# Stable Pool with 2 tokens`);
 

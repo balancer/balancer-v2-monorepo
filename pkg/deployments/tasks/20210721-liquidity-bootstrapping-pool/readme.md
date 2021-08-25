@@ -6,4 +6,5 @@ Deployment of the `LiquidityBootstrappingPool`, for Liquidity Bootstrapping Pool
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Polygon mainnet addresses](./output/polygon.json)
+- [Arbitrum mainnet address](./output/arbitrum.json)
 - [`LiquidityBootstrappingPool` ABI](./abi/LiquidityBootstrappingPool.json)
