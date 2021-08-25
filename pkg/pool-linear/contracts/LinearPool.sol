@@ -328,10 +328,10 @@ contract LinearPool is BaseGeneralPool, LinearMath, IRateProvider {
             _mintPoolTokens(address(this), _MAX_TOKEN_BALANCE);
             _approve(address(this), address(_vault), _MAX_TOKEN_BALANCE);
 
-            (IERC20[] memory tokens, , ) = _vault.getPoolTokens(poolId);
+            (, , uint256 bptIndex) = _getIndexes();
 
             uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
-            amountsIn[tokens[0] == IERC20(this) ? 0 : tokens[1] == IERC20(this) ? 1 : 2] = _MAX_TOKEN_BALANCE;
+            amountsIn[bptIndex] = _MAX_TOKEN_BALANCE;
 
             return (amountsIn, new uint256[](_TOTAL_TOKENS));
         }
