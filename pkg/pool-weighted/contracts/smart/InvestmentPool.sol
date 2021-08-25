@@ -43,17 +43,16 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     // Start/end timestamps for gradual weight update
     // Cache total tokens
     // [ 64 bits  |  120 bits |  32 bits  |   32 bits  |    7 bits    |    1 bit     ]
-    // [ reserved |  unused   | end time  | start time | total tokens |   unused     ]
+    // [ reserved |  unused   | end time  | start time | total tokens |   swap flag  ]
     // |MSB                                                                       LSB|
+    uint256 private constant _SWAP_ENABLED_OFFSET = 0;
     uint256 private constant _TOTAL_TOKENS_OFFSET = 1;
     uint256 private constant _START_TIME_OFFSET = 8;
     uint256 private constant _END_TIME_OFFSET = 40;
+    // 7 bits is enough for the token count, since MAX_WEIGHTED_TOKENS is 100
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
-    // into a fixed array of bytes32 or something like that, especially
-    // since tokens can be added/removed - and re-ordered in the process
-    // For each token, we store:
     // [ 155 bits|   5 bits |  32 bits   |   64 bits    |
     // [ unused  | decimals | end weight | start weight |
     // |MSB                                          LSB|
@@ -71,6 +70,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] startWeights,
         uint256[] endWeights
     );
+    event SwapEnabledSet(bool swapEnabled);
 
     constructor(
         IVault vault,
@@ -82,7 +82,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        address owner
+        address owner,
+        bool swapEnabledOnStart
     )
         BaseWeightedPool(
             vault,
@@ -100,9 +101,23 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         InputHelpers.ensureInputLengthMatch(totalTokens, normalizedWeights.length, assetManagers.length);
 
         _setMiscData(_getMiscData().insertUint7(totalTokens, _TOTAL_TOKENS_OFFSET));
+        // Double check it fits in 7 bits
+        _require(_getTotalTokens() == totalTokens, Errors.MAX_TOKENS);
 
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights, tokens);
+
+        // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction)
+        _setSwapEnabled(swapEnabledOnStart);
+    }
+
+    // External functions
+
+    /**
+     * @dev Tells whether swaps are enabled or not for the given pool.
+     */
+    function getSwapEnabled() public view returns (bool) {
+        return _getMiscData().decodeBool(_SWAP_ENABLED_OFFSET);
     }
 
     // External functions
@@ -168,6 +183,19 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
     }
 
+    /*
+     * @dev Can enable/disable trading
+     */
+    function setSwapEnabled(bool swapEnabled) external authenticate whenNotPaused nonReentrant {
+        _setSwapEnabled(swapEnabled);
+    }
+
+    function _setSwapEnabled(bool swapEnabled) private {
+        _setMiscData(_getMiscData().insertBool(swapEnabled, _SWAP_ENABLED_OFFSET));
+
+        emit SwapEnabledSet(swapEnabled);
+    }
+
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
         return _readScalingFactor(_getTokenData(token));
     }
@@ -224,6 +252,105 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
+    // Swap overrides - revert unless swaps are enabled
+
+    function _onSwapGivenIn(
+        SwapRequest memory swapRequest,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) internal view override returns (uint256) {
+        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
+
+        return super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+    }
+
+    function _onSwapGivenOut(
+        SwapRequest memory swapRequest,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) internal view override returns (uint256) {
+        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
+
+        return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+    }
+
+    function _onJoinPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    )
+        internal
+        override
+        returns (
+            uint256,
+            uint256[] memory,
+            uint256[] memory
+        )
+    {
+        // If swaps are disabled, the only join kind that is allowed is the proportional one, as all others involve
+        // implicit swaps and alter token prices.
+        _require(
+            getSwapEnabled() || userData.joinKind() == JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
+            Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
+        );
+
+        return
+            super._onJoinPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                scalingFactors,
+                userData
+            );
+    }
+
+    function _onExitPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    )
+        internal
+        virtual
+        override
+        returns (
+            uint256,
+            uint256[] memory,
+            uint256[] memory
+        )
+    {
+        // If swaps are disabled, the only exit kind that is allowed is the proportional one, as all others involve
+        // implicit swaps and alter token prices.
+        _require(
+            getSwapEnabled() || userData.exitKind() == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+            Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
+        );
+
+        return
+            super._onExitPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                scalingFactors,
+                userData
+            );
+    }
+
     /**
      * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
      * if necessary. Time travel elements commented out.
@@ -276,6 +403,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
         return
             (actionId == getActionId(InvestmentPool.updateWeightsGradually.selector)) ||
+            (actionId == getActionId(InvestmentPool.setSwapEnabled.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
 

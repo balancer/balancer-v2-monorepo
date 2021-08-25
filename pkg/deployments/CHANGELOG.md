@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.1 (2021-08-25)
+
+### Fixes
+
+- Added `BalancerHelpers` to the Arbitrum deployment.
+
 ## 2.1.0 (2021-08-24)
 
 ### New Deployments
