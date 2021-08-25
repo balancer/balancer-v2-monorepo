@@ -55,6 +55,8 @@ const balancerErrorCodes: Record<string, string> = {
   '327': 'SWAPS_DISABLED',
   '328': 'CALLER_IS_NOT_LBP_OWNER',
   '329': 'PRICE_RATE_OVERFLOW',
+  '330': 'LOWER_GREATER_THAN_UPPER_TARGET',
+  '331': 'UPPER_TARGET_TOO_HIGH',
   '400': 'REENTRANCY',
   '401': 'SENDER_NOT_ALLOWED',
   '402': 'PAUSED',

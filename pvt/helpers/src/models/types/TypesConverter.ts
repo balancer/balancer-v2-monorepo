@@ -9,6 +9,7 @@ import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawWeightedPoolDeployment, WeightedPoolDeployment, WeightedPoolType } from '../pools/weighted/types';
 import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
+import { RawLinearPoolDeployment, LinearPoolDeployment } from '../pools/linear/types';
 import {
   RawTokenApproval,
   RawTokenMint,
@@ -116,6 +117,27 @@ export default {
       bufferPeriodDuration,
       oracleEnabled,
       meta,
+      owner: params.owner,
+    };
+  },
+
+  toLinearPoolDeployment(params: RawLinearPoolDeployment): LinearPoolDeployment {
+    let { lowerTarget, upperTarget, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
+
+    if (!lowerTarget) lowerTarget = bn(0);
+    if (!upperTarget) upperTarget = bn(0);
+    if (!swapFeePercentage) swapFeePercentage = bn(1e12);
+    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
+    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+
+    return {
+      mainToken: params.mainToken,
+      wrappedToken: params.wrappedToken,
+      lowerTarget,
+      upperTarget,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
       owner: params.owner,
     };
   },
