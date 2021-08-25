@@ -106,6 +106,7 @@ export default {
             pauseWindowDuration,
             bufferPeriodDuration,
             TypesConverter.toAddress(owner),
+            swapEnabledOnStart,
           ],
           from,
         });
@@ -200,7 +201,8 @@ export default {
           weights,
           assetManagers,
           swapFeePercentage,
-          TypesConverter.toAddress(owner)
+          TypesConverter.toAddress(owner),
+          swapEnabledOnStart
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
