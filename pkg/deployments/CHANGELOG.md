@@ -1,6 +1,12 @@
 # Changelog
 
-## 2.0.0 (unreleased)
+## 2.1.0 (2021-08-24)
+
+### New Deployments
+
+- Deployed `Authorizer`, `Vault`, `WeightedPoolFactory`, `WeightedPool2TokensFactory`, `StablePoolFactory`, `LiquidityBootstrappingPoolFactory`, `MetaStablePoolFactory` on Arbitrum mainnet.
+
+## 2.0.0 (2021-08-24)
 
 ### New Deployments
 
