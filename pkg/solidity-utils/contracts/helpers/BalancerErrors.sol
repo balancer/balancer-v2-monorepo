@@ -147,6 +147,7 @@ library Errors {
     uint256 internal constant INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED = 330;
     uint256 internal constant LOWER_GREATER_THAN_UPPER_TARGET = 331;
     uint256 internal constant UPPER_TARGET_TOO_HIGH = 332;
+    uint256 internal constant UNHANDLED = 333;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

@@ -58,6 +58,7 @@ const balancerErrorCodes: Record<string, string> = {
   '330': 'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED',
   '331': 'LOWER_GREATER_THAN_UPPER_TARGET',
   '332': 'UPPER_TARGET_TOO_HIGH',
+  '333': 'UNHANDLED',
   '400': 'REENTRANCY',
   '401': 'SENDER_NOT_ALLOWED',
   '402': 'PAUSED',

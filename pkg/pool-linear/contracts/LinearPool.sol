@@ -121,9 +121,9 @@ contract LinearPool is BaseGeneralPool, LinearMath, IRateProvider {
         private
         pure
         returns (
-            uint256 index0,
-            uint256 index1,
-            uint256 index2
+            uint256 indexToken0,
+            uint256 indexToken1,
+            uint256 indexToken2
         )
     {
         if (token0 < token1) {
@@ -237,7 +237,7 @@ contract LinearPool is BaseGeneralPool, LinearMath, IRateProvider {
                         params
                     );
             } else {
-                revert("INVALID_SWAP");
+                _revert(Errors.INVALID_TOKEN);
             }
         } else if (swapRequest.tokenOut == _mainToken) {
             if (swapRequest.tokenIn == _wrappedToken) {
@@ -253,11 +253,11 @@ contract LinearPool is BaseGeneralPool, LinearMath, IRateProvider {
                         params
                     );
             } else {
-                revert("INVALID_SWAP");
+                _revert(Errors.INVALID_TOKEN);
             }
         } else {
             //It does not swap wrapped and BPT
-            revert("INVALID_SWAP");
+            _revert(Errors.INVALID_TOKEN);
         }
     }
 
@@ -290,7 +290,7 @@ contract LinearPool is BaseGeneralPool, LinearMath, IRateProvider {
                         params
                     );
             } else {
-                revert("INVALID_SWAP");
+                _revert(Errors.INVALID_TOKEN);
             }
         } else if (swapRequest.tokenIn == _mainToken) {
             if (swapRequest.tokenOut == _wrappedToken) {
@@ -306,11 +306,11 @@ contract LinearPool is BaseGeneralPool, LinearMath, IRateProvider {
                         params
                     );
             } else {
-                revert("INVALID_SWAP");
+                _revert(Errors.INVALID_TOKEN);
             }
         } else {
             //It does not swap wrapped and BPT
-            revert("INVALID_SWAP");
+            _revert(Errors.INVALID_TOKEN);
         }
     }
 
@@ -344,7 +344,7 @@ contract LinearPool is BaseGeneralPool, LinearMath, IRateProvider {
         uint256[] memory,
         bytes memory
     ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNHANDLED);
     }
 
     function _onJoinPool(
@@ -367,7 +367,7 @@ contract LinearPool is BaseGeneralPool, LinearMath, IRateProvider {
             uint256[] memory
         )
     {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNHANDLED);
     }
 
     function _onExitPool(
@@ -389,7 +389,7 @@ contract LinearPool is BaseGeneralPool, LinearMath, IRateProvider {
             uint256[] memory
         )
     {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNHANDLED);
     }
 
     function _getMaxTokens() internal pure override returns (uint256) {
