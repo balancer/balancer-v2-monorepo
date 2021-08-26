@@ -20,3 +20,5 @@ cache/
 
 # Build artifacts
 dist/
+pkg/balancer-js/src/typechain/*
+
