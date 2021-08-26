@@ -27,6 +27,20 @@ library WeightCompression {
     using FixedPoint for uint256;
 
     /**
+     * @dev Convert a 8-bit value to full FixedPoint
+     */
+    function uncompress8(uint256 value) internal pure returns (uint256) {
+        return value.mulUp(FixedPoint.ONE).divUp(type(uint8).max);
+    }
+
+    /**
+     * @dev Compress a FixedPoint value to 8 bits
+     */
+    function compress8(uint256 value) internal pure returns (uint256) {
+        return value.mulUp(type(uint8).max).divUp(FixedPoint.ONE);
+    }
+
+    /**
      * @dev Convert a 16-bit value to full FixedPoint
      */
     function uncompress16(uint256 value) internal pure returns (uint256) {

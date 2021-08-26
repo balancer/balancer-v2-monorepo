@@ -27,6 +27,7 @@ library WordCodec {
     uint256 private constant _MASK_1 = 2**(1) - 1;
     uint256 private constant _MASK_5 = 2**(5) - 1;
     uint256 private constant _MASK_7 = 2**(7) - 1;
+    uint256 private constant _MASK_8 = 2**(8) - 1;
     uint256 private constant _MASK_10 = 2**(10) - 1;
     uint256 private constant _MASK_16 = 2**(16) - 1;
     uint256 private constant _MASK_22 = 2**(22) - 1;
@@ -34,6 +35,7 @@ library WordCodec {
     uint256 private constant _MASK_32 = 2**(32) - 1;
     uint256 private constant _MASK_53 = 2**(53) - 1;
     uint256 private constant _MASK_64 = 2**(64) - 1;
+    uint256 private constant _MASK_112 = 2**(112) - 1;
     uint256 private constant _MASK_128 = 2**(128) - 1;
     uint256 private constant _MASK_192 = 2**(192) - 1;
 
@@ -85,6 +87,21 @@ library WordCodec {
         uint256 offset
     ) internal pure returns (bytes32) {
         bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_7 << offset));
+        return clearedWord | bytes32(value << offset);
+    }
+
+    /**
+     * @dev Inserts a 8 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
+     * the new word.
+     *
+     * Assumes `value` only uses its least significant 8 bits, otherwise it may overwrite sibling bytes.
+     */
+    function insertUint8(
+        bytes32 word,
+        uint256 value,
+        uint256 offset
+    ) internal pure returns (bytes32) {
+        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_8 << offset));
         return clearedWord | bytes32(value << offset);
     }
 
@@ -160,6 +177,21 @@ library WordCodec {
         uint256 offset
     ) internal pure returns (bytes32) {
         bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_64 << offset));
+        return clearedWord | bytes32(value << offset);
+    }
+
+    /**
+     * @dev Inserts a 112 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
+     * the new word.
+     *
+     * Assumes `value` only uses its least significant 112 bits, otherwise it may overwrite sibling bytes.
+     */
+    function insertUint112(
+        bytes32 word,
+        uint256 value,
+        uint256 offset
+    ) internal pure returns (bytes32) {
+        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_112 << offset));
         return clearedWord | bytes32(value << offset);
     }
 
@@ -259,6 +291,13 @@ library WordCodec {
     }
 
     /**
+     * @dev Decodes and returns a 7 bit unsigned integer shifted by an offset from a 256 bit word.
+     */
+    function decodeUint8(bytes32 word, uint256 offset) internal pure returns (uint256) {
+        return uint256(word >> offset) & _MASK_8;
+    }
+
+    /**
      * @dev Decodes and returns a 10 bit unsigned integer shifted by an offset from a 256 bit word.
      */
     function decodeUint10(bytes32 word, uint256 offset) internal pure returns (uint256) {
@@ -291,6 +330,13 @@ library WordCodec {
      */
     function decodeUint64(bytes32 word, uint256 offset) internal pure returns (uint256) {
         return uint256(word >> offset) & _MASK_64;
+    }
+
+    /**
+     * @dev Decodes and returns a 112 bit unsigned integer shifted by an offset from a 256 bit word.
+     */
+    function decodeUint112(bytes32 word, uint256 offset) internal pure returns (uint256) {
+        return uint256(word >> offset) & _MASK_112;
     }
 
     /**
