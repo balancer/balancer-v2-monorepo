@@ -19,7 +19,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
-import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
+
+import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
 
 import "./LinearMath.sol";
 
@@ -27,7 +29,7 @@ import "./LinearMath.sol";
  * @dev LinearPool suitable for assets with an equal underlying token with an exact and non-manipulable exchange rate.
  * Requires an external feed of these exchange rates.
  */
-contract LinearPool is BaseGeneralPool, LinearMath, IRateProvider {
+contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     using FixedPoint for uint256;
 
     uint256 private constant _TOTAL_TOKENS = 3; //Main token, wrapped token, BPT
@@ -213,7 +215,7 @@ contract LinearPool is BaseGeneralPool, LinearMath, IRateProvider {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view override whenNotPaused returns (uint256) {
+    ) internal view whenNotPaused returns (uint256) {
         Params memory params = Params({
             fee: getSwapFeePercentage(),
             rate: FixedPoint.ONE,
@@ -266,7 +268,7 @@ contract LinearPool is BaseGeneralPool, LinearMath, IRateProvider {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view override whenNotPaused returns (uint256) {
+    ) internal view whenNotPaused returns (uint256) {
         Params memory params = Params({
             fee: getSwapFeePercentage(),
             rate: FixedPoint.ONE,
@@ -322,7 +324,7 @@ contract LinearPool is BaseGeneralPool, LinearMath, IRateProvider {
         uint256,
         uint256,
         bytes memory
-    ) public override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+    ) public override(IBasePool, BasePool) onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         if (totalSupply() == 0) {
             //Mint initial BPTs and adds them to the Vault via a special join
             _mintPoolTokens(address(this), _MAX_TOKEN_BALANCE);
