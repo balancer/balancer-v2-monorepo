@@ -246,12 +246,12 @@ describe('InvestmentPool', function () {
 
               it('allows proportional exits', async () => {
                 const previousBptBalance = await pool.balanceOf(sender);
-                const bptIn = pct(previousBptBalance, 0.8);
+                const bptIn = pct(previousBptBalance, 0.2);
 
                 await expect(pool.multiExitGivenIn({ from: sender, bptIn })).to.not.be.reverted;
 
                 const newBptBalance = await pool.balanceOf(sender);
-                expect(newBptBalance).to.equalWithError(pct(previousBptBalance, 0.2), 0.001);
+                expect(newBptBalance).to.equalWithError(pct(previousBptBalance, 0.8), 0.001);
               });
             });
 
