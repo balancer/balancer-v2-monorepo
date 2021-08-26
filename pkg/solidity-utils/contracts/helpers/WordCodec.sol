@@ -181,8 +181,8 @@ library WordCodec {
     }
 
     /**
-     * @dev Inserts a 112 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
-     * the new word.
+     * @dev Inserts a 112 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value.
+     * Returns the new word.
      *
      * Assumes `value` only uses its least significant 112 bits, otherwise it may overwrite sibling bytes.
      */
