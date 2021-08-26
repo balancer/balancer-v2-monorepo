@@ -2,6 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -179,6 +180,13 @@ describe('InvestmentPool', function () {
         expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
       });
 
+      it('stores the initial weights as a zero duration weight change', async () => {
+        const { startTime, endTime, endWeights } = await pool.getGradualWeightUpdateParams();
+
+        expect(startTime).to.equal(endTime);
+        expect(endWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
+      });
+
       describe('permissioned actions', () => {
         context('when the sender is not the owner', () => {
           it('non-owners cannot disable swaps', async () => {
@@ -228,69 +236,228 @@ describe('InvestmentPool', function () {
             expect(bptAfterExit).to.lt(bptAfterJoin);
           });
 
-          context('when swaps disabled', () => {
-            sharedBeforeEach(async () => {
-              await pool.setSwapEnabled(sender, false);
-            });
+          describe('update weights gradually', () => {
+            const UPDATE_DURATION = MINUTE * 60;
 
-            context('proportional joins/exits', () => {
-              it('allows proportionate joins', async () => {
-                const startingBpt = await pool.balanceOf(sender);
+            context('with invalid parameters', () => {
+              let now: BigNumber;
 
-                const { amountsIn } = await pool.joinAllGivenOut({ from: sender, bptOut: startingBpt });
-
-                const endingBpt = await pool.balanceOf(sender);
-                expect(endingBpt).to.be.gt(startingBpt);
-                expect(amountsIn).to.deep.equal(initialBalances);
+              sharedBeforeEach(async () => {
+                now = await currentTimestamp();
               });
 
-              it('allows proportional exits', async () => {
-                const previousBptBalance = await pool.balanceOf(sender);
-                const bptIn = pct(previousBptBalance, 0.2);
-
-                await expect(pool.multiExitGivenIn({ from: sender, bptIn })).to.not.be.reverted;
-
-                const newBptBalance = await pool.balanceOf(sender);
-                expect(newBptBalance).to.equalWithError(pct(previousBptBalance, 0.8), 0.001);
-              });
-            });
-
-            context('disproportionate joins/exits', () => {
-              it('prevents disproportionate joins (single token)', async () => {
-                const bptOut = await pool.balanceOf(sender);
-
-                await expect(pool.joinGivenOut({ from: sender, bptOut, token: poolTokens.get(0) })).to.be.revertedWith(
-                  'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
+              it('fails if end weights are mismatched (too few)', async () => {
+                await expect(pool.updateWeightsGradually(sender, now, now, WEIGHTS.slice(0, 1))).to.be.revertedWith(
+                  'INPUT_LENGTH_MISMATCH'
                 );
               });
 
-              it('prevents disproportionate exits (single token)', async () => {
-                const previousBptBalance = await pool.balanceOf(sender);
-                const bptIn = pct(previousBptBalance, 0.5);
+              it('fails if the end weights are mismatched (too many)', async () => {
+                await expect(pool.updateWeightsGradually(sender, now, now, [...WEIGHTS, fp(0.5)])).to.be.revertedWith(
+                  'INPUT_LENGTH_MISMATCH'
+                );
+              });
+
+              it('fails if start time > end time', async () => {
+                await expect(pool.updateWeightsGradually(sender, now, now.sub(1), poolWeights)).to.be.revertedWith(
+                  'GRADUAL_UPDATE_TIME_TRAVEL'
+                );
+              });
+
+              it('fails with an end weight below the minimum', async () => {
+                const badWeights = [...poolWeights];
+                badWeights[2] = fp(0.005);
 
                 await expect(
-                  pool.singleExitGivenIn({ from: sender, bptIn, token: poolTokens.get(0) })
-                ).to.be.revertedWith('INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED');
+                  pool.updateWeightsGradually(sender, now.add(100), now.add(1000), badWeights)
+                ).to.be.revertedWith('MIN_WEIGHT');
               });
 
-              it('prevents disproportionate joins (multi token)', async () => {
-                const amountsIn = [...initialBalances];
-                amountsIn[0] = 0;
+              it('fails with invalid normalized end weights', async () => {
+                const badWeights = Array(poolWeights.length).fill(fp(0.6));
 
-                await expect(pool.joinGivenIn({ from: sender, amountsIn })).to.be.revertedWith(
-                  'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
-                );
+                await expect(
+                  pool.updateWeightsGradually(sender, now.add(100), now.add(1000), badWeights)
+                ).to.be.revertedWith('NORMALIZED_WEIGHT_INVARIANT');
               });
 
-              it('prevents disproportionate exits (multi token)', async () => {
-                const amountsOut = [...initialBalances];
-                // Make it disproportionate (though it will fail with this exit type even if it's technically proportionate)
-                amountsOut[0] = 0;
+              context('with start time in the past', () => {
+                let now: BigNumber, startTime: BigNumber, endTime: BigNumber;
+                const endWeights = [...poolWeights];
 
-                await expect(pool.exitGivenOut({ from: sender, amountsOut })).to.be.revertedWith(
-                  'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
-                );
+                sharedBeforeEach('updateWeightsGradually (start time in the past)', async () => {
+                  now = await currentTimestamp();
+                  // Start an hour in the past
+                  startTime = now.sub(MINUTE * 60);
+                  endTime = now.add(UPDATE_DURATION);
+                });
+
+                it('fast-forwards start time to present', async () => {
+                  await pool.updateWeightsGradually(owner, startTime, endTime, endWeights);
+                  const updateParams = await pool.getGradualWeightUpdateParams();
+
+                  // Start time should be fast-forwarded to now
+                  expect(updateParams.startTime).to.equal(await currentTimestamp());
+                });
               });
+            });
+
+            context('with valid parameters (ongoing weight update)', () => {
+              // startWeights must equal "weights" above - just not using fp to keep math simple
+              const startWeights = [...poolWeights];
+              const endWeights = [...poolWeights];
+
+              // Now generate endWeights (first weight doesn't change)
+              for (let i = 2; i < poolWeights.length; i++) {
+                endWeights[i] = 0 == i % 2 ? startWeights[i].add(fp(0.02)) : startWeights[i].sub(fp(0.02));
+              }
+
+              function getEndWeights(pct: number): BigNumber[] {
+                const intermediateWeights = Array<BigNumber>(poolWeights.length);
+
+                for (let i = 0; i < poolWeights.length; i++) {
+                  if (startWeights[i] < endWeights[i]) {
+                    // Weight is increasing
+                    intermediateWeights[i] = startWeights[i].add(endWeights[i].sub(startWeights[i]).mul(pct).div(100));
+                  } else {
+                    // Weight is decreasing (or not changing)
+                    intermediateWeights[i] = startWeights[i].sub(startWeights[i].sub(endWeights[i]).mul(pct).div(100));
+                  }
+                }
+
+                return intermediateWeights;
+              }
+
+              let now, startTime: BigNumber, endTime: BigNumber;
+              const START_DELAY = MINUTE * 10;
+              const finalEndWeights = getEndWeights(100);
+
+              sharedBeforeEach('updateWeightsGradually', async () => {
+                now = await currentTimestamp();
+                startTime = now.add(START_DELAY);
+                endTime = startTime.add(UPDATE_DURATION);
+
+                await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
+              });
+
+              it('updating weights emits an event', async () => {
+                const receipt = await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
+
+                expectEvent.inReceipt(await receipt.wait(), 'GradualWeightUpdateScheduled', {
+                  startTime: startTime,
+                  endTime: endTime,
+                  // weights don't exactly match because of the compression
+                });
+              });
+
+              it('stores the params', async () => {
+                const updateParams = await pool.getGradualWeightUpdateParams();
+
+                expect(updateParams.startTime).to.equalWithError(startTime, 0.001);
+                expect(updateParams.endTime).to.equalWithError(endTime, 0.001);
+                expect(updateParams.endWeights).to.equalWithError(finalEndWeights, 0.001);
+              });
+
+              it('gets start weights if called before the start time', async () => {
+                const normalizedWeights = await pool.getNormalizedWeights();
+
+                // Need to decrease precision
+                expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
+              });
+
+              it('gets end weights if called after the end time', async () => {
+                await advanceTime(endTime.add(MINUTE));
+                const normalizedWeights = await pool.getNormalizedWeights();
+
+                // Need to decrease precision
+                expect(normalizedWeights).to.equalWithError(finalEndWeights, 0.0001);
+              });
+
+              for (let pct = 5; pct < 100; pct += 5) {
+                it(`gets correct intermediate weights if called ${pct}% through`, async () => {
+                  await advanceTime(START_DELAY + (UPDATE_DURATION * pct) / 100);
+                  const normalizedWeights = await pool.getNormalizedWeights();
+
+                  // Need to decrease precision
+                  expect(normalizedWeights).to.equalWithError(getEndWeights(pct), 0.005);
+                });
+              }
+            });
+          });
+        });
+
+        context('when the sender is not the owner', () => {
+          it('non-owners cannot update weights', async () => {
+            const now = await currentTimestamp();
+
+            await expect(pool.updateWeightsGradually(other, now, now, poolWeights)).to.be.revertedWith(
+              'SENDER_NOT_ALLOWED'
+            );
+          });
+        });
+        context('when swaps disabled', () => {
+          sharedBeforeEach(async () => {
+            await pool.setSwapEnabled(sender, false);
+            await pool.init({ from: owner, initialBalances });
+          });
+
+          context('proportional joins/exits', () => {
+            it('allows proportionate joins', async () => {
+              const startingBpt = await pool.balanceOf(sender);
+
+              const { amountsIn } = await pool.joinAllGivenOut({ from: sender, bptOut: startingBpt });
+
+              const endingBpt = await pool.balanceOf(sender);
+              expect(endingBpt).to.be.gt(startingBpt);
+              expect(amountsIn).to.deep.equal(initialBalances);
+            });
+
+            it('allows proportional exits', async () => {
+              const previousBptBalance = await pool.balanceOf(sender);
+              const bptIn = pct(previousBptBalance, 0.2);
+
+              await expect(pool.multiExitGivenIn({ from: sender, bptIn })).to.not.be.reverted;
+
+              const newBptBalance = await pool.balanceOf(sender);
+              expect(newBptBalance).to.equalWithError(pct(previousBptBalance, 0.8), 0.001);
+            });
+          });
+
+          context('disproportionate joins/exits', () => {
+            it('prevents disproportionate joins (single token)', async () => {
+              const bptOut = await pool.balanceOf(sender);
+
+              await expect(pool.joinGivenOut({ from: sender, bptOut, token: poolTokens.get(0) })).to.be.revertedWith(
+                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
+              );
+            });
+
+            it('prevents disproportionate exits (single token)', async () => {
+              const previousBptBalance = await pool.balanceOf(sender);
+              const bptIn = pct(previousBptBalance, 0.5);
+
+              await expect(
+                pool.singleExitGivenIn({ from: sender, bptIn, token: poolTokens.get(0) })
+              ).to.be.revertedWith('INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED');
+            });
+
+            it('prevents disproportionate joins (multi token)', async () => {
+              const amountsIn = [...initialBalances];
+              amountsIn[0] = 0;
+
+              await expect(pool.joinGivenIn({ from: sender, amountsIn })).to.be.revertedWith(
+                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
+              );
+            });
+
+            it('prevents disproportionate exits (multi token)', async () => {
+              const amountsOut = [...initialBalances];
+              // Make it disproportionate (though it will fail with this exit type even if it's technically proportionate)
+              amountsOut[0] = 0;
+
+              await expect(pool.exitGivenOut({ from: sender, amountsOut })).to.be.revertedWith(
+                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
+              );
             });
           });
         });
