@@ -227,8 +227,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
-    function stake(IERC20 pool, uint256 amount) external {
-        stakeFor(pool, amount, msg.sender);
+    function stake(IERC20 pool, uint256 amount) external nonReentrant {
+        _stakeFor(pool, amount, msg.sender, msg.sender);
     }
 
     /**
@@ -241,11 +241,20 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20 pool,
         uint256 amount,
         address receiver
-    ) public nonReentrant updateReward(pool, receiver) {
+    ) public nonReentrant {
+        _stakeFor(pool, amount, msg.sender, receiver);
+    }
+
+    function _stakeFor(
+        IERC20 pool,
+        uint256 amount,
+        address account,
+        address receiver
+    ) internal updateReward(pool, receiver) {
         require(amount > 0, "Cannot stake 0");
         _totalSupply[pool] = _totalSupply[pool].add(amount);
         _balances[pool][receiver] = _balances[pool][receiver].add(amount);
-        pool.safeTransferFrom(msg.sender, address(this), amount);
+        pool.safeTransferFrom(account, address(this), amount);
         emit Staked(address(pool), receiver, amount);
     }
 
@@ -262,13 +271,14 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20 pool,
         uint256 amount,
         uint256 deadline,
+        address account,
         address recipient,
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external {
-        IERC20Permit(address(pool)).permit(msg.sender, address(this), amount, deadline, v, r, s);
-        stakeFor(pool, amount, recipient);
+    ) external nonReentrant {
+        IERC20Permit(address(pool)).permit(account, address(this), amount, deadline, v, r, s);
+        _stakeFor(pool, amount, account, recipient);
     }
 
     function unstake(

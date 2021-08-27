@@ -110,7 +110,9 @@ describe('Staking contract', () => {
       const bptBalance = await pool.balanceOf(lp.address);
 
       const { v, r, s } = await signPermit(pool, lp, stakingContract, bptBalance);
-      await stakingContract.connect(lp).stakeWithPermit(pool.address, bptBalance, MAX_UINT256, lp.address, v, r, s);
+      await stakingContract
+        .connect(other)
+        .stakeWithPermit(pool.address, bptBalance, MAX_UINT256, lp.address, lp.address, v, r, s);
 
       const stakedBalance = await stakingContract.balanceOf(pool.address, lp.address);
       expect(stakedBalance).to.be.eq(bptBalance);
@@ -120,7 +122,9 @@ describe('Staking contract', () => {
       const bptBalance = await pool.balanceOf(lp.address);
 
       const { v, r, s } = await signPermit(pool, lp, stakingContract, bptBalance);
-      await stakingContract.connect(lp).stakeWithPermit(pool.address, bptBalance, MAX_UINT256, other.address, v, r, s);
+      await stakingContract
+        .connect(other)
+        .stakeWithPermit(pool.address, bptBalance, MAX_UINT256, lp.address, other.address, v, r, s);
 
       const stakedBalance = await stakingContract.balanceOf(pool.address, other.address);
       expect(stakedBalance).to.be.eq(bptBalance);
