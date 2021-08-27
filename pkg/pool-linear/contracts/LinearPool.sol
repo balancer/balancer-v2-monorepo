@@ -433,7 +433,13 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         return (balances[mainIndex] + balances[wrappedIndex]).divUp(_MAX_TOKEN_BALANCE - balances[bptIndex]);
     }
 
-    //TODO: update Targets
+    function setTargets(uint256 lowerTarget, uint256 upperTarget) external authenticate {
+        _require(lowerTarget <= upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
+        _require(upperTarget <= _MAX_TOKEN_BALANCE, Errors.UPPER_TARGET_TOO_HIGH);
+
+        _lowerTarget = lowerTarget;
+        _upperTarget = upperTarget;
+    }
 
     //TODO: external rates
 }
