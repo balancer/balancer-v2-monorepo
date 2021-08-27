@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { Contract, BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -16,7 +16,13 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { signPermit, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 
-import { setup, tokenInitialBalance, rewardTokenInitialBalance, rewardsDuration } from './MultiRewardsSharedSetup';
+import {
+  setup,
+  tokenInitialBalance,
+  rewardTokenInitialBalance,
+  rewardsDuration,
+  rewardsVestingTime,
+} from './MultiRewardsSharedSetup';
 
 describe('Staking contract', () => {
   let admin: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress, rewarder: SignerWithAddress;
@@ -173,112 +179,136 @@ describe('Staking contract', () => {
         await stakingContract
           .connect(rewarder)
           .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address);
-        await advanceTime(10);
       });
 
-      it('distributes the reward according to the fraction of staked LP tokens', async () => {
-        // 3/4 share
-        const expectedReward = fp(0.75);
-        const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
+      describe('and enough time has passed for all the reward to vest', async () => {
+        sharedBeforeEach(async () => {
+          await advanceTime(rewardsVestingTime);
+        });
 
-        expect(expectedReward.sub(actualReward).abs()).to.be.lte(100);
+        it('distributes the reward according to the fraction of staked LP tokens', async () => {
+          // 3/4 share
+          const expectedReward = fp(0.75);
+          const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
 
-        // 1/4 share
-        const expectedRewardOther = fp(0.25);
-        const actualRewardOther = await stakingContract.totalEarned(pool.address, other.address, rewardToken.address);
+          expect(actualReward).to.be.equalWithError(expectedReward, 0.0001);
 
-        expect(expectedRewardOther.sub(actualRewardOther).abs()).to.be.lte(100);
-      });
+          // 1/4 share
+          const expectedRewardOther = fp(0.25);
+          const actualRewardOther = await stakingContract.totalEarned(pool.address, other.address, rewardToken.address);
 
-      it('allows a user to claim the reward to an EOA', async () => {
-        const expectedReward = fp(0.75);
+          expect(actualRewardOther).to.be.equalWithError(expectedRewardOther, 0.0001);
+        });
 
-        await expectBalanceChange(() => stakingContract.connect(lp).getReward([pool.address]), rewardTokens, [
-          { account: lp, changes: { DAI: ['very-near', expectedReward] } },
-        ]);
-      });
+        it('allows a user to claim the reward to an EOA', async () => {
+          const expectedReward = fp(0.75);
 
-      it('allows a user to claim the reward to internal balance', async () => {
-        const expectedReward = fp(0.75);
+          await expectBalanceChange(() => stakingContract.connect(lp).getReward([pool.address]), rewardTokens, [
+            { account: lp, changes: { DAI: ['very-near', expectedReward] } },
+          ]);
+        });
 
-        await expectBalanceChange(
-          () => stakingContract.connect(lp).getRewardAsInternalBalance([pool.address]),
-          rewardTokens,
-          [{ account: lp, changes: { DAI: ['very-near', expectedReward] } }],
-          vault
-        );
-      });
+        it('allows a user to claim the reward to internal balance', async () => {
+          const expectedReward = fp(0.75);
 
-      it('emits RewardPaid when an allocation is claimed', async () => {
-        const expectedReward = bn('749999999999999923');
+          await expectBalanceChange(
+            () => stakingContract.connect(lp).getRewardAsInternalBalance([pool.address]),
+            rewardTokens,
+            [{ account: lp, changes: { DAI: ['very-near', expectedReward] } }],
+            vault
+          );
+        });
 
-        const receipt = await (await stakingContract.connect(lp).getReward([pool.address])).wait();
+        it('emits RewardPaid when an allocation is claimed', async () => {
+          const expectedReward = bn('749999999999999623');
 
-        expectEvent.inReceipt(receipt, 'RewardPaid', {
-          user: lp.address,
-          rewardToken: rewardToken.address,
-          amount: expectedReward,
+          const receipt = await (await stakingContract.connect(lp).getReward([pool.address])).wait();
+
+          expectEvent.inReceipt(receipt, 'RewardPaid', {
+            user: lp.address,
+            rewardToken: rewardToken.address,
+            amount: expectedReward,
+          });
+        });
+
+        describe('with a second distribution from the same rewarder', () => {
+          const secondRewardAmount = fp(2);
+
+          sharedBeforeEach(async () => {
+            await stakingContract
+              .connect(rewarder)
+              .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount, rewarder.address);
+            // total reward = fp(3)
+            await advanceTime(rewardsVestingTime);
+          });
+
+          it('calculates totalEarned from both distributions', async () => {
+            const expectedReward = rewardAmount.add(secondRewardAmount).mul(3).div(4);
+
+            const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
+            expect(actualReward).to.be.equalWithError(expectedReward, 0.0001);
+          });
+        });
+
+        describe('with a second distributions from another rewarder', () => {
+          const secondRewardAmount = fp(2);
+
+          sharedBeforeEach(async () => {
+            await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardToken.address, other.address);
+
+            await rewardTokens.mint({ to: other, amount: rewardTokenInitialBalance });
+            await rewardTokens.approve({ to: stakingContract.address, from: [other] });
+
+            await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardToken.address, other.address);
+            await stakingContract.connect(other).addReward(pool.address, rewardToken.address, rewardsDuration);
+
+            await stakingContract
+              .connect(other)
+              .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount, other.address);
+            await advanceTime(rewardsVestingTime);
+          });
+
+          it('calculates totalEarned from both distributions', async () => {
+            const expectedReward = fp(0.75).mul(3);
+
+            const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
+            expect(actualReward).to.be.equalWithError(expectedReward, 0.0001);
+          });
+
+          it('calculates totalEarned from both distributions for the other user', async () => {
+            const expectedReward = fp(0.25).mul(3);
+
+            const actualReward = await stakingContract.totalEarned(pool.address, other.address, rewardToken.address);
+            expect(actualReward).to.be.equalWithError(expectedReward, 0.0001);
+          });
         });
       });
-    });
 
-    describe('with a second distribution from the same rewarder', () => {
-      const secondRewardAmount = fp(2);
+      describe('with a second distribution from the same rewarder (before the first is finished vesting', () => {
+        const secondRewardAmount = fp(2);
+        let leftoverBalance: BigNumber;
 
-      sharedBeforeEach(async () => {
-        await stakingContract
-          .connect(rewarder)
-          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address);
-        await stakingContract
-          .connect(rewarder)
-          .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount, rewarder.address);
-        // total reward = fp(3)
-      });
+        sharedBeforeEach(async () => {
+          // advance half the time
+          await advanceTime(rewardsDuration / 2);
 
-      it('calculates totalEarned from both distributions', async () => {
-        const expectedReward = rewardAmount.add(secondRewardAmount).mul(3).div(4);
-        await advanceTime(10);
+          // claim rewards
+          await stakingContract.connect(lp).getReward([pool.address]);
+          const claimedBalance: BigNumber = await rewardToken.balanceOf(lp.address);
+          leftoverBalance = rewardAmount.sub(claimedBalance);
 
-        const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
-        expect(expectedReward.sub(actualReward).abs()).to.be.lte(300);
-      });
-    });
+          await stakingContract
+            .connect(rewarder)
+            .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount, rewarder.address);
+          await advanceTime(rewardsVestingTime);
+        });
 
-    describe('with a second distributions from another rewarder', () => {
-      const secondRewardAmount = fp(2);
+        it('adds leftover correctly', async () => {
+          const expectedReward = leftoverBalance.add(secondRewardAmount).mul(3).div(4);
 
-      sharedBeforeEach(async () => {
-        await stakingContract
-          .connect(rewarder)
-          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address);
-
-        await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardToken.address, other.address);
-
-        await rewardTokens.mint({ to: other, amount: rewardTokenInitialBalance });
-        await rewardTokens.approve({ to: stakingContract.address, from: [other] });
-
-        await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardToken.address, other.address);
-        await stakingContract.connect(other).addReward(pool.address, rewardToken.address, rewardsDuration);
-
-        await stakingContract
-          .connect(other)
-          .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount, other.address);
-      });
-
-      it('calculates totalEarned from both distributions', async () => {
-        const expectedReward = fp(0.75).mul(3);
-        await advanceTime(10);
-
-        const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
-        expect(expectedReward.sub(actualReward).abs()).to.be.lte(300);
-      });
-
-      it('calculates totalEarned from both distributions for the other user', async () => {
-        const expectedReward = fp(0.25).mul(3);
-        await advanceTime(10);
-
-        const actualReward = await stakingContract.totalEarned(pool.address, other.address, rewardToken.address);
-        expect(expectedReward.sub(actualReward).abs()).to.be.lte(300);
+          const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
+          expect(actualReward).to.be.equalWithError(expectedReward, 0.05);
+        });
       });
     });
   });
@@ -346,7 +376,7 @@ describe('Staking contract', () => {
         .connect(rewarder)
         .notifyRewardAmount(pool2.address, rewardToken.address, rewardAmount2, rewarder.address);
 
-      await advanceTime(10);
+      await advanceTime(rewardsVestingTime);
 
       const expectedReward = fp(1.75);
 
@@ -365,7 +395,7 @@ describe('Staking contract', () => {
       await stakingContract
         .connect(rewarder)
         .notifyRewardAmount(pool2.address, rewardToken.address, rewardAmount2, rewarder.address);
-      await advanceTime(10);
+      await advanceTime(rewardsVestingTime);
 
       const receipt = await (await stakingContract.connect(lp).getReward([pool.address])).wait();
 

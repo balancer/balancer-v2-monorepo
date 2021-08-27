@@ -429,25 +429,33 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
         getVault().manageUserBalance(ops);
 
-        if (block.timestamp >= rewardData[pool][rewarder][rewardsToken].periodFinish) {
-            rewardData[pool][rewarder][rewardsToken].rewardRate = Math.divDown(
-                reward,
-                rewardData[pool][rewarder][rewardsToken].rewardsDuration
-            );
-        } else {
-            uint256 remaining = rewardData[pool][rewarder][rewardsToken].periodFinish.sub(block.timestamp);
-            uint256 leftover = remaining.mulDown(rewardData[pool][rewarder][rewardsToken].rewardRate);
-            rewardData[pool][rewarder][rewardsToken].rewardRate = Math.divDown(
-                reward.add(leftover),
-                rewardData[pool][rewarder][rewardsToken].rewardsDuration
-            );
-        }
-
+        _updateRewardRate(pool, rewarder, rewardsToken, reward);
         rewardData[pool][rewarder][rewardsToken].lastUpdateTime = block.timestamp;
         rewardData[pool][rewarder][rewardsToken].periodFinish = block.timestamp.add(
             rewardData[pool][rewarder][rewardsToken].rewardsDuration
         );
         emit RewardAdded(address(rewardsToken), reward);
+    }
+
+    function _updateRewardRate(
+        IERC20 pool,
+        address rewarder,
+        IERC20 rewardsToken,
+        uint256 newReward
+    ) internal {
+        if (block.timestamp >= rewardData[pool][rewarder][rewardsToken].periodFinish) {
+            rewardData[pool][rewarder][rewardsToken].rewardRate = Math.divDown(
+                newReward,
+                rewardData[pool][rewarder][rewardsToken].rewardsDuration
+            );
+        } else {
+            uint256 remainingTime = rewardData[pool][rewarder][rewardsToken].periodFinish.sub(block.timestamp);
+            uint256 leftoverReward = Math.mul(remainingTime, rewardData[pool][rewarder][rewardsToken].rewardRate);
+            rewardData[pool][rewarder][rewardsToken].rewardRate = Math.divDown(
+                newReward.add(leftoverReward),
+                rewardData[pool][rewarder][rewardsToken].rewardsDuration
+            );
+        }
     }
 
     function setRewardsDuration(
