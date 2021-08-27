@@ -59,6 +59,7 @@ const balancerErrorCodes: Record<string, string> = {
   '331': 'LOWER_GREATER_THAN_UPPER_TARGET',
   '332': 'UPPER_TARGET_TOO_HIGH',
   '333': 'UNHANDLED',
+  '334': 'OUT_OF_TARGET_RANGE',
   '400': 'REENTRANCY',
   '401': 'SENDER_NOT_ALLOWED',
   '402': 'PAUSED',

@@ -433,12 +433,30 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         return (balances[mainIndex] + balances[wrappedIndex]).divUp(_MAX_TOKEN_BALANCE - balances[bptIndex]);
     }
 
+    function getTargets() external view returns (uint256 lowerTarget, uint256 upperTarget) {
+        return (_lowerTarget, _upperTarget);
+    }
+
     function setTargets(uint256 lowerTarget, uint256 upperTarget) external authenticate {
         _require(lowerTarget <= upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
         _require(upperTarget <= _MAX_TOKEN_BALANCE, Errors.UPPER_TARGET_TOO_HIGH);
 
+        bytes32 poolId = getPoolId();
+        (, uint256[] memory balances, ) = _vault.getPoolTokens(poolId);
+        (uint256 mainIndex, , ) = _getIndexes();
+
+        //Target can only be set when main token balance between targets (free zone)
+        _require(
+            balances[mainIndex] >= _lowerTarget && balances[mainIndex] <= _upperTarget,
+            Errors.OUT_OF_TARGET_RANGE
+        );
+
         _lowerTarget = lowerTarget;
         _upperTarget = upperTarget;
+    }
+
+    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
+        return (actionId == getActionId(this.setTargets.selector));
     }
 
     //TODO: external rates

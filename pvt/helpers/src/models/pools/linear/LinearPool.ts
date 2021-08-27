@@ -1,5 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber, Contract, ContractTransaction } from 'ethers';
 
 import { BigNumberish } from '../../../numbers';
 import { ZERO_ADDRESS } from '../../../constants';
@@ -9,7 +9,8 @@ import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
 import TypesConverter from '../../types/TypesConverter';
 import LinearPoolDeployer from './LinearPoolDeployer';
-import { Account } from '../../types/types';
+import { Account, TxParams } from '../../types/types';
+
 import { SwapKind } from '@balancer-labs/balancer-js';
 import { SwapLinearPool, RawLinearPoolDeployment } from './types';
 import TokenList from '../../tokens/TokenList';
@@ -129,6 +130,20 @@ export default class LinearPool {
 
   async getRate(): Promise<BigNumber> {
     return this.instance.getRate();
+  }
+
+  async getTargets(): Promise<{ lowerTarget: BigNumber; upperTarget: BigNumber }> {
+    return this.instance.getTargets();
+  }
+
+  async setTargets(
+    lowerTarget: BigNumber,
+    upperTarget: BigNumber,
+    txParams: TxParams = {}
+  ): Promise<ContractTransaction> {
+    const sender = txParams.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    return pool.setTargets(lowerTarget, upperTarget);
   }
 
   async initialize(): Promise<void> {

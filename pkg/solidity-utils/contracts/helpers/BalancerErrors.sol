@@ -148,6 +148,7 @@ library Errors {
     uint256 internal constant LOWER_GREATER_THAN_UPPER_TARGET = 331;
     uint256 internal constant UPPER_TARGET_TOO_HIGH = 332;
     uint256 internal constant UNHANDLED = 333;
+    uint256 internal constant OUT_OF_TARGET_RANGE = 334;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

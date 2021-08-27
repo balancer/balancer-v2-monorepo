@@ -15,7 +15,7 @@ import { RawLinearPoolDeployment } from '@balancer-labs/v2-helpers/src/models/po
 describe('LinearPool', function () {
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
 
-  let trader: SignerWithAddress, lp: SignerWithAddress;
+  let trader: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const _TOTAL_TOKENS = 3;
@@ -47,7 +47,7 @@ describe('LinearPool', function () {
   }
 
   before('setup', async () => {
-    [, lp, trader] = await ethers.getSigners();
+    [, lp, trader, owner] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -60,8 +60,13 @@ describe('LinearPool', function () {
 
   describe('creation', () => {
     context('when the creation succeeds', () => {
+      let lowerTarget: BigNumber;
+      let upperTarget: BigNumber;
+
       sharedBeforeEach('deploy pool', async () => {
-        await deployPool({ mainToken, wrappedToken }, false);
+        lowerTarget = fp(1000);
+        upperTarget = fp(2000);
+        await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget }, false);
       });
 
       it('sets the vault', async () => {
@@ -105,6 +110,12 @@ describe('LinearPool', function () {
       it('sets the decimals', async () => {
         expect(await pool.decimals()).to.equal(18);
       });
+
+      it('sets the targets', async () => {
+        const targets = await pool.getTargets();
+        expect(targets.lowerTarget).to.be.equal(lowerTarget);
+        expect(targets.upperTarget).to.be.equal(upperTarget);
+      });
     });
 
     context('when the creation fails', () => {
@@ -143,6 +154,76 @@ describe('LinearPool', function () {
       expect(currentBalances[await pool.getTokenIndex(wrappedToken.address)]).to.be.equal(0);
 
       expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
+    });
+  });
+
+  const setBalances = async (
+    pool: LinearPool,
+    balances: { mainBalance?: BigNumber; wrappedBalance?: BigNumber; bptBalance?: BigNumber }
+  ) => {
+    const poolId = await pool.getPoolId();
+    const mainIndex = await pool.getTokenIndex(mainToken.address);
+    const wrappedIndex = await pool.getTokenIndex(wrappedToken.address);
+    const bptIndex = await pool.getTokenIndex(pool.address);
+
+    const updateBalances = Array.from({ length: _TOTAL_TOKENS }, (_, i) =>
+      i == mainIndex
+        ? balances.mainBalance ?? bn(0)
+        : i == wrappedIndex
+        ? balances.wrappedBalance ?? bn(0)
+        : i == bptIndex
+        ? balances.bptBalance ?? bn(0)
+        : bn(0)
+    );
+    await (await pool.getVaultObject()).updateBalances(poolId, updateBalances);
+  };
+
+  describe('set targets', () => {
+    sharedBeforeEach('deploy pool', async () => {
+      const lowerTarget = fp(1000);
+      const upperTarget = fp(2000);
+      await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget, owner }, true);
+    });
+
+    it('correctly if inside free zone ', async () => {
+      const mainBalance = fp(1800);
+      const lowerTarget = fp(1500);
+      const upperTarget = fp(2500);
+
+      await setBalances(pool, { mainBalance });
+
+      await pool.setTargets(lowerTarget, upperTarget);
+
+      const targets = await pool.getTargets();
+      expect(targets.lowerTarget).to.be.equal(lowerTarget);
+      expect(targets.upperTarget).to.be.equal(upperTarget);
+    });
+
+    it('reverts if under free zone', async () => {
+      const mainBalance = fp(100);
+      const lowerTarget = fp(1500);
+      const upperTarget = fp(2500);
+
+      await setBalances(pool, { mainBalance });
+
+      await expect(pool.setTargets(lowerTarget, upperTarget)).to.be.revertedWith('OUT_OF_TARGET_RANGE');
+    });
+
+    it('reverts if over free zone', async () => {
+      const mainBalance = fp(3000);
+      const lowerTarget = fp(1500);
+      const upperTarget = fp(2500);
+
+      await setBalances(pool, { mainBalance });
+
+      await expect(pool.setTargets(lowerTarget, upperTarget)).to.be.revertedWith('OUT_OF_TARGET_RANGE');
+    });
+
+    it('reverts not owner', async () => {
+      const lowerTarget = fp(1500);
+      const upperTarget = fp(2500);
+
+      await expect(pool.setTargets(lowerTarget, upperTarget, { from: lp })).to.be.revertedWith('SENDER_NOT_ALLOWED');
     });
   });
 
