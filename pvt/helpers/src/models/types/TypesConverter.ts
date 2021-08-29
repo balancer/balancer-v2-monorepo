@@ -51,6 +51,7 @@ export default {
       weights,
       assetManagers,
       swapFeePercentage,
+      managementFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
       oracleEnabled,
@@ -67,6 +68,7 @@ export default {
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
+    if (undefined == managementFeePercentage) managementFeePercentage = 0;
     if (poolType === WeightedPoolType.WEIGHTED_POOL_2TOKENS && tokens.length !== 2)
       throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
     return {
@@ -74,6 +76,7 @@ export default {
       weights,
       assetManagers,
       swapFeePercentage,
+      managementFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
       oracleEnabled,

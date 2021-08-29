@@ -22,6 +22,7 @@ describe('InvestmentPool', function () {
   const MAX_TOKENS = 100;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  const MANAGEMENT_FEE_PERCENTAGE = fp(0.2);
   const WEIGHTS = range(10000, 10000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
 
   before('setup signers', async () => {
@@ -60,7 +61,8 @@ describe('InvestmentPool', function () {
           weights,
           assetManagers,
           POOL_SWAP_FEE_PERCENTAGE,
-          owner.address
+          owner.address,
+          MANAGEMENT_FEE_PERCENTAGE
         )
       ).wait();
 
@@ -104,6 +106,7 @@ describe('InvestmentPool', function () {
             tokens,
             weights: WEIGHTS.slice(0, numTokens),
             swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+            managementFeePercentage: MANAGEMENT_FEE_PERCENTAGE
           });
         });
 

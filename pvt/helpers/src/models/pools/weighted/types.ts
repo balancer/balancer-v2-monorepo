@@ -20,6 +20,7 @@ export type RawWeightedPoolDeployment = {
   weights?: BigNumberish[];
   assetManagers?: string[];
   swapFeePercentage?: BigNumberish;
+  managementFeePercentage?: BigNumberish;
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   oracleEnabled?: boolean;
@@ -37,6 +38,7 @@ export type WeightedPoolDeployment = {
   weights: BigNumberish[];
   assetManagers: string[];
   swapFeePercentage: BigNumberish;
+  managementFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
   poolType: WeightedPoolType;

@@ -48,7 +48,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private _managementFeePercentage;
 
     // Store collected management fees by token
-    mapping (IERC20 => uint256) private _collectedManagementFees;
+    mapping(IERC20 => uint256) private _collectedManagementFees;
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
@@ -108,7 +108,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights, tokens);
 
         _require(managementFeePercentage <= MAX_MGMT_FEE_PERCENTAGE, Errors.MGMT_FEE_PERCENTAGE_TOO_HIGH);
-        _managementFeePercentage = managementFeePercentage;   
+        _managementFeePercentage = managementFeePercentage;
     }
 
     function _getMaxTokens() internal pure virtual override returns (uint256) {
@@ -245,27 +245,26 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             // same calculations
             if (protocolSwapFeePercentage == 0) {
                 _collectManagementFeesFromBalances(balances);
-            }
-            else {
+            } else {
                 // If there was a protocol fee, we can let the superclass do all the calculations,
                 // and just use the results
-                (bptAmountOut, amountsIn, dueProtocolFeeAmounts) =
-                    super._onJoinPool(
-                        poolId,
-                        sender,
-                        recipient,
-                        balances,
-                        lastChangeBlock,
-                        protocolSwapFeePercentage,
-                        scalingFactors,
-                        userData
-                    );
+                (bptAmountOut, amountsIn, dueProtocolFeeAmounts) = super._onJoinPool(
+                    poolId,
+                    sender,
+                    recipient,
+                    balances,
+                    lastChangeBlock,
+                    protocolSwapFeePercentage,
+                    scalingFactors,
+                    userData
+                );
 
                 // dueProtocolFeeAmounts[maxWeightTokenIndex] can have a non-zero value
                 // The management fee amount will be: managementFeePercentage /
                 //                                    protocolSwapFeePercentage * dueProtocolFeeAmounts
                 _collectManagementFeesFromAmounts(dueProtocolFeeAmounts, protocolSwapFeePercentage);
-                //_collectManagementFeesFromAmounts[_maxWeightTokenIndex] += dueProtocolFeeAmounts[_maxWeightTokenIndex].mulDown(
+                //_collectManagementFeesFromAmounts[_maxWeightTokenIndex] +=
+                // dueProtocolFeeAmounts[_maxWeightTokenIndex].mulDown(
                 //    managementFeePercentage.divUp(protocolSwapFeePercentage)
                 //);
 
@@ -273,17 +272,16 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             }
         }
 
-        (bptAmountOut, amountsIn, dueProtocolFeeAmounts) =
-            super._onJoinPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                protocolSwapFeePercentage,
-                scalingFactors,
-                userData
-            );
+        (bptAmountOut, amountsIn, dueProtocolFeeAmounts) = super._onJoinPool(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            scalingFactors,
+            userData
+        );
     }
 
     function _onExitPool(
@@ -311,30 +309,52 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             amountsOut = new uint256[](_getTotalTokens());
 
             for (uint256 i = 0; i < _getTotalTokens(); i++) {
-                amountsOut[i] = _collectedManagementFees[tokens[i]];
+                IERC20 token = tokens[i];
+
+                amountsOut[i] = _collectedManagementFees[token];
+                delete _collectedManagementFees[token];
             }
 
             return (0, amountsOut, new uint256[](_getTotalTokens()));
         } else {
             if (_managementFeePercentage != 0) {
-                // If there is no protocol fee, dueProtocolFeeAmounts will be zero, so we need to do all the same calculations
+                // If there is no protocol fee, dueProtocolFeeAmounts will be zero,
+                // so we need to do all the same calculations
                 if (protocolSwapFeePercentage == 0) {
                     _collectManagementFeesFromBalances(balances);
                 } else {
-                    // If there was a protocol fee, we can let the superclass do all the calculations, and just use the results
-                    (bptAmountIn, amountsOut, dueProtocolFeeAmounts) =
-                        super._onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, scalingFactors, userData);
+                    // If there was a protocol fee, we can let the superclass do all the calculations,
+                    // and just use the results
+                    (bptAmountIn, amountsOut, dueProtocolFeeAmounts) = super._onExitPool(
+                        poolId,
+                        sender,
+                        recipient,
+                        balances,
+                        lastChangeBlock,
+                        protocolSwapFeePercentage,
+                        scalingFactors,
+                        userData
+                    );
 
                     // dueProtocolFeeAmounts[maxWeightTokenIndex] will have a non-zero value
-                    // The management fee amount will be: managementFeePercentage / protocolSwapFeePercentage * dueProtocolFeeAmounts
+                    // The management fee amount will be:
+                    // managementFeePercentage / protocolSwapFeePercentage * dueProtocolFeeAmounts
                     _collectManagementFeesFromAmounts(dueProtocolFeeAmounts, protocolSwapFeePercentage);
 
                     return (bptAmountIn, amountsOut, dueProtocolFeeAmounts);
                 }
             }
-            
-            (bptAmountIn, amountsOut, dueProtocolFeeAmounts) =
-                super._onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, scalingFactors, userData);
+
+            (bptAmountIn, amountsOut, dueProtocolFeeAmounts) = super._onExitPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                scalingFactors,
+                userData
+            );
         }
     }
 
@@ -362,18 +382,23 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         _collectedManagementFees[token] = _collectedManagementFees[token].add(feeAmount);
     }
 
-   function _collectManagementFeesFromAmounts(uint256[] memory dueProtocolFeeAmounts, uint256 protocolSwapFeePercentage) private {
+    function _collectManagementFeesFromAmounts(
+        uint256[] memory dueProtocolFeeAmounts,
+        uint256 protocolSwapFeePercentage
+    ) private {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
-        // We have set the maximum in ManagementFeeEnabled to 1 - MaxProtocolFee, so we're sure (management fee + max protocol fee) <= 1
-
+        // We have set the maximum in ManagementFeeEnabled to 1 - MaxProtocolFee,
+        // so we're sure (management fee + max protocol fee) <= 1
         for (uint256 i = 0; i < dueProtocolFeeAmounts.length; i++) {
-           uint256 amount = dueProtocolFeeAmounts[i];
-           if (amount != 0) {
-               _collectedManagementFees[tokens[i]] = amount.mulDown(_managementFeePercentage.divUp(protocolSwapFeePercentage));
-           }
+            uint256 amount = dueProtocolFeeAmounts[i];
+            if (amount != 0) {
+                _collectedManagementFees[tokens[i]] = amount.mulDown(
+                    _managementFeePercentage.divUp(protocolSwapFeePercentage)
+                );
+            }
         }
-   }
+    }
 
     /**
      * @dev Returns a fixed-point number representing how far along the current weight change is, where 0 means the

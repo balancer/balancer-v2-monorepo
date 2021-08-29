@@ -74,6 +74,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
   const tokenAddresses = symbols.map((symbol) => tokens[symbol].address);
   const swapFeePercentage = fp(0.02); // 2%
+  const managementFeePercentage = fp(0.2); // 20%
 
   let pool: Contract;
   let joinUserData: string;
@@ -191,10 +192,16 @@ async function deployPoolFromFactory(
   const name = 'Balancer Pool Token';
   const symbol = 'BPT';
   const owner = ZERO_ADDRESS;
+  let receipt: ContractReceipt;
+  const managementFeePercentage = fp(0.2);
 
-  const receipt: ContractReceipt = await (
-    await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)
-  ).wait();
+  if ('InvestmentPool' == poolName) {
+    receipt = await (
+      await factory.connect(args.from).create(name, symbol, ...args.parameters, owner, managementFeePercentage)
+    ).wait();
+  } else {
+    receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)).wait();
+  }
 
   const event = receipt.events?.find((e) => e.event == 'PoolCreated');
   if (event == undefined) {

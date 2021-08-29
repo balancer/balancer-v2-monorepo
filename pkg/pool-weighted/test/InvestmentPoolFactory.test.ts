@@ -23,6 +23,7 @@ describe('InvestmentPoolFactory', function () {
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  const MANAGEMENT_FEE_PERCENTAGE = fp(0.2);
   const WEIGHTS = toNormalizedWeights([fp(30), fp(70), fp(5), fp(5)]);
 
   const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -54,7 +55,8 @@ describe('InvestmentPoolFactory', function () {
         WEIGHTS,
         assetManagers,
         POOL_SWAP_FEE_PERCENTAGE,
-        owner.address
+        owner.address,
+        MANAGEMENT_FEE_PERCENTAGE
       )
     ).wait();
 
