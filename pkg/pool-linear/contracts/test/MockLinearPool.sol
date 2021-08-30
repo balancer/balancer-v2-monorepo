@@ -13,22 +13,21 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
+import "./MockLinearMath.sol";
+import "../LinearPool.sol";
 
-contract MockRateProvider is IRateProvider {
-    uint256 internal _rate;
-
-    constructor() {
-        _rate = FixedPoint.ONE;
+contract MockLinearPool is LinearPool, MockLinearMath {
+    constructor(NewPoolParams memory params) LinearPool(params) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getRate() external view override returns (uint256) {
-        return _rate;
+    function getScalingFactor(IERC20 token) external view returns (uint256) {
+        return _scalingFactor(token);
     }
 
-    function mockRate(uint256 newRate) external {
-        _rate = newRate;
+    function mockCacheWrappedTokenRateIfNecessary() external {
+        _cacheWrappedTokenRateIfNecessary();
     }
 }

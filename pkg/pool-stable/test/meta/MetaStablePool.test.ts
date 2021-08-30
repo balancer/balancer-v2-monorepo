@@ -426,7 +426,7 @@ describe('MetaStablePool', function () {
     context('with rate providers', () => {
       const createPoolWithInitialRates = (delta: number) => {
         sharedBeforeEach('mock price rates and deploy pool', async () => {
-          rateProviders = await Promise.all(initialBalances.map(() => deploy('MockRateProvider')));
+          rateProviders = await Promise.all(initialBalances.map(() => deploy('v2-pool-utils/MockRateProvider')));
           await rateProviders[0].mockRate(fp(1).add(fp(delta)));
           await rateProviders[1].mockRate(fp(1).add(fp(delta * 2)));
 

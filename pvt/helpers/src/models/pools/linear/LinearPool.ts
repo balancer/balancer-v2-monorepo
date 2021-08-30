@@ -1,34 +1,32 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 
-import { BigNumberish } from '../../../numbers';
-import { ZERO_ADDRESS } from '../../../constants';
+import { SwapKind } from '@balancer-labs/balancer-js';
+import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-import * as expectEvent from '../../../test/expectEvent';
+import { GeneralSwap } from '../../vault/types';
+import { Account, TxParams } from '../../types/types';
+import { SwapLinearPool, RawLinearPoolDeployment } from './types';
+
 import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
+import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import LinearPoolDeployer from './LinearPoolDeployer';
-import { Account, TxParams } from '../../types/types';
-
-import { SwapKind } from '@balancer-labs/balancer-js';
-import { SwapLinearPool, RawLinearPoolDeployment } from './types';
-import TokenList from '../../tokens/TokenList';
-import { GeneralSwap } from '../../vault/types';
-
-export enum SWAP_INTERFACE {
-  DEFAULT,
-  GENERAL,
-  MINIMAL_SWAP_INFO,
-}
 
 export default class LinearPool {
   instance: Contract;
   poolId: string;
-  tokens: TokenList;
+  mainToken: Token;
+  wrappedToken: Token;
+  bptToken: Token;
   lowerTarget: BigNumberish;
   upperTarget: BigNumberish;
   swapFeePercentage: BigNumberish;
+  wrappedTokenRateProvider: string;
+  wrappedTokenRateCacheDuration: BigNumberish;
   vault: Vault;
   owner?: SignerWithAddress;
 
@@ -40,24 +38,60 @@ export default class LinearPool {
     instance: Contract,
     poolId: string,
     vault: Vault,
-    tokens: TokenList,
+    mainToken: Token,
+    wrappedToken: Token,
+    bptToken: Token,
     lowerTarget: BigNumberish,
     upperTarget: BigNumberish,
     swapFeePercentage: BigNumberish,
+    wrappedTokenRateProvider: string,
+    wrappedTokenRateCacheDuration: BigNumberish,
     owner?: SignerWithAddress
   ) {
     this.instance = instance;
     this.poolId = poolId;
     this.vault = vault;
-    this.tokens = tokens;
+    this.mainToken = mainToken;
+    this.wrappedToken = wrappedToken;
+    this.bptToken = bptToken;
     this.lowerTarget = lowerTarget;
     this.upperTarget = upperTarget;
     this.swapFeePercentage = swapFeePercentage;
+    this.wrappedTokenRateProvider = wrappedTokenRateProvider;
+    this.wrappedTokenRateCacheDuration = wrappedTokenRateCacheDuration;
     this.owner = owner;
   }
 
   get address(): string {
     return this.instance.address;
+  }
+
+  get tokens(): TokenList {
+    return new TokenList([this.wrappedToken, this.mainToken, this.bptToken]).sort();
+  }
+
+  get mainIndex(): number {
+    return this.getTokenIndex(this.mainToken);
+  }
+
+  get wrappedIndex(): number {
+    return this.getTokenIndex(this.wrappedToken);
+  }
+
+  get bptIndex(): number {
+    return this.getTokenIndex(this.bptToken);
+  }
+
+  get tokenIndexes(): { mainIndex: number; wrappedIndex: number; bptIndex: number } {
+    const mainIndex = this.mainIndex;
+    const wrappedIndex = this.wrappedIndex;
+    const bptIndex = this.bptIndex;
+    return { mainIndex, wrappedIndex, bptIndex };
+  }
+
+  getTokenIndex(token: Token): number {
+    const addresses = this.tokens.addresses;
+    return addresses[0] == token.address ? 0 : addresses[1] == token.address ? 1 : 2;
   }
 
   async name(): Promise<string> {
@@ -84,10 +118,6 @@ export default class LinearPool {
     return this.instance.getVault();
   }
 
-  getVaultObject(): Vault {
-    return this.vault;
-  }
-
   async getRegisteredInfo(): Promise<{ address: string; specialization: BigNumber }> {
     return this.vault.getPool(this.poolId);
   }
@@ -104,6 +134,18 @@ export default class LinearPool {
     return this.instance.getScalingFactors();
   }
 
+  async getScalingFactor(token: Token): Promise<BigNumber> {
+    return this.instance.getScalingFactor(token.address);
+  }
+
+  async getWrappedTokenRateProvider(): Promise<string> {
+    return this.instance.getWrappedTokenRateProvider();
+  }
+
+  async getWrappedTokenRateCache(): Promise<{ rate: BigNumber; duration: BigNumber; expires: BigNumber }> {
+    return this.instance.getWrappedTokenRateCache();
+  }
+
   async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
     return this.vault.getPoolTokens(this.poolId);
   }
@@ -117,15 +159,6 @@ export default class LinearPool {
     token: Token
   ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
     return this.vault.getPoolTokenInfo(this.poolId, token);
-  }
-
-  async getBptTokenIndex(): Promise<number> {
-    return this.getTokenIndex(this.address);
-  }
-
-  async getTokenIndex(address: string): Promise<number> {
-    const { tokens } = await this.getTokens();
-    return tokens[0] == address ? 0 : tokens[1] == address ? 1 : 2;
   }
 
   async getRate(): Promise<BigNumber> {
@@ -148,6 +181,15 @@ export default class LinearPool {
 
   async initialize(): Promise<void> {
     return this.instance.initialize();
+  }
+
+  async setWrappedTokenRateCacheDuration(duration: number, { from }: TxParams = {}): Promise<ContractTransaction> {
+    const pool = from ? this.instance.connect(from) : this.instance;
+    return pool.setWrappedTokenRateCacheDuration(duration);
+  }
+
+  async updateWrappedTokenRateCache(): Promise<ContractTransaction> {
+    return this.instance.updateWrappedTokenRateCache();
   }
 
   async swapGivenIn(params: SwapLinearPool): Promise<BigNumber> {
