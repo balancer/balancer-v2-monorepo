@@ -74,7 +74,6 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
   const tokenAddresses = symbols.map((symbol) => tokens[symbol].address);
   const swapFeePercentage = fp(0.02); // 2%
-  const managementFeePercentage = fp(0.2); // 20%
 
   let pool: Contract;
   let joinUserData: string;

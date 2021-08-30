@@ -218,7 +218,7 @@ export default {
           swapFeePercentage,
           TypesConverter.toAddress(owner),
           swapEnabledOnStart,
-          managementFeePercentage,
+          managementFeePercentage
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
