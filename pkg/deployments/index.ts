@@ -29,7 +29,7 @@ export async function getBalancerContractAt(task: string, contract: string, addr
  * @param contract Name of the contract to looking the ABI of
  */
 export async function getBalancerContractAbi(task: string, contract: string): Promise<unknown[]> {
-  return import(getBalancerContractAbiPath(task, contract));
+  return require(getBalancerContractAbiPath(task, contract));
 }
 
 /**
@@ -49,7 +49,7 @@ export async function getBalancerContractAddress(task: string, contract: string,
  * @param network Name of the network looking the deployment output for (e.g. mainnet, rinkeby, ropsten, etc)
  */
 export async function getBalancerDeployment(task: string, network: string): Promise<{ [key: string]: string }> {
-  return import(getBalancerDeploymentPath(task, network));
+  return require(getBalancerDeploymentPath(task, network));
 }
 
 /**
@@ -58,7 +58,7 @@ export async function getBalancerDeployment(task: string, network: string): Prom
  * @param contract Name of the contract to look the path of it's ABI
  */
 function getBalancerContractAbiPath(task: string, contract: string): string {
-  return `@balancer-labs/v2-deployments/tasks/${task}/abi/${contract}.json`;
+  return `@balancer-labs/v2-deployments/dist/tasks/${task}/abi/${contract}.json`;
 }
 
 /**
@@ -67,5 +67,5 @@ function getBalancerContractAbiPath(task: string, contract: string): string {
  * @param network Name of the network looking the deployment path for (e.g. mainnet, rinkeby, ropsten, etc)
  */
 function getBalancerDeploymentPath(task: string, network: string): string {
-  return `@balancer-labs/v2-deployments/tasks/${task}/output/${network}.json`;
+  return `@balancer-labs/v2-deployments/dist/tasks/${task}/output/${network}.json`;
 }
