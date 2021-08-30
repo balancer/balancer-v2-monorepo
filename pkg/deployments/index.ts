@@ -58,7 +58,7 @@ export async function getBalancerDeployment(task: string, network: string): Prom
  * @param contract Name of the contract to look the path of it's ABI
  */
 function getBalancerContractAbiPath(task: string, contract: string): string {
-  return `@balancer-labs/v2-deployments/tasks/${task}/abi/${contract}.json`;
+  return `@balancer-labs/v2-deployments/dist/tasks/${task}/abi/${contract}.json`;
 }
 
 /**
@@ -67,5 +67,5 @@ function getBalancerContractAbiPath(task: string, contract: string): string {
  * @param network Name of the network looking the deployment path for (e.g. mainnet, rinkeby, ropsten, etc)
  */
 function getBalancerDeploymentPath(task: string, network: string): string {
-  return `@balancer-labs/v2-deployments/tasks/${task}/output/${network}.json`;
+  return `@balancer-labs/v2-deployments/dist/tasks/${task}/output/${network}.json`;
 }

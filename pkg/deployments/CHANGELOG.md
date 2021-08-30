@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.2 (2021-08-30)
+
+### Fixes
+
+- Fixed package paths in published contract loaders.
+
 ## 2.1.1 (2021-08-25)
 
 ### Fixes
