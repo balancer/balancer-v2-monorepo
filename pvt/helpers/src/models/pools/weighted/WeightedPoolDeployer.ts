@@ -18,7 +18,15 @@ export default {
     const vault = params?.vault ?? (await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params)));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
-    const { tokens, weights, assetManagers, swapFeePercentage, managementFeePercentage, poolType, swapEnabledOnStart } = deployment;
+    const {
+      tokens,
+      weights,
+      assetManagers,
+      swapFeePercentage,
+      managementFeePercentage,
+      poolType,
+      swapEnabledOnStart,
+    } = deployment;
 
     const poolId = await pool.getPoolId();
     return new WeightedPool(
@@ -108,7 +116,7 @@ export default {
             pauseWindowDuration,
             bufferPeriodDuration,
             TypesConverter.toAddress(owner),
-            managementFeePercentage
+            managementFeePercentage,
           ],
           from,
         });

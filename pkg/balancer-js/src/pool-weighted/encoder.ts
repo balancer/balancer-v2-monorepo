@@ -12,6 +12,7 @@ export enum WeightedPoolExitKind {
   EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0,
   EXACT_BPT_IN_FOR_TOKENS_OUT,
   BPT_IN_FOR_EXACT_TOKENS_OUT,
+  MANAGEMENT_FEE_TOKENS_OUT,
 }
 
 export class WeightedPoolEncoder {
@@ -89,4 +90,11 @@ export class WeightedPoolEncoder {
       ['uint256', 'uint256[]', 'uint256'],
       [WeightedPoolExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT, amountsOut, maxBPTAmountIn]
     );
+
+  /**
+   * Encodes the userData parameter for exiting an InvestmentPool for withdrawing management fees.
+   * This can only be done by the pool owner.
+   */
+  static exitForManagementFees = (): string =>
+    defaultAbiCoder.encode(['uint256'], [WeightedPoolExitKind.MANAGEMENT_FEE_TOKENS_OUT]);
 }

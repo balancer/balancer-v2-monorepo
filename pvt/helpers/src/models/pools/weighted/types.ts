@@ -114,6 +114,10 @@ export type ExitGivenOutWeightedPool = {
   protocolFeePercentage?: BigNumberish;
 };
 
+export type ExitForManagementFeesInvestmentPool = {
+  from?: SignerWithAddress;
+};
+
 export type SingleExitGivenInWeightedPool = {
   bptIn: BigNumberish;
   token: number | Token;

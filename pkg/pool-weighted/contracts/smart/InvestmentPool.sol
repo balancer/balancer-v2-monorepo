@@ -111,6 +111,23 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         _managementFeePercentage = managementFeePercentage;
     }
 
+    function getManagementFeePercentage() external view returns (uint256) {
+        return _managementFeePercentage;
+    }
+
+    function getCollectedManagementFeeAmounts(IERC20[] memory tokens)
+        external
+        view
+        returns (uint256[] memory feeAmounts)
+    {
+        feeAmounts = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+
+            feeAmounts[i] = _collectedManagementFees[token];
+        }
+    }
+
     function _getMaxTokens() internal pure virtual override returns (uint256) {
         return _MAX_WEIGHTED_TOKENS;
     }
@@ -259,14 +276,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
                     userData
                 );
 
-                // dueProtocolFeeAmounts[maxWeightTokenIndex] can have a non-zero value
-                // The management fee amount will be: managementFeePercentage /
-                //                                    protocolSwapFeePercentage * dueProtocolFeeAmounts
                 _collectManagementFeesFromAmounts(dueProtocolFeeAmounts, protocolSwapFeePercentage);
-                //_collectManagementFeesFromAmounts[_maxWeightTokenIndex] +=
-                // dueProtocolFeeAmounts[_maxWeightTokenIndex].mulDown(
-                //    managementFeePercentage.divUp(protocolSwapFeePercentage)
-                //);
 
                 return (bptAmountOut, amountsIn, dueProtocolFeeAmounts);
             }
@@ -311,7 +321,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             for (uint256 i = 0; i < _getTotalTokens(); i++) {
                 IERC20 token = tokens[i];
 
-                amountsOut[i] = _collectedManagementFees[token];
+                amountsOut[i] = _upscale(_collectedManagementFees[token], _scalingFactor(token));
                 delete _collectedManagementFees[token];
             }
 
@@ -379,7 +389,9 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         IERC20 token = tokens[maxWeightTokenIndex];
 
-        _collectedManagementFees[token] = _collectedManagementFees[token].add(feeAmount);
+        _collectedManagementFees[token] = _collectedManagementFees[token].add(
+            _downscaleDown(feeAmount, _scalingFactor(token))
+        );
     }
 
     function _collectManagementFeesFromAmounts(
@@ -390,11 +402,17 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
         // We have set the maximum in ManagementFeeEnabled to 1 - MaxProtocolFee,
         // so we're sure (management fee + max protocol fee) <= 1
+
         for (uint256 i = 0; i < dueProtocolFeeAmounts.length; i++) {
             uint256 amount = dueProtocolFeeAmounts[i];
             if (amount != 0) {
-                _collectedManagementFees[tokens[i]] = amount.mulDown(
-                    _managementFeePercentage.divUp(protocolSwapFeePercentage)
+                IERC20 token = tokens[i];
+
+                _collectedManagementFees[token] = _collectedManagementFees[token].add(
+                    _downscaleDown(
+                        amount.mulDown(_managementFeePercentage.divUp(protocolSwapFeePercentage)),
+                        _scalingFactor(token)
+                    )
                 );
             }
         }

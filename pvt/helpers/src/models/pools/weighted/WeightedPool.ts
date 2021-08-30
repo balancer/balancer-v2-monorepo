@@ -25,6 +25,7 @@ import {
   SingleExitGivenInWeightedPool,
   MultiExitGivenInWeightedPool,
   ExitGivenOutWeightedPool,
+  ExitForManagementFeesInvestmentPool,
   SwapWeightedPool,
   ExitQueryResult,
   JoinQueryResult,
@@ -134,6 +135,14 @@ export default class WeightedPool {
 
   async getVault(): Promise<string> {
     return this.instance.getVault();
+  }
+
+  async getManagementFeePercentage(): Promise<BigNumber> {
+    return this.instance.getManagementFeePercentage();
+  }
+
+  async getCollectedManagementFeeAmounts(tokens: string[]): Promise<BigNumber[]> {
+    return this.instance.getCollectedManagementFeeAmounts(tokens);
   }
 
   async getRegisteredInfo(): Promise<{ address: string; specialization: BigNumber }> {
@@ -415,6 +424,14 @@ export default class WeightedPool {
     return this.queryExit(this._buildMultiExitGivenInParams(params));
   }
 
+  async exitForManagementFees(params: ExitForManagementFeesInvestmentPool): Promise<ExitResult> {
+    return this.exit(this._buildExitForManagementFees(params));
+  }
+
+  async queryExitForManagementFees(params: ExitForManagementFeesInvestmentPool): Promise<ExitQueryResult> {
+    return this.queryExit(this._buildExitForManagementFees(params));
+  }
+
   async queryJoin(params: JoinExitWeightedPool): Promise<JoinQueryResult> {
     const fn = this.instance.queryJoin;
     return (await this._executeQuery(params, fn)) as JoinQueryResult;
@@ -581,6 +598,13 @@ export default class WeightedPool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: WeightedPoolEncoder.exitExactBPTInForTokensOut(params.bptIn),
+    };
+  }
+
+  private _buildExitForManagementFees(params: ExitForManagementFeesInvestmentPool): JoinExitWeightedPool {
+    return {
+      from: params.from,
+      data: WeightedPoolEncoder.exitForManagementFees(),
     };
   }
 
