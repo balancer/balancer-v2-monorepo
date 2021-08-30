@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.3 (2021-08-30)
+
+### Fixes
+
+- Fixed inconsistent JSON file loading semantics.
+
 ## 2.1.2 (2021-08-30)
 
 ### Fixes
