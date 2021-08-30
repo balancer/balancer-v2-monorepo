@@ -57,7 +57,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _END_TIME_OFFSET = 40;
     // 7 bits is enough for the token count, since MAX_WEIGHTED_TOKENS is 100
 
-    uint256 private _managementFeePercentage;
+    uint256 private immutable _managementFeePercentage;
 
     // Store collected management fees by token
     mapping(IERC20 => uint256) private _collectedManagementFees;
@@ -82,6 +82,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] endWeights
     );
     event SwapEnabledSet(bool swapEnabled);
+    event ManagementFeePercentageSet(uint256 managementFee);
 
     struct NewPoolParams {
         IVault vault;
@@ -132,6 +133,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
         _require(params.managementFeePercentage <= MAX_MGMT_FEE_PERCENTAGE, Errors.MGMT_FEE_PERCENTAGE_TOO_HIGH);
         _managementFeePercentage = params.managementFeePercentage;
+
+        emit ManagementFeePercentageSet(params.managementFeePercentage);
     }
 
     function getManagementFeePercentage() external view returns (uint256) {

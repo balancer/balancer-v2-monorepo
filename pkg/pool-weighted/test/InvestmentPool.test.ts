@@ -158,7 +158,7 @@ describe('InvestmentPool', function () {
     }
   });
 
-  describe('management fees', () => {
+  describe.skip('management fees', () => {
     let pool: WeightedPool;
     let joinResult: JoinResult;
     let tokens: TokenList;
