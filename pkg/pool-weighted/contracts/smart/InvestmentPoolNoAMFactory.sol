@@ -28,34 +28,35 @@ contract InvestmentPoolNoAMFactory is BasePoolSplitCodeFactory, FactoryWidePause
     }
 
     /**
-     * @dev Deploys a new `InvestmentPool` that does not allow Asset Managers.
+     * @dev Deploys a new `InvestmentPool`.
      */
     function create(
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256[] memory weights,
+        uint256[] memory normalizedWeights,
         uint256 swapFeePercentage,
         address owner,
+        bool swapEnabledOnStart,
         uint256 managementFeePercentage
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        return
-            _create(
-                abi.encode(
-                    getVault(),
-                    name,
-                    symbol,
-                    tokens,
-                    weights,
-                    new address[](tokens.length),
-                    swapFeePercentage,
-                    pauseWindowDuration,
-                    bufferPeriodDuration,
-                    owner,
-                    managementFeePercentage
-                )
-            );
+        InvestmentPool.NewPoolParams memory params = InvestmentPool.NewPoolParams({
+            vault: getVault(),
+            name: name,
+            symbol: symbol,
+            tokens: tokens,
+            normalizedWeights: normalizedWeights,
+            assetManagers: new address[](tokens.length),
+            swapFeePercentage: swapFeePercentage,
+            owner: owner,
+            swapEnabledOnStart: swapEnabledOnStart,
+            managementFeePercentage: managementFeePercentage,
+            pauseWindowDuration: pauseWindowDuration,
+            bufferPeriodDuration: bufferPeriodDuration
+        });
+
+        return _create(abi.encode(params));
     }
 }

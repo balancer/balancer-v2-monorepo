@@ -46,7 +46,7 @@ describe('InvestmentPoolFactory', function () {
     assetManagers[0] = assetManager.address;
   });
 
-  async function createPool(): Promise<Contract> {
+  async function createPool(swapsEnabled = true): Promise<Contract> {
     const receipt = await (
       await factory.create(
         NAME,
@@ -56,6 +56,7 @@ describe('InvestmentPoolFactory', function () {
         assetManagers,
         POOL_SWAP_FEE_PERCENTAGE,
         owner.address,
+        swapsEnabled,
         MANAGEMENT_FEE_PERCENTAGE
       )
     ).wait();
@@ -146,6 +147,18 @@ describe('InvestmentPoolFactory', function () {
 
       expect(pauseWindowEndTime).to.equal(now);
       expect(bufferPeriodEndTime).to.equal(now);
+    });
+
+    it('creates it with swaps enabled', async () => {
+      const pool = await createPool();
+
+      expect(await pool.getSwapEnabled()).to.be.true;
+    });
+
+    it('creates it with swaps disabled', async () => {
+      const pool = await createPool(false);
+
+      expect(await pool.getSwapEnabled()).to.be.false;
     });
   });
 });

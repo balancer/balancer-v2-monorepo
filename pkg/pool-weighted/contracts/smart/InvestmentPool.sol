@@ -19,12 +19,13 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "../BaseWeightedPool.sol";
+import "../WeightedPoolUserDataHelpers.sol";
 import "./WeightCompression.sol";
 import "../WeightedPoolUserDataHelpers.sol";
 
 /**
  * @dev Weighted Pool with mutable weights, designed to support investment use cases: large token counts,
- * rebalancing through gradual weight updates, and enabling/disabling trading.
+ * rebalancing through gradual weight updates.
  */
 contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     // solhint-disable not-rely-on-time
@@ -41,9 +42,20 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     // ProtocolFeesCollector._MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16
     uint256 public constant MAX_MGMT_FEE_PERCENTAGE = 50e16; // (1 - MAX protocol fee) = 50%
 
-    // Cached here to avoid calling getTokens on the pool, which would be very gas-intensive for large numbers of tokens
-    // Can only change if tokens are added/removed
-    uint256 private _tokenCountCache;
+    // Use the _miscData slot in BasePool
+    // First 64 bits are reserved for the swap fee
+    //
+    // Store non-token-based values:
+    // Start/end timestamps for gradual weight update
+    // Cache total tokens
+    // [ 64 bits  |  120 bits |  32 bits  |   32 bits  |    7 bits    |    1 bit     ]
+    // [ reserved |  unused   | end time  | start time | total tokens |   swap flag  ]
+    // |MSB                                                                       LSB|
+    uint256 private constant _SWAP_ENABLED_OFFSET = 0;
+    uint256 private constant _TOTAL_TOKENS_OFFSET = 1;
+    uint256 private constant _START_TIME_OFFSET = 8;
+    uint256 private constant _END_TIME_OFFSET = 40;
+    // 7 bits is enough for the token count, since MAX_WEIGHTED_TOKENS is 100
 
     uint256 private _managementFeePercentage;
 
@@ -52,63 +64,74 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
-    // into a fixed array of bytes32 or something like that, especially
-    // since tokens can be added/removed - and re-ordered in the process
-    // For each token, we store:
     // [ 155 bits|   5 bits |  32 bits   |   64 bits    |
     // [ unused  | decimals | end weight | start weight |
     // |MSB                                          LSB|
-    mapping(IERC20 => bytes32) private _poolState;
+    mapping(IERC20 => bytes32) private _tokenState;
 
     uint256 private constant _START_WEIGHT_OFFSET = 0;
     uint256 private constant _END_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
 
-    // Time travel comment
-    // [ 192 bits | 32 bits  |  32 bits   |
-    // [  unused  | end time | start time |
-    // |MSB                            LSB|
-    //bytes32 private _gradualUpdateTimestamps;
+    // Event declarations
 
-    //uint256 private constant _START_TIME_OFFSET = 0;
-    //uint256 private constant _END_TIME_OFFSET = 32;
+    event GradualWeightUpdateScheduled(
+        uint256 startTime,
+        uint256 endTime,
+        uint256[] startWeights,
+        uint256[] endWeights
+    );
+    event SwapEnabledSet(bool swapEnabled);
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        IERC20[] memory tokens,
-        uint256[] memory normalizedWeights,
-        address[] memory assetManagers,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner,
-        uint256 managementFeePercentage
-    )
+    struct NewPoolParams {
+        IVault vault;
+        string name;
+        string symbol;
+        IERC20[] tokens;
+        uint256[] normalizedWeights;
+        address[] assetManagers;
+        uint256 swapFeePercentage;
+        uint256 pauseWindowDuration;
+        uint256 bufferPeriodDuration;
+        address owner;
+        bool swapEnabledOnStart;
+        uint256 managementFeePercentage;
+    }
+
+    constructor(NewPoolParams memory params)
         BaseWeightedPool(
-            vault,
-            name,
-            symbol,
-            tokens,
-            assetManagers,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            params.vault,
+            params.name,
+            params.symbol,
+            params.tokens,
+            params.assetManagers,
+            params.swapFeePercentage,
+            params.pauseWindowDuration,
+            params.bufferPeriodDuration,
+            params.owner
         )
     {
-        uint256 numTokens = tokens.length;
-        InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length, assetManagers.length);
+        uint256 totalTokens = params.tokens.length;
+        InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
 
-        _tokenCountCache = numTokens;
+        _setMiscData(_getMiscData().insertUint7(totalTokens, _TOTAL_TOKENS_OFFSET));
+        // Double check it fits in 7 bits
+        _require(_getTotalTokens() == totalTokens, Errors.MAX_TOKENS);
 
-        // I'm time-traveling a bit here - storing the weights in a form where they can be changed
         uint256 currentTime = block.timestamp;
-        _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights, tokens);
+        _startGradualWeightChange(
+            currentTime,
+            currentTime,
+            params.normalizedWeights,
+            params.normalizedWeights,
+            params.tokens
+        );
 
-        _require(managementFeePercentage <= MAX_MGMT_FEE_PERCENTAGE, Errors.MGMT_FEE_PERCENTAGE_TOO_HIGH);
-        _managementFeePercentage = managementFeePercentage;
+        // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction)
+        _setSwapEnabled(params.swapEnabledOnStart);
+
+        _require(params.managementFeePercentage <= MAX_MGMT_FEE_PERCENTAGE, Errors.MGMT_FEE_PERCENTAGE_TOO_HIGH);
+        _managementFeePercentage = params.managementFeePercentage;
     }
 
     function getManagementFeePercentage() external view returns (uint256) {
@@ -128,12 +151,89 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
+    // External functions
+
+    /**
+     * @dev Tells whether swaps are enabled or not for the given pool.
+     */
+    function getSwapEnabled() public view returns (bool) {
+        return _getMiscData().decodeBool(_SWAP_ENABLED_OFFSET);
+    }
+
+    // External functions
+
+    /**
+     * @dev Return start time, end time, and endWeights as an array.
+     * Current weights should be retrieved via `getNormalizedWeights()`.
+     */
+    function getGradualWeightUpdateParams()
+        external
+        view
+        returns (
+            uint256 startTime,
+            uint256 endTime,
+            uint256[] memory endWeights
+        )
+    {
+        // Load current pool state from storage
+        bytes32 poolState = _getMiscData();
+
+        startTime = poolState.decodeUint32(_START_TIME_OFFSET);
+        endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        uint256 totalTokens = tokens.length;
+
+        endWeights = new uint256[](totalTokens);
+
+        for (uint256 i = 0; i < totalTokens; i++) {
+            endWeights[i] = _tokenState[tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
+        }
+    }
+
     function _getMaxTokens() internal pure virtual override returns (uint256) {
         return _MAX_WEIGHTED_TOKENS;
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _tokenCountCache;
+        return _getMiscData().decodeUint7(_TOTAL_TOKENS_OFFSET);
+    }
+
+    /**
+     * @dev Schedule a gradual weight change, from the current weights to the given endWeights,
+     * over startTime to endTime
+     */
+    function updateWeightsGradually(
+        uint256 startTime,
+        uint256 endTime,
+        uint256[] memory endWeights
+    ) external authenticate whenNotPaused nonReentrant {
+        InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
+
+        // If the start time is in the past, "fast forward" to start now
+        // This avoids discontinuities in the weight curve. Otherwise, if you set the start/end times with
+        // only 10% of the period in the future, the weights would immediately jump 90%
+        uint256 currentTime = block.timestamp;
+        startTime = Math.max(currentTime, startTime);
+
+        _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
+
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+
+        _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
+    }
+
+    /*
+     * @dev Can enable/disable trading
+     */
+    function setSwapEnabled(bool swapEnabled) external authenticate whenNotPaused nonReentrant {
+        _setSwapEnabled(swapEnabled);
+    }
+
+    function _setSwapEnabled(bool swapEnabled) private {
+        _setMiscData(_getMiscData().insertBool(swapEnabled, _SWAP_ENABLED_OFFSET));
+
+        emit SwapEnabledSet(swapEnabled);
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -147,7 +247,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         scalingFactors = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; i++) {
-            scalingFactors[i] = _readScalingFactor(_poolState[tokens[i]]);
+            scalingFactors[i] = _readScalingFactor(_tokenState[tokens[i]]);
         }
     }
 
@@ -167,7 +267,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 pctProgress = _calculateWeightChangeProgress();
 
         for (uint256 i = 0; i < numTokens; i++) {
-            bytes32 tokenData = _poolState[tokens[i]];
+            bytes32 tokenData = _tokenState[tokens[i]];
 
             normalizedWeights[i] = _interpolateWeight(tokenData, pctProgress);
         }
@@ -192,18 +292,39 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
+    // Swap overrides - revert unless swaps are enabled
+
+    function _onSwapGivenIn(
+        SwapRequest memory swapRequest,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) internal view override returns (uint256) {
+        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
+
+        return super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+    }
+
+    function _onSwapGivenOut(
+        SwapRequest memory swapRequest,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) internal view override returns (uint256) {
+        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
+
+        return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+    }
+
     /**
      * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
      * if necessary. Time travel elements commented out.
      */
     function _startGradualWeightChange(
-        uint256, // startTime,
-        uint256, // endTime,
+        uint256 startTime,
+        uint256 endTime,
         uint256[] memory startWeights,
         uint256[] memory endWeights,
         IERC20[] memory tokens
     ) internal virtual {
-        //bytes32 newTimestamps = _gradualUpdateTimestamps;
         uint256 normalizedSum = 0;
         bytes32 tokenState;
 
@@ -216,7 +337,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             // Tokens with more than 18 decimals are not supported
             // Scaling calculations must be exact/lossless
             // Store decimal difference instead of actual scaling factor
-            _poolState[token] = tokenState
+            _tokenState[token] = tokenState
                 .insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET)
                 .insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET)
                 .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
@@ -226,11 +347,11 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        //_gradualUpdateTimestamps = newTimestamps
-        //    .insertUint32(startTime, _START_TIME_OFFSET)
-        //    .insertUint32(endTime, _END_TIME_OFFSET);
+        _setMiscData(
+            _getMiscData().insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET)
+        );
 
-        //emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
+        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
     function _readScalingFactor(bytes32 tokenState) private pure returns (uint256) {
@@ -257,6 +378,13 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
+        // If swaps are disabled, the only join kind that is allowed is the proportional one, as all others involve
+        // implicit swaps and alter token prices.
+        _require(
+            getSwapEnabled() || userData.joinKind() == JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
+            Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
+        );
+
         if (_managementFeePercentage != 0) {
             // If there is no protocol fee, dueProtocolFeeAmounts will be zero, so we need to do all the
             // same calculations
@@ -312,6 +440,13 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
+        // If swaps are disabled, the only exit kind that is allowed is the proportional one, as all others involve
+        // implicit swaps and alter token prices.
+        _require(
+            getSwapEnabled() || userData.exitKind() == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+            Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
+        );
+
         if (userData.exitKind() == ExitKind.MANAGEMENT_FEE_TOKENS_OUT) {
             _require(sender == getOwner(), Errors.SENDER_NOT_ALLOWED);
 
@@ -368,6 +503,16 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
+    /**
+     * @dev Extend ownerOnly functions to include the Investment Pool control functions
+     */
+    function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
+        return
+            (actionId == getActionId(InvestmentPool.updateWeightsGradually.selector)) ||
+            (actionId == getActionId(InvestmentPool.setSwapEnabled.selector)) ||
+            super._isOwnerOnlyAction(actionId);
+    }
+
     // Private functions
 
     function _collectManagementFeesFromBalances(uint256[] memory balances) private {
@@ -422,10 +567,12 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
      * @dev Returns a fixed-point number representing how far along the current weight change is, where 0 means the
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
-    function _calculateWeightChangeProgress() private pure returns (uint256) {
-        /*uint256 currentTime = block.timestamp;
-        uint256 startTime = _gradualUpdateTimestamps.decodeUint32(_START_TIME_OFFSET);
-        uint256 endTime = _gradualUpdateTimestamps.decodeUint32(_END_TIME_OFFSET);
+    function _calculateWeightChangeProgress() private view returns (uint256) {
+        uint256 currentTime = block.timestamp;
+        bytes32 poolState = _getMiscData();
+
+        uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
+        uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
 
         if (currentTime > endTime) {
             return FixedPoint.ONE;
@@ -437,10 +584,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 secondsElapsed = currentTime - startTime;
 
         // In the degenerate case of a zero duration change, consider it completed (and avoid division by zero)
-        return totalSeconds == 0 ? FixedPoint.ONE : secondsElapsed.divDown(totalSeconds);*/
-
-        // For now, just return 0 (constant weights)
-        return 0;
+        return totalSeconds == 0 ? FixedPoint.ONE : secondsElapsed.divDown(totalSeconds);
     }
 
     function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private pure returns (uint256 finalWeight) {
@@ -460,7 +604,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _getTokenData(IERC20 token) private view returns (bytes32 tokenData) {
-        tokenData = _poolState[token];
+        tokenData = _tokenState[token];
 
         // A valid token can't be zero (must have non-zero weights)
         _require(tokenData != 0, Errors.INVALID_TOKEN);

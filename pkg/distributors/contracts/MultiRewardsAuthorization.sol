@@ -33,7 +33,7 @@ abstract contract MultiRewardsAuthorization is Authentication {
     }
 
     modifier onlyAllowlistedRewarder(IERC20 pool, IERC20 rewardsToken) {
-        require(isAllowlistedRewarder(pool, rewardsToken, msg.sender), "Only accessible by allowlisted rewarders");
+        require(_isAllowlistedRewarder(pool, rewardsToken, msg.sender), "Only accessible by allowlisted rewarders");
         _;
     }
 
@@ -72,11 +72,11 @@ abstract contract MultiRewardsAuthorization is Authentication {
         _allowlist[pool][rewardsToken][rewarder] = true;
     }
 
-    function isAllowlistedRewarder(
+    function _isAllowlistedRewarder(
         IERC20 pool,
         IERC20 rewardsToken,
         address rewarder
-    ) public view returns (bool) {
+    ) internal view returns (bool) {
         return _allowlist[pool][rewardsToken][rewarder];
     }
 
