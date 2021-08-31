@@ -312,7 +312,7 @@ describe('LinearPool', function () {
     });
   });
 
-  describe('price rates', () => {
+  describe('wrapped token rate cache', () => {
     let timestamp: BigNumber;
     let wrappedTokenRateProvider: Contract;
     const wrappedTokenRateCacheDuration = MINUTE * 20;
