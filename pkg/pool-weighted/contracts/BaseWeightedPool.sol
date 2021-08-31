@@ -245,7 +245,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
+    ) internal view returns (uint256, uint256[] memory) {
         JoinKind kind = userData.joinKind();
 
         if (kind == JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
@@ -384,7 +384,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
+    ) internal view returns (uint256, uint256[] memory) {
         ExitKind kind = userData.exitKind();
 
         if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {

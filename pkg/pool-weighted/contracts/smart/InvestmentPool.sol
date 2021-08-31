@@ -183,6 +183,29 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
     }
 
+    function collectManagementFees(address recipient) external authenticate whenNotPaused nonReentrant {
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+
+        // Manually cast tokens into assets, since we're not doing ETH withdrawals
+        IAsset[] memory assets;
+        assembly {
+            // solhint-disable-line no-inline-assembly
+            assets := tokens
+        }
+
+        getVault().exitPool(
+            getPoolId(),
+            address(this),
+            payable(recipient),
+            IVault.ExitPoolRequest({
+                assets: assets,
+                minAmountsOut: new uint256[](_getTotalTokens()), // TODO: replace with actual due amounts
+                userData: abi.encode(BaseWeightedPool.ExitKind.MANAGEMENT_FEE_TOKENS_OUT),
+                toInternalBalance: false
+            })
+        );
+    }
+
     /*
      * @dev Can enable/disable trading
      */
@@ -285,7 +308,9 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         bytes memory userData
     )
         internal
+        virtual
         override
+        whenNotPaused
         returns (
             uint256,
             uint256[] memory,
@@ -404,6 +429,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         return
             (actionId == getActionId(InvestmentPool.updateWeightsGradually.selector)) ||
             (actionId == getActionId(InvestmentPool.setSwapEnabled.selector)) ||
+            (actionId == getActionId(InvestmentPool.collectManagementFees.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
 

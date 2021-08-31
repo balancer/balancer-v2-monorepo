@@ -599,6 +599,13 @@ export default class WeightedPool {
     return pool.setSwapEnabled(swapEnabled);
   }
 
+  async collectManagementFees(from: SignerWithAddress, recipient?: SignerWithAddress): Promise<ContractTransaction> {
+    if (recipient === undefined) recipient = from;
+
+    const pool = this.instance.connect(from);
+    return pool.collectManagementFees(recipient.address);
+  }
+
   async updateWeightsGradually(
     from: SignerWithAddress,
     startTime: BigNumberish,

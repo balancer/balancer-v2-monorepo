@@ -6,6 +6,7 @@ import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
@@ -485,6 +486,44 @@ describe('InvestmentPool', function () {
               expect(normalizedWeights).to.equalWithError(getEndWeights(pct), 0.005);
             });
           }
+        });
+      });
+    });
+
+    describe.only('collect management fees', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        const vault = await Vault.create();
+
+        const params = {
+          tokens: poolTokens,
+          weights: poolWeights,
+          owner,
+          poolType: WeightedPoolType.INVESTMENT_POOL,
+          swapEnabledOnStart: true,
+          vault,
+        };
+        pool = await WeightedPool.create(params);
+      });
+
+      context('when the sender is not the owner', () => {
+        it('reverts', async () => {
+          await expect(pool.collectManagementFees(other)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        });
+      });
+
+      context('when the sender is the owner', () => {
+        beforeEach('set sender to owner', () => {
+          sender = owner;
+        });
+
+        sharedBeforeEach('initialize pool', async () => {
+          await poolTokens.mint({ to: sender, amount: fp(100) });
+          await poolTokens.approve({ from: sender, to: await pool.getVault() });
+          await pool.init({ from: sender, initialBalances });
+        });
+
+        it('management fees can be collected to to any account', async () => {
+          await pool.collectManagementFees(sender, other);
         });
       });
     });
