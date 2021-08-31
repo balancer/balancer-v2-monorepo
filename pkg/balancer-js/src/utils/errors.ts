@@ -56,6 +56,7 @@ const balancerErrorCodes: Record<string, string> = {
   '328': 'CALLER_IS_NOT_LBP_OWNER',
   '329': 'PRICE_RATE_OVERFLOW',
   '330': 'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED',
+  '331': 'UNHANDLED_EXIT_KIND ',
   '400': 'REENTRANCY',
   '401': 'SENDER_NOT_ALLOWED',
   '402': 'PAUSED',
