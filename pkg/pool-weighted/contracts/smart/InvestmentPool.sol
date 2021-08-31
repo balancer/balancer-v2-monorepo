@@ -297,24 +297,29 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
 
+    // We override _onJoinPool and _onExitPool as we need to not compute the current invariant and calculate protocol
+    // fees, since that mechanism does not work for Pools in which the weights change over time. Instead, this Pool
+    // always pays zero protocol fees.
+    // Additionally, we also check that only non-swap join and exit kinds are allowed while swaps are disabled.
+
     function _onJoinPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
+        bytes32,
+        address,
+        address,
         uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
+        uint256,
+        uint256,
         uint256[] memory scalingFactors,
         bytes memory userData
     )
         internal
         virtual
         override
-        whenNotPaused
+        whenNotPaused // All joins are disabled while the contract is paused.
         returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
+            uint256 bptAmountOut,
+            uint256[] memory amountsIn,
+            uint256[] memory dueProtocolFeeAmounts
         )
     {
         // If swaps are disabled, the only join kind that is allowed is the proportional one, as all others involve
@@ -324,26 +329,17 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
-        return
-            super._onJoinPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                protocolSwapFeePercentage,
-                scalingFactors,
-                userData
-            );
+        (bptAmountOut, amountsIn) = _doJoin(balances, _getNormalizedWeights(), scalingFactors, userData);
+        dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
     }
 
     function _onExitPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
+        bytes32,
+        address,
+        address,
         uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
+        uint256,
+        uint256,
         uint256[] memory scalingFactors,
         bytes memory userData
     )
@@ -351,11 +347,14 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         virtual
         override
         returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            uint256[] memory dueProtocolFeeAmounts
         )
     {
+        // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
+        // out) remain functional.
+
         // If swaps are disabled, the only exit kind that is allowed is the proportional one, as all others involve
         // implicit swaps and alter token prices.
         _require(
@@ -363,17 +362,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
-        return
-            super._onExitPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                protocolSwapFeePercentage,
-                scalingFactors,
-                userData
-            );
+        (bptAmountIn, amountsOut) = _doExit(balances, _getNormalizedWeights(), scalingFactors, userData);
+        dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
     }
 
     /**
