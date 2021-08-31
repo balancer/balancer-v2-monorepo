@@ -73,6 +73,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _END_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
 
+    uint256 private constant _MINIMUM_WEIGHT_CHANGE_DURATION = 1 days;
+
     // Event declarations
 
     event GradualWeightUpdateScheduled(
@@ -157,13 +159,18 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     // External functions
 
     /**
-     * @dev Tells whether swaps are enabled or not for the given pool.
+     * @dev Indicates whether swaps are enabled or not for the given pool.
      */
     function getSwapEnabled() public view returns (bool) {
         return _getMiscData().decodeBool(_SWAP_ENABLED_OFFSET);
     }
 
-    // External functions
+    /**
+     * @dev Returns the mimimum duration of a gradual weight change
+     */
+    function getMinimumWeightChangeDuration() external pure returns (uint256) {
+        return _MINIMUM_WEIGHT_CHANGE_DURATION;
+    }
 
     /**
      * @dev Return start time, end time, and endWeights as an array.
@@ -220,6 +227,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         startTime = Math.max(currentTime, startTime);
 
         _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
+        _require(endTime - startTime >= _MINIMUM_WEIGHT_CHANGE_DURATION, Errors.WEIGHT_CHANGE_TOO_FAST);
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 

@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { fp, pct, arraySub } from '@balancer-labs/v2-helpers/src/numbers';
 import { BigNumber, Contract } from 'ethers';
-import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import { MINUTE, DAY, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -614,7 +614,8 @@ describe('InvestmentPool', function () {
           });
 
           describe('update weights gradually', () => {
-            const UPDATE_DURATION = MINUTE * 60;
+            const UPDATE_DURATION = DAY * 3;
+            const SHORT_UPDATE = MINUTE * 2;
 
             context('with invalid parameters', () => {
               let now: BigNumber;
@@ -641,12 +642,18 @@ describe('InvestmentPool', function () {
                 );
               });
 
+              it('fails if duration is less than the minimum', async () => {
+                await expect(
+                  pool.updateWeightsGradually(sender, now, now.add(SHORT_UPDATE), poolWeights)
+                ).to.be.revertedWith('WEIGHT_CHANGE_TOO_FAST');
+              });
+
               it('fails with an end weight below the minimum', async () => {
                 const badWeights = [...poolWeights];
                 badWeights[2] = fp(0.005);
 
                 await expect(
-                  pool.updateWeightsGradually(sender, now.add(100), now.add(1000), badWeights)
+                  pool.updateWeightsGradually(sender, now, now.add(UPDATE_DURATION), badWeights)
                 ).to.be.revertedWith('MIN_WEIGHT');
               });
 
@@ -654,7 +661,7 @@ describe('InvestmentPool', function () {
                 const badWeights = Array(poolWeights.length).fill(fp(0.6));
 
                 await expect(
-                  pool.updateWeightsGradually(sender, now.add(100), now.add(1000), badWeights)
+                  pool.updateWeightsGradually(sender, now, now.add(UPDATE_DURATION), badWeights)
                 ).to.be.revertedWith('NORMALIZED_WEIGHT_INVARIANT');
               });
 
