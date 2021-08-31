@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
-import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import { MINUTE, DAY, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -237,7 +237,7 @@ describe('InvestmentPool', function () {
           });
 
           describe('update weights gradually', () => {
-            const UPDATE_DURATION = MINUTE * 60 * 8;
+            const UPDATE_DURATION = DAY * 3;
             const SHORT_UPDATE = MINUTE * 2;
 
             context('with invalid parameters', () => {

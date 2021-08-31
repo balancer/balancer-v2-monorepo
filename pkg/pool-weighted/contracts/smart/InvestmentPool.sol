@@ -62,7 +62,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _END_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
 
-    uint256 private constant _MINIMUM_WEIGHT_CHANGE_DURATION = 4 hours;
+    uint256 private constant _MINIMUM_WEIGHT_CHANGE_DURATION = 1 days;
 
     // Event declarations
 
