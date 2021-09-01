@@ -136,6 +136,11 @@ describe('LinearPool', function () {
 
       expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
     });
+
+    it('cannot be initialize twice', async () => {
+      await pool.initialize();
+      await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_BY_LINEAR_POOL');
+    });
   });
 
   describe('set targets', () => {
