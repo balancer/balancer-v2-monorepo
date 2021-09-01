@@ -150,6 +150,11 @@ library Errors {
     uint256 internal constant INVALID_CIRCUIT_BREAKER_RATIOS = 333;
     uint256 internal constant CIRCUIT_BREAKER_TRIPPED_MIN_RATIO = 334;
     uint256 internal constant CIRCUIT_BREAKER_TRIPPED_MAX_RATIO = 335;
+    uint256 internal constant WEIGHT_CHANGE_TOO_FAST = 336;
+    uint256 internal constant LOWER_GREATER_THAN_UPPER_TARGET = 337;
+    uint256 internal constant UPPER_TARGET_TOO_HIGH = 338;
+    uint256 internal constant UNHANDLED_BY_LINEAR_POOL = 339;
+    uint256 internal constant OUT_OF_TARGET_RANGE = 340;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

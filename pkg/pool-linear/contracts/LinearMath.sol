@@ -25,8 +25,8 @@ contract LinearMath {
     struct Params {
         uint256 fee;
         uint256 rate;
-        uint256 target1;
-        uint256 target2;
+        uint256 lowerTarget;
+        uint256 upperTarget;
     }
 
     function _calcBptOutPerMainIn(
@@ -180,22 +180,28 @@ contract LinearMath {
     }
 
     function _toNominal(uint256 amount, Params memory params) internal pure returns (uint256) {
-        if (amount < (FixedPoint.ONE - params.fee).mulUp(params.target1)) {
+        if (amount < (FixedPoint.ONE - params.fee).mulUp(params.lowerTarget)) {
             return amount.divUp(FixedPoint.ONE - params.fee);
-        } else if (amount < (params.target2 - params.fee).mulUp(params.target1)) {
-            return amount.add(params.fee.mulUp(params.target1));
+        } else if (amount < (params.upperTarget - params.fee).mulUp(params.lowerTarget)) {
+            return amount.add(params.fee.mulUp(params.lowerTarget));
         } else {
-            return amount.add((params.target1 + params.target2).mulUp(params.fee)).divUp(FixedPoint.ONE + params.fee);
+            return
+                amount.add((params.lowerTarget + params.upperTarget).mulUp(params.fee)).divUp(
+                    FixedPoint.ONE + params.fee
+                );
         }
     }
 
     function _fromNominal(uint256 nominal, Params memory params) internal pure returns (uint256) {
-        if (nominal < params.target1) {
+        if (nominal < params.lowerTarget) {
             return nominal.mulUp(FixedPoint.ONE - params.fee);
-        } else if (nominal < params.target2) {
-            return nominal.sub(params.fee.mulUp(params.target1));
+        } else if (nominal < params.upperTarget) {
+            return nominal.sub(params.fee.mulUp(params.lowerTarget));
         } else {
-            return nominal.mulUp(FixedPoint.ONE + params.fee).sub(params.fee.mulUp(params.target1 + params.target2));
+            return
+                nominal.mulUp(FixedPoint.ONE + params.fee).sub(
+                    params.fee.mulUp(params.lowerTarget + params.upperTarget)
+                );
         }
     }
 }
