@@ -17,8 +17,6 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/LinearPool';
 
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-
 describe('LinearPool', function () {
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
   let trader: SignerWithAddress, lp: SignerWithAddress, admin: SignerWithAddress, owner: SignerWithAddress;
