@@ -35,6 +35,8 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     uint256 private constant _TOTAL_TOKENS = 3; //Main token, wrapped token, BPT
     uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
 
+    event TargetsSet(uint256 lowerTarget, uint256 upperTarget);
+
     IVault private immutable _vault;
 
     IERC20 private immutable _mainToken;
@@ -453,6 +455,8 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
         _lowerTarget = lowerTarget;
         _upperTarget = upperTarget;
+
+        emit TargetsSet(lowerTarget, upperTarget);
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {

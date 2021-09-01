@@ -12,6 +12,8 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/LinearPool';
 import { RawLinearPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/linear/types';
 
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+
 describe('LinearPool', function () {
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
 
@@ -224,6 +226,20 @@ describe('LinearPool', function () {
       const upperTarget = fp(2500);
 
       await expect(pool.setTargets(lowerTarget, upperTarget, { from: lp })).to.be.revertedWith('SENDER_NOT_ALLOWED');
+    });
+
+    it('emits an event', async () => {
+      const mainBalance = fp(1800);
+      const lowerTarget = fp(1500);
+      const upperTarget = fp(2500);
+
+      await setBalances(pool, { mainBalance });
+      const receipt = await pool.setTargets(lowerTarget, upperTarget);
+
+      expectEvent.inReceipt(await receipt.wait(), 'TargetsSet', {
+        lowerTarget,
+        upperTarget,
+      });
     });
   });
 
