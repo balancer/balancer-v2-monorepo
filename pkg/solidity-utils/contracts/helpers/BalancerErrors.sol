@@ -145,10 +145,11 @@ library Errors {
     uint256 internal constant CALLER_IS_NOT_LBP_OWNER = 328;
     uint256 internal constant PRICE_RATE_OVERFLOW = 329;
     uint256 internal constant INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED = 330;
-    uint256 internal constant LOWER_GREATER_THAN_UPPER_TARGET = 331;
-    uint256 internal constant UPPER_TARGET_TOO_HIGH = 332;
-    uint256 internal constant UNHANDLED = 333;
-    uint256 internal constant OUT_OF_TARGET_RANGE = 334;
+    uint256 internal constant WEIGHT_CHANGE_TOO_FAST = 331;
+    uint256 internal constant LOWER_GREATER_THAN_UPPER_TARGET = 332;
+    uint256 internal constant UPPER_TARGET_TOO_HIGH = 333;
+    uint256 internal constant UNHANDLED = 334;
+    uint256 internal constant OUT_OF_TARGET_RANGE = 335;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
