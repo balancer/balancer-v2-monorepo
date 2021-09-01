@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
@@ -41,6 +42,10 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
     IERC20 private immutable _mainToken;
     IERC20 private immutable _wrappedToken;
+
+    uint256 private immutable _bptIndex;
+    uint256 private immutable _mainTokenIndex;
+    uint256 private immutable _wrappedTokenIndex;
 
     uint256 private immutable _scalingFactorMainToken;
     uint256 private immutable _scalingFactorWrappedToken;
@@ -78,7 +83,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             IVault.PoolSpecialization.GENERAL,
             params.name,
             params.symbol,
-            _addBptToTokens(params.mainToken, params.wrappedToken),
+            _sortTokens(params.mainToken, params.wrappedToken, IERC20(this)),
             new address[](_TOTAL_TOKENS),
             params.swapFeePercentage,
             params.pauseWindowDuration,
@@ -89,6 +94,16 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         // Set tokens
         _mainToken = params.mainToken;
         _wrappedToken = params.wrappedToken;
+
+        // Set token indexes
+        (uint256 mainIndex, uint256 wrappedIndex, uint256 bptIndex) = _getSortedTokenIndexes(
+            params.mainToken,
+            params.wrappedToken,
+            IERC20(this)
+        );
+        _bptIndex = bptIndex;
+        _mainTokenIndex = mainIndex;
+        _wrappedTokenIndex = wrappedIndex;
 
         // Set scaling factors
         _scalingFactorMainToken = _computeScalingFactor(params.mainToken);
@@ -111,88 +126,9 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         emit WrappedTokenRateUpdated(rate);
     }
 
-    function _addBptToTokens(IERC20 mainToken, IERC20 wrappedToken)
-        private
-        view
-        returns (IERC20[] memory updatedTokens)
-    {
-        IERC20 bptToken = IERC20(this);
-        (uint256 mainIndex, uint256 wrappedIndex, uint256 bptIndex) = _getIndexesByTokens(
-            mainToken,
-            wrappedToken,
-            bptToken
-        );
-        updatedTokens = new IERC20[](_TOTAL_TOKENS);
-        updatedTokens[mainIndex] = mainToken;
-        updatedTokens[wrappedIndex] = wrappedToken;
-        updatedTokens[bptIndex] = bptToken;
-    }
-
-    function _getIndexes()
-        private
-        view
-        returns (
-            uint256 mainIndex,
-            uint256 wrappedIndex,
-            uint256 bptIndex
-        )
-    {
-        return _getIndexesByTokens(_mainToken, _wrappedToken, IERC20(this));
-    }
-
-    function _getIndexesByTokens(
-        IERC20 token0,
-        IERC20 token1,
-        IERC20 token2
-    )
-        private
-        pure
-        returns (
-            uint256 indexToken0,
-            uint256 indexToken1,
-            uint256 indexToken2
-        )
-    {
-        if (token0 < token1) {
-            if (token1 < token2) {
-                //(token0, token1, token2);
-                return (0, 1, 2);
-            } else if (token0 < token2) {
-                //(token0, token2, token1);
-                return (0, 2, 1);
-            } else {
-                //(token2, token0, token1);
-                return (1, 2, 0);
-            }
-        } else {
-            //token1 < token0
-            if (token2 < token1) {
-                //(token2, token1, token0);
-                return (2, 1, 0);
-            } else if (token2 < token0) {
-                //(token1, token2, token0);
-                return (2, 0, 1);
-            } else {
-                //(token1, token0, token2);
-                return (1, 0, 2);
-            }
-        }
-    }
-
-    function _translateToIAsset(IERC20[] memory tokens) private pure returns (IAsset[] memory) {
-        IAsset[] memory assets = new IAsset[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            assets[i] = IAsset(address(tokens[i]));
-        }
-        return assets;
-    }
-
     function initialize() external {
-        //TODO: Need to intialize out of the constructor because of poolId, or need to change BasePool
-
         bytes32 poolId = getPoolId();
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
-
         uint256[] memory maxAmountsIn = new uint256[](_TOTAL_TOKENS);
         maxAmountsIn[tokens[0] == IERC20(this) ? 0 : tokens[1] == IERC20(this) ? 1 : 2] = _MAX_TOKEN_BALANCE;
 
@@ -249,8 +185,6 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             upperTarget: _upperTarget
         });
 
-        (, uint256 wrappedIndex, ) = _getIndexes();
-
         if (swapRequest.tokenIn == _mainToken) {
             if (swapRequest.tokenOut == _wrappedToken) {
                 return _calcWrappedOutPerMainIn(swapRequest.amount, balances[indexIn], balances[indexOut], params);
@@ -259,7 +193,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
                     _calcBptOutPerMainIn(
                         swapRequest.amount,
                         balances[indexIn],
-                        balances[wrappedIndex],
+                        balances[_wrappedTokenIndex],
                         //_MAX_TOKEN_BALANCE is always greater than balanceTokenOut
                         _MAX_TOKEN_BALANCE - balances[indexOut],
                         params
@@ -275,7 +209,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
                     _calcMainOutPerBptIn(
                         swapRequest.amount,
                         balances[indexOut],
-                        balances[wrappedIndex],
+                        balances[_wrappedTokenIndex],
                         //_MAX_TOKEN_BALANCE is always greater than balanceTokenIn
                         _MAX_TOKEN_BALANCE - balances[indexIn],
                         params
@@ -302,8 +236,6 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             upperTarget: _upperTarget
         });
 
-        (, uint256 wrappedIndex, ) = _getIndexes();
-
         if (swapRequest.tokenOut == _mainToken) {
             if (swapRequest.tokenIn == _wrappedToken) {
                 return _calcWrappedInPerMainOut(swapRequest.amount, balances[indexOut], balances[indexIn], params);
@@ -312,7 +244,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
                     _calcBptInPerMainOut(
                         swapRequest.amount,
                         balances[indexOut],
-                        balances[wrappedIndex],
+                        balances[_wrappedTokenIndex],
                         //_MAX_TOKEN_BALANCE is always greater than balanceTokenIn
                         _MAX_TOKEN_BALANCE - balances[indexIn],
                         params
@@ -328,7 +260,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
                     _calcMainInPerBptOut(
                         swapRequest.amount,
                         balances[indexIn],
-                        balances[wrappedIndex],
+                        balances[_wrappedTokenIndex],
                         //_MAX_TOKEN_BALANCE is always greater than balanceTokenOut
                         _MAX_TOKEN_BALANCE - balances[indexOut],
                         params
@@ -351,9 +283,8 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     ) internal override whenNotPaused returns (uint256, uint256[] memory) {
         // Mint initial BPTs and adds them to the Vault via a special join
         _approve(address(this), address(getVault()), _MAX_TOKEN_BALANCE);
-        (, , uint256 bptIndex) = _getIndexes();
         uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
-        amountsIn[bptIndex] = _MAX_TOKEN_BALANCE;
+        amountsIn[_bptIndex] = _MAX_TOKEN_BALANCE;
         return (_MAX_TOKEN_BALANCE, amountsIn);
     }
 
@@ -425,13 +356,10 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        (uint256 mainIndex, uint256 wrappedIndex, uint256 bptIndex) = _getIndexes();
-
         uint256[] memory scalingFactors = new uint256[](_TOTAL_TOKENS);
-        scalingFactors[mainIndex] = _scalingFactorMainToken;
-        scalingFactors[wrappedIndex] = _scalingFactorWrappedToken.mulDown(_getWrappedTokenCachedRate());
-        scalingFactors[bptIndex] = FixedPoint.ONE;
-
+        scalingFactors[_mainTokenIndex] = _scalingFactorMainToken;
+        scalingFactors[_wrappedTokenIndex] = _scalingFactorWrappedToken.mulDown(_getWrappedTokenCachedRate());
+        scalingFactors[_bptIndex] = FixedPoint.ONE;
         return scalingFactors;
     }
 
@@ -440,11 +368,9 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function getRate() public view override returns (uint256) {
         bytes32 poolId = getPoolId();
         (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
-        (uint256 mainIndex, uint256 wrappedIndex, uint256 bptIndex) = _getIndexes();
-
         _upscaleArray(balances, _scalingFactors());
-
-        return (balances[mainIndex] + balances[wrappedIndex]).divUp(_MAX_TOKEN_BALANCE - balances[bptIndex]);
+        uint256 totalBalance = balances[_mainTokenIndex] + balances[_wrappedTokenIndex];
+        return totalBalance.divUp(_MAX_TOKEN_BALANCE - balances[_bptIndex]);
     }
 
     function getWrappedTokenRateProvider() public view returns (IRateProvider) {
@@ -510,17 +436,13 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
         bytes32 poolId = getPoolId();
         (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
-        (uint256 mainIndex, , ) = _getIndexes();
 
-        //Target can only be set when main token balance between targets (free zone)
-        _require(
-            balances[mainIndex] >= _lowerTarget && balances[mainIndex] <= _upperTarget,
-            Errors.OUT_OF_TARGET_RANGE
-        );
+        // Targets can only be set when main token balance between targets (free zone)
+        bool isBetweenTargets = balances[_mainTokenIndex] >= _lowerTarget && balances[_mainTokenIndex] <= _upperTarget;
+        _require(isBetweenTargets, Errors.OUT_OF_TARGET_RANGE);
 
         _lowerTarget = lowerTarget;
         _upperTarget = upperTarget;
-
         emit TargetsSet(lowerTarget, upperTarget);
     }
 
