@@ -53,6 +53,10 @@ export default class Vault {
     return this.instance.getPoolTokenInfo(poolId, token.address);
   }
 
+  async updateBalances(poolId: string, balances: BigNumber[]): Promise<ContractTransaction> {
+    return this.instance.updateBalances(poolId, balances);
+  }
+
   async minimalSwap(params: MinimalSwap): Promise<ContractTransaction> {
     return this.instance.callMinimalPoolSwap(
       params.poolAddress,

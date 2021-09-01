@@ -147,6 +147,10 @@ library Errors {
     uint256 internal constant INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED = 330;
     uint256 internal constant MGMT_FEE_PERCENTAGE_TOO_HIGH = 331;
     uint256 internal constant WEIGHT_CHANGE_TOO_FAST = 332;
+    uint256 internal constant LOWER_GREATER_THAN_UPPER_TARGET = 333;
+    uint256 internal constant UPPER_TARGET_TOO_HIGH = 334;
+    uint256 internal constant UNHANDLED_BY_LINEAR_POOL = 335;
+    uint256 internal constant OUT_OF_TARGET_RANGE = 336;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
