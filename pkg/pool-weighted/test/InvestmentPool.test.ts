@@ -509,6 +509,20 @@ describe('InvestmentPool', function () {
         pool = await WeightedPool.create(params);
       });
 
+      it('collected fees are initially zero', async () => {
+        const fees = await pool.getCollectedManagementFees();
+
+        expect(fees.tokenAddresses).to.deep.equal(poolTokens.addresses);
+        expect(fees.amounts).to.deep.equal(new Array(poolTokens.length).fill(bn(0)));
+      });
+
+      it('collected fees are reported in the same order as in the vault', async () => {
+        const { tokenAddresses: feeTokenAddresses } = await pool.getCollectedManagementFees();
+        const { tokens: vaultTokenAddresses } = await vault.getPoolTokens(await pool.getPoolId());
+
+        expect(feeTokenAddresses).to.deep.equal(vaultTokenAddresses);
+      });
+
       context('when the sender is not the owner', () => {
         it('reverts', async () => {
           await expect(pool.collectManagementFees(other)).to.be.revertedWith('SENDER_NOT_ALLOWED');

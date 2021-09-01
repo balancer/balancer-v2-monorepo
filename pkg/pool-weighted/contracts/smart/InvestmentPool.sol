@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
@@ -33,6 +34,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     using WordCodec for bytes32;
     using WeightCompression for uint256;
     using WeightedPoolUserDataHelpers for bytes;
+    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
 
     // State variables
 
@@ -57,6 +59,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     // [ unused  | decimals | end weight | start weight |
     // |MSB                                          LSB|
     mapping(IERC20 => bytes32) private _tokenState;
+
+    EnumerableMap.IERC20ToUint256Map private _tokenCollectedManagementFees;
 
     uint256 private constant _START_WEIGHT_OFFSET = 0;
     uint256 private constant _END_WEIGHT_OFFSET = 64;
@@ -106,6 +110,11 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights, tokens);
+
+        // Initialize the accrued management fees map with the Pool's tokens and zero collected fees.
+        for (uint256 i = 0; i < totalTokens; ++i) {
+            _tokenCollectedManagementFees.set(tokens[i], 0);
+        }
 
         // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction)
         _setSwapEnabled(swapEnabledOnStart);
@@ -181,6 +190,24 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
+    }
+
+    function getCollectedManagementFees()
+        external
+        view
+        returns (IERC20[] memory tokens, uint256[] memory collectedFees)
+    {
+        tokens = new IERC20[](_getTotalTokens());
+        collectedFees = new uint256[](_getTotalTokens());
+
+        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
+            // We can use unchecked getters as we know the map has the same size (and order!) as the Pool's tokens.
+            (IERC20 token, uint256 fees) = _tokenCollectedManagementFees.unchecked_at(i);
+            tokens[i] = token;
+            collectedFees[i] = fees;
+        }
+
+        _downscaleDownArray(collectedFees, _scalingFactors());
     }
 
     function collectManagementFees(address recipient) external authenticate whenNotPaused nonReentrant {

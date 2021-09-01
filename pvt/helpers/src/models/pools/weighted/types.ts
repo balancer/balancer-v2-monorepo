@@ -188,3 +188,8 @@ export type GradualUpdateParams = {
   endTime: BigNumber;
   endWeights: BigNumber[];
 };
+
+export type TokenCollectedFees = {
+  amounts: BigNumber[];
+  tokenAddresses: string[];
+};
