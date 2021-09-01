@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
+import { BigNumber, ContractTransaction } from 'ethers';
 import { fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { MINUTE, DAY, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -239,6 +239,7 @@ describe('InvestmentPool', function () {
           describe('update weights gradually', () => {
             const UPDATE_DURATION = DAY * 3;
             const SHORT_UPDATE = MINUTE * 2;
+            const LONG_DURATION = DAY * 90;
 
             context('with invalid parameters', () => {
               let now: BigNumber;
@@ -268,7 +269,7 @@ describe('InvestmentPool', function () {
               it('fails if duration is less than the minimum', async () => {
                 await expect(
                   pool.updateWeightsGradually(sender, now, now.add(SHORT_UPDATE), poolWeights)
-                ).to.be.revertedWith('WEIGHT_CHANGE_TOO_FAST');
+                ).to.be.revertedWith('WEIGHT_CHANGE_RATE_TOO_HIGH');
               });
 
               it('fails with an end weight below the minimum', async () => {
@@ -276,7 +277,7 @@ describe('InvestmentPool', function () {
                 badWeights[2] = fp(0.005);
 
                 await expect(
-                  pool.updateWeightsGradually(sender, now, now.add(UPDATE_DURATION), badWeights)
+                  pool.updateWeightsGradually(sender, now, now.add(LONG_DURATION), badWeights)
                 ).to.be.revertedWith('MIN_WEIGHT');
               });
 
@@ -284,7 +285,7 @@ describe('InvestmentPool', function () {
                 const badWeights = Array(poolWeights.length).fill(fp(0.6));
 
                 await expect(
-                  pool.updateWeightsGradually(sender, now, now.add(UPDATE_DURATION), badWeights)
+                  pool.updateWeightsGradually(sender, now, now.add(LONG_DURATION), badWeights)
                 ).to.be.revertedWith('NORMALIZED_WEIGHT_INVARIANT');
               });
 
@@ -336,6 +337,7 @@ describe('InvestmentPool', function () {
               }
 
               let now, startTime: BigNumber, endTime: BigNumber;
+              let tx: ContractTransaction;
               const START_DELAY = MINUTE * 10;
               const finalEndWeights = getEndWeights(100);
 
@@ -344,17 +346,21 @@ describe('InvestmentPool', function () {
                 startTime = now.add(START_DELAY);
                 endTime = startTime.add(UPDATE_DURATION);
 
-                await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
+                tx = await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
               });
 
               it('updating weights emits an event', async () => {
-                const receipt = await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
-
-                expectEvent.inReceipt(await receipt.wait(), 'GradualWeightUpdateScheduled', {
+                expectEvent.inReceipt(await tx.wait(), 'GradualWeightUpdateScheduled', {
                   startTime: startTime,
                   endTime: endTime,
                   // weights don't exactly match because of the compression
                 });
+              });
+
+              it('enforces the timelock', async () => {
+                await expect(
+                  pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights)
+                ).to.be.revertedWith('WEIGHT_CHANGE_TIMELOCK');
               });
 
               it('stores the params', async () => {

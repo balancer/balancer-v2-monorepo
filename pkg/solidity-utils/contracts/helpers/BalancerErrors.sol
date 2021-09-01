@@ -145,7 +145,8 @@ library Errors {
     uint256 internal constant CALLER_IS_NOT_LBP_OWNER = 328;
     uint256 internal constant PRICE_RATE_OVERFLOW = 329;
     uint256 internal constant INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED = 330;
-    uint256 internal constant WEIGHT_CHANGE_TOO_FAST = 331;
+    uint256 internal constant WEIGHT_CHANGE_RATE_TOO_HIGH = 331;
+    uint256 internal constant WEIGHT_CHANGE_TIMELOCK = 332;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

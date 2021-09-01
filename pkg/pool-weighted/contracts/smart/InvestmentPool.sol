@@ -42,13 +42,15 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     // Store non-token-based values:
     // Start/end timestamps for gradual weight update
     // Cache total tokens
-    // [ 64 bits  |  120 bits |  32 bits  |   32 bits  |    7 bits    |    1 bit     ]
-    // [ reserved |  unused   | end time  | start time | total tokens |   swap flag  ]
-    // |MSB                                                                       LSB|
+    // [ 64 bits  |  88 bits  | 32 bits  |  32 bits  |   32 bits  |    7 bits    |    1 bit     ]
+    // [ reserved |  unused   | timelock | end time  | start time | total tokens |   swap flag  ]
+    // |MSB                                                                                  LSB|
     uint256 private constant _SWAP_ENABLED_OFFSET = 0;
     uint256 private constant _TOTAL_TOKENS_OFFSET = 1;
     uint256 private constant _START_TIME_OFFSET = 8;
     uint256 private constant _END_TIME_OFFSET = 40;
+    uint256 private constant _WEIGHT_CHANGE_TIMELOCK_OFFSET = 72;
+
     // 7 bits is enough for the token count, since MAX_WEIGHTED_TOKENS is 100
 
     // Store scaling factor and start/end weights for each token
@@ -62,7 +64,11 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _END_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
 
-    uint256 private constant _MINIMUM_WEIGHT_CHANGE_DURATION = 1 days;
+    uint256 private constant _REBALANCE_PERIOD = 3 days;
+    // Cannot call updateWeightsGradually more often than once a day
+    uint256 private constant _WEIGHT_CHANGE_TIMELOCK = 1 days;
+    // Cannot double weights faster than one rebalance period
+    uint256 private constant _MAX_WEIGHT_CHANGE_RATE = 2;
 
     // Event declarations
 
@@ -123,13 +129,6 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the mimimum duration of a gradual weight change
-     */
-    function getMinimumWeightChangeDuration() external pure returns (uint256) {
-        return _MINIMUM_WEIGHT_CHANGE_DURATION;
-    }
-
-    /**
      * @dev Return start time, end time, and endWeights as an array.
      * Current weights should be retrieved via `getNormalizedWeights()`.
      */
@@ -184,11 +183,30 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         startTime = Math.max(currentTime, startTime);
 
         _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
-        _require(endTime - startTime >= _MINIMUM_WEIGHT_CHANGE_DURATION, Errors.WEIGHT_CHANGE_TOO_FAST);
+        // Can only call this once per day
+        _require(
+            startTime - _getMiscData().decodeUint32(_WEIGHT_CHANGE_TIMELOCK_OFFSET) >= _WEIGHT_CHANGE_TIMELOCK,
+            Errors.WEIGHT_CHANGE_TIMELOCK
+        );
+        _setMiscData(_getMiscData().insertUint32(startTime, _WEIGHT_CHANGE_TIMELOCK_OFFSET));
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        uint256[] memory startWeights = _getNormalizedWeights();
+        uint256 duration = endTime - startTime;
+        uint256 startWeight;
+        uint256 endWeight;
 
-        _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            startWeight = startWeights[i];
+            endWeight = endWeights[i];
+
+            uint256 changeRate = endWeight > startWeight
+                ? Math.divUp(Math.mul(_REBALANCE_PERIOD, endWeight), Math.mul(startWeight, duration))
+                : Math.divUp(Math.mul(_REBALANCE_PERIOD, startWeight), Math.mul(endWeight, duration));
+            _require(changeRate <= _MAX_WEIGHT_CHANGE_RATE, Errors.WEIGHT_CHANGE_RATE_TOO_HIGH);
+        }
+
+        _startGradualWeightChange(startTime, endTime, startWeights, endWeights, tokens);
     }
 
     /*
