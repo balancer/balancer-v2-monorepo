@@ -146,6 +146,7 @@ library Errors {
     uint256 internal constant PRICE_RATE_OVERFLOW = 329;
     uint256 internal constant INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED = 330;
     uint256 internal constant UNHANDLED_EXIT_KIND = 331;
+    uint256 internal constant UNAUTHORIZED_EXIT = 332;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

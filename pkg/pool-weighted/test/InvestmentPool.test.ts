@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
-import { fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
@@ -10,7 +10,9 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
+import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { InvestmentPoolEncoder } from '@balancer-labs/balancer-js';
 
 import { range } from 'lodash';
 
@@ -490,9 +492,11 @@ describe('InvestmentPool', function () {
       });
     });
 
-    describe.only('collect management fees', () => {
+    describe('collect management fees', () => {
+      let vault: Vault;
+
       sharedBeforeEach('deploy pool', async () => {
-        const vault = await Vault.create();
+        vault = await Vault.create();
 
         const params = {
           tokens: poolTokens,
@@ -523,7 +527,21 @@ describe('InvestmentPool', function () {
         });
 
         it('management fees can be collected to to any account', async () => {
-          await pool.collectManagementFees(sender, other);
+          await expectBalanceChange(() => pool.collectManagementFees(sender, other), poolTokens, {
+            account: other,
+            changes: {},
+          });
+        });
+
+        it('reverts if the vault is called directly', async () => {
+          await expect(
+            vault.instance.connect(sender).exitPool(await pool.getPoolId(), sender.address, other.address, {
+              assets: poolTokens.addresses,
+              minAmountsOut: new Array(poolTokens.length).fill(bn(0)),
+              userData: InvestmentPoolEncoder.exitForManagementFees(),
+              toInternalBalance: false,
+            })
+          ).to.be.revertedWith('UNAUTHORIZED_EXIT');
         });
       });
     });

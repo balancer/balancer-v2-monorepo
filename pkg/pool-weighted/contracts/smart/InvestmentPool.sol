@@ -335,7 +335,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     function _onExitPool(
         bytes32,
-        address,
+        address sender,
         address,
         uint256[] memory balances,
         uint256,
@@ -362,8 +362,48 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
-        (bptAmountIn, amountsOut) = _doExit(balances, _getNormalizedWeights(), scalingFactors, userData);
+        (bptAmountIn, amountsOut) = _doInvestmentPoolExit(
+            sender,
+            balances,
+            _getNormalizedWeights(),
+            scalingFactors,
+            userData
+        );
         dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
+    }
+
+    function _doInvestmentPoolExit(
+        address sender,
+        uint256[] memory balances,
+        uint256[] memory normalizedWeights,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    ) internal view returns (uint256, uint256[] memory) {
+        ExitKind kind = userData.exitKind();
+
+        if (kind == ExitKind.MANAGEMENT_FEE_TOKENS_OUT) {
+            return _exitManagerFeeTokensOut(sender);
+        } else {
+            return _doExit(balances, normalizedWeights, scalingFactors, userData);
+        }
+    }
+
+    function _exitManagerFeeTokensOut(address sender)
+        private
+        view
+        whenNotPaused
+        returns (uint256 bptAmountIn, uint256[] memory amountsOut)
+    {
+        // This exit function is disabled if the contract is paused.
+
+        // This exit function can only be called by the Pool itself - the authorization logic that governs when that
+        // call can be made resides in collectManagementFees.
+        _require(sender == address(this), Errors.UNAUTHORIZED_EXIT);
+
+        // Since what we're doing is sending out collected management fees, we don't require any BPT in exchange: we
+        // simply send those funds over.
+        bptAmountIn = 0;
+        amountsOut = new uint256[](_getTotalTokens()); // TODO: set the actual token amounts
     }
 
     /**
