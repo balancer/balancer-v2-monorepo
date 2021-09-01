@@ -12,8 +12,8 @@ describe('LinearMath', function () {
   const params = {
     fee: fp(0.01),
     rate: fp(1),
-    target1: fp(1000),
-    target2: fp(2000),
+    lowerTarget: fp(1000),
+    upperTarget: fp(2000),
   };
 
   before('deploy math mock', async function () {
