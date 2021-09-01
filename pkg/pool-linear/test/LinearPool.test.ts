@@ -1,64 +1,45 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
+import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_UINT112 } from '@balancer-labs/v2-helpers/src/constants';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
+import { RawLinearPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/linear/types';
+import { advanceTime, currentTimestamp, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/LinearPool';
-import { RawLinearPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/linear/types';
-
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('LinearPool', function () {
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
+  let trader: SignerWithAddress, lp: SignerWithAddress, admin: SignerWithAddress, owner: SignerWithAddress;
 
-  let trader: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
-
+  const TOTAL_TOKENS = 3;
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-  const _TOTAL_TOKENS = 3;
-
-  async function deployPool(params: RawLinearPoolDeployment, mockedVault: boolean): Promise<void> {
-    params = Object.assign({}, { swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE }, params);
-    pool = await LinearPool.create(params, mockedVault);
-  }
-
-  function sortThreeTokens(tokenX: string, tokenY: string, tokenZ: string) {
-    if (tokenX < tokenY) {
-      if (tokenY < tokenZ) {
-        return [tokenX, tokenY, tokenZ];
-      } else if (tokenX < tokenZ) {
-        return [tokenX, tokenZ, tokenY];
-      } else {
-        return [tokenZ, tokenX, tokenY];
-      }
-    } else {
-      //tokenY < tokenX
-      if (tokenZ < tokenY) {
-        return [tokenZ, tokenY, tokenX];
-      } else if (tokenZ < tokenX) {
-        return [tokenY, tokenZ, tokenX];
-      } else {
-        return [tokenY, tokenX, tokenZ];
-      }
-    }
-  }
 
   before('setup', async () => {
-    [, lp, trader, owner] = await ethers.getSigners();
+    [, lp, trader, admin, owner] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy tokens', async () => {
-    tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
+    tokens = await TokenList.create(['DAI', 'CDAI'], { sorted: true });
     await tokens.mint({ to: [lp, trader], amount: fp(100) });
 
     mainToken = tokens.DAI;
-    wrappedToken = tokens.MKR;
+    wrappedToken = tokens.CDAI;
   });
+
+  async function deployPool(params: RawLinearPoolDeployment, mockedVault = true): Promise<void> {
+    params = Object.assign({}, { swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, owner, admin }, params);
+    pool = await LinearPool.create(params, mockedVault);
+  }
 
   describe('creation', () => {
     context('when the creation succeeds', () => {
@@ -84,9 +65,7 @@ describe('LinearPool', function () {
       it('registers tokens and bpt in the vault', async () => {
         const { tokens, balances } = await pool.getTokens();
 
-        const sorted = sortThreeTokens(mainToken.address, wrappedToken.address, pool.address);
-
-        expect(tokens).to.have.members(sorted);
+        expect(tokens).to.have.members(pool.tokens.addresses);
         expect(balances).to.be.zeros;
       });
 
@@ -151,34 +130,13 @@ describe('LinearPool', function () {
       await pool.initialize();
 
       const currentBalances = await pool.getBalances();
-      expect(currentBalances[await pool.getTokenIndex(pool.address)]).to.be.equal(MAX_UINT112);
-      expect(currentBalances[await pool.getTokenIndex(mainToken.address)]).to.be.equal(0);
-      expect(currentBalances[await pool.getTokenIndex(wrappedToken.address)]).to.be.equal(0);
+      expect(currentBalances[pool.bptIndex]).to.be.equal(MAX_UINT112);
+      expect(currentBalances[pool.mainIndex]).to.be.equal(0);
+      expect(currentBalances[pool.wrappedIndex]).to.be.equal(0);
 
       expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
     });
   });
-
-  const setBalances = async (
-    pool: LinearPool,
-    balances: { mainBalance?: BigNumber; wrappedBalance?: BigNumber; bptBalance?: BigNumber }
-  ) => {
-    const poolId = await pool.getPoolId();
-    const mainIndex = await pool.getTokenIndex(mainToken.address);
-    const wrappedIndex = await pool.getTokenIndex(wrappedToken.address);
-    const bptIndex = await pool.getTokenIndex(pool.address);
-
-    const updateBalances = Array.from({ length: _TOTAL_TOKENS }, (_, i) =>
-      i == mainIndex
-        ? balances.mainBalance ?? bn(0)
-        : i == wrappedIndex
-        ? balances.wrappedBalance ?? bn(0)
-        : i == bptIndex
-        ? balances.bptBalance ?? bn(0)
-        : bn(0)
-    );
-    await (await pool.getVaultObject()).updateBalances(poolId, updateBalances);
-  };
 
   describe('set targets', () => {
     sharedBeforeEach('deploy pool', async () => {
@@ -186,6 +144,25 @@ describe('LinearPool', function () {
       const upperTarget = fp(2000);
       await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget, owner }, true);
     });
+
+    const setBalances = async (
+      pool: LinearPool,
+      balances: { mainBalance?: BigNumber; wrappedBalance?: BigNumber; bptBalance?: BigNumber }
+    ) => {
+      const poolId = await pool.getPoolId();
+
+      const updateBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
+        i == pool.mainIndex
+          ? balances.mainBalance ?? bn(0)
+          : i == pool.wrappedIndex
+          ? balances.wrappedBalance ?? bn(0)
+          : i == pool.bptIndex
+          ? balances.bptBalance ?? bn(0)
+          : bn(0)
+      );
+
+      await pool.vault.updateBalances(poolId, updateBalances);
+    };
 
     it('correctly if inside free zone ', async () => {
       const mainBalance = fp(1800);
@@ -244,7 +221,6 @@ describe('LinearPool', function () {
   });
 
   describe('get rate', () => {
-    let mainIndex: number, wrappedIndex: number, bptIndex: number;
     let poolId: string;
     let balances: BigNumber[];
 
@@ -252,14 +228,9 @@ describe('LinearPool', function () {
       await deployPool({ mainToken, wrappedToken }, true);
 
       poolId = await pool.getPoolId();
+      balances = Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)));
 
-      mainIndex = await pool.getTokenIndex(mainToken.address);
-      wrappedIndex = await pool.getTokenIndex(wrappedToken.address);
-      bptIndex = await pool.getTokenIndex(pool.address);
-
-      balances = Array.from({ length: _TOTAL_TOKENS }, (_, i) => (i == bptIndex ? MAX_UINT112 : bn(0)));
-
-      await (await pool.getVaultObject()).updateBalances(poolId, balances);
+      await (await pool.vault).updateBalances(poolId, balances);
     });
 
     context('before swaps', () => {
@@ -270,20 +241,22 @@ describe('LinearPool', function () {
 
     context('once swapped', () => {
       it('rate lower than one', async () => {
-        balances[mainIndex] = fp(50);
-        balances[wrappedIndex] = fp(50.50505051);
-        balances[bptIndex] = MAX_UINT112.sub(fp(101.010101));
-        await (await pool.getVaultObject()).updateBalances(poolId, balances);
+        balances[pool.mainIndex] = fp(50);
+        balances[pool.wrappedIndex] = fp(50.50505051);
+        balances[pool.bptIndex] = MAX_UINT112.sub(fp(101.010101));
+
+        await (await pool.vault).updateBalances(poolId, balances);
 
         const result = await pool.getRate();
         expect(result.lte(fp(1))).to.be.true;
       });
 
       it('rate higher than one', async () => {
-        balances[mainIndex] = fp(6342.983516);
-        balances[wrappedIndex] = fp(6309.88467);
-        balances[bptIndex] = MAX_UINT112.sub(fp(6687.166002));
-        await (await pool.getVaultObject()).updateBalances(poolId, balances);
+        balances[pool.mainIndex] = fp(6342.983516);
+        balances[pool.wrappedIndex] = fp(6309.88467);
+        balances[pool.bptIndex] = MAX_UINT112.sub(fp(6687.166002));
+
+        await (await pool.vault).updateBalances(poolId, balances);
 
         const result = await pool.getRate();
         expect(result.gte(fp(1))).to.be.true;
@@ -293,15 +266,10 @@ describe('LinearPool', function () {
 
   describe('swaps', () => {
     let currentBalances: BigNumber[];
-    let mainIndex: number, wrappedIndex: number, bptIndex: number;
 
     sharedBeforeEach('deploy and initialize pool', async () => {
       await deployPool({ mainToken, wrappedToken, lowerTarget: fp(1000), upperTarget: fp(2000) }, true);
-      mainIndex = await pool.getTokenIndex(mainToken.address);
-      wrappedIndex = await pool.getTokenIndex(wrappedToken.address);
-      bptIndex = await pool.getTokenIndex(pool.address);
-
-      currentBalances = Array.from({ length: _TOTAL_TOKENS }, (_, i) => (i == bptIndex ? MAX_UINT112 : bn(0)));
+      currentBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)));
     });
 
     context('below target 1', () => {
@@ -310,16 +278,16 @@ describe('LinearPool', function () {
           const amount = fp(100);
 
           const result = await pool.swapGivenIn({
-            in: mainIndex,
-            out: bptIndex,
+            in: pool.mainIndex,
+            out: pool.bptIndex,
             amount: amount,
             balances: currentBalances,
           });
 
           expect(result).to.be.equal('101010101010101010102');
 
-          currentBalances[mainIndex] = currentBalances[mainIndex].add(amount);
-          currentBalances[bptIndex] = currentBalances[bptIndex].sub(result);
+          currentBalances[pool.mainIndex] = currentBalances[pool.mainIndex].add(amount);
+          currentBalances[pool.bptIndex] = currentBalances[pool.bptIndex].sub(result);
         });
       });
       context('given DAI out', () => {
@@ -327,16 +295,230 @@ describe('LinearPool', function () {
           const amount = fp(50);
 
           const result = await pool.swapGivenOut({
-            in: wrappedIndex,
-            out: mainIndex,
+            in: pool.wrappedIndex,
+            out: pool.mainIndex,
             amount: amount,
             balances: currentBalances,
           });
 
           expect(result).to.be.equal('50505050505050505051');
 
-          currentBalances[wrappedIndex] = currentBalances[wrappedIndex].add(amount);
-          currentBalances[mainIndex] = currentBalances[mainIndex].sub(result);
+          currentBalances[pool.wrappedIndex] = currentBalances[pool.wrappedIndex].add(amount);
+          currentBalances[pool.mainIndex] = currentBalances[pool.mainIndex].sub(result);
+        });
+      });
+    });
+  });
+
+  describe('wrapped token rate cache', () => {
+    let timestamp: BigNumber;
+    let wrappedTokenRateProvider: Contract;
+    const wrappedTokenRateCacheDuration = MINUTE * 20;
+
+    const scaleRate = (rate: BigNumber) => rate.mul(bn(10).pow(18 - wrappedToken.decimals));
+
+    sharedBeforeEach('deploy pool', async () => {
+      wrappedTokenRateProvider = await deploy('v2-pool-utils/MockRateProvider');
+      timestamp = await currentTimestamp();
+      await deployPool({ mainToken, wrappedToken, wrappedTokenRateProvider, wrappedTokenRateCacheDuration });
+    });
+
+    it('initializes correctly', async () => {
+      const provider = await pool.getWrappedTokenRateProvider();
+      expect(provider).to.be.equal(wrappedTokenRateProvider.address);
+
+      const { rate, duration, expires } = await pool.getWrappedTokenRateCache();
+      expect(rate).to.be.equal(fp(1));
+      expect(duration).to.be.equal(wrappedTokenRateCacheDuration);
+      expect(expires).to.be.at.least(timestamp.add(wrappedTokenRateCacheDuration));
+    });
+
+    describe('scaling factors', () => {
+      const itAdaptsTheScalingFactorsCorrectly = () => {
+        const expectedBptScalingFactor = fp(1);
+        const expectedMainTokenScalingFactor = fp(1);
+
+        it('adapt the scaling factors with the price rate', async () => {
+          const scalingFactors = await pool.getScalingFactors();
+
+          const expectedWrappedTokenScalingFactor = scaleRate(await wrappedTokenRateProvider.getRate());
+          expect(scalingFactors[pool.wrappedIndex]).to.be.equal(expectedWrappedTokenScalingFactor);
+          expect(await pool.getScalingFactor(wrappedToken)).to.be.equal(expectedWrappedTokenScalingFactor);
+
+          expect(scalingFactors[pool.mainIndex]).to.be.equal(expectedMainTokenScalingFactor);
+          expect(await pool.getScalingFactor(mainToken)).to.be.equal(expectedMainTokenScalingFactor);
+
+          expect(scalingFactors[pool.bptIndex]).to.be.equal(expectedBptScalingFactor);
+          expect(await pool.getScalingFactor(pool.bptToken)).to.be.equal(expectedBptScalingFactor);
+        });
+      };
+
+      context('with a price rate above 1', () => {
+        sharedBeforeEach('mock rate', async () => {
+          await wrappedTokenRateProvider.mockRate(fp(1.1));
+          await pool.updateWrappedTokenRateCache();
+        });
+
+        itAdaptsTheScalingFactorsCorrectly();
+      });
+
+      context('with a price rate equal to 1', () => {
+        sharedBeforeEach('mock rate', async () => {
+          await wrappedTokenRateProvider.mockRate(fp(1));
+          await pool.updateWrappedTokenRateCache();
+        });
+
+        itAdaptsTheScalingFactorsCorrectly();
+      });
+
+      context('with a price rate below 1', () => {
+        sharedBeforeEach('mock rate', async () => {
+          await wrappedTokenRateProvider.mockRate(fp(0.99));
+          await pool.updateWrappedTokenRateCache();
+        });
+
+        itAdaptsTheScalingFactorsCorrectly();
+      });
+    });
+
+    describe('update', () => {
+      const itUpdatesTheRateCache = (action: () => Promise<ContractTransaction>) => {
+        const newRate = fp(1.5);
+
+        it('updates the cache', async () => {
+          const previousCache = await pool.getWrappedTokenRateCache();
+
+          await wrappedTokenRateProvider.mockRate(newRate);
+          const updatedAt = await currentTimestamp();
+          await action();
+
+          const currentCache = await pool.getWrappedTokenRateCache();
+          expect(currentCache.rate).to.be.equal(newRate);
+          expect(previousCache.rate).not.to.be.equal(newRate);
+
+          expect(currentCache.duration).to.be.equal(wrappedTokenRateCacheDuration);
+          expect(currentCache.expires).to.be.at.least(updatedAt.add(wrappedTokenRateCacheDuration));
+        });
+
+        it('emits an event', async () => {
+          await wrappedTokenRateProvider.mockRate(newRate);
+          const receipt = await action();
+
+          expectEvent.inReceipt(await receipt.wait(), 'WrappedTokenRateUpdated', { rate: newRate });
+        });
+      };
+
+      context('before the cache expires', () => {
+        sharedBeforeEach('advance time', async () => {
+          await advanceTime(wrappedTokenRateCacheDuration / 2);
+        });
+
+        context('when not forced', () => {
+          const action = async () => pool.instance.mockCacheWrappedTokenRateIfNecessary();
+
+          it('does not update the cache', async () => {
+            const previousCache = await pool.getWrappedTokenRateCache();
+
+            await action();
+
+            const currentCache = await pool.getWrappedTokenRateCache();
+            expect(currentCache.rate).to.be.equal(previousCache.rate);
+            expect(currentCache.expires).to.be.equal(previousCache.expires);
+            expect(currentCache.duration).to.be.equal(previousCache.duration);
+          });
+        });
+
+        context('when forced', () => {
+          const action = async () => pool.updateWrappedTokenRateCache();
+
+          itUpdatesTheRateCache(action);
+        });
+      });
+
+      context('after the cache expires', () => {
+        sharedBeforeEach('advance time', async () => {
+          await advanceTime(wrappedTokenRateCacheDuration + MINUTE);
+        });
+
+        context('when not forced', () => {
+          const action = async () => pool.instance.mockCacheWrappedTokenRateIfNecessary();
+
+          itUpdatesTheRateCache(action);
+        });
+
+        context('when forced', () => {
+          const action = async () => pool.updateWrappedTokenRateCache();
+
+          itUpdatesTheRateCache(action);
+        });
+      });
+    });
+
+    describe('set cache duration', () => {
+      const newDuration = MINUTE * 10;
+
+      sharedBeforeEach('grant role to admin', async () => {
+        const action = await actionId(pool.instance, 'setWrappedTokenRateCacheDuration');
+        await pool.vault.grantRole(action, admin);
+      });
+
+      const itUpdatesTheCacheDuration = () => {
+        it('updates the cache duration', async () => {
+          const previousCache = await pool.getWrappedTokenRateCache();
+
+          const newRate = fp(1.5);
+          await wrappedTokenRateProvider.mockRate(newRate);
+          const forceUpdateAt = await currentTimestamp();
+          await pool.setWrappedTokenRateCacheDuration(newDuration, { from: admin });
+
+          const currentCache = await pool.getWrappedTokenRateCache();
+          expect(currentCache.rate).to.be.equal(newRate);
+          expect(previousCache.rate).not.to.be.equal(newRate);
+          expect(currentCache.duration).to.be.equal(newDuration);
+          expect(currentCache.expires).to.be.at.least(forceUpdateAt.add(newDuration));
+        });
+
+        it('emits an event', async () => {
+          const receipt = await pool.setWrappedTokenRateCacheDuration(newDuration, { from: admin });
+
+          expectEvent.inReceipt(await receipt.wait(), 'WrappedTokenRateProviderSet', {
+            provider: wrappedTokenRateProvider.address,
+            cacheDuration: newDuration,
+          });
+        });
+      };
+
+      context('when it is requested by the admin', () => {
+        context('before the cache expires', () => {
+          sharedBeforeEach('advance time', async () => {
+            await advanceTime(wrappedTokenRateCacheDuration / 2);
+          });
+
+          itUpdatesTheCacheDuration();
+        });
+
+        context('after the cache has expired', () => {
+          sharedBeforeEach('advance time', async () => {
+            await advanceTime(wrappedTokenRateCacheDuration + MINUTE);
+          });
+
+          itUpdatesTheCacheDuration();
+        });
+      });
+
+      context('when it is requested by the owner', () => {
+        it('reverts', async () => {
+          await expect(pool.setWrappedTokenRateCacheDuration(10, { from: owner })).to.be.revertedWith(
+            'SENDER_NOT_ALLOWED'
+          );
+        });
+      });
+
+      context('when it is requested by another one', () => {
+        it('reverts', async () => {
+          await expect(pool.setWrappedTokenRateCacheDuration(10, { from: lp })).to.be.revertedWith(
+            'SENDER_NOT_ALLOWED'
+          );
         });
       });
     });

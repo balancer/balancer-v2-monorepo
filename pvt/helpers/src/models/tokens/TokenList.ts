@@ -48,6 +48,10 @@ export default class TokenList {
     return this.findBySymbol('DAI');
   }
 
+  get CDAI(): Token {
+    return this.findBySymbol('CDAI');
+  }
+
   get MKR(): Token {
     return this.findBySymbol('MKR');
   }
