@@ -379,7 +379,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20[] calldata pools,
         IDistributorCallback callbackContract,
         bytes calldata callbackData
-    ) external {
+    ) external nonReentrant {
         for (uint256 p; p < pools.length; p++) {
             IERC20 pool = pools[p];
             unstake(pool, _balances[pool][msg.sender], address(callbackContract));
