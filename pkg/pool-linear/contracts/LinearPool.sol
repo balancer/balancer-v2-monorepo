@@ -35,12 +35,8 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
 
-    uint256 private constant _TOTAL_TOKENS = 3; //Main token, wrapped token, BPT
+    uint256 private constant _TOTAL_TOKENS = 3; // Main token, wrapped token, BPT
     uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
-
-    event TargetsSet(uint256 lowerTarget, uint256 upperTarget);
-
-    IVault private immutable _vault;
 
     IERC20 private immutable _mainToken;
     IERC20 private immutable _wrappedToken;
@@ -54,6 +50,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     bytes32 private _wrappedTokenRateCache;
     IRateProvider private immutable _wrappedTokenRateProvider;
 
+    event TargetsSet(uint256 lowerTarget, uint256 upperTarget);
     event WrappedTokenRateUpdated(uint256 rate);
     event WrappedTokenRateProviderSet(IRateProvider indexed provider, uint256 cacheDuration);
 
@@ -88,22 +85,23 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             params.owner
         )
     {
+        // Set tokens
         _mainToken = params.mainToken;
         _wrappedToken = params.wrappedToken;
 
+        // Set scaling factors
         _scalingFactorMainToken = _computeScalingFactor(params.mainToken);
         _scalingFactorWrappedToken = _computeScalingFactor(params.wrappedToken);
 
-        _vault = params.vault;
-
+        // Set targets
         _require(params.lowerTarget <= params.upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
         _require(params.upperTarget <= _MAX_TOKEN_BALANCE, Errors.UPPER_TARGET_TOO_HIGH);
         _lowerTarget = params.lowerTarget;
         _upperTarget = params.upperTarget;
 
+        // Set wrapped token rate cache
         _wrappedTokenRateProvider = params.wrappedTokenRateProvider;
         emit WrappedTokenRateProviderSet(params.wrappedTokenRateProvider, params.wrappedTokenRateCacheDuration);
-
         (bytes32 cache, uint256 rate) = _getNewWrappedTokenRateCache(
             params.wrappedTokenRateProvider,
             params.wrappedTokenRateCacheDuration
@@ -192,7 +190,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         //TODO: Need to intialize out of the constructor because of poolId, or need to change BasePool
 
         bytes32 poolId = getPoolId();
-        (IERC20[] memory tokens, , ) = _vault.getPoolTokens(poolId);
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
 
         uint256[] memory maxAmountsIn = new uint256[](_TOTAL_TOKENS);
         maxAmountsIn[tokens[0] == IERC20(this) ? 0 : tokens[1] == IERC20(this) ? 1 : 2] = _MAX_TOKEN_BALANCE;
@@ -204,7 +202,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             fromInternalBalance: false
         });
 
-        _vault.joinPool(poolId, address(this), address(this), request);
+        getVault().joinPool(poolId, address(this), address(this), request);
     }
 
     function onSwap(
@@ -355,7 +353,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         if (totalSupply() == 0) {
             // Mint initial BPTs and adds them to the Vault via a special join
             _mintPoolTokens(address(this), _MAX_TOKEN_BALANCE);
-            _approve(address(this), address(_vault), _MAX_TOKEN_BALANCE);
+            _approve(address(this), address(getVault()), _MAX_TOKEN_BALANCE);
 
             (, , uint256 bptIndex) = _getIndexes();
 
@@ -454,7 +452,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
     function getRate() public view override returns (uint256) {
         bytes32 poolId = getPoolId();
-        (, uint256[] memory balances, ) = _vault.getPoolTokens(poolId);
+        (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
         (uint256 mainIndex, uint256 wrappedIndex, uint256 bptIndex) = _getIndexes();
 
         _upscaleArray(balances, _scalingFactors());
@@ -524,7 +522,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         _require(upperTarget <= _MAX_TOKEN_BALANCE, Errors.UPPER_TARGET_TOO_HIGH);
 
         bytes32 poolId = getPoolId();
-        (, uint256[] memory balances, ) = _vault.getPoolTokens(poolId);
+        (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
         (uint256 mainIndex, , ) = _getIndexes();
 
         //Target can only be set when main token balance between targets (free zone)
