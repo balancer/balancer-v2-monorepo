@@ -20,7 +20,7 @@ export function shouldBehaveLikeMap(
 
     expect(await map.length()).to.equal(keys.length.toString());
 
-    expect(await Promise.all(keys.map((key) => map.get(key, getErrorCode)))).to.have.same.members(values);
+    expect(await Promise.all(keys.map((key) => map.get(key, getErrorCode)))).to.deep.equal(values);
 
     // To compare key-value pairs, we zip keys and values, and convert BNs to
     // strings to workaround Chai limitations when dealing with nested arrays
