@@ -348,7 +348,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256[] memory,
         bytes memory
     ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
-        _revert(Errors.UNHANDLED);
+        _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
     }
 
     function _onJoinPool(
@@ -371,7 +371,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             uint256[] memory
         )
     {
-        _revert(Errors.UNHANDLED);
+        _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
     }
 
     function _onExitPool(
@@ -393,7 +393,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             uint256[] memory
         )
     {
-        _revert(Errors.UNHANDLED);
+        _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
     }
 
     function _getMaxTokens() internal pure override returns (uint256) {

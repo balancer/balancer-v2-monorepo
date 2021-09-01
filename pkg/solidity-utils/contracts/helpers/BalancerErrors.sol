@@ -148,7 +148,7 @@ library Errors {
     uint256 internal constant WEIGHT_CHANGE_TOO_FAST = 331;
     uint256 internal constant LOWER_GREATER_THAN_UPPER_TARGET = 332;
     uint256 internal constant UPPER_TARGET_TOO_HIGH = 333;
-    uint256 internal constant UNHANDLED = 334;
+    uint256 internal constant UNHANDLED_BY_LINEAR_POOL = 334;
     uint256 internal constant OUT_OF_TARGET_RANGE = 335;
 
     // Lib
