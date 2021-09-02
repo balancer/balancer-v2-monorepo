@@ -147,6 +147,7 @@ library Errors {
     uint256 internal constant INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED = 330;
     uint256 internal constant UNHANDLED_EXIT_KIND = 331;
     uint256 internal constant UNAUTHORIZED_EXIT = 332;
+    uint256 internal constant MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 333;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

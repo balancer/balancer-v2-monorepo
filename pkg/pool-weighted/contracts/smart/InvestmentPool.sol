@@ -38,6 +38,10 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     // State variables
 
+    // Percentage of swap fees that are allocated to the Pool owner.
+    uint256 private immutable _managementSwapFeePercentage;
+    uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
+
     // Use the _miscData slot in BasePool
     // First 64 bits are reserved for the swap fee
     //
@@ -51,7 +55,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _TOTAL_TOKENS_OFFSET = 1;
     uint256 private constant _START_TIME_OFFSET = 8;
     uint256 private constant _END_TIME_OFFSET = 40;
-    // 7 bits is enough for the token count, since MAX_WEIGHTED_TOKENS is 100
+    // 7 bits is enough for the token count, since MAX_WEIGHTED_TOKENS is 50
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
@@ -74,59 +78,85 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] startWeights,
         uint256[] endWeights
     );
-    event SwapEnabledSet(bool swapEnabled);
+    event SwapEnabledChanged(bool swapEnabled);
+    event ManagementFeePercentageChanged(uint256 managementFee);
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        IERC20[] memory tokens,
-        uint256[] memory normalizedWeights,
-        address[] memory assetManagers,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner,
-        bool swapEnabledOnStart
-    )
+    struct NewPoolParams {
+        IVault vault;
+        string name;
+        string symbol;
+        IERC20[] tokens;
+        uint256[] normalizedWeights;
+        address[] assetManagers;
+        uint256 swapFeePercentage;
+        uint256 pauseWindowDuration;
+        uint256 bufferPeriodDuration;
+        address owner;
+        bool swapEnabledOnStart;
+        uint256 managementSwapFeePercentage;
+    }
+
+    constructor(NewPoolParams memory params)
         BaseWeightedPool(
-            vault,
-            name,
-            symbol,
-            tokens,
-            assetManagers,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            params.vault,
+            params.name,
+            params.symbol,
+            params.tokens,
+            params.assetManagers,
+            params.swapFeePercentage,
+            params.pauseWindowDuration,
+            params.bufferPeriodDuration,
+            params.owner
         )
     {
-        uint256 totalTokens = tokens.length;
-        InputHelpers.ensureInputLengthMatch(totalTokens, normalizedWeights.length, assetManagers.length);
+        uint256 totalTokens = params.tokens.length;
+        InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
 
         _setMiscData(_getMiscData().insertUint7(totalTokens, _TOTAL_TOKENS_OFFSET));
         // Double check it fits in 7 bits
         _require(_getTotalTokens() == totalTokens, Errors.MAX_TOKENS);
 
         uint256 currentTime = block.timestamp;
-        _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights, tokens);
+        _startGradualWeightChange(
+            currentTime,
+            currentTime,
+            params.normalizedWeights,
+            params.normalizedWeights,
+            params.tokens
+        );
 
         // Initialize the accrued management fees map with the Pool's tokens and zero collected fees.
         for (uint256 i = 0; i < totalTokens; ++i) {
-            _tokenCollectedManagementFees.set(tokens[i], 0);
+            _tokenCollectedManagementFees.set(params.tokens[i], 0);
         }
 
         // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction)
-        _setSwapEnabled(swapEnabledOnStart);
+        _setSwapEnabled(params.swapEnabledOnStart);
+
+        // This must be inlined in the constructor as we're setting an immutable variable.
+        _require(
+            params.managementSwapFeePercentage <= _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+            Errors.MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE
+        );
+        _managementSwapFeePercentage = params.managementSwapFeePercentage;
+
+        emit ManagementFeePercentageChanged(params.managementSwapFeePercentage);
     }
 
     // External functions
 
     /**
-     * @dev Tells whether swaps are enabled or not for the given pool.
+     * @dev Returns true if swaps are enabled.
      */
     function getSwapEnabled() public view returns (bool) {
         return _getMiscData().decodeBool(_SWAP_ENABLED_OFFSET);
+    }
+
+    /**
+     * @dev Returns the management swap fee percentage as a 18-decimals fixed point number..
+     */
+    function getManagementSwapFeePercentage() public view returns (uint256) {
+        return _managementSwapFeePercentage;
     }
 
     // External functions
@@ -161,7 +191,9 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _getMaxTokens() internal pure virtual override returns (uint256) {
-        return _MAX_WEIGHTED_TOKENS;
+        // The upper bound is WeightedMath.MAX_WEIGHTED_TOKENS, but this is constrained by other factors, such as Pool
+        // creation gas consumption (which is linear).
+        return 50;
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
@@ -243,7 +275,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     function _setSwapEnabled(bool swapEnabled) private {
         _setMiscData(_getMiscData().insertBool(swapEnabled, _SWAP_ENABLED_OFFSET));
 
-        emit SwapEnabledSet(swapEnabled);
+        emit SwapEnabledChanged(swapEnabled);
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {

@@ -38,24 +38,28 @@ contract InvestmentPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWind
         address[] memory assetManagers,
         uint256 swapFeePercentage,
         address owner,
-        bool swapEnabledOnStart
+        bool swapEnabledOnStart,
+        uint256 managementSwapFeePercentage
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
         return
             _create(
                 abi.encode(
-                    getVault(),
-                    name,
-                    symbol,
-                    tokens,
-                    weights,
-                    assetManagers,
-                    swapFeePercentage,
-                    pauseWindowDuration,
-                    bufferPeriodDuration,
-                    owner,
-                    swapEnabledOnStart
+                    InvestmentPool.NewPoolParams({
+                        vault: getVault(),
+                        name: name,
+                        symbol: symbol,
+                        tokens: tokens,
+                        normalizedWeights: weights,
+                        assetManagers: assetManagers,
+                        swapFeePercentage: swapFeePercentage,
+                        pauseWindowDuration: pauseWindowDuration,
+                        bufferPeriodDuration: bufferPeriodDuration,
+                        owner: owner,
+                        swapEnabledOnStart: swapEnabledOnStart,
+                        managementSwapFeePercentage: managementSwapFeePercentage
+                    })
                 )
             );
     }

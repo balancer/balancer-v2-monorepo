@@ -55,6 +55,7 @@ export default {
       bufferPeriodDuration,
       oracleEnabled,
       swapEnabledOnStart,
+      managementSwapFeePercentage,
       poolType,
     } = params;
     if (!tokens) tokens = new TokenList();
@@ -67,6 +68,7 @@ export default {
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
+    if (managementSwapFeePercentage === undefined) managementSwapFeePercentage = fp(0);
     if (poolType === WeightedPoolType.WEIGHTED_POOL_2TOKENS && tokens.length !== 2)
       throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
     return {
@@ -78,6 +80,7 @@ export default {
       bufferPeriodDuration,
       oracleEnabled,
       swapEnabledOnStart,
+      managementSwapFeePercentage,
       owner: params.owner,
       poolType,
     };

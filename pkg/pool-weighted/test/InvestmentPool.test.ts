@@ -33,6 +33,7 @@ describe('InvestmentPool', function () {
   const TOKEN_COUNT = 20;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.7);
   const WEIGHTS = range(10000, 10000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
 
   const poolWeights: BigNumber[] = Array(TOKEN_COUNT).fill(fp(1 / TOKEN_COUNT)); //WEIGHTS.slice(0, TOKEN_COUNT).map(fp);
@@ -59,6 +60,7 @@ describe('InvestmentPool', function () {
             tokens,
             weights: WEIGHTS.slice(0, numTokens),
             swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+            managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
           });
         });
 
@@ -232,7 +234,7 @@ describe('InvestmentPool', function () {
         it('disabling swaps emits an event', async () => {
           const receipt = await pool.setSwapEnabled(sender, false);
 
-          expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledSet', {
+          expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledChanged', {
             swapEnabled: false,
           });
         });
@@ -240,7 +242,7 @@ describe('InvestmentPool', function () {
         it('enabling swaps emits an event', async () => {
           const receipt = await pool.setSwapEnabled(sender, true);
 
-          expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledSet', {
+          expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledChanged', {
             swapEnabled: true,
           });
         });
