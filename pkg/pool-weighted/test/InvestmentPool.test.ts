@@ -642,6 +642,15 @@ describe('InvestmentPool', function () {
           });
         });
 
+        describe('exits', () => {
+          it('does not collect management fees on proportional exits', async () => {
+            await pool.multiExitGivenIn({ from: owner, bptIn: fp(0.1) });
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            expect(actualFees).to.be.zeros;
+          });
+        });
+
         it('accumulates management fees with existing ones', async () => {
           const singleSwap = {
             poolId: await pool.getPoolId(),
