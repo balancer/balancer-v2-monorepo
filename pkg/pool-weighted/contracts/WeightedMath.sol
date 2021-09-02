@@ -211,7 +211,7 @@ contract WeightedMath {
         uint256 bptAmountOut,
         uint256 bptTotalSupply,
         uint256 swapFeePercentage
-    ) internal pure returns (uint256) {
+    ) internal pure returns (uint256 amountIn, uint256 swapFee) {
         /******************************************************************************************
         // tokenInForExactBPTOut                                                                 //
         // a = amountIn                                                                          //
@@ -238,7 +238,10 @@ contract WeightedMath {
         uint256 taxableAmount = amountInWithoutFee.mulUp(taxablePercentage);
         uint256 nonTaxableAmount = amountInWithoutFee.sub(taxableAmount);
 
-        return nonTaxableAmount.add(taxableAmount.divUp(FixedPoint.ONE.sub(swapFeePercentage)));
+        uint256 taxableAmountPlusFees = taxableAmount.divUp(FixedPoint.ONE.sub(swapFeePercentage));
+
+        swapFee = taxableAmountPlusFees - taxableAmount;
+        amountIn = nonTaxableAmount.add(taxableAmountPlusFees);
     }
 
     function _calcAllTokensInGivenExactBptOut(

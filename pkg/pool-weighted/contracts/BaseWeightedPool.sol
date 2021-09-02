@@ -290,20 +290,25 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
+    ) private returns (uint256, uint256[] memory) {
         (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
         // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
 
         _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
 
-        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
-        amountsIn[tokenIndex] = WeightedMath._calcTokenInGivenExactBptOut(
+        (uint256 amountInTokenIndex, uint256 swapFee) = WeightedMath._calcTokenInGivenExactBptOut(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountOut,
             totalSupply(),
             getSwapFeePercentage()
         );
+
+        // Note that swapFee is already upscaled
+        _processSwapFeeAmount(tokenIndex, swapFee);
+
+        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
+        amountsIn[tokenIndex] = amountInTokenIndex;
 
         return (bptAmountOut, amountsIn);
     }

@@ -572,7 +572,7 @@ contract WeightedPool2Tokens is
         _require(tokenIndex < 2, Errors.OUT_OF_BOUNDS);
 
         uint256[] memory amountsIn = new uint256[](2);
-        amountsIn[tokenIndex] = WeightedMath._calcTokenInGivenExactBptOut(
+        (amountsIn[tokenIndex], ) = WeightedMath._calcTokenInGivenExactBptOut(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountOut,
