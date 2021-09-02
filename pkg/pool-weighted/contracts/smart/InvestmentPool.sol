@@ -433,6 +433,14 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         amountsOut = new uint256[](_getTotalTokens()); // TODO: set the actual token amounts
     }
 
+    function _processSwapFeeAmount(IERC20 token, uint256 amount) internal virtual override {
+        // TODO: multiply by management fee percentage
+        uint256 previousCollectedFees = _tokenCollectedManagementFees.get(token, 5);
+        _tokenCollectedManagementFees.set(token, previousCollectedFees.add(amount));
+
+        super._processSwapFeeAmount(token, amount);
+    }
+
     /**
      * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
      * if necessary. Time travel elements commented out.

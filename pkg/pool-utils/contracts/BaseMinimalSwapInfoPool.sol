@@ -38,7 +38,13 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
-            request.amount = _subtractSwapFeeAmount(request.amount);
+            uint256 amountInMinusSwapFees = _subtractSwapFeeAmount(request.amount);
+
+            // Process the (upscaled!) swap fee.
+            uint256 swapFee = request.amount - amountInMinusSwapFees;
+            _processSwapFeeAmount(request.tokenIn, _upscale(swapFee, scalingFactorTokenIn));
+
+            request.amount = amountInMinusSwapFees;
 
             // All token amounts are upscaled.
             balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
@@ -61,7 +67,13 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
             amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
 
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-            return _addSwapFeeAmount(amountIn);
+            uint256 amountInPlusSwapFees = _addSwapFeeAmount(amountIn);
+
+            // Process the (upscaled!) swap fee.
+            uint256 swapFee = amountInPlusSwapFees - amountIn;
+            _processSwapFeeAmount(request.tokenIn, _upscale(swapFee, scalingFactorTokenIn));
+
+            return amountInPlusSwapFees;
         }
     }
 
@@ -97,4 +109,12 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) internal virtual returns (uint256);
+
+    /**
+     * @dev Called whenever a swap fee is charged. Implementations should call their parent's via super, to ensure all
+     * implementations in the inheritance tree are called.
+     *
+     * `amount` must be upscaled.
+     */
+    function _processSwapFeeAmount(IERC20 token, uint256 amount) internal virtual {}
 }
