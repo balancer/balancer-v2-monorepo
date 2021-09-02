@@ -11,6 +11,7 @@ export function shouldBehaveLikeMap(
   const [keyA, keyB, keyC] = keys;
   const [valueA, valueB, valueC] = values;
 
+  const indexOfErrorCode = 41;
   const getErrorCode = 42;
 
   async function expectMembersMatch(map: Contract, keys: Array<string | BigNumber>, values: Array<string | BigNumber>) {
@@ -95,6 +96,30 @@ export function shouldBehaveLikeMap(
 
     it('reverts with a custom message if the key is not in the map', async () => {
       await expect(store.map.get(keyA, getErrorCode)).to.be.revertedWith(getErrorCode.toString());
+    });
+  });
+
+  describe('indexOf', () => {
+    it('returns the index of an added key', async () => {
+      await store.map.set(keyA, valueA);
+      await store.map.set(keyB, valueB);
+
+      expect(await store.map.indexOf(keyA, indexOfErrorCode)).to.equal(0);
+      expect(await store.map.indexOf(keyB, indexOfErrorCode)).to.equal(1);
+    });
+
+    it('adding and removing keys can change the index', async () => {
+      await store.map.set(keyA, valueA);
+      await store.map.set(keyB, valueB);
+
+      await store.map.remove(keyA);
+
+      // B is now the only element; its index must be 0
+      expect(await store.map.indexOf(keyB, indexOfErrorCode)).to.equal(0);
+    });
+
+    it('reverts if they key is not in the map', async () => {
+      await expect(store.map.indexOf(keyA, indexOfErrorCode)).to.be.revertedWith(indexOfErrorCode.toString());
     });
   });
 

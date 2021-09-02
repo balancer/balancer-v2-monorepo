@@ -4,7 +4,7 @@
 //  * a map from IERC20 to bytes32
 //  * entries are stored in mappings instead of arrays, reducing implicit storage reads for out-of-bounds checks
 //  * unchecked_at and unchecked_valueAt, which allow for more gas efficient data reads in some scenarios
-//  * unchecked_indexOf and unchecked_setAt, which allow for more gas efficient data writes in some scenarios
+//  * indexOf, unchecked_indexOf and unchecked_setAt, which allow for more gas efficient data writes in some scenarios
 //
 // Additionally, the base private functions that work on bytes32 were removed and replaced with a native implementation
 // for IERC20 keys, to reduce bytecode size and runtime costs.
@@ -212,6 +212,23 @@ library EnumerableMap {
     }
 
     /**
+     * @dev Returns the index for `key`.
+     *
+     * Requirements:
+     *
+     * - `key` must be in the map.
+     */
+    function indexOf(
+        IERC20ToBytes32Map storage map,
+        IERC20 key,
+        uint256 errorCode
+    ) internal view returns (uint256) {
+        uint256 uncheckedIndex = unchecked_indexOf(map, key);
+        _require(uncheckedIndex != 0, errorCode);
+        return uncheckedIndex - 1;
+    }
+
+    /**
      * @dev Returns the index for `key` **plus one**. Does not revert if the key is not in the map, and returns 0
      * instead.
      */
@@ -387,6 +404,23 @@ library EnumerableMap {
         uint256 index = map._indexes[key];
         _require(index > 0, errorCode);
         return unchecked_valueAt(map, index - 1);
+    }
+
+    /**
+     * @dev Returns the index for `key`.
+     *
+     * Requirements:
+     *
+     * - `key` must be in the map.
+     */
+    function indexOf(
+        IERC20ToUint256Map storage map,
+        IERC20 key,
+        uint256 errorCode
+    ) internal view returns (uint256) {
+        uint256 uncheckedIndex = unchecked_indexOf(map, key);
+        _require(uncheckedIndex != 0, errorCode);
+        return uncheckedIndex - 1;
     }
 
     /**

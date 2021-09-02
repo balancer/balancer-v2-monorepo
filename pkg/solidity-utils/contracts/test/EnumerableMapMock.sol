@@ -27,6 +27,10 @@ contract EnumerableIERC20ToBytes32MapMock {
         return _map.unchecked_indexOf(key);
     }
 
+    function indexOf(IERC20 key, uint256 errorCode) public view returns (uint256) {
+        return _map.indexOf(key, errorCode);
+    }
+
     function unchecked_setAt(uint256 index, bytes32 value) public {
         _map.unchecked_setAt(index, value);
     }
@@ -75,6 +79,10 @@ contract EnumerableIERC20ToUint256MapMock {
 
     function unchecked_indexOf(IERC20 key) public view returns (uint256) {
         return _map.unchecked_indexOf(key);
+    }
+
+    function indexOf(IERC20 key, uint256 errorCode) public view returns (uint256) {
+        return _map.indexOf(key, errorCode);
     }
 
     function unchecked_setAt(uint256 index, uint256 value) public {
