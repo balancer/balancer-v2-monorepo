@@ -495,7 +495,7 @@ describe('InvestmentPool', function () {
       });
     });
 
-    describe('management fees', () => {
+    describe.only('management fees', () => {
       let vault: Vault;
       const swapFeePercentage = fp(0.02);
       const managementSwapFeePercentage = fp(0.8);
@@ -537,33 +537,109 @@ describe('InvestmentPool', function () {
       });
 
       describe('fee collection', () => {
-        it('collects management fees on swaps given in', async () => {
-          const singleSwap = {
-            poolId: await pool.getPoolId(),
-            kind: SwapKind.GivenIn,
-            assetIn: poolTokens.first.address,
-            assetOut: poolTokens.second.address,
-            amount: fp(0.01),
-            userData: '0x',
-          };
-          const funds = {
-            sender: owner.address,
-            fromInternalBalance: false,
-            recipient: other.address,
-            toInternalBalance: false,
-          };
-          const limit = 0; // Minimum amount out
-          const deadline = MAX_UINT256;
+        describe('swaps', () => {
+          it('collects management fees on swaps given in', async () => {
+            const singleSwap = {
+              poolId: await pool.getPoolId(),
+              kind: SwapKind.GivenIn,
+              assetIn: poolTokens.first.address,
+              assetOut: poolTokens.second.address,
+              amount: fp(0.01),
+              userData: '0x',
+            };
+            const funds = {
+              sender: owner.address,
+              fromInternalBalance: false,
+              recipient: other.address,
+              toInternalBalance: false,
+            };
+            const limit = 0; // Minimum amount out
+            const deadline = MAX_UINT256;
 
-          const expectedSwapFee = singleSwap.amount.mul(swapFeePercentage).div(fp(1));
-          const expectedManagementFee = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
+            const expectedSwapFee = singleSwap.amount.mul(swapFeePercentage).div(fp(1));
+            const expectedManagementFee = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
 
-          await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+            await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
 
-          const { amounts: actualFees } = await pool.getCollectedManagementFees();
-          // The fee was charged in the first token (in)
-          expect(actualFees[0]).to.be.equalWithError(expectedManagementFee, 0.001);
-          expect(actualFees.filter((_, i) => i != 0)).to.be.zeros;
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            // The fee was charged in the first token (in)
+            expect(actualFees[0]).to.be.equalWithError(expectedManagementFee, 0.001);
+            expect(actualFees.filter((_, i) => i != 0)).to.be.zeros;
+          });
+
+          it('collects management fees on swaps given out', async () => {
+            const singleSwap = {
+              poolId: await pool.getPoolId(),
+              kind: SwapKind.GivenOut,
+              assetIn: poolTokens.second.address,
+              assetOut: poolTokens.first.address,
+              amount: fp(0.01),
+              userData: '0x',
+            };
+            const funds = {
+              sender: owner.address,
+              fromInternalBalance: false,
+              recipient: other.address,
+              toInternalBalance: false,
+            };
+            const limit = MAX_UINT256; // Maximum amount in
+            const deadline = MAX_UINT256;
+
+            // Since this is a given out swap, we can only estimate the amount out, and then derive expected swap fees from
+            // that. This require scaling balances, amounts, and then unscaling the amount in.
+            const unscaledBalances = await pool.getBalances();
+            const scalingFactors = await pool.getScalingFactors();
+            const scaledBalances = unscaledBalances.map((balance, i) => balance.mul(scalingFactors[i]).div(fp(1)));
+            const expectedScaledAmountIn = bn(
+              await pool.estimateGivenOut(
+                { in: 1, out: 0, amount: singleSwap.amount.mul(scalingFactors[0]).div(fp(1)) },
+                scaledBalances
+              )
+            );
+            const expectedAmountIn = expectedScaledAmountIn.mul(fp(1)).div(scalingFactors[1]);
+            const expectedAmountInPlusSwapFee = expectedAmountIn.mul(fp(1)).div(fp(1).sub(swapFeePercentage));
+            const expectedSwapFee = expectedAmountInPlusSwapFee.sub(expectedAmountIn);
+            const expectedManagementFee = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
+
+            await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            // The fee was charged in the second token (in)
+            expect(actualFees[1]).to.be.equalWithError(expectedManagementFee, 0.001);
+            expect(actualFees.filter((_, i) => i != 1)).to.be.zeros;
+          });
+        });
+
+        describe('joins', () => {
+          it('collects management fees on joinswap given in', async () => {
+            const amountsIn = new Array(poolTokens.length).fill(bn(0));
+            amountsIn[1] = fp(0.01);
+            amountsIn[2] = fp(0.01);
+
+            await pool.joinGivenIn({ from: owner, amountsIn });
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            // There should be non-zero collected fees on the second and third tokens
+            expect(actualFees[1]).to.be.gt(0);
+            expect(actualFees[2]).to.be.gt(0);
+            expect(actualFees.filter((_, i) => i != 1 && i != 2)).to.be.zeros;
+          });
+
+          it('collects management fees on joinswap given out', async () => {
+            await pool.joinGivenOut({ from: owner, bptOut: fp(0.5), token: 1 });
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            // There should be non-zero collected fees on the second token
+            expect(actualFees[1]).to.be.gt(0);
+            expect(actualFees.filter((_, i) => i != 1)).to.be.zeros;
+          });
+
+          it('does not collect management fees on proportional joins', async () => {
+            await pool.joinAllGivenOut({ from: owner, bptOut: fp(0.5) });
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            expect(actualFees).to.be.zeros;
+          });
         });
 
         it('accumulates management fees with existing ones', async () => {
@@ -597,71 +673,6 @@ describe('InvestmentPool', function () {
           // The fee was charged in the first token (in)
           expect(actualFees[0]).to.be.equalWithError(expectedManagementFee.mul(2), 0.001);
           expect(actualFees.filter((_, i) => i != 0)).to.be.zeros;
-        });
-
-        it('collects management fees on swaps given out', async () => {
-          const singleSwap = {
-            poolId: await pool.getPoolId(),
-            kind: SwapKind.GivenOut,
-            assetIn: poolTokens.second.address,
-            assetOut: poolTokens.first.address,
-            amount: fp(0.01),
-            userData: '0x',
-          };
-          const funds = {
-            sender: owner.address,
-            fromInternalBalance: false,
-            recipient: other.address,
-            toInternalBalance: false,
-          };
-          const limit = MAX_UINT256; // Maximum amount in
-          const deadline = MAX_UINT256;
-
-          // Since this is a given out swap, we can only estimate the amount out, and then derive expected swap fees from
-          // that. This require scaling balances, amounts, and then unscaling the amount in.
-          const unscaledBalances = await pool.getBalances();
-          const scalingFactors = await pool.getScalingFactors();
-          const scaledBalances = unscaledBalances.map((balance, i) => balance.mul(scalingFactors[i]).div(fp(1)));
-          const expectedScaledAmountIn = bn(
-            await pool.estimateGivenOut(
-              { in: 1, out: 0, amount: singleSwap.amount.mul(scalingFactors[0]).div(fp(1)) },
-              scaledBalances
-            )
-          );
-          const expectedAmountIn = expectedScaledAmountIn.mul(fp(1)).div(scalingFactors[1]);
-          const expectedAmountInPlusSwapFee = expectedAmountIn.mul(fp(1)).div(fp(1).sub(swapFeePercentage));
-          const expectedSwapFee = expectedAmountInPlusSwapFee.sub(expectedAmountIn);
-          const expectedManagementFee = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
-
-          await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
-
-          const { amounts: actualFees } = await pool.getCollectedManagementFees();
-          // The fee was charged in the second token (in)
-          expect(actualFees[1]).to.be.equalWithError(expectedManagementFee, 0.001);
-          expect(actualFees.filter((_, i) => i != 1)).to.be.zeros;
-        });
-
-        it('collects management fees on joinswap given in', async () => {
-          const amountsIn = new Array(poolTokens.length).fill(bn(0));
-          amountsIn[1] = fp(0.01);
-          amountsIn[2] = fp(0.01);
-
-          await pool.joinGivenIn({ from: owner, amountsIn });
-
-          const { amounts: actualFees } = await pool.getCollectedManagementFees();
-          // There should be non-zero collected fees on the second and third tokens
-          expect(actualFees[1]).to.be.gt(0);
-          expect(actualFees[2]).to.be.gt(0);
-          expect(actualFees.filter((_, i) => i != 1 && i != 2)).to.be.zeros;
-        });
-
-        it('collects management fees on joinswap given out', async () => {
-          await pool.joinGivenOut({ from: owner, bptOut: fp(0.5), token: 1 });
-
-          const { amounts: actualFees } = await pool.getCollectedManagementFees();
-          // There should be non-zero collected fees on the second token
-          expect(actualFees[1]).to.be.gt(0);
-          expect(actualFees.filter((_, i) => i != 1)).to.be.zeros;
         });
       });
 
