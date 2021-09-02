@@ -14,7 +14,7 @@ const BPTAmount = bn(1e18);
 const numberJoinsExits = 3;
 const investmentPoolMin = 40;
 const investmentPoolMax = 80;
-const maxInvestmentTokens = 81;
+const maxInvestmentTokens = 80;
 
 let vault: Contract;
 let tokens: TokenList;
