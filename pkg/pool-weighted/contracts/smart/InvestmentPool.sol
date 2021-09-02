@@ -415,10 +415,14 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
         // out) remain functional.
 
-        // If swaps are disabled, the only exit kind that is allowed is the proportional one, as all others involve
-        // implicit swaps and alter token prices.
+        // If swaps are disabled, the only exit kind that is allowed is the proportional one (as all others involve
+        // implicit swaps and alter token prices) and management fee collection (as there's no point in restricting
+        // that).
+        ExitKind kind = userData.exitKind();
         _require(
-            getSwapEnabled() || userData.exitKind() == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+            getSwapEnabled() ||
+                kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT ||
+                kind == ExitKind.MANAGEMENT_FEE_TOKENS_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 

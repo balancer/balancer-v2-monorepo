@@ -724,6 +724,21 @@ describe('InvestmentPool', function () {
                 expect(fees).to.be.zeros;
               });
             });
+
+            context('while swaps are disabled', () => {
+              sharedBeforeEach('disable swaps', async () => {
+                await pool.setSwapEnabled(sender, false);
+              });
+
+              it('management fees can be collected', async () => {
+                await expectBalanceChange(() => pool.collectManagementFees(sender, other), poolTokens, {
+                  account: other,
+                  changes: {
+                    [feeTokenSymbol]: managementFeeAmount,
+                  },
+                });
+              });
+            });
           });
         });
       });
