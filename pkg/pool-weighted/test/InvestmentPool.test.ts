@@ -654,22 +654,76 @@ describe('InvestmentPool', function () {
             sender = owner;
           });
 
-          it('management fees can be collected to to any account', async () => {
-            await expectBalanceChange(() => pool.collectManagementFees(sender, other), poolTokens, {
-              account: other,
-              changes: {},
-            });
-          });
+          context('with collected fees', () => {
+            let feeTokenSymbol: string;
+            let managementFeeAmount: BigNumber;
 
-          it('reverts if the vault is called directly', async () => {
-            await expect(
-              vault.instance.connect(sender).exitPool(await pool.getPoolId(), sender.address, other.address, {
-                assets: poolTokens.addresses,
-                minAmountsOut: new Array(poolTokens.length).fill(bn(0)),
-                userData: InvestmentPoolEncoder.exitForManagementFees(),
+            sharedBeforeEach('cause fees to be collected', async () => {
+              const singleSwap = {
+                poolId: await pool.getPoolId(),
+                kind: SwapKind.GivenIn,
+                assetIn: poolTokens.first.address,
+                assetOut: poolTokens.second.address,
+                amount: fp(0.01),
+                userData: '0x',
+              };
+              const funds = {
+                sender: owner.address,
+                fromInternalBalance: false,
+                recipient: other.address,
                 toInternalBalance: false,
-              })
-            ).to.be.revertedWith('UNAUTHORIZED_EXIT');
+              };
+              const limit = 0; // Minimum amount out
+              const deadline = MAX_UINT256;
+
+              await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+
+              const expectedSwapFee = singleSwap.amount.mul(swapFeePercentage).div(fp(1));
+              managementFeeAmount = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
+              feeTokenSymbol = pool.tokens.first.symbol; // Fees are collected in the token in
+            });
+
+            it('management fees can be collected to any account', async () => {
+              await expectBalanceChange(() => pool.collectManagementFees(sender, other), poolTokens, {
+                account: other,
+                changes: {
+                  [feeTokenSymbol]: managementFeeAmount,
+                },
+              });
+            });
+
+            it('collection emits an event', async () => {
+              const expectedFees = new Array(poolTokens.length).fill(bn(0));
+              expectedFees[poolTokens.findIndexBySymbol(feeTokenSymbol)] = managementFeeAmount;
+
+              const receipt = await (await pool.collectManagementFees(sender, other)).wait();
+              expectEvent.inReceipt(receipt, 'ManagementFeesCollected', {
+                tokens: poolTokens.addresses,
+                amounts: expectedFees,
+              });
+            });
+
+            it('reverts if the vault is called directly', async () => {
+              await expect(
+                vault.instance.connect(sender).exitPool(await pool.getPoolId(), sender.address, other.address, {
+                  assets: poolTokens.addresses,
+                  minAmountsOut: new Array(poolTokens.length).fill(bn(0)),
+                  userData: InvestmentPoolEncoder.exitForManagementFees(),
+                  toInternalBalance: false,
+                })
+              ).to.be.revertedWith('UNAUTHORIZED_EXIT');
+            });
+
+            context('after collection', () => {
+              sharedBeforeEach('collect fees', async () => {
+                await pool.collectManagementFees(sender, other);
+              });
+
+              it('there are no collected fees', async () => {
+                const { amounts: fees } = await pool.getCollectedManagementFees();
+                expect(fees).to.be.zeros;
+              });
+            });
           });
         });
       });

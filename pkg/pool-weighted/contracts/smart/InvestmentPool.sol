@@ -79,7 +79,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] endWeights
     );
     event SwapEnabledChanged(bool swapEnabled);
-    event ManagementFeePercentageChanged(uint256 managementFee);
+    event ManagementFeePercentageChanged(uint256 managementFeePercentage);
+    event ManagementFeesCollected(IERC20[] tokens, uint256[] amounts);
 
     struct NewPoolParams {
         IVault vault;
@@ -224,11 +225,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
     }
 
-    function getCollectedManagementFees()
-        external
-        view
-        returns (IERC20[] memory tokens, uint256[] memory collectedFees)
-    {
+    function getCollectedManagementFees() public view returns (IERC20[] memory tokens, uint256[] memory collectedFees) {
         tokens = new IERC20[](_getTotalTokens());
         collectedFees = new uint256[](_getTotalTokens());
 
@@ -243,7 +240,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function collectManagementFees(address recipient) external authenticate whenNotPaused nonReentrant {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        (IERC20[] memory tokens, uint256[] memory collectedFees) = getCollectedManagementFees();
 
         // Manually cast tokens into assets, since we're not doing ETH withdrawals
         IAsset[] memory assets;
@@ -258,11 +255,15 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             payable(recipient),
             IVault.ExitPoolRequest({
                 assets: assets,
-                minAmountsOut: new uint256[](_getTotalTokens()), // TODO: replace with actual due amounts
+                minAmountsOut: collectedFees,
                 userData: abi.encode(BaseWeightedPool.ExitKind.MANAGEMENT_FEE_TOKENS_OUT),
                 toInternalBalance: false
             })
         );
+
+        // Technically collectedFees is the minimum amount, not the actual amount. However, since no fees will be
+        // collected during the exit, it will also be the actual amount.
+        emit ManagementFeesCollected(tokens, collectedFees);
     }
 
     /*
@@ -437,7 +438,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal view returns (uint256, uint256[] memory) {
+    ) internal returns (uint256, uint256[] memory) {
         ExitKind kind = userData.exitKind();
 
         if (kind == ExitKind.MANAGEMENT_FEE_TOKENS_OUT) {
@@ -449,7 +450,6 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     function _exitManagerFeeTokensOut(address sender)
         private
-        view
         whenNotPaused
         returns (uint256 bptAmountIn, uint256[] memory amountsOut)
     {
@@ -462,7 +462,14 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         // Since what we're doing is sending out collected management fees, we don't require any BPT in exchange: we
         // simply send those funds over.
         bptAmountIn = 0;
-        amountsOut = new uint256[](_getTotalTokens()); // TODO: set the actual token amounts
+
+        amountsOut = new uint256[](_getTotalTokens());
+        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
+            // We can use unchecked getters and setters as we know the map has the same size (and order!) as the Pool's
+            // tokens.
+            amountsOut[i] = _tokenCollectedManagementFees.unchecked_valueAt(i);
+            _tokenCollectedManagementFees.unchecked_setAt(i, 0);
+        }
     }
 
     function _processSwapFeeAmount(IERC20 token, uint256 amount) internal virtual override {
