@@ -115,8 +115,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     // External functions
 
-    /*
-     * @dev Can enable/disable trading
+    /**
+     * @dev Set whether swaps are enabled or disabled for the pool.
      */
     function setSwapEnabled(bool swapEnabled) external authenticate whenNotPaused nonReentrant {
         _setSwapEnabled(swapEnabled);
@@ -160,7 +160,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     /**
      * @dev Schedule a gradual weight change, from the current weights to the given endWeights,
-     * over startTime to endTime
+     * over startTime to endTime.
      */
     function updateWeightsGradually(
         uint256 startTime,
@@ -186,7 +186,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     // Public functions
 
     /**
-     * @dev Indicates whether swaps are enabled or not for the given pool.
+     * @dev Indicates whether swaps are enabled or disabled for the pool.
      */
     function getSwapEnabled() public view returns (bool) {
         return _getMiscData().decodeBool(_SWAP_ENABLED_OFFSET);
@@ -398,7 +398,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     /**
-     * @dev Extend ownerOnly functions to include the Investment Pool control functions
+     * @dev Extend ownerOnly functions to include the Investment Pool control functions.
      */
     function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
         return
