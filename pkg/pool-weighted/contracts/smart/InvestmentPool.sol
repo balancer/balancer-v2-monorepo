@@ -115,11 +115,11 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     // External functions
 
-    /**
-     * @dev Indicates whether swaps are enabled or not for the given pool.
+    /*
+     * @dev Can enable/disable trading
      */
-    function getSwapEnabled() public view returns (bool) {
-        return _getMiscData().decodeBool(_SWAP_ENABLED_OFFSET);
+    function setSwapEnabled(bool swapEnabled) external authenticate whenNotPaused nonReentrant {
+        _setSwapEnabled(swapEnabled);
     }
 
     /**
@@ -158,14 +158,6 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
-    function _getMaxTokens() internal pure virtual override returns (uint256) {
-        return _MAX_WEIGHTED_TOKENS;
-    }
-
-    function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _getMiscData().decodeUint7(_TOTAL_TOKENS_OFFSET);
-    }
-
     /**
      * @dev Schedule a gradual weight change, from the current weights to the given endWeights,
      * over startTime to endTime
@@ -191,17 +183,23 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
     }
 
-    /*
-     * @dev Can enable/disable trading
+    // Public functions
+
+    /**
+     * @dev Indicates whether swaps are enabled or not for the given pool.
      */
-    function setSwapEnabled(bool swapEnabled) external authenticate whenNotPaused nonReentrant {
-        _setSwapEnabled(swapEnabled);
+    function getSwapEnabled() public view returns (bool) {
+        return _getMiscData().decodeBool(_SWAP_ENABLED_OFFSET);
     }
 
-    function _setSwapEnabled(bool swapEnabled) private {
-        _setMiscData(_getMiscData().insertBool(swapEnabled, _SWAP_ENABLED_OFFSET));
+    // Internal functions
 
-        emit SwapEnabledSet(swapEnabled);
+    function _getMaxTokens() internal pure virtual override returns (uint256) {
+        return _MAX_WEIGHTED_TOKENS;
+    }
+
+    function _getTotalTokens() internal view virtual override returns (uint256) {
+        return _getMiscData().decodeUint7(_TOTAL_TOKENS_OFFSET);
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -399,12 +397,6 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
-    function _readScalingFactor(bytes32 tokenState) private pure returns (uint256) {
-        uint256 decimalsDifference = tokenState.decodeUint5(_DECIMAL_DIFF_OFFSET);
-
-        return FixedPoint.ONE * 10**decimalsDifference;
-    }
-
     /**
      * @dev Extend ownerOnly functions to include the Investment Pool control functions
      */
@@ -417,6 +409,25 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     // Private functions
 
+    function _setSwapEnabled(bool swapEnabled) private {
+        _setMiscData(_getMiscData().insertBool(swapEnabled, _SWAP_ENABLED_OFFSET));
+
+        emit SwapEnabledSet(swapEnabled);
+    }
+
+    function _readScalingFactor(bytes32 tokenState) private pure returns (uint256) {
+        uint256 decimalsDifference = tokenState.decodeUint5(_DECIMAL_DIFF_OFFSET);
+
+        return FixedPoint.ONE * 10**decimalsDifference;
+    }
+
+    function _getTokenData(IERC20 token) private view returns (bytes32 tokenData) {
+        tokenData = _tokenState[token];
+
+        // A valid token can't be zero (must have non-zero weights)
+        _require(tokenData != 0, Errors.INVALID_TOKEN);
+    }
+
     /**
      * @dev Returns a fixed-point number representing how far along the current weight change is, where 0 means the
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
@@ -428,7 +439,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
 
-        if (currentTime > endTime) {
+        // In the degenerate case of a zero duration change, consider it completed
+        if (currentTime >= endTime) {
             return FixedPoint.ONE;
         } else if (currentTime < startTime) {
             return 0;
@@ -437,8 +449,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 totalSeconds = endTime - startTime;
         uint256 secondsElapsed = currentTime - startTime;
 
-        // In the degenerate case of a zero duration change, consider it completed (and avoid division by zero)
-        return totalSeconds == 0 ? FixedPoint.ONE : secondsElapsed.divDown(totalSeconds);
+        return secondsElapsed.divDown(totalSeconds);
     }
 
     function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private pure returns (uint256 finalWeight) {
@@ -450,17 +461,10 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
         if (startWeight > endWeight) {
             uint256 weightDelta = pctProgress.mulDown(startWeight - endWeight);
-            return startWeight.sub(weightDelta);
+            return startWeight - weightDelta;
         } else {
             uint256 weightDelta = pctProgress.mulDown(endWeight - startWeight);
-            return startWeight.add(weightDelta);
+            return startWeight + weightDelta;
         }
-    }
-
-    function _getTokenData(IERC20 token) private view returns (bytes32 tokenData) {
-        tokenData = _tokenState[token];
-
-        // A valid token can't be zero (must have non-zero weights)
-        _require(tokenData != 0, Errors.INVALID_TOKEN);
     }
 }
