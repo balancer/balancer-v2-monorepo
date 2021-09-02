@@ -114,7 +114,22 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
      * @dev Called whenever a swap fee is charged. Implementations should call their parent's via super, to ensure all
      * implementations in the inheritance tree are called.
      *
-     * `amount` must be upscaled.
+     * Callers should make sure that any one of the three `_processSwapFeeAmount` functions is called when swap fees are
+     * computed, and to make `amount` upscaled.
      */
-    function _processSwapFeeAmount(IERC20 token, uint256 amount) internal virtual {}
+    function _processSwapFeeAmount(uint256 index, uint256 amount) internal virtual {}
+
+    function _processSwapFeeAmount(IERC20 token, uint256 amount) internal {
+        _processSwapFeeAmount(_tokenAddressToIndex(token), amount);
+    }
+    /**
+     * @dev Returns the index of `token` in the Pool's token array (i.e. the one `vault.getPoolTokens()` would return).
+     *
+     * A trivial (and incorrect!) implementation is already provided for Pools that don't override
+     * `_processSwapFeeAmount` and skip the entire feature. However, Pools that do override `_processSwapFeeAmount`
+     * *must* override this function with a meaningful implementation.
+     */
+    function _tokenAddressToIndex(IERC20 token) internal view virtual returns (uint256) {
+        return 0;
+    }
 }
