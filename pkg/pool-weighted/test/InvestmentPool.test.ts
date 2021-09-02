@@ -28,7 +28,7 @@ describe('InvestmentPool', function () {
     [, owner, other, assetManager] = await ethers.getSigners();
   });
 
-  const MAX_TOKENS = 100;
+  const MAX_TOKENS = 50;
   const TOKEN_COUNT = 20;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -492,7 +492,7 @@ describe('InvestmentPool', function () {
       });
     });
 
-    describe('collect management fees', () => {
+    describe('management fees', () => {
       let vault: Vault;
 
       sharedBeforeEach('deploy pool', async () => {
@@ -509,6 +509,12 @@ describe('InvestmentPool', function () {
         pool = await WeightedPool.create(params);
       });
 
+      sharedBeforeEach('initialize pool', async () => {
+        await poolTokens.mint({ to: owner, amount: fp(100) });
+        await poolTokens.approve({ from: owner, to: await pool.getVault() });
+        await pool.init({ from: owner, initialBalances });
+      });
+
       it('collected fees are initially zero', async () => {
         const fees = await pool.getCollectedManagementFees();
 
@@ -523,6 +529,7 @@ describe('InvestmentPool', function () {
         expect(feeTokenAddresses).to.deep.equal(vaultTokenAddresses);
       });
 
+      describe('collection by owner', () => {
       context('when the sender is not the owner', () => {
         it('reverts', async () => {
           await expect(pool.collectManagementFees(other)).to.be.revertedWith('SENDER_NOT_ALLOWED');
@@ -532,12 +539,6 @@ describe('InvestmentPool', function () {
       context('when the sender is the owner', () => {
         beforeEach('set sender to owner', () => {
           sender = owner;
-        });
-
-        sharedBeforeEach('initialize pool', async () => {
-          await poolTokens.mint({ to: sender, amount: fp(100) });
-          await poolTokens.approve({ from: sender, to: await pool.getVault() });
-          await pool.init({ from: sender, initialBalances });
         });
 
         it('management fees can be collected to to any account', async () => {
@@ -560,4 +561,5 @@ describe('InvestmentPool', function () {
       });
     });
   });
+});
 });
