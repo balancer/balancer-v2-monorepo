@@ -48,7 +48,14 @@ contract MockWeightedMath is WeightedMath {
         uint256 bptTotalSupply,
         uint256 swapFee
     ) external pure returns (uint256) {
-        return _calcBptOutGivenExactTokensIn(balances, normalizedWeights, amountsIn, bptTotalSupply, swapFee);
+        (uint256 bptOut, ) = _calcBptOutGivenExactTokensIn(
+            balances,
+            normalizedWeights,
+            amountsIn,
+            bptTotalSupply,
+            swapFee
+        );
+        return bptOut;
     }
 
     function tokenInForExactBPTOut(

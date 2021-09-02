@@ -117,11 +117,23 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
      * Callers should make sure that any one of the three `_processSwapFeeAmount` functions is called when swap fees are
      * computed, and to make `amount` upscaled.
      */
-    function _processSwapFeeAmount(uint256 index, uint256 amount) internal virtual {}
+    function _processSwapFeeAmount(
+        uint256, /*index*/
+        uint256 /*amount*/
+    ) internal virtual {}
 
     function _processSwapFeeAmount(IERC20 token, uint256 amount) internal {
         _processSwapFeeAmount(_tokenAddressToIndex(token), amount);
     }
+
+    function _processSwapFeeAmounts(uint256[] memory amounts) internal {
+        InputHelpers.ensureInputLengthMatch(amounts.length, _getTotalTokens());
+
+        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
+            _processSwapFeeAmount(i, amounts[i]);
+        }
+    }
+
     /**
      * @dev Returns the index of `token` in the Pool's token array (i.e. the one `vault.getPoolTokens()` would return).
      *
@@ -129,7 +141,9 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
      * `_processSwapFeeAmount` and skip the entire feature. However, Pools that do override `_processSwapFeeAmount`
      * *must* override this function with a meaningful implementation.
      */
-    function _tokenAddressToIndex(IERC20 token) internal view virtual returns (uint256) {
+    function _tokenAddressToIndex(
+        IERC20 /*token*/
+    ) internal view virtual returns (uint256) {
         return 0;
     }
 }

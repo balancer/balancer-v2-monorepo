@@ -143,7 +143,7 @@ contract WeightedMath {
         uint256[] memory amountsIn,
         uint256 bptTotalSupply,
         uint256 swapFeePercentage
-    ) internal pure returns (uint256) {
+    ) internal pure returns (uint256, uint256[] memory) {
         // BPT out, so we round down overall.
 
         uint256[] memory balanceRatiosWithFee = new uint256[](amountsIn.length);
@@ -154,14 +154,47 @@ contract WeightedMath {
             invariantRatioWithFees = invariantRatioWithFees.add(balanceRatiosWithFee[i].mulDown(normalizedWeights[i]));
         }
 
-        uint256 invariantRatio = FixedPoint.ONE;
+        (uint256 invariantRatio, uint256[] memory swapFees) = _computeInvariantRatio(
+            balances,
+            normalizedWeights,
+            amountsIn,
+            balanceRatiosWithFee,
+            invariantRatioWithFees,
+            swapFeePercentage
+        );
+
+        uint256 bptOut = (invariantRatio > FixedPoint.ONE)
+            ? bptTotalSupply.mulDown(invariantRatio.sub(FixedPoint.ONE))
+            : 0;
+        return (bptOut, swapFees);
+    }
+
+    /**
+     * @dev Intermediate function to avoid stack-too-deep errors.
+     */
+    function _computeInvariantRatio(
+        uint256[] memory balances,
+        uint256[] memory normalizedWeights,
+        uint256[] memory amountsIn,
+        uint256[] memory balanceRatiosWithFee,
+        uint256 invariantRatioWithFees,
+        uint256 swapFeePercentage
+    ) private pure returns (uint256 invariantRatio, uint256[] memory swapFees) {
+        // Swap fees are charged on all tokens that are being added in a larger proportion than the overall invariant
+        // increase.
+        swapFees = new uint256[](amountsIn.length);
+        invariantRatio = FixedPoint.ONE;
+
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 amountInWithoutFee;
 
             if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
                 uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithFees.sub(FixedPoint.ONE));
                 uint256 taxableAmount = amountsIn[i].sub(nonTaxableAmount);
-                amountInWithoutFee = nonTaxableAmount.add(taxableAmount.mulDown(FixedPoint.ONE.sub(swapFeePercentage)));
+                uint256 swapFee = taxableAmount.mulUp(swapFeePercentage);
+
+                amountInWithoutFee = nonTaxableAmount.add(taxableAmount.sub(swapFee));
+                swapFees[i] = swapFee;
             } else {
                 amountInWithoutFee = amountsIn[i];
             }
@@ -169,12 +202,6 @@ contract WeightedMath {
             uint256 balanceRatio = balances[i].add(amountInWithoutFee).divDown(balances[i]);
 
             invariantRatio = invariantRatio.mulDown(balanceRatio.powDown(normalizedWeights[i]));
-        }
-
-        if (invariantRatio > FixedPoint.ONE) {
-            return bptTotalSupply.mulDown(invariantRatio.sub(FixedPoint.ONE));
-        } else {
-            return 0;
         }
     }
 

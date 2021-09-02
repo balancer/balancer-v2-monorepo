@@ -640,6 +640,20 @@ describe('InvestmentPool', function () {
           expect(actualFees[1]).to.be.equalWithError(expectedManagementFee, 0.001);
           expect(actualFees.filter((_, i) => i != 1)).to.be.zeros;
         });
+
+        it('collects management fees on joinswaps', async () => {
+          const amountsIn = new Array(poolTokens.length).fill(bn(0));
+          amountsIn[1] = fp(0.01);
+          amountsIn[2] = fp(0.01);
+
+          await pool.joinGivenIn({ from: owner, amountsIn });
+
+          const { amounts: actualFees } = await pool.getCollectedManagementFees();
+          // There should be non-zero collected fees on the second and third tokens
+          expect(actualFees[1]).to.be.gt(0);
+          expect(actualFees[2]).to.be.gt(0);
+          expect(actualFees.filter((_, i) => i != 1 && i != 2)).to.be.zeros;
+        });
       });
 
       describe('collection by owner', () => {

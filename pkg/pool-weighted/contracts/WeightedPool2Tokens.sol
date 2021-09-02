@@ -548,7 +548,7 @@ contract WeightedPool2Tokens is
 
         _upscaleArray(amountsIn);
 
-        uint256 bptAmountOut = WeightedMath._calcBptOutGivenExactTokensIn(
+        (uint256 bptAmountOut, ) = WeightedMath._calcBptOutGivenExactTokensIn(
             balances,
             normalizedWeights,
             amountsIn,
