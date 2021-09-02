@@ -442,7 +442,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         // In the degenerate case of a zero duration change, consider it completed
         if (currentTime >= endTime) {
             return FixedPoint.ONE;
-        } else if (currentTime < startTime) {
+        } else if (currentTime <= startTime) {
             return 0;
         }
 
