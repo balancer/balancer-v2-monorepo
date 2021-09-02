@@ -498,6 +498,7 @@ describe('InvestmentPool', function () {
     describe('management fees', () => {
       let vault: Vault;
       const swapFeePercentage = fp(0.02);
+      const managementSwapFeePercentage = fp(0.8);
 
       sharedBeforeEach('deploy pool', async () => {
         vault = await Vault.create();
@@ -510,6 +511,7 @@ describe('InvestmentPool', function () {
           swapEnabledOnStart: true,
           vault,
           swapFeePercentage,
+          managementSwapFeePercentage,
         };
         pool = await WeightedPool.create(params);
       });
@@ -554,7 +556,7 @@ describe('InvestmentPool', function () {
           const deadline = MAX_UINT256;
 
           const expectedSwapFee = singleSwap.amount.mul(swapFeePercentage).div(fp(1));
-          const expectedManagementFee = expectedSwapFee; // Assume management fee percentage of 100%
+          const expectedManagementFee = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
 
           await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
 
@@ -583,7 +585,7 @@ describe('InvestmentPool', function () {
           const deadline = MAX_UINT256;
 
           const expectedSwapFee = singleSwap.amount.mul(swapFeePercentage).div(fp(1));
-          const expectedManagementFee = expectedSwapFee; // Assume management fee percentage of 100%
+          const expectedManagementFee = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
 
           // The swap fee depends exclusively on the amount in on swaps given in, so we can simply perform the same swap
           // twice and expect to get twice the expected amount of collected fees.
@@ -629,7 +631,7 @@ describe('InvestmentPool', function () {
           const expectedAmountIn = expectedScaledAmountIn.mul(fp(1)).div(scalingFactors[1]);
           const expectedAmountInPlusSwapFee = expectedAmountIn.mul(fp(1)).div(fp(1).sub(swapFeePercentage));
           const expectedSwapFee = expectedAmountInPlusSwapFee.sub(expectedAmountIn);
-          const expectedManagementFee = expectedSwapFee; // Assume management fee percentage of 100%
+          const expectedManagementFee = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
 
           await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
 

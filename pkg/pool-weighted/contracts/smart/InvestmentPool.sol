@@ -466,9 +466,10 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _processSwapFeeAmount(IERC20 token, uint256 amount) internal virtual override {
-        // TODO: multiply by management fee percentage
-        uint256 previousCollectedFees = _tokenCollectedManagementFees.get(token, 5);
-        _tokenCollectedManagementFees.set(token, previousCollectedFees.add(amount));
+        uint256 managementFeeAmount = amount.mulDown(_managementSwapFeePercentage);
+
+        uint256 previousCollectedFees = _tokenCollectedManagementFees.get(token, 5); // TODO: do something with errcode
+        _tokenCollectedManagementFees.set(token, previousCollectedFees.add(managementFeeAmount));
 
         super._processSwapFeeAmount(token, amount);
     }
