@@ -160,7 +160,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the management swap fee percentage as a 18-decimals fixed point number..
+     * @dev Returns the management swap fee percentage as a 18-decimals fixed point number.
      */
     function getManagementSwapFeePercentage() public view returns (uint256) {
         return _managementSwapFeePercentage;
@@ -510,20 +510,20 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) public override returns (uint256) {
-        uint256 tokenInUnscaledCollectedFees = _tokenCollectedManagementFees.get(
+        uint256 tokenInUpscaledCollectedFees = _tokenCollectedManagementFees.get(
             swapRequest.tokenIn,
             Errors.INVALID_TOKEN
         );
         uint256 adjustedBalanceTokenIn = currentBalanceTokenIn.sub(
-            _downscaleDown(tokenInUnscaledCollectedFees, _scalingFactor(swapRequest.tokenIn))
+            _downscaleDown(tokenInUpscaledCollectedFees, _scalingFactor(swapRequest.tokenIn))
         );
 
-        uint256 tokenOutUnscaledCollectedFees = _tokenCollectedManagementFees.get(
+        uint256 tokenOutUpscaledCollectedFees = _tokenCollectedManagementFees.get(
             swapRequest.tokenOut,
             Errors.INVALID_TOKEN
         );
         uint256 adjustedBalanceTokenOut = currentBalanceTokenOut.sub(
-            _downscaleDown(tokenOutUnscaledCollectedFees, _scalingFactor(swapRequest.tokenOut))
+            _downscaleDown(tokenOutUpscaledCollectedFees, _scalingFactor(swapRequest.tokenOut))
         );
 
         return super.onSwap(swapRequest, adjustedBalanceTokenIn, adjustedBalanceTokenOut);
