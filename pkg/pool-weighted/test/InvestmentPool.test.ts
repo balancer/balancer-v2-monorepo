@@ -196,6 +196,26 @@ describe('InvestmentPool', function () {
       it('reverts when querying last invariant', async () => {
         await expect(pool.getLastInvariant()).to.be.revertedWith('UNHANDLED_BY_INVESTMENT_POOL');
       });
+
+      it('reverts if swap hook caller is not the vault', async () => {
+        await expect(
+          pool.instance.onSwap(
+            {
+              kind: SwapKind.GivenIn,
+              tokenIn: poolTokens.first.address,
+              tokenOut: poolTokens.second.address,
+              amount: 0,
+              poolId: await pool.getPoolId(),
+              lastChangeBlock: 0,
+              from: other.address,
+              to: other.address,
+              userData: '0x',
+            },
+            0,
+            0
+          )
+        ).to.be.revertedWith('CALLER_NOT_VAULT');
+      });
     });
   });
 
