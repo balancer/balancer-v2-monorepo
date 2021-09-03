@@ -254,8 +254,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
         // Manually cast tokens into assets, since we're not doing ETH withdrawals
         IAsset[] memory assets;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
-            // solhint-disable-line no-inline-assembly
             assets := tokens
         }
 
