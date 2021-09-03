@@ -722,7 +722,7 @@ describe('InvestmentPool', function () {
       describe('collection by owner', () => {
         context('when the sender is not the owner', () => {
           it('reverts', async () => {
-            await expect(pool.collectManagementFees(other)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            await expect(pool.withdrawCollectedManagementFees(other)).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
         });
 
@@ -761,7 +761,7 @@ describe('InvestmentPool', function () {
             });
 
             it('management fees can be collected to any account', async () => {
-              await expectBalanceChange(() => pool.collectManagementFees(sender, other), poolTokens, {
+              await expectBalanceChange(() => pool.withdrawCollectedManagementFees(sender, other), poolTokens, {
                 account: other,
                 changes: {
                   [feeTokenSymbol]: managementFeeAmount,
@@ -773,7 +773,7 @@ describe('InvestmentPool', function () {
               const expectedFees = new Array(poolTokens.length).fill(bn(0));
               expectedFees[poolTokens.findIndexBySymbol(feeTokenSymbol)] = managementFeeAmount;
 
-              const receipt = await (await pool.collectManagementFees(sender, other)).wait();
+              const receipt = await (await pool.withdrawCollectedManagementFees(sender, other)).wait();
               expectEvent.inReceipt(receipt, 'ManagementFeesCollected', {
                 tokens: poolTokens.addresses,
                 amounts: expectedFees,
@@ -793,7 +793,7 @@ describe('InvestmentPool', function () {
 
             context('after collection', () => {
               sharedBeforeEach('collect fees', async () => {
-                await pool.collectManagementFees(sender, other);
+                await pool.withdrawCollectedManagementFees(sender, other);
               });
 
               it('there are no collected fees', async () => {
@@ -808,7 +808,7 @@ describe('InvestmentPool', function () {
               });
 
               it('management fees can be collected', async () => {
-                await expectBalanceChange(() => pool.collectManagementFees(sender, other), poolTokens, {
+                await expectBalanceChange(() => pool.withdrawCollectedManagementFees(sender, other), poolTokens, {
                   account: other,
                   changes: {
                     [feeTokenSymbol]: managementFeeAmount,

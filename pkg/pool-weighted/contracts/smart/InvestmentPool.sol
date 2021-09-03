@@ -249,7 +249,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         _downscaleDownArray(collectedFees, _scalingFactors());
     }
 
-    function collectManagementFees(address recipient) external authenticate whenNotPaused nonReentrant {
+    function withdrawCollectedManagementFees(address recipient) external authenticate whenNotPaused nonReentrant {
         (IERC20[] memory tokens, uint256[] memory collectedFees) = getCollectedManagementFees();
 
         // Manually cast tokens into assets, since we're not doing ETH withdrawals
@@ -489,7 +489,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         // This exit function is disabled if the contract is paused.
 
         // This exit function can only be called by the Pool itself - the authorization logic that governs when that
-        // call can be made resides in collectManagementFees.
+        // call can be made resides in withdrawCollectedManagementFees.
         _require(sender == address(this), Errors.UNAUTHORIZED_EXIT);
 
         // Since what we're doing is sending out collected management fees, we don't require any BPT in exchange: we
@@ -600,7 +600,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         return
             (actionId == getActionId(InvestmentPool.updateWeightsGradually.selector)) ||
             (actionId == getActionId(InvestmentPool.setSwapEnabled.selector)) ||
-            (actionId == getActionId(InvestmentPool.collectManagementFees.selector)) ||
+            (actionId == getActionId(InvestmentPool.withdrawCollectedManagementFees.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
 
