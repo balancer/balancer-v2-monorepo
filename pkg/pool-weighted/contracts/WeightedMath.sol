@@ -374,10 +374,8 @@ contract WeightedMath {
         uint256 taxableAmount = amountOutWithoutFee.mulUp(taxablePercentage);
         uint256 nonTaxableAmount = amountOutWithoutFee.sub(taxableAmount);
 
-        uint256 taxableAmountMinusFees = taxableAmount.mulDown(FixedPoint.ONE.sub(swapFeePercentage));
-
-        swapFee = taxableAmount - taxableAmountMinusFees;
-        amountOut = nonTaxableAmount.add(taxableAmountMinusFees);
+        swapFee = taxableAmount.mulUp(swapFeePercentage);
+        amountOut = nonTaxableAmount.add(taxableAmount.sub(swapFee));
     }
 
     function _calcTokensOutGivenExactBptIn(
