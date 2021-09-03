@@ -495,10 +495,12 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _processSwapFeeAmount(uint256 index, uint256 amount) internal virtual override {
-        uint256 managementFeeAmount = amount.mulDown(_managementSwapFeePercentage);
+        if (amount > 0) {
+            uint256 managementFeeAmount = amount.mulDown(_managementSwapFeePercentage);
 
-        uint256 previousCollectedFees = _tokenCollectedManagementFees.unchecked_valueAt(index);
-        _tokenCollectedManagementFees.unchecked_setAt(index, previousCollectedFees.add(managementFeeAmount));
+            uint256 previousCollectedFees = _tokenCollectedManagementFees.unchecked_valueAt(index);
+            _tokenCollectedManagementFees.unchecked_setAt(index, previousCollectedFees.add(managementFeeAmount));
+        }
 
         super._processSwapFeeAmount(index, amount);
     }
