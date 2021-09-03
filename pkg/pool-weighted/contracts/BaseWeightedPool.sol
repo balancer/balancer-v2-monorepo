@@ -428,8 +428,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             getSwapFeePercentage()
         );
 
-        // This in exceptional situation in which the fee is charged on a token out instead of a token in. Note that
-        // swapFee is already upscaled.
+        // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
+        // Note that swapFee is already upscaled.
         _processSwapFeeAmount(tokenIndex, swapFee);
 
         // We exit in a single token, so we initialize amountsOut with zeros
@@ -478,8 +478,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
-        // This in exceptional situation in which the fees are charged on tokens out instead of a token in. Note that
-        // swapFees is already upscaled.
+        // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
+        // Note that swapFee is already upscaled.
         _processSwapFeeAmounts(swapFees);
 
         return (bptAmountIn, amountsOut);

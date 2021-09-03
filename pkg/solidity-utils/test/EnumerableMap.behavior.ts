@@ -118,7 +118,7 @@ export function shouldBehaveLikeMap(
       expect(await store.map.indexOf(keyB, indexOfErrorCode)).to.equal(0);
     });
 
-    it('reverts if they key is not in the map', async () => {
+    it('reverts if the key is not in the map', async () => {
       await expect(store.map.indexOf(keyA, indexOfErrorCode)).to.be.revertedWith(indexOfErrorCode.toString());
     });
   });

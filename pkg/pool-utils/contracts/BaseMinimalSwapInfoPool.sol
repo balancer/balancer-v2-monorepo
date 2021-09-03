@@ -111,11 +111,11 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
     ) internal virtual returns (uint256);
 
     /**
-     * @dev Called whenever a swap fee is charged. Implementations should call their parent's via super, to ensure all
+     * @dev Called whenever a swap fee is charged. Implementations should call their parents via super, to ensure all
      * implementations in the inheritance tree are called.
      *
-     * Callers should make sure that any one of the three `_processSwapFeeAmount` functions is called when swap fees are
-     * computed, and to make `amount` upscaled.
+     * Callers must call one of the three `_processSwapFeeAmount` functions when swap fees are computed,
+     * and upscale `amount`.
      */
     function _processSwapFeeAmount(
         uint256, /*index*/
