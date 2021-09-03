@@ -295,6 +295,7 @@ describe('LinearPool', function () {
           currentBalances[pool.bptIndex] = currentBalances[pool.bptIndex].sub(result);
         });
       });
+
       context('given DAI out', () => {
         it('calculate wrapped in', async () => {
           const amount = fp(50);

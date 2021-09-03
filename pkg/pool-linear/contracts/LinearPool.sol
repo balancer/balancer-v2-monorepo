@@ -44,8 +44,8 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     IERC20 private immutable _wrappedToken;
 
     uint256 private immutable _bptIndex;
-    uint256 private immutable _mainTokenIndex;
-    uint256 private immutable _wrappedTokenIndex;
+    uint256 private immutable _mainIndex;
+    uint256 private immutable _wrappedIndex;
 
     uint256 private immutable _scalingFactorMainToken;
     uint256 private immutable _scalingFactorWrappedToken;
@@ -102,8 +102,8 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             IERC20(this)
         );
         _bptIndex = bptIndex;
-        _mainTokenIndex = mainIndex;
-        _wrappedTokenIndex = wrappedIndex;
+        _mainIndex = mainIndex;
+        _wrappedIndex = wrappedIndex;
 
         // Set scaling factors
         _scalingFactorMainToken = _computeScalingFactor(params.mainToken);
@@ -143,135 +143,155 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     }
 
     function onSwap(
-        SwapRequest memory swapRequest,
+        SwapRequest memory request,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public override returns (uint256) {
-        // Validate indexes
+    ) public override onlyVault(request.poolId) returns (uint256) {
+        // Validate indexes.
+        // Note, these are no longer used ahead since we can trust the ones used when the pool was registered
         _require(indexIn < _TOTAL_TOKENS && indexOut < _TOTAL_TOKENS, Errors.OUT_OF_BOUNDS);
+
         _cacheWrappedTokenRateIfNecessary();
         uint256[] memory scalingFactors = _scalingFactors();
+        Params memory params = Params({
+            fee: getSwapFeePercentage(),
+            rate: FixedPoint.ONE,
+            lowerTarget: _lowerTarget,
+            upperTarget: _upperTarget
+        });
 
-        if (swapRequest.kind == IVault.SwapKind.GIVEN_IN) {
+        if (request.kind == IVault.SwapKind.GIVEN_IN) {
             _upscaleArray(balances, scalingFactors);
-            swapRequest.amount = _upscale(swapRequest.amount, scalingFactors[indexIn]);
-
-            uint256 amountOut = _onSwapGivenIn(swapRequest, balances, indexIn, indexOut);
-
+            request.amount = _upscale(request.amount, scalingFactors[indexIn]);
+            uint256 amountOut = _onSwapGivenIn(request, balances, params);
             // amountOut tokens are exiting the Pool, so we round down.
             return _downscaleDown(amountOut, scalingFactors[indexOut]);
         } else {
             _upscaleArray(balances, scalingFactors);
-            swapRequest.amount = _upscale(swapRequest.amount, scalingFactors[indexOut]);
-
-            uint256 amountIn = _onSwapGivenOut(swapRequest, balances, indexIn, indexOut);
-
+            request.amount = _upscale(request.amount, scalingFactors[indexOut]);
+            uint256 amountIn = _onSwapGivenOut(request, balances, params);
             // amountIn tokens are entering the Pool, so we round up.
             return _downscaleUp(amountIn, scalingFactors[indexIn]);
         }
     }
 
     function _onSwapGivenIn(
-        SwapRequest memory swapRequest,
+        SwapRequest memory request,
         uint256[] memory balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) internal view whenNotPaused returns (uint256) {
-        Params memory params = Params({
-            fee: getSwapFeePercentage(),
-            rate: FixedPoint.ONE,
-            lowerTarget: _lowerTarget,
-            upperTarget: _upperTarget
-        });
-
-        if (swapRequest.tokenIn == _mainToken) {
-            if (swapRequest.tokenOut == _wrappedToken) {
-                return _calcWrappedOutPerMainIn(swapRequest.amount, balances[indexIn], balances[indexOut], params);
-            } else if (swapRequest.tokenOut == IERC20(this)) {
-                return
-                    _calcBptOutPerMainIn(
-                        swapRequest.amount,
-                        balances[indexIn],
-                        balances[_wrappedTokenIndex],
-                        //_MAX_TOKEN_BALANCE is always greater than balanceTokenOut
-                        _MAX_TOKEN_BALANCE - balances[indexOut],
-                        params
-                    );
-            } else {
-                _revert(Errors.INVALID_TOKEN);
-            }
-        } else if (swapRequest.tokenOut == _mainToken) {
-            if (swapRequest.tokenIn == _wrappedToken) {
-                return _calcMainOutPerWrappedIn(swapRequest.amount, balances[indexOut], params);
-            } else if (swapRequest.tokenIn == IERC20(this)) {
-                return
-                    _calcMainOutPerBptIn(
-                        swapRequest.amount,
-                        balances[indexOut],
-                        balances[_wrappedTokenIndex],
-                        //_MAX_TOKEN_BALANCE is always greater than balanceTokenIn
-                        _MAX_TOKEN_BALANCE - balances[indexIn],
-                        params
-                    );
-            } else {
-                _revert(Errors.INVALID_TOKEN);
-            }
+        Params memory params
+    ) internal view returns (uint256) {
+        if (request.tokenIn == IERC20(this)) {
+            return _swapGivenBptIn(request, balances, params);
+        } else if (request.tokenIn == _mainToken) {
+            return _swapGivenMainIn(request, balances, params);
+        } else if (request.tokenIn == _wrappedToken) {
+            return _swapGivenWrappedIn(request, balances, params);
         } else {
-            //It does not swap wrapped and BPT
             _revert(Errors.INVALID_TOKEN);
         }
     }
 
-    function _onSwapGivenOut(
-        SwapRequest memory swapRequest,
+    function _swapGivenBptIn(
+        SwapRequest memory request,
         uint256[] memory balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) internal view whenNotPaused returns (uint256) {
-        Params memory params = Params({
-            fee: getSwapFeePercentage(),
-            rate: FixedPoint.ONE,
-            lowerTarget: _lowerTarget,
-            upperTarget: _upperTarget
-        });
+        Params memory params
+    ) internal view returns (uint256) {
+        _require(request.tokenOut == _mainToken, Errors.INVALID_TOKEN);
+        return
+            _calcMainOutPerBptIn(
+                request.amount,
+                balances[_mainIndex],
+                balances[_wrappedIndex],
+                _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
+                params
+            );
+    }
 
-        if (swapRequest.tokenOut == _mainToken) {
-            if (swapRequest.tokenIn == _wrappedToken) {
-                return _calcWrappedInPerMainOut(swapRequest.amount, balances[indexOut], balances[indexIn], params);
-            } else if (swapRequest.tokenIn == IERC20(this)) {
-                return
-                    _calcBptInPerMainOut(
-                        swapRequest.amount,
-                        balances[indexOut],
-                        balances[_wrappedTokenIndex],
-                        //_MAX_TOKEN_BALANCE is always greater than balanceTokenIn
-                        _MAX_TOKEN_BALANCE - balances[indexIn],
-                        params
-                    );
-            } else {
-                _revert(Errors.INVALID_TOKEN);
-            }
-        } else if (swapRequest.tokenIn == _mainToken) {
-            if (swapRequest.tokenOut == _wrappedToken) {
-                return _calcMainInPerWrappedOut(swapRequest.amount, balances[indexIn], params);
-            } else if (swapRequest.tokenOut == IERC20(this)) {
-                return
-                    _calcMainInPerBptOut(
-                        swapRequest.amount,
-                        balances[indexIn],
-                        balances[_wrappedTokenIndex],
-                        //_MAX_TOKEN_BALANCE is always greater than balanceTokenOut
-                        _MAX_TOKEN_BALANCE - balances[indexOut],
-                        params
-                    );
-            } else {
-                _revert(Errors.INVALID_TOKEN);
-            }
+    function _swapGivenMainIn(
+        SwapRequest memory request,
+        uint256[] memory balances,
+        Params memory params
+    ) internal view whenNotPaused returns (uint256) {
+        _require(request.tokenOut == _wrappedToken || request.tokenOut == IERC20(this), Errors.INVALID_TOKEN);
+        return
+            request.tokenOut == _wrappedToken
+                ? _calcWrappedOutPerMainIn(request.amount, balances[_mainIndex], balances[_wrappedIndex], params)
+                : _calcBptOutPerMainIn(
+                    request.amount,
+                    balances[_mainIndex],
+                    balances[_wrappedIndex],
+                    _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
+                    params
+                );
+    }
+
+    function _swapGivenWrappedIn(
+        SwapRequest memory request,
+        uint256[] memory balances,
+        Params memory params
+    ) internal view whenNotPaused returns (uint256) {
+        _require(request.tokenOut == _mainToken, Errors.INVALID_TOKEN);
+        return _calcMainOutPerWrappedIn(request.amount, balances[_mainIndex], params);
+    }
+
+    function _onSwapGivenOut(
+        SwapRequest memory request,
+        uint256[] memory balances,
+        Params memory params
+    ) internal view returns (uint256) {
+        if (request.tokenOut == IERC20(this)) {
+            return _swapGivenBptOut(request, balances, params);
+        } else if (request.tokenOut == _mainToken) {
+            return _swapGivenMainOut(request, balances, params);
+        } else if (request.tokenOut == _wrappedToken) {
+            return _swapGivenWrappedOut(request, balances, params);
         } else {
-            //It does not swap wrapped and BPT
             _revert(Errors.INVALID_TOKEN);
         }
+    }
+
+    function _swapGivenBptOut(
+        SwapRequest memory request,
+        uint256[] memory balances,
+        Params memory params
+    ) internal view returns (uint256) {
+        _require(request.tokenIn == _mainToken, Errors.INVALID_TOKEN);
+        return
+            _calcMainInPerBptOut(
+                request.amount,
+                balances[_mainIndex],
+                balances[_wrappedIndex],
+                _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
+                params
+            );
+    }
+
+    function _swapGivenMainOut(
+        SwapRequest memory request,
+        uint256[] memory balances,
+        Params memory params
+    ) internal view returns (uint256) {
+        _require(request.tokenIn == _wrappedToken || request.tokenIn == IERC20(this), Errors.INVALID_TOKEN);
+        return
+            request.tokenIn == _wrappedToken
+                ? _calcWrappedInPerMainOut(request.amount, balances[_mainIndex], balances[_wrappedIndex], params)
+                : _calcBptInPerMainOut(
+                    request.amount,
+                    balances[_mainIndex],
+                    balances[_wrappedIndex],
+                    _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
+                    params
+                );
+    }
+
+    function _swapGivenWrappedOut(
+        SwapRequest memory request,
+        uint256[] memory balances,
+        Params memory params
+    ) internal view returns (uint256) {
+        _require(request.tokenIn == _mainToken, Errors.INVALID_TOKEN);
+        return _calcMainInPerWrappedOut(request.amount, balances[_mainIndex], params);
     }
 
     function _onInitializePool(
@@ -299,9 +319,8 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         bytes memory
     )
         internal
-        view
+        pure
         override
-        whenNotPaused
         returns (
             uint256,
             uint256[] memory,
@@ -346,19 +365,21 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        // prettier-ignore
-        if (token == _mainToken) { return _scalingFactorMainToken; }
-        else if (token == _wrappedToken) { return _scalingFactorWrappedToken.mulDown(_getWrappedTokenCachedRate()); }
-        else if (token == IERC20(this)) { return FixedPoint.ONE; }
-        else {
+        if (token == _mainToken) {
+            return _scalingFactorMainToken;
+        } else if (token == _wrappedToken) {
+            return _scalingFactorWrappedToken.mulDown(_getWrappedTokenCachedRate());
+        } else if (token == IERC20(this)) {
+            return FixedPoint.ONE;
+        } else {
             _revert(Errors.INVALID_TOKEN);
         }
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
         uint256[] memory scalingFactors = new uint256[](_TOTAL_TOKENS);
-        scalingFactors[_mainTokenIndex] = _scalingFactorMainToken;
-        scalingFactors[_wrappedTokenIndex] = _scalingFactorWrappedToken.mulDown(_getWrappedTokenCachedRate());
+        scalingFactors[_mainIndex] = _scalingFactorMainToken;
+        scalingFactors[_wrappedIndex] = _scalingFactorWrappedToken.mulDown(_getWrappedTokenCachedRate());
         scalingFactors[_bptIndex] = FixedPoint.ONE;
         return scalingFactors;
     }
@@ -369,7 +390,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         bytes32 poolId = getPoolId();
         (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
         _upscaleArray(balances, _scalingFactors());
-        uint256 totalBalance = balances[_mainTokenIndex] + balances[_wrappedTokenIndex];
+        uint256 totalBalance = balances[_mainIndex] + balances[_wrappedIndex];
         return totalBalance.divUp(_MAX_TOKEN_BALANCE - balances[_bptIndex]);
     }
 
@@ -438,7 +459,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
 
         // Targets can only be set when main token balance between targets (free zone)
-        bool isBetweenTargets = balances[_mainTokenIndex] >= _lowerTarget && balances[_mainTokenIndex] <= _upperTarget;
+        bool isBetweenTargets = balances[_mainIndex] >= _lowerTarget && balances[_mainIndex] <= _upperTarget;
         _require(isBetweenTargets, Errors.OUT_OF_TARGET_RANGE);
 
         _lowerTarget = lowerTarget;
