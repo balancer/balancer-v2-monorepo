@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
-import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import { MINUTE, DAY, advanceTime, currentTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -327,7 +327,8 @@ describe('InvestmentPool', function () {
         pool = await WeightedPool.create(params);
       });
 
-      const UPDATE_DURATION = MINUTE * 60;
+      const UPDATE_DURATION = DAY * 2;
+      const SHORT_UPDATE = MINUTE * 2;
 
       context('when the sender is not the owner', () => {
         it('non-owners cannot update weights', async () => {
@@ -373,12 +374,18 @@ describe('InvestmentPool', function () {
             );
           });
 
+          it('fails if duration is less than the minimum', async () => {
+            await expect(
+              pool.updateWeightsGradually(sender, now, now.add(SHORT_UPDATE), poolWeights)
+            ).to.be.revertedWith('WEIGHT_CHANGE_TOO_FAST');
+          });
+
           it('fails with an end weight below the minimum', async () => {
             const badWeights = [...poolWeights];
             badWeights[2] = fp(0.005);
 
             await expect(
-              pool.updateWeightsGradually(sender, now.add(100), now.add(1000), badWeights)
+              pool.updateWeightsGradually(sender, now.add(100), now.add(WEEK), badWeights)
             ).to.be.revertedWith('MIN_WEIGHT');
           });
 
@@ -386,7 +393,7 @@ describe('InvestmentPool', function () {
             const badWeights = Array(poolWeights.length).fill(fp(0.6));
 
             await expect(
-              pool.updateWeightsGradually(sender, now.add(100), now.add(1000), badWeights)
+              pool.updateWeightsGradually(sender, now.add(100), now.add(WEEK), badWeights)
             ).to.be.revertedWith('NORMALIZED_WEIGHT_INVARIANT');
           });
 

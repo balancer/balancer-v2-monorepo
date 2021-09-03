@@ -38,7 +38,7 @@ describe('MetaStablePoolFactory', function () {
 
     tokens = await TokenList.create(['bUSD', 'DAI'], { sorted: true });
     rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
-    rateProviders[0] = (await deploy('MockRateProvider')).address;
+    rateProviders[0] = (await deploy('v2-pool-utils/MockRateProvider')).address;
   });
 
   async function createPool(): Promise<Contract> {
