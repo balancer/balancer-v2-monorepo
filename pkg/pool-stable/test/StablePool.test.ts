@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -20,7 +20,7 @@ import {
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { range } from 'lodash';
 
-describe.only('StablePool', function () {
+describe('StablePool', function () {
   let allTokens: TokenList;
   let owner: SignerWithAddress,
     trader: SignerWithAddress,
