@@ -92,7 +92,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
      */
     function _getNormalizedWeightsAndMaxWeightIndex() internal view virtual returns (uint256[] memory, uint256);
 
-    function getLastInvariant() external view returns (uint256) {
+    function getLastInvariant() public view virtual returns (uint256) {
         return _lastInvariant;
     }
 

@@ -64,6 +64,7 @@ const balancerErrorCodes: Record<string, string> = {
   '336': 'UNHANDLED_EXIT_KIND ',
   '337': 'UNAUTHORIZED_EXIT',
   '338': 'MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE',
+  '339': 'UNHANDLED_BY_INVESTMENT_POOL',
   '400': 'REENTRANCY',
   '401': 'SENDER_NOT_ALLOWED',
   '402': 'PAUSED',

@@ -192,6 +192,10 @@ describe('InvestmentPool', function () {
         expect(startTime).to.equal(endTime);
         expect(endWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
       });
+
+      it('reverts when querying last invariant', async () => {
+        await expect(pool.getLastInvariant()).to.be.revertedWith('UNHANDLED_BY_INVESTMENT_POOL');
+      });
     });
   });
 

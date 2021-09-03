@@ -372,6 +372,10 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     // always pays zero protocol fees.
     // Additionally, we also check that only non-swap join and exit kinds are allowed while swaps are disabled.
 
+    function getLastInvariant() public view override returns (uint256) {
+        _revert(Errors.UNHANDLED_BY_INVESTMENT_POOL);
+    }
+
     function _onJoinPool(
         bytes32,
         address,
