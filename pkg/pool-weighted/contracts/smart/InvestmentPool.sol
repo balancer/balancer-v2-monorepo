@@ -515,6 +515,47 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         return super.onSwap(swapRequest, adjustedBalanceTokenIn, adjustedBalanceTokenOut);
     }
 
+    function onJoinPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) public override returns (uint256[] memory, uint256[] memory) {
+        _subtractCollectedFees(balances);
+
+        return
+            super.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
+    }
+
+    function onExitPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) public override returns (uint256[] memory, uint256[] memory) {
+        _subtractCollectedFees(balances);
+
+        return
+            super.onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
+    }
+
+    function _subtractCollectedFees(uint256[] memory amounts) private view {
+        uint256[] memory scalingFactors = _scalingFactors();
+
+        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
+            // We can use unchecked getters as we know the map has the same size (and order!) as the Pool's tokens.
+            uint256 upscaledCollectedFees = _tokenCollectedManagementFees.unchecked_valueAt(i);
+            uint256 collectedFees = _downscaleDown(upscaledCollectedFees, scalingFactors[i]);
+            amounts[i] = amounts[i].sub(collectedFees);
+        }
+    }
+
     /**
      * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
      * if necessary. Time travel elements commented out.
