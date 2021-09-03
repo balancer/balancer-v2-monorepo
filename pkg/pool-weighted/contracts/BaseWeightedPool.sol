@@ -296,7 +296,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
 
-        (uint256 amountInTokenIndex, uint256 swapFee) = WeightedMath._calcTokenInGivenExactBptOut(
+        (uint256 amountIn, uint256 swapFee) = WeightedMath._calcTokenInGivenExactBptOut(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountOut,
@@ -307,8 +307,10 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // Note that swapFee is already upscaled
         _processSwapFeeAmount(tokenIndex, swapFee);
 
+        // We join in a single token, so we initialize amountsIn with zeros
         uint256[] memory amountsIn = new uint256[](_getTotalTokens());
-        amountsIn[tokenIndex] = amountInTokenIndex;
+        // And then assign the result to the selected token
+        amountsIn[tokenIndex] = amountIn;
 
         return (bptAmountOut, amountsIn);
     }
@@ -392,7 +394,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal view returns (uint256, uint256[] memory) {
+    ) internal returns (uint256, uint256[] memory) {
         ExitKind kind = userData.exitKind();
 
         if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
@@ -410,7 +412,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         bytes memory userData
-    ) private view whenNotPaused returns (uint256, uint256[] memory) {
+    ) private whenNotPaused returns (uint256, uint256[] memory) {
         // This exit function is disabled if the contract is paused.
 
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
@@ -418,17 +420,22 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
 
-        // We exit in a single token, so we initialize amountsOut with zeros
-        uint256[] memory amountsOut = new uint256[](_getTotalTokens());
-
-        // And then assign the result to the selected token
-        amountsOut[tokenIndex] = WeightedMath._calcTokenOutGivenExactBptIn(
+        (uint256 amountOut, uint256 swapFee) = WeightedMath._calcTokenOutGivenExactBptIn(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountIn,
             totalSupply(),
             getSwapFeePercentage()
         );
+
+        // This in exceptional situation in which the fee is charged on a token out instead of a token in. Note that
+        // swapFee is already upscaled.
+        _processSwapFeeAmount(tokenIndex, swapFee);
+
+        // We exit in a single token, so we initialize amountsOut with zeros
+        uint256[] memory amountsOut = new uint256[](_getTotalTokens());
+        // And then assign the result to the selected token
+        amountsOut[tokenIndex] = amountOut;
 
         return (bptAmountIn, amountsOut);
     }

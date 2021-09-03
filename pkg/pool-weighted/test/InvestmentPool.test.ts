@@ -643,6 +643,15 @@ describe('InvestmentPool', function () {
         });
 
         describe('exits', () => {
+          it('collects management fees on exitswap given in', async () => {
+            await pool.singleExitGivenIn({ from: owner, bptIn: fp(0.1), token: 1 });
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            // There should be non-zero collected fees on the second token
+            expect(actualFees[1]).to.be.gt(0);
+            expect(actualFees.filter((_, i) => i != 1)).to.be.zeros;
+          });
+
           it('does not collect management fees on proportional exits', async () => {
             await pool.multiExitGivenIn({ from: owner, bptIn: fp(0.1) });
 

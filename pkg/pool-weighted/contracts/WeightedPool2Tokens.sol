@@ -746,7 +746,7 @@ contract WeightedPool2Tokens is
         uint256[] memory amountsOut = new uint256[](2);
 
         // And then assign the result to the selected token
-        amountsOut[tokenIndex] = WeightedMath._calcTokenOutGivenExactBptIn(
+        (amountsOut[tokenIndex], ) = WeightedMath._calcTokenOutGivenExactBptIn(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountIn,
