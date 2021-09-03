@@ -38,6 +38,10 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     // State variables
 
+    // The upper bound is WeightedMath.MAX_WEIGHTED_TOKENS, but this is constrained by other factors, such as Pool
+    // creation gas consumption (which is linear).
+    uint256 private constant _MAX_INVESTMENT_TOKENS = 50;
+
     // Percentage of swap fees that are allocated to the Pool owner.
     uint256 private immutable _managementSwapFeePercentage;
     uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
@@ -55,7 +59,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _TOTAL_TOKENS_OFFSET = 1;
     uint256 private constant _START_TIME_OFFSET = 8;
     uint256 private constant _END_TIME_OFFSET = 40;
-    // 7 bits is enough for the token count, since MAX_WEIGHTED_TOKENS is 50
+    // 7 bits is enough for the token count, since _MAX_INVESTMENT_TOKENS is 50
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
@@ -199,9 +203,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _getMaxTokens() internal pure virtual override returns (uint256) {
-        // The upper bound is WeightedMath.MAX_WEIGHTED_TOKENS, but this is constrained by other factors, such as Pool
-        // creation gas consumption (which is linear).
-        return 50;
+        return _MAX_INVESTMENT_TOKENS;
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
