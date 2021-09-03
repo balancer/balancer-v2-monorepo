@@ -376,6 +376,17 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         _revert(Errors.UNHANDLED_BY_INVESTMENT_POOL);
     }
 
+    /**
+     * @dev Used to adjust balances by subtracting all collected fees from them, as if they had been withdrawn from the
+     * Vault.
+     */
+    function _subtractCollectedFees(uint256[] memory balances) private view {
+        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
+            // We can use unchecked getters as we know the map has the same size (and order!) as the Pool's tokens.
+            balances[i] = balances[i].sub(_tokenCollectedManagementFees.unchecked_valueAt(i));
+        }
+    }
+
     function _onJoinPool(
         bytes32,
         address,
@@ -396,6 +407,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
+        _subtractCollectedFees(balances);
+
         // If swaps are disabled, the only join kind that is allowed is the proportional one, as all others involve
         // implicit swaps and alter token prices.
         _require(
@@ -426,6 +439,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
+        _subtractCollectedFees(balances);
+
         // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
         // out) remain functional.
 
@@ -505,7 +520,8 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         super._processSwapFeeAmount(index, amount);
     }
 
-    // Pool hook overrides - subtract collected fees from all token amounts
+    // Pool swap hook override - subtract collected fees from all token amounts. We do this here as the original
+    // `onSwap` does quite a bit of work, including computing swap fees, so we need to intercept that.
 
     function onSwap(
         SwapRequest memory swapRequest,
@@ -529,47 +545,6 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         );
 
         return super.onSwap(swapRequest, adjustedBalanceTokenIn, adjustedBalanceTokenOut);
-    }
-
-    function onJoinPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        bytes memory userData
-    ) public override returns (uint256[] memory, uint256[] memory) {
-        _subtractCollectedFees(balances);
-
-        return
-            super.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
-    }
-
-    function onExitPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        bytes memory userData
-    ) public override returns (uint256[] memory, uint256[] memory) {
-        _subtractCollectedFees(balances);
-
-        return
-            super.onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
-    }
-
-    function _subtractCollectedFees(uint256[] memory amounts) private view {
-        uint256[] memory scalingFactors = _scalingFactors();
-
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            // We can use unchecked getters as we know the map has the same size (and order!) as the Pool's tokens.
-            uint256 upscaledCollectedFees = _tokenCollectedManagementFees.unchecked_valueAt(i);
-            uint256 collectedFees = _downscaleDown(upscaledCollectedFees, scalingFactors[i]);
-            amounts[i] = amounts[i].sub(collectedFees);
-        }
     }
 
     /**
