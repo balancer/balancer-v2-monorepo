@@ -154,7 +154,7 @@ contract WeightedMath {
             invariantRatioWithFees = invariantRatioWithFees.add(balanceRatiosWithFee[i].mulDown(normalizedWeights[i]));
         }
 
-        (uint256 invariantRatio, uint256[] memory swapFees) = _computeInvariantRatio(
+        (uint256 invariantRatio, uint256[] memory swapFees) = _computeJoinExactTokensInInvariantRatio(
             balances,
             normalizedWeights,
             amountsIn,
@@ -172,7 +172,7 @@ contract WeightedMath {
     /**
      * @dev Intermediate function to avoid stack-too-deep errors.
      */
-    function _computeInvariantRatio(
+    function _computeJoinExactTokensInInvariantRatio(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory amountsIn,
@@ -275,7 +275,7 @@ contract WeightedMath {
         uint256[] memory amountsOut,
         uint256 bptTotalSupply,
         uint256 swapFeePercentage
-    ) internal pure returns (uint256) {
+    ) internal pure returns (uint256, uint256[] memory) {
         // BPT in, so we round up overall.
 
         uint256[] memory balanceRatiosWithoutFee = new uint256[](amountsOut.length);
@@ -287,7 +287,33 @@ contract WeightedMath {
             );
         }
 
-        uint256 invariantRatio = FixedPoint.ONE;
+        (uint256 invariantRatio, uint256[] memory swapFees) = _computeExitExactTokensOutInvariantRatio(
+            balances,
+            normalizedWeights,
+            amountsOut,
+            balanceRatiosWithoutFee,
+            invariantRatioWithoutFees,
+            swapFeePercentage
+        );
+
+        uint256 bptIn = bptTotalSupply.mulUp(invariantRatio.complement());
+        return (bptIn, swapFees);
+    }
+
+    /**
+     * @dev Intermediate function to avoid stack-too-deep errors.
+     */
+    function _computeExitExactTokensOutInvariantRatio(
+        uint256[] memory balances,
+        uint256[] memory normalizedWeights,
+        uint256[] memory amountsOut,
+        uint256[] memory balanceRatiosWithoutFee,
+        uint256 invariantRatioWithoutFees,
+        uint256 swapFeePercentage
+    ) private pure returns (uint256 invariantRatio, uint256[] memory swapFees) {
+        swapFees = new uint256[](amountsOut.length);
+        invariantRatio = FixedPoint.ONE;
+
         for (uint256 i = 0; i < balances.length; i++) {
             // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it to
             // 'token out'. This results in slightly larger price impact.
@@ -296,7 +322,10 @@ contract WeightedMath {
             if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
                 uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithoutFees.complement());
                 uint256 taxableAmount = amountsOut[i].sub(nonTaxableAmount);
-                amountOutWithFee = nonTaxableAmount.add(taxableAmount.divUp(FixedPoint.ONE.sub(swapFeePercentage)));
+                uint256 taxableAmountPlusFees = taxableAmount.divUp(FixedPoint.ONE.sub(swapFeePercentage));
+
+                swapFees[i] = taxableAmountPlusFees - taxableAmount;
+                amountOutWithFee = nonTaxableAmount.add(taxableAmountPlusFees);
             } else {
                 amountOutWithFee = amountsOut[i];
             }
@@ -305,8 +334,6 @@ contract WeightedMath {
 
             invariantRatio = invariantRatio.mulDown(balanceRatio.powDown(normalizedWeights[i]));
         }
-
-        return bptTotalSupply.mulUp(invariantRatio.complement());
     }
 
     function _calcTokenOutGivenExactBptIn(

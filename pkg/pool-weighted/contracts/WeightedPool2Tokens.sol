@@ -785,7 +785,7 @@ contract WeightedPool2Tokens is
         InputHelpers.ensureInputLengthMatch(amountsOut.length, 2);
         _upscaleArray(amountsOut);
 
-        uint256 bptAmountIn = WeightedMath._calcBptInGivenExactTokensOut(
+        (uint256 bptAmountIn, ) = WeightedMath._calcBptInGivenExactTokensOut(
             balances,
             normalizedWeights,
             amountsOut,

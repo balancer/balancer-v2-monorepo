@@ -495,7 +495,7 @@ describe('InvestmentPool', function () {
       });
     });
 
-    describe.only('management fees', () => {
+    describe('management fees', () => {
       let vault: Vault;
       const swapFeePercentage = fp(0.02);
       const managementSwapFeePercentage = fp(0.8);
@@ -643,6 +643,20 @@ describe('InvestmentPool', function () {
         });
 
         describe('exits', () => {
+          it('collects management fees on exitswap given in', async () => {
+            const amountsOut = new Array(poolTokens.length).fill(bn(0));
+            amountsOut[1] = fp(0.01);
+            amountsOut[2] = fp(0.01);
+
+            await pool.exitGivenOut({ from: owner, amountsOut });
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            // There should be non-zero collected fees on the second and third tokens
+            expect(actualFees[1]).to.be.gt(0);
+            expect(actualFees[2]).to.be.gt(0);
+            expect(actualFees.filter((_, i) => i != 1 && i != 2)).to.be.zeros;
+          });
+
           it('collects management fees on exitswap given in', async () => {
             await pool.singleExitGivenIn({ from: owner, bptIn: fp(0.1), token: 1 });
 

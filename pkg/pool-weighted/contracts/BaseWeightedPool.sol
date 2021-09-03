@@ -462,14 +462,14 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) private view whenNotPaused returns (uint256, uint256[] memory) {
+    ) private whenNotPaused returns (uint256, uint256[] memory) {
         // This exit function is disabled if the contract is paused.
 
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens());
         _upscaleArray(amountsOut, scalingFactors);
 
-        uint256 bptAmountIn = WeightedMath._calcBptInGivenExactTokensOut(
+        (uint256 bptAmountIn, uint256[] memory swapFees) = WeightedMath._calcBptInGivenExactTokensOut(
             balances,
             normalizedWeights,
             amountsOut,
@@ -477,6 +477,10 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             getSwapFeePercentage()
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
+
+        // This in exceptional situation in which the fees are charged on tokens out instead of a token in. Note that
+        // swapFees is already upscaled.
+        _processSwapFeeAmounts(swapFees);
 
         return (bptAmountIn, amountsOut);
     }
