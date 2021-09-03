@@ -489,6 +489,32 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         super._processSwapFeeAmount(index, amount);
     }
 
+    // Pool hook overrides - subtract collected fees from all token amounts
+
+    function onSwap(
+        SwapRequest memory swapRequest,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) public override returns (uint256) {
+        uint256 tokenInUnscaledCollectedFees = _tokenCollectedManagementFees.get(
+            swapRequest.tokenIn,
+            Errors.INVALID_TOKEN
+        );
+        uint256 adjustedBalanceTokenIn = currentBalanceTokenIn.sub(
+            _downscaleDown(tokenInUnscaledCollectedFees, _scalingFactor(swapRequest.tokenIn))
+        );
+
+        uint256 tokenOutUnscaledCollectedFees = _tokenCollectedManagementFees.get(
+            swapRequest.tokenOut,
+            Errors.INVALID_TOKEN
+        );
+        uint256 adjustedBalanceTokenOut = currentBalanceTokenOut.sub(
+            _downscaleDown(tokenOutUnscaledCollectedFees, _scalingFactor(swapRequest.tokenOut))
+        );
+
+        return super.onSwap(swapRequest, adjustedBalanceTokenIn, adjustedBalanceTokenOut);
+    }
+
     /**
      * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
      * if necessary. Time travel elements commented out.
