@@ -80,7 +80,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] startWeights,
         uint256[] endWeights
     );
-    event SwapEnabledChanged(bool swapEnabled);
+    event SwapEnabledSet(bool swapEnabled);
     event ManagementFeePercentageChanged(uint256 managementFeePercentage);
     event ManagementFeesCollected(IERC20[] tokens, uint256[] amounts);
 
@@ -284,7 +284,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     function _setSwapEnabled(bool swapEnabled) private {
         _setMiscData(_getMiscData().insertBool(swapEnabled, _SWAP_ENABLED_OFFSET));
 
-        emit SwapEnabledChanged(swapEnabled);
+        emit SwapEnabledSet(swapEnabled);
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {

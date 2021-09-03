@@ -234,7 +234,7 @@ describe('InvestmentPool', function () {
         it('disabling swaps emits an event', async () => {
           const receipt = await pool.setSwapEnabled(sender, false);
 
-          expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledChanged', {
+          expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledSet', {
             swapEnabled: false,
           });
         });
@@ -242,7 +242,7 @@ describe('InvestmentPool', function () {
         it('enabling swaps emits an event', async () => {
           const receipt = await pool.setSwapEnabled(sender, true);
 
-          expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledChanged', {
+          expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledSet', {
             swapEnabled: true,
           });
         });
