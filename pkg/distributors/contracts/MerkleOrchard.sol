@@ -68,20 +68,13 @@ contract MerkleOrchard is IDistributor, Ownable {
         Claim memory claim;
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
+            bytes32 distributionId = _getDistributionId(claim.rewardToken, claim.rewarder, claim.distribution);
+
+            require(!_isClaimed(distributionId, liquidityProvider), "cannot claim twice");
+            _setClaimed(distributionId, liquidityProvider);
 
             require(
-                !isClaimed(claim.rewardToken, claim.rewarder, claim.distribution, liquidityProvider),
-                "cannot claim twice"
-            );
-            require(
-                verifyClaim(
-                    claim.rewardToken,
-                    claim.rewarder,
-                    liquidityProvider,
-                    claim.distribution,
-                    claim.balance,
-                    claim.merkleProof
-                ),
+                _verifyClaim(distributionId, liquidityProvider, claim.balance, claim.merkleProof),
                 "Incorrect merkle proof"
             );
 
@@ -89,8 +82,7 @@ contract MerkleOrchard is IDistributor, Ownable {
                 suppliedBalance[claim.rewardToken][claim.rewarder] >= claim.balance,
                 "rewarder hasn't provided sufficient rewardTokens for claim"
             );
-
-            _setClaimed(claim.rewardToken, claim.rewarder, claim.distribution, liquidityProvider);
+            suppliedBalance[claim.rewardToken][claim.rewarder] -= claim.balance;
 
             // Iterate through all the reward tokens we've seen so far.
             for (uint256 j = 0; j < rewardTokens.length; i++) {
@@ -109,9 +101,6 @@ contract MerkleOrchard is IDistributor, Ownable {
                 }
             }
 
-            suppliedBalance[claim.rewardToken][claim.rewarder] =
-                suppliedBalance[claim.rewardToken][claim.rewarder] -
-                claim.balance;
             emit RewardPaid(recipient, address(claim.rewardToken), claim.balance);
         }
 
@@ -170,16 +159,15 @@ contract MerkleOrchard is IDistributor, Ownable {
         uint256 distribution,
         address liquidityProvider
     ) public view returns (bool) {
-        return claimed[_getDistributionId(rewardToken, rewarder, distribution)][liquidityProvider];
+        return _isClaimed(_getDistributionId(rewardToken, rewarder, distribution), liquidityProvider);
     }
 
-    function _setClaimed(
-        IERC20 rewardToken,
-        address rewarder,
-        uint256 distribution,
-        address liquidityProvider
-    ) internal {
-        claimed[_getDistributionId(rewardToken, rewarder, distribution)][liquidityProvider] = true;
+    function _isClaimed(bytes32 distributionId, address liquidityProvider) internal view returns (bool) {
+        return claimed[distributionId][liquidityProvider];
+    }
+
+    function _setClaimed(bytes32 distributionId, address liquidityProvider) internal {
+        claimed[distributionId][liquidityProvider] = true;
     }
 
     function claimStatus(
@@ -216,13 +204,23 @@ contract MerkleOrchard is IDistributor, Ownable {
     function verifyClaim(
         IERC20 rewardToken,
         address rewarder,
-        address liquidityProvider,
         uint256 distribution,
+        address liquidityProvider,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) public view returns (bool) {
+        bytes32 distributionId = _getDistributionId(rewardToken, rewarder, distribution);
+        return _verifyClaim(distributionId, liquidityProvider, claimedBalance, merkleProof);
+    }
+
+    function _verifyClaim(
+        bytes32 distributionId,
+        address liquidityProvider,
+        uint256 claimedBalance,
+        bytes32[] memory merkleProof
+    ) internal view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
-        return MerkleProof.verify(merkleProof, trees[_getDistributionId(rewardToken, rewarder, distribution)], leaf);
+        return MerkleProof.verify(merkleProof, trees[distributionId], leaf);
     }
 
     function _getDistributionId(
