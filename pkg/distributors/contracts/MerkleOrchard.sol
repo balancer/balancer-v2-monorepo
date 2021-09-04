@@ -40,8 +40,6 @@ contract MerkleOrchard is IDistributor, Ownable {
     // rewardToken > rewarder > balance
     mapping(IERC20 => mapping(address => uint256)) public suppliedBalance;
 
-    mapping(IERC20 => mapping(address => bool)) private _allowlist;
-
     IVault public immutable vault;
 
     constructor(IVault _vault) {
