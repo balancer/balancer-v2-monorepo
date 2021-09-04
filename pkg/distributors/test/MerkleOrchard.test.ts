@@ -374,7 +374,7 @@ describe('MerkleOrchard', () => {
           () =>
             merkleOrchard
               .connect(lp1)
-              .claimDistributionsWithCallback(lp1.address, callbackContract.address, calldata, claims),
+              .claimDistributionsWithCallback(lp1.address, claims, callbackContract.address, calldata),
           rewardTokens,
           [{ account: callbackContract.address, changes: { DAI: ['very-near', expectedReward] } }],
           vault
@@ -387,7 +387,7 @@ describe('MerkleOrchard', () => {
         const receipt = await (
           await merkleOrchard
             .connect(lp1)
-            .claimDistributionsWithCallback(lp1.address, callbackContract.address, calldata, claims)
+            .claimDistributionsWithCallback(lp1.address, claims, callbackContract.address, calldata)
         ).wait();
 
         expectEvent.inIndirectReceipt(receipt, callbackContract.interface, 'CallbackReceived', {});

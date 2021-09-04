@@ -155,9 +155,9 @@ contract MerkleOrchard is IDistributor, Ownable {
      */
     function claimDistributionsWithCallback(
         address liquidityProvider,
+        Claim[] memory claims,
         IDistributorCallback callbackContract,
-        bytes calldata callbackData,
-        Claim[] memory claims
+        bytes calldata callbackData
     ) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
         _processClaims(liquidityProvider, address(callbackContract), claims, true);
