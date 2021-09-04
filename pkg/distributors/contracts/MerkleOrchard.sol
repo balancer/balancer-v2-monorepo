@@ -35,8 +35,9 @@ contract MerkleOrchard is IDistributor, Ownable {
     // Recorded distributions
     // keccak(rewardToken|rewarder|distribution) > root
     mapping(bytes32 => bytes32) public trees;
-    // keccak(rewardToken|rewarder|distribution) > lp > claimStatus
-    mapping(bytes32 => mapping(address => bool)) public claimed;
+    // keccak(rewardToken|rewarder|distribution) > bitmap
+    // bitmap is made up of a mapping(uint256 => uint256) to allow more than 256 recipients
+    mapping(bytes32 => mapping(uint256 => uint256)) public claimedBitMap;
     // rewardToken > rewarder > balance
     mapping(IERC20 => mapping(address => uint256)) public suppliedBalance;
 
@@ -47,10 +48,11 @@ contract MerkleOrchard is IDistributor, Ownable {
     }
 
     struct Claim {
-        uint256 distribution;
-        uint256 balance;
-        address rewarder;
         IERC20 rewardToken;
+        address rewarder;
+        uint256 distribution;
+        uint256 index;
+        uint256 balance;
         bytes32[] merkleProof;
     }
 
@@ -70,11 +72,11 @@ contract MerkleOrchard is IDistributor, Ownable {
             claim = claims[i];
             bytes32 distributionId = _getDistributionId(claim.rewardToken, claim.rewarder, claim.distribution);
 
-            require(!_isClaimed(distributionId, liquidityProvider), "cannot claim twice");
-            _setClaimed(distributionId, liquidityProvider);
+            require(!_isClaimed(distributionId, claim.index), "cannot claim twice");
+            _setClaimed(distributionId, claim.index);
 
             require(
-                _verifyClaim(distributionId, liquidityProvider, claim.balance, claim.merkleProof),
+                _verifyClaim(distributionId, claim.index, liquidityProvider, claim.balance, claim.merkleProof),
                 "Incorrect merkle proof"
             );
 
@@ -153,37 +155,27 @@ contract MerkleOrchard is IDistributor, Ownable {
         callbackContract.distributorCallback(callbackData);
     }
 
+    function _setClaimed(bytes32 distributionId, uint256 index) private {
+        uint256 claimedWordIndex = index / 256;
+        uint256 claimedBitIndex = index % 256;
+        claimedBitMap[distributionId][claimedWordIndex] |= (1 << claimedBitIndex);
+    }
+
     function isClaimed(
         IERC20 rewardToken,
         address rewarder,
         uint256 distribution,
-        address liquidityProvider
+        uint256 index
     ) public view returns (bool) {
-        return _isClaimed(_getDistributionId(rewardToken, rewarder, distribution), liquidityProvider);
+        return _isClaimed(_getDistributionId(rewardToken, rewarder, distribution), index);
     }
 
-    function _isClaimed(bytes32 distributionId, address liquidityProvider) internal view returns (bool) {
-        return claimed[distributionId][liquidityProvider];
-    }
-
-    function _setClaimed(bytes32 distributionId, address liquidityProvider) internal {
-        claimed[distributionId][liquidityProvider] = true;
-    }
-
-    function claimStatus(
-        address liquidityProvider,
-        IERC20 rewardToken,
-        address rewarder,
-        uint256 begin,
-        uint256 end
-    ) external view returns (bool[] memory) {
-        require(begin <= end, "distributions must be specified in ascending order");
-        uint256 size = 1 + end - begin;
-        bool[] memory arr = new bool[](size);
-        for (uint256 i = 0; i < size; i++) {
-            arr[i] = isClaimed(rewardToken, rewarder, begin + i, liquidityProvider);
-        }
-        return arr;
+    function _isClaimed(bytes32 distributionId, uint256 index) internal view returns (bool) {
+        uint256 claimedWordIndex = index / 256;
+        uint256 claimedBitIndex = index % 256;
+        uint256 claimedWord = claimedBitMap[distributionId][claimedWordIndex];
+        uint256 mask = (1 << claimedBitIndex);
+        return claimedWord & mask == mask;
     }
 
     function merkleRoots(
@@ -205,21 +197,23 @@ contract MerkleOrchard is IDistributor, Ownable {
         IERC20 rewardToken,
         address rewarder,
         uint256 distribution,
+        uint256 index,
         address liquidityProvider,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) public view returns (bool) {
         bytes32 distributionId = _getDistributionId(rewardToken, rewarder, distribution);
-        return _verifyClaim(distributionId, liquidityProvider, claimedBalance, merkleProof);
+        return _verifyClaim(distributionId, index, liquidityProvider, claimedBalance, merkleProof);
     }
 
     function _verifyClaim(
         bytes32 distributionId,
+        uint256 index,
         address liquidityProvider,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) internal view returns (bool) {
-        bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
+        bytes32 leaf = keccak256(abi.encodePacked(index, liquidityProvider, claimedBalance));
         return MerkleProof.verify(merkleProof, trees[distributionId], leaf);
     }
 
