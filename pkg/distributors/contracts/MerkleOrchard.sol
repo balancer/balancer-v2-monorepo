@@ -70,7 +70,7 @@ contract MerkleOrchard is IDistributor, Ownable {
             claim = claims[i];
 
             require(
-                !claimed[claim.rewardToken][claim.rewarder][claim.distribution][liquidityProvider],
+                !isClaimed(claim.rewardToken, claim.rewarder, claim.distribution, liquidityProvider),
                 "cannot claim twice"
             );
             require(
@@ -140,6 +140,15 @@ contract MerkleOrchard is IDistributor, Ownable {
         callbackContract.distributorCallback(callbackData);
     }
 
+    function isClaimed(
+        IERC20 rewardToken,
+        address rewarder,
+        uint256 distribution,
+        address liquidityProvider
+    ) public view returns (bool) {
+        return claimed[rewardToken][rewarder][distribution][liquidityProvider];
+    }
+
     function claimStatus(
         address liquidityProvider,
         IERC20 rewardToken,
@@ -151,7 +160,7 @@ contract MerkleOrchard is IDistributor, Ownable {
         uint256 size = 1 + end - begin;
         bool[] memory arr = new bool[](size);
         for (uint256 i = 0; i < size; i++) {
-            arr[i] = claimed[rewardToken][rewarder][begin + i][liquidityProvider];
+            arr[i] = isClaimed(rewardToken, rewarder, begin + i, liquidityProvider);
         }
         return arr;
     }
