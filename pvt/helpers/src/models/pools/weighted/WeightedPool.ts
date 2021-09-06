@@ -34,6 +34,7 @@ import {
   GradualUpdateParams,
   WeightedPoolType,
   VoidResult,
+  TokenCollectedFees,
 } from './types';
 import {
   calculateInvariant,
@@ -65,6 +66,7 @@ export default class WeightedPool {
   vault: Vault;
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
+  managementSwapFeePercentage: BigNumberish;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
     return WeightedPoolDeployer.deploy(params);
@@ -79,7 +81,8 @@ export default class WeightedPool {
     assetManagers: string[],
     swapFeePercentage: BigNumberish,
     poolType: WeightedPoolType,
-    swapEnabledOnStart: boolean
+    swapEnabledOnStart: boolean,
+    managementSwapFeePercentage: BigNumberish
   ) {
     this.instance = instance;
     this.poolId = poolId;
@@ -90,6 +93,7 @@ export default class WeightedPool {
     this.swapFeePercentage = swapFeePercentage;
     this.poolType = poolType;
     this.swapEnabledOnStart = swapEnabledOnStart;
+    this.managementSwapFeePercentage = managementSwapFeePercentage;
   }
 
   get address(): string {
@@ -188,6 +192,10 @@ export default class WeightedPool {
 
   async getSwapEnabled(from: SignerWithAddress): Promise<boolean> {
     return this.instance.connect(from).getSwapEnabled();
+  }
+
+  async getManagementSwapFeePercentage(): Promise<BigNumber> {
+    return this.instance.getManagementSwapFeePercentage();
   }
 
   async getNormalizedWeights(): Promise<BigNumber[]> {
@@ -599,6 +607,16 @@ export default class WeightedPool {
     return pool.setSwapEnabled(swapEnabled);
   }
 
+  async withdrawCollectedManagementFees(
+    from: SignerWithAddress,
+    recipient?: SignerWithAddress
+  ): Promise<ContractTransaction> {
+    if (recipient === undefined) recipient = from;
+
+    const pool = this.instance.connect(from);
+    return pool.withdrawCollectedManagementFees(recipient.address);
+  }
+
   async updateWeightsGradually(
     from: SignerWithAddress,
     startTime: BigNumberish,
@@ -612,5 +630,10 @@ export default class WeightedPool {
   async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualUpdateParams> {
     const pool = from ? this.instance.connect(from) : this.instance;
     return await pool.getGradualWeightUpdateParams();
+  }
+
+  async getCollectedManagementFees(): Promise<TokenCollectedFees> {
+    const result = await this.instance.getCollectedManagementFees();
+    return { amounts: result.collectedFees, tokenAddresses: result.tokens };
   }
 }

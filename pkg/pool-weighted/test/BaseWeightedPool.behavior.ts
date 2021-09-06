@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PoolSpecialization } from '@balancer-labs/balancer-js';
+import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
@@ -540,6 +540,26 @@ export function itBehavesAsWeightedPool(
     });
 
     context('given in', () => {
+      it('reverts if caller is not the vault', async () => {
+        await expect(
+          pool.instance.onSwap(
+            {
+              kind: SwapKind.GivenIn,
+              tokenIn: tokens.first.address,
+              tokenOut: tokens.second.address,
+              amount: 0,
+              poolId: await pool.getPoolId(),
+              lastChangeBlock: 0,
+              from: other.address,
+              to: other.address,
+              userData: '0x',
+            },
+            0,
+            0
+          )
+        ).to.be.revertedWith('CALLER_NOT_VAULT');
+      });
+
       it('calculates amount out', async () => {
         const amount = fp(0.1);
         const amountWithFees = amount.mul(POOL_SWAP_FEE_PERCENTAGE.add(fp(1))).div(fp(1));
@@ -586,6 +606,26 @@ export function itBehavesAsWeightedPool(
     });
 
     context('given out', () => {
+      it('reverts if caller is not the vault', async () => {
+        await expect(
+          pool.instance.onSwap(
+            {
+              kind: SwapKind.GivenOut,
+              tokenIn: tokens.first.address,
+              tokenOut: tokens.second.address,
+              amount: 0,
+              poolId: await pool.getPoolId(),
+              lastChangeBlock: 0,
+              from: other.address,
+              to: other.address,
+              userData: '0x',
+            },
+            0,
+            0
+          )
+        ).to.be.revertedWith('CALLER_NOT_VAULT');
+      });
+
       it('calculates amount in', async () => {
         const amount = fp(0.1);
         const expectedAmountIn = await pool.estimateGivenOut({ in: 1, out: 0, amount });

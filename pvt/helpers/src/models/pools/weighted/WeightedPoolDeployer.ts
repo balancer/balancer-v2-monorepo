@@ -18,7 +18,15 @@ export default {
     const vault = params?.vault ?? (await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params)));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
-    const { tokens, weights, assetManagers, swapFeePercentage, poolType, swapEnabledOnStart } = deployment;
+    const {
+      tokens,
+      weights,
+      assetManagers,
+      swapFeePercentage,
+      poolType,
+      swapEnabledOnStart,
+      managementSwapFeePercentage,
+    } = deployment;
 
     const poolId = await pool.getPoolId();
     return new WeightedPool(
@@ -30,7 +38,8 @@ export default {
       assetManagers,
       swapFeePercentage,
       poolType,
-      swapEnabledOnStart
+      swapEnabledOnStart,
+      managementSwapFeePercentage
     );
   },
 
@@ -45,6 +54,7 @@ export default {
       oracleEnabled,
       poolType,
       swapEnabledOnStart,
+      managementSwapFeePercentage,
       owner,
       from,
     } = params;
@@ -96,17 +106,20 @@ export default {
       case WeightedPoolType.INVESTMENT_POOL: {
         result = deploy('v2-pool-weighted/InvestmentPool', {
           args: [
-            vault.address,
-            NAME,
-            SYMBOL,
-            tokens.addresses,
-            weights,
-            assetManagers,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            TypesConverter.toAddress(owner),
-            swapEnabledOnStart,
+            {
+              vault: vault.address,
+              name: NAME,
+              symbol: SYMBOL,
+              tokens: tokens.addresses,
+              normalizedWeights: weights,
+              assetManagers: assetManagers,
+              swapFeePercentage: swapFeePercentage,
+              pauseWindowDuration: pauseWindowDuration,
+              bufferPeriodDuration: bufferPeriodDuration,
+              owner: TypesConverter.toAddress(owner),
+              swapEnabledOnStart: swapEnabledOnStart,
+              managementSwapFeePercentage: managementSwapFeePercentage,
+            },
           ],
           from,
         });
@@ -142,6 +155,7 @@ export default {
       swapFeePercentage,
       oracleEnabled,
       swapEnabledOnStart,
+      managementSwapFeePercentage,
       poolType,
       owner,
       from,
@@ -202,7 +216,8 @@ export default {
           assetManagers,
           swapFeePercentage,
           TypesConverter.toAddress(owner),
-          swapEnabledOnStart
+          swapEnabledOnStart,
+          managementSwapFeePercentage
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');

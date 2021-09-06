@@ -20,15 +20,18 @@ import "../openzeppelin/IERC20.sol";
 
 // solhint-disable
 
-function _translateToIAsset(IERC20[] memory tokens) pure returns (IAsset[] memory) {
-    IAsset[] memory assets = new IAsset[](tokens.length);
-    for (uint256 i = 0; i < tokens.length; ++i) {
-        assets[i] = IAsset(address(tokens[i]));
+function _asIAsset(IERC20[] memory tokens) pure returns (IAsset[] memory assets) {
+    // solhint-disable-next-line no-inline-assembly
+    assembly {
+        assets := tokens
     }
-    return assets;
 }
 
-function _sortTokens(IERC20 tokenA, IERC20 tokenB, IERC20 tokenC) pure returns (IERC20[] memory tokens) {
+function _sortTokens(
+    IERC20 tokenA,
+    IERC20 tokenB,
+    IERC20 tokenC
+) pure returns (IERC20[] memory tokens) {
     (uint256 indexTokenA, uint256 indexTokenB, uint256 indexTokenC) = _getSortedTokenIndexes(tokenA, tokenB, tokenC);
     tokens = new IERC20[](3);
     tokens[indexTokenA] = tokenA;
@@ -36,16 +39,31 @@ function _sortTokens(IERC20 tokenA, IERC20 tokenB, IERC20 tokenC) pure returns (
     tokens[indexTokenC] = tokenC;
 }
 
-function _getSortedTokenIndexes(IERC20 tokenA, IERC20 tokenB, IERC20 tokenC) pure returns (uint256 indexTokenA, uint256 indexTokenB, uint256 indexTokenC) {
+function _getSortedTokenIndexes(
+    IERC20 tokenA,
+    IERC20 tokenB,
+    IERC20 tokenC
+)
+    pure
+    returns (
+        uint256 indexTokenA,
+        uint256 indexTokenB,
+        uint256 indexTokenC
+    )
+{
     if (tokenA < tokenB) {
-        if (tokenB < tokenC) { // (tokenA, tokenB, tokenC)
+        if (tokenB < tokenC) {
+            // (tokenA, tokenB, tokenC)
             return (0, 1, 2);
-        } else if (tokenA < tokenC) { // (tokenA, tokenC, tokenB)
+        } else if (tokenA < tokenC) {
+            // (tokenA, tokenC, tokenB)
             return (0, 2, 1);
-        } else { // (tokenC, tokenA, tokenB)
+        } else {
+            // (tokenC, tokenA, tokenB)
             return (1, 2, 0);
         }
-    } else { // tokenB < tokenA
+    } else {
+        // tokenB < tokenA
         if (tokenC < tokenB) {
             // (tokenC, tokenB, tokenA)
             return (2, 1, 0);

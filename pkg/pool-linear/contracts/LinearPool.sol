@@ -133,7 +133,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         maxAmountsIn[tokens[0] == IERC20(this) ? 0 : tokens[1] == IERC20(this) ? 1 : 2] = _MAX_TOKEN_BALANCE;
 
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
-            assets: _translateToIAsset(tokens),
+            assets: _asIAsset(tokens),
             maxAmountsIn: maxAmountsIn,
             userData: "",
             fromInternalBalance: false

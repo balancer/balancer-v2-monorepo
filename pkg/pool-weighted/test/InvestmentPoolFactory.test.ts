@@ -23,6 +23,7 @@ describe('InvestmentPoolFactory', function () {
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.5);
   const WEIGHTS = toNormalizedWeights([fp(30), fp(70), fp(5), fp(5)]);
 
   const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -55,7 +56,8 @@ describe('InvestmentPoolFactory', function () {
         assetManagers,
         POOL_SWAP_FEE_PERCENTAGE,
         owner.address,
-        swapsEnabled
+        swapsEnabled,
+        POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE
       )
     ).wait();
 
@@ -96,6 +98,10 @@ describe('InvestmentPoolFactory', function () {
 
     it('sets swap fee', async () => {
       expect(await pool.getSwapFeePercentage()).to.equal(POOL_SWAP_FEE_PERCENTAGE);
+    });
+
+    it('sets management swap fee', async () => {
+      expect(await pool.getManagementSwapFeePercentage()).to.equal(POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE);
     });
 
     it('sets the owner ', async () => {
