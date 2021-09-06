@@ -5,7 +5,7 @@ import { BigNumber, Contract } from 'ethers';
 import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
@@ -25,8 +25,10 @@ describe('InvestmentPoolFactory', function () {
   const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
 
   const tokens = [DAI, USDC];
+  const assetManagers = new Array(tokens.length).fill(ZERO_ADDRESS);
   const initialWeights = [fp(0.9), fp(0.1)];
   const swapFeePercentage = fp(0.01);
+  const managementSwapFeePercentage = fp(0.6);
   const swapEnabledOnStart = true;
 
   const weightChangeDuration = MONTH;
@@ -60,9 +62,11 @@ describe('InvestmentPoolFactory', function () {
       'TCH-MH',
       tokens,
       initialWeights,
+      assetManagers,
       swapFeePercentage,
       owner.address,
-      swapEnabledOnStart
+      swapEnabledOnStart,
+      managementSwapFeePercentage
     );
     const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
 
@@ -103,8 +107,8 @@ describe('InvestmentPoolFactory', function () {
   it('collected fees are initially zero', async () => {
     const fees = await pool.getCollectedManagementFees();
 
-    expect(fees.tokenAddresses).to.deep.equal(tokens);
-    expect(fees.amounts).to.deep.equal(new Array(tokens.length).fill(bn(0)));
+    expect(fees.tokens.map((x: string) => x.toLowerCase())).to.deep.equal(tokens);
+    expect(fees.collectedFees).to.deep.equal(new Array(tokens.length).fill(bn(0)));
   });
 
   it('can swap in an investment pool', async () => {
@@ -135,25 +139,26 @@ describe('InvestmentPoolFactory', function () {
   });
 
   it('swap incurs management fees', async () => {
-    const { amounts: fees } = await pool.getCollectedManagementFees();
+    const { collectedFees } = await pool.getCollectedManagementFees();
 
     // Swap Given in - fee should be on DAI (token 0)
-    expect(fees[0]).to.be.gt(0);
-    expect(fees[1]).to.equal(0);
+    expect(collectedFees[0]).to.be.gt(0);
+    expect(collectedFees[1]).to.equal(0);
   });
 
   it('owner can withdraw management fees', async () => {
     const DAIBalanceBefore = await dai.balanceOf(wallet.address);
     const USDCBalanceBefore = await usdc.balanceOf(wallet.address);
 
-    await pool.connect(owner).collectManagementFees(wallet.address);
+    await pool.connect(owner).withdrawCollectedManagementFees(wallet.address);
 
     // Fees should be in the wallet
     const DAIBalanceAfter = await dai.balanceOf(wallet.address);
     const USDCBalanceAfter = await usdc.balanceOf(wallet.address);
 
+    // Only DAI fees were collected
     expect(DAIBalanceAfter).to.be.gt(DAIBalanceBefore);
-    expect(USDCBalanceAfter).to.be.gt(USDCBalanceBefore);
+    expect(USDCBalanceAfter).to.be.equal(USDCBalanceBefore);
   });
 
   it('owner can start a gradual weight change', async () => {
