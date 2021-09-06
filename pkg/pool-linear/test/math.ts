@@ -176,7 +176,7 @@ function toNominal(amount: Decimal, params: Params): Decimal {
 
   if (amount.lt(decimal(1).sub(fee).mul(target1))) {
     return amount.div(decimal(1).sub(fee));
-  } else if (amount.lt(target2.sub(fee).mul(target1))) {
+  } else if (amount.lt(target2.sub(fee.mul(target1)))) {
     return amount.add(fee.mul(target1));
   } else {
     return amount.add(target1.add(target2).mul(fee)).div(decimal(1).add(fee));

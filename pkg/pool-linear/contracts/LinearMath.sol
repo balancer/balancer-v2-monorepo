@@ -180,7 +180,7 @@ contract LinearMath {
     function _toNominal(uint256 amount, Params memory params) internal pure returns (uint256) {
         if (amount < (FixedPoint.ONE - params.fee).mulUp(params.lowerTarget)) {
             return amount.divUp(FixedPoint.ONE - params.fee);
-        } else if (amount < (params.upperTarget - params.fee).mulUp(params.lowerTarget)) {
+        } else if (amount < (params.upperTarget - (params.fee.mulUp(params.lowerTarget)))) {
             return amount.add(params.fee.mulUp(params.lowerTarget));
         } else {
             return
