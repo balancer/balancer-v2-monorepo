@@ -361,15 +361,6 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
 
-    // We override _onJoinPool and _onExitPool as we need to not compute the current invariant and calculate protocol
-    // fees, since that mechanism does not work for Pools in which the weights change over time. Instead, this Pool
-    // always pays zero protocol fees.
-    // Additionally, we also check that only non-swap join and exit kinds are allowed while swaps are disabled.
-
-    function getLastInvariant() public pure override returns (uint256) {
-        _revert(Errors.UNHANDLED_BY_INVESTMENT_POOL);
-    }
-
     /**
      * @dev Used to adjust balances by subtracting all collected fees from them, as if they had been withdrawn from the
      * Vault.
@@ -379,6 +370,15 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             // We can use unchecked getters as we know the map has the same size (and order!) as the Pool's tokens.
             balances[i] = balances[i].sub(_tokenCollectedManagementFees.unchecked_valueAt(i));
         }
+    }
+
+    // We override _onJoinPool and _onExitPool as we need to not compute the current invariant and calculate protocol
+    // fees, since that mechanism does not work for Pools in which the weights change over time. Instead, this Pool
+    // always pays zero protocol fees.
+    // Additionally, we also check that only non-swap join and exit kinds are allowed while swaps are disabled.
+
+    function getLastInvariant() public pure override returns (uint256) {
+        _revert(Errors.UNHANDLED_BY_INVESTMENT_POOL);
     }
 
     function _onJoinPool(
