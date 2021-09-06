@@ -36,6 +36,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     using PriceRateCache for bytes32;
 
     uint256 private constant _TOTAL_TOKENS = 3; // Main token, wrapped token, BPT
+    uint256 private constant _MINIMUM_BPT = 0; // All BPT is minted to the Vault
     uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
 
     IERC20 private immutable _mainToken;
@@ -186,7 +187,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         return assets;
     }
 
-    function initialize() public {
+    function initialize() external {
         //TODO: Need to intialize out of the constructor because of poolId, or need to change BasePool
 
         bytes32 poolId = getPoolId();
@@ -341,37 +342,19 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         }
     }
 
-    function onJoinPool(
-        bytes32 poolId,
-        address,
-        address,
-        uint256[] memory,
-        uint256,
-        uint256,
-        bytes memory
-    ) public override(IBasePool, BasePool) onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
-        if (totalSupply() == 0) {
-            // Mint initial BPTs and adds them to the Vault via a special join
-            _mintPoolTokens(address(this), _MAX_TOKEN_BALANCE);
-            _approve(address(this), address(getVault()), _MAX_TOKEN_BALANCE);
-
-            (, , uint256 bptIndex) = _getIndexes();
-
-            uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
-            amountsIn[bptIndex] = _MAX_TOKEN_BALANCE;
-
-            return (amountsIn, new uint256[](_TOTAL_TOKENS));
-        }
-    }
-
     function _onInitializePool(
         bytes32,
         address,
         address,
         uint256[] memory,
         bytes memory
-    ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
-        _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
+    ) internal override whenNotPaused returns (uint256, uint256[] memory) {
+        // Mint initial BPTs and adds them to the Vault via a special join
+        _approve(address(this), address(getVault()), _MAX_TOKEN_BALANCE);
+        (, , uint256 bptIndex) = _getIndexes();
+        uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
+        amountsIn[bptIndex] = _MAX_TOKEN_BALANCE;
+        return (_MAX_TOKEN_BALANCE, amountsIn);
     }
 
     function _onJoinPool(
@@ -421,6 +404,10 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
     function _getMaxTokens() internal pure override returns (uint256) {
         return _TOTAL_TOKENS;
+    }
+
+    function _getMinimumBpt() internal pure override returns (uint256) {
+        return _MINIMUM_BPT;
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {

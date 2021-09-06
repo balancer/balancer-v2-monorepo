@@ -52,11 +52,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     uint256 private constant _MIN_TOKENS = 2;
 
+    uint256 private constant _MINIMUM_BPT = 1e6;
+
     // 1e18 corresponds to 1.0, or a 100% fee
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10% - this fits in 64 bits
-
-    uint256 private constant _MINIMUM_BPT = 1e6;
 
     // Storage slot that can be used to store unrelated pieces of information. In particular, by default is used
     // to store only the swap fee percentage of a pool. But it can be extended to store some more pieces of information.
@@ -126,6 +126,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     function _getTotalTokens() internal view virtual returns (uint256);
 
     function _getMaxTokens() internal pure virtual returns (uint256);
+
+    function _getMinimumBpt() internal pure virtual returns (uint256) {
+        return _MINIMUM_BPT;
+    }
 
     function getSwapFeePercentage() public view returns (uint256) {
         return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
@@ -209,12 +213,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 userData
             );
 
-            // On initialization, we lock _MINIMUM_BPT by minting it for the zero address. This BPT acts as a minimum
-            // as it will never be burned, which reduces potential issues with rounding, and also prevents the Pool from
-            // ever being fully drained.
-            _require(bptAmountOut >= _MINIMUM_BPT, Errors.MINIMUM_BPT);
-            _mintPoolTokens(address(0), _MINIMUM_BPT);
-            _mintPoolTokens(recipient, bptAmountOut - _MINIMUM_BPT);
+            // On initialization, we lock _getMinimumBpt() by minting it for the zero address. This BPT acts as a
+            // minimum as it will never be burned, which reduces potential issues with rounding, and also prevents the
+            // Pool from ever being fully drained.
+            _require(bptAmountOut >= _getMinimumBpt(), Errors.MINIMUM_BPT);
+            _mintPoolTokens(address(0), _getMinimumBpt());
+            _mintPoolTokens(recipient, bptAmountOut - _getMinimumBpt());
 
             // amountsIn are amounts entering the Pool, so we round up.
             _downscaleUpArray(amountsIn, scalingFactors);
@@ -366,10 +370,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      *
      * Returns the amount of BPT to mint, and the token amounts the Pool will receive in return.
      *
-     * Minted BPT will be sent to `recipient`, except for _MINIMUM_BPT, which will be deducted from this amount and sent
-     * to the zero address instead. This will cause that BPT to remain forever locked there, preventing total BTP from
-     * ever dropping below that value, and ensuring `_onInitializePool` can only be called once in the entire Pool's
-     * lifetime.
+     * Minted BPT will be sent to `recipient`, except for _getMinimumBpt(), which will be deducted from this amount and
+     * sent to the zero address instead. This will cause that BPT to remain forever locked there, preventing total BTP
+     * from ever dropping below that value, and ensuring `_onInitializePool` can only be called once in the entire
+     * Pool's lifetime.
      *
      * The tokens granted to the Pool will be transferred from `sender`. These amounts are considered upscaled and will
      * be downscaled (rounding up) before being returned to the Vault.
