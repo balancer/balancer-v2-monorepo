@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import Task from '../../../src/task';
 
 describe('InvestmentPoolFactory', function () {
-  const task = Task.fromHRE('20210903-investment-pool', hre);
+  const task = Task.fromHRE('20210907-investment-pool', hre);
 
   it('references the vault correctly', async () => {
     const input = task.input();

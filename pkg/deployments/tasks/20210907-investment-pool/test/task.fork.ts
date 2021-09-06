@@ -19,7 +19,7 @@ describe('InvestmentPoolFactory', function () {
   let owner: SignerWithAddress, wallet: SignerWithAddress, whale: SignerWithAddress;
   let pool: Contract, factory: Contract, vault: Contract, usdc: Contract, dai: Contract;
 
-  const task = Task.forTest('20210903-investment-pool', getForkedNetwork(hre));
+  const task = Task.forTest('20210907-investment-pool', getForkedNetwork(hre));
 
   const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f';
   const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
