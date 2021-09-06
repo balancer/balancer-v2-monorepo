@@ -24,6 +24,7 @@ export type RawWeightedPoolDeployment = {
   bufferPeriodDuration?: BigNumberish;
   oracleEnabled?: boolean;
   swapEnabledOnStart?: boolean;
+  managementSwapFeePercentage?: BigNumberish;
   owner?: SignerWithAddress;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -42,6 +43,7 @@ export type WeightedPoolDeployment = {
   poolType: WeightedPoolType;
   oracleEnabled: boolean;
   swapEnabledOnStart: boolean;
+  managementSwapFeePercentage: BigNumberish;
   owner?: SignerWithAddress;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -187,4 +189,9 @@ export type GradualUpdateParams = {
   startTime: BigNumber;
   endTime: BigNumber;
   endWeights: BigNumber[];
+};
+
+export type TokenCollectedFees = {
+  amounts: BigNumber[];
+  tokenAddresses: string[];
 };

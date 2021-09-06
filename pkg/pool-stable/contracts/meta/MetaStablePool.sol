@@ -119,27 +119,21 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
 
     // Swap
 
-    /**
-     * Override to make sure sender is vault
-     */
     function onSwap(
         SwapRequest memory request,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public virtual override onlyVault(request.poolId) returns (uint256) {
+    ) public virtual override returns (uint256) {
         _cachePriceRatesIfNecessary();
         return super.onSwap(request, balances, indexIn, indexOut);
     }
 
-    /**
-     * Override to make sure sender is vault
-     */
     function onSwap(
         SwapRequest memory request,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) public virtual override onlyVault(request.poolId) returns (uint256) {
+    ) public virtual override returns (uint256) {
         _cachePriceRatesIfNecessary();
         return super.onSwap(request, balanceTokenIn, balanceTokenOut);
     }

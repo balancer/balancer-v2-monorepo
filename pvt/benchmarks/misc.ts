@@ -195,9 +195,12 @@ async function deployPoolFromFactory(
 
   if (poolName == 'InvestmentPool') {
     const swapEnabledOnStart = true;
+    const managementSwapFeePercentage = 0;
 
     receipt = await (
-      await factory.connect(args.from).create(name, symbol, ...args.parameters, owner, swapEnabledOnStart)
+      await factory
+        .connect(args.from)
+        .create(name, symbol, ...args.parameters, owner, swapEnabledOnStart, managementSwapFeePercentage)
     ).wait();
   } else {
     receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)).wait();

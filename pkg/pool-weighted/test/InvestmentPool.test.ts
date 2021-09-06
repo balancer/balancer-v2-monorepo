@@ -1,15 +1,19 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
-import { fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
-import { MINUTE, DAY, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import { bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import { MINUTE, DAY, advanceTime, currentTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
+import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { InvestmentPoolEncoder, SwapKind } from '@balancer-labs/balancer-js';
 
 import { range } from 'lodash';
 
@@ -25,10 +29,11 @@ describe('InvestmentPool', function () {
     [, owner, other, assetManager] = await ethers.getSigners();
   });
 
-  const MAX_TOKENS = 100;
+  const MAX_TOKENS = 50;
   const TOKEN_COUNT = 20;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.7);
   const WEIGHTS = range(10000, 10000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
 
   const poolWeights: BigNumber[] = Array(TOKEN_COUNT).fill(fp(1 / TOKEN_COUNT)); //WEIGHTS.slice(0, TOKEN_COUNT).map(fp);
@@ -55,6 +60,7 @@ describe('InvestmentPool', function () {
             tokens,
             weights: WEIGHTS.slice(0, numTokens),
             swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+            managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
           });
         });
 
@@ -187,225 +193,87 @@ describe('InvestmentPool', function () {
         expect(endWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
       });
 
-      describe('permissioned actions', () => {
-        context('when the sender is not the owner', () => {
-          it('non-owners cannot disable swaps', async () => {
-            await expect(pool.setSwapEnabled(other, false)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      it('reverts when querying last invariant', async () => {
+        await expect(pool.getLastInvariant()).to.be.revertedWith('UNHANDLED_BY_INVESTMENT_POOL');
+      });
+
+      it('reverts if swap hook caller is not the vault', async () => {
+        await expect(
+          pool.instance.onSwap(
+            {
+              kind: SwapKind.GivenIn,
+              tokenIn: poolTokens.first.address,
+              tokenOut: poolTokens.second.address,
+              amount: 0,
+              poolId: await pool.getPoolId(),
+              lastChangeBlock: 0,
+              from: other.address,
+              to: other.address,
+              userData: '0x',
+            },
+            0,
+            0
+          )
+        ).to.be.revertedWith('CALLER_NOT_VAULT');
+      });
+    });
+  });
+
+  describe('permissioned actions', () => {
+    describe('enable/disable swaps', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        const params = {
+          tokens: poolTokens,
+          weights: poolWeights,
+          owner,
+          poolType: WeightedPoolType.INVESTMENT_POOL,
+          swapEnabledOnStart: true,
+        };
+        pool = await WeightedPool.create(params);
+      });
+
+      context('when the sender is not the owner', () => {
+        it('non-owners cannot disable swaps', async () => {
+          await expect(pool.setSwapEnabled(other, false)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        });
+      });
+
+      context('when the sender is the owner', () => {
+        beforeEach('set sender to owner', () => {
+          sender = owner;
+        });
+
+        sharedBeforeEach('initialize pool', async () => {
+          await pool.init({ from: sender, initialBalances });
+        });
+
+        it('swaps can be enabled and disabled', async () => {
+          await pool.setSwapEnabled(sender, false);
+          expect(await pool.instance.getSwapEnabled()).to.be.false;
+
+          await pool.setSwapEnabled(sender, true);
+          expect(await pool.instance.getSwapEnabled()).to.be.true;
+        });
+
+        it('disabling swaps emits an event', async () => {
+          const receipt = await pool.setSwapEnabled(sender, false);
+
+          expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledSet', {
+            swapEnabled: false,
           });
         });
 
-        context('when the sender is the owner', () => {
-          sharedBeforeEach('set sender to owner', async () => {
-            sender = owner;
-            await pool.init({ from: sender, initialBalances });
-          });
+        it('enabling swaps emits an event', async () => {
+          const receipt = await pool.setSwapEnabled(sender, true);
 
-          it('swaps can be enabled and disabled', async () => {
-            await pool.setSwapEnabled(sender, false);
-            expect(await pool.instance.getSwapEnabled()).to.be.false;
-
-            await pool.setSwapEnabled(sender, true);
-            expect(await pool.instance.getSwapEnabled()).to.be.true;
-          });
-
-          it('disabling swaps emits an event', async () => {
-            const receipt = await pool.setSwapEnabled(sender, false);
-
-            expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledSet', {
-              swapEnabled: false,
-            });
-          });
-
-          it('enabling swaps emits an event', async () => {
-            const receipt = await pool.setSwapEnabled(sender, true);
-
-            expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledSet', {
-              swapEnabled: true,
-            });
-          });
-
-          it('owner can join and receive BPT, then exit', async () => {
-            const bptBeforeJoin = await pool.balanceOf(owner.address);
-            await expect(pool.joinGivenIn({ from: owner, amountsIn: initialBalances })).to.not.be.reverted;
-
-            const bptAfterJoin = await pool.balanceOf(owner.address);
-            expect(bptAfterJoin).to.gt(bptBeforeJoin);
-
-            await expect(pool.exitGivenOut({ from: owner, amountsOut: initialBalances })).to.not.be.reverted;
-            const bptAfterExit = await pool.balanceOf(owner.address);
-            expect(bptAfterExit).to.lt(bptAfterJoin);
-          });
-
-          describe('update weights gradually', () => {
-            const UPDATE_DURATION = DAY * 3;
-            const SHORT_UPDATE = MINUTE * 2;
-
-            context('with invalid parameters', () => {
-              let now: BigNumber;
-
-              sharedBeforeEach(async () => {
-                now = await currentTimestamp();
-              });
-
-              it('fails if end weights are mismatched (too few)', async () => {
-                await expect(pool.updateWeightsGradually(sender, now, now, WEIGHTS.slice(0, 1))).to.be.revertedWith(
-                  'INPUT_LENGTH_MISMATCH'
-                );
-              });
-
-              it('fails if the end weights are mismatched (too many)', async () => {
-                await expect(pool.updateWeightsGradually(sender, now, now, [...WEIGHTS, fp(0.5)])).to.be.revertedWith(
-                  'INPUT_LENGTH_MISMATCH'
-                );
-              });
-
-              it('fails if start time > end time', async () => {
-                await expect(pool.updateWeightsGradually(sender, now, now.sub(1), poolWeights)).to.be.revertedWith(
-                  'GRADUAL_UPDATE_TIME_TRAVEL'
-                );
-              });
-
-              it('fails if duration is less than the minimum', async () => {
-                await expect(
-                  pool.updateWeightsGradually(sender, now, now.add(SHORT_UPDATE), poolWeights)
-                ).to.be.revertedWith('WEIGHT_CHANGE_TOO_FAST');
-              });
-
-              it('fails with an end weight below the minimum', async () => {
-                const badWeights = [...poolWeights];
-                badWeights[2] = fp(0.005);
-
-                await expect(
-                  pool.updateWeightsGradually(sender, now, now.add(UPDATE_DURATION), badWeights)
-                ).to.be.revertedWith('MIN_WEIGHT');
-              });
-
-              it('fails with invalid normalized end weights', async () => {
-                const badWeights = Array(poolWeights.length).fill(fp(0.6));
-
-                await expect(
-                  pool.updateWeightsGradually(sender, now, now.add(UPDATE_DURATION), badWeights)
-                ).to.be.revertedWith('NORMALIZED_WEIGHT_INVARIANT');
-              });
-
-              context('with start time in the past', () => {
-                let now: BigNumber, startTime: BigNumber, endTime: BigNumber;
-                const endWeights = [...poolWeights];
-
-                sharedBeforeEach('updateWeightsGradually (start time in the past)', async () => {
-                  now = await currentTimestamp();
-                  // Start an hour in the past
-                  startTime = now.sub(MINUTE * 60);
-                  endTime = now.add(UPDATE_DURATION);
-                });
-
-                it('fast-forwards start time to present', async () => {
-                  await pool.updateWeightsGradually(owner, startTime, endTime, endWeights);
-                  const updateParams = await pool.getGradualWeightUpdateParams();
-
-                  // Start time should be fast-forwarded to now
-                  expect(updateParams.startTime).to.equal(await currentTimestamp());
-                });
-              });
-            });
-
-            context('with valid parameters (ongoing weight update)', () => {
-              // startWeights must equal "weights" above - just not using fp to keep math simple
-              const startWeights = [...poolWeights];
-              const endWeights = [...poolWeights];
-
-              // Now generate endWeights (first weight doesn't change)
-              for (let i = 2; i < poolWeights.length; i++) {
-                endWeights[i] = 0 == i % 2 ? startWeights[i].add(fp(0.02)) : startWeights[i].sub(fp(0.02));
-              }
-
-              function getEndWeights(pct: number): BigNumber[] {
-                const intermediateWeights = Array<BigNumber>(poolWeights.length);
-
-                for (let i = 0; i < poolWeights.length; i++) {
-                  if (startWeights[i] < endWeights[i]) {
-                    // Weight is increasing
-                    intermediateWeights[i] = startWeights[i].add(endWeights[i].sub(startWeights[i]).mul(pct).div(100));
-                  } else {
-                    // Weight is decreasing (or not changing)
-                    intermediateWeights[i] = startWeights[i].sub(startWeights[i].sub(endWeights[i]).mul(pct).div(100));
-                  }
-                }
-
-                return intermediateWeights;
-              }
-
-              let now, startTime: BigNumber, endTime: BigNumber;
-              const START_DELAY = MINUTE * 10;
-              const finalEndWeights = getEndWeights(100);
-
-              sharedBeforeEach('updateWeightsGradually', async () => {
-                now = await currentTimestamp();
-                startTime = now.add(START_DELAY);
-                endTime = startTime.add(UPDATE_DURATION);
-
-                await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
-              });
-
-              it('updating weights emits an event', async () => {
-                const receipt = await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
-
-                expectEvent.inReceipt(await receipt.wait(), 'GradualWeightUpdateScheduled', {
-                  startTime: startTime,
-                  endTime: endTime,
-                  // weights don't exactly match because of the compression
-                });
-              });
-
-              it('stores the params', async () => {
-                const updateParams = await pool.getGradualWeightUpdateParams();
-
-                expect(updateParams.startTime).to.equalWithError(startTime, 0.001);
-                expect(updateParams.endTime).to.equalWithError(endTime, 0.001);
-                expect(updateParams.endWeights).to.equalWithError(finalEndWeights, 0.001);
-              });
-
-              it('gets start weights if called before the start time', async () => {
-                const normalizedWeights = await pool.getNormalizedWeights();
-
-                // Need to decrease precision
-                expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
-              });
-
-              it('gets end weights if called after the end time', async () => {
-                await advanceTime(endTime.add(MINUTE));
-                const normalizedWeights = await pool.getNormalizedWeights();
-
-                // Need to decrease precision
-                expect(normalizedWeights).to.equalWithError(finalEndWeights, 0.0001);
-              });
-
-              for (let pct = 5; pct < 100; pct += 5) {
-                it(`gets correct intermediate weights if called ${pct}% through`, async () => {
-                  await advanceTime(START_DELAY + (UPDATE_DURATION * pct) / 100);
-                  const normalizedWeights = await pool.getNormalizedWeights();
-
-                  // Need to decrease precision
-                  expect(normalizedWeights).to.equalWithError(getEndWeights(pct), 0.005);
-                });
-              }
-            });
+          expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledSet', {
+            swapEnabled: true,
           });
         });
 
-        context('when the sender is not the owner', () => {
-          it('non-owners cannot update weights', async () => {
-            const now = await currentTimestamp();
-
-            await expect(pool.updateWeightsGradually(other, now, now, poolWeights)).to.be.revertedWith(
-              'SENDER_NOT_ALLOWED'
-            );
-          });
-        });
-        context('when swaps disabled', () => {
+        context('with swaps disabled', () => {
           sharedBeforeEach(async () => {
             await pool.setSwapEnabled(sender, false);
-            await pool.init({ from: owner, initialBalances });
           });
 
           context('proportional joins/exits', () => {
@@ -465,6 +333,508 @@ describe('InvestmentPool', function () {
               await expect(pool.exitGivenOut({ from: sender, amountsOut })).to.be.revertedWith(
                 'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
               );
+            });
+          });
+        });
+      });
+    });
+
+    describe('update weights gradually', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        const params = {
+          tokens: poolTokens,
+          weights: poolWeights,
+          owner,
+          poolType: WeightedPoolType.INVESTMENT_POOL,
+          swapEnabledOnStart: true,
+        };
+        pool = await WeightedPool.create(params);
+      });
+
+      const UPDATE_DURATION = DAY * 2;
+      const SHORT_UPDATE = MINUTE * 2;
+
+      context('when the sender is not the owner', () => {
+        it('non-owners cannot update weights', async () => {
+          const now = await currentTimestamp();
+
+          await expect(pool.updateWeightsGradually(other, now, now, poolWeights)).to.be.revertedWith(
+            'SENDER_NOT_ALLOWED'
+          );
+        });
+      });
+
+      context('when the sender is the owner', () => {
+        beforeEach('set sender to owner', () => {
+          sender = owner;
+        });
+
+        sharedBeforeEach('initialize pool', async () => {
+          await pool.init({ from: sender, initialBalances });
+        });
+
+        context('with invalid parameters', () => {
+          let now: BigNumber;
+
+          sharedBeforeEach(async () => {
+            now = await currentTimestamp();
+          });
+
+          it('fails if end weights are mismatched (too few)', async () => {
+            await expect(pool.updateWeightsGradually(sender, now, now, WEIGHTS.slice(0, 1))).to.be.revertedWith(
+              'INPUT_LENGTH_MISMATCH'
+            );
+          });
+
+          it('fails if the end weights are mismatched (too many)', async () => {
+            await expect(pool.updateWeightsGradually(sender, now, now, [...WEIGHTS, fp(0.5)])).to.be.revertedWith(
+              'INPUT_LENGTH_MISMATCH'
+            );
+          });
+
+          it('fails if start time > end time', async () => {
+            await expect(pool.updateWeightsGradually(sender, now, now.sub(1), poolWeights)).to.be.revertedWith(
+              'GRADUAL_UPDATE_TIME_TRAVEL'
+            );
+          });
+
+          it('fails if duration is less than the minimum', async () => {
+            await expect(
+              pool.updateWeightsGradually(sender, now, now.add(SHORT_UPDATE), poolWeights)
+            ).to.be.revertedWith('WEIGHT_CHANGE_TOO_FAST');
+          });
+
+          it('fails with an end weight below the minimum', async () => {
+            const badWeights = [...poolWeights];
+            badWeights[2] = fp(0.005);
+
+            await expect(
+              pool.updateWeightsGradually(sender, now.add(100), now.add(WEEK), badWeights)
+            ).to.be.revertedWith('MIN_WEIGHT');
+          });
+
+          it('fails with invalid normalized end weights', async () => {
+            const badWeights = Array(poolWeights.length).fill(fp(0.6));
+
+            await expect(
+              pool.updateWeightsGradually(sender, now.add(100), now.add(WEEK), badWeights)
+            ).to.be.revertedWith('NORMALIZED_WEIGHT_INVARIANT');
+          });
+
+          context('with start time in the past', () => {
+            let now: BigNumber, startTime: BigNumber, endTime: BigNumber;
+            const endWeights = [...poolWeights];
+
+            sharedBeforeEach('updateWeightsGradually (start time in the past)', async () => {
+              now = await currentTimestamp();
+              // Start an hour in the past
+              startTime = now.sub(MINUTE * 60);
+              endTime = now.add(UPDATE_DURATION);
+            });
+
+            it('fast-forwards start time to present', async () => {
+              await pool.updateWeightsGradually(owner, startTime, endTime, endWeights);
+              const updateParams = await pool.getGradualWeightUpdateParams();
+
+              // Start time should be fast-forwarded to now
+              expect(updateParams.startTime).to.equal(await currentTimestamp());
+            });
+          });
+        });
+
+        context('with valid parameters (ongoing weight update)', () => {
+          // startWeights must equal "weights" above - just not using fp to keep math simple
+          const startWeights = [...poolWeights];
+          const endWeights = [...poolWeights];
+
+          // Now generate endWeights (first weight doesn't change)
+          for (let i = 2; i < poolWeights.length; i++) {
+            endWeights[i] = 0 == i % 2 ? startWeights[i].add(fp(0.02)) : startWeights[i].sub(fp(0.02));
+          }
+
+          function getEndWeights(pct: number): BigNumber[] {
+            const intermediateWeights = Array<BigNumber>(poolWeights.length);
+
+            for (let i = 0; i < poolWeights.length; i++) {
+              if (startWeights[i] < endWeights[i]) {
+                // Weight is increasing
+                intermediateWeights[i] = startWeights[i].add(endWeights[i].sub(startWeights[i]).mul(pct).div(100));
+              } else {
+                // Weight is decreasing (or not changing)
+                intermediateWeights[i] = startWeights[i].sub(startWeights[i].sub(endWeights[i]).mul(pct).div(100));
+              }
+            }
+
+            return intermediateWeights;
+          }
+
+          let now, startTime: BigNumber, endTime: BigNumber;
+          const START_DELAY = MINUTE * 10;
+          const finalEndWeights = getEndWeights(100);
+
+          sharedBeforeEach('updateWeightsGradually', async () => {
+            now = await currentTimestamp();
+            startTime = now.add(START_DELAY);
+            endTime = startTime.add(UPDATE_DURATION);
+
+            await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
+          });
+
+          it('updating weights emits an event', async () => {
+            const receipt = await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
+
+            expectEvent.inReceipt(await receipt.wait(), 'GradualWeightUpdateScheduled', {
+              startTime: startTime,
+              endTime: endTime,
+              // weights don't exactly match because of the compression
+            });
+          });
+
+          it('stores the params', async () => {
+            const updateParams = await pool.getGradualWeightUpdateParams();
+
+            expect(updateParams.startTime).to.equalWithError(startTime, 0.001);
+            expect(updateParams.endTime).to.equalWithError(endTime, 0.001);
+            expect(updateParams.endWeights).to.equalWithError(finalEndWeights, 0.001);
+          });
+
+          it('gets start weights if called before the start time', async () => {
+            const normalizedWeights = await pool.getNormalizedWeights();
+
+            // Need to decrease precision
+            expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
+          });
+
+          it('gets end weights if called after the end time', async () => {
+            await advanceTime(endTime.add(MINUTE));
+            const normalizedWeights = await pool.getNormalizedWeights();
+
+            // Need to decrease precision
+            expect(normalizedWeights).to.equalWithError(finalEndWeights, 0.0001);
+          });
+
+          for (let pct = 5; pct < 100; pct += 5) {
+            it(`gets correct intermediate weights if called ${pct}% through`, async () => {
+              await advanceTime(START_DELAY + (UPDATE_DURATION * pct) / 100);
+              const normalizedWeights = await pool.getNormalizedWeights();
+
+              // Need to decrease precision
+              expect(normalizedWeights).to.equalWithError(getEndWeights(pct), 0.005);
+            });
+          }
+        });
+      });
+    });
+
+    describe('management fees', () => {
+      let vault: Vault;
+      const swapFeePercentage = fp(0.02);
+      const managementSwapFeePercentage = fp(0.8);
+
+      sharedBeforeEach('deploy pool', async () => {
+        vault = await Vault.create();
+
+        const params = {
+          tokens: poolTokens,
+          weights: poolWeights,
+          owner,
+          poolType: WeightedPoolType.INVESTMENT_POOL,
+          swapEnabledOnStart: true,
+          vault,
+          swapFeePercentage,
+          managementSwapFeePercentage,
+        };
+        pool = await WeightedPool.create(params);
+      });
+
+      sharedBeforeEach('initialize pool', async () => {
+        await poolTokens.mint({ to: owner, amount: fp(100) });
+        await poolTokens.approve({ from: owner, to: await pool.getVault() });
+        await pool.init({ from: owner, initialBalances });
+      });
+
+      it('collected fees are initially zero', async () => {
+        const fees = await pool.getCollectedManagementFees();
+
+        expect(fees.tokenAddresses).to.deep.equal(poolTokens.addresses);
+        expect(fees.amounts).to.deep.equal(new Array(poolTokens.length).fill(bn(0)));
+      });
+
+      it('collected fees are reported in the same order as in the vault', async () => {
+        const { tokenAddresses: feeTokenAddresses } = await pool.getCollectedManagementFees();
+        const { tokens: vaultTokenAddresses } = await vault.getPoolTokens(await pool.getPoolId());
+
+        expect(feeTokenAddresses).to.deep.equal(vaultTokenAddresses);
+      });
+
+      describe('fee collection', () => {
+        describe('swaps', () => {
+          it('collects management fees on swaps given in', async () => {
+            const singleSwap = {
+              poolId: await pool.getPoolId(),
+              kind: SwapKind.GivenIn,
+              assetIn: poolTokens.first.address,
+              assetOut: poolTokens.second.address,
+              amount: fp(0.01),
+              userData: '0x',
+            };
+            const funds = {
+              sender: owner.address,
+              fromInternalBalance: false,
+              recipient: other.address,
+              toInternalBalance: false,
+            };
+            const limit = 0; // Minimum amount out
+            const deadline = MAX_UINT256;
+
+            const expectedSwapFee = singleSwap.amount.mul(swapFeePercentage).div(fp(1));
+            const expectedManagementFee = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
+
+            await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            // The fee was charged in the first token (in)
+            expect(actualFees[0]).to.be.equalWithError(expectedManagementFee, 0.001);
+            expect(actualFees.filter((_, i) => i != 0)).to.be.zeros;
+          });
+
+          it('collects management fees on swaps given out', async () => {
+            const singleSwap = {
+              poolId: await pool.getPoolId(),
+              kind: SwapKind.GivenOut,
+              assetIn: poolTokens.second.address,
+              assetOut: poolTokens.first.address,
+              amount: fp(0.01),
+              userData: '0x',
+            };
+            const funds = {
+              sender: owner.address,
+              fromInternalBalance: false,
+              recipient: other.address,
+              toInternalBalance: false,
+            };
+            const limit = MAX_UINT256; // Maximum amount in
+            const deadline = MAX_UINT256;
+
+            // Since this is a given out swap, we can only estimate the amount out, and then derive expected swap fees from
+            // that. This require scaling balances, amounts, and then unscaling the amount in.
+            const unscaledBalances = await pool.getBalances();
+            const scalingFactors = await pool.getScalingFactors();
+            const scaledBalances = unscaledBalances.map((balance, i) => balance.mul(scalingFactors[i]).div(fp(1)));
+            const expectedScaledAmountIn = bn(
+              await pool.estimateGivenOut(
+                { in: 1, out: 0, amount: singleSwap.amount.mul(scalingFactors[0]).div(fp(1)) },
+                scaledBalances
+              )
+            );
+            const expectedAmountIn = expectedScaledAmountIn.mul(fp(1)).div(scalingFactors[1]);
+            const expectedAmountInPlusSwapFee = expectedAmountIn.mul(fp(1)).div(fp(1).sub(swapFeePercentage));
+            const expectedSwapFee = expectedAmountInPlusSwapFee.sub(expectedAmountIn);
+            const expectedManagementFee = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
+
+            await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            // The fee was charged in the second token (in)
+            expect(actualFees[1]).to.be.equalWithError(expectedManagementFee, 0.001);
+            expect(actualFees.filter((_, i) => i != 1)).to.be.zeros;
+          });
+        });
+
+        describe('joins', () => {
+          it('collects management fees on joinswap given in', async () => {
+            const amountsIn = new Array(poolTokens.length).fill(bn(0));
+            amountsIn[1] = fp(0.01);
+            amountsIn[2] = fp(0.01);
+
+            await pool.joinGivenIn({ from: owner, amountsIn });
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            // There should be non-zero collected fees on the second and third tokens
+            expect(actualFees[1]).to.be.gt(0);
+            expect(actualFees[2]).to.be.gt(0);
+            expect(actualFees.filter((_, i) => i != 1 && i != 2)).to.be.zeros;
+          });
+
+          it('collects management fees on joinswap given out', async () => {
+            await pool.joinGivenOut({ from: owner, bptOut: fp(0.5), token: 1 });
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            // There should be non-zero collected fees on the second token
+            expect(actualFees[1]).to.be.gt(0);
+            expect(actualFees.filter((_, i) => i != 1)).to.be.zeros;
+          });
+
+          it('does not collect management fees on proportional joins', async () => {
+            await pool.joinAllGivenOut({ from: owner, bptOut: fp(0.5) });
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            expect(actualFees).to.be.zeros;
+          });
+        });
+
+        describe('exits', () => {
+          it('collects management fees on exitswap given in', async () => {
+            const amountsOut = new Array(poolTokens.length).fill(bn(0));
+            amountsOut[1] = fp(0.01);
+            amountsOut[2] = fp(0.01);
+
+            await pool.exitGivenOut({ from: owner, amountsOut });
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            // There should be non-zero collected fees on the second and third tokens
+            expect(actualFees[1]).to.be.gt(0);
+            expect(actualFees[2]).to.be.gt(0);
+            expect(actualFees.filter((_, i) => i != 1 && i != 2)).to.be.zeros;
+          });
+
+          it('collects management fees on exitswap given in', async () => {
+            await pool.singleExitGivenIn({ from: owner, bptIn: fp(0.1), token: 1 });
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            // There should be non-zero collected fees on the second token
+            expect(actualFees[1]).to.be.gt(0);
+            expect(actualFees.filter((_, i) => i != 1)).to.be.zeros;
+          });
+
+          it('does not collect management fees on proportional exits', async () => {
+            await pool.multiExitGivenIn({ from: owner, bptIn: fp(0.1) });
+
+            const { amounts: actualFees } = await pool.getCollectedManagementFees();
+            expect(actualFees).to.be.zeros;
+          });
+        });
+
+        it('accumulates management fees with existing ones', async () => {
+          const singleSwap = {
+            poolId: await pool.getPoolId(),
+            kind: SwapKind.GivenIn,
+            assetIn: poolTokens.first.address,
+            assetOut: poolTokens.second.address,
+            amount: fp(0.01),
+            userData: '0x',
+          };
+          const funds = {
+            sender: owner.address,
+            fromInternalBalance: false,
+            recipient: other.address,
+            toInternalBalance: false,
+          };
+          const limit = 0; // Minimum amount out
+          const deadline = MAX_UINT256;
+
+          const expectedSwapFee = singleSwap.amount.mul(swapFeePercentage).div(fp(1));
+          const expectedManagementFee = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
+
+          // The swap fee depends exclusively on the amount in on swaps given in, so we can simply perform the same swap
+          // twice and expect to get twice the expected amount of collected fees.
+
+          await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+          await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+
+          const { amounts: actualFees } = await pool.getCollectedManagementFees();
+          // The fee was charged in the first token (in)
+          expect(actualFees[0]).to.be.equalWithError(expectedManagementFee.mul(2), 0.001);
+          expect(actualFees.filter((_, i) => i != 0)).to.be.zeros;
+        });
+      });
+
+      describe('collection by owner', () => {
+        context('when the sender is not the owner', () => {
+          it('reverts', async () => {
+            await expect(pool.withdrawCollectedManagementFees(other)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
+        });
+
+        context('when the sender is the owner', () => {
+          beforeEach('set sender to owner', () => {
+            sender = owner;
+          });
+
+          context('with collected fees', () => {
+            let feeTokenSymbol: string;
+            let managementFeeAmount: BigNumber;
+
+            sharedBeforeEach('cause fees to be collected', async () => {
+              const singleSwap = {
+                poolId: await pool.getPoolId(),
+                kind: SwapKind.GivenIn,
+                assetIn: poolTokens.first.address,
+                assetOut: poolTokens.second.address,
+                amount: fp(0.01),
+                userData: '0x',
+              };
+              const funds = {
+                sender: owner.address,
+                fromInternalBalance: false,
+                recipient: other.address,
+                toInternalBalance: false,
+              };
+              const limit = 0; // Minimum amount out
+              const deadline = MAX_UINT256;
+
+              await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
+
+              const expectedSwapFee = singleSwap.amount.mul(swapFeePercentage).div(fp(1));
+              managementFeeAmount = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
+              feeTokenSymbol = pool.tokens.first.symbol; // Fees are collected in the token in
+            });
+
+            it('management fees can be collected to any account', async () => {
+              await expectBalanceChange(() => pool.withdrawCollectedManagementFees(sender, other), poolTokens, {
+                account: other,
+                changes: {
+                  [feeTokenSymbol]: managementFeeAmount,
+                },
+              });
+            });
+
+            it('collection emits an event', async () => {
+              const expectedFees = new Array(poolTokens.length).fill(bn(0));
+              expectedFees[poolTokens.findIndexBySymbol(feeTokenSymbol)] = managementFeeAmount;
+
+              const receipt = await (await pool.withdrawCollectedManagementFees(sender, other)).wait();
+              expectEvent.inReceipt(receipt, 'ManagementFeesCollected', {
+                tokens: poolTokens.addresses,
+                amounts: expectedFees,
+              });
+            });
+
+            it('reverts if the vault is called directly', async () => {
+              await expect(
+                vault.instance.connect(sender).exitPool(await pool.getPoolId(), sender.address, other.address, {
+                  assets: poolTokens.addresses,
+                  minAmountsOut: new Array(poolTokens.length).fill(bn(0)),
+                  userData: InvestmentPoolEncoder.exitForManagementFees(),
+                  toInternalBalance: false,
+                })
+              ).to.be.revertedWith('UNAUTHORIZED_EXIT');
+            });
+
+            context('after collection', () => {
+              sharedBeforeEach('collect fees', async () => {
+                await pool.withdrawCollectedManagementFees(sender, other);
+              });
+
+              it('there are no collected fees', async () => {
+                const { amounts: fees } = await pool.getCollectedManagementFees();
+                expect(fees).to.be.zeros;
+              });
+            });
+
+            context('while swaps are disabled', () => {
+              sharedBeforeEach('disable swaps', async () => {
+                await pool.setSwapEnabled(sender, false);
+              });
+
+              it('management fees can be collected', async () => {
+                await expectBalanceChange(() => pool.withdrawCollectedManagementFees(sender, other), poolTokens, {
+                  account: other,
+                  changes: {
+                    [feeTokenSymbol]: managementFeeAmount,
+                  },
+                });
+              });
             });
           });
         });

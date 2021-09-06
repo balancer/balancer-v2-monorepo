@@ -133,7 +133,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         maxAmountsIn[tokens[0] == IERC20(this) ? 0 : tokens[1] == IERC20(this) ? 1 : 2] = _MAX_TOKEN_BALANCE;
 
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
-            assets: _translateToIAsset(tokens),
+            assets: _asIAsset(tokens),
             maxAmountsIn: maxAmountsIn,
             userData: "",
             fromInternalBalance: false
@@ -468,6 +468,9 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
-        return (actionId == getActionId(this.setTargets.selector));
+        return
+            (actionId == getActionId(this.setTargets.selector)) ||
+            (actionId == getActionId(this.setWrappedTokenRateCacheDuration.selector)) ||
+            super._isOwnerOnlyAction(actionId);
     }
 }
