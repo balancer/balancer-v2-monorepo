@@ -468,6 +468,9 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
-        return (actionId == getActionId(this.setTargets.selector));
+        return
+            (actionId == getActionId(this.setTargets.selector)) ||
+            (actionId == getActionId(this.setWrappedTokenRateCacheDuration.selector)) ||
+            super._isOwnerOnlyAction(actionId);
     }
 }
