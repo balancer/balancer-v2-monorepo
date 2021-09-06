@@ -13,10 +13,10 @@ import { advanceToTimestamp, currentTimestamp, DAY, MINUTE, MONTH } from '@balan
 
 import Task from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
-import { getSigner, impersonateWhale } from '../../../src/signers';
+import { getSigners, impersonateWhale } from '../../../src/signers';
 
 describe('InvestmentPoolFactory', function () {
-  let owner: SignerWithAddress, whale: SignerWithAddress;
+  let owner: SignerWithAddress, wallet: SignerWithAddress, whale: SignerWithAddress;
   let pool: Contract, factory: Contract, vault: Contract, usdc: Contract, dai: Contract;
 
   const task = Task.forTest('20210903-investment-pool', getForkedNetwork(hre));
@@ -43,7 +43,7 @@ describe('InvestmentPoolFactory', function () {
   });
 
   before('load signers', async () => {
-    owner = await getSigner();
+    [owner, wallet] = await getSigners();
     whale = await impersonateWhale(fp(100));
   });
 
@@ -74,18 +74,19 @@ describe('InvestmentPoolFactory', function () {
     expect(registeredAddress).to.equal(pool.address);
   });
 
-  it('initialize an investment pool from the owner', async () => {
-    // Only the owner can seed the pool, so we send them tokens from the whale
-    await dai.connect(whale).transfer(owner.address, initialBalanceDAI);
-    await usdc.connect(whale).transfer(owner.address, initialBalanceUSDC);
+  it('initial weights are correct', async () => {
+    // Weights are not exact due to being stored in fewer bits
+    expect(await pool.getNormalizedWeights()).to.equalWithError(initialWeights, 0.0001);
+  });
 
+  it('initialize the pool', async () => {
     // Approve the Vault to join
-    await dai.connect(owner).approve(vault.address, MAX_UINT256);
-    await usdc.connect(owner).approve(vault.address, MAX_UINT256);
+    await dai.connect(whale).approve(vault.address, MAX_UINT256);
+    await usdc.connect(whale).approve(vault.address, MAX_UINT256);
 
     const poolId = await pool.getPoolId();
     const userData = WeightedPoolEncoder.joinInit(initialBalances);
-    await vault.connect(owner).joinPool(poolId, owner.address, owner.address, {
+    await vault.connect(whale).joinPool(poolId, whale.address, whale.address, {
       assets: tokens,
       maxAmountsIn: initialBalances,
       fromInternalBalance: false,
@@ -96,7 +97,7 @@ describe('InvestmentPoolFactory', function () {
     // Initial BPT is the invariant multiplied by the number of tokens
     const expectedInvariant = calculateInvariant(scaledBalances, initialWeights).mul(tokens.length);
 
-    expectEqualWithError(await pool.balanceOf(owner.address), expectedInvariant, 0.001);
+    expectEqualWithError(await pool.balanceOf(whale.address), expectedInvariant, 0.001);
   });
 
   it('collected fees are initially zero', async () => {
@@ -107,26 +108,29 @@ describe('InvestmentPoolFactory', function () {
   });
 
   it('can swap in an investment pool', async () => {
-    const amount = fp(500); // Small relative to Pool balance - should have zero price impact
-    await dai.connect(whale).approve(vault.address, amount);
-
-    const poolId = await pool.getPoolId();
+    // Swap 500 DAI for 500 USDC - should have little price impact
+    const amountInDAI = fp(500);
 
     const whaleUSDCBalanceBefore = await usdc.balanceOf(whale.address);
 
-    await vault
-      .connect(whale)
-      .swap(
-        { kind: SwapKind.GivenIn, poolId, assetIn: DAI, assetOut: USDC, amount, userData: '0x' },
-        { sender: whale.address, recipient: whale.address, fromInternalBalance: false, toInternalBalance: false },
-        0,
-        MAX_UINT256
-      );
+    await dai.connect(whale).approve(vault.address, amountInDAI);
+    await vault.connect(whale).swap(
+      {
+        kind: SwapKind.GivenIn,
+        poolId: await pool.getPoolId(),
+        assetIn: DAI,
+        assetOut: USDC,
+        amount: amountInDAI,
+        userData: '0x',
+      },
+      { sender: whale.address, recipient: whale.address, fromInternalBalance: false, toInternalBalance: false },
+      0,
+      MAX_UINT256
+    );
 
     const whaleUSDCBalanceAfter = await usdc.balanceOf(whale.address);
 
-    // Assert pool swap
-    const expectedUSDC = amount.div(1e12);
+    const expectedUSDC = amountInDAI.div(1e12); // USDC has 6 decimals and DAI 18, so there's a 12 decimal difference
     expectEqualWithError(whaleUSDCBalanceAfter.sub(whaleUSDCBalanceBefore), expectedUSDC, 0.1);
   });
 
@@ -138,42 +142,18 @@ describe('InvestmentPoolFactory', function () {
     expect(fees[1]).to.equal(0);
   });
 
-  it('can join an investment pool', async () => {
-    const amountsIn = new Array(tokens.length).fill(bn(0));
-    amountsIn[0] = fp(98);
-    amountsIn[1] = fp(42);
-
-    await pool.connect(whale).joinGivenIn(amountsIn);
-
-    const { amounts: fees } = await pool.getCollectedManagementFees();
-    // There should be non-zero collected fees on both tokens now
-    expect(fees[0]).to.be.gt(0);
-    expect(fees[1]).to.be.gt(0);
-  });
-
   it('owner can withdraw management fees', async () => {
-    const DAIBalanceBefore = await dai.balanceOf(owner.address);
-    const USDCBalanceBefore = await usdc.balanceOf(owner.address);
+    const DAIBalanceBefore = await dai.balanceOf(wallet.address);
+    const USDCBalanceBefore = await usdc.balanceOf(wallet.address);
 
-    await pool.connect(owner).collectManagementFees(owner.address);
+    await pool.connect(owner).collectManagementFees(wallet.address);
 
-    // Fees should be in owner's wallet
-    const DAIBalanceAfter = await dai.balanceOf(owner.address);
-    const USDCBalanceAfter = await usdc.balanceOf(owner.address);
+    // Fees should be in the wallet
+    const DAIBalanceAfter = await dai.balanceOf(wallet.address);
+    const USDCBalanceAfter = await usdc.balanceOf(wallet.address);
 
     expect(DAIBalanceAfter).to.be.gt(DAIBalanceBefore);
     expect(USDCBalanceAfter).to.be.gt(USDCBalanceBefore);
-  });
-
-  it('fees are zero after collection', async () => {
-    const { amounts: fees } = await pool.getCollectedManagementFees();
-
-    expect(fees).to.be.zeros;
-  });
-
-  it('initial weights are correct', async () => {
-    // Weights are not exact due to being stored in fewer bits
-    expect(await pool.getNormalizedWeights()).to.equalWithError(initialWeights, 0.0001);
   });
 
   it('owner can start a gradual weight change', async () => {
@@ -181,14 +161,7 @@ describe('InvestmentPoolFactory', function () {
     endTime = startTime.add(weightChangeDuration);
 
     const tx = await pool.connect(owner).updateWeightsGradually(startTime, endTime, endWeights);
-
     expectEvent.inReceipt(await tx.wait(), 'GradualWeightUpdateScheduled');
-
-    const params = await pool.getGradualWeightUpdateParams();
-
-    expect(params.startTime).to.equal(startTime);
-    expect(params.endTime).to.equal(endTime);
-    expect(params.endWeights).to.equalWithError(endWeights, 0.0001);
   });
 
   it('weights fully change once the time expires', async () => {
