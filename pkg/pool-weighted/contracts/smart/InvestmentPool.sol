@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "../BaseWeightedPool.sol";
@@ -252,19 +253,12 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     function withdrawCollectedManagementFees(address recipient) external authenticate whenNotPaused nonReentrant {
         (IERC20[] memory tokens, uint256[] memory collectedFees) = getCollectedManagementFees();
 
-        // Manually cast tokens into assets, since we're not doing ETH withdrawals
-        IAsset[] memory assets;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            assets := tokens
-        }
-
         getVault().exitPool(
             getPoolId(),
             address(this),
             payable(recipient),
             IVault.ExitPoolRequest({
-                assets: assets,
+                assets: _asIAsset(tokens),
                 minAmountsOut: collectedFees,
                 userData: abi.encode(BaseWeightedPool.ExitKind.MANAGEMENT_FEE_TOKENS_OUT),
                 toInternalBalance: false
