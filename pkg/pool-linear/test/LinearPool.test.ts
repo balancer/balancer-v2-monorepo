@@ -147,7 +147,7 @@ describe('LinearPool', function () {
     sharedBeforeEach('deploy pool', async () => {
       const lowerTarget = fp(1000);
       const upperTarget = fp(2000);
-      await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget, owner }, true);
+      await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget }, true);
     });
 
     const setBalances = async (
@@ -475,7 +475,7 @@ describe('LinearPool', function () {
           const newRate = fp(1.5);
           await wrappedTokenRateProvider.mockRate(newRate);
           const forceUpdateAt = await currentTimestamp();
-          await pool.setWrappedTokenRateCacheDuration(newDuration, { from: admin });
+          await pool.setWrappedTokenRateCacheDuration(newDuration, { from: owner });
 
           const currentCache = await pool.getWrappedTokenRateCache();
           expect(currentCache.rate).to.be.equal(newRate);
@@ -485,7 +485,7 @@ describe('LinearPool', function () {
         });
 
         it('emits an event', async () => {
-          const receipt = await pool.setWrappedTokenRateCacheDuration(newDuration, { from: admin });
+          const receipt = await pool.setWrappedTokenRateCacheDuration(newDuration, { from: owner });
 
           expectEvent.inReceipt(await receipt.wait(), 'WrappedTokenRateProviderSet', {
             provider: wrappedTokenRateProvider.address,
@@ -512,9 +512,9 @@ describe('LinearPool', function () {
         });
       });
 
-      context('when it is requested by the owner', () => {
+      context('when it is requested by the admin', () => {
         it('reverts', async () => {
-          await expect(pool.setWrappedTokenRateCacheDuration(10, { from: owner })).to.be.revertedWith(
+          await expect(pool.setWrappedTokenRateCacheDuration(10, { from: admin })).to.be.revertedWith(
             'SENDER_NOT_ALLOWED'
           );
         });
