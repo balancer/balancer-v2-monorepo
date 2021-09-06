@@ -136,6 +136,11 @@ describe('LinearPool', function () {
 
       expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
     });
+
+    it('cannot be initialize twice', async () => {
+      await pool.initialize();
+      await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_BY_LINEAR_POOL');
+    });
   });
 
   describe('set targets', () => {
@@ -290,6 +295,7 @@ describe('LinearPool', function () {
           currentBalances[pool.bptIndex] = currentBalances[pool.bptIndex].sub(result);
         });
       });
+
       context('given DAI out', () => {
         it('calculate wrapped in', async () => {
           const amount = fp(50);
