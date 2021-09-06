@@ -46,8 +46,7 @@ contract LinearMath {
         uint256 afterNominalMain = _toNominal(mainBalance.add(mainIn), params);
         uint256 deltaNominalMain = afterNominalMain.sub(previousNominalMain);
         uint256 invariant = _calcInvariantUp(previousNominalMain, wrappedBalance, params);
-        uint256 newBptSupply = bptSupply.mulDown(FixedPoint.ONE.add(deltaNominalMain.divDown(invariant)));
-        return newBptSupply.sub(bptSupply);
+        return bptSupply.mulDown(deltaNominalMain).divDown(invariant);
     }
 
     function _calcBptInPerMainOut(
@@ -63,8 +62,7 @@ contract LinearMath {
         uint256 afterNominalMain = _toNominal(mainBalance.sub(mainOut), params);
         uint256 deltaNominalMain = previousNominalMain.sub(afterNominalMain);
         uint256 invariant = _calcInvariantDown(previousNominalMain, wrappedBalance, params);
-        uint256 newBptSupply = bptSupply.mulDown(deltaNominalMain.divUp(invariant).complement());
-        return bptSupply.sub(newBptSupply);
+        return bptSupply.mulUp(deltaNominalMain).divUp(invariant);
     }
 
     function _calcWrappedOutPerMainIn(
@@ -164,19 +162,19 @@ contract LinearMath {
     }
 
     function _calcInvariantUp(
-        uint256 mainBalance,
+        uint256 nominalMainBalance,
         uint256 wrappedBalance,
         Params memory params
     ) internal pure returns (uint256) {
-        return mainBalance.add(wrappedBalance.mulUp(params.rate));
+        return nominalMainBalance.add(wrappedBalance.mulUp(params.rate));
     }
 
     function _calcInvariantDown(
-        uint256 mainBalance,
+        uint256 nominalMainBalance,
         uint256 wrappedBalance,
         Params memory params
     ) internal pure returns (uint256) {
-        return mainBalance.add(wrappedBalance.mulDown(params.rate));
+        return nominalMainBalance.add(wrappedBalance.mulDown(params.rate));
     }
 
     function _toNominal(uint256 amount, Params memory params) internal pure returns (uint256) {

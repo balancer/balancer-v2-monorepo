@@ -30,8 +30,7 @@ export function calcBptOutPerMainIn(
   const afterNominalMain = toNominal(mainBalance.add(mainIn), params);
   const deltaNominalMain = afterNominalMain.sub(previousNominalMain);
   const invariant = calcInvariant(previousNominalMain, wrappedBalance, params);
-  const newBptSupply = bptSupply.mul(decimal(1).add(deltaNominalMain.div(invariant)));
-  const bptOut = newBptSupply.sub(bptSupply);
+  const bptOut = bptSupply.mul(deltaNominalMain).div(invariant);
   return toFp(bptOut);
 }
 
@@ -51,8 +50,7 @@ export function calcBptInPerMainOut(
   const afterNominalMain = toNominal(mainBalance.sub(mainOut), params);
   const deltaNominalMain = previousNominalMain.sub(afterNominalMain);
   const invariant = calcInvariant(previousNominalMain, wrappedBalance, params);
-  const newBptSupply = bptSupply.mul(decimal(1).sub(deltaNominalMain.div(invariant)));
-  const bptIn = bptSupply.sub(newBptSupply);
+  const bptIn = bptSupply.mul(deltaNominalMain).div(invariant);
   return toFp(bptIn);
 }
 
