@@ -607,7 +607,6 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
 
-        // In the degenerate case of a zero duration change, consider it completed
         if (currentTime >= endTime) {
             return FixedPoint.ONE;
         } else if (currentTime <= startTime) {
