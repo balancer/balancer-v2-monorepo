@@ -6,7 +6,7 @@ import { MINUTE, DAY, advanceTime, currentTimestamp, WEEK } from '@balancer-labs
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
@@ -22,11 +22,10 @@ describe('InvestmentPool', function () {
   let poolTokens: TokenList;
   let tooManyWeights: BigNumber[];
   let owner: SignerWithAddress, other: SignerWithAddress;
-  let assetManager: SignerWithAddress;
   let pool: WeightedPool;
 
   before('setup signers', async () => {
-    [, owner, other, assetManager] = await ethers.getSigners();
+    [, owner, other] = await ethers.getSigners();
   });
 
   const MAX_TOKENS = 50;
@@ -119,7 +118,6 @@ describe('InvestmentPool', function () {
       const params = {
         tokens: poolTokens,
         weights: poolWeights,
-        assetManagers: Array(poolTokens.length).fill(assetManager.address),
         owner,
         poolType: WeightedPoolType.INVESTMENT_POOL,
         fromFactory: true,
@@ -127,10 +125,10 @@ describe('InvestmentPool', function () {
       pool = await WeightedPool.create(params);
     });
 
-    it('has asset managers', async () => {
+    it('has zero asset managers', async () => {
       await poolTokens.asyncEach(async (token) => {
         const info = await pool.getTokenInfo(token);
-        expect(info.assetManager).to.eq(assetManager.address);
+        expect(info.assetManager).to.eq(ZERO_ADDRESS);
       });
     });
   });
