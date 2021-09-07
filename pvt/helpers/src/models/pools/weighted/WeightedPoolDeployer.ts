@@ -213,7 +213,6 @@ export default {
           SYMBOL,
           tokens.addresses,
           weights,
-          assetManagers,
           swapFeePercentage,
           TypesConverter.toAddress(owner),
           swapEnabledOnStart,
