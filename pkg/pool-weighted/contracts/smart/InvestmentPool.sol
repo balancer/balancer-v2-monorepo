@@ -151,8 +151,6 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         emit ManagementFeePercentageChanged(params.managementSwapFeePercentage);
     }
 
-    // External functions
-
     /**
      * @dev Returns true if swaps are enabled.
      */
@@ -213,7 +211,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
     /**
      * @dev Schedule a gradual weight change, from the current weights to the given endWeights,
-     * over startTime to endTime
+     * over startTime to endTime.
      */
     function updateWeightsGradually(
         uint256 startTime,
@@ -588,7 +586,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     /**
-     * @dev Extend ownerOnly functions to include the Investment Pool control functions
+     * @dev Extend ownerOnly functions to include the Investment Pool control functions.
      */
     function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
         return
@@ -597,8 +595,6 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
             (actionId == getActionId(InvestmentPool.withdrawCollectedManagementFees.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
-
-    // Private functions
 
     /**
      * @dev Returns a fixed-point number representing how far along the current weight change is, where 0 means the
@@ -611,9 +607,9 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
 
-        if (currentTime > endTime) {
+        if (currentTime >= endTime) {
             return FixedPoint.ONE;
-        } else if (currentTime < startTime) {
+        } else if (currentTime <= startTime) {
             return 0;
         }
 
@@ -621,7 +617,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
         uint256 secondsElapsed = currentTime - startTime;
 
         // In the degenerate case of a zero duration change, consider it completed (and avoid division by zero)
-        return totalSeconds == 0 ? FixedPoint.ONE : secondsElapsed.divDown(totalSeconds);
+        return secondsElapsed.divDown(totalSeconds);
     }
 
     function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private pure returns (uint256 finalWeight) {
@@ -633,10 +629,10 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
         if (startWeight > endWeight) {
             uint256 weightDelta = pctProgress.mulDown(startWeight - endWeight);
-            return startWeight.sub(weightDelta);
+            return startWeight - weightDelta;
         } else {
             uint256 weightDelta = pctProgress.mulDown(endWeight - startWeight);
-            return startWeight.add(weightDelta);
+            return startWeight + weightDelta;
         }
     }
 
