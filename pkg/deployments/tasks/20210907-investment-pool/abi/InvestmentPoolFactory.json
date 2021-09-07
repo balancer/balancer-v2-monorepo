@@ -46,11 +46,6 @@
         "type": "uint256[]"
       },
       {
-        "internalType": "address[]",
-        "name": "assetManagers",
-        "type": "address[]"
-      },
-      {
         "internalType": "uint256",
         "name": "swapFeePercentage",
         "type": "uint256"
