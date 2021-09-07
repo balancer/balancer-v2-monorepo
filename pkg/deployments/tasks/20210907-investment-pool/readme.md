@@ -1,10 +1,7 @@
-# 2021-07-21 - Liquidity Bootstrapping Pool
+# 2021-09-07 - Investment Pool
 
-Deployment of the `InvestmentPool`, for Investment Pools (Version 1, for Techemy).
+Deployment of the `InvestmentPoolFactory`, for an initial iteration of Investment Pools. These Pools grant a large amount of power to their owner: they should only be used with care.
 
 ## Useful Files
 
-- [Ethereum mainnet addresses](./output/mainnet.json)
-- [Polygon mainnet addresses](./output/polygon.json)
-- [Arbitrum mainnet address](./output/arbitrum.json)
 - [`InvestmentPool` ABI](./abi/InvestmentPool.json)
