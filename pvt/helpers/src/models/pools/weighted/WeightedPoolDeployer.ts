@@ -113,6 +113,7 @@ export default {
               tokens: tokens.addresses,
               normalizedWeights: weights,
               swapFeePercentage: swapFeePercentage,
+              assetManagers: assetManagers,
               pauseWindowDuration: pauseWindowDuration,
               bufferPeriodDuration: bufferPeriodDuration,
               owner: TypesConverter.toAddress(owner),
