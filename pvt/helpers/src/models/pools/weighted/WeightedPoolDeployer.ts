@@ -112,7 +112,6 @@ export default {
               symbol: SYMBOL,
               tokens: tokens.addresses,
               normalizedWeights: weights,
-              assetManagers: assetManagers,
               swapFeePercentage: swapFeePercentage,
               pauseWindowDuration: pauseWindowDuration,
               bufferPeriodDuration: bufferPeriodDuration,
