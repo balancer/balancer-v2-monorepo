@@ -60,10 +60,10 @@ contract MerkleOrchard is IDistributor, Ownable {
         Claim[] memory claims,
         bool asInternalBalance
     ) internal {
-        IVault.UserBalanceOpKind kind = asInternalBalance
-            ? IVault.UserBalanceOpKind.TRANSFER_INTERNAL
-            : IVault.UserBalanceOpKind.WITHDRAW_INTERNAL;
-        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](claims.length);
+        // We want to keep track of the number of unique tokens so we can aggregate transfers
+        uint256 numRewardTokens;
+        IERC20[] memory rewardTokens = new IERC20[](claims.length);
+        uint256[] memory rewardAmounts = new uint256[](claims.length);
 
         Claim memory claim;
         for (uint256 i = 0; i < claims.length; i++) {
@@ -90,20 +90,44 @@ contract MerkleOrchard is IDistributor, Ownable {
                 "rewarder hasn't provided sufficient rewardTokens for claim"
             );
 
-            ops[i] = IVault.UserBalanceOp({
-                asset: IAsset(address(claim.rewardToken)),
-                amount: claim.balance,
-                sender: address(this),
-                recipient: payable(recipient),
-                kind: kind
-            });
-
             claimed[claim.rewardToken][claim.rewarder][claim.distribution][liquidityProvider] = true;
+
+            // Iterate through all the reward tokens we've seen so far.
+            for(uint256 j = 0; j < rewardTokens.length; i++){
+                // Check if we're already sending some of this token
+                // If so we just want to add to the existing transfer
+                if (rewardTokens[j] == claim.rewardToken){
+                    rewardAmounts[j] += claim.balance;
+                    break;
+                } else if (rewardTokens[j] == IERC20(0)){
+                    // If it's the first time we've seen this token
+                    // record both its address and amount to transfer
+                    rewardTokens[j] = claim.rewardToken;
+                    rewardAmounts[j] = claim.balance;
+                    numRewardTokens += 1;
+                    break;
+                }
+            }
 
             suppliedBalance[claim.rewardToken][claim.rewarder] =
                 suppliedBalance[claim.rewardToken][claim.rewarder] -
                 claim.balance;
             emit RewardPaid(recipient, address(claim.rewardToken), claim.balance);
+        }
+
+        IVault.UserBalanceOpKind kind = asInternalBalance
+            ? IVault.UserBalanceOpKind.TRANSFER_INTERNAL
+            : IVault.UserBalanceOpKind.WITHDRAW_INTERNAL;
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](numRewardTokens);
+
+        for(uint256 i = 0; i < numRewardTokens; i++){
+                ops[i] = IVault.UserBalanceOp({
+                asset: IAsset(address(rewardTokens[i])),
+                amount: rewardAmounts[i],
+                sender: address(this),
+                recipient: payable(recipient),
+                kind: kind
+            });
         }
         vault.manageUserBalance(ops);
     }
