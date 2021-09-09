@@ -34,8 +34,15 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
     uint256 private _lastInvariant;
 
+    // For backwards compatibility, make sure new join and exit kinds are added at the end of the enum.
+
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT, ALL_TOKENS_IN_FOR_EXACT_BPT_OUT }
-    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
+    enum ExitKind {
+        EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+        EXACT_BPT_IN_FOR_TOKENS_OUT,
+        BPT_IN_FOR_EXACT_TOKENS_OUT,
+        MANAGEMENT_FEE_TOKENS_OUT // for InvestmentPool
+    }
 
     constructor(
         IVault vault,
@@ -85,7 +92,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
      */
     function _getNormalizedWeightsAndMaxWeightIndex() internal view virtual returns (uint256[] memory, uint256);
 
-    function getLastInvariant() external view returns (uint256) {
+    function getLastInvariant() public view virtual returns (uint256) {
         return _lastInvariant;
     }
 
@@ -238,7 +245,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
+    ) internal returns (uint256, uint256[] memory) {
         JoinKind kind = userData.joinKind();
 
         if (kind == JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
@@ -257,19 +264,22 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
+    ) private returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), amountsIn.length);
 
         _upscaleArray(amountsIn, scalingFactors);
 
-        uint256 bptAmountOut = WeightedMath._calcBptOutGivenExactTokensIn(
+        (uint256 bptAmountOut, uint256[] memory swapFees) = WeightedMath._calcBptOutGivenExactTokensIn(
             balances,
             normalizedWeights,
             amountsIn,
             totalSupply(),
             getSwapFeePercentage()
         );
+
+        // Note that swapFees is already upscaled
+        _processSwapFeeAmounts(swapFees);
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
@@ -280,20 +290,27 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
+    ) private returns (uint256, uint256[] memory) {
         (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
         // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
 
         _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
 
-        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
-        amountsIn[tokenIndex] = WeightedMath._calcTokenInGivenExactBptOut(
+        (uint256 amountIn, uint256 swapFee) = WeightedMath._calcTokenInGivenExactBptOut(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountOut,
             totalSupply(),
             getSwapFeePercentage()
         );
+
+        // Note that swapFee is already upscaled
+        _processSwapFeeAmount(tokenIndex, swapFee);
+
+        // We join in a single token, so we initialize amountsIn with zeros
+        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
+        // And then assign the result to the selected token
+        amountsIn[tokenIndex] = amountIn;
 
         return (bptAmountOut, amountsIn);
     }
@@ -377,16 +394,17 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
+    ) internal returns (uint256, uint256[] memory) {
         ExitKind kind = userData.exitKind();
 
         if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(balances, normalizedWeights, userData);
         } else if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(balances, userData);
-        } else {
-            // ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT
+        } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(balances, normalizedWeights, scalingFactors, userData);
+        } else {
+            _revert(Errors.UNHANDLED_EXIT_KIND);
         }
     }
 
@@ -394,7 +412,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         bytes memory userData
-    ) private view whenNotPaused returns (uint256, uint256[] memory) {
+    ) private whenNotPaused returns (uint256, uint256[] memory) {
         // This exit function is disabled if the contract is paused.
 
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
@@ -402,17 +420,22 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
 
-        // We exit in a single token, so we initialize amountsOut with zeros
-        uint256[] memory amountsOut = new uint256[](_getTotalTokens());
-
-        // And then assign the result to the selected token
-        amountsOut[tokenIndex] = WeightedMath._calcTokenOutGivenExactBptIn(
+        (uint256 amountOut, uint256 swapFee) = WeightedMath._calcTokenOutGivenExactBptIn(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountIn,
             totalSupply(),
             getSwapFeePercentage()
         );
+
+        // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
+        // Note that swapFee is already upscaled.
+        _processSwapFeeAmount(tokenIndex, swapFee);
+
+        // We exit in a single token, so we initialize amountsOut with zeros
+        uint256[] memory amountsOut = new uint256[](_getTotalTokens());
+        // And then assign the result to the selected token
+        amountsOut[tokenIndex] = amountOut;
 
         return (bptAmountIn, amountsOut);
     }
@@ -439,14 +462,14 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) private view whenNotPaused returns (uint256, uint256[] memory) {
+    ) private whenNotPaused returns (uint256, uint256[] memory) {
         // This exit function is disabled if the contract is paused.
 
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens());
         _upscaleArray(amountsOut, scalingFactors);
 
-        uint256 bptAmountIn = WeightedMath._calcBptInGivenExactTokensOut(
+        (uint256 bptAmountIn, uint256[] memory swapFees) = WeightedMath._calcBptInGivenExactTokensOut(
             balances,
             normalizedWeights,
             amountsOut,
@@ -454,6 +477,10 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             getSwapFeePercentage()
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
+
+        // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
+        // Note that swapFee is already upscaled.
+        _processSwapFeeAmounts(swapFees);
 
         return (bptAmountIn, amountsOut);
     }
