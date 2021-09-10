@@ -429,24 +429,19 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
         getVault().manageUserBalance(ops);
 
-        if (block.timestamp >= rewardData[pool][rewarder][rewardsToken].periodFinish) {
-            rewardData[pool][rewarder][rewardsToken].rewardRate = Math.divDown(
-                reward,
-                rewardData[pool][rewarder][rewardsToken].rewardsDuration
-            );
+        // Save the storage pointer to compute the slot only once.
+        Reward storage data = rewardData[pool][rewarder][rewardsToken];
+
+        if (block.timestamp >= data.periodFinish) {
+            data.rewardRate = Math.divDown(reward, data.rewardsDuration);
         } else {
-            uint256 remaining = rewardData[pool][rewarder][rewardsToken].periodFinish.sub(block.timestamp);
-            uint256 leftover = Math.mul(remaining, rewardData[pool][rewarder][rewardsToken].rewardRate);
-            rewardData[pool][rewarder][rewardsToken].rewardRate = Math.divDown(
-                reward.add(leftover),
-                rewardData[pool][rewarder][rewardsToken].rewardsDuration
-            );
+            uint256 remaining = data.periodFinish.sub(block.timestamp);
+            uint256 leftover = Math.mul(remaining, data.rewardRate);
+            data.rewardRate = Math.divDown(reward.add(leftover), data.rewardsDuration);
         }
 
-        rewardData[pool][rewarder][rewardsToken].lastUpdateTime = block.timestamp;
-        rewardData[pool][rewarder][rewardsToken].periodFinish = block.timestamp.add(
-            rewardData[pool][rewarder][rewardsToken].rewardsDuration
-        );
+        data.lastUpdateTime = block.timestamp;
+        data.periodFinish = block.timestamp.add(data.rewardsDuration);
         emit RewardAdded(address(rewardsToken), reward);
     }
 
@@ -478,20 +473,24 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20 token
     ) internal {
         uint256 totalUnpaidRewards;
-        for (uint256 r; r < _rewarders[pool][token].length(); r++) {
-            address rewarder = _rewarders[pool][token].unchecked_at(r);
 
-            rewardData[pool][rewarder][token].rewardPerTokenStored = rewardPerToken(pool, rewarder, token);
-            rewardData[pool][rewarder][token].lastUpdateTime = lastTimeRewardApplicable(pool, rewarder, token);
+        // Save the storage pointer to compute the slot only once.
+        EnumerableSet.AddressSet storage rewarders = _rewarders[pool][token];
+        uint256 rewardersLength = rewarders.length();
+
+        for (uint256 r; r < rewardersLength; r++) {
+            address rewarder = rewarders.unchecked_at(r);
+            Reward storage data = rewardData[pool][rewarder][token];
+
+            data.rewardPerTokenStored = rewardPerToken(pool, rewarder, token);
+            data.lastUpdateTime = lastTimeRewardApplicable(pool, rewarder, token);
             if (account != address(0)) {
                 totalUnpaidRewards = totalUnpaidRewards.add(
                     unaccountedForUnpaidRewards(pool, rewarder, account, token)
                 );
-                userRewardPerTokenPaid[pool][rewarder][account][token] = rewardData[pool][rewarder][token]
-                    .rewardPerTokenStored;
+                userRewardPerTokenPaid[pool][rewarder][account][token] = data.rewardPerTokenStored;
             }
         }
-        unpaidRewards[pool][account][token] = totalUnpaidRewards;
     }
 
     /* ========== MODIFIERS ========== */
