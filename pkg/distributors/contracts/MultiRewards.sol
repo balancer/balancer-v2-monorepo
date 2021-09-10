@@ -436,7 +436,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             );
         } else {
             uint256 remaining = rewardData[pool][rewarder][rewardsToken].periodFinish.sub(block.timestamp);
-            uint256 leftover = remaining.mulDown(rewardData[pool][rewarder][rewardsToken].rewardRate);
+            uint256 leftover = Math.mul(remaining, rewardData[pool][rewarder][rewardsToken].rewardRate);
             rewardData[pool][rewarder][rewardsToken].rewardRate = Math.divDown(
                 reward.add(leftover),
                 rewardData[pool][rewarder][rewardsToken].rewardsDuration

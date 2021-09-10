@@ -12,7 +12,8 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 export const tokenInitialBalance = bn(200e18);
 export const rewardTokenInitialBalance = bn(100e18);
-export const rewardsDuration = 1; // Have a neglibile duration so that rewards are distributed instantaneously
+export const rewardsDuration = 600;
+export const rewardsVestingTime = rewardsDuration + 60;
 
 interface SetupData {
   poolId: string;
