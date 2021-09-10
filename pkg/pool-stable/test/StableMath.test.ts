@@ -1,4 +1,5 @@
 import { Contract } from 'ethers';
+import { expect } from 'chai';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { bn, decimal, fp } from '@balancer-labs/v2-helpers/src/numbers';
@@ -45,6 +46,15 @@ describe('StableMath', function () {
         const expectedInvariant = calculateAnalyticalInvariantForTwoTokens(balances, amp);
 
         expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
+      });
+
+      it('reverts if it does not converge', async () => {
+        const amp = bn(5000);
+        const balances = [fp(0.00001), fp(1200000), fp(300)];
+
+        await expect(mock.invariant(amp.mul(AMP_PRECISION), balances, true)).to.be.revertedWith(
+          'STABLE_INVARIANT_DIDNT_CONVERGE'
+        );
       });
     });
 
