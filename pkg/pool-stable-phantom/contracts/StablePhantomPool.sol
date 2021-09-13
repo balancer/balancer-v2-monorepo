@@ -42,8 +42,8 @@ contract StablePhantomPool is StablePool {
     // [   expires   | duration | price rate value ]
     // [   uint64    |  uint64  |      uint128     ]
 
-    mapping(IERC20 => bytes32) private priceRateCaches;
-    mapping(IERC20 => IRateProvider) private rateProviders;
+    mapping(IERC20 => bytes32) private _priceRateCaches;
+    mapping(IERC20 => IRateProvider) private _rateProviders;
 
     uint256 private constant _PRICE_RATE_CACHE_VALUE_OFFSET = 0;
     uint256 private constant _PRICE_RATE_CACHE_DURATION_OFFSET = 128;
@@ -58,7 +58,7 @@ contract StablePhantomPool is StablePool {
         string name;
         string symbol;
         IERC20[] tokens;
-        IRateProvider[] rateProviders;
+        IRateProvider[] _rateProviders;
         uint256[] priceRateCacheDurations;
         uint256 amplificationParameter;
         uint256 swapFeePercentage;
@@ -84,18 +84,20 @@ contract StablePhantomPool is StablePool {
 
         InputHelpers.ensureInputLengthMatch(
             params.tokens.length,
-            params.rateProviders.length,
+            params._rateProviders.length,
             params.priceRateCacheDurations.length
         );
 
         for (uint256 i = 0; i < params.tokens.length; i++) {
-            rateProviders[params.tokens[i]] = params.rateProviders[i];
-            _updatePriceRateCache(params.tokens[i], params.rateProviders[i], params.priceRateCacheDurations[i]);
-            emit PriceRateProviderSet(params.tokens[i], params.rateProviders[i], params.priceRateCacheDurations[i]);
+            _rateProviders[params.tokens[i]] = params._rateProviders[i];
+            _updatePriceRateCache(params.tokens[i], params._rateProviders[i], params.priceRateCacheDurations[i]);
+            emit PriceRateProviderSet(params.tokens[i], params._rateProviders[i], params.priceRateCacheDurations[i]);
         }
 
         uint256 bptIndex;
-        for (bptIndex = params.tokens.length; bptIndex > 0 && params.tokens[bptIndex - 1] > IERC20(this); bptIndex--) {}
+        for (bptIndex = params.tokens.length; bptIndex > 0 && params.tokens[bptIndex - 1] > IERC20(this); bptIndex--) {
+            // solhint-disable-previous-line no-empty-blocks
+        }
         _bptIndex = bptIndex;
     }
 
@@ -148,11 +150,11 @@ contract StablePhantomPool is StablePool {
         uint256 indexIn,
         uint256 indexOut
     ) internal virtual override returns (uint256) {
-        if (request.tokenIn == IERC20(this)) { // exit given BPT
+        if (request.tokenIn == IERC20(this)) {
             return _onSwapTokenGivenBptIn(request.amount, indexOut, balances);
-        } else if (request.tokenOut == IERC20(this)) { // join given token in
+        } else if (request.tokenOut == IERC20(this)) {
             return _onSwapBptGivenTokenIn(request.amount, indexIn, balances);
-        } else { // token swap
+        } else {
             return super._onSwapGivenIn(request, balances, indexIn, indexOut);
         }
     }
@@ -166,11 +168,11 @@ contract StablePhantomPool is StablePool {
         uint256 indexIn,
         uint256 indexOut
     ) internal virtual override returns (uint256) {
-        if (request.tokenIn == IERC20(this)) { // exit given token out
+        if (request.tokenIn == IERC20(this)) {
             return _onSwapBptGivenTokenOut(request.amount, indexOut, balances);
-        } else if (request.tokenOut == IERC20(this)) { // join given BPT
+        } else if (request.tokenOut == IERC20(this)) {
             return _onSwapTokenGivenBptOut(request.amount, indexIn, balances);
-        } else { // token swap
+        } else {
             return super._onSwapGivenOut(request, balances, indexIn, indexOut);
         }
     }
@@ -310,13 +312,15 @@ contract StablePhantomPool is StablePool {
         uint256 totalTokens = _getTotalTokens();
         scalingFactors = super._scalingFactors();
 
-        // prettier-ignore
         // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
-        if (totalTokens > 0) { scalingFactors[0] = scalingFactors[0].mulDown(getPriceRate(_token0)); }
-        if (totalTokens > 1) { scalingFactors[1] = scalingFactors[1].mulDown(getPriceRate(_token1)); }
-        if (totalTokens > 2) { scalingFactors[2] = scalingFactors[2].mulDown(getPriceRate(_token2)); }
-        if (totalTokens > 3) { scalingFactors[3] = scalingFactors[3].mulDown(getPriceRate(_token3)); }
-        if (totalTokens > 4) { scalingFactors[4] = scalingFactors[4].mulDown(getPriceRate(_token4)); }
+        // prettier-ignore
+        {
+            if (totalTokens > 0) { scalingFactors[0] = scalingFactors[0].mulDown(getPriceRate(_token0)); }
+            if (totalTokens > 1) { scalingFactors[1] = scalingFactors[1].mulDown(getPriceRate(_token1)); }
+            if (totalTokens > 2) { scalingFactors[2] = scalingFactors[2].mulDown(getPriceRate(_token2)); }
+            if (totalTokens > 3) { scalingFactors[3] = scalingFactors[3].mulDown(getPriceRate(_token3)); }
+            if (totalTokens > 4) { scalingFactors[4] = scalingFactors[4].mulDown(getPriceRate(_token4)); }
+        }
     }
 
     /**
@@ -338,11 +342,13 @@ contract StablePhantomPool is StablePool {
         providers = new IRateProvider[](totalTokens);
 
         // prettier-ignore
-        if (totalTokens > 0) { providers[0] = rateProviders[_token0]; } else { return providers; }
-        if (totalTokens > 1) { providers[1] = rateProviders[_token1]; } else { return providers; }
-        if (totalTokens > 2) { providers[2] = rateProviders[_token2]; } else { return providers; }
-        if (totalTokens > 3) { providers[3] = rateProviders[_token3]; } else { return providers; }
-        if (totalTokens > 4) { providers[4] = rateProviders[_token4]; } else { return providers; }
+        {
+            if (totalTokens > 0) { providers[0] = _rateProviders[_token0]; } else { return providers; }
+            if (totalTokens > 1) { providers[1] = _rateProviders[_token1]; } else { return providers; }
+            if (totalTokens > 2) { providers[2] = _rateProviders[_token2]; } else { return providers; }
+            if (totalTokens > 3) { providers[3] = _rateProviders[_token3]; } else { return providers; }
+            if (totalTokens > 4) { providers[4] = _rateProviders[_token4]; } else { return providers; }
+        }
     }
 
     /**
@@ -350,7 +356,7 @@ contract StablePhantomPool is StablePool {
      * In case there is no rate provider for the provided token it returns 1e18.
      */
     function getPriceRate(IERC20 token) public view virtual returns (uint256) {
-        bytes32 priceRateCache = priceRateCaches[token];
+        bytes32 priceRateCache = _priceRateCaches[token];
         return priceRateCache == bytes32(0) ? FixedPoint.ONE : priceRateCache.getValue();
     }
 
@@ -368,8 +374,8 @@ contract StablePhantomPool is StablePool {
             uint256 expires
         )
     {
-        rate = priceRateCaches[token].getValue();
-        (duration, expires) = priceRateCaches[token].getTimestamps();
+        rate = _priceRateCaches[token].getValue();
+        (duration, expires) = _priceRateCaches[token].getTimestamps();
     }
 
     /**
@@ -378,7 +384,7 @@ contract StablePhantomPool is StablePool {
      * @param duration Number of seconds until the current rate of token price is fetched again.
      */
     function setPriceRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
-        IRateProvider provider = rateProviders[token];
+        IRateProvider provider = _rateProviders[token];
         _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
         _updatePriceRateCache(token, provider, duration);
         emit PriceRateProviderSet(token, provider, duration);
@@ -389,9 +395,9 @@ contract StablePhantomPool is StablePool {
      * It will revert if the requested token does not have a rate provider associated.
      */
     function updatePriceRateCache(IERC20 token) external {
-        IRateProvider provider = rateProviders[token];
+        IRateProvider provider = _rateProviders[token];
         _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-        uint256 duration = priceRateCaches[token].getDuration();
+        uint256 duration = _priceRateCaches[token].getDuration();
         _updatePriceRateCache(token, provider, duration);
     }
 
@@ -399,10 +405,14 @@ contract StablePhantomPool is StablePool {
      * @dev Internal function to updates a token rate cache for a known provider and duration.
      * It trusts the given values, it does not perform any checks.
      */
-    function _updatePriceRateCache(IERC20 token, IRateProvider provider, uint256 duration) private {
+    function _updatePriceRateCache(
+        IERC20 token,
+        IRateProvider provider,
+        uint256 duration
+    ) private {
         uint256 rate = provider.getRate();
         bytes32 cache = PriceRateCache.encode(rate, duration);
-        priceRateCaches[token] = cache;
+        _priceRateCaches[token] = cache;
         emit PriceRateCacheUpdated(token, rate);
     }
 
@@ -410,23 +420,26 @@ contract StablePhantomPool is StablePool {
      * @dev Caches the rates of all tokens if necessary
      */
     function _cachePriceRatesIfNecessary() internal {
-        // prettier-ignore
         uint256 totalTokens = _getTotalTokens();
-        if (totalTokens > 0) { _cachePriceRateIfNecessary(_token0); } else { return; }
-        if (totalTokens > 1) { _cachePriceRateIfNecessary(_token1); } else { return; }
-        if (totalTokens > 2) { _cachePriceRateIfNecessary(_token2); } else { return; }
-        if (totalTokens > 3) { _cachePriceRateIfNecessary(_token3); } else { return; }
-        if (totalTokens > 4) { _cachePriceRateIfNecessary(_token4); } else { return; }
+        // prettier-ignore
+        {
+            if (totalTokens > 0) { _cachePriceRateIfNecessary(_token0); } else { return; }
+            if (totalTokens > 1) { _cachePriceRateIfNecessary(_token1); } else { return; }
+            if (totalTokens > 2) { _cachePriceRateIfNecessary(_token2); } else { return; }
+            if (totalTokens > 3) { _cachePriceRateIfNecessary(_token3); } else { return; }
+            if (totalTokens > 4) { _cachePriceRateIfNecessary(_token4); } else { return; }
+        }
     }
 
     /**
      * @dev Caches the rate for a token if necessary. It ignores the call if theres is no provider set.
      */
     function _cachePriceRateIfNecessary(IERC20 token) private {
-        IRateProvider provider = rateProviders[token];
+        IRateProvider provider = _rateProviders[token];
         if (address(provider) != address(0)) {
-            (uint256 duration, uint256 expires) = priceRateCaches[token].getTimestamps();
+            (uint256 duration, uint256 expires) = _priceRateCaches[token].getTimestamps();
             if (block.timestamp > expires) {
+                // solhint-disable-previous-line not-rely-on-time
                 _updatePriceRateCache(token, provider, duration);
             }
         }

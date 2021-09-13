@@ -120,7 +120,9 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
     function _processSwapFeeAmount(
         uint256, /*index*/
         uint256 /*amount*/
-    ) internal virtual {}
+    ) internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function _processSwapFeeAmount(IERC20 token, uint256 amount) internal {
         _processSwapFeeAmount(_tokenAddressToIndex(token), amount);
