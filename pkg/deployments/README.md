@@ -63,3 +63,4 @@ Returns an object with all contracts from a deployment and their addresses.
 | Relayer for Lido stETH wrapping/unwrapping       | [`20210812-lido-relayer`](./tasks/20210812-lido-relayer)                                 |
 | Distributor contract for LDO rewards             | [`20210811-ldo-merkle`](./tasks/20210811-ldo-merkle)                                     |
 | Rate Provider for wstETH                         | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                 |
+| Distributor contract for arbitrum BAL rewards    | [`20210913-bal-arbitrum-merkle`](./tasks/20210913-bal-arbitrum-merkle)                   |
