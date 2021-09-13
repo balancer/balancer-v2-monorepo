@@ -482,6 +482,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * it had 18 decimals.
      */
     function _computeScalingFactor(IERC20 token) internal view returns (uint256) {
+        if (address(token) == address(this)) {
+            return FixedPoint.ONE;
+        }
+
         // Tokens that don't implement the `decimals` method are not supported.
         uint256 tokenDecimals = ERC20(address(token)).decimals();
 

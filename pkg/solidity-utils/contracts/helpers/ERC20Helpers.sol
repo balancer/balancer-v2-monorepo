@@ -36,6 +36,20 @@ function _sortTokens(IERC20 tokenA, IERC20 tokenB, IERC20 tokenC) pure returns (
     tokens[indexTokenC] = tokenC;
 }
 
+function _insertSorted(IERC20[] memory tokens, IERC20 token) pure returns (IERC20[] memory sorted) {
+    sorted = new IERC20[](tokens.length + 1);
+
+    if (tokens.length == 0) {
+        sorted[0] = token;
+        return sorted;
+    }
+
+    uint256 i;
+    for (i = tokens.length; i > 0 && tokens[i - 1] > token; i--) sorted[i] = tokens[i - 1];
+    for (uint256 j = 0; j < i; j++) sorted[j] = tokens[j];
+    sorted[i] = token;
+}
+
 function _getSortedTokenIndexes(IERC20 tokenA, IERC20 tokenB, IERC20 tokenC) pure returns (uint256 indexTokenA, uint256 indexTokenB, uint256 indexTokenC) {
     if (tokenA < tokenB) {
         if (tokenB < tokenC) { // (tokenA, tokenB, tokenC)

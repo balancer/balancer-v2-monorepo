@@ -150,6 +150,8 @@ library Errors {
     uint256 internal constant UPPER_TARGET_TOO_HIGH = 333;
     uint256 internal constant UNHANDLED_BY_LINEAR_POOL = 334;
     uint256 internal constant OUT_OF_TARGET_RANGE = 335;
+    uint256 internal constant UNHANDLED_BY_PHANTOM_POOL = 336;
+    uint256 internal constant TOKEN_DOES_NOT_HAVE_RATE_PROVIDER = 337;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
