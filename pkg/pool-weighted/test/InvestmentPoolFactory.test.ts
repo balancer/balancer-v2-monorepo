@@ -17,12 +17,12 @@ describe('InvestmentPoolFactory', function () {
   let tokens: TokenList;
   let factory: Contract;
   let vault: Vault;
-  let assetManagers: string[];
-  let assetManager: SignerWithAddress, owner: SignerWithAddress;
+  let owner: SignerWithAddress;
 
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.5);
   const WEIGHTS = toNormalizedWeights([fp(30), fp(70), fp(5), fp(5)]);
 
   const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -31,7 +31,7 @@ describe('InvestmentPoolFactory', function () {
   let createTime: BigNumber;
 
   before('setup signers', async () => {
-    [, assetManager, owner] = await ethers.getSigners();
+    [, owner] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy factory & tokens', async () => {
@@ -41,8 +41,6 @@ describe('InvestmentPoolFactory', function () {
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
-    assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
-    assetManagers[0] = assetManager.address;
   });
 
   async function createPool(swapsEnabled = true): Promise<Contract> {
@@ -52,10 +50,10 @@ describe('InvestmentPoolFactory', function () {
         SYMBOL,
         tokens.addresses,
         WEIGHTS,
-        assetManagers,
         POOL_SWAP_FEE_PERCENTAGE,
         owner.address,
-        swapsEnabled
+        swapsEnabled,
+        POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE
       )
     ).wait();
 
@@ -86,16 +84,20 @@ describe('InvestmentPoolFactory', function () {
       expect(await pool.totalSupply()).to.be.equal(0);
     });
 
-    it('sets the asset managers', async () => {
-      await tokens.asyncEach(async (token, i) => {
+    it('sets zero asset managers', async () => {
+      await tokens.asyncEach(async (token) => {
         const poolId = await pool.getPoolId();
         const info = await vault.getPoolTokenInfo(poolId, token);
-        expect(info.assetManager).to.equal(assetManagers[i]);
+        expect(info.assetManager).to.equal(ZERO_ADDRESS);
       });
     });
 
     it('sets swap fee', async () => {
       expect(await pool.getSwapFeePercentage()).to.equal(POOL_SWAP_FEE_PERCENTAGE);
+    });
+
+    it('sets management swap fee', async () => {
+      expect(await pool.getManagementSwapFeePercentage()).to.equal(POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE);
     });
 
     it('sets the owner ', async () => {

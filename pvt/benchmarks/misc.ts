@@ -87,7 +87,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
     switch (poolName) {
       case 'InvestmentPool': {
-        params = [tokenAddresses, weights, assetManagers, swapFeePercentage];
+        params = [tokenAddresses, weights, swapFeePercentage];
         break;
       }
       case 'WeightedPool2Tokens': {
@@ -195,9 +195,12 @@ async function deployPoolFromFactory(
 
   if (poolName == 'InvestmentPool') {
     const swapEnabledOnStart = true;
+    const managementSwapFeePercentage = 0;
 
     receipt = await (
-      await factory.connect(args.from).create(name, symbol, ...args.parameters, owner, swapEnabledOnStart)
+      await factory
+        .connect(args.from)
+        .create(name, symbol, ...args.parameters, owner, swapEnabledOnStart, managementSwapFeePercentage)
     ).wait();
   } else {
     receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)).wait();
