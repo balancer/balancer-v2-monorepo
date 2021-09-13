@@ -4,6 +4,8 @@ import 'hardhat-local-networks-config-plugin';
 
 import '@balancer-labs/v2-common/setupTests';
 
+import '@nomiclabs/hardhat-etherscan';
+
 import { task, types } from 'hardhat/config';
 import { TASK_TEST } from 'hardhat/builtin-tasks/task-names';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
@@ -22,6 +24,24 @@ task('deploy', 'Run deployment task')
       Logger.setDefaults(false, args.verbose || false);
       const verifier = args.key ? new Verifier(hre.network, args.key) : undefined;
       await Task.fromHRE(args.id, hre, verifier).run(args);
+    }
+  );
+
+task('verify-contract', 'Run verification for a given contract')
+  .addParam('id', 'Deployment task ID')
+  .addParam('name', 'Contract name')
+  .addParam('address', 'Contract address')
+  .addParam('args', 'ABI-encoded constructor arguments')
+  .addParam('key', 'Etherscan API key to verify contracts')
+  .setAction(
+    async (
+      args: { id: string; name: string; address: string; key: string; args: string; verbose?: boolean },
+      hre: HardhatRuntimeEnvironment
+    ) => {
+      Logger.setDefaults(false, args.verbose || false);
+      const verifier = args.key ? new Verifier(hre.network, args.key) : undefined;
+
+      await Task.fromHRE(args.id, hre, verifier).verify(args.name, args.address, args.args);
     }
   );
 

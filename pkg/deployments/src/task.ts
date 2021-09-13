@@ -111,7 +111,12 @@ export default class Task {
     return instance;
   }
 
-  async verify(name: string, address: string, constructorArguments: unknown, libs?: Libraries): Promise<void> {
+  async verify(
+    name: string,
+    address: string,
+    constructorArguments: string | unknown[],
+    libs?: Libraries
+  ): Promise<void> {
     try {
       if (!this._verifier) return logger.warn('Skipping contract verification, no verifier defined');
       const url = await this._verifier.call(this, name, address, constructorArguments, libs);
