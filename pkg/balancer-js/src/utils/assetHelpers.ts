@@ -8,8 +8,8 @@ const transposeMatrix = (matrix: unknown[][]): unknown[][] =>
   matrix[0].map((_, columnIndex) => matrix.map((row) => row[columnIndex]));
 
 export class AssetHelpers {
-  public ETH: string = AddressZero;
-  public WETH: string;
+  public readonly ETH: string = AddressZero;
+  public readonly WETH: string;
 
   constructor(wethAddress: string) {
     this.WETH = getAddress(wethAddress);
