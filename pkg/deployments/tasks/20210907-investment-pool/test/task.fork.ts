@@ -5,7 +5,7 @@ import { BigNumber, Contract } from 'ethers';
 import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
@@ -25,7 +25,6 @@ describe('InvestmentPoolFactory', function () {
   const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
 
   const tokens = [DAI, USDC];
-  const assetManagers = new Array(tokens.length).fill(ZERO_ADDRESS);
   const initialWeights = [fp(0.9), fp(0.1)];
   const swapFeePercentage = fp(0.01);
   const managementSwapFeePercentage = fp(0.6);
@@ -62,7 +61,6 @@ describe('InvestmentPoolFactory', function () {
       'TCH-MH',
       tokens,
       initialWeights,
-      assetManagers,
       swapFeePercentage,
       owner.address,
       swapEnabledOnStart,
