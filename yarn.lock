@@ -512,7 +512,6 @@ __metadata:
   resolution: "@balancer-labs/v2-standalone-utils@workspace:pkg/standalone-utils"
   dependencies:
     "@balancer-labs/balancer-js": "workspace:*"
-    "@balancer-labs/v2-asset-manager-utils": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
     "@balancer-labs/v2-pool-utils": "workspace:*"
