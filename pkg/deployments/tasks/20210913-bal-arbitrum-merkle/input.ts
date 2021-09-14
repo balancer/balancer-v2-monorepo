@@ -10,6 +10,6 @@ const Vault = new Task('20210418-vault');
 export default {
   arbitrum: {
     Vault,
-    balToken: '0x040d1edc9569d4bab2d15287dc5a4f10f56a56b8',
+    balToken: '0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8',
   },
 };
