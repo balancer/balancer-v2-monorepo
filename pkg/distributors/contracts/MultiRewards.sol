@@ -491,6 +491,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
                 userRewardPerTokenPaid[pool][rewarder][account][token] = data.rewardPerTokenStored;
             }
         }
+
+        unpaidRewards[pool][account][token] = totalUnpaidRewards;
     }
 
     /* ========== MODIFIERS ========== */
