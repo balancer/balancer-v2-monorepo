@@ -1,6 +1,6 @@
 {
   "name": "@balancer-labs/v2-asset-manager-utils",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "V2 Asset Managers",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/asset-manager-utils#readme",
