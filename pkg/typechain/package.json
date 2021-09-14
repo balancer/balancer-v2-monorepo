@@ -12,7 +12,7 @@
   "bugs": {
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },
-  "main": "dist/index.ts",
+  "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "files": [
     "dist/"
