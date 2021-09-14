@@ -432,16 +432,20 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         // Save the storage pointer to compute the slot only once.
         Reward storage data = rewardData[pool][rewarder][rewardsToken];
 
-        if (block.timestamp >= data.periodFinish) {
-            data.rewardRate = Math.divDown(reward, data.rewardsDuration);
+        // Cache storage variables to avoid repeated access.
+        uint256 periodFinish = data.periodFinish;
+        uint256 rewardsDuration = data.rewardsDuration;
+
+        if (block.timestamp >= periodFinish) {
+            data.rewardRate = Math.divDown(reward, rewardsDuration);
         } else {
-            uint256 remaining = data.periodFinish.sub(block.timestamp);
+            uint256 remaining = periodFinish.sub(block.timestamp);
             uint256 leftover = Math.mul(remaining, data.rewardRate);
-            data.rewardRate = Math.divDown(reward.add(leftover), data.rewardsDuration);
+            data.rewardRate = Math.divDown(reward.add(leftover), rewardsDuration);
         }
 
         data.lastUpdateTime = block.timestamp;
-        data.periodFinish = block.timestamp.add(data.rewardsDuration);
+        data.periodFinish = block.timestamp.add(rewardsDuration);
         emit RewardAdded(address(rewardsToken), reward);
     }
 
@@ -482,13 +486,16 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             address rewarder = rewarders.unchecked_at(r);
             Reward storage data = rewardData[pool][rewarder][token];
 
-            data.rewardPerTokenStored = rewardPerToken(pool, rewarder, token);
+            // Cache storage variables to avoid repeated access.
+            uint256 perToken = rewardPerToken(pool, rewarder, token);
+            data.rewardPerTokenStored = perToken;
+
             data.lastUpdateTime = lastTimeRewardApplicable(pool, rewarder, token);
             if (account != address(0)) {
                 totalUnpaidRewards = totalUnpaidRewards.add(
                     unaccountedForUnpaidRewards(pool, rewarder, account, token)
                 );
-                userRewardPerTokenPaid[pool][rewarder][account][token] = data.rewardPerTokenStored;
+                userRewardPerTokenPaid[pool][rewarder][account][token] = perToken;
             }
         }
 
