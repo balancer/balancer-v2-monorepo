@@ -8,8 +8,8 @@ const transposeMatrix = (matrix: unknown[][]): unknown[][] =>
   matrix[0].map((_, columnIndex) => matrix.map((row) => row[columnIndex]));
 
 export class AssetHelpers {
-  public ETH: string = AddressZero;
-  public WETH: string;
+  public readonly ETH: string = AddressZero;
+  public readonly WETH: string;
 
   constructor(wethAddress: string) {
     this.WETH = getAddress(wethAddress);
@@ -67,8 +67,10 @@ export class AssetHelpers {
     const sortedTranspose = transpose.sort(([tokenA], [tokenB]) => cmpTokens(tokenA, tokenB));
     const [sortedErc20s, ...sortedOthers] = transposeMatrix(sortedTranspose) as [string[], ...unknown[][]];
 
-    // We now need to translate WETH back into ETH
-    const sortedTokens = sortedErc20s.map((token) => (this.isWETH(token) ? this.ETH : token));
+    // If one of the tokens was ETH, we need to translate back from WETH
+    const sortedTokens = tokens.includes(this.ETH)
+      ? sortedErc20s.map((token) => (this.isWETH(token) ? this.ETH : token))
+      : sortedErc20s;
     return [sortedTokens, ...sortedOthers];
   }
 }
