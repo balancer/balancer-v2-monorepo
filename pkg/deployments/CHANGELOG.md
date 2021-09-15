@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.0 (2021-09-15)
+
+### New Features
+
+- Added creation code in the `bytecode` directory of each task.
+- Added `getBalancerContractBytecode` to get a contract's creation code, which makes deploying contracts easier to package users.
+
 ## 2.1.3 (2021-08-30)
 
 ### Fixes

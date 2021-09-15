@@ -1,6 +1,4 @@
 import { Contract } from 'ethers';
-import Task from './src/task';
-import { Artifact } from './src/types';
 
 /**
  * @dev Creates an ethers Contract object for a canonical contract deployed on a specific network
@@ -35,12 +33,13 @@ export async function getBalancerContractAbi(task: string, contract: string): Pr
 }
 
 /**
- * @dev Returns the contract's build artifact from a specific task
- * @param task ID of the task to look for the artifact of the required contract
- * @param contract Name of the contract to looking the artifact of
+ * @dev Returns the contract's creation code of for a specific task
+ * @param task ID of the task to look the creation code of the required contract
+ * @param contract Name of the contract to looking the creation code of
  */
-export async function getBalancerContractArtifact(task: string, contract: string): Promise<Artifact> {
-  return new Task(task).artifact(contract);
+export async function getBalancerContractBytecode(task: string, contract: string): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  return require(getBalancerContractBytecodePath(task, contract)).creationCode;
 }
 
 /**
@@ -70,6 +69,15 @@ export async function getBalancerDeployment(task: string, network: string): Prom
  */
 function getBalancerContractAbiPath(task: string, contract: string): string {
   return `@balancer-labs/v2-deployments/dist/tasks/${task}/abi/${contract}.json`;
+}
+
+/**
+ * @dev Returns the path of a contract's creation code of for a specific task
+ * @param task ID of the task to look the path of the creation code of the required contract
+ * @param contract Name of the contract to look the path of it's creation code
+ */
+function getBalancerContractBytecodePath(task: string, contract: string): string {
+  return `@balancer-labs/v2-deployments/dist/tasks/${task}/bytecode/${contract}.json`;
 }
 
 /**

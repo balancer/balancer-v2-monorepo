@@ -41,6 +41,10 @@ _Note: requires using [Hardhat](https://hardhat.org/) with the [`hardhat-ethers`
 
 Returns a contract's [ABI](https://docs.soliditylang.org/en/latest/abi-spec.html).
 
+- **async function getBalancerContractBytecode(taskID, contract)**
+
+Returns a contract's [creation code](https://docs.soliditylang.org/en/latest/contracts.html#creating-contracts).
+
 - **async function getBalancerContractAddress(taskID, contract, network)**
 
 Returns the address of a contract's canonical deployment.
