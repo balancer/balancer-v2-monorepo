@@ -33,6 +33,16 @@ export async function getBalancerContractAbi(task: string, contract: string): Pr
 }
 
 /**
+ * @dev Returns the contract's creation code of for a specific task
+ * @param task ID of the task to look the creation code of the required contract
+ * @param contract Name of the contract to looking the creation code of
+ */
+export async function getBalancerContractBytecode(task: string, contract: string): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  return require(getBalancerContractBytecodePath(task, contract)).creationCode;
+}
+
+/**
  * @dev Returns the contract address of a deployed contract for a specific task on a network
  * @param task ID of the task looking the deployment for
  * @param contract Name of the contract to fetched the address of
@@ -59,6 +69,15 @@ export async function getBalancerDeployment(task: string, network: string): Prom
  */
 function getBalancerContractAbiPath(task: string, contract: string): string {
   return `@balancer-labs/v2-deployments/dist/tasks/${task}/abi/${contract}.json`;
+}
+
+/**
+ * @dev Returns the path of a contract's creation code of for a specific task
+ * @param task ID of the task to look the path of the creation code of the required contract
+ * @param contract Name of the contract to look the path of it's creation code
+ */
+function getBalancerContractBytecodePath(task: string, contract: string): string {
+  return `@balancer-labs/v2-deployments/dist/tasks/${task}/bytecode/${contract}.json`;
 }
 
 /**
