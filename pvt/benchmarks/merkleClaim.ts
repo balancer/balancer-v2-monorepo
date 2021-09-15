@@ -43,8 +43,8 @@ async function claimDistributions(numberOfDistributions: number, useInternalBala
   const rewardToken = Object.values(tokens)[0];
   const rewardAmount = BigNumber.from(100);
   const merkleLeaves = [
-    solidityKeccak256(['uint256', 'address', 'uint256'], [0, rewarder.address, rewardAmount]),
-    solidityKeccak256(['uint256', 'address', 'uint256'], [1, claimer.address, rewardAmount]),
+    solidityKeccak256(['address', 'uint256'], [rewarder.address, rewardAmount]),
+    solidityKeccak256(['address', 'uint256'], [claimer.address, rewardAmount]),
   ];
 
   await prepareMerkleOrchard(merkleOrchard, rewardToken, numberOfDistributions, merkleLeaves, rewardAmount);

@@ -51,7 +51,6 @@ contract MerkleOrchard is IDistributor, Ownable {
         IERC20 rewardToken;
         address rewarder;
         uint256 distribution;
-        uint256 index;
         uint256 balance;
         bytes32[] merkleProof;
     }
@@ -72,13 +71,17 @@ contract MerkleOrchard is IDistributor, Ownable {
             claim = claims[i];
             bytes32 distributionId = _getDistributionId(claim.rewardToken, claim.rewarder, claim.distribution);
 
-            require(!_isClaimed(distributionId, claim.index), "cannot claim twice");
-            _setClaimed(distributionId, claim.index);
-
-            require(
-                _verifyClaim(distributionId, claim.index, liquidityProvider, claim.balance, claim.merkleProof),
-                "Incorrect merkle proof"
+            (bool valid, uint256 index) = _verifyClaim(
+                distributionId,
+                liquidityProvider,
+                claim.balance,
+                claim.merkleProof
             );
+
+            require(!_isClaimed(distributionId, index), "cannot claim twice");
+            _setClaimed(distributionId, index);
+
+            require(valid, "Incorrect merkle proof");
 
             require(
                 suppliedBalance[claim.rewardToken][claim.rewarder] >= claim.balance,
@@ -197,23 +200,21 @@ contract MerkleOrchard is IDistributor, Ownable {
         IERC20 rewardToken,
         address rewarder,
         uint256 distribution,
-        uint256 index,
         address liquidityProvider,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
-    ) public view returns (bool) {
+    ) public view returns (bool valid) {
         bytes32 distributionId = _getDistributionId(rewardToken, rewarder, distribution);
-        return _verifyClaim(distributionId, index, liquidityProvider, claimedBalance, merkleProof);
+        (valid, ) = _verifyClaim(distributionId, liquidityProvider, claimedBalance, merkleProof);
     }
 
     function _verifyClaim(
         bytes32 distributionId,
-        uint256 index,
         address liquidityProvider,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
-    ) internal view returns (bool) {
-        bytes32 leaf = keccak256(abi.encodePacked(index, liquidityProvider, claimedBalance));
+    ) internal view returns (bool, uint256 index) {
+        bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
         return MerkleProof.verify(merkleProof, trees[distributionId], leaf);
     }
 

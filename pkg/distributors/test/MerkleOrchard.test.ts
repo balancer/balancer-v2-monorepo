@@ -15,8 +15,8 @@ import { MerkleTree } from '../lib/merkleTree';
 
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-function encodeElement(index: number, address: string, balance: BigNumber): string {
-  return ethers.utils.solidityKeccak256(['uint256', 'address', 'uint256'], [index, address, balance]);
+function encodeElement(address: string, balance: BigNumber): string {
+  return ethers.utils.solidityKeccak256(['address', 'uint256'], [address, balance]);
 }
 
 interface Claim {
@@ -61,7 +61,7 @@ describe('MerkleOrchard', () => {
   it('stores an allocation', async () => {
     const claimBalance = bn('9876');
 
-    const elements = [encodeElement(0, lp1.address, claimBalance)];
+    const elements = [encodeElement(lp1.address, claimBalance)];
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
@@ -73,7 +73,6 @@ describe('MerkleOrchard', () => {
       rewardToken.address,
       rewarder.address,
       distribution1,
-      0,
       lp1.address,
       claimBalance,
       proof
@@ -84,7 +83,7 @@ describe('MerkleOrchard', () => {
   it('emits RewardAdded when an allocation is stored', async () => {
     const claimBalance = bn('9876');
 
-    const elements = [encodeElement(1, lp1.address, claimBalance)];
+    const elements = [encodeElement(lp1.address, claimBalance)];
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
@@ -101,7 +100,7 @@ describe('MerkleOrchard', () => {
   it('requisitions tokens when it stores a balance', async () => {
     const claimBalance = bn('9876');
 
-    const elements = [encodeElement(0, lp1.address, claimBalance)];
+    const elements = [encodeElement(lp1.address, claimBalance)];
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
@@ -117,7 +116,7 @@ describe('MerkleOrchard', () => {
     const claimBalance0 = bn('1000');
     const claimBalance1 = bn('2000');
 
-    const elements = [encodeElement(0, lp1.address, claimBalance0), encodeElement(1, lp2.address, claimBalance1)];
+    const elements = [encodeElement(lp1.address, claimBalance0), encodeElement(lp2.address, claimBalance1)];
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
@@ -128,7 +127,6 @@ describe('MerkleOrchard', () => {
       rewardToken.address,
       rewarder.address,
       distribution1,
-      0,
       lp1.address,
       claimBalance0,
       proof0
@@ -140,7 +138,6 @@ describe('MerkleOrchard', () => {
       rewardToken.address,
       rewarder.address,
       distribution1,
-      1,
       lp2.address,
       claimBalance1,
       proof1
@@ -155,7 +152,7 @@ describe('MerkleOrchard', () => {
     let claims: Claim[];
 
     sharedBeforeEach(async () => {
-      elements = [encodeElement(0, lp1.address, claimableBalance)];
+      elements = [encodeElement(lp1.address, claimableBalance)];
       merkleTree = new MerkleTree(elements);
       const root = merkleTree.getHexRoot();
 
@@ -232,10 +229,7 @@ describe('MerkleOrchard', () => {
     });
 
     it('reverts when an admin attempts to overwrite an allocationn', async () => {
-      const elements2 = [
-        encodeElement(0, lp1.address, claimableBalance),
-        encodeElement(1, lp2.address, claimableBalance),
-      ];
+      const elements2 = [encodeElement(lp1.address, claimableBalance), encodeElement(lp2.address, claimableBalance)];
       const merkleTree2 = new MerkleTree(elements2);
       const root2 = merkleTree2.getHexRoot();
 
@@ -259,11 +253,11 @@ describe('MerkleOrchard', () => {
     let root2: string;
 
     sharedBeforeEach(async () => {
-      elements1 = [encodeElement(0, lp1.address, claimBalance1)];
+      elements1 = [encodeElement(lp1.address, claimBalance1)];
       merkleTree1 = new MerkleTree(elements1);
       root1 = merkleTree1.getHexRoot();
 
-      elements2 = [encodeElement(0, lp1.address, claimBalance2)];
+      elements2 = [encodeElement(lp1.address, claimBalance2)];
       merkleTree2 = new MerkleTree(elements2);
       root2 = merkleTree2.getHexRoot();
 
