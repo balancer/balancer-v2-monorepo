@@ -1,4 +1,6 @@
 import { Contract } from 'ethers';
+import Task from './src/task';
+import { Artifact } from './src/types';
 
 /**
  * @dev Creates an ethers Contract object for a canonical contract deployed on a specific network
@@ -30,6 +32,15 @@ export async function getBalancerContractAt(task: string, contract: string, addr
  */
 export async function getBalancerContractAbi(task: string, contract: string): Promise<unknown[]> {
   return require(getBalancerContractAbiPath(task, contract));
+}
+
+/**
+ * @dev Returns the contract's build artifact from a specific task
+ * @param task ID of the task to look for the artifact of the required contract
+ * @param contract Name of the contract to looking the artifact of
+ */
+export async function getBalancerContractArtifact(task: string, contract: string): Promise<Artifact> {
+  return new Task(task).artifact(contract);
 }
 
 /**
