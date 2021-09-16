@@ -1,6 +1,6 @@
 {
   "name": "@balancer-labs/v2-standalone-utils",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Balancer v2 Standalone Utilities",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/standalone-utils#readme",
