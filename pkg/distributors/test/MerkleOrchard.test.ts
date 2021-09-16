@@ -190,7 +190,7 @@ describe('MerkleOrchard', () => {
     it('marks claimed distributions as claimed', async () => {
       await merkleOrchard.connect(lp1).claimDistributions(lp1.address, claims);
 
-      const isClaimed = await merkleOrchard.claimed(rewardToken.address, rewarder.address, 1, lp1.address);
+      const isClaimed = await merkleOrchard.isClaimed(rewardToken.address, rewarder.address, 1, lp1.address);
       expect(isClaimed).to.equal(true); // "claim should be marked as claimed";
     });
 

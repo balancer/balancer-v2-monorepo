@@ -35,8 +35,8 @@ contract MerkleOrchard is IDistributor, Ownable {
     // Recorded distributions
     // rewardToken > rewarder > distribution > root
     mapping(IERC20 => mapping(address => mapping(uint256 => bytes32))) public trees;
-    // rewardToken > rewarder distribution > lp > root
-    mapping(IERC20 => mapping(address => mapping(uint256 => mapping(address => bool)))) public claimed;
+    // rewardToken > rewarder > lp > distribution / 256 -> bitmap
+    mapping(IERC20 => mapping(address => mapping(address => mapping(uint256 => uint256)))) public claimedBitmap;
     // rewardToken > rewarder > balance
     mapping(IERC20 => mapping(address => uint256)) public suppliedBalance;
 
@@ -90,7 +90,7 @@ contract MerkleOrchard is IDistributor, Ownable {
                 "rewarder hasn't provided sufficient rewardTokens for claim"
             );
 
-            claimed[claim.rewardToken][claim.rewarder][claim.distribution][liquidityProvider] = true;
+            _setClaimed(claim, liquidityProvider);
 
             // Iterate through all the reward tokens we've seen so far.
             for (uint256 j = 0; j < rewardTokens.length; i++) {
@@ -170,7 +170,21 @@ contract MerkleOrchard is IDistributor, Ownable {
         uint256 distribution,
         address liquidityProvider
     ) public view returns (bool) {
-        return claimed[rewardToken][rewarder][distribution][liquidityProvider];
+        uint256 distributionWordIndex = distribution / 256;
+        uint256 distributionBitIndex = distribution % 256;
+
+        return
+            (claimedBitmap[rewardToken][rewarder][liquidityProvider][distributionWordIndex] &
+                (1 << distributionBitIndex)) != 0;
+    }
+
+    function _setClaimed(Claim memory claim, address liquidityProvider) private {
+        uint256 distributionWordIndex = claim.distribution / 256;
+        uint256 distributionBitIndex = claim.distribution % 256;
+
+        claimedBitmap[claim.rewardToken][claim.rewarder][liquidityProvider][distributionWordIndex] |=
+            1 <<
+            distributionBitIndex;
     }
 
     function claimStatus(
