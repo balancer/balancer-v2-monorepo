@@ -186,7 +186,7 @@ describe('MerkleOrchard', () => {
     it('marks claimed distributions as claimed', async () => {
       await merkleOrchard.connect(lp1).claimDistributions(lp1.address, claims, tokenAddresses);
 
-      const isClaimed = await merkleOrchard.claimed(token.address, distributor.address, 1, lp1.address);
+      const isClaimed = await merkleOrchard.isClaimed(token.address, distributor.address, 1, lp1.address);
       expect(isClaimed).to.equal(true); // "claim should be marked as claimed";
     });
 
@@ -366,7 +366,7 @@ describe('MerkleOrchard', () => {
         ];
       });
 
-      it('allows a user to claim the reward to a callback contract', async () => {
+      it('allows a user to claim the tokens to a callback contract', async () => {
         const expectedClaim = claimBalance1.add(claimBalance2);
         const calldata = utils.defaultAbiCoder.encode([], []);
 
