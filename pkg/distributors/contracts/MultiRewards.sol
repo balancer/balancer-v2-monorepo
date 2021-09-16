@@ -152,7 +152,11 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         address rewarder,
         IERC20 rewardsToken
     ) public view returns (uint256) {
-        return Math.min(block.timestamp, rewardData[pool][rewarder][rewardsToken].periodFinish);
+        return _lastTimeRewardApplicable(rewardData[pool][rewarder][rewardsToken]);
+    }
+
+    function _lastTimeRewardApplicable(Reward storage data) private view returns (uint256) {
+        return Math.min(block.timestamp, data.periodFinish);
     }
 
     /**
@@ -163,20 +167,18 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         address rewarder,
         IERC20 rewardsToken
     ) public view returns (uint256) {
+        return _rewardPerToken(pool, rewardData[pool][rewarder][rewardsToken]);
+    }
+
+    function _rewardPerToken(IERC20 pool, Reward storage data) private view returns (uint256) {
         if (_totalSupply[pool] == 0) {
-            return rewardData[pool][rewarder][rewardsToken].rewardPerTokenStored;
+            return data.rewardPerTokenStored;
         }
         // Underflow is impossible here because lastTimeRewardApplicable(...) is always greater than
         // last update time
-        uint256 unrewardedDuration = lastTimeRewardApplicable(pool, rewarder, rewardsToken) -
-            rewardData[pool][rewarder][rewardsToken].lastUpdateTime;
+        uint256 unrewardedDuration = _lastTimeRewardApplicable(data) - data.lastUpdateTime;
 
-        return
-            rewardData[pool][rewarder][rewardsToken].rewardPerTokenStored.add(
-                Math.mul(unrewardedDuration, rewardData[pool][rewarder][rewardsToken].rewardRate).divDown(
-                    _totalSupply[pool]
-                )
-            );
+        return data.rewardPerTokenStored.add(Math.mul(unrewardedDuration, data.rewardRate).divDown(_totalSupply[pool]));
     }
 
     /**
@@ -194,6 +196,19 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
                 rewardPerToken(pool, rewarder, rewardsToken).sub(
                     userRewardPerTokenPaid[pool][rewarder][account][rewardsToken]
                 )
+            );
+    }
+
+    function _unaccountedForUnpaidRewards(
+        IERC20 pool,
+        address rewarder,
+        address account,
+        IERC20 rewardsToken,
+        Reward storage data
+    ) private view returns (uint256) {
+        return
+            _balances[pool][account].mulDown(
+                _rewardPerToken(pool, data).sub(userRewardPerTokenPaid[pool][rewarder][account][rewardsToken])
             );
     }
 
@@ -487,13 +502,13 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             Reward storage data = rewardData[pool][rewarder][token];
 
             // Cache storage variables to avoid repeated access.
-            uint256 perToken = rewardPerToken(pool, rewarder, token);
+            uint256 perToken = _rewardPerToken(pool, data);
             data.rewardPerTokenStored = perToken;
 
-            data.lastUpdateTime = lastTimeRewardApplicable(pool, rewarder, token);
+            data.lastUpdateTime = _lastTimeRewardApplicable(data);
             if (account != address(0)) {
                 totalUnpaidRewards = totalUnpaidRewards.add(
-                    unaccountedForUnpaidRewards(pool, rewarder, account, token)
+                    _unaccountedForUnpaidRewards(pool, rewarder, account, token, data)
                 );
                 userRewardPerTokenPaid[pool][rewarder][account][token] = perToken;
             }
