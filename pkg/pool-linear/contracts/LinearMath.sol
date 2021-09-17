@@ -171,8 +171,8 @@ contract LinearMath {
         // Amount out, so we round down overall.
 
         if (bptSupply == 0) {
-            //TODO: under research if to handle this or return better error
-            _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
+            //Return nominal DAI
+            return wrappedIn.mulDown(params.rate);
         }
 
         uint256 nominalMain = _toNominal(mainBalance, params);
@@ -214,6 +214,11 @@ contract LinearMath {
         Params memory params
     ) internal pure returns (uint256) {
         // Amount out, so we round down overall.
+
+        if (bptSupply == 0) {
+            //Return nominal DAI
+            return bptOut.divDown(params.rate);
+        }
 
         uint256 nominalMain = _toNominal(mainBalance, params);
         uint256 previousInvariant = _calcInvariantUp(nominalMain, wrappedBalance, params);
