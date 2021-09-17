@@ -58,7 +58,7 @@ contract StablePhantomPool is StablePool {
         string name;
         string symbol;
         IERC20[] tokens;
-        IRateProvider[] _rateProviders;
+        IRateProvider[] rateProviders;
         uint256[] priceRateCacheDurations;
         uint256 amplificationParameter;
         uint256 swapFeePercentage;
@@ -84,14 +84,14 @@ contract StablePhantomPool is StablePool {
 
         InputHelpers.ensureInputLengthMatch(
             params.tokens.length,
-            params._rateProviders.length,
+            params.rateProviders.length,
             params.priceRateCacheDurations.length
         );
 
         for (uint256 i = 0; i < params.tokens.length; i++) {
-            _rateProviders[params.tokens[i]] = params._rateProviders[i];
-            _updatePriceRateCache(params.tokens[i], params._rateProviders[i], params.priceRateCacheDurations[i]);
-            emit PriceRateProviderSet(params.tokens[i], params._rateProviders[i], params.priceRateCacheDurations[i]);
+            _rateProviders[params.tokens[i]] = params.rateProviders[i];
+            _updatePriceRateCache(params.tokens[i], params.rateProviders[i], params.priceRateCacheDurations[i]);
+            emit PriceRateProviderSet(params.tokens[i], params.rateProviders[i], params.priceRateCacheDurations[i]);
         }
 
         uint256 bptIndex;
@@ -108,7 +108,7 @@ contract StablePhantomPool is StablePool {
         maxAmountsIn[_bptIndex] = _MAX_TOKEN_BALANCE;
 
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
-            assets: _translateToIAsset(tokens),
+            assets: _asIAsset(tokens),
             maxAmountsIn: maxAmountsIn,
             userData: "",
             fromInternalBalance: false
