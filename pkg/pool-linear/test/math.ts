@@ -3,7 +3,7 @@ import { BigNumber } from 'ethers';
 
 import { decimal, fromFp, toFp } from '@balancer-labs/v2-helpers/src/numbers';
 
-type Params = {
+export type Params = {
   fee: BigNumber;
   rate: BigNumber;
   target1: BigNumber;
