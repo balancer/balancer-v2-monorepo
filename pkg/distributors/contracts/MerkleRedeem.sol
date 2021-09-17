@@ -178,7 +178,7 @@ contract MerkleRedeem is IDistributor, Ownable {
         bytes32[] memory merkleProof
     ) public view returns (bool valid) {
         bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
-        (valid, ) = MerkleProof.verify(merkleProof, weekMerkleRoots[week], leaf);
+        (valid, , ) = MerkleProof.verify(merkleProof, weekMerkleRoots[week], leaf);
     }
 
     /**

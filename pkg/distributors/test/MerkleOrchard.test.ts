@@ -149,12 +149,13 @@ describe('MerkleOrchard', () => {
     const claimableBalance = bn('1000');
     let elements: string[];
     let merkleTree: MerkleTree;
+    let root: string;
     let claims: Claim[];
 
     sharedBeforeEach(async () => {
       elements = [encodeElement(lp1.address, claimableBalance)];
       merkleTree = new MerkleTree(elements);
-      const root = merkleTree.getHexRoot();
+      root = merkleTree.getHexRoot();
 
       await merkleOrchard.connect(rewarder).seedAllocations(rewardToken.address, 1, root, claimableBalance);
       const merkleProof: BytesLike[] = merkleTree.getHexProof(elements[0]);
@@ -192,7 +193,7 @@ describe('MerkleOrchard', () => {
     it('marks claimed distributions as claimed', async () => {
       await merkleOrchard.connect(lp1).claimDistributions(lp1.address, claims);
 
-      const isClaimed = await merkleOrchard.isClaimed(rewardToken.address, rewarder.address, 1, 0);
+      const isClaimed = await merkleOrchard.isClaimed(rewardToken.address, rewarder.address, 1, root, 0);
       expect(isClaimed).to.equal(true); // "claim should be marked as claimed";
     });
 
@@ -334,8 +335,8 @@ describe('MerkleOrchard', () => {
     });
 
     it('reports distributions as unclaimed', async () => {
-      expect(await merkleOrchard.isClaimed(rewardToken.address, rewarder.address, 1, 0)).to.be.false;
-      expect(await merkleOrchard.isClaimed(rewardToken.address, rewarder.address, 2, 0)).to.be.false;
+      expect(await merkleOrchard.isClaimed(rewardToken.address, rewarder.address, 1, root1, 0)).to.be.false;
+      expect(await merkleOrchard.isClaimed(rewardToken.address, rewarder.address, 2, root2, 0)).to.be.false;
     });
 
     it('returns an array of merkle roots', async () => {
@@ -422,8 +423,8 @@ describe('MerkleOrchard', () => {
       });
 
       it('reports one of the distributions as claimed', async () => {
-        expect(await merkleOrchard.isClaimed(rewardToken.address, rewarder.address, 1, 0)).to.be.true;
-        expect(await merkleOrchard.isClaimed(rewardToken.address, rewarder.address, 2, 0)).to.be.false;
+        expect(await merkleOrchard.isClaimed(rewardToken.address, rewarder.address, 1, root1, 0)).to.be.true;
+        expect(await merkleOrchard.isClaimed(rewardToken.address, rewarder.address, 2, root2, 0)).to.be.false;
       });
     });
   });
