@@ -197,15 +197,23 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256[] memory balances,
         Params memory params
     ) internal view returns (uint256) {
-        _require(request.tokenOut == _mainToken, Errors.INVALID_TOKEN);
+        _require(request.tokenOut == _mainToken || request.tokenOut == _wrappedToken, Errors.INVALID_TOKEN);
         return
-            _calcMainOutPerBptIn(
-                request.amount,
-                balances[_mainIndex],
-                balances[_wrappedIndex],
-                _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
-                params
-            );
+            request.tokenOut == _mainToken
+                ? _calcMainOutPerBptIn(
+                    request.amount,
+                    balances[_mainIndex],
+                    balances[_wrappedIndex],
+                    _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
+                    params
+                )
+                : _calcWrappedOutPerBptIn(
+                    request.amount,
+                    balances[_mainIndex],
+                    balances[_wrappedIndex],
+                    _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
+                    params
+                );
     }
 
     function _swapGivenMainIn(
@@ -231,8 +239,17 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256[] memory balances,
         Params memory params
     ) internal view whenNotPaused returns (uint256) {
-        _require(request.tokenOut == _mainToken, Errors.INVALID_TOKEN);
-        return _calcMainOutPerWrappedIn(request.amount, balances[_mainIndex], params);
+        _require(request.tokenOut == _mainToken || request.tokenOut == IERC20(this), Errors.INVALID_TOKEN);
+        return
+            request.tokenOut == _mainToken
+                ? _calcMainOutPerWrappedIn(request.amount, balances[_mainIndex], params)
+                : _calcBptOutPerWrappedIn(
+                    request.amount,
+                    balances[_mainIndex],
+                    balances[_wrappedIndex],
+                    _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
+                    params
+                );
     }
 
     function _onSwapGivenOut(
@@ -256,15 +273,23 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256[] memory balances,
         Params memory params
     ) internal view returns (uint256) {
-        _require(request.tokenIn == _mainToken, Errors.INVALID_TOKEN);
+        _require(request.tokenIn == _mainToken || request.tokenIn == _wrappedToken, Errors.INVALID_TOKEN);
         return
-            _calcMainInPerBptOut(
-                request.amount,
-                balances[_mainIndex],
-                balances[_wrappedIndex],
-                _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
-                params
-            );
+            request.tokenIn == _mainToken
+                ? _calcMainInPerBptOut(
+                    request.amount,
+                    balances[_mainIndex],
+                    balances[_wrappedIndex],
+                    _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
+                    params
+                )
+                : _calcWrappedInPerBptOut(
+                    request.amount,
+                    balances[_mainIndex],
+                    balances[_wrappedIndex],
+                    _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
+                    params
+                );
     }
 
     function _swapGivenMainOut(
@@ -290,8 +315,17 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256[] memory balances,
         Params memory params
     ) internal view returns (uint256) {
-        _require(request.tokenIn == _mainToken, Errors.INVALID_TOKEN);
-        return _calcMainInPerWrappedOut(request.amount, balances[_mainIndex], params);
+        _require(request.tokenIn == _mainToken || request.tokenIn == IERC20(this), Errors.INVALID_TOKEN);
+        return
+            request.tokenIn == _mainToken
+                ? _calcMainInPerWrappedOut(request.amount, balances[_mainIndex], params)
+                : _calcBptInPerWrappedOut(
+                    request.amount,
+                    balances[_mainIndex],
+                    balances[_wrappedIndex],
+                    _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
+                    params
+                );
     }
 
     function _onInitializePool(
