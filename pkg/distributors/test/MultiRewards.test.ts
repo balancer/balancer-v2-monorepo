@@ -118,16 +118,15 @@ describe('Staking contract', () => {
       expect(stakedBalance).to.be.eq(bptBalance);
     });
 
-    it('stakes with a permit signature to a recipient', async () => {
+    it('reverts when the recipient is not the lp', async () => {
       const bptBalance = await pool.balanceOf(lp.address);
 
       const { v, r, s } = await signPermit(pool, lp, stakingContract, bptBalance);
-      await stakingContract
-        .connect(other)
-        .stakeWithPermit(pool.address, bptBalance, MAX_UINT256, lp.address, other.address, v, r, s);
-
-      const stakedBalance = await stakingContract.balanceOf(pool.address, other.address);
-      expect(stakedBalance).to.be.eq(bptBalance);
+      await expect(
+        stakingContract
+          .connect(other)
+          .stakeWithPermit(pool.address, bptBalance, MAX_UINT256, lp.address, other.address, v, r, s)
+      ).to.be.revertedWith('Cannot stake an accounts bpt to an alternate address');
     });
   });
 

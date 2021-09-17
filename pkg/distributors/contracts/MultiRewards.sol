@@ -277,6 +277,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         bytes32 r,
         bytes32 s
     ) external nonReentrant {
+        require(account == recipient, "Cannot stake an accounts bpt to an alternate address");
         IERC20Permit(address(pool)).permit(account, address(this), amount, deadline, v, r, s);
         _stakeFor(pool, amount, account, recipient);
     }
