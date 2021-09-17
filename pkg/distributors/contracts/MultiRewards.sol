@@ -447,7 +447,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         rewardData[pool][rewarder][rewardsToken].periodFinish = block.timestamp.add(
             rewardData[pool][rewarder][rewardsToken].rewardsDuration
         );
-        emit RewardAdded(address(rewardsToken), reward);
+        emit RewardAdded(address(pool), address(rewardsToken), rewarder, reward);
     }
 
     function setRewardsDuration(
@@ -464,6 +464,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         emit RewardsDurationUpdated(
             address(pool),
             address(rewardsToken),
+            msg.sender,
             rewardData[pool][msg.sender][rewardsToken].rewardsDuration
         );
     }
@@ -512,5 +513,11 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
     event Staked(address indexed pool, address indexed account, uint256 amount);
     event Withdrawn(address indexed pool, address indexed account, uint256 amount);
-    event RewardsDurationUpdated(address indexed pool, address token, uint256 newDuration);
+    event RewardAdded(address indexed pool, address indexed token, address indexed rewarder, uint256 amount);
+    event RewardsDurationUpdated(
+        address indexed pool,
+        address indexed token,
+        address indexed rewarder,
+        uint256 newDuration
+    );
 }

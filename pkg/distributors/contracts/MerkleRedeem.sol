@@ -40,6 +40,8 @@ contract MerkleRedeem is IDistributor, Ownable {
 
     IVault public immutable vault;
 
+    event RewardAdded(address indexed token, uint256 amount);
+
     constructor(IVault _vault, IERC20 _rewardToken) {
         vault = _vault;
         rewardToken = _rewardToken;

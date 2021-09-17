@@ -164,7 +164,9 @@ describe('Staking contract', () => {
 
       expectEvent.inReceipt(receipt, 'RewardAdded', {
         token: rewardToken.address,
+        pool: pool.address,
         amount: rewardAmount,
+        rewarder: rewarder.address,
       });
     });
 
