@@ -36,7 +36,7 @@ contract MerkleOrchard is IDistributor, Ownable {
     // keccak(rewardToken|rewarder|distribution) > root
     mapping(bytes32 => bytes32) public trees;
     // keccak(rewardToken|rewarder|distribution) > bitmap
-    // bitmap is made up of a mapping(uint256 => uint256) to allow more than 256 recipients
+    // bitmap is made up of a mapping(bytes32 => uint256) to allow more than 256 recipients
     mapping(bytes32 => mapping(bytes32 => uint256)) public claimedBitMap;
     // rewardToken > rewarder > balance
     mapping(IERC20 => mapping(address => uint256)) public suppliedBalance;
