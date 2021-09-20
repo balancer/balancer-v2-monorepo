@@ -131,7 +131,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     /* ========== VIEWS ========== */
 
     /**
-     * @notice Total supply of a pools bpt that has been added
+     * @notice Total supply of a pools bpt that has been staked
      */
     function totalSupply(IERC20 pool) external view returns (uint256) {
         return _totalSupply[pool];
@@ -229,7 +229,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         total = total.add(unpaidRewards[pool][account][rewardsToken]);
     }
 
-    function getRewardForDuration(
+    function rewardForDuration(
         IERC20 pool,
         address rewarder,
         IERC20 rewardsToken
@@ -467,9 +467,9 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         if (block.timestamp >= periodFinish) {
             data.rewardRate = Math.divDown(reward, rewardsDuration);
         } else {
-            uint256 remaining = periodFinish.sub(block.timestamp);
-            uint256 leftover = Math.mul(remaining, data.rewardRate);
-            data.rewardRate = Math.divDown(reward.add(leftover), rewardsDuration);
+            uint256 remainingTime = periodFinish.sub(block.timestamp);
+            uint256 leftoverRewards = Math.mul(remainingTime, data.rewardRate);
+            data.rewardRate = Math.divDown(reward.add(leftoverRewards), rewardsDuration);
         }
 
         data.lastUpdateTime = block.timestamp;
