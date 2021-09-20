@@ -122,11 +122,12 @@ describe('Staking contract', () => {
       const bptBalance = await pool.balanceOf(lp.address);
 
       const { v, r, s } = await signPermit(pool, lp, stakingContract, bptBalance);
+      const errMsg = 'The recipient must match the account in the permit signature';
       await expect(
         stakingContract
           .connect(other)
           .stakeWithPermit(pool.address, bptBalance, MAX_UINT256, lp.address, other.address, v, r, s)
-      ).to.be.revertedWith('Cannot stake an accounts bpt to an alternate address');
+      ).to.be.revertedWith(errMsg);
     });
   });
 
