@@ -11,7 +11,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
-import { setup, rewardsDuration } from './MultiRewardsSharedSetup';
+import { setup, rewardsDuration, rewardsVestingTime } from './MultiRewardsSharedSetup';
 
 describe('Staking contract - callbacks', () => {
   let lp: SignerWithAddress, mockAssetManager: SignerWithAddress;
@@ -56,7 +56,7 @@ describe('Staking contract - callbacks', () => {
       await stakingContract
         .connect(mockAssetManager)
         .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, mockAssetManager.address);
-      await advanceTime(10);
+      await advanceTime(rewardsVestingTime);
     });
 
     it('allows a user to claim the reward to a callback contract', async () => {

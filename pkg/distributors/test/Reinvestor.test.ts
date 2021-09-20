@@ -14,7 +14,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
-import { setup, tokenInitialBalance, rewardsDuration } from './MultiRewardsSharedSetup';
+import { setup, tokenInitialBalance, rewardsDuration, rewardsVestingTime } from './MultiRewardsSharedSetup';
 
 describe('Reinvestor', () => {
   let admin: SignerWithAddress, lp: SignerWithAddress, mockAssetManager: SignerWithAddress;
@@ -59,7 +59,7 @@ describe('Reinvestor', () => {
       await stakingContract
         .connect(mockAssetManager)
         .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, mockAssetManager.address);
-      await advanceTime(10);
+      await advanceTime(rewardsVestingTime);
     });
 
     describe('with a pool to claim into', () => {
@@ -114,7 +114,7 @@ describe('Reinvestor', () => {
         ).wait();
 
         const deltas = [bn(0), bn(0)];
-        deltas[assets.indexOf(rewardToken.address)] = bn('999999999999999898');
+        deltas[assets.indexOf(rewardToken.address)] = bn('999999999999999498');
 
         expectEvent.inIndirectReceipt(receipt, vault.interface, 'PoolBalanceChanged', {
           poolId: destinationPoolId,
@@ -132,7 +132,7 @@ describe('Reinvestor', () => {
 
         await stakingContract.connect(lp).getRewardWithCallback([pool.address], callbackContract.address, calldata);
         const bptBalanceAfter = await destinationPool.balanceOf(lp.address);
-        expect(bptBalanceAfter.sub(bptBalanceBefore)).to.equal(bn('998703239790478424'));
+        expect(bptBalanceAfter.sub(bptBalanceBefore)).to.equal(bn('998703239790478024'));
       });
 
       describe('addReward', () => {
@@ -157,7 +157,7 @@ describe('Reinvestor', () => {
           await stakingContract
             .connect(mockAssetManager)
             .notifyRewardAmount(pool.address, otherRewardToken.address, fp(3), mockAssetManager.address);
-          await advanceTime(10);
+          await advanceTime(rewardsVestingTime);
         });
 
         it('returns rewards that are unused in reinvestment', async () => {
