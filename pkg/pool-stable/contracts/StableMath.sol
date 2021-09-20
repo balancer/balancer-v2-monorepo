@@ -455,7 +455,7 @@ contract StableMath {
 
         // Result is rounded down
         uint256 accumulatedTokenSwapFees = balances[tokenIndex] - finalBalanceFeeToken;
-        return accumulatedTokenSwapFees.mulDown(protocolSwapFeePercentage).divDown(FixedPoint.ONE);
+        return accumulatedTokenSwapFees.mulDown(protocolSwapFeePercentage);
     }
 
     // Private functions
