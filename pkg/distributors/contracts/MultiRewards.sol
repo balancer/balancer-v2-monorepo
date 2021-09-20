@@ -481,7 +481,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20 pool,
         IERC20 rewardsToken,
         uint256 rewardsDuration
-    ) external {
+    ) external onlyAllowlistedRewarder(pool, rewardsToken) {
+        require(_rewarders[pool][rewardsToken].contains(msg.sender), "Reward must be configured with addReward");
         require(
             block.timestamp > rewardData[pool][msg.sender][rewardsToken].periodFinish,
             "Reward period still active"

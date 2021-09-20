@@ -88,6 +88,14 @@ describe('Staking contract', () => {
     });
   });
 
+  it('reverts if a rewarder attempts to setRewardsDuration before adding a reward', async () => {
+    await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
+
+    await expect(
+      stakingContract.connect(rewarder).setRewardsDuration(pool.address, rewardToken.address, fp(1000))
+    ).to.be.revertedWith('Reward must be configured with addReward');
+  });
+
   it('reverts if a rewarder attempts to notifyRewardAmount before adding a reward', async () => {
     await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
 
