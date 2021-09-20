@@ -126,6 +126,26 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         emit WrappedTokenRateUpdated(rate);
     }
 
+    function getMainToken() external view returns (address) {
+        return address(_mainToken);
+    }
+
+    function getWrappedToken() external view returns (address) {
+        return address(_wrappedToken);
+    }
+
+    function getBptIndex() external view returns (uint256) {
+        return _bptIndex;
+    }
+
+    function getMainIndex() external view returns (uint256) {
+        return _mainIndex;
+    }
+
+    function getWrappedIndex() external view returns (uint256) {
+        return _wrappedIndex;
+    }
+
     function initialize() external {
         bytes32 poolId = getPoolId();
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);

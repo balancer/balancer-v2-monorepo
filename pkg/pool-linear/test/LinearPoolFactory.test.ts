@@ -112,6 +112,14 @@ describe('LinearPoolFactory', function () {
       expect(await pool.decimals()).to.equal(18);
     });
 
+    it('sets main token', async () => {
+      expect(await pool.getMainToken()).to.equal(tokens.DAI.address);
+    });
+
+    it('sets wrapped token', async () => {
+      expect(await pool.getWrappedToken()).to.equal(tokens.CDAI.address);
+    });
+
     it('sets the targets', async () => {
       const targets = await pool.getTargets();
       expect(targets.lowerTarget).to.be.equal(LOWER_TARGET);
