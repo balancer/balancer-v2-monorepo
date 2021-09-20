@@ -837,28 +837,49 @@ describe('StablePool', function () {
                     endTime,
                   });
                 });
+
+                it('does not emit an AmpUpdateStopped event', async () => {
+                  const receipt = await pool.startAmpChange(newAmp, endTime);
+                  expectEvent.notEmitted(await receipt.wait(), 'AmpUpdateStopped');
+                });
               });
 
               context('when there was a previous ongoing update', () => {
                 sharedBeforeEach('start change', async () => {
                   await pool.startAmpChange(newAmp, endTime);
-                });
 
-                it('reverts', async () => {
-                  await expect(pool.startAmpChange(newAmp, endTime)).to.be.revertedWith('AMP_ONGOING_UPDATE');
-                });
-
-                it('can stop and change', async () => {
                   await advanceTime(duration / 3);
                   const beforeStop = await pool.getAmplificationParameter();
                   expect(beforeStop.isUpdating).to.be.true;
+                });
 
-                  const stopReceipt = await pool.stopAmpChange();
-                  expectEvent.inReceipt(await stopReceipt.wait(), 'AmpUpdateStopped');
+                it('starting again reverts', async () => {
+                  await expect(pool.startAmpChange(newAmp, endTime)).to.be.revertedWith('AMP_ONGOING_UPDATE');
+                });
+
+                it('can stop', async () => {
+                  const beforeStop = await pool.getAmplificationParameter();
+
+                  await pool.stopAmpChange();
 
                   const afterStop = await pool.getAmplificationParameter();
                   expect(afterStop.value).to.be.equalWithError(beforeStop.value, 0.001);
                   expect(afterStop.isUpdating).to.be.false;
+                });
+
+                it('stopping emits an event', async () => {
+                  const receipt = await pool.stopAmpChange();
+                  expectEvent.inReceipt(await receipt.wait(), 'AmpUpdateStopped');
+                });
+
+                it('stopping does not emit an AmpUpdateStarted event', async () => {
+                  const receipt = await pool.stopAmpChange();
+                  expectEvent.notEmitted(await receipt.wait(), 'AmpUpdateStarted');
+                });
+
+                it('can start after stop', async () => {
+                  await pool.stopAmpChange();
+                  const afterStop = await pool.getAmplificationParameter();
 
                   const newEndTime = (await currentTimestamp()).add(DAY * 2);
                   const startReceipt = await pool.startAmpChange(newAmp, newEndTime);
