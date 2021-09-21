@@ -726,12 +726,21 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
     }
 
     function _setAmplificationData(uint256 value) private {
-        _setAmplificationData(value, value, block.timestamp, block.timestamp);
-
+        _storeAmplificationData(value, value, block.timestamp, block.timestamp);
         emit AmpUpdateStopped(value);
     }
 
     function _setAmplificationData(
+        uint256 startValue,
+        uint256 endValue,
+        uint256 startTime,
+        uint256 endTime
+    ) private {
+        _storeAmplificationData(startValue, endValue, startTime, endTime);
+        emit AmpUpdateStarted(startValue, endValue, startTime, endTime);
+    }
+
+    function _storeAmplificationData(
         uint256 startValue,
         uint256 endValue,
         uint256 startTime,
@@ -742,8 +751,6 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
             WordCodec.encodeUint(uint64(endValue), 64) |
             WordCodec.encodeUint(uint64(startTime), 64 * 2) |
             WordCodec.encodeUint(uint64(endTime), 64 * 3);
-
-        emit AmpUpdateStarted(startValue, endValue, startTime, endTime);
     }
 
     function _getAmplificationData()
