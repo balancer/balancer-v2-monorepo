@@ -267,7 +267,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     ) internal view returns (uint256) {
         _require(request.tokenIn == _mainToken || request.tokenIn == _wrappedToken, Errors.INVALID_TOKEN);
         return
-            (request.tokenOut == _mainToken ? _calcMainInPerBptOut : _calcWrappedInPerBptOut)(
+            (request.tokenIn == _mainToken ? _calcMainInPerBptOut : _calcWrappedInPerBptOut)(
                 request.amount,
                 balances[_mainIndex],
                 balances[_wrappedIndex],
