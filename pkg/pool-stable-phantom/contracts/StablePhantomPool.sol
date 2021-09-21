@@ -152,16 +152,17 @@ contract StablePhantomPool is StablePool {
      */
     function _onSwapGivenIn(
         SwapRequest memory request,
-        uint256[] memory balances,
+        uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
     ) internal virtual override returns (uint256) {
+        uint256[] memory balances = _dropBptItem(balancesIncludingBpt); // Avoid BPT balance for stable pool math
         if (request.tokenIn == IERC20(this)) {
-            return _onSwapTokenGivenBptIn(request.amount, indexOut, balances);
+            return _onSwapTokenGivenBptIn(request.amount, _skipBptIndex(indexOut), balances);
         } else if (request.tokenOut == IERC20(this)) {
-            return _onSwapBptGivenTokenIn(request.amount, indexIn, balances);
+            return _onSwapBptGivenTokenIn(request.amount, _skipBptIndex(indexIn), balances);
         } else {
-            return super._onSwapGivenIn(request, balances, indexIn, indexOut);
+            return super._onSwapGivenIn(request, balances, _skipBptIndex(indexIn), _skipBptIndex(indexOut));
         }
     }
 
@@ -170,16 +171,17 @@ contract StablePhantomPool is StablePool {
      */
     function _onSwapGivenOut(
         SwapRequest memory request,
-        uint256[] memory balances,
+        uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
     ) internal virtual override returns (uint256) {
+        uint256[] memory balances = _dropBptItem(balancesIncludingBpt); // Avoid BPT balance for stable pool math
         if (request.tokenIn == IERC20(this)) {
-            return _onSwapBptGivenTokenOut(request.amount, indexOut, balances);
+            return _onSwapBptGivenTokenOut(request.amount, _skipBptIndex(indexOut), balances);
         } else if (request.tokenOut == IERC20(this)) {
-            return _onSwapTokenGivenBptOut(request.amount, indexIn, balances);
+            return _onSwapTokenGivenBptOut(request.amount, _skipBptIndex(indexIn), balances);
         } else {
-            return super._onSwapGivenOut(request, balances, indexIn, indexOut);
+            return super._onSwapGivenOut(request, balances, _skipBptIndex(indexIn), _skipBptIndex(indexOut));
         }
     }
 
@@ -221,7 +223,7 @@ contract StablePhantomPool is StablePool {
     ) internal view returns (uint256) {
         // TODO: calc due protocol fees
         (uint256 currentAmp, ) = _getAmplificationParameter();
-        uint256[] memory amountsOut = new uint256[](_getTotalTokens());
+        uint256[] memory amountsOut = new uint256[](_getTotalTokens() - 1); // Avoid BPT balance for stable pool math
         amountsOut[tokenIndex] = amountOut;
         return _calcBptInGivenExactTokensOut(currentAmp, balances, amountsOut, totalSupply(), getSwapFeePercentage());
     }
@@ -235,7 +237,7 @@ contract StablePhantomPool is StablePool {
         uint256[] memory balances
     ) internal view returns (uint256) {
         // TODO: calc due protocol fees
-        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
+        uint256[] memory amountsIn = new uint256[](_getTotalTokens() - 1); // Avoid BPT balance for stable pool math
         amountsIn[tokenIndex] = amountIn;
         (uint256 currentAmp, ) = _getAmplificationParameter();
         return _calcBptOutGivenExactTokensIn(currentAmp, balances, amountsIn, totalSupply(), getSwapFeePercentage());
@@ -468,5 +470,16 @@ contract StablePhantomPool is StablePool {
      */
     function _getMinimumBpt() internal pure override returns (uint256) {
         return _MINIMUM_BPT;
+    }
+
+    function _skipBptIndex(uint256 index) internal view returns (uint256) {
+        return index < _bptIndex ? index : index + 1;
+    }
+
+    function _dropBptItem(uint256[] memory _balances) internal view returns (uint256[] memory balances) {
+        balances = new uint256[](_balances.length - 1);
+        for (uint256 i = 0; i < balances.length; i++) {
+            balances[i] = _balances[_skipBptIndex(i)];
+        }
     }
 }
