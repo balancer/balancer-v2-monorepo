@@ -496,7 +496,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
     /**
      * @dev Stores the last measured invariant, and the amplification parameter used to compute it.
      */
-    function _updateLastInvariant(uint256 invariant, uint256 amplificationParameter) private {
+    function _updateLastInvariant(uint256 invariant, uint256 amplificationParameter) internal {
         _lastInvariant = invariant;
         _lastInvariantAmp = amplificationParameter;
     }

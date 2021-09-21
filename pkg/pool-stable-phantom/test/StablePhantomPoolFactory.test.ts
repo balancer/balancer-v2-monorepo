@@ -77,15 +77,11 @@ describe('StablePhantomPoolFactory', function () {
       expect(poolTokens.tokens).to.include(tokens.addresses[1]);
       expect(poolTokens.tokens).to.include(tokens.addresses[2]);
       expect(poolTokens.tokens).to.include(pool.address);
-
-      const minimumBPT = await pool.getMinimumBpt();
-      poolTokens.tokens.forEach((token, i) => {
-        expect(poolTokens.balances[i]).to.be.eq(token === pool.address ? MAX_UINT112.sub(minimumBPT) : 0);
-      });
+      expect(poolTokens.balances).to.be.zeros;
     });
 
-    it('starts with max BPT minted', async () => {
-      expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
+    it('starts with no BPT', async () => {
+      expect(await pool.totalSupply()).to.be.equal(0);
     });
 
     it('sets no asset managers', async () => {

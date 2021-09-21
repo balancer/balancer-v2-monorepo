@@ -100,40 +100,50 @@ export default class Vault {
     const vault = params.from ? this.instance.connect(params.from) : this.instance;
     return this.mocked
       ? vault.callJoinPool(
-          params.poolAddress,
+          params.poolAddress ?? ZERO_ADDRESS,
           params.poolId,
-          params.recipient,
-          params.currentBalances,
-          params.lastChangeBlock,
-          params.protocolFeePercentage,
-          params.data
+          params.recipient ?? ZERO_ADDRESS,
+          params.currentBalances ?? Array(params.tokens.length).fill(0),
+          params.lastChangeBlock ?? 0,
+          params.protocolFeePercentage ?? 0,
+          params.data ?? '0x'
         )
-      : vault.joinPool(params.poolId, (params.from || (await this._defaultSender())).address, params.recipient, {
-          assets: params.tokens,
-          maxAmountsIn: params.maxAmountsIn ?? Array(params.tokens.length).fill(MAX_UINT256),
-          fromInternalBalance: params.fromInternalBalance ?? false,
-          userData: params.data,
-        });
+      : vault.joinPool(
+          params.poolId,
+          (params.from || (await this._defaultSender())).address,
+          params.recipient ?? ZERO_ADDRESS,
+          {
+            assets: params.tokens,
+            maxAmountsIn: params.maxAmountsIn ?? Array(params.tokens.length).fill(MAX_UINT256),
+            fromInternalBalance: params.fromInternalBalance ?? false,
+            userData: params.data ?? '0x',
+          }
+        );
   }
 
   async exitPool(params: ExitPool): Promise<ContractTransaction> {
     const vault = params.from ? this.instance.connect(params.from) : this.instance;
     return this.mocked
       ? vault.callExitPool(
-          params.poolAddress,
+          params.poolAddress ?? ZERO_ADDRESS,
           params.poolId,
-          params.recipient,
-          params.currentBalances,
-          params.lastChangeBlock,
-          params.protocolFeePercentage,
-          params.data
+          params.recipient ?? ZERO_ADDRESS,
+          params.currentBalances ?? Array(params.tokens.length).fill(0),
+          params.lastChangeBlock ?? 0,
+          params.protocolFeePercentage ?? 0,
+          params.data ?? '0x'
         )
-      : vault.exitPool(params.poolId, (params.from || (await this._defaultSender())).address, params.recipient, {
-          assets: params.tokens,
-          minAmountsOut: params.minAmountsOut ?? Array(params.tokens.length).fill(0),
-          toInternalBalance: params.toInternalBalance ?? false,
-          userData: params.data,
-        });
+      : vault.exitPool(
+          params.poolId,
+          (params.from || (await this._defaultSender())).address,
+          params.recipient ?? ZERO_ADDRESS,
+          {
+            assets: params.tokens,
+            minAmountsOut: params.minAmountsOut ?? Array(params.tokens.length).fill(0),
+            toInternalBalance: params.toInternalBalance ?? false,
+            userData: params.data ?? '0x',
+          }
+        );
   }
 
   async getCollectedFeeAmounts(tokens: TokenList | string[]): Promise<BigNumber[]> {
