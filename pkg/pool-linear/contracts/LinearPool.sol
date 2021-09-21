@@ -146,6 +146,12 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         return _wrappedIndex;
     }
 
+    /**
+     * @dev Due to how this pool works, all the BPT needs to be minted initially. Since we cannot do that in the
+     * constructor because the Vault would call back this contract, this method is provided. This function must always
+     * be called right after construction, therefore it is extremely recommended to create Linear pools using the
+     * LinearPoolFactory which already does that automatically.
+     */
     function initialize() external {
         bytes32 poolId = getPoolId();
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
