@@ -31,7 +31,6 @@ contract StablePhantomPool is StablePool {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
     uint256 private constant _MIN_TOKENS = 2;
-    uint256 private constant _MINIMUM_BPT = 0;
     uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
 
     uint256 private immutable _bptIndex;
@@ -101,6 +100,10 @@ contract StablePhantomPool is StablePool {
         _bptIndex = bptIndex;
     }
 
+    function getMinimumBpt() external view returns (uint256) {
+        return _getMinimumBpt();
+    }
+
     /**
      * @dev Due to how this pool works, all the BPT needs to be minted initially. Since we cannot do that in the
      * constructor because the Vault would call back this contract, this method is provided. This function must always
@@ -124,7 +127,8 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * @dev Overrides to disallow minimal info swaps, although it should never trigger it due to minimum tokens length
+     * @dev Overrides to disallow minimal info swaps, although it should never trigger it due to min number of
+     * tokens requested by the pool
      */
     function onSwap(
         SwapRequest memory,
@@ -254,9 +258,10 @@ contract StablePhantomPool is StablePool {
         bytes memory
     ) internal override whenNotPaused returns (uint256, uint256[] memory) {
         // Mint initial BPTs and adds them to the Vault via a special join
-        _approve(address(this), address(getVault()), _MAX_TOKEN_BALANCE);
+        uint256 initialBPT = _MAX_TOKEN_BALANCE.sub(_getMinimumBpt());
+        _approve(address(this), address(getVault()), initialBPT);
         uint256[] memory amountsIn = new uint256[](_getTotalTokens());
-        amountsIn[_bptIndex] = _MAX_TOKEN_BALANCE;
+        amountsIn[_bptIndex] = initialBPT;
         return (_MAX_TOKEN_BALANCE, amountsIn);
     }
 
@@ -463,13 +468,6 @@ contract StablePhantomPool is StablePool {
     {
         rate = provider.getRate();
         cache = PriceRateCache.encode(rate, duration);
-    }
-
-    /**
-     * @dev Overrides BasePool's minimum BPT amount since all BPT is minted to the Vault during initialization.
-     */
-    function _getMinimumBpt() internal pure override returns (uint256) {
-        return _MINIMUM_BPT;
     }
 
     function _skipBptIndex(uint256 index) internal view returns (uint256) {
