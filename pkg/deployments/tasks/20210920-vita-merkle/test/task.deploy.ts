@@ -14,7 +14,7 @@ describe('MerkleRedeem', function () {
     expect(await distributor.vault()).to.be.equal(input.Vault);
   });
 
-  it('references the LDO token correctly', async () => {
+  it('references the VITA token correctly', async () => {
     const input = task.input();
 
     const distributor = await task.deployedInstance('MerkleRedeem');
