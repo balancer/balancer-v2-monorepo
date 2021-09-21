@@ -199,21 +199,13 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     ) internal view returns (uint256) {
         _require(request.tokenOut == _mainToken || request.tokenOut == _wrappedToken, Errors.INVALID_TOKEN);
         return
-            request.tokenOut == _mainToken
-                ? _calcMainOutPerBptIn(
-                    request.amount,
-                    balances[_mainIndex],
-                    balances[_wrappedIndex],
-                    _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
-                    params
-                )
-                : _calcWrappedOutPerBptIn(
-                    request.amount,
-                    balances[_mainIndex],
-                    balances[_wrappedIndex],
-                    _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
-                    params
-                );
+            (request.tokenOut == _mainToken ? _calcMainOutPerBptIn : _calcWrappedOutPerBptIn)(
+                request.amount,
+                balances[_mainIndex],
+                balances[_wrappedIndex],
+                _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
+                params
+            );
     }
 
     function _swapGivenMainIn(
@@ -275,21 +267,13 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     ) internal view returns (uint256) {
         _require(request.tokenIn == _mainToken || request.tokenIn == _wrappedToken, Errors.INVALID_TOKEN);
         return
-            request.tokenIn == _mainToken
-                ? _calcMainInPerBptOut(
-                    request.amount,
-                    balances[_mainIndex],
-                    balances[_wrappedIndex],
-                    _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
-                    params
-                )
-                : _calcWrappedInPerBptOut(
-                    request.amount,
-                    balances[_mainIndex],
-                    balances[_wrappedIndex],
-                    _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
-                    params
-                );
+            (request.tokenOut == _mainToken ? _calcMainInPerBptOut : _calcWrappedInPerBptOut)(
+                request.amount,
+                balances[_mainIndex],
+                balances[_wrappedIndex],
+                _MAX_TOKEN_BALANCE - balances[_bptIndex], // _MAX_TOKEN_BALANCE is always greater than BPT balance
+                params
+            );
     }
 
     function _swapGivenMainOut(

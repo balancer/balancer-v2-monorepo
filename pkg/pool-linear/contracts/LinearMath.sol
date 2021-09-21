@@ -171,7 +171,7 @@ contract LinearMath {
         // Amount out, so we round down overall.
 
         if (bptSupply == 0) {
-            //Return nominal DAI
+            // Return nominal DAI
             return wrappedIn.mulDown(params.rate);
         }
 
@@ -213,10 +213,10 @@ contract LinearMath {
         uint256 bptSupply,
         Params memory params
     ) internal pure returns (uint256) {
-        // Amount out, so we round down overall.
+        // Amount in, so we round up overall.
 
         if (bptSupply == 0) {
-            //Return nominal DAI
+            // Return nominal DAI
             return bptOut.divDown(params.rate);
         }
 
