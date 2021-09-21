@@ -161,6 +161,96 @@ contract LinearMath {
         return newMainBalance.sub(mainBalance);
     }
 
+    function _calcBptOutPerWrappedIn(
+        uint256 wrappedIn,
+        uint256 mainBalance,
+        uint256 wrappedBalance,
+        uint256 bptSupply,
+        Params memory params
+    ) internal pure returns (uint256) {
+        // Amount out, so we round down overall.
+
+        if (bptSupply == 0) {
+            // Return nominal DAI
+            return wrappedIn.mulDown(params.rate);
+        }
+
+        uint256 nominalMain = _toNominal(mainBalance, params);
+        uint256 previousInvariant = _calcInvariantUp(nominalMain, wrappedBalance, params);
+
+        uint256 newWrappedBalance = wrappedBalance.add(wrappedIn);
+        uint256 newInvariant = _calcInvariantDown(nominalMain, newWrappedBalance, params);
+
+        uint256 newBptBalance = bptSupply.mulDown(newInvariant).divDown(previousInvariant);
+
+        return newBptBalance.sub(bptSupply);
+    }
+
+    function _calcBptInPerWrappedOut(
+        uint256 wrappedOut,
+        uint256 mainBalance,
+        uint256 wrappedBalance,
+        uint256 bptSupply,
+        Params memory params
+    ) internal pure returns (uint256) {
+        // Amount in, so we round up overall.
+
+        uint256 nominalMain = _toNominal(mainBalance, params);
+        uint256 previousInvariant = _calcInvariantUp(nominalMain, wrappedBalance, params);
+
+        uint256 newWrappedBalance = wrappedBalance.sub(wrappedOut);
+        uint256 newInvariant = _calcInvariantDown(nominalMain, newWrappedBalance, params);
+
+        uint256 newBptBalance = bptSupply.mulDown(newInvariant).divDown(previousInvariant);
+
+        return bptSupply.sub(newBptBalance);
+    }
+
+    function _calcWrappedInPerBptOut(
+        uint256 bptOut,
+        uint256 mainBalance,
+        uint256 wrappedBalance,
+        uint256 bptSupply,
+        Params memory params
+    ) internal pure returns (uint256) {
+        // Amount in, so we round up overall.
+
+        if (bptSupply == 0) {
+            // Return nominal DAI
+            return bptOut.divDown(params.rate);
+        }
+
+        uint256 nominalMain = _toNominal(mainBalance, params);
+        uint256 previousInvariant = _calcInvariantUp(nominalMain, wrappedBalance, params);
+
+        uint256 newBptBalance = bptSupply.add(bptOut);
+        uint256 newWrappedBalance = newBptBalance.divUp(bptSupply).mulUp(previousInvariant).sub(nominalMain).divUp(
+            params.rate
+        );
+
+        return newWrappedBalance.sub(wrappedBalance);
+    }
+
+    function _calcWrappedOutPerBptIn(
+        uint256 bptIn,
+        uint256 mainBalance,
+        uint256 wrappedBalance,
+        uint256 bptSupply,
+        Params memory params
+    ) internal pure returns (uint256) {
+        // Amount out, so we round down overall.
+
+        uint256 nominalMain = _toNominal(mainBalance, params);
+        uint256 previousInvariant = _calcInvariantUp(nominalMain, wrappedBalance, params);
+
+        uint256 newBptBalance = bptSupply.sub(bptIn);
+        uint256 newWrappedBalance = newBptBalance.divUp(bptSupply).mulUp(previousInvariant).sub(nominalMain).divUp(
+            params.rate
+        );
+
+        return wrappedBalance.sub(newWrappedBalance);
+    }
+
     function _calcInvariantUp(
         uint256 nominalMainBalance,
         uint256 wrappedBalance,
