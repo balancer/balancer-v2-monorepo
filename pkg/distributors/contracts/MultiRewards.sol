@@ -229,18 +229,6 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         total = total.add(unpaidRewards[pool][account][rewardsToken]);
     }
 
-    function getRewardForDuration(
-        IERC20 pool,
-        address rewarder,
-        IERC20 rewardsToken
-    ) external view returns (uint256) {
-        return
-            Math.mul(
-                rewardData[pool][rewarder][rewardsToken].rewardRate,
-                rewardData[pool][rewarder][rewardsToken].rewardsDuration
-            );
-    }
-
     /* ========== MUTATIVE FUNCTIONS ========== */
     function stake(IERC20 pool, uint256 amount) external nonReentrant {
         _stakeFor(pool, amount, msg.sender, msg.sender);
