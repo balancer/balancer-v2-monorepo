@@ -17,13 +17,7 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-// This is a contract to emulate file-level functions. Convert to a library
-// after the migration to solc v0.7.1.
-
-// solhint-disable private-vars-leading-underscore
-// solhint-disable var-name-mixedcase
-
-contract StableMath {
+library StableMath {
     using FixedPoint for uint256;
 
     uint256 internal constant _MIN_AMP = 1;

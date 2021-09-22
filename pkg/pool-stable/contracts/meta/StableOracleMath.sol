@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/LogCompression.sol";
 
 import "../StableMath.sol";
 
-contract StableOracleMath is StableMath {
+contract StableOracleMath {
     using FixedPoint for uint256;
 
     /**
@@ -57,9 +57,9 @@ contract StableOracleMath is StableMath {
         // S = sum of balances but x,y = 0 since x  and y are the only tokens                                        //
         **************************************************************************************************************/
 
-        uint256 invariant = _calculateInvariant(amplificationParameter, _balances(balanceX, balanceY), true);
+        uint256 invariant = StableMath._calculateInvariant(amplificationParameter, _balances(balanceX, balanceY), true);
 
-        uint256 a = (amplificationParameter * 2) / _AMP_PRECISION;
+        uint256 a = (amplificationParameter * 2) / StableMath._AMP_PRECISION;
         uint256 b = Math.mul(invariant, a).sub(invariant);
 
         uint256 axy2 = Math.mul(a * 2, balanceX).mulDown(balanceY); // n = 2
