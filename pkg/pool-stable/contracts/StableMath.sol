@@ -65,7 +65,7 @@ contract StableMath {
         // S = sum of balances                                             n^n P                     //
         // P = product of balances                                                                   //
         // n = number of tokens                                                                      //
-        *********x************************************************************************************/
+        **********************************************************************************************/
 
         // We support rounding up or down.
 
@@ -214,7 +214,7 @@ contract StableMath {
 
         // Calculate the weighted balance ratio without considering fees
         uint256[] memory balanceRatiosWithFee = new uint256[](amountsIn.length);
-        // The weighted sum of token balance ratios without fee
+        // The weighted sum of token balance ratios with fee
         uint256 invariantRatioWithFees = 0;
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 currentWeight = balances[i].divDown(sumBalances);
@@ -488,7 +488,7 @@ contract StableMath {
         sum = sum - balances[tokenIndex];
 
         uint256 inv2 = Math.mul(invariant, invariant);
-        // We remove the balance fromm c by multiplying it
+        // We remove the balance from c by multiplying it
         uint256 c = Math.mul(
             Math.mul(Math.divUp(inv2, Math.mul(ampTimesTotal, P_D)), _AMP_PRECISION),
             balances[tokenIndex]

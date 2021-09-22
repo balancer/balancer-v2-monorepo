@@ -35,7 +35,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
     // solhint-disable not-rely-on-time
 
-    // Amplification factor changes must happen over a minimum period of one day, and can at most divide or multiple the
+    // Amplification factor changes must happen over a minimum period of one day, and can at most divide or multiply the
     // current value by 2 every day.
     // WARNING: this only limits *a single* amplification change to have a maximum rate of change of twice the original
     // value daily. It is possible to perform multiple amplification changes in sequence to increase this value more
@@ -674,8 +674,8 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
 
             // We can skip checked arithmetic as:
             //  - block.timestamp is always larger or equal to startTime
-            //  - endTime is alawys larger than startTime
-            //  - the value delta is bounded by the largest amplification paramater, which never causes the
+            //  - endTime is always larger than startTime
+            //  - the value delta is bounded by the largest amplification parameter, which never causes the
             //    multiplication to overflow.
             // This also means that the following computation will never revert nor yield invalid results.
             if (endValue > startValue) {
