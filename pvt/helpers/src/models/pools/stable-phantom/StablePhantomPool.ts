@@ -166,8 +166,8 @@ export default class StablePhantomPool {
     });
 
     const receipt = await (await tx).wait();
-    const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFees };
+    const { deltas, protocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFeeAmounts };
   }
 
   private async _buildSwapParams(kind: number, params: SwapPhantomPool): Promise<GeneralSwap> {

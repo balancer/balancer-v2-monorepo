@@ -212,44 +212,90 @@ describe('StablePhantomPool', () => {
       });
     });
 
-    describe('initialize', () => {
+    describe.only('initialize', () => {
       let initialBalances: BigNumberish[] = [];
 
       sharedBeforeEach('deploy pool', async () => {
-        await deployPool({ mockedVault: true });
+        await deployPool();
         initialBalances = Array.from({ length: numberOfTokens + 1 }, (_, i) => (i == bptIndex ? 0 : fp(1 - i / 10)));
+        await tokens.mint({ to: owner, amount: fp(10) });
+        await tokens.approve({ from: owner, to: pool.vault, amount: fp(10) });
       });
 
-      it('grants the invariant amount of BPT to the recipient', async () => {
-        const invariant = await pool.estimateInvariant(initialBalances);
+      context('when not initialized', () => {
+        context('when not paused', () => {
+          it('transfers the initial balances to the vault', async () => {
+            const previousBalances = await tokens.balanceOf(pool.vault);
 
-        const { amountsIn, dueProtocolFeeAmounts } = await pool.init({ recipient, initialBalances, from: owner });
+            await pool.init({ initialBalances, from: owner });
 
-        expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
+            const currentBalances = await tokens.balanceOf(pool.vault);
+            currentBalances.forEach((currentBalance, i) => {
+              const initialBalanceIndex = i < bptIndex ? i : i + 1;
+              const expectedBalance = previousBalances[i].add(initialBalances[initialBalanceIndex]);
+              expect(currentBalance).to.be.equal(expectedBalance);
+            });
+          });
 
-        expect(dueProtocolFeeAmounts).to.be.zeros;
+          it('mints the max amount of BPT', async () => {
+            await pool.init({ initialBalances, from: owner });
 
-        for (let i = 0; i < amountsIn.length; i++) {
-          i === bptIndex
-            ? expect(amountsIn[i]).to.be.equalWithError(MAX_UINT112.sub(invariant), 0.0001)
-            : expect(amountsIn[i]).to.be.equal(initialBalances[i]);
-        }
+            expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
+          });
 
-        const minimumBpt = await pool.instance.getMinimumBpt();
-        expect(await pool.balanceOf(ZERO_ADDRESS)).to.be.equal(minimumBpt);
-        expect(await pool.balanceOf(recipient)).to.be.equalWithError(invariant, 0.5);
+          it('mints the minimum BPT to the address zero', async () => {
+            const minimumBpt = await pool.instance.getMinimumBpt();
+
+            await pool.init({ initialBalances, from: owner });
+
+            expect(await pool.balanceOf(ZERO_ADDRESS)).to.be.equal(minimumBpt);
+          });
+
+          it('mints the invariant amount of BPT to the recipient', async () => {
+            const invariant = await pool.estimateInvariant(initialBalances);
+
+            await pool.init({ recipient, initialBalances, from: owner });
+
+            expect(await pool.balanceOf(recipient)).to.be.equalWithError(invariant, 0.4);
+          });
+
+          it('mints the rest of the BPT to the vault', async () => {
+            const invariant = await pool.estimateInvariant(initialBalances);
+            const minimumBpt = await pool.instance.getMinimumBpt();
+
+            const { amountsIn, dueProtocolFeeAmounts } = await pool.init({ recipient, initialBalances, from: owner });
+
+            const expectedBPT = MAX_UINT112.sub(minimumBpt).sub(invariant);
+            expect(await pool.balanceOf(pool.vault)).to.be.equalWithError(expectedBPT, 0.0001);
+
+            expect(dueProtocolFeeAmounts).to.be.zeros;
+            for (let i = 0; i < amountsIn.length; i++) {
+              i === bptIndex
+                ? expect(amountsIn[i]).to.be.equalWithError(MAX_UINT112.sub(invariant), 0.0001)
+                : expect(amountsIn[i]).to.be.equal(initialBalances[i]);
+            }
+          });
+        });
+
+        context('when paused', () => {
+          sharedBeforeEach('pause pool', async () => {
+            await pool.pause();
+          });
+
+          it('reverts', async () => {
+            await expect(pool.init({ initialBalances })).to.be.revertedWith('PAUSED');
+          });
+        });
       });
 
-      it('fails if already initialized', async () => {
-        await pool.init({ recipient, initialBalances });
+      context('when it was already initialized', () => {
+        sharedBeforeEach('init pool', async () => {
+          await pool.init({ initialBalances, from: owner });
+        });
 
-        await expect(pool.init({ initialBalances })).to.be.revertedWith('UNHANDLED_BY_PHANTOM_POOL');
-      });
-
-      it('reverts if paused', async () => {
-        await pool.pause();
-
-        await expect(pool.init({ initialBalances })).to.be.revertedWith('PAUSED');
+        it('reverts', async () => {
+          await expect(pool.init({ initialBalances, from: owner })).to.be.revertedWith('UNHANDLED_BY_PHANTOM_POOL');
+        });
       });
     });
   }

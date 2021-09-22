@@ -1,6 +1,11 @@
+import { BigNumber } from 'ethers';
+
 import Token from './Token';
 import TokensDeployer from './TokensDeployer';
 import TypesConverter from '../types/TypesConverter';
+
+import { Account } from '../types/types';
+import { ZERO_ADDRESS } from '../../constants';
 import {
   RawTokenApproval,
   RawTokenMint,
@@ -9,7 +14,6 @@ import {
   TokenMint,
   TokensDeploymentOptions,
 } from './types';
-import { ZERO_ADDRESS } from '../../constants';
 
 export const ETH_TOKEN_ADDRESS = ZERO_ADDRESS;
 
@@ -98,6 +102,10 @@ export default class TokenList {
     await Promise.all(
       params.flatMap(({ to, amount, from }) => this.tokens.map((token) => token.approve(to, amount, { from })))
     );
+  }
+
+  async balanceOf(account: Account): Promise<BigNumber[]> {
+    return Promise.all(this.tokens.map((token) => token.balanceOf(account)));
   }
 
   each(fn: (value: Token, i: number, array: Token[]) => void, thisArg?: unknown): void {
