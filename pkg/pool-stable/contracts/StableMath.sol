@@ -44,6 +44,13 @@ contract StableMath {
     //
     // This means e.g. we can safely multiply a balance by the amplification parameter without worrying about overflow.
 
+    // About swap fees on joins and exits:
+    // Any join or exectly that is not perfectly balanced (e.g. all single token joins or exits) is mathematically
+    // equivalent to a perfectly balanced join or  exit followed by a series of swaps. Since these swaps would charge
+    // swap fees, it follows that (some) joins and exits should as well.
+    // On these operations, we split the token amounts in 'taxable' and 'non-taxable' portions, where the 'taxable' part
+    // is the one to which swap fees are applied.
+
     // Computes the invariant given the current balances, using the Newton-Raphson approximation.
     // The amplification parameter equals: A n^(n-1)
     function _calculateInvariant(
