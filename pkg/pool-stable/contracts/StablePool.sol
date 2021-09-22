@@ -715,8 +715,8 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { scalingFactors[0] = _getScalingFactor0(); } else { return scalingFactors; }
-            if (totalTokens > 1) { scalingFactors[1] = _getScalingFactor1(); } else { return scalingFactors; }
+            scalingFactors[0] = _getScalingFactor0();
+            scalingFactors[1] = _getScalingFactor1();
             if (totalTokens > 2) { scalingFactors[2] = _getScalingFactor2(); } else { return scalingFactors; }
             if (totalTokens > 3) { scalingFactors[3] = _getScalingFactor3(); } else { return scalingFactors; }
             if (totalTokens > 4) { scalingFactors[4] = _getScalingFactor4(); } else { return scalingFactors; }
