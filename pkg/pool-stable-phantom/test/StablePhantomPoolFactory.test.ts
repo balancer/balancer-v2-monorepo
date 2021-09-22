@@ -78,8 +78,9 @@ describe('StablePhantomPoolFactory', function () {
       expect(poolTokens.tokens).to.include(tokens.addresses[2]);
       expect(poolTokens.tokens).to.include(pool.address);
 
+      const minimumBPT = await pool.getMinimumBpt();
       poolTokens.tokens.forEach((token, i) => {
-        expect(poolTokens.balances[i]).to.be.eq(token === pool.address ? MAX_UINT112 : 0);
+        expect(poolTokens.balances[i]).to.be.eq(token === pool.address ? MAX_UINT112.sub(minimumBPT) : 0);
       });
     });
 
