@@ -200,7 +200,7 @@ contract StablePhantomPool is StablePool {
         // TODO: calc due protocol fees
         uint256 swapFee = getSwapFeePercentage();
         (uint256 currentAmp, ) = _getAmplificationParameter();
-        return _calcTokenOutGivenExactBptIn(currentAmp, balances, tokenIndex, bptIn, totalSupply(), swapFee);
+        return StableMath._calcTokenOutGivenExactBptIn(currentAmp, balances, tokenIndex, bptIn, totalSupply(), swapFee);
     }
 
     /**
@@ -214,7 +214,8 @@ contract StablePhantomPool is StablePool {
         // TODO: calc due protocol fees
         uint256 swapFee = getSwapFeePercentage();
         (uint256 currentAmp, ) = _getAmplificationParameter();
-        return _calcTokenInGivenExactBptOut(currentAmp, balances, tokenIndex, bptOut, totalSupply(), swapFee);
+        return
+            StableMath._calcTokenInGivenExactBptOut(currentAmp, balances, tokenIndex, bptOut, totalSupply(), swapFee);
     }
 
     /**
@@ -229,7 +230,14 @@ contract StablePhantomPool is StablePool {
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256[] memory amountsOut = new uint256[](_getTotalTokens() - 1); // Avoid BPT balance for stable pool math
         amountsOut[tokenIndex] = amountOut;
-        return _calcBptInGivenExactTokensOut(currentAmp, balances, amountsOut, totalSupply(), getSwapFeePercentage());
+        return
+            StableMath._calcBptInGivenExactTokensOut(
+                currentAmp,
+                balances,
+                amountsOut,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
     }
 
     /**
@@ -244,7 +252,14 @@ contract StablePhantomPool is StablePool {
         uint256[] memory amountsIn = new uint256[](_getTotalTokens() - 1); // Avoid BPT balance for stable pool math
         amountsIn[tokenIndex] = amountIn;
         (uint256 currentAmp, ) = _getAmplificationParameter();
-        return _calcBptOutGivenExactTokensIn(currentAmp, balances, amountsIn, totalSupply(), getSwapFeePercentage());
+        return
+            StableMath._calcBptOutGivenExactTokensIn(
+                currentAmp,
+                balances,
+                amountsIn,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
     }
 
     /**

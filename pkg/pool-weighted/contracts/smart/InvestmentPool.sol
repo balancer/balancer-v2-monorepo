@@ -555,7 +555,7 @@ contract InvestmentPool is BaseWeightedPool, ReentrancyGuard {
 
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
-            _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
+            _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             IERC20 token = tokens[i];
 

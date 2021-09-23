@@ -17,13 +17,12 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-// This is a contract to emulate file-level functions. Convert to a library
-// after the migration to solc v0.7.1.
+// These functions start with an underscore, as if they were part of a contract and not a library. At some point this
+// should be fixed. Additionally, some variables have non mixed case names (e.g. P_D) that relate to the mathematical
+// derivations.
+// solhint-disable private-vars-leading-underscore, var-name-mixedcase
 
-// solhint-disable private-vars-leading-underscore
-// solhint-disable var-name-mixedcase
-
-contract StableMath {
+library StableMath {
     using FixedPoint for uint256;
 
     uint256 internal constant _MIN_AMP = 1;
