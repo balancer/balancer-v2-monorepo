@@ -42,7 +42,7 @@ contract WeightedMath {
     uint256 internal constant _MIN_INVARIANT_RATIO = 0.7e18;
 
     // About swap fees on joins and exits:
-    // Any join or exectly that is not perfectly balanced (e.g. all single token joins or exits) is mathematically
+    // Any join or exit that is not perfectly balanced (e.g. all single token joins or exits) is mathematically
     // equivalent to a perfectly balanced join or  exit followed by a series of swaps. Since these swaps would charge
     // swap fees, it follows that (some) joins and exits should as well.
     // On these operations, we split the token amounts in 'taxable' and 'non-taxable' portions, where the 'taxable' part
