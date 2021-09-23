@@ -31,7 +31,6 @@ contract StablePhantomPool is StablePool {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
     uint256 private constant _MIN_TOKENS = 2;
-    uint256 private constant _MINIMUM_BPT = 0;
     uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
 
     uint256 private immutable _bptIndex;
@@ -101,6 +100,10 @@ contract StablePhantomPool is StablePool {
         _bptIndex = bptIndex;
     }
 
+    function getMinimumBpt() external view returns (uint256) {
+        return _getMinimumBpt();
+    }
+
     /**
      * @dev Due to how this pool works, all the BPT needs to be minted initially. Since we cannot do that in the
      * constructor because the Vault would call back this contract, this method is provided. This function must always
@@ -124,7 +127,8 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * @dev Overrides to disallow minimal info swaps, although it should never trigger it due to minimum tokens length
+     * @dev Overrides to disallow minimal info swaps, although it should never trigger it due to min number of
+     * tokens requested by the pool
      */
     function onSwap(
         SwapRequest memory,
@@ -152,16 +156,17 @@ contract StablePhantomPool is StablePool {
      */
     function _onSwapGivenIn(
         SwapRequest memory request,
-        uint256[] memory balances,
+        uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
     ) internal virtual override returns (uint256) {
+        uint256[] memory balances = _dropBptItem(balancesIncludingBpt); // Avoid BPT balance for stable pool math
         if (request.tokenIn == IERC20(this)) {
-            return _onSwapTokenGivenBptIn(request.amount, indexOut, balances);
+            return _onSwapTokenGivenBptIn(request.amount, _skipBptIndex(indexOut), balances);
         } else if (request.tokenOut == IERC20(this)) {
-            return _onSwapBptGivenTokenIn(request.amount, indexIn, balances);
+            return _onSwapBptGivenTokenIn(request.amount, _skipBptIndex(indexIn), balances);
         } else {
-            return super._onSwapGivenIn(request, balances, indexIn, indexOut);
+            return super._onSwapGivenIn(request, balances, _skipBptIndex(indexIn), _skipBptIndex(indexOut));
         }
     }
 
@@ -170,16 +175,17 @@ contract StablePhantomPool is StablePool {
      */
     function _onSwapGivenOut(
         SwapRequest memory request,
-        uint256[] memory balances,
+        uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
     ) internal virtual override returns (uint256) {
+        uint256[] memory balances = _dropBptItem(balancesIncludingBpt); // Avoid BPT balance for stable pool math
         if (request.tokenIn == IERC20(this)) {
-            return _onSwapBptGivenTokenOut(request.amount, indexOut, balances);
+            return _onSwapBptGivenTokenOut(request.amount, _skipBptIndex(indexOut), balances);
         } else if (request.tokenOut == IERC20(this)) {
-            return _onSwapTokenGivenBptOut(request.amount, indexIn, balances);
+            return _onSwapTokenGivenBptOut(request.amount, _skipBptIndex(indexIn), balances);
         } else {
-            return super._onSwapGivenOut(request, balances, indexIn, indexOut);
+            return super._onSwapGivenOut(request, balances, _skipBptIndex(indexIn), _skipBptIndex(indexOut));
         }
     }
 
@@ -221,7 +227,7 @@ contract StablePhantomPool is StablePool {
     ) internal view returns (uint256) {
         // TODO: calc due protocol fees
         (uint256 currentAmp, ) = _getAmplificationParameter();
-        uint256[] memory amountsOut = new uint256[](_getTotalTokens());
+        uint256[] memory amountsOut = new uint256[](_getTotalTokens() - 1); // Avoid BPT balance for stable pool math
         amountsOut[tokenIndex] = amountOut;
         return _calcBptInGivenExactTokensOut(currentAmp, balances, amountsOut, totalSupply(), getSwapFeePercentage());
     }
@@ -235,7 +241,7 @@ contract StablePhantomPool is StablePool {
         uint256[] memory balances
     ) internal view returns (uint256) {
         // TODO: calc due protocol fees
-        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
+        uint256[] memory amountsIn = new uint256[](_getTotalTokens() - 1); // Avoid BPT balance for stable pool math
         amountsIn[tokenIndex] = amountIn;
         (uint256 currentAmp, ) = _getAmplificationParameter();
         return _calcBptOutGivenExactTokensIn(currentAmp, balances, amountsIn, totalSupply(), getSwapFeePercentage());
@@ -252,9 +258,10 @@ contract StablePhantomPool is StablePool {
         bytes memory
     ) internal override whenNotPaused returns (uint256, uint256[] memory) {
         // Mint initial BPTs and adds them to the Vault via a special join
-        _approve(address(this), address(getVault()), _MAX_TOKEN_BALANCE);
+        uint256 initialBPT = _MAX_TOKEN_BALANCE.sub(_getMinimumBpt());
+        _approve(address(this), address(getVault()), initialBPT);
         uint256[] memory amountsIn = new uint256[](_getTotalTokens());
-        amountsIn[_bptIndex] = _MAX_TOKEN_BALANCE;
+        amountsIn[_bptIndex] = initialBPT;
         return (_MAX_TOKEN_BALANCE, amountsIn);
     }
 
@@ -463,10 +470,14 @@ contract StablePhantomPool is StablePool {
         cache = PriceRateCache.encode(rate, duration);
     }
 
-    /**
-     * @dev Overrides BasePool's minimum BPT amount since all BPT is minted to the Vault during initialization.
-     */
-    function _getMinimumBpt() internal pure override returns (uint256) {
-        return _MINIMUM_BPT;
+    function _skipBptIndex(uint256 index) internal view returns (uint256) {
+        return index < _bptIndex ? index : index.sub(1);
+    }
+
+    function _dropBptItem(uint256[] memory _balances) internal view returns (uint256[] memory balances) {
+        balances = new uint256[](_balances.length - 1);
+        for (uint256 i = 0; i < balances.length; i++) {
+            balances[i] = _balances[i < _bptIndex ? i : i + 1];
+        }
     }
 }
