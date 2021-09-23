@@ -19,8 +19,19 @@ export default {
     const pool = await this._deployStandalone(deployment, vault);
 
     const poolId = await pool.getPoolId();
+    const bptIndex = await pool.getBptIndex();
     const { tokens, swapFeePercentage, amplificationParameter, owner } = deployment;
-    return new StablePhantomPool(pool, poolId, vault, tokens, swapFeePercentage, amplificationParameter, owner);
+
+    return new StablePhantomPool(
+      pool,
+      poolId,
+      vault,
+      tokens,
+      bptIndex,
+      swapFeePercentage,
+      amplificationParameter,
+      owner
+    );
   },
 
   async _deployStandalone(params: StablePhantomPoolDeployment, vault: Vault): Promise<Contract> {
@@ -37,7 +48,7 @@ export default {
 
     const owner = TypesConverter.toAddress(params.owner);
 
-    const pool = await deploy('v2-pool-stable-phantom/StablePhantomPool', {
+    return deploy('v2-pool-stable-phantom/StablePhantomPool', {
       args: [
         {
           vault: vault.address,
@@ -55,8 +66,5 @@ export default {
       ],
       from,
     });
-
-    // await pool.initialize();
-    return pool;
   },
 };

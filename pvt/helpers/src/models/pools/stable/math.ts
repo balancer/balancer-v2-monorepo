@@ -224,11 +224,11 @@ export function calcTokenInGivenExactBptOut(
 }
 
 export function calcBptInGivenExactTokensOut(
-  fpBalances: BigNumber[],
+  fpBalances: BigNumberish[],
   amplificationParameter: BigNumberish,
-  fpAmountsOut: BigNumber[],
-  fpBptTotalSupply: BigNumber,
-  fpSwapFeePercentage: BigNumber
+  fpAmountsOut: BigNumberish[],
+  fpBptTotalSupply: BigNumberish,
+  fpSwapFeePercentage: BigNumberish
 ): BigNumber {
   // Get current invariant
   const currentInvariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));

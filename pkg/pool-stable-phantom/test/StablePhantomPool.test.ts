@@ -16,10 +16,10 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('StablePhantomPool', () => {
-  let owner: SignerWithAddress, recipient: SignerWithAddress;
+  let lp: SignerWithAddress, owner: SignerWithAddress, recipient: SignerWithAddress;
 
   sharedBeforeEach('setup signers', async () => {
-    [, owner, recipient] = await ethers.getSigners();
+    [, lp, owner, recipient] = await ethers.getSigners();
   });
 
   context('for 2 tokens pool', () => {
@@ -45,38 +45,35 @@ describe('StablePhantomPool', () => {
   });
 
   function itBehavesAsStablePhantomPool(numberOfTokens: number): void {
-    let pool: StablePhantomPool, tokens: TokenList, deployedAt: BigNumber, bptIndex: number;
+    let pool: StablePhantomPool, tokens: TokenList;
+    let deployedAt: BigNumber, bptIndex: number, initialBalances: BigNumberish[];
 
     const rateProviders: Contract[] = [];
-    const tokenRates: BigNumberish[] = [];
     const priceRateCacheDurations: BigNumberish[] = [];
 
-    async function deployPool(params: RawStablePhantomPoolDeployment = {}): Promise<void> {
+    async function deployPool(params: RawStablePhantomPoolDeployment = {}, rates: BigNumberish[] = []): Promise<void> {
       tokens = await TokenList.create(numberOfTokens, { sorted: true });
 
       for (let i = 0; i < numberOfTokens; i++) {
-        tokenRates[i] = fp(1 + (i + 1) / 10);
         rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
-        await rateProviders[i].mockRate(tokenRates[i]);
+        await rateProviders[i].mockRate(rates[i] || fp(1));
         priceRateCacheDurations[i] = MONTH + i;
       }
 
       pool = await StablePhantomPool.create({ tokens, rateProviders, priceRateCacheDurations, ...params });
       bptIndex = await pool.getBptIndex();
       deployedAt = await currentTimestamp();
+      initialBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? 0 : fp(1 - i / 10)));
     }
 
     describe('creation', () => {
       context('when the creation succeeds', () => {
-        const SWAP_FEE_PERCENTAGE = fp(0.1);
-        const AMPLIFICATION_PARAMETER = bn(200);
+        const swapFeePercentage = fp(0.1);
+        const amplificationParameter = bn(200);
+        const tokenRates = Array.from({ length: numberOfTokens }, (_, i) => fp(1 + (i + 1) / 10));
 
         sharedBeforeEach('deploy pool', async () => {
-          await deployPool({
-            owner,
-            swapFeePercentage: SWAP_FEE_PERCENTAGE,
-            amplificationParameter: AMPLIFICATION_PARAMETER,
-          });
+          await deployPool({ owner, swapFeePercentage, amplificationParameter }, tokenRates);
         });
 
         it('sets the name', async () => {
@@ -122,12 +119,12 @@ describe('StablePhantomPool', () => {
         it('sets amplification', async () => {
           const { value, isUpdating, precision } = await pool.getAmplificationParameter();
 
-          expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(precision));
+          expect(value).to.be.equal(amplificationParameter.mul(precision));
           expect(isUpdating).to.be.false;
         });
 
         it('sets swap fee', async () => {
-          expect(await pool.getSwapFeePercentage()).to.equal(SWAP_FEE_PERCENTAGE);
+          expect(await pool.getSwapFeePercentage()).to.equal(swapFeePercentage);
         });
 
         it('sets the rate providers', async () => {
@@ -213,13 +210,8 @@ describe('StablePhantomPool', () => {
     });
 
     describe('initialize', () => {
-      let initialBalances: BigNumberish[] = [];
-
       sharedBeforeEach('deploy pool', async () => {
         await deployPool();
-        initialBalances = Array.from({ length: numberOfTokens + 1 }, (_, i) => (i == bptIndex ? 0 : fp(1 - i / 10)));
-        await tokens.mint({ to: owner, amount: fp(10) });
-        await tokens.approve({ from: owner, to: pool.vault, amount: fp(10) });
       });
 
       context('when not initialized', () => {
@@ -227,18 +219,18 @@ describe('StablePhantomPool', () => {
           it('transfers the initial balances to the vault', async () => {
             const previousBalances = await tokens.balanceOf(pool.vault);
 
-            await pool.init({ initialBalances, from: owner });
+            await pool.init({ initialBalances });
 
             const currentBalances = await tokens.balanceOf(pool.vault);
             currentBalances.forEach((currentBalance, i) => {
-              const initialBalanceIndex = i < bptIndex ? i : i + 1;
+              const initialBalanceIndex = i < bptIndex ? i : i + 1; // initial balances includes BPT
               const expectedBalance = previousBalances[i].add(initialBalances[initialBalanceIndex]);
               expect(currentBalance).to.be.equal(expectedBalance);
             });
           });
 
           it('mints the max amount of BPT', async () => {
-            await pool.init({ initialBalances, from: owner });
+            await pool.init({ initialBalances });
 
             expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
           });
@@ -246,7 +238,7 @@ describe('StablePhantomPool', () => {
           it('mints the minimum BPT to the address zero', async () => {
             const minimumBpt = await pool.instance.getMinimumBpt();
 
-            await pool.init({ initialBalances, from: owner });
+            await pool.init({ recipient, initialBalances });
 
             expect(await pool.balanceOf(ZERO_ADDRESS)).to.be.equal(minimumBpt);
           });
@@ -254,24 +246,25 @@ describe('StablePhantomPool', () => {
           it('mints the invariant amount of BPT to the recipient', async () => {
             const invariant = await pool.estimateInvariant(initialBalances);
 
-            await pool.init({ recipient, initialBalances, from: owner });
+            await pool.init({ recipient, initialBalances, from: lp });
 
-            expect(await pool.balanceOf(recipient)).to.be.equalWithError(invariant, 0.4);
+            expect(await pool.balanceOf(lp)).to.be.zero;
+            expect(await pool.balanceOf(recipient)).to.be.equalWithError(invariant, 0.00001);
           });
 
           it('mints the rest of the BPT to the vault', async () => {
             const invariant = await pool.estimateInvariant(initialBalances);
             const minimumBpt = await pool.instance.getMinimumBpt();
 
-            const { amountsIn, dueProtocolFeeAmounts } = await pool.init({ recipient, initialBalances, from: owner });
+            const { amountsIn, dueProtocolFeeAmounts } = await pool.init({ initialBalances });
 
             const expectedBPT = MAX_UINT112.sub(minimumBpt).sub(invariant);
-            expect(await pool.balanceOf(pool.vault)).to.be.equalWithError(expectedBPT, 0.0001);
+            expect(await pool.balanceOf(pool.vault)).to.be.equalWithError(expectedBPT, 0.00001);
 
             expect(dueProtocolFeeAmounts).to.be.zeros;
             for (let i = 0; i < amountsIn.length; i++) {
               i === bptIndex
-                ? expect(amountsIn[i]).to.be.equalWithError(MAX_UINT112.sub(invariant), 0.0001)
+                ? expect(amountsIn[i]).to.be.equalWithError(MAX_UINT112.sub(invariant), 0.00001)
                 : expect(amountsIn[i]).to.be.equal(initialBalances[i]);
             }
           });
@@ -290,13 +283,194 @@ describe('StablePhantomPool', () => {
 
       context('when it was already initialized', () => {
         sharedBeforeEach('init pool', async () => {
-          await pool.init({ initialBalances, from: owner });
+          await pool.init({ initialBalances });
         });
 
         it('reverts', async () => {
-          await expect(pool.init({ initialBalances, from: owner })).to.be.revertedWith('UNHANDLED_BY_PHANTOM_POOL');
+          await expect(pool.init({ initialBalances })).to.be.revertedWith('UNHANDLED_BY_PHANTOM_POOL');
         });
       });
+    });
+
+    describe('swap', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool();
+      });
+
+      context('when the pool was not initialized', () => {
+        it('reverts', async () => {
+          const tx = pool.swapGivenIn({ in: tokens.first, out: tokens.second, amount: fp(1), recipient });
+          await expect(tx).to.be.revertedWith('UNINITIALIZED');
+        });
+      });
+
+      context('when the pool was initialized', () => {
+        sharedBeforeEach('initialize pool', async () => {
+          bptIndex = await pool.getBptIndex();
+          const sender = (await ethers.getSigners())[0];
+          await pool.init({ initialBalances, recipient: sender });
+        });
+
+        sharedBeforeEach('allow vault', async () => {
+          const sender = (await ethers.getSigners())[0];
+          await tokens.mint({ to: sender, amount: fp(100) });
+          await tokens.approve({ from: sender, to: pool.vault });
+          await pool.bpt.approve(pool.vault, MAX_UINT112, { from: sender });
+        });
+
+        context('token out given token in', () => {
+          const amountIn = fp(0.1);
+
+          it('swaps tokens', async () => {
+            const tokenIn = tokens.first;
+            const tokenOut = tokens.second;
+
+            const previousBalance = await tokenOut.balanceOf(recipient);
+            const expectedAmountOut = await pool.estimateTokenOutGivenTokenIn(tokenIn, tokenOut, amountIn);
+
+            const amountOut = await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount: amountIn, recipient });
+            expect(amountOut).to.be.equalWithError(expectedAmountOut, 0.00001);
+
+            const currentBalance = await tokenOut.balanceOf(recipient);
+            expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedAmountOut, 0.00001);
+          });
+        });
+
+        context('token in given token out', () => {
+          const amountOut = fp(0.1);
+
+          it('swaps tokens', async () => {
+            const tokenIn = tokens.first;
+            const tokenOut = tokens.second;
+
+            const previousBalance = await tokenOut.balanceOf(recipient);
+            const expectedAmountIn = await pool.estimateTokenInGivenTokenOut(tokenIn, tokenOut, amountOut);
+
+            const amountIn = await pool.swapGivenOut({ in: tokenIn, out: tokenOut, amount: amountOut, recipient });
+            expect(amountIn).to.be.equalWithError(expectedAmountIn, 0.00001);
+
+            const currentBalance = await tokenOut.balanceOf(recipient);
+            expect(currentBalance.sub(previousBalance)).to.be.equal(amountOut);
+          });
+        });
+
+        context('token out given BPT in', () => {
+          const bptIn = fp(1);
+
+          it('swaps exact BPT for token', async () => {
+            const tokenOut = tokens.first;
+
+            const previousBalance = await tokenOut.balanceOf(recipient);
+            const expectedTokenOut = await pool.estimateTokenOutGivenBptIn(tokenOut, bptIn);
+
+            const amountOut = await pool.swapGivenIn({ in: pool.bpt, out: tokenOut, amount: bptIn, recipient });
+            expect(amountOut).to.be.equalWithError(expectedTokenOut, 0.00001);
+
+            const currentBalance = await tokenOut.balanceOf(recipient);
+            expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedTokenOut, 0.00001);
+          });
+        });
+
+        context('token in given BPT out', () => {
+          const bptOut = fp(1);
+
+          it('swaps token for exact BPT', async () => {
+            const tokenIn = tokens.first;
+
+            const previousBalance = await pool.balanceOf(recipient);
+            const expectedTokenIn = await pool.estimateTokenInGivenBptOut(tokenIn, bptOut);
+
+            const amountIn = await pool.swapGivenOut({ in: tokenIn, out: pool.bpt, amount: bptOut, recipient });
+            expect(amountIn).to.be.equalWithError(expectedTokenIn, 0.00001);
+
+            const currentBalance = await pool.balanceOf(recipient);
+            expect(currentBalance.sub(previousBalance)).to.be.equal(bptOut);
+          });
+        });
+
+        context('BPT out given token in', () => {
+          const amountIn = fp(1);
+
+          it('swaps exact token for BPT', async () => {
+            const tokenIn = tokens.first;
+
+            const previousBalance = await pool.balanceOf(recipient);
+            const expectedBptOut = await pool.estimateBptOutGivenTokenIn(tokenIn, amountIn);
+
+            const amountOut = await pool.swapGivenIn({ in: tokenIn, out: pool.bpt, amount: amountIn, recipient });
+            expect(amountOut).to.be.equalWithError(expectedBptOut, 0.00001);
+
+            const currentBalance = await pool.balanceOf(recipient);
+            expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedBptOut, 0.00001);
+          });
+        });
+
+        context('BPT in given token out', () => {
+          const amountOut = fp(0.1);
+
+          it('swaps BPT for exact tokens', async () => {
+            const tokenOut = tokens.first;
+
+            const previousBalance = await tokenOut.balanceOf(recipient);
+            const expectedBptIn = await pool.estimateBptInGivenTokenOut(tokenOut, amountOut);
+
+            const amountIn = await pool.swapGivenOut({ in: pool.bpt, out: tokenOut, amount: amountOut, recipient });
+            expect(amountIn).to.be.equalWithError(expectedBptIn, 0.00001);
+
+            const currentBalance = await tokenOut.balanceOf(recipient);
+            expect(currentBalance.sub(previousBalance)).to.be.equal(amountOut);
+          });
+        });
+      });
+    });
+
+    describe('join', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool();
+        await pool.init({ recipient, initialBalances });
+      });
+
+      context('when the sender is the vault', () => {
+        it('reverts', async () => {
+          const allTokens = await pool.getTokens();
+          const tx = pool.vault.joinPool({ poolId: pool.poolId, tokens: allTokens.tokens, from: lp });
+          await expect(tx).to.be.revertedWith('UNHANDLED_BY_PHANTOM_POOL');
+        });
+      });
+
+      context('when the sender is not the vault', () => {
+        it('reverts', async () => {
+          const tx = pool.instance.onJoinPool(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, [0], 0, 0, '0x');
+          await expect(tx).to.be.revertedWith('CALLER_NOT_VAULT');
+        });
+      });
+    });
+
+    describe('exit', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool();
+        await pool.init({ recipient, initialBalances });
+      });
+
+      context('when the sender is the vault', () => {
+        it('reverts', async () => {
+          const allTokens = await pool.getTokens();
+          const tx = pool.vault.exitPool({ poolId: pool.poolId, tokens: allTokens.tokens });
+          await expect(tx).to.be.revertedWith('UNHANDLED_BY_PHANTOM_POOL');
+        });
+      });
+
+      context('when the sender is not the vault', () => {
+        it('reverts', async () => {
+          const tx = pool.instance.onExitPool(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, [0], 0, 0, '0x');
+          await expect(tx).to.be.revertedWith('CALLER_NOT_VAULT');
+        });
+      });
+    });
+
+    describe('rates cache', () => {
+      // TODO: implement
+      // const tokenRates = Array.from({ length: numberOfTokens }, (_, i) => fp(1 + (i + 1) / 10));
     });
   }
 });

@@ -3,6 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { BigNumberish } from '../../../numbers';
 
 import Vault from '../../vault/Vault';
+import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import { Account } from '../../types/types';
 
@@ -35,10 +36,10 @@ export type StablePhantomPoolDeployment = {
 };
 
 export type SwapPhantomPool = {
-  in: number;
-  out: number;
+  in: Token;
+  out: Token;
   amount: BigNumberish;
-  balances: BigNumberish[];
+  balances?: BigNumberish[];
   recipient?: Account;
   from?: SignerWithAddress;
   lastChangeBlock?: BigNumberish;
