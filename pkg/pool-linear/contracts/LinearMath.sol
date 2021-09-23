@@ -88,7 +88,7 @@ contract LinearMath {
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 afterNominalMain = _toNominal(mainBalance.sub(mainOut), params);
         uint256 deltaNominalMain = previousNominalMain.sub(afterNominalMain);
-        return deltaNominalMain.divDown(params.rate);
+        return deltaNominalMain.divUp(params.rate);
     }
 
     function _calcMainInPerBptOut(
