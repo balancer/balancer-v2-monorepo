@@ -15,8 +15,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
-
 import "@balancer-labs/v2-pool-stable/contracts/StablePool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
@@ -25,10 +23,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 
 contract StablePhantomPool is StablePool {
-    using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
-    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using StablePoolUserDataHelpers for bytes;
 
     uint256 private constant _MIN_TOKENS = 2;
     uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
@@ -100,30 +97,12 @@ contract StablePhantomPool is StablePool {
         _bptIndex = bptIndex;
     }
 
-    function getMinimumBpt() external view returns (uint256) {
+    function getMinimumBpt() external pure returns (uint256) {
         return _getMinimumBpt();
     }
 
-    /**
-     * @dev Due to how this pool works, all the BPT needs to be minted initially. Since we cannot do that in the
-     * constructor because the Vault would call back this contract, this method is provided. This function must always
-     * be called right after construction, therefore it is extremely recommended to create StablePhantom pools using
-     * the StablePhantomPoolFactory which already does that automatically.
-     */
-    function initialize() external {
-        bytes32 poolId = getPoolId();
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
-        uint256[] memory maxAmountsIn = new uint256[](_getTotalTokens());
-        maxAmountsIn[_bptIndex] = _MAX_TOKEN_BALANCE;
-
-        IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
-            assets: _asIAsset(tokens),
-            maxAmountsIn: maxAmountsIn,
-            userData: "",
-            fromInternalBalance: false
-        });
-
-        getVault().joinPool(poolId, address(this), address(this), request);
+    function getBptIndex() external view returns (uint256) {
+        return _bptIndex;
     }
 
     /**
@@ -263,21 +242,39 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * @dev Initialize phantom BPT
+     * @dev Due to how this pool works, all the BPT needs to be minted initially. On one hand, we cannot do that in the
+     * constructor because the Vault would call back this contract. On the other hand, this pool also requires to be
+     * initialized with a proportional join due to how the Stable math works.
+     * Then, the approach followed is to mint the total amount of BPT to the sender initializing the pool so it can
+     * be fetched by the Vault as part of the initialization process.
      */
     function _onInitializePool(
         bytes32,
+        address sender,
         address,
-        address,
-        uint256[] memory,
-        bytes memory
+        uint256[] memory scalingFactors,
+        bytes memory userData
     ) internal override whenNotPaused returns (uint256, uint256[] memory) {
-        // Mint initial BPTs and adds them to the Vault via a special join
-        uint256 initialBPT = _MAX_TOKEN_BALANCE.sub(_getMinimumBpt());
-        _approve(address(this), address(getVault()), initialBPT);
-        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
-        amountsIn[_bptIndex] = initialBPT;
-        return (_MAX_TOKEN_BALANCE, amountsIn);
+        StablePool.JoinKind kind = userData.joinKind();
+        _require(kind == StablePool.JoinKind.INIT, Errors.UNINITIALIZED);
+
+        uint256[] memory amountsIn = userData.initialAmountsIn();
+        InputHelpers.ensureInputLengthMatch(amountsIn.length, _getTotalTokens());
+        _upscaleArray(amountsIn, scalingFactors);
+
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+        uint256 invariantAfterJoin = StableMath._calculateInvariant(currentAmp, _dropBptItem(amountsIn), true);
+
+        // Set the initial BPT to the value of the invariant
+        uint256 bptAmountOut = invariantAfterJoin;
+        _updateLastInvariant(invariantAfterJoin, currentAmp);
+
+        // Mint the total amount of BPT to the sender forcing the Vault to pull it
+        uint256 initialBpt = _MAX_TOKEN_BALANCE.sub(bptAmountOut);
+        _mintPoolTokens(sender, initialBpt);
+        _approve(sender, address(getVault()), initialBpt);
+        amountsIn[_bptIndex] = initialBpt;
+        return (bptAmountOut, amountsIn);
     }
 
     /**

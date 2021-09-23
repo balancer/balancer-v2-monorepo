@@ -41,25 +41,25 @@ contract StablePhantomPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseW
         address owner
     ) external returns (StablePhantomPool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
-        address pool = _create(
-            abi.encode(
-                StablePhantomPool.NewPoolParams({
-                    vault: getVault(),
-                    name: name,
-                    symbol: symbol,
-                    tokens: tokens,
-                    rateProviders: rateProviders,
-                    priceRateCacheDurations: priceRateCacheDurations,
-                    amplificationParameter: amplificationParameter,
-                    swapFeePercentage: swapFeePercentage,
-                    pauseWindowDuration: pauseWindowDuration,
-                    bufferPeriodDuration: bufferPeriodDuration,
-                    owner: owner
-                })
-            )
-        );
-
-        StablePhantomPool(pool).initialize();
-        return StablePhantomPool(pool);
+        return
+            StablePhantomPool(
+                _create(
+                    abi.encode(
+                        StablePhantomPool.NewPoolParams({
+                            vault: getVault(),
+                            name: name,
+                            symbol: symbol,
+                            tokens: tokens,
+                            rateProviders: rateProviders,
+                            priceRateCacheDurations: priceRateCacheDurations,
+                            amplificationParameter: amplificationParameter,
+                            swapFeePercentage: swapFeePercentage,
+                            pauseWindowDuration: pauseWindowDuration,
+                            bufferPeriodDuration: bufferPeriodDuration,
+                            owner: owner
+                        })
+                    )
+                )
+            );
     }
 }

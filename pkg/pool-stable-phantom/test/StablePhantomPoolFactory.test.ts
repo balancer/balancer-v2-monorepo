@@ -7,7 +7,8 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
@@ -77,15 +78,11 @@ describe('StablePhantomPoolFactory', function () {
       expect(poolTokens.tokens).to.include(tokens.addresses[1]);
       expect(poolTokens.tokens).to.include(tokens.addresses[2]);
       expect(poolTokens.tokens).to.include(pool.address);
-
-      const minimumBPT = await pool.getMinimumBpt();
-      poolTokens.tokens.forEach((token, i) => {
-        expect(poolTokens.balances[i]).to.be.eq(token === pool.address ? MAX_UINT112.sub(minimumBPT) : 0);
-      });
+      expect(poolTokens.balances).to.be.zeros;
     });
 
-    it('starts with max BPT minted', async () => {
-      expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
+    it('starts with no BPT', async () => {
+      expect(await pool.totalSupply()).to.be.equal(0);
     });
 
     it('sets no asset managers', async () => {
