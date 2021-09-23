@@ -273,7 +273,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20 pool,
         uint256 amount,
         address receiver
-    ) public nonReentrant {
+    ) external nonReentrant {
         _stakeFor(pool, amount, msg.sender, receiver);
     }
 
@@ -326,7 +326,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20 pool,
         uint256 amount,
         address receiver
-    ) public nonReentrant updateReward(pool, msg.sender) {
+    ) external nonReentrant updateReward(pool, msg.sender) {
         require(amount > 0, "Cannot withdraw 0");
         _totalSupply[pool] = _totalSupply[pool].sub(amount);
         _balances[pool][msg.sender] = _balances[pool][msg.sender].sub(amount);
@@ -431,8 +431,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice Allows a user to unstake all their bpt to exit pools
-     *         and transfers them all the rewards
+     * @notice Allows a user to unstake all their bpt to exit pools, transferring them accrued rewards and the bpt to a
+     * callback contract
      * @param pools The pools to claim rewards for
      * @param callbackContract The contract where bpt will be transferred
      * @param callbackData The data that is used to call the callback contract's 'callback' method
@@ -501,7 +501,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         if (block.timestamp >= periodFinish) {
             data.rewardRate = Math.divDown(reward, rewardsDuration);
         } else {
-            uint256 remainingTime = periodFinish.sub(block.timestamp);
+            uint256 remainingTime = periodFinish - block.timestamp; // Checked arithmetic is not required due to the if
             uint256 leftoverRewards = Math.mul(remainingTime, data.rewardRate);
             data.rewardRate = Math.divDown(reward.add(leftoverRewards), rewardsDuration);
         }
