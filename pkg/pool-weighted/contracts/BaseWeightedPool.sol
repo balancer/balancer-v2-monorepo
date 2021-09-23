@@ -28,7 +28,7 @@ import "./WeightedPoolUserDataHelpers.sol";
  * the weights to subclasses. Derived contracts can choose to make weights immutable, mutable, or even dynamic
  *  based on local or external logic.
  */
-abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
+abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     using FixedPoint for uint256;
     using WeightedPoolUserDataHelpers for bytes;
 
