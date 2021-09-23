@@ -76,7 +76,7 @@ contract LinearMath {
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 afterNominalMain = _toNominal(mainBalance.add(mainIn), params);
         uint256 deltaNominalMain = afterNominalMain.sub(previousNominalMain);
-        uint256 newWrappedBalance = wrappedBalance.sub(deltaNominalMain.mulDown(params.rate));
+        uint256 newWrappedBalance = wrappedBalance.sub(deltaNominalMain.divDown(params.rate));
         return wrappedBalance.sub(newWrappedBalance);
     }
 
@@ -91,7 +91,7 @@ contract LinearMath {
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 afterNominalMain = _toNominal(mainBalance.sub(mainOut), params);
         uint256 deltaNominalMain = previousNominalMain.sub(afterNominalMain);
-        uint256 newWrappedBalance = wrappedBalance.add(deltaNominalMain.mulUp(params.rate));
+        uint256 newWrappedBalance = wrappedBalance.add(deltaNominalMain.divDown(params.rate));
         return newWrappedBalance.sub(wrappedBalance);
     }
 
