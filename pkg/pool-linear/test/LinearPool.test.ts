@@ -332,12 +332,7 @@ describe('LinearPool', function () {
             balances: currentBalances,
           });
 
-          const expected = math.calcWrappedInPerMainOut(
-            amount,
-            currentBalances[pool.mainIndex],
-            currentBalances[pool.wrappedIndex],
-            params
-          );
+          const expected = math.calcWrappedInPerMainOut(amount, currentBalances[pool.mainIndex], params);
 
           expect(result).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
 
