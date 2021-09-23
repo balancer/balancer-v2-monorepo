@@ -26,7 +26,7 @@ import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
 import "./StableMath.sol";
 import "./StablePoolUserDataHelpers.sol";
 
-contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRateProvider {
+contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using StablePoolUserDataHelpers for bytes;
@@ -105,8 +105,8 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
             owner
         )
     {
-        _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
-        _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
+        _require(amplificationParameter >= StableMath._MIN_AMP, Errors.MIN_AMP);
+        _require(amplificationParameter <= StableMath._MAX_AMP, Errors.MAX_AMP);
 
         uint256 totalTokens = tokens.length;
         _totalTokens = totalTokens;
@@ -124,7 +124,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
         _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(tokens[3]) : 0;
         _scalingFactor4 = totalTokens > 4 ? _computeScalingFactor(tokens[4]) : 0;
 
-        uint256 initialAmp = Math.mul(amplificationParameter, _AMP_PRECISION);
+        uint256 initialAmp = Math.mul(amplificationParameter, StableMath._AMP_PRECISION);
         _setAmplificationData(initialAmp);
     }
 
@@ -613,8 +613,8 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
      * `getAmplificationParameter` have to be corrected to account for this when comparing to `rawEndValue`.
      */
     function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticate {
-        _require(rawEndValue >= _MIN_AMP, Errors.MIN_AMP);
-        _require(rawEndValue <= _MAX_AMP, Errors.MAX_AMP);
+        _require(rawEndValue >= StableMath._MIN_AMP, Errors.MIN_AMP);
+        _require(rawEndValue <= StableMath._MAX_AMP, Errors.MAX_AMP);
 
         uint256 duration = Math.sub(endTime, block.timestamp);
         _require(duration >= _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
@@ -622,7 +622,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
         (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
         _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
 
-        uint256 endValue = Math.mul(rawEndValue, _AMP_PRECISION);
+        uint256 endValue = Math.mul(rawEndValue, StableMath._AMP_PRECISION);
 
         // daily rate = (endValue / currentValue) / duration * 1 day
         // We perform all multiplications first to not reduce precision, and round the division up as we want to avoid
@@ -662,7 +662,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
         )
     {
         (value, isUpdating) = _getAmplificationParameter();
-        precision = _AMP_PRECISION;
+        precision = StableMath._AMP_PRECISION;
     }
 
     function _getAmplificationParameter() internal view returns (uint256 value, bool isUpdating) {
@@ -691,7 +691,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, StableMath, IRa
     }
 
     function _getMaxTokens() internal pure override returns (uint256) {
-        return _MAX_STABLE_TOKENS;
+        return StableMath._MAX_STABLE_TOKENS;
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {

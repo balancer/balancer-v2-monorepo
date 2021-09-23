@@ -97,12 +97,12 @@ contract StablePhantomPool is StablePool {
         _bptIndex = bptIndex;
     }
 
-    function getBptIndex() external view returns (uint256) {
-        return _bptIndex;
+    function getMinimumBpt() external view returns (uint256) {
+        return _getMinimumBpt();
     }
 
-    function getMinimumBpt() external pure returns (uint256) {
-        return _getMinimumBpt();
+    function getBptIndex() external view returns (uint256) {
+        return _bptIndex;
     }
 
     /**
@@ -179,7 +179,7 @@ contract StablePhantomPool is StablePool {
         // TODO: calc due protocol fees
         uint256 swapFee = getSwapFeePercentage();
         (uint256 currentAmp, ) = _getAmplificationParameter();
-        return _calcTokenOutGivenExactBptIn(currentAmp, balances, tokenIndex, bptIn, totalSupply(), swapFee);
+        return StableMath._calcTokenOutGivenExactBptIn(currentAmp, balances, tokenIndex, bptIn, totalSupply(), swapFee);
     }
 
     /**
@@ -193,7 +193,8 @@ contract StablePhantomPool is StablePool {
         // TODO: calc due protocol fees
         uint256 swapFee = getSwapFeePercentage();
         (uint256 currentAmp, ) = _getAmplificationParameter();
-        return _calcTokenInGivenExactBptOut(currentAmp, balances, tokenIndex, bptOut, totalSupply(), swapFee);
+        return
+            StableMath._calcTokenInGivenExactBptOut(currentAmp, balances, tokenIndex, bptOut, totalSupply(), swapFee);
     }
 
     /**
@@ -208,7 +209,14 @@ contract StablePhantomPool is StablePool {
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256[] memory amountsOut = new uint256[](_getTotalTokens() - 1); // Avoid BPT balance for stable pool math
         amountsOut[tokenIndex] = amountOut;
-        return _calcBptInGivenExactTokensOut(currentAmp, balances, amountsOut, totalSupply(), getSwapFeePercentage());
+        return
+            StableMath._calcBptInGivenExactTokensOut(
+                currentAmp,
+                balances,
+                amountsOut,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
     }
 
     /**
@@ -223,7 +231,14 @@ contract StablePhantomPool is StablePool {
         uint256[] memory amountsIn = new uint256[](_getTotalTokens() - 1); // Avoid BPT balance for stable pool math
         amountsIn[tokenIndex] = amountIn;
         (uint256 currentAmp, ) = _getAmplificationParameter();
-        return _calcBptOutGivenExactTokensIn(currentAmp, balances, amountsIn, totalSupply(), getSwapFeePercentage());
+        return
+            StableMath._calcBptOutGivenExactTokensIn(
+                currentAmp,
+                balances,
+                amountsIn,
+                totalSupply(),
+                getSwapFeePercentage()
+            );
     }
 
     /**
@@ -468,13 +483,13 @@ contract StablePhantomPool is StablePool {
     }
 
     function _skipBptIndex(uint256 index) internal view returns (uint256) {
-        return index < _bptIndex ? index : index + 1;
+        return index < _bptIndex ? index : index.sub(1);
     }
 
     function _dropBptItem(uint256[] memory _balances) internal view returns (uint256[] memory balances) {
         balances = new uint256[](_balances.length - 1);
         for (uint256 i = 0; i < balances.length; i++) {
-            balances[i] = _balances[_skipBptIndex(i)];
+            balances[i] = _balances[i < _bptIndex ? i : i + 1];
         }
     }
 }

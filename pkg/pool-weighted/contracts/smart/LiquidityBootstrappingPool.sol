@@ -382,7 +382,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 normalizedSum = 0;
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
-            _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
+            _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             newPoolState = newPoolState
                 .insertUint31(startWeights[i].compress31(), _START_WEIGHT_OFFSET + i * 31)

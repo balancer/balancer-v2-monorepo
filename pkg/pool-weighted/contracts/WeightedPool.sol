@@ -133,7 +133,7 @@ contract WeightedPool is BaseWeightedPool {
         uint256 maxNormalizedWeight = 0;
         for (uint8 i = 0; i < numTokens; i++) {
             uint256 normalizedWeight = normalizedWeights[i];
-            _require(normalizedWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
+            _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             normalizedSum = normalizedSum.add(normalizedWeight);
             if (normalizedWeight > maxNormalizedWeight) {
@@ -341,9 +341,9 @@ contract WeightedPool is BaseWeightedPool {
             if (totalTokens > 14) { scalingFactors[14] = _scalingFactor14; } else { return scalingFactors; }
             if (totalTokens > 15) { scalingFactors[15] = _scalingFactor15; } else { return scalingFactors; }
             if (totalTokens > 16) { scalingFactors[16] = _scalingFactor16; } else { return scalingFactors; }
-            if (totalTokens > 17) { scalingFactors[17] = _scalingFactor17; } else { return scalingFactors; }       
+            if (totalTokens > 17) { scalingFactors[17] = _scalingFactor17; } else { return scalingFactors; }
             if (totalTokens > 18) { scalingFactors[18] = _scalingFactor18; } else { return scalingFactors; }
-            if (totalTokens > 19) { scalingFactors[19] = _scalingFactor19; } else { return scalingFactors; }       
+            if (totalTokens > 19) { scalingFactors[19] = _scalingFactor19; } else { return scalingFactors; }
         }
 
         return scalingFactors;
