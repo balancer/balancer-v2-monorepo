@@ -6,7 +6,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
-import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { RawStablePhantomPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/types';
 
@@ -212,7 +212,7 @@ describe('StablePhantomPool', () => {
       });
     });
 
-    describe.only('initialize', () => {
+    describe('initialize', () => {
       let initialBalances: BigNumberish[] = [];
 
       sharedBeforeEach('deploy pool', async () => {

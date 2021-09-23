@@ -97,7 +97,7 @@ contract StablePhantomPool is StablePool {
         _bptIndex = bptIndex;
     }
 
-    function getMinimumBpt() external view returns (uint256) {
+    function getMinimumBpt() external pure returns (uint256) {
         return _getMinimumBpt();
     }
 
