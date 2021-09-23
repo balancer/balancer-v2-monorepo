@@ -1,6 +1,6 @@
 {
   "name": "@balancer-labs/v2-deployments",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Addresses and ABIs of all Balancer V2 deployed contracts",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/deployments#readme",

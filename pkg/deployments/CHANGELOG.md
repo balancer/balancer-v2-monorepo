@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.1 (2021-09-22)
+
+### New Deployments
+
+- Deployed `InvestmentPoolFactory` on Mainnet, Polygon, Arbitrum 
+
 ## 2.2.0 (2021-09-15)
 
 ### New Features
