@@ -18,6 +18,10 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
+// These functions start with an underscore, as if they were part of a contract and not a library. At some point this
+// should be fixed.
+// solhint-disable private-vars-leading-underscore
+
 library WeightedMath {
     using FixedPoint for uint256;
     // A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
