@@ -97,7 +97,7 @@ describe('LinearMath', function () {
       const mainBalance = fp(51);
       const wrappedBalance = fp(0);
 
-      const wrappedIn = await math.calcWrappedInPerMainOut(mainOut, mainBalance, wrappedBalance, params);
+      const wrappedIn = await math.calcWrappedInPerMainOut(mainOut, mainBalance, params);
       expect(wrappedBalance.add(wrappedIn)).to.be.equalWithError(fp(10.10101010101010101), EXPECTED_RELATIVE_ERROR);
     });
 
@@ -107,7 +107,7 @@ describe('LinearMath', function () {
       const mainBalance = fp(41);
       const wrappedBalance = fp(10.10101010101010101);
 
-      const wrappedOut = await math.calcWrappedOutPerMainIn(mainIn, mainBalance, wrappedBalance, params);
+      const wrappedOut = await math.calcWrappedOutPerMainIn(mainIn, mainBalance, params);
       expect(wrappedBalance.sub(wrappedOut)).to.be.equalWithError(fp(5.050505050505050505), EXPECTED_RELATIVE_ERROR);
     });
 
