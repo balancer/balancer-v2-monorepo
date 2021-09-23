@@ -326,7 +326,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20 pool,
         uint256 amount,
         address receiver
-    ) external nonReentrant updateReward(pool, msg.sender) {
+    ) public nonReentrant updateReward(pool, msg.sender) {
         require(amount > 0, "Cannot withdraw 0");
         _totalSupply[pool] = _totalSupply[pool].sub(amount);
         _balances[pool][msg.sender] = _balances[pool][msg.sender].sub(amount);
