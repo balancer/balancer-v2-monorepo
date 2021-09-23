@@ -68,7 +68,7 @@ export function calcWrappedOutPerMainIn(
   const previousNominalMain = toNominal(mainBalance, params);
   const afterNominalMain = toNominal(mainBalance.add(mainIn), params);
   const deltaNominalMain = afterNominalMain.sub(previousNominalMain);
-  const newWrappedBalance = wrappedBalance.sub(deltaNominalMain.mul(rate));
+  const newWrappedBalance = wrappedBalance.sub(deltaNominalMain.div(rate));
   const wrappedOut = wrappedBalance.sub(newWrappedBalance);
   return toFp(wrappedOut);
 }
@@ -87,7 +87,7 @@ export function calcWrappedInPerMainOut(
   const previousNominalMain = toNominal(mainBalance, params);
   const afterNominalMain = toNominal(mainBalance.sub(mainOut), params);
   const deltaNominalMain = previousNominalMain.sub(afterNominalMain);
-  const newWrappedBalance = wrappedBalance.add(deltaNominalMain.mul(rate));
+  const newWrappedBalance = wrappedBalance.add(deltaNominalMain.div(rate));
   const wrappedIn = newWrappedBalance.sub(wrappedBalance);
   return toFp(wrappedIn);
 }
