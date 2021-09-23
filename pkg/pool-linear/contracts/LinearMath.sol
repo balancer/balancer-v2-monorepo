@@ -68,7 +68,6 @@ contract LinearMath {
     function _calcWrappedOutPerMainIn(
         uint256 mainIn,
         uint256 mainBalance,
-        uint256 wrappedBalance,
         Params memory params
     ) internal pure returns (uint256) {
         // Amount out, so we round down overall.
@@ -76,14 +75,12 @@ contract LinearMath {
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 afterNominalMain = _toNominal(mainBalance.add(mainIn), params);
         uint256 deltaNominalMain = afterNominalMain.sub(previousNominalMain);
-        uint256 newWrappedBalance = wrappedBalance.sub(deltaNominalMain.divDown(params.rate));
-        return wrappedBalance.sub(newWrappedBalance);
+        return deltaNominalMain.divDown(params.rate);
     }
 
     function _calcWrappedInPerMainOut(
         uint256 mainOut,
         uint256 mainBalance,
-        uint256 wrappedBalance,
         Params memory params
     ) internal pure returns (uint256) {
         // Amount in, so we round up overall.
@@ -91,8 +88,7 @@ contract LinearMath {
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 afterNominalMain = _toNominal(mainBalance.sub(mainOut), params);
         uint256 deltaNominalMain = previousNominalMain.sub(afterNominalMain);
-        uint256 newWrappedBalance = wrappedBalance.add(deltaNominalMain.divDown(params.rate));
-        return newWrappedBalance.sub(wrappedBalance);
+        return deltaNominalMain.divDown(params.rate);
     }
 
     function _calcMainInPerBptOut(

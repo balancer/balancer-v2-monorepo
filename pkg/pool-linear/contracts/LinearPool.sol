@@ -242,7 +242,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         _require(request.tokenOut == _wrappedToken || request.tokenOut == IERC20(this), Errors.INVALID_TOKEN);
         return
             request.tokenOut == _wrappedToken
-                ? _calcWrappedOutPerMainIn(request.amount, balances[_mainIndex], balances[_wrappedIndex], params)
+                ? _calcWrappedOutPerMainIn(request.amount, balances[_mainIndex], params)
                 : _calcBptOutPerMainIn(
                     request.amount,
                     balances[_mainIndex],
@@ -310,7 +310,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         _require(request.tokenIn == _wrappedToken || request.tokenIn == IERC20(this), Errors.INVALID_TOKEN);
         return
             request.tokenIn == _wrappedToken
-                ? _calcWrappedInPerMainOut(request.amount, balances[_mainIndex], balances[_wrappedIndex], params)
+                ? _calcWrappedInPerMainOut(request.amount, balances[_mainIndex], params)
                 : _calcBptInPerMainOut(
                     request.amount,
                     balances[_mainIndex],

@@ -41,19 +41,17 @@ contract MockLinearMath is LinearMath {
     function calcWrappedOutPerMainIn(
         uint256 mainIn,
         uint256 mainBalance,
-        uint256 wrappedBalance,
         Params memory params
     ) external pure returns (uint256) {
-        return _calcWrappedOutPerMainIn(mainIn, mainBalance, wrappedBalance, params);
+        return _calcWrappedOutPerMainIn(mainIn, mainBalance, params);
     }
 
     function calcWrappedInPerMainOut(
         uint256 mainOut,
         uint256 mainBalance,
-        uint256 wrappedBalance,
         Params memory params
     ) external pure returns (uint256) {
-        return _calcWrappedInPerMainOut(mainOut, mainBalance, wrappedBalance, params);
+        return _calcWrappedInPerMainOut(mainOut, mainBalance, params);
     }
 
     function calcMainInPerBptOut(
