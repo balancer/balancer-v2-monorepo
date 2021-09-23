@@ -471,7 +471,7 @@ contract StablePhantomPool is StablePool {
     }
 
     function _skipBptIndex(uint256 index) internal view returns (uint256) {
-        return index < _bptIndex ? index : index + 1;
+        return index < _bptIndex ? index : index - 1;
     }
 
     function _dropBptItem(uint256[] memory _balances) internal view returns (uint256[] memory balances) {
