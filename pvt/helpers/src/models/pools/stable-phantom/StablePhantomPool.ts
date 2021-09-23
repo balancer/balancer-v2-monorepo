@@ -14,10 +14,10 @@ import TypesConverter from '../../types/TypesConverter';
 import StablePhantomPoolDeployer from './StablePhantomPoolDeployer';
 import * as expectEvent from '../../../test/expectEvent';
 
-import { calculateInvariant } from "../stable/math";
-import { InitStablePool, JoinExitStablePool, JoinResult } from "../stable/types";
+import { calculateInvariant } from '../stable/math';
+import { InitStablePool, JoinExitStablePool, JoinResult } from '../stable/types';
 import { StablePoolEncoder } from '@balancer-labs/balancer-js/src';
-import { actionId } from "../../misc/actions";
+import { actionId } from '../../misc/actions';
 
 export default class StablePhantomPool {
   instance: Contract;
