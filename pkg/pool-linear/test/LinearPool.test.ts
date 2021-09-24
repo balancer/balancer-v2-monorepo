@@ -141,7 +141,16 @@ describe('LinearPool', function () {
       expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
     });
 
-    it('cannot be initialize twice', async () => {
+    it('cannot be initialized outside of the initialize function', async () => {
+      await expect(
+        pool.vault.joinPool({
+          poolId: await pool.getPoolId(),
+          tokens: pool.tokens.addresses,
+        })
+      ).to.be.revertedWith('INVALID_INITIALIZATION');
+    });
+
+    it('cannot be initialized twice', async () => {
       await pool.initialize();
       await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_BY_LINEAR_POOL');
     });
