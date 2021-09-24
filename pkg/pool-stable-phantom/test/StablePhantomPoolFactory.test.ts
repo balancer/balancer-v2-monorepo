@@ -131,7 +131,7 @@ describe('StablePhantomPoolFactory', function () {
     });
 
     it('sets the cache rate duration', async () => {
-      const firstTokenCache = await pool.getPriceRateCache(tokens.first.address);
+      const firstTokenCache = await pool.getTokenRateCache(tokens.first.address);
       expect(firstTokenCache.duration).to.equal(PRICE_RATE_CACHE_DURATION);
     });
   });
