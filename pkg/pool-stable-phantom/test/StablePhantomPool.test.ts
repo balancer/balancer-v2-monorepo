@@ -581,7 +581,7 @@ describe('StablePhantomPool', () => {
             const action = async (token: Token) => pool.instance.mockCacheTokenRateIfNecessary(token.address);
 
             it('does not update the cache', async () => {
-              await tokens.asyncEach(async (token, i) => {
+              await tokens.asyncEach(async (token) => {
                 const previousCache = await pool.getTokenRateCache(token);
 
                 await action(token);
