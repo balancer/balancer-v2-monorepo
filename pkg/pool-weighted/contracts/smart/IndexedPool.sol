@@ -32,27 +32,7 @@ contract WeightedPool is BaseWeightedPool {
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
     // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
-
-    uint256 internal immutable _scalingFactor0;
-    uint256 internal immutable _scalingFactor1;
-    uint256 internal immutable _scalingFactor2;
-    uint256 internal immutable _scalingFactor3;
-    uint256 internal immutable _scalingFactor4;
-    uint256 internal immutable _scalingFactor5;
-    uint256 internal immutable _scalingFactor6;
-    uint256 internal immutable _scalingFactor7;
-    uint256 internal immutable _scalingFactor8;
-    uint256 internal immutable _scalingFactor9;
-    uint256 internal immutable _scalingFactor10;
-    uint256 internal immutable _scalingFactor11;
-    uint256 internal immutable _scalingFactor12;
-    uint256 internal immutable _scalingFactor13;
-    uint256 internal immutable _scalingFactor14;
-    uint256 internal immutable _scalingFactor15;
-    uint256 internal immutable _scalingFactor16;
-    uint256 internal immutable _scalingFactor17;
-    uint256 internal immutable _scalingFactor18;
-    uint256 internal immutable _scalingFactor19;
+    uint256[] internal _scalingFactors;
 
     // The protocol fees will always be charged using the token associated with the max weight in the pool.
     // Since these Pools will register tokens only once, we can assume this index will be constant.
@@ -151,26 +131,9 @@ contract WeightedPool is BaseWeightedPool {
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _tokens = tokens;
 
-        _scalingFactor0 = _computeScalingFactor(tokens[0]);
-        _scalingFactor1 = _computeScalingFactor(tokens[1]);
-        _scalingFactor2 = numTokens > 2 ? _computeScalingFactor(tokens[2]) : 0;
-        _scalingFactor3 = numTokens > 3 ? _computeScalingFactor(tokens[3]) : 0;
-        _scalingFactor4 = numTokens > 4 ? _computeScalingFactor(tokens[4]) : 0;
-        _scalingFactor5 = numTokens > 5 ? _computeScalingFactor(tokens[5]) : 0;
-        _scalingFactor6 = numTokens > 6 ? _computeScalingFactor(tokens[6]) : 0;
-        _scalingFactor7 = numTokens > 7 ? _computeScalingFactor(tokens[7]) : 0;
-        _scalingFactor8 = numTokens > 8 ? _computeScalingFactor(tokens[8]) : 0;
-        _scalingFactor9 = numTokens > 9 ? _computeScalingFactor(tokens[9]) : 0;
-        _scalingFactor10 = numTokens > 10 ? _computeScalingFactor(tokens[10]) : 0;
-        _scalingFactor11 = numTokens > 11 ? _computeScalingFactor(tokens[11]) : 0;
-        _scalingFactor12 = numTokens > 12 ? _computeScalingFactor(tokens[12]) : 0;
-        _scalingFactor13 = numTokens > 13 ? _computeScalingFactor(tokens[13]) : 0;
-        _scalingFactor14 = numTokens > 14 ? _computeScalingFactor(tokens[14]) : 0;
-        _scalingFactor15 = numTokens > 15 ? _computeScalingFactor(tokens[15]) : 0;
-        _scalingFactor16 = numTokens > 16 ? _computeScalingFactor(tokens[16]) : 0;
-        _scalingFactor17 = numTokens > 17 ? _computeScalingFactor(tokens[17]) : 0;
-        _scalingFactor18 = numTokens > 18 ? _computeScalingFactor(tokens[18]) : 0;
-        _scalingFactor19 = numTokens > 19 ? _computeScalingFactor(tokens[19]) : 0;
+        for(uint i = 0; i < numTokens; i++){
+            _scalingFactors.push(_computeScalingFactor(tokens[i]););
+        }
     }
 
     function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
@@ -240,7 +203,7 @@ contract WeightedPool is BaseWeightedPool {
         // prettier-ignore
         for(uint i = 0; i < _tokens.length; i++){
             if (token == _tokens[i]) {
-                return _scalingFactor0;
+                return _scalingFactor[i];
             }
         }
 
@@ -249,33 +212,6 @@ contract WeightedPool is BaseWeightedPool {
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        uint256 totalTokens = _getTotalTokens();
-        uint256[] memory scalingFactors = new uint256[](totalTokens);
-
-        // prettier-ignore
-        {
-            if (totalTokens > 0) { scalingFactors[0] = _scalingFactor0; } else { return scalingFactors; }
-            if (totalTokens > 1) { scalingFactors[1] = _scalingFactor1; } else { return scalingFactors; }
-            if (totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
-            if (totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
-            if (totalTokens > 4) { scalingFactors[4] = _scalingFactor4; } else { return scalingFactors; }
-            if (totalTokens > 5) { scalingFactors[5] = _scalingFactor5; } else { return scalingFactors; }
-            if (totalTokens > 6) { scalingFactors[6] = _scalingFactor6; } else { return scalingFactors; }
-            if (totalTokens > 7) { scalingFactors[7] = _scalingFactor7; } else { return scalingFactors; }
-            if (totalTokens > 8) { scalingFactors[8] = _scalingFactor8; } else { return scalingFactors; }
-            if (totalTokens > 9) { scalingFactors[9] = _scalingFactor9; } else { return scalingFactors; }
-            if (totalTokens > 10) { scalingFactors[10] = _scalingFactor10; } else { return scalingFactors; }
-            if (totalTokens > 11) { scalingFactors[11] = _scalingFactor11; } else { return scalingFactors; }
-            if (totalTokens > 12) { scalingFactors[12] = _scalingFactor12; } else { return scalingFactors; }
-            if (totalTokens > 13) { scalingFactors[13] = _scalingFactor13; } else { return scalingFactors; }
-            if (totalTokens > 14) { scalingFactors[14] = _scalingFactor14; } else { return scalingFactors; }
-            if (totalTokens > 15) { scalingFactors[15] = _scalingFactor15; } else { return scalingFactors; }
-            if (totalTokens > 16) { scalingFactors[16] = _scalingFactor16; } else { return scalingFactors; }
-            if (totalTokens > 17) { scalingFactors[17] = _scalingFactor17; } else { return scalingFactors; }
-            if (totalTokens > 18) { scalingFactors[18] = _scalingFactor18; } else { return scalingFactors; }
-            if (totalTokens > 19) { scalingFactors[19] = _scalingFactor19; } else { return scalingFactors; }
-        }
-
-        return scalingFactors;
+        return _scalingFactors;
     }
 }
