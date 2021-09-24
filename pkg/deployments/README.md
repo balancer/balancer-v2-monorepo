@@ -67,5 +67,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Relayer for Lido stETH wrapping/unwrapping       | [`20210812-lido-relayer`](./tasks/20210812-lido-relayer)                                 |
 | Distributor contract for LDO rewards             | [`20210811-ldo-merkle`](./tasks/20210811-ldo-merkle)                                     |
 | Rate Provider for wstETH                         | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                 |
+| Basic Investment Pools for few tokens            | [`20210907-investment-pool`](./tasks/20210907-investment-pool)                           |
 | Distributor contract for arbitrum BAL rewards    | [`20210913-bal-arbitrum-merkle`](./tasks/20210913-bal-arbitrum-merkle)                   |
 | Distributor contract for VITA rewards            | [`20210920-vita-merkle`](./tasks/20210920-vita-merkle)                                   |
