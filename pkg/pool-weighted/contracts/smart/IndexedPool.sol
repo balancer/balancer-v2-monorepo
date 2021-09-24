@@ -94,7 +94,7 @@ contract IndexedPool is BaseWeightedPool {
         _tokens = tokens;
 
         for(uint i = 0; i < numTokens; i++){
-            scalingFactors.push(_computeScalingFactor(tokens[i]););
+            scalingFactors.push(_computeScalingFactor(tokens[i]));
         }
     }
 
