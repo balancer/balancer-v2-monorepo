@@ -104,7 +104,7 @@ export default class StablePhantomPool {
     return this.vault.getPoolTokens(this.poolId);
   }
 
-  async getTokenIndex(token: Token) {
+  async getTokenIndex(token: Token): Promise<number> {
     return (await this.getTokens()).tokens.indexOf(token.address);
   }
 
