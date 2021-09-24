@@ -430,14 +430,6 @@ describe('StablePhantomPool', () => {
         await pool.init({ recipient, initialBalances });
       });
 
-      context('when the sender is the vault', () => {
-        it('reverts', async () => {
-          const allTokens = await pool.getTokens();
-          const tx = pool.vault.joinPool({ poolId: pool.poolId, tokens: allTokens.tokens, from: lp });
-          await expect(tx).to.be.revertedWith('UNHANDLED_BY_PHANTOM_POOL');
-        });
-      });
-
       context('when the sender is not the vault', () => {
         it('reverts', async () => {
           const tx = pool.instance.onJoinPool(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, [0], 0, 0, '0x');

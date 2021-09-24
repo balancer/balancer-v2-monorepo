@@ -24,10 +24,12 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 
+import "./StablePhantomPoolUserDataHelpers.sol";
+
 contract StablePhantomPool is StablePool {
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
-    using StablePoolUserDataHelpers for bytes;
+    using StablePhantomPoolUserDataHelpers for bytes;
 
     uint256 private constant _MIN_TOKENS = 2;
     uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
@@ -50,6 +52,8 @@ contract StablePhantomPool is StablePool {
 
     event PriceRateCacheUpdated(IERC20 indexed token, uint256 rate);
     event PriceRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
+
+    enum JoinKindPhantom { INIT, COLLECT_PROTOCOL_FEES }
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -146,16 +150,30 @@ contract StablePhantomPool is StablePool {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override returns (uint256) {
+    ) internal virtual override returns (uint256 amountOut) {
         // Avoid BPT balance for stable pool math
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
 
         if (request.tokenIn == IERC20(this)) {
-            return _onSwapTokenGivenBptIn(request.amount, _skipBptIndex(indexOut), virtualSupply, balances);
+            amountOut = _onSwapTokenGivenBptIn(request.amount, _skipBptIndex(indexOut), virtualSupply, balances);
+
+            _trackDueProtocolFeeByBpt(request.amount);
         } else if (request.tokenOut == IERC20(this)) {
-            return _onSwapBptGivenTokenIn(request.amount, _skipBptIndex(indexIn), virtualSupply, balances);
+            amountOut = _onSwapBptGivenTokenIn(request.amount, _skipBptIndex(indexIn), virtualSupply, balances);
+
+            _trackDueProtocolFeeByBpt(amountOut);
         } else {
-            return super._onSwapGivenIn(request, balances, _skipBptIndex(indexIn), _skipBptIndex(indexOut));
+            (uint256 amp, ) = _getAmplificationParameter();
+            uint256 previousInvariant = StableMath._calculateInvariant(amp, balances, true);
+            uint256 newIndexIn = _skipBptIndex(indexIn);
+            uint256 newIndexOut = _skipBptIndex(indexOut);
+
+            amountOut = super._onSwapGivenIn(request, balances, _skipBptIndex(indexIn), _skipBptIndex(indexOut));
+
+            balances[newIndexIn] = balances[newIndexIn].add(request.amount);
+            balances[newIndexOut] = balances[newIndexOut].sub(amountOut);
+
+            _trackDueProtocolFeeByInvariantIncrement(previousInvariant, amp, balances, virtualSupply);
         }
     }
 
@@ -167,16 +185,30 @@ contract StablePhantomPool is StablePool {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override returns (uint256) {
+    ) internal virtual override returns (uint256 amountIn) {
         // Avoid BPT balance for stable pool math
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
 
         if (request.tokenIn == IERC20(this)) {
-            return _onSwapBptGivenTokenOut(request.amount, _skipBptIndex(indexOut), virtualSupply, balances);
+            amountIn = _onSwapBptGivenTokenOut(request.amount, _skipBptIndex(indexOut), virtualSupply, balances);
+
+            _trackDueProtocolFeeByBpt(amountIn);
         } else if (request.tokenOut == IERC20(this)) {
-            return _onSwapTokenGivenBptOut(request.amount, _skipBptIndex(indexIn), virtualSupply, balances);
+            amountIn = _onSwapTokenGivenBptOut(request.amount, _skipBptIndex(indexIn), virtualSupply, balances);
+
+            _trackDueProtocolFeeByBpt(request.amount);
         } else {
-            return super._onSwapGivenOut(request, balances, _skipBptIndex(indexIn), _skipBptIndex(indexOut));
+            (uint256 amp, ) = _getAmplificationParameter();
+            uint256 previousInvariant = StableMath._calculateInvariant(amp, balances, true);
+            uint256 newIndexIn = _skipBptIndex(indexIn);
+            uint256 newIndexOut = _skipBptIndex(indexOut);
+
+            amountIn = super._onSwapGivenOut(request, balances, newIndexIn, newIndexOut);
+
+            balances[newIndexIn] = balances[newIndexIn].add(amountIn);
+            balances[newIndexOut] = balances[newIndexOut].sub(request.amount);
+
+            _trackDueProtocolFeeByInvariantIncrement(previousInvariant, amp, balances, virtualSupply);
         }
     }
 
@@ -188,16 +220,10 @@ contract StablePhantomPool is StablePool {
         uint256 tokenIndex,
         uint256 virtualSupply,
         uint256[] memory balances
-    ) internal returns (uint256 amountOut) {
+    ) internal view returns (uint256 amountOut) {
         // Use virtual total supply and zero swap fees for joins.
-        _trackDueProtocolFeeAmounts(balances, virtualSupply);
         (uint256 amp, ) = _getAmplificationParameter();
         amountOut = StableMath._calcTokenOutGivenExactBptIn(amp, balances, tokenIndex, bptIn, virtualSupply, 0);
-
-        // TODO: track swap fees related to token out
-        balances[tokenIndex] = balances[tokenIndex].sub(amountOut);
-        uint256 invariantAfterExit = StableMath._calculateInvariant(amp, balances, true);
-        _updateLastInvariant(invariantAfterExit, amp);
     }
 
     /**
@@ -208,16 +234,10 @@ contract StablePhantomPool is StablePool {
         uint256 tokenIndex,
         uint256 virtualSupply,
         uint256[] memory balances
-    ) internal returns (uint256 amountIn) {
+    ) internal view returns (uint256 amountIn) {
         // Use virtual total supply and zero swap fees for joins
-        _trackDueProtocolFeeAmounts(balances, virtualSupply);
         (uint256 amp, ) = _getAmplificationParameter();
         amountIn = StableMath._calcTokenInGivenExactBptOut(amp, balances, tokenIndex, bptOut, virtualSupply, 0);
-
-        // TODO: track swap fees related to BPT out
-        balances[tokenIndex] = balances[tokenIndex].add(amountIn);
-        uint256 invariantAfterJoin = StableMath._calculateInvariant(amp, balances, true);
-        _updateLastInvariant(invariantAfterJoin, amp);
     }
 
     /**
@@ -228,18 +248,12 @@ contract StablePhantomPool is StablePool {
         uint256 tokenIndex,
         uint256 virtualSupply,
         uint256[] memory balances
-    ) internal returns (uint256 bptIn) {
+    ) internal view returns (uint256 bptIn) {
         // Avoid BPT balance for stable pool math. Use virtual total supply and zero swap fees for exits.
-        _trackDueProtocolFeeAmounts(balances, virtualSupply);
         (uint256 amp, ) = _getAmplificationParameter();
         uint256[] memory amountsOut = new uint256[](_getTotalTokens() - 1);
         amountsOut[tokenIndex] = amountOut;
         bptIn = StableMath._calcBptInGivenExactTokensOut(amp, balances, amountsOut, virtualSupply, 0);
-
-        // TODO: track swap fees related to token out
-        balances[tokenIndex] = balances[tokenIndex].sub(amountOut);
-        uint256 invariantAfterExit = StableMath._calculateInvariant(amp, balances, true);
-        _updateLastInvariant(invariantAfterExit, amp);
     }
 
     /**
@@ -250,37 +264,55 @@ contract StablePhantomPool is StablePool {
         uint256 tokenIndex,
         uint256 virtualSupply,
         uint256[] memory balances
-    ) internal returns (uint256 bptOut) {
-        // Avoid BPT balance for stable pool math. Use virtual total supply and zero swap fees for exits.
-        _trackDueProtocolFeeAmounts(balances, virtualSupply);
+    ) internal view returns (uint256 bptOut) {
         uint256[] memory amountsIn = new uint256[](_getTotalTokens() - 1);
         amountsIn[tokenIndex] = amountIn;
         (uint256 amp, ) = _getAmplificationParameter();
         bptOut = StableMath._calcBptOutGivenExactTokensIn(amp, balances, amountsIn, virtualSupply, 0);
-
-        // TODO: track swap fees related to BPT out
-        balances[tokenIndex] = balances[tokenIndex].add(amountIn);
-        uint256 invariantAfterJoin = StableMath._calculateInvariant(amp, balances, true);
-        _updateLastInvariant(invariantAfterJoin, amp);
     }
 
     /**
      * @dev Track the due protocol fees in BPT based on the invariant increase due to swap fees.
      */
-    function _trackDueProtocolFeeAmounts(uint256[] memory balances, uint256 virtualSupply) private {
+    function _trackDueProtocolFeeByInvariantIncrement(
+        uint256 previousInvariant,
+        uint256 amp,
+        uint256[] memory balances,
+        uint256 virtualSupply
+    ) private {
+        uint256 swapFeePercentage = getSwapFeePercentage();
+
         IProtocolFeesCollector collector = getVault().getProtocolFeesCollector();
         uint256 protocolSwapFeePercentage = collector.getSwapFeePercentage();
 
-        if (protocolSwapFeePercentage > 0) {
-            uint256 currentInvariant = StableMath._calculateInvariant(_lastInvariantAmp, balances, true);
-            uint256 ratio = currentInvariant.divDown(_lastInvariant);
+        uint256 protocolFeeRatio = swapFeePercentage.mulDown(protocolSwapFeePercentage);
 
-            if (ratio > FixedPoint.ONE) {
-                uint256 swapFeesInBpt = virtualSupply.mulDown(ratio.sub(FixedPoint.ONE));
-                uint256 protocolFeesInBpt = swapFeesInBpt.mulDown(protocolSwapFeePercentage);
+        if (protocolFeeRatio > 0) {
+            uint256 currentInvariant = StableMath._calculateInvariant(amp, balances, true);
+            uint256 invariantRatio = currentInvariant.divUp(previousInvariant);
+
+            if (invariantRatio > FixedPoint.ONE) {
+                uint256 b = protocolFeeRatio.mulDown(invariantRatio.complement());
+                uint256 protocolFeesInBpt = b.mulDown(virtualSupply).divDown(b.complement());
                 _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeesInBpt);
             }
         }
+    }
+
+    /**
+     * @dev Track the due protocol fees in BPT based on bpt amount
+     */
+    function _trackDueProtocolFeeByBpt(uint256 bptAmount) private {
+        uint256 swapFeePercentage = getSwapFeePercentage();
+
+        IProtocolFeesCollector collector = getVault().getProtocolFeesCollector();
+        uint256 protocolSwapFeePercentage = collector.getSwapFeePercentage();
+
+        //fee  = (bptamount / (1 - swapfee)) *  swapfee
+        uint256 bptFee = bptAmount.mulDown(swapFeePercentage).divDown(swapFeePercentage.complement());
+
+        uint256 protocolFeesInBpt = bptFee.mulDown(protocolSwapFeePercentage);
+        _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeesInBpt);
     }
 
     /**
@@ -297,8 +329,8 @@ contract StablePhantomPool is StablePool {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal override whenNotPaused returns (uint256, uint256[] memory) {
-        StablePool.JoinKind kind = userData.joinKind();
-        _require(kind == StablePool.JoinKind.INIT, Errors.UNINITIALIZED);
+        StablePhantomPool.JoinKindPhantom kind = userData.joinKind();
+        _require(kind == StablePhantomPool.JoinKindPhantom.INIT, Errors.UNINITIALIZED);
 
         uint256[] memory amountsInIncludingBpt = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsInIncludingBpt.length, _getTotalTokens());
@@ -310,7 +342,6 @@ contract StablePhantomPool is StablePool {
 
         // Set the initial BPT to the value of the invariant
         uint256 bptAmountOut = invariantAfterJoin;
-        _updateLastInvariant(invariantAfterJoin, amp);
 
         // Mint the total amount of BPT to the sender forcing the Vault to pull it
         uint256 initialBpt = _MAX_TOKEN_BALANCE.sub(bptAmountOut);
@@ -331,10 +362,9 @@ contract StablePhantomPool is StablePool {
         uint256,
         uint256,
         uint256[] memory,
-        bytes memory
+        bytes memory userData
     )
         internal
-        pure
         override
         returns (
             uint256,
@@ -342,7 +372,35 @@ contract StablePhantomPool is StablePool {
             uint256[] memory
         )
     {
+        JoinKindPhantom kind = userData.joinKind();
+
+        if (kind == JoinKindPhantom.COLLECT_PROTOCOL_FEES) {
+            return _collectProtocolFees();
+        }
+
         _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
+    }
+
+    /**
+     * @dev Collects due protocol fees
+     */
+
+    function _collectProtocolFees()
+        private
+        returns (
+            uint256,
+            uint256[] memory,
+            uint256[] memory
+        )
+    {
+        uint256 totalTokens = _getTotalTokens();
+
+        uint256[] memory dueProtocolFeeAmounts = new uint256[](totalTokens);
+        dueProtocolFeeAmounts[_bptIndex] = _dueProtocolFeeBptAmount;
+
+        _dueProtocolFeeBptAmount = 0;
+
+        return (0, new uint256[](totalTokens), dueProtocolFeeAmounts);
     }
 
     /**
@@ -534,7 +592,8 @@ contract StablePhantomPool is StablePool {
         view
         returns (uint256 virtualSupply, uint256[] memory balances)
     {
-        virtualSupply = _MAX_TOKEN_BALANCE - _balances[_bptIndex];
+        virtualSupply = _MAX_TOKEN_BALANCE - _balances[_bptIndex] + _dueProtocolFeeBptAmount;
+
         balances = new uint256[](_balances.length - 1);
         for (uint256 i = 0; i < balances.length; i++) {
             balances[i] = _balances[i < _bptIndex ? i : i + 1];
