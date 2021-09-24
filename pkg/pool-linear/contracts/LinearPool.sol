@@ -354,7 +354,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256[] memory,
         bytes memory
     ) internal override whenNotPaused returns (uint256, uint256[] memory) {
-        // Linear Pools can only be initialized by the Pool performing the initial join via the initialize function.
+        // Linear Pools can only be initialized by the Pool performing the initial join via the `initialize` function.
         _require(sender == address(this), Errors.INVALID_INITIALIZATION);
         _require(recipient == address(this), Errors.INVALID_INITIALIZATION);
 
