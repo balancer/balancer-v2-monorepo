@@ -55,7 +55,6 @@ contract WeightedPool2Tokens is
     bytes32 internal _miscData;
     uint256 private _lastInvariant;
 
-    IVault private immutable _vault;
     bytes32 private immutable _poolId;
 
     IERC20 internal immutable _token0;
@@ -105,7 +104,7 @@ contract WeightedPool2Tokens is
         // any Pool created by the same factory), while still making action identifiers unique among different factories
         // if the selectors match, preventing accidental errors.
         Authentication(bytes32(uint256(msg.sender)))
-        BalancerPoolToken(params.name, params.symbol)
+        BalancerPoolToken(params.name, params.symbol, params.vault)
         BasePoolAuthorization(params.owner)
         TemporarilyPausable(params.pauseWindowDuration, params.bufferPeriodDuration)
     {
@@ -121,7 +120,6 @@ contract WeightedPool2Tokens is
         params.vault.registerTokens(poolId, tokens, new address[](2));
 
         // Set immutable state variables - these cannot be read from during construction
-        _vault = params.vault;
         _poolId = poolId;
 
         _token0 = params.token0;
@@ -144,10 +142,6 @@ contract WeightedPool2Tokens is
     }
 
     // Getters / Setters
-
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
 
     function getPoolId() public view override returns (bytes32) {
         return _poolId;
