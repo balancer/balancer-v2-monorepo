@@ -694,5 +694,32 @@ describe('StablePhantomPool', () => {
         });
       });
     });
+
+    describe('exit', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool();
+        await pool.init({ recipient, initialBalances });
+      });
+
+      context('when the sender is the vault', () => {
+        it('reverts', async () => {
+          const allTokens = await pool.getTokens();
+          const tx = pool.vault.exitPool({ poolId: pool.poolId, tokens: allTokens.tokens });
+          await expect(tx).to.be.revertedWith('UNHANDLED_BY_PHANTOM_POOL');
+        });
+      });
+
+      context('when the sender is not the vault', () => {
+        it('reverts', async () => {
+          const tx = pool.instance.onExitPool(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, [0], 0, 0, '0x');
+          await expect(tx).to.be.revertedWith('CALLER_NOT_VAULT');
+        });
+      });
+    });
+
+    describe('rates cache', () => {
+      // TODO: implement
+      // const tokenRates = Array.from({ length: numberOfTokens }, (_, i) => fp(1 + (i + 1) / 10));
+    });
   }
 });
