@@ -1,4 +1,5 @@
 import { ethers } from 'hardhat';
+import { SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -7,11 +8,11 @@ import TokenList from '../tokens/TokenList';
 import VaultDeployer from './VaultDeployer';
 import TypesConverter from '../types/TypesConverter';
 import { actionId } from '../misc/actions';
-import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
+import { deployedAt } from '../../contract';
 import { BigNumberish } from '../../numbers';
 import { Account, NAry, TxParams } from '../types/types';
+import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
 import { ExitPool, JoinPool, RawVaultDeployment, MinimalSwap, GeneralSwap } from './types';
-import { deployedAt } from '../../contract';
 
 export default class Vault {
   mocked: boolean;
@@ -77,23 +78,45 @@ export default class Vault {
   }
 
   async generalSwap(params: GeneralSwap): Promise<ContractTransaction> {
-    return this.instance.callGeneralPoolSwap(
-      params.poolAddress,
-      {
-        kind: params.kind,
-        poolId: params.poolId,
-        from: params.from ?? ZERO_ADDRESS,
-        to: params.to,
-        tokenIn: params.tokenIn,
-        tokenOut: params.tokenOut,
-        lastChangeBlock: params.lastChangeBlock,
-        userData: params.data,
-        amount: params.amount,
-      },
-      params.balances,
-      params.indexIn,
-      params.indexOut
-    );
+    const sender = (params.from || (await this._defaultSender())).address;
+    const vault = params.from ? this.instance.connect(sender) : this.instance;
+
+    return this.mocked
+      ? vault.callGeneralPoolSwap(
+          params.poolAddress,
+          {
+            kind: params.kind,
+            poolId: params.poolId,
+            from: params.from ?? ZERO_ADDRESS,
+            to: params.to,
+            tokenIn: params.tokenIn,
+            tokenOut: params.tokenOut,
+            lastChangeBlock: params.lastChangeBlock,
+            userData: params.data,
+            amount: params.amount,
+          },
+          params.balances,
+          params.indexIn,
+          params.indexOut
+        )
+      : vault.swap(
+          {
+            poolId: params.poolId,
+            kind: params.kind,
+            assetIn: params.tokenIn,
+            assetOut: params.tokenOut,
+            amount: params.amount,
+            userData: params.data,
+          },
+          {
+            sender: sender,
+            fromInternalBalance: false,
+            recipient: TypesConverter.toAddress(params.to),
+            toInternalBalance: false,
+          },
+          params.kind === SwapKind.GivenIn ? 0 : MAX_UINT256,
+          MAX_UINT256
+        );
   }
 
   async joinPool(params: JoinPool): Promise<ContractTransaction> {
