@@ -138,7 +138,7 @@ contract IndexedPool is BaseWeightedPool {
         // prettier-ignore
         for(uint i = 0; i < _tokens.length; i++){
             if (token == _tokens[i]) {
-                return _scalingFactor[i];
+                return scalingFactors[i];
             }
         }
 
