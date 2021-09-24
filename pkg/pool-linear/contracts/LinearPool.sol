@@ -353,15 +353,13 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         address recipient,
         uint256[] memory,
         bytes memory
-    ) internal override whenNotPaused returns (uint256, uint256[] memory) {
+    ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
         // Linear Pools can only be initialized by the Pool performing the initial join via the `initialize` function.
         _require(sender == address(this), Errors.INVALID_INITIALIZATION);
         _require(recipient == address(this), Errors.INVALID_INITIALIZATION);
 
-        // Mint initial BPTs and adds them to the Vault via a special join
-        _approve(address(this), address(getVault()), _MAX_TOKEN_BALANCE);
-
-        // The full BPT supply will be minted and deposited in the Pool.
+        // The full BPT supply will be minted and deposited in the Pool. Note that there is no need to approve the Vault
+        // as it already has infinite BPT allowance.
         uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
         amountsIn[_bptIndex] = _MAX_TOKEN_BALANCE;
 
