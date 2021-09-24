@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.3.0 (2021-09-24)
+
+### New Deployments
+
+- Deployed `InvestmentPoolFactory` to Mainnet, Polygon and Arbitrum.
+- Deployed `MerkleRedeem` to Mainnet for VITA distribution.
+- Deployed `MerkleRedeem` to Arbitrum for BAL distribution.
+
 ## 2.2.0 (2021-09-15)
 
 ### New Features
