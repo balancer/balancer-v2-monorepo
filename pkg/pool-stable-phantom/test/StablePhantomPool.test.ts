@@ -315,7 +315,6 @@ describe('StablePhantomPool', () => {
           const sender = (await ethers.getSigners())[0];
           await tokens.mint({ to: sender, amount: fp(100) });
           await tokens.approve({ from: sender, to: pool.vault });
-          await pool.bpt.approve(pool.vault, MAX_UINT112, { from: sender });
         });
 
         context('token out given token in', () => {

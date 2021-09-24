@@ -273,8 +273,6 @@ contract StablePhantomPool is StablePool {
         _mintPoolTokens(sender, initialBpt);
         amountsInIncludingBpt[_bptIndex] = initialBpt;
 
-        _approve(sender, address(getVault()), initialBpt);
-
         return (bptAmountOut, amountsInIncludingBpt);
     }
 
