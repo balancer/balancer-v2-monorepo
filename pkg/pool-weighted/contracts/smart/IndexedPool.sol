@@ -15,15 +15,15 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./BaseWeightedPool.sol";
+import "../BaseWeightedPool.sol";
 
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
-contract WeightedPool is BaseWeightedPool {
+contract IndexedPool is BaseWeightedPool {
     using FixedPoint for uint256;
 
-    uint256 private constant _MAX_TOKENS = 20;
+    uint256 private constant _MAX_TOKENS = 50;
 
     uint256 private immutable _totalTokens;
 
