@@ -12,7 +12,7 @@ export type RawStablePhantomPoolDeployment = {
   swapFeePercentage?: BigNumberish;
   amplificationParameter?: BigNumberish;
   rateProviders?: Account[];
-  priceRateCacheDurations?: BigNumberish[];
+  tokenRateCacheDurations?: BigNumberish[];
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   owner?: SignerWithAddress;
@@ -27,7 +27,7 @@ export type StablePhantomPoolDeployment = {
   swapFeePercentage: BigNumberish;
   amplificationParameter: BigNumberish;
   rateProviders: Account[];
-  priceRateCacheDurations: BigNumberish[];
+  tokenRateCacheDurations: BigNumberish[];
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   owner?: SignerWithAddress;

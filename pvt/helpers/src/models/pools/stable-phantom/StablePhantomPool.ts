@@ -1,12 +1,12 @@
 import { ethers } from 'hardhat';
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber, Contract, ContractTransaction } from 'ethers';
 
 import { SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { StablePoolEncoder } from '@balancer-labs/balancer-js/src';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-import { Account } from '../../types/types';
+import { Account, TxParams } from '../../types/types';
 import { MAX_UINT112, ZERO_ADDRESS } from '../../../constants';
 import { GeneralSwap } from '../../vault/types';
 import { RawStablePhantomPoolDeployment, SwapPhantomPool } from './types';
@@ -140,12 +140,25 @@ export default class StablePhantomPool {
     return this.instance.getScalingFactors();
   }
 
+  async getScalingFactor(token: Token): Promise<BigNumber> {
+    return this.instance.getScalingFactor(token.address);
+  }
+
   async getRateProviders(): Promise<string> {
     return this.instance.getRateProviders();
   }
 
-  async getPriceRateCache(token: Account): Promise<{ expires: BigNumber; rate: BigNumber; duration: BigNumber }> {
-    return this.instance.getPriceRateCache(typeof token === 'string' ? token : token.address);
+  async getTokenRateCache(token: Account): Promise<{ expires: BigNumber; rate: BigNumber; duration: BigNumber }> {
+    return this.instance.getTokenRateCache(typeof token === 'string' ? token : token.address);
+  }
+
+  async updateTokenRateCache(token: Token): Promise<ContractTransaction> {
+    return this.instance.updateTokenRateCache(token.address);
+  }
+
+  async setTokenRateCacheDuration(token: Token, duration: BigNumber, params?: TxParams): Promise<ContractTransaction> {
+    const pool = params?.from ? this.instance.connect(params.from) : this.instance;
+    return pool.setTokenRateCacheDuration(token.address, duration);
   }
 
   async pause(): Promise<void> {

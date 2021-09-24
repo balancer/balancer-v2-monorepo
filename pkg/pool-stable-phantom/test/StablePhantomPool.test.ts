@@ -1,25 +1,27 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber, Contract, ContractTransaction } from 'ethers';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePhantomPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/types';
+import { advanceTime, currentTimestamp, MINUTE, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
+import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePhantomPool from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/StablePhantomPool';
-import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
-import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('StablePhantomPool', () => {
-  let lp: SignerWithAddress, owner: SignerWithAddress, recipient: SignerWithAddress;
+  let lp: SignerWithAddress, owner: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
 
   sharedBeforeEach('setup signers', async () => {
-    [, lp, owner, recipient] = await ethers.getSigners();
+    [, lp, owner, recipient, admin] = await ethers.getSigners();
   });
 
   context('for 2 tokens pool', () => {
@@ -49,18 +51,26 @@ describe('StablePhantomPool', () => {
     let deployedAt: BigNumber, bptIndex: number, initialBalances: BigNumberish[];
 
     const rateProviders: Contract[] = [];
-    const priceRateCacheDurations: BigNumberish[] = [];
+    const tokenRateCacheDurations: number[] = [];
 
     async function deployPool(params: RawStablePhantomPoolDeployment = {}, rates: BigNumberish[] = []): Promise<void> {
-      tokens = await TokenList.create(numberOfTokens, { sorted: true });
+      tokens = params.tokens || (await TokenList.create(numberOfTokens, { sorted: true }));
 
       for (let i = 0; i < numberOfTokens; i++) {
         rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
         await rateProviders[i].mockRate(rates[i] || fp(1));
-        priceRateCacheDurations[i] = MONTH + i;
+        tokenRateCacheDurations[i] = MONTH + i;
       }
 
-      pool = await StablePhantomPool.create({ tokens, rateProviders, priceRateCacheDurations, ...params });
+      pool = await StablePhantomPool.create({
+        tokens,
+        rateProviders,
+        tokenRateCacheDurations,
+        owner,
+        admin,
+        ...params,
+      });
+
       bptIndex = await pool.getBptIndex();
       deployedAt = await currentTimestamp();
       initialBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? 0 : fp(1 - i / 10)));
@@ -73,7 +83,7 @@ describe('StablePhantomPool', () => {
         const tokenRates = Array.from({ length: numberOfTokens }, (_, i) => fp(1 + (i + 1) / 10));
 
         sharedBeforeEach('deploy pool', async () => {
-          await deployPool({ owner, swapFeePercentage, amplificationParameter }, tokenRates);
+          await deployPool({ swapFeePercentage, amplificationParameter }, tokenRates);
         });
 
         it('sets the name', async () => {
@@ -138,15 +148,15 @@ describe('StablePhantomPool', () => {
 
         it('sets the rate cache durations', async () => {
           await tokens.asyncEach(async (token, i) => {
-            const { duration, expires, rate } = await pool.getPriceRateCache(token);
+            const { duration, expires, rate } = await pool.getTokenRateCache(token);
             expect(rate).to.equal(tokenRates[i]);
-            expect(duration).to.equal(priceRateCacheDurations[i]);
-            expect(expires).to.be.at.least(deployedAt.add(priceRateCacheDurations[i]));
+            expect(duration).to.equal(tokenRateCacheDurations[i]);
+            expect(expires).to.be.at.least(deployedAt.add(tokenRateCacheDurations[i]));
           });
         });
 
         it('sets no rate cache duration for BPT', async () => {
-          const { duration, expires, rate } = await pool.getPriceRateCache(pool.address);
+          const { duration, expires, rate } = await pool.getTokenRateCache(pool.address);
 
           expect(rate).to.be.zero;
           expect(duration).to.be.zero;
@@ -178,9 +188,9 @@ describe('StablePhantomPool', () => {
         });
 
         it('reverts if the cache durations do not match the tokens length', async () => {
-          const priceRateCacheDurations = [1];
+          const tokenRateCacheDurations = [1];
 
-          await expect(deployPool({ priceRateCacheDurations })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          await expect(deployPool({ tokenRateCacheDurations })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
         it('reverts if the rate providers do not match the tokens length', async () => {
@@ -469,8 +479,228 @@ describe('StablePhantomPool', () => {
     });
 
     describe('rates cache', () => {
-      // TODO: implement
-      // const tokenRates = Array.from({ length: numberOfTokens }, (_, i) => fp(1 + (i + 1) / 10));
+      const tokenRates = Array.from({ length: numberOfTokens }, (_, i) => fp(1 + (i + 1) / 10));
+
+      sharedBeforeEach('deploy pool', async () => {
+        const tokenParams = Array.from({ length: numberOfTokens }, (_, i) => ({ decimals: 18 - i }));
+        tokens = await TokenList.create(tokenParams, { sorted: true });
+        await deployPool({ tokens }, tokenRates);
+      });
+
+      const scaleRate = async (token: Token): Promise<BigNumber> => {
+        const index = tokens.indexOf(token);
+        const rateProvider = rateProviders[index];
+        const rate = await rateProvider.getRate();
+        return rate.mul(bn(10).pow(18 - token.decimals));
+      };
+
+      describe('scaling factors', () => {
+        const itAdaptsTheScalingFactorsCorrectly = () => {
+          it('adapt the scaling factors with the price rate', async () => {
+            const scalingFactors = await pool.getScalingFactors();
+
+            await tokens.asyncEach(async (token) => {
+              const expectedRate = await scaleRate(token);
+              const tokenIndex = await pool.getTokenIndex(token);
+              expect(scalingFactors[tokenIndex]).to.be.equal(expectedRate);
+              expect(await pool.getScalingFactor(token)).to.be.equal(expectedRate);
+            });
+
+            expect(scalingFactors[pool.bptIndex]).to.be.equal(fp(1));
+            expect(await pool.getScalingFactor(pool.bpt)).to.be.equal(fp(1));
+          });
+        };
+
+        context('with a price rate above 1', () => {
+          sharedBeforeEach('mock rates', async () => {
+            await tokens.asyncEach(async (token, i) => {
+              await rateProviders[i].mockRate(fp(1 + i / 10));
+              await pool.updateTokenRateCache(token);
+            });
+          });
+
+          itAdaptsTheScalingFactorsCorrectly();
+        });
+
+        context('with a price rate equal to 1', () => {
+          sharedBeforeEach('mock rates', async () => {
+            await tokens.asyncEach(async (token, i) => {
+              await rateProviders[i].mockRate(fp(1));
+              await pool.updateTokenRateCache(token);
+            });
+          });
+
+          itAdaptsTheScalingFactorsCorrectly();
+        });
+
+        context('with a price rate below 1', () => {
+          sharedBeforeEach('mock rate', async () => {
+            await tokens.asyncEach(async (token, i) => {
+              await rateProviders[i].mockRate(fp(1 - i / 10));
+              await pool.updateTokenRateCache(token);
+            });
+          });
+
+          itAdaptsTheScalingFactorsCorrectly();
+        });
+      });
+
+      describe('update', () => {
+        const itUpdatesTheRateCache = (action: (token: Token) => Promise<ContractTransaction>) => {
+          const newRate = fp(1.5);
+
+          it('updates the cache', async () => {
+            await tokens.asyncEach(async (token, i) => {
+              const previousCache = await pool.getTokenRateCache(token);
+
+              await rateProviders[i].mockRate(newRate);
+              const updatedAt = await currentTimestamp();
+
+              await action(token);
+
+              const currentCache = await pool.getTokenRateCache(token);
+              expect(currentCache.rate).to.be.equal(newRate);
+              expect(previousCache.rate).not.to.be.equal(newRate);
+
+              expect(currentCache.duration).to.be.equal(tokenRateCacheDurations[i]);
+              expect(currentCache.expires).to.be.at.least(updatedAt.add(tokenRateCacheDurations[i]));
+            });
+          });
+
+          it('emits an event', async () => {
+            await tokens.asyncEach(async (token, i) => {
+              await rateProviders[i].mockRate(newRate);
+              const receipt = await action(token);
+
+              expectEvent.inReceipt(await receipt.wait(), 'TokenRateCacheUpdated', {
+                rate: newRate,
+                token: token.address,
+              });
+            });
+          });
+        };
+
+        context('before the cache expires', () => {
+          sharedBeforeEach('advance time', async () => {
+            await advanceTime(MINUTE);
+          });
+
+          context('when not forced', () => {
+            const action = async (token: Token) => pool.instance.mockCacheTokenRateIfNecessary(token.address);
+
+            it('does not update the cache', async () => {
+              await tokens.asyncEach(async (token, i) => {
+                const previousCache = await pool.getTokenRateCache(token);
+
+                await action(token);
+
+                const currentCache = await pool.getTokenRateCache(token);
+                expect(currentCache.rate).to.be.equal(previousCache.rate);
+                expect(currentCache.expires).to.be.equal(previousCache.expires);
+                expect(currentCache.duration).to.be.equal(previousCache.duration);
+              });
+            });
+          });
+
+          context('when forced', () => {
+            const action = async (token: Token) => pool.updateTokenRateCache(token);
+
+            itUpdatesTheRateCache(action);
+          });
+        });
+
+        context('after the cache expires', () => {
+          sharedBeforeEach('advance time', async () => {
+            await advanceTime(MONTH * 2);
+          });
+
+          context('when not forced', () => {
+            const action = async (token: Token) => pool.instance.mockCacheTokenRateIfNecessary(token.address);
+
+            itUpdatesTheRateCache(action);
+          });
+
+          context('when forced', () => {
+            const action = async (token: Token) => pool.updateTokenRateCache(token);
+
+            itUpdatesTheRateCache(action);
+          });
+        });
+      });
+
+      describe('set cache duration', () => {
+        const newDuration = bn(MINUTE * 10);
+
+        sharedBeforeEach('grant role to admin', async () => {
+          const action = await actionId(pool.instance, 'setTokenRateCacheDuration');
+          await pool.vault.grantRole(action, admin);
+        });
+
+        const itUpdatesTheCacheDuration = () => {
+          it('updates the cache duration', async () => {
+            await tokens.asyncEach(async (token, i) => {
+              const previousCache = await pool.getTokenRateCache(token);
+
+              const newRate = fp(1.5);
+              await rateProviders[i].mockRate(newRate);
+              const forceUpdateAt = await currentTimestamp();
+              await pool.setTokenRateCacheDuration(token, newDuration, { from: owner });
+
+              const currentCache = await pool.getTokenRateCache(token);
+              expect(currentCache.rate).to.be.equal(newRate);
+              expect(previousCache.rate).not.to.be.equal(newRate);
+              expect(currentCache.duration).to.be.equal(newDuration);
+              expect(currentCache.expires).to.be.at.least(forceUpdateAt.add(newDuration));
+            });
+          });
+
+          it('emits an event', async () => {
+            await tokens.asyncEach(async (token, i) => {
+              const receipt = await pool.setTokenRateCacheDuration(token, newDuration, { from: owner });
+
+              expectEvent.inReceipt(await receipt.wait(), 'TokenRateProviderSet', {
+                token: token.address,
+                provider: rateProviders[i].address,
+                cacheDuration: newDuration,
+              });
+            });
+          });
+        };
+
+        context('when it is requested by the owner', () => {
+          context('before the cache expires', () => {
+            sharedBeforeEach('advance time', async () => {
+              await advanceTime(MINUTE);
+            });
+
+            itUpdatesTheCacheDuration();
+          });
+
+          context('after the cache has expired', () => {
+            sharedBeforeEach('advance time', async () => {
+              await advanceTime(MONTH * 2);
+            });
+
+            itUpdatesTheCacheDuration();
+          });
+        });
+
+        context('when it is requested by the admin', () => {
+          it('reverts', async () => {
+            await expect(pool.setTokenRateCacheDuration(tokens.first, bn(10), { from: admin })).to.be.revertedWith(
+              'SENDER_NOT_ALLOWED'
+            );
+          });
+        });
+
+        context('when it is requested by another one', () => {
+          it('reverts', async () => {
+            await expect(pool.setTokenRateCacheDuration(tokens.first, bn(10), { from: lp })).to.be.revertedWith(
+              'SENDER_NOT_ALLOWED'
+            );
+          });
+        });
+      });
     });
   }
 });
