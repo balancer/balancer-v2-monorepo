@@ -65,7 +65,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     bytes32 private _miscData;
     uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
 
-    IVault private immutable _vault;
     bytes32 private immutable _poolId;
 
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
@@ -88,7 +87,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         // any Pool created by the same factory), while still making action identifiers unique among different factories
         // if the selectors match, preventing accidental errors.
         Authentication(bytes32(uint256(msg.sender)))
-        BalancerPoolToken(name, symbol)
+        BalancerPoolToken(name, symbol, vault)
         BasePoolAuthorization(owner)
         TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
     {
@@ -109,15 +108,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         vault.registerTokens(poolId, tokens, assetManagers);
 
         // Set immutable state variables - these cannot be read from during construction
-        _vault = vault;
         _poolId = poolId;
     }
 
     // Getters / Setters
-
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
 
     function getPoolId() public view override returns (bytes32) {
         return _poolId;
