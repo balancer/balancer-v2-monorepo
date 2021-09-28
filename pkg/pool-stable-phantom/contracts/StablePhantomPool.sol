@@ -150,20 +150,6 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * Overrides to make sure sender is vault and cache token rates if necessary
-     */
-    function onSwap(
-        SwapRequest memory request,
-        uint256[] memory balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) public virtual override onlyVault(request.poolId) returns (uint256) {
-        _require(totalSupply() > 0, Errors.UNINITIALIZED);
-        _cacheTokenRatesIfNecessary();
-        return super.onSwap(request, balances, indexIn, indexOut);
-    }
-
-    /**
      * @dev Overrides to allow join/exit
      */
     function _onSwapGivenIn(
@@ -172,6 +158,8 @@ contract StablePhantomPool is StablePool {
         uint256 indexIn,
         uint256 indexOut
     ) internal virtual override returns (uint256 amountOut) {
+        _cacheTokenRatesIfNecessary();
+
         // Avoid BPT balance for stable pool math
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
 
@@ -209,6 +197,8 @@ contract StablePhantomPool is StablePool {
         uint256 indexIn,
         uint256 indexOut
     ) internal virtual override returns (uint256 amountIn) {
+        _cacheTokenRatesIfNecessary();
+
         // Avoid BPT balance for stable pool math
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
 
