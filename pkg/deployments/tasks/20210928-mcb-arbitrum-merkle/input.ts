@@ -8,7 +8,7 @@ export type MerkleRedeemDeployment = {
 const Vault = new Task('20210418-vault');
 
 export default {
-  mainnet: {
+  arbitrum: {
     Vault,
     rewardToken: '0x4e352cf164e64adcbad318c3a1e222e9eba4ce42',
   },
