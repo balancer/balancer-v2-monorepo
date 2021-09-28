@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20Permit.sol";
+import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 /**
  * @title Highly opinionated token implementation
@@ -29,16 +30,38 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20Permit.sol"
  * - Lets a token holder use `transferFrom` to send their own tokens,
  *   without first setting allowance
  * - Emits 'Approval' events whenever allowance is changed by `transferFrom`
+ * - Assigns infinite allowance for all token holders to the Vault
  */
 contract BalancerPoolToken is ERC20, ERC20Permit {
-    constructor(string memory tokenName, string memory tokenSymbol)
-        ERC20(tokenName, tokenSymbol)
-        ERC20Permit(tokenName)
-    {
-        // solhint-disable-previous-line no-empty-blocks
+    IVault private immutable _vault;
+
+    constructor(
+        string memory tokenName,
+        string memory tokenSymbol,
+        IVault vault
+    ) ERC20(tokenName, tokenSymbol) ERC20Permit(tokenName) {
+        _vault = vault;
+    }
+
+    function getVault() public view returns (IVault) {
+        return _vault;
     }
 
     // Overrides
+
+    /**
+     * @dev Override to grant the Vault infinite allowance, causing for Pool Tokens to not require approval.
+     *
+     * This is sound as the Vault already provides authorization mechanisms when initiation token transfers, which this
+     * contract inherits.
+     */
+    function allowance(address owner, address spender) public view override returns (uint256) {
+        if (spender == address(getVault())) {
+            return uint256(-1);
+        } else {
+            return super.allowance(owner, spender);
+        }
+    }
 
     /**
      * @dev Override to allow for 'infinite allowance' and let the token owner use `transferFrom` with no self-allowance

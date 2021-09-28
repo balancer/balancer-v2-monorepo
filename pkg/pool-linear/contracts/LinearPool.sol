@@ -37,7 +37,9 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     using PriceRateCache for bytes32;
 
     uint256 private constant _TOTAL_TOKENS = 3; // Main token, wrapped token, BPT
-    uint256 private constant _MINIMUM_BPT = 0; // All BPT is minted to the Vault
+
+    // Linear Pools don't lock any BPT, since they fully support having zero main and wrapped token balances
+    uint256 private constant _LINEAR_MINIMUM_BPT = 0;
     uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
 
     IERC20 private immutable _mainToken;
@@ -147,14 +149,21 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     }
 
     /**
-     * @dev Due to how this pool works, all the BPT needs to be minted initially. Since we cannot do that in the
-     * constructor because the Vault would call back this contract, this method is provided. This function must always
-     * be called right after construction, therefore it is extremely recommended to create Linear pools using the
-     * LinearPoolFactory which already does that automatically.
+     * @dev Finishes initialization of the Linear Pool: it is unusable before calling this function.
+     *
+     * Since Linear Pools have preminted BPT which is stored in the Vault, we need for an initial join to occur for the
+     * BPT to be deposited. Unfortunately, this cannot be performed during construction as a join involves calling a
+     * callback function on the Pool, and the Pool will not have any code until construction finishes. Therefore, this
+     * must happen in a separate call to this function.
+     *
+     * It is highly recommended to create Linear pools using the LinearPoolFactory, which calls `initialize`
+     * automatically.
      */
     function initialize() external {
         bytes32 poolId = getPoolId();
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
+
+        // During initialization, the Pool will mint the entire BPT supply for itself, and then join with it.
         uint256[] memory maxAmountsIn = new uint256[](_TOTAL_TOKENS);
         maxAmountsIn[tokens[0] == IERC20(this) ? 0 : tokens[1] == IERC20(this) ? 1 : 2] = _MAX_TOKEN_BALANCE;
 
@@ -340,15 +349,20 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
     function _onInitializePool(
         bytes32,
-        address,
-        address,
+        address sender,
+        address recipient,
         uint256[] memory,
         bytes memory
-    ) internal override whenNotPaused returns (uint256, uint256[] memory) {
-        // Mint initial BPTs and adds them to the Vault via a special join
-        _approve(address(this), address(getVault()), _MAX_TOKEN_BALANCE);
+    ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
+        // Linear Pools can only be initialized by the Pool performing the initial join via the `initialize` function.
+        _require(sender == address(this), Errors.INVALID_INITIALIZATION);
+        _require(recipient == address(this), Errors.INVALID_INITIALIZATION);
+
+        // The full BPT supply will be minted and deposited in the Pool. Note that there is no need to approve the Vault
+        // as it already has infinite BPT allowance.
         uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
         amountsIn[_bptIndex] = _MAX_TOKEN_BALANCE;
+
         return (_MAX_TOKEN_BALANCE, amountsIn);
     }
 
@@ -401,7 +415,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     }
 
     function _getMinimumBpt() internal pure override returns (uint256) {
-        return _MINIMUM_BPT;
+        return _LINEAR_MINIMUM_BPT;
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {

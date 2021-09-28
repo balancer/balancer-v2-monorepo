@@ -156,6 +156,7 @@ library Errors {
     uint256 internal constant UNHANDLED_BY_INVESTMENT_POOL = 339;
     uint256 internal constant UNHANDLED_BY_PHANTOM_POOL = 340;
     uint256 internal constant TOKEN_DOES_NOT_HAVE_RATE_PROVIDER = 341;
+    uint256 internal constant INVALID_INITIALIZATION = 342;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

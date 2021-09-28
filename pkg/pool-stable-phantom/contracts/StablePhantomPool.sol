@@ -311,11 +311,12 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * @dev Due to how this pool works, all the BPT needs to be minted initially. On one hand, we cannot do that in the
-     * constructor because the Vault would call back this contract. On the other hand, this pool also requires to be
-     * initialized with a proportional join due to how the Stable math works.
-     * Then, the approach followed is to mint the total amount of BPT to the sender initializing the pool so it can
-     * be fetched by the Vault as part of the initialization process.
+     * Since this Pool has preminted BPT which is stored in the Vault, it cannot be simply minted at construction.
+     *
+     * We take advantage of the fact that StablePools have an initialization step where BPT is minted to the first
+     * account joining them, and perform both actions at once. By minting the entire BPT supply for the initial joiner
+     * and then pulling all tokens except the joiner's due, we arrive at the desired state of the Pool holding all BPT
+     * except the joiner's.
      */
     function _onInitializePool(
         bytes32,
@@ -338,11 +339,14 @@ contract StablePhantomPool is StablePool {
         // Set the initial BPT to the value of the invariant
         uint256 bptAmountOut = invariantAfterJoin;
 
-        // Mint the total amount of BPT to the sender forcing the Vault to pull it
+        // BasePool will mint bptAmountOut for the sender: we then also mint the remaining BPT to make up for the total
+        // supply, and have the Vault pull those tokens from the sender as part of the join.
+        // Note that the sender need not approve BPT for the Vault as the Vault already has infinite BPT allowance for
+        // all accounts.
         uint256 initialBpt = _MAX_TOKEN_BALANCE.sub(bptAmountOut);
         _mintPoolTokens(sender, initialBpt);
-        _approve(sender, address(getVault()), initialBpt);
         amountsInIncludingBpt[_bptIndex] = initialBpt;
+
         return (bptAmountOut, amountsInIncludingBpt);
     }
 
