@@ -149,9 +149,21 @@ contract StablePhantomPool is StablePool {
         _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
     }
 
-    /**
-     * @dev Overrides to allow join/exit
-     */
+    // StablePool's `_onSwapGivenIn` and `_onSwapGivenOut` handlers are meant to process swaps between Pool tokens.
+    // Since one of the Pool's tokens is the preminted BPT, we neeed to a) handle swaps where that tokens is involved
+    // separately (as they are effectively single-token joins or exits), and b) remove BPT from the balances array when
+    // processing regular swaps before delegating those to StablePool's handler.
+    //
+    // Since StablePools don't accurately track protocol fees in single-token joins and exit, and not only does this
+    // Pool not support multi-token joins or exits, but also they are expected to be much more prevalent, we compute
+    // protocol fees in a different and more straightforward way. Recall that due protocol fees are expressed as BPT
+    // amounts: for any swap involving BPT, we simply add the corresponding protocol swap fee to that amount, and for
+    // swaps without BPT we convert the fee amount to the equivalent BPT amount. Note that swap fees are charged by
+    // BaseGeneralPool.
+    //
+    // The given in and given out handlers are quite similar and could use an intermediate abstraction, but keeping the
+    // duplication seems to lead to more readable code, given the number of variants at play.
+
     function _onSwapGivenIn(
         SwapRequest memory request,
         uint256[] memory balancesIncludingBpt,
@@ -160,18 +172,23 @@ contract StablePhantomPool is StablePool {
     ) internal virtual override returns (uint256 amountOut) {
         _cacheTokenRatesIfNecessary();
 
-        // Avoid BPT balance for stable pool math
+        // Compute virtual BPT supply and token balances (sans BPT).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
 
         if (request.tokenIn == IERC20(this)) {
             amountOut = _onSwapTokenGivenBptIn(request.amount, _skipBptIndex(indexOut), virtualSupply, balances);
 
+            // For given in swaps, request.amount holds the amount in.
             _trackDueProtocolFeeByBpt(request.amount);
         } else if (request.tokenOut == IERC20(this)) {
             amountOut = _onSwapBptGivenTokenIn(request.amount, _skipBptIndex(indexIn), virtualSupply, balances);
 
             _trackDueProtocolFeeByBpt(amountOut);
         } else {
+            // To compute accrued protocol fees in BPT, we measure the invariant before and after the swap, then compute
+            // the equivalent BPT amount that accounts for that growth and finally extract the percentage that
+            // corresponds to protocol fees.
+
             (uint256 amp, ) = _getAmplificationParameter();
 
             uint256 previousInvariant = StableMath._calculateInvariant(amp, balances, true);
@@ -188,9 +205,6 @@ contract StablePhantomPool is StablePool {
         }
     }
 
-    /**
-     * @dev Overrides to allow join/exit
-     */
     function _onSwapGivenOut(
         SwapRequest memory request,
         uint256[] memory balancesIncludingBpt,
@@ -199,7 +213,7 @@ contract StablePhantomPool is StablePool {
     ) internal virtual override returns (uint256 amountIn) {
         _cacheTokenRatesIfNecessary();
 
-        // Avoid BPT balance for stable pool math
+        // Compute virtual BPT supply and token balances (sans BPT).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
 
         if (request.tokenIn == IERC20(this)) {
@@ -209,8 +223,13 @@ contract StablePhantomPool is StablePool {
         } else if (request.tokenOut == IERC20(this)) {
             amountIn = _onSwapTokenGivenBptOut(request.amount, _skipBptIndex(indexIn), virtualSupply, balances);
 
+            // For given out swaps, request.amount holds the amount out.
             _trackDueProtocolFeeByBpt(request.amount);
         } else {
+            // To compute accrued protocol fees in BPT, we measure the invariant before and after the swap, then compute
+            // the equivalent BPT amount that accounts for that growth and finally extract the percentage that
+            // corresponds to protocol fees.
+
             (uint256 amp, ) = _getAmplificationParameter();
 
             uint256 previousInvariant = StableMath._calculateInvariant(amp, balances, true);
@@ -287,43 +306,52 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * @dev Track the due protocol fees in BPT based on the invariant increase due to swap fees.
+     * @dev Tracks newly charged protocol fees after a swap where BPT was not involved (i.e. a regular swap).
      */
     function _trackDueProtocolFeeByInvariantIncrement(
         uint256 previousInvariant,
         uint256 amp,
-        uint256[] memory balances,
+        uint256[] memory postSwapBalances,
         uint256 virtualSupply
     ) private {
         IProtocolFeesCollector collector = getVault().getProtocolFeesCollector();
         uint256 protocolSwapFeePercentage = collector.getSwapFeePercentage();
 
+        // To convert the protocol swap fees to a BPT amount, we compute the invariant growth (which is due exclusively
+        // to swap fees), extract the portion that corresponds to protocol swap fees, and then compute the equivalent
+        // amout of BPT that would cause such an increase.
+
         if (protocolSwapFeePercentage > 0) {
-            uint256 currentInvariant = StableMath._calculateInvariant(amp, balances, true);
-            uint256 invariantRatio = currentInvariant.divUp(previousInvariant);
+            uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances, true);
+            uint256 invariantRatio = postSwapInvariant.divUp(previousInvariant);
 
             if (invariantRatio > FixedPoint.ONE) {
-                uint256 b = protocolSwapFeePercentage.mulDown(invariantRatio.sub(FixedPoint.ONE));
-                uint256 protocolFeesInBpt = b.mulDown(virtualSupply).divDown(b.complement());
-                _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeesInBpt);
+                // This condition should always be met outside of rounding errors (for non-zero swap fees).
+
+                uint256 invariantRatioDueToProtocolFees = protocolSwapFeePercentage.mulDown(
+                    invariantRatio.sub(FixedPoint.ONE)
+                );
+
+                uint256 protocolFeeAmount = invariantRatioDueToProtocolFees.mulDown(virtualSupply).divDown(
+                    invariantRatioDueToProtocolFees.complement()
+                );
+                _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeeAmount);
             }
         }
     }
 
     /**
-     * @dev Track the due protocol fees in BPT based on bpt amount
+     * @dev Tracks newly charged protocol fees after a swap where `bptAmount` was either sent or received (i.e. a
+     * single-token join or exit).
      */
     function _trackDueProtocolFeeByBpt(uint256 bptAmount) private {
-        uint256 swapFeePercentage = getSwapFeePercentage();
-
         IProtocolFeesCollector collector = getVault().getProtocolFeesCollector();
         uint256 protocolSwapFeePercentage = collector.getSwapFeePercentage();
 
-        //fee  = (bptamount / (1 - swapfee)) *  swapfee
-        uint256 bptFee = bptAmount.mulDown(swapFeePercentage).divDown(swapFeePercentage.complement());
+        uint256 feeAmount = _addSwapFeeAmount(bptAmount).sub(bptAmount);
 
-        uint256 protocolFeesInBpt = bptFee.mulDown(protocolSwapFeePercentage);
-        _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeesInBpt);
+        uint256 protocolFeeAmount = feeAmount.mulDown(protocolSwapFeePercentage);
+        _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeeAmount);
     }
 
     /**
@@ -367,7 +395,7 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * @dev Overrides to block traditional joins
+     * @dev Revert on all joins, except for the special join kind that simply pays due protocol fees to the Vault.
      */
     function _onJoinPool(
         bytes32,
@@ -403,23 +431,25 @@ contract StablePhantomPool is StablePool {
     function _collectProtocolFees()
         private
         returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
+            uint256 bptOut,
+            uint256[] memory amountsIn,
+            uint256[] memory dueProtocolFeeAmounts
         )
     {
         uint256 totalTokens = _getTotalTokens();
 
-        uint256[] memory dueProtocolFeeAmounts = new uint256[](totalTokens);
+        // This Join grants no BPT nor takes any tokens from the sender.
+        bptOut = 0;
+        amountsIn = new uint256[](totalTokens);
+
+        // Due protocol fees are all zero except for the BPT amount, which is then zeroed out.
+        dueProtocolFeeAmounts = new uint256[](totalTokens);
         dueProtocolFeeAmounts[_bptIndex] = _dueProtocolFeeBptAmount;
-
         _dueProtocolFeeBptAmount = 0;
-
-        return (0, new uint256[](totalTokens), dueProtocolFeeAmounts);
     }
 
     /**
-     * @dev Overrides to block traditional exits
+     * @dev Revert on all exits.
      */
     function _onExitPool(
         bytes32,
