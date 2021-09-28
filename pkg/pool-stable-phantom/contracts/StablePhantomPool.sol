@@ -25,6 +25,19 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 
 import "./StablePhantomPoolUserDataHelpers.sol";
 
+/**
+ * @dev StablePool with preminted BPT and rate providers for each token, allowing for e.g. wrapped tokens with a known
+ * price ratio, such as Compound's cTokens.
+ *
+ * BPT is preminted on Pool initialization and registered as one of the Pool's tokens, allowing for swaps to behave as
+ * single-token joins or exits (by swapping a token for BPT). Regular joins and exits are disabled, since no BPT is
+ * minted or burned after initialization.
+ *
+ * Preminted BPT is sometimes called Phantom BPT, as the preminted BPT (which is deposited in the Vault as balance of
+ * the Pool) doesn't belong to any entity until transferred out of the Pool. The Pool's arithmetic behaves as if it
+ * didn't exist, and the BPT total supply is not a useful value: we rely on the 'virtual supply' (how much BPT is
+ * actually owned by some entity) instead.
+ */
 contract StablePhantomPool is StablePool {
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
@@ -34,6 +47,12 @@ contract StablePhantomPool is StablePool {
     uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
 
     uint256 private immutable _bptIndex;
+
+    // Since this Pool is not joined or exited via the regular onJoinPool and onExitPool hooks, it lacks a way to
+    // continuously pay due protocol fees. Instead, it keeps track of those internally.
+    // Due protocol fees are expressed in BPT, which leads to reduced gas costs when compared to tracking due fees for
+    // each Pool token. This means that some of the BPT deposited in the Vault for the Pool is part of the 'virtual'
+    // supply, as it belongs to the protocol.
     uint256 private _dueProtocolFeeBptAmount;
 
     // Token rate caches are used to avoid querying the price rate for a token every time we need to work with it.
@@ -78,6 +97,9 @@ contract StablePhantomPool is StablePool {
             params.owner
         )
     {
+        // BasePool checks that the Pool has at least two tokens, but since one of them is the BPT (this contract), we
+        // need to check ourselves that there are at least creator-supplied tokens (i.e. the minimum number of total
+        // tokens for this contract is actually three, including the BPT).
         _require(params.tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
 
         InputHelpers.ensureInputLengthMatch(
@@ -92,6 +114,10 @@ contract StablePhantomPool is StablePool {
             emit TokenRateProviderSet(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
         }
 
+        // The Vault keeps track of all Pool tokens in a specific order: we need to know what the index of BPT is in
+        // this ordering to be able to identify it when balances arrays are received. Since the tokens array is sorted,
+        // we need to find the correct BPT index in the array returned by `_insertSorted()`.
+        // See `IVault.getPoolTokens()` for more information regarding token ordering.
         uint256 bptIndex;
         for (bptIndex = params.tokens.length; bptIndex > 0 && params.tokens[bptIndex - 1] > IERC20(this); bptIndex--) {
             // solhint-disable-previous-line no-empty-blocks
@@ -112,8 +138,8 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * @dev Overrides to disallow minimal info swaps, although it should never trigger it due to min number of
-     * tokens requested by the pool
+     * @dev StablePools with two tokens may use the IMinimalSwapInfoPool interface. This should never happen since this
+     * Pool has a minimum of three tokens, but we override and revert unconditionally in this handler anyway.
      */
     function onSwap(
         SwapRequest memory,
