@@ -29,7 +29,6 @@ import {
   calcTokenOutGivenExactBptIn,
   calculateInvariant,
 } from '../stable/math';
-import { isParenthesizedExpression } from 'typescript';
 
 export default class StablePhantomPool {
   instance: Contract;
