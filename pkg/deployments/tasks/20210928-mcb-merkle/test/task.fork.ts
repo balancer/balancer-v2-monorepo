@@ -22,7 +22,7 @@ describe('MerkleRedeem', function () {
 
   const task = Task.forTest('20210928-mcb-merkle', getForkedNetwork(hre));
 
-  const REWARD_TOKEN_ADDRESS = '0x4e352cf164e64adcbad318c3a1e222e9eba4ce42'; // MCB 
+  const REWARD_TOKEN_ADDRESS = '0x4e352cf164e64adcbad318c3a1e222e9eba4ce42'; // MCB
   const REWARD_WHALE_ADDRESS = '0x68aa5450b01960ac529556a727c89ea39599c4f0';
 
   before('run task', async () => {
