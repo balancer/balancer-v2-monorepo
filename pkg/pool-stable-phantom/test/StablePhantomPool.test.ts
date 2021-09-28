@@ -695,31 +695,111 @@ describe('StablePhantomPool', () => {
       });
     });
 
-    describe('exit', () => {
+    describe('protocol swap fees', () => {
+      const swapFeePercentage = fp(0.1); // 10 %
+      const protocolFeePercentage = fp(0.5); // 50 %
+
       sharedBeforeEach('deploy pool', async () => {
-        await deployPool();
-        await pool.init({ recipient, initialBalances });
+        await deployPool({ swapFeePercentage });
+        await pool.vault.setSwapFeePercentage(protocolFeePercentage);
+        //Init pool with equal balances so 1 bpt = 1 token
+        const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? 0 : fp(100)));
+        await pool.init({ recipient, initialBalances: equalBalances });
       });
 
-      context('when the sender is the vault', () => {
-        it('reverts', async () => {
-          const allTokens = await pool.getTokens();
-          const tx = pool.vault.exitPool({ poolId: pool.poolId, tokens: allTokens.tokens });
-          await expect(tx).to.be.revertedWith('UNHANDLED_BY_PHANTOM_POOL');
+      sharedBeforeEach('allow vault', async () => {
+        const sender = (await ethers.getSigners())[0];
+        await tokens.mint({ to: sender, amount: fp(100) });
+        await tokens.approve({ from: sender, to: pool.vault });
+        await pool.bpt.approve(pool.vault, MAX_UINT112, { from: sender });
+      });
+
+      context('charges correctly', () => {
+        const amount = fp(10);
+
+        function getAproxDueFee(amount: BigNumber): BigNumber {
+          //token amount is almost similar to the amount in bpt
+          const fee = amount.mul(swapFeePercentage).div(fp(1));
+          const protocolFee = fee.mul(protocolFeePercentage).div(fp(1));
+          return protocolFee;
+        }
+
+        it('when swaps tokens given in', async () => {
+          const tokenIn = tokens.first;
+          const tokenOut = tokens.second;
+          await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, recipient });
+
+          const dueFee = await pool.getDueProtocolFeeBptAmount();
+          const aproxFee = getAproxDueFee(amount);
+
+          expect(dueFee).to.be.equalWithError(aproxFee, 0.01);
+        });
+
+        it('when swaps tokens given out', async () => {
+          const tokenIn = tokens.first;
+          const tokenOut = tokens.second;
+
+          const amountIn = await pool.swapGivenOut({ in: tokenIn, out: tokenOut, amount, recipient });
+
+          const dueFee = await pool.getDueProtocolFeeBptAmount();
+          const aproxFee = getAproxDueFee(amountIn);
+
+          expect(dueFee).to.be.equalWithError(aproxFee, 0.01);
+        });
+
+        it('when swaps token for exact BPT', async () => {
+          const tokenIn = tokens.first;
+
+          const amountIn = await pool.swapGivenOut({ in: tokenIn, out: pool.bpt, amount, recipient });
+
+          const dueFee = await pool.getDueProtocolFeeBptAmount();
+          const aproxFee = getAproxDueFee(amountIn);
+
+          expect(dueFee).to.be.equalWithError(aproxFee, 0.01);
+        });
+
+        it('when swaps exact BPT for token', async () => {
+          const sender = (await ethers.getSigners())[0];
+          const token = tokens.first;
+
+          const bptAmount = await pool.swapGivenIn({ in: token, out: pool.bpt, amount, recipient: sender.address });
+          await pool.swapGivenIn({ in: pool.bpt, out: token, amount: bptAmount, recipient });
+
+          const dueFee = await pool.getDueProtocolFeeBptAmount();
+          const aproxFee = getAproxDueFee(bptAmount.add(amount));
+
+          expect(dueFee).to.be.equalWithError(aproxFee, 0.01);
         });
       });
 
-      context('when the sender is not the vault', () => {
-        it('reverts', async () => {
-          const tx = pool.instance.onExitPool(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, [0], 0, 0, '0x');
-          await expect(tx).to.be.revertedWith('CALLER_NOT_VAULT');
+      context('collects correctly', () => {
+        const amount = fp(10);
+
+        sharedBeforeEach('deploy pool', async () => {
+          const sender = (await ethers.getSigners())[0];
+          const token = tokens.first;
+
+          const bptAmount = await pool.swapGivenIn({ in: token, out: pool.bpt, amount, recipient: sender.address });
+          await pool.swapGivenIn({ in: pool.bpt, out: token, amount: bptAmount, recipient });
+        });
+
+        it('after swaps', async () => {
+          const dueFeeBefore = await pool.getDueProtocolFeeBptAmount();
+          expect(dueFeeBefore).to.be.gt(fp(0));
+
+          const sender = (await ethers.getSigners())[0];
+          await pool.collectProtocolFees(sender);
+
+          const dueFeeAfter = await pool.getDueProtocolFeeBptAmount();
+
+          expect(dueFeeAfter).to.be.equal(fp(0));
+
+          const feeCollector = await pool.vault.getFeesCollector();
+          const feeCollectorBalance = await pool.bpt.balanceOf(feeCollector.address);
+
+          expect(feeCollectorBalance).to.be.equal(dueFeeBefore);
         });
       });
-    });
-
-    describe('rates cache', () => {
-      // TODO: implement
-      // const tokenRates = Array.from({ length: numberOfTokens }, (_, i) => fp(1 + (i + 1) / 10));
     });
   }
 });

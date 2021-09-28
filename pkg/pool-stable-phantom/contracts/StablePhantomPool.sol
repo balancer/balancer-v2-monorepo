@@ -15,11 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "hardhat/console.sol";
-
 import "@balancer-labs/v2-pool-stable/contracts/StablePool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
@@ -160,13 +159,15 @@ contract StablePhantomPool is StablePool {
             _trackDueProtocolFeeByBpt(amountOut);
         } else {
             (uint256 amp, ) = _getAmplificationParameter();
+
             uint256 previousInvariant = StableMath._calculateInvariant(amp, balances, true);
+
             uint256 newIndexIn = _skipBptIndex(indexIn);
             uint256 newIndexOut = _skipBptIndex(indexOut);
-
             amountOut = super._onSwapGivenIn(request, balances, _skipBptIndex(indexIn), _skipBptIndex(indexOut));
 
-            balances[newIndexIn] = balances[newIndexIn].add(request.amount);
+            uint256 amountInWithFee = _addSwapFeeAmount(request.amount);
+            balances[newIndexIn] = balances[newIndexIn].add(amountInWithFee);
             balances[newIndexOut] = balances[newIndexOut].sub(amountOut);
 
             _trackDueProtocolFeeByInvariantIncrement(previousInvariant, amp, balances, virtualSupply);
@@ -195,13 +196,15 @@ contract StablePhantomPool is StablePool {
             _trackDueProtocolFeeByBpt(request.amount);
         } else {
             (uint256 amp, ) = _getAmplificationParameter();
+
             uint256 previousInvariant = StableMath._calculateInvariant(amp, balances, true);
+
             uint256 newIndexIn = _skipBptIndex(indexIn);
             uint256 newIndexOut = _skipBptIndex(indexOut);
-
             amountIn = super._onSwapGivenOut(request, balances, newIndexIn, newIndexOut);
 
-            balances[newIndexIn] = balances[newIndexIn].add(amountIn);
+            uint256 amountInWithFee = _addSwapFeeAmount(amountIn);
+            balances[newIndexIn] = balances[newIndexIn].add(amountInWithFee);
             balances[newIndexOut] = balances[newIndexOut].sub(request.amount);
 
             _trackDueProtocolFeeByInvariantIncrement(previousInvariant, amp, balances, virtualSupply);
@@ -276,19 +279,15 @@ contract StablePhantomPool is StablePool {
         uint256[] memory balances,
         uint256 virtualSupply
     ) private {
-        uint256 swapFeePercentage = getSwapFeePercentage();
-
         IProtocolFeesCollector collector = getVault().getProtocolFeesCollector();
         uint256 protocolSwapFeePercentage = collector.getSwapFeePercentage();
 
-        uint256 protocolFeeRatio = swapFeePercentage.mulDown(protocolSwapFeePercentage);
-
-        if (protocolFeeRatio > 0) {
+        if (protocolSwapFeePercentage > 0) {
             uint256 currentInvariant = StableMath._calculateInvariant(amp, balances, true);
             uint256 invariantRatio = currentInvariant.divUp(previousInvariant);
 
             if (invariantRatio > FixedPoint.ONE) {
-                uint256 b = protocolFeeRatio.mulDown(invariantRatio.complement());
+                uint256 b = protocolSwapFeePercentage.mulDown(invariantRatio.sub(FixedPoint.ONE));
                 uint256 protocolFeesInBpt = b.mulDown(virtualSupply).divDown(b.complement());
                 _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeesInBpt);
             }
