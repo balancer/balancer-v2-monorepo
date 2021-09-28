@@ -70,3 +70,4 @@ Returns an object with all contracts from a deployment and their addresses.
 | Basic Investment Pools for few tokens            | [`20210907-investment-pool`](./tasks/20210907-investment-pool)                           |
 | Distributor contract for arbitrum BAL rewards    | [`20210913-bal-arbitrum-merkle`](./tasks/20210913-bal-arbitrum-merkle)                   |
 | Distributor contract for VITA rewards            | [`20210920-vita-merkle`](./tasks/20210920-vita-merkle)                                   |
+| Distributor contract for arbitrum MCB rewards    | [`20210928-mcb-arbitrum-merkle`](./tasks/20210928-mcb-arbitrum-merkle)                   |
