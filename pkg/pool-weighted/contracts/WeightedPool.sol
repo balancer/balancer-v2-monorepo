@@ -244,8 +244,8 @@ contract WeightedPool is BaseWeightedPool {
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { normalizedWeights[0] = _normalizedWeight0; } else { return normalizedWeights; }
-            if (totalTokens > 1) { normalizedWeights[1] = _normalizedWeight1; } else { return normalizedWeights; }
+            normalizedWeights[0] = _normalizedWeight0;
+            normalizedWeights[1] = _normalizedWeight1;
             if (totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else { return normalizedWeights; }
             if (totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else { return normalizedWeights; }
             if (totalTokens > 4) { normalizedWeights[4] = _normalizedWeight4; } else { return normalizedWeights; }
@@ -324,8 +324,8 @@ contract WeightedPool is BaseWeightedPool {
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { scalingFactors[0] = _scalingFactor0; } else { return scalingFactors; }
-            if (totalTokens > 1) { scalingFactors[1] = _scalingFactor1; } else { return scalingFactors; }
+            scalingFactors[0] = _scalingFactor0;
+            scalingFactors[1] = _scalingFactor1;
             if (totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
             if (totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
             if (totalTokens > 4) { scalingFactors[4] = _scalingFactor4; } else { return scalingFactors; }

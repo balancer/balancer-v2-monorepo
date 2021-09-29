@@ -11,7 +11,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
-import { setup, rewardsDuration } from './MultiRewardsSharedSetup';
+import { setup, rewardsDuration, rewardsVestingTime } from './MultiRewardsSharedSetup';
 
 describe('Exiter', () => {
   let lp: SignerWithAddress, rewarder: SignerWithAddress;
@@ -57,7 +57,7 @@ describe('Exiter', () => {
       await stakingContract
         .connect(rewarder)
         .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address);
-      await advanceTime(10);
+      await advanceTime(rewardsVestingTime);
 
       assets = poolTokens.map((pt) => pt.address);
       poolId = await pool.getPoolId();

@@ -43,6 +43,13 @@ library StableMath {
     //
     // This means e.g. we can safely multiply a balance by the amplification parameter without worrying about overflow.
 
+    // About swap fees on joins and exits:
+    // Any join or exit that is not perfectly balanced (e.g. all single token joins or exits) is mathematically
+    // equivalent to a perfectly balanced join or  exit followed by a series of swaps. Since these swaps would charge
+    // swap fees, it follows that (some) joins and exits should as well.
+    // On these operations, we split the token amounts in 'taxable' and 'non-taxable' portions, where the 'taxable' part
+    // is the one to which swap fees are applied.
+
     // Computes the invariant given the current balances, using the Newton-Raphson approximation.
     // The amplification parameter equals: A n^(n-1)
     function _calculateInvariant(
@@ -57,7 +64,7 @@ library StableMath {
         // S = sum of balances                                             n^n P                     //
         // P = product of balances                                                                   //
         // n = number of tokens                                                                      //
-        *********x************************************************************************************/
+        **********************************************************************************************/
 
         // We support rounding up or down.
 
@@ -206,7 +213,7 @@ library StableMath {
 
         // Calculate the weighted balance ratio without considering fees
         uint256[] memory balanceRatiosWithFee = new uint256[](amountsIn.length);
-        // The weighted sum of token balance ratios without fee
+        // The weighted sum of token balance ratios with fee
         uint256 invariantRatioWithFees = 0;
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 currentWeight = balances[i].divDown(sumBalances);
@@ -454,7 +461,7 @@ library StableMath {
 
         // Result is rounded down
         uint256 accumulatedTokenSwapFees = balances[tokenIndex] - finalBalanceFeeToken;
-        return accumulatedTokenSwapFees.mulDown(protocolSwapFeePercentage).divDown(FixedPoint.ONE);
+        return accumulatedTokenSwapFees.mulDown(protocolSwapFeePercentage);
     }
 
     // Private functions
@@ -480,7 +487,7 @@ library StableMath {
         sum = sum - balances[tokenIndex];
 
         uint256 inv2 = Math.mul(invariant, invariant);
-        // We remove the balance fromm c by multiplying it
+        // We remove the balance from c by multiplying it
         uint256 c = Math.mul(
             Math.mul(Math.divUp(inv2, Math.mul(ampTimesTotal, P_D)), _AMP_PRECISION),
             balances[tokenIndex]

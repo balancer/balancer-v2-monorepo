@@ -445,8 +445,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { scalingFactors[0] = _scalingFactor0; } else { return scalingFactors; }
-            if (totalTokens > 1) { scalingFactors[1] = _scalingFactor1; } else { return scalingFactors; }
+            scalingFactors[0] = _scalingFactor0;
+            scalingFactors[1] = _scalingFactor1;
             if (totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
             if (totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
         }
