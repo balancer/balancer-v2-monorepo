@@ -431,7 +431,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice Allows a user to unstake all their bpt to exit pools, transferring accrued rewards to the user 
+     * @notice Allows a user to unstake all their bpt to exit pools, transferring accrued rewards to the user
      * and the unstaked bpt to a callback contract
      * @param pools The pools to claim rewards for
      * @param callbackContract The contract where bpt will be transferred
