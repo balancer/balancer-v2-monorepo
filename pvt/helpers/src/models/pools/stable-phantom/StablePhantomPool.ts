@@ -160,6 +160,14 @@ export default class StablePhantomPool {
     return this.instance.updateTokenRateCache(token.address);
   }
 
+  async getCachedProtocolSwapFeePercentage(): Promise<BigNumber> {
+    return this.instance.getCachedProtocolSwapFeePercentage();
+  }
+
+  async updateCachedProtocolSwapFeePercentage(): Promise<ContractTransaction> {
+    return this.instance.updateCachedProtocolSwapFeePercentage();
+  }
+
   async setTokenRateCacheDuration(token: Token, duration: BigNumber, params?: TxParams): Promise<ContractTransaction> {
     const pool = params?.from ? this.instance.connect(params.from) : this.instance;
     return pool.setTokenRateCacheDuration(token.address, duration);

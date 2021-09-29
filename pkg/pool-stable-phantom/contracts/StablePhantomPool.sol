@@ -55,6 +55,14 @@ contract StablePhantomPool is StablePool {
     // supply, as it belongs to the protocol.
     uint256 private _dueProtocolFeeBptAmount;
 
+    // The Vault does not provide the protocol swap fee percentage in swap hooks (as swaps don't typically need this
+    // value), so we need to fetch it ourselves from the Vault's ProtocolFeeCollector. However, this value changes so
+    // rarely that it doesn't make sense to perform the required calls to get the current value in every single swap.
+    // Instead, we keep a local copy that can be permissionlessly updated by anyone with the real value.
+    uint256 private _cachedProtocolSwapFeePercentage;
+
+    event CachedProtocolSwapFeePercentageUpdated(uint256 protocolSwapFeePercentage);
+
     // Token rate caches are used to avoid querying the price rate for a token every time we need to work with it.
     // Data is stored with the following structure:
     //
@@ -123,6 +131,8 @@ contract StablePhantomPool is StablePool {
             // solhint-disable-previous-line no-empty-blocks
         }
         _bptIndex = bptIndex;
+
+        _updateCachedProtocolSwapFeePercentage(params.vault);
     }
 
     function getMinimumBpt() external pure returns (uint256) {
@@ -172,7 +182,7 @@ contract StablePhantomPool is StablePool {
     ) internal virtual override returns (uint256 amountOut) {
         _cacheTokenRatesIfNecessary();
 
-        uint256 protocolSwapFeePercentage = getVault().getProtocolFeesCollector().getSwapFeePercentage();
+        uint256 protocolSwapFeePercentage = _cachedProtocolSwapFeePercentage;
 
         // Compute virtual BPT supply and token balances (sans BPT).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
@@ -231,7 +241,7 @@ contract StablePhantomPool is StablePool {
     ) internal virtual override returns (uint256 amountIn) {
         _cacheTokenRatesIfNecessary();
 
-        uint256 protocolSwapFeePercentage = getVault().getProtocolFeesCollector().getSwapFeePercentage();
+        uint256 protocolSwapFeePercentage = _cachedProtocolSwapFeePercentage;
 
         // Compute virtual BPT supply and token balances (sans BPT).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
@@ -654,6 +664,21 @@ contract StablePhantomPool is StablePool {
                 _updateTokenRateCache(token, provider, duration);
             }
         }
+    }
+
+    function getCachedProtocolSwapFeePercentage() public view returns (uint256) {
+        return _cachedProtocolSwapFeePercentage;
+    }
+
+    function updateCachedProtocolSwapFeePercentage() external {
+        _updateCachedProtocolSwapFeePercentage(getVault());
+    }
+
+    function _updateCachedProtocolSwapFeePercentage(IVault vault) private {
+        uint256 newPercentage = vault.getProtocolFeesCollector().getSwapFeePercentage();
+        _cachedProtocolSwapFeePercentage = newPercentage;
+
+        emit CachedProtocolSwapFeePercentageUpdated(newPercentage);
     }
 
     /**
