@@ -112,12 +112,14 @@ library StableMath {
 
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the current balances.
     // The amplification parameter equals: A n^(n-1)
+    // The invariant should be rounded up.
     function _calcOutGivenIn(
         uint256 amplificationParameter,
         uint256[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
-        uint256 tokenAmountIn
+        uint256 tokenAmountIn,
+        uint256 invariant
     ) internal pure returns (uint256) {
         /**************************************************************************************************************
         // outGivenIn token x for y - polynomial equation to solve                                                   //
@@ -132,10 +134,6 @@ library StableMath {
         **************************************************************************************************************/
 
         // Amount out, so we round down overall.
-
-        // Given that we need to have a greater final balance out, the invariant needs to be rounded up
-        uint256 invariant = _calculateInvariant(amplificationParameter, balances, true);
-
         balances[tokenIndexIn] = balances[tokenIndexIn].add(tokenAmountIn);
 
         uint256 finalBalanceOut = _getTokenBalanceGivenInvariantAndAllOtherBalances(
@@ -155,12 +153,14 @@ library StableMath {
     // Computes how many tokens must be sent to a pool if `tokenAmountOut` are sent given the
     // current balances, using the Newton-Raphson approximation.
     // The amplification parameter equals: A n^(n-1)
+    // The invariant should be rounded up.
     function _calcInGivenOut(
         uint256 amplificationParameter,
         uint256[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
-        uint256 tokenAmountOut
+        uint256 tokenAmountOut,
+        uint256 invariant
     ) internal pure returns (uint256) {
         /**************************************************************************************************************
         // inGivenOut token x for y - polynomial equation to solve                                                   //
@@ -175,10 +175,6 @@ library StableMath {
         **************************************************************************************************************/
 
         // Amount in, so we round up overall.
-
-        // Given that we need to have a greater final balance in, the invariant needs to be rounded up
-        uint256 invariant = _calculateInvariant(amplificationParameter, balances, true);
-
         balances[tokenIndexOut] = balances[tokenIndexOut].sub(tokenAmountOut);
 
         uint256 finalBalanceIn = _getTokenBalanceGivenInvariantAndAllOtherBalances(
