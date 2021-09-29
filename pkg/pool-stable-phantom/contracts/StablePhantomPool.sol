@@ -322,19 +322,25 @@ contract StablePhantomPool is StablePool {
         // amout of BPT that would cause such an increase.
 
         if (protocolSwapFeePercentage > 0) {
-            uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances, true);
-            uint256 invariantRatio = postSwapInvariant.divUp(previousInvariant);
+            // We want to compute what BPT amount produces an equivalent growth in the invariant, where:
+            // invariant ratio = (bpt amount + supply) / supply
+            // With some manipulation, this becomes:
+            // (invariant ratio - 1) * supply = bpt amount
+            // However, a part of the invariant growth was due to non protocol swap fees (i.e. value accrued by the
+            // LPs), so we only mint a percentage of this BPT amount: that which corresponds to protocol fees.
+
+            // We round down, favoring LP fees.
+
+            uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances, false);
+            uint256 invariantRatio = postSwapInvariant.divDown(previousInvariant);
 
             if (invariantRatio > FixedPoint.ONE) {
                 // This condition should always be met outside of rounding errors (for non-zero swap fees).
 
-                uint256 invariantRatioDueToProtocolFees = protocolSwapFeePercentage.mulDown(
-                    invariantRatio.sub(FixedPoint.ONE)
+                uint256 protocolFeeAmount = protocolSwapFeePercentage.mulDown(
+                    invariantRatio.sub(FixedPoint.ONE).mulDown(virtualSupply)
                 );
 
-                uint256 protocolFeeAmount = invariantRatioDueToProtocolFees.mulDown(virtualSupply).divDown(
-                    invariantRatioDueToProtocolFees.complement()
-                );
                 _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeeAmount);
             }
         }

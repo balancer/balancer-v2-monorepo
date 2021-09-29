@@ -812,15 +812,20 @@ describe('StablePhantomPool', () => {
       describe('collection', () => {
         const amount = fp(10);
 
-        sharedBeforeEach('deploy pool', async () => {
-          const sender = (await ethers.getSigners())[0];
+        sharedBeforeEach('accrue fees', async () => {
           const token = tokens.first;
 
-          const bptAmount = await pool.swapGivenIn({ in: token, out: pool.bpt, amount, recipient: sender.address });
-          await pool.swapGivenIn({ in: pool.bpt, out: token, amount: bptAmount, recipient });
+          const bptAmount = await pool.swapGivenIn({
+            in: token,
+            out: pool.bpt,
+            amount,
+            from: lp,
+            recipient: lp,
+          });
+          await pool.swapGivenIn({ in: pool.bpt, out: token, amount: bptAmount, from: lp, recipient: lp });
         });
 
-        it('after swaps', async () => {
+        it('transfers tokens to the fee collector', async () => {
           const dueFeeBefore = await pool.getDueProtocolFeeBptAmount();
           expect(dueFeeBefore).to.be.gt(fp(0));
 
