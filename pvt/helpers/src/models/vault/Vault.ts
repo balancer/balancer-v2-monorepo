@@ -78,7 +78,7 @@ export default class Vault {
   }
 
   async generalSwap(params: GeneralSwap): Promise<ContractTransaction> {
-    const sender = (params.from || (await this._defaultSender())).address;
+    const sender = params.from || (await this._defaultSender());
     const vault = params.from ? this.instance.connect(sender) : this.instance;
 
     return this.mocked
@@ -109,7 +109,7 @@ export default class Vault {
             userData: params.data,
           },
           {
-            sender: sender,
+            sender: sender.address,
             fromInternalBalance: false,
             recipient: TypesConverter.toAddress(params.to),
             toInternalBalance: false,

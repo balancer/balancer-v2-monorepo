@@ -38,7 +38,7 @@ export default {
     const {
       tokens,
       rateProviders,
-      priceRateCacheDurations,
+      tokenRateCacheDurations,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
@@ -48,7 +48,7 @@ export default {
 
     const owner = TypesConverter.toAddress(params.owner);
 
-    return deploy('v2-pool-stable-phantom/StablePhantomPool', {
+    return deploy('v2-pool-stable-phantom/MockStablePhantomPool', {
       args: [
         {
           vault: vault.address,
@@ -56,7 +56,7 @@ export default {
           symbol: SYMBOL,
           tokens: tokens.addresses,
           rateProviders: TypesConverter.toAddresses(rateProviders),
-          priceRateCacheDurations,
+          tokenRateCacheDurations,
           amplificationParameter,
           swapFeePercentage,
           pauseWindowDuration,

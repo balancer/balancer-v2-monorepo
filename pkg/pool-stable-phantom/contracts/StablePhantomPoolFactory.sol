@@ -36,7 +36,7 @@ contract StablePhantomPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseW
         IERC20[] memory tokens,
         uint256 amplificationParameter,
         IRateProvider[] memory rateProviders,
-        uint256[] memory priceRateCacheDurations,
+        uint256[] memory tokenRateCacheDurations,
         uint256 swapFeePercentage,
         address owner
     ) external returns (StablePhantomPool) {
@@ -51,7 +51,7 @@ contract StablePhantomPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseW
                             symbol: symbol,
                             tokens: tokens,
                             rateProviders: rateProviders,
-                            priceRateCacheDurations: priceRateCacheDurations,
+                            tokenRateCacheDurations: tokenRateCacheDurations,
                             amplificationParameter: amplificationParameter,
                             swapFeePercentage: swapFeePercentage,
                             pauseWindowDuration: pauseWindowDuration,

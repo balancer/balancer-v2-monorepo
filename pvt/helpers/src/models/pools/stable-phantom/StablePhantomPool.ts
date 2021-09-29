@@ -1,12 +1,12 @@
 import { ethers } from 'hardhat';
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber, Contract, ContractTransaction } from 'ethers';
 
 import { SwapKind } from '@balancer-labs/balancer-js';
-import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { StablePoolEncoder } from '@balancer-labs/balancer-js/src';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-import { Account } from '../../types/types';
+import { Account, TxParams } from '../../types/types';
 import { MAX_UINT112, ZERO_ADDRESS } from '../../../constants';
 import { GeneralSwap } from '../../vault/types';
 import { RawStablePhantomPoolDeployment, SwapPhantomPool } from './types';
@@ -128,6 +128,10 @@ export default class StablePhantomPool {
     return this.instance.getSwapFeePercentage();
   }
 
+  async getDueProtocolFeeBptAmount(): Promise<BigNumber> {
+    return this.instance.getDueProtocolFeeBptAmount();
+  }
+
   async getAmplificationParameter(): Promise<{ value: BigNumber; isUpdating: boolean; precision: BigNumber }> {
     return this.instance.getAmplificationParameter();
   }
@@ -140,12 +144,33 @@ export default class StablePhantomPool {
     return this.instance.getScalingFactors();
   }
 
+  async getScalingFactor(token: Token): Promise<BigNumber> {
+    return this.instance.getScalingFactor(token.address);
+  }
+
   async getRateProviders(): Promise<string> {
     return this.instance.getRateProviders();
   }
 
-  async getPriceRateCache(token: Account): Promise<{ expires: BigNumber; rate: BigNumber; duration: BigNumber }> {
-    return this.instance.getPriceRateCache(typeof token === 'string' ? token : token.address);
+  async getTokenRateCache(token: Account): Promise<{ expires: BigNumber; rate: BigNumber; duration: BigNumber }> {
+    return this.instance.getTokenRateCache(typeof token === 'string' ? token : token.address);
+  }
+
+  async updateTokenRateCache(token: Token): Promise<ContractTransaction> {
+    return this.instance.updateTokenRateCache(token.address);
+  }
+
+  async getCachedProtocolSwapFeePercentage(): Promise<BigNumber> {
+    return this.instance.getCachedProtocolSwapFeePercentage();
+  }
+
+  async updateCachedProtocolSwapFeePercentage(): Promise<ContractTransaction> {
+    return this.instance.updateCachedProtocolSwapFeePercentage();
+  }
+
+  async setTokenRateCacheDuration(token: Token, duration: BigNumber, params?: TxParams): Promise<ContractTransaction> {
+    const pool = params?.from ? this.instance.connect(params.from) : this.instance;
+    return pool.setTokenRateCacheDuration(token.address, duration);
   }
 
   async pause(): Promise<void> {
@@ -236,6 +261,29 @@ export default class StablePhantomPool {
     return expectEvent.inReceipt(await tx.wait(), 'Swap').args;
   }
 
+  async collectProtocolFees(from: SignerWithAddress): Promise<JoinResult> {
+    const params: JoinExitStablePool = this._buildCollectProtocolFeeParams(from);
+
+    const { tokens: allTokens } = await this.getTokens();
+    const currentBalances = await this.getBalances();
+
+    const tx = this.vault.joinPool({
+      poolAddress: this.address,
+      poolId: this.poolId,
+      recipient: params.from?.address,
+      currentBalances,
+      tokens: allTokens,
+      lastChangeBlock: 0,
+      protocolFeePercentage: 0,
+      data: params.data ?? '0x',
+      from: params.from,
+    });
+
+    const receipt = await (await tx).wait();
+    const { deltas, protocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFeeAmounts };
+  }
+
   async init(initParams: InitStablePool): Promise<JoinResult> {
     const from = initParams.from || (await ethers.getSigners())[0];
     const initialBalances = initParams.initialBalances;
@@ -298,6 +346,15 @@ export default class StablePhantomPool {
       recipient: params.recipient,
       protocolFeePercentage: params.protocolFeePercentage,
       data: StablePoolEncoder.joinInit(amountsIn),
+    };
+  }
+
+  private _buildCollectProtocolFeeParams(from: SignerWithAddress): JoinExitStablePool {
+    return {
+      from,
+      recipient: from,
+      protocolFeePercentage: fp(0),
+      data: StablePoolEncoder.joinCollectProtocolFees(),
     };
   }
 

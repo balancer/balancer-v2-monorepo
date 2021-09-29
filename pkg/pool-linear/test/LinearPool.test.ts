@@ -557,7 +557,7 @@ describe('LinearPool', function () {
         });
       };
 
-      context('when it is requested by the admin', () => {
+      context('when it is requested by the owner', () => {
         context('before the cache expires', () => {
           sharedBeforeEach('advance time', async () => {
             await advanceTime(wrappedTokenRateCacheDuration / 2);
