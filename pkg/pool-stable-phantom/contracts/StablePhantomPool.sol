@@ -205,26 +205,33 @@ contract StablePhantomPool is StablePool {
             // the equivalent BPT amount that accounts for that growth and finally extract the percentage that
             // corresponds to protocol fees.
 
-            uint256 newIndexIn = _skipBptIndex(indexIn);
-            uint256 newIndexOut = _skipBptIndex(indexOut);
+            // Since the original StablePool._onSwapGivenIn implementation already computes the invariant, we fully
+            // replace it and reimplement it here to take advtange of that.
 
-            // Note however that we can skip all of this if there are no protocol fees to be paid!
-            if (protocolSwapFeePercentage == 0) {
-                amountOut = super._onSwapGivenIn(request, balances, _skipBptIndex(indexIn), _skipBptIndex(indexOut));
-            } else {
-                (uint256 amp, ) = _getAmplificationParameter();
+            (uint256 currentAmp, ) = _getAmplificationParameter();
+            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, true);
 
-                uint256 previousInvariant = StableMath._calculateInvariant(amp, balances, true);
+            amountOut = StableMath._calcOutGivenIn(
+                currentAmp,
+                balances,
+                _skipBptIndex(indexIn),
+                _skipBptIndex(indexOut),
+                request.amount,
+                invariant
+            );
 
-                amountOut = super._onSwapGivenIn(request, balances, _skipBptIndex(indexIn), _skipBptIndex(indexOut));
+            if (protocolSwapFeePercentage > 0) {
+                // We could've stored these indices in stack variables, but that causes stack-too-deep issues.
+                uint256 newIndexIn = _skipBptIndex(indexIn);
+                uint256 newIndexOut = _skipBptIndex(indexOut);
 
                 uint256 amountInWithFee = _addSwapFeeAmount(request.amount);
                 balances[newIndexIn] = balances[newIndexIn].add(amountInWithFee);
                 balances[newIndexOut] = balances[newIndexOut].sub(amountOut);
 
                 _trackDueProtocolFeeByInvariantIncrement(
-                    previousInvariant,
-                    amp,
+                    invariant,
+                    currentAmp,
                     balances,
                     virtualSupply,
                     protocolSwapFeePercentage
@@ -264,26 +271,33 @@ contract StablePhantomPool is StablePool {
             // the equivalent BPT amount that accounts for that growth and finally extract the percentage that
             // corresponds to protocol fees.
 
-            uint256 newIndexIn = _skipBptIndex(indexIn);
-            uint256 newIndexOut = _skipBptIndex(indexOut);
+            // Since the original StablePool._onSwapGivenOut implementation already computes the invariant, we fully
+            // replace it and reimplement it here to take advtange of that.
 
-            // Note however that we can skip all of this if there are no protocol fees to be paid!
-            if (protocolSwapFeePercentage == 0) {
-                amountIn = super._onSwapGivenOut(request, balances, newIndexIn, newIndexOut);
-            } else {
-                (uint256 amp, ) = _getAmplificationParameter();
+            (uint256 currentAmp, ) = _getAmplificationParameter();
+            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, true);
 
-                uint256 previousInvariant = StableMath._calculateInvariant(amp, balances, true);
+            amountIn = StableMath._calcInGivenOut(
+                currentAmp,
+                balances,
+                _skipBptIndex(indexIn),
+                _skipBptIndex(indexOut),
+                request.amount,
+                invariant
+            );
 
-                amountIn = super._onSwapGivenOut(request, balances, newIndexIn, newIndexOut);
+            if (protocolSwapFeePercentage > 0) {
+                // We could've stored these indices in stack variables, but that causes stack-too-deep issues.
+                uint256 newIndexIn = _skipBptIndex(indexIn);
+                uint256 newIndexOut = _skipBptIndex(indexOut);
 
                 uint256 amountInWithFee = _addSwapFeeAmount(amountIn);
                 balances[newIndexIn] = balances[newIndexIn].add(amountInWithFee);
                 balances[newIndexOut] = balances[newIndexOut].sub(request.amount);
 
                 _trackDueProtocolFeeByInvariantIncrement(
-                    previousInvariant,
-                    amp,
+                    invariant,
+                    currentAmp,
                     balances,
                     virtualSupply,
                     protocolSwapFeePercentage

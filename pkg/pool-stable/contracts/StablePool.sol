@@ -144,7 +144,17 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
         uint256 indexOut
     ) internal virtual override whenNotPaused returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
-        uint256 amountOut = StableMath._calcOutGivenIn(currentAmp, balances, indexIn, indexOut, swapRequest.amount);
+
+        uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, true);
+        uint256 amountOut = StableMath._calcOutGivenIn(
+            currentAmp,
+            balances,
+            indexIn,
+            indexOut,
+            swapRequest.amount,
+            invariant
+        );
+
         return amountOut;
     }
 
@@ -155,7 +165,17 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
         uint256 indexOut
     ) internal virtual override whenNotPaused returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
-        uint256 amountIn = StableMath._calcInGivenOut(currentAmp, balances, indexIn, indexOut, swapRequest.amount);
+
+        uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, true);
+        uint256 amountIn = StableMath._calcInGivenOut(
+            currentAmp,
+            balances,
+            indexIn,
+            indexOut,
+            swapRequest.amount,
+            invariant
+        );
+
         return amountIn;
     }
 

@@ -32,7 +32,15 @@ contract MockStableMath {
         uint256 tokenIndexOut,
         uint256 tokenAmountIn
     ) external pure returns (uint256) {
-        return StableMath._calcOutGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountIn);
+        return
+            StableMath._calcOutGivenIn(
+                amp,
+                balances,
+                tokenIndexIn,
+                tokenIndexOut,
+                tokenAmountIn,
+                StableMath._calculateInvariant(amp, balances, true)
+            );
     }
 
     function inGivenOut(
@@ -42,7 +50,15 @@ contract MockStableMath {
         uint256 tokenIndexOut,
         uint256 tokenAmountOut
     ) external pure returns (uint256) {
-        return StableMath._calcInGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
+        return
+            StableMath._calcInGivenOut(
+                amp,
+                balances,
+                tokenIndexIn,
+                tokenIndexOut,
+                tokenAmountOut,
+                StableMath._calculateInvariant(amp, balances, true)
+            );
     }
 
     function exactTokensInForBPTOut(
