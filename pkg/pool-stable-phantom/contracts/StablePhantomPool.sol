@@ -172,6 +172,8 @@ contract StablePhantomPool is StablePool {
     ) internal virtual override returns (uint256 amountOut) {
         _cacheTokenRatesIfNecessary();
 
+        uint256 protocolSwapFeePercentage = getVault().getProtocolFeesCollector().getSwapFeePercentage();
+
         // Compute virtual BPT supply and token balances (sans BPT).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
 
@@ -179,29 +181,45 @@ contract StablePhantomPool is StablePool {
             amountOut = _onSwapTokenGivenBptIn(request.amount, _skipBptIndex(indexOut), virtualSupply, balances);
 
             // For given in swaps, request.amount holds the amount in.
-            _trackDueProtocolFeeByBpt(request.amount);
+            if (protocolSwapFeePercentage > 0) {
+                _trackDueProtocolFeeByBpt(request.amount, protocolSwapFeePercentage);
+            }
         } else if (request.tokenOut == IERC20(this)) {
             amountOut = _onSwapBptGivenTokenIn(request.amount, _skipBptIndex(indexIn), virtualSupply, balances);
 
-            _trackDueProtocolFeeByBpt(amountOut);
+            if (protocolSwapFeePercentage > 0) {
+                _trackDueProtocolFeeByBpt(amountOut, protocolSwapFeePercentage);
+            }
         } else {
             // To compute accrued protocol fees in BPT, we measure the invariant before and after the swap, then compute
             // the equivalent BPT amount that accounts for that growth and finally extract the percentage that
             // corresponds to protocol fees.
 
-            (uint256 amp, ) = _getAmplificationParameter();
-
-            uint256 previousInvariant = StableMath._calculateInvariant(amp, balances, true);
-
             uint256 newIndexIn = _skipBptIndex(indexIn);
             uint256 newIndexOut = _skipBptIndex(indexOut);
-            amountOut = super._onSwapGivenIn(request, balances, _skipBptIndex(indexIn), _skipBptIndex(indexOut));
 
-            uint256 amountInWithFee = _addSwapFeeAmount(request.amount);
-            balances[newIndexIn] = balances[newIndexIn].add(amountInWithFee);
-            balances[newIndexOut] = balances[newIndexOut].sub(amountOut);
+            // Note however that we can skip all of this if there are no protocol fees to be paid!
+            if (protocolSwapFeePercentage == 0) {
+                amountOut = super._onSwapGivenIn(request, balances, _skipBptIndex(indexIn), _skipBptIndex(indexOut));
+            } else {
+                (uint256 amp, ) = _getAmplificationParameter();
 
-            _trackDueProtocolFeeByInvariantIncrement(previousInvariant, amp, balances, virtualSupply);
+                uint256 previousInvariant = StableMath._calculateInvariant(amp, balances, true);
+
+                amountOut = super._onSwapGivenIn(request, balances, _skipBptIndex(indexIn), _skipBptIndex(indexOut));
+
+                uint256 amountInWithFee = _addSwapFeeAmount(request.amount);
+                balances[newIndexIn] = balances[newIndexIn].add(amountInWithFee);
+                balances[newIndexOut] = balances[newIndexOut].sub(amountOut);
+
+                _trackDueProtocolFeeByInvariantIncrement(
+                    previousInvariant,
+                    amp,
+                    balances,
+                    virtualSupply,
+                    protocolSwapFeePercentage
+                );
+            }
         }
     }
 
@@ -213,36 +231,54 @@ contract StablePhantomPool is StablePool {
     ) internal virtual override returns (uint256 amountIn) {
         _cacheTokenRatesIfNecessary();
 
+        uint256 protocolSwapFeePercentage = getVault().getProtocolFeesCollector().getSwapFeePercentage();
+
         // Compute virtual BPT supply and token balances (sans BPT).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
 
         if (request.tokenIn == IERC20(this)) {
             amountIn = _onSwapBptGivenTokenOut(request.amount, _skipBptIndex(indexOut), virtualSupply, balances);
 
-            _trackDueProtocolFeeByBpt(amountIn);
+            if (protocolSwapFeePercentage > 0) {
+                _trackDueProtocolFeeByBpt(amountIn, protocolSwapFeePercentage);
+            }
         } else if (request.tokenOut == IERC20(this)) {
             amountIn = _onSwapTokenGivenBptOut(request.amount, _skipBptIndex(indexIn), virtualSupply, balances);
 
             // For given out swaps, request.amount holds the amount out.
-            _trackDueProtocolFeeByBpt(request.amount);
+            if (protocolSwapFeePercentage > 0) {
+                _trackDueProtocolFeeByBpt(request.amount, protocolSwapFeePercentage);
+            }
         } else {
             // To compute accrued protocol fees in BPT, we measure the invariant before and after the swap, then compute
             // the equivalent BPT amount that accounts for that growth and finally extract the percentage that
             // corresponds to protocol fees.
 
-            (uint256 amp, ) = _getAmplificationParameter();
-
-            uint256 previousInvariant = StableMath._calculateInvariant(amp, balances, true);
-
             uint256 newIndexIn = _skipBptIndex(indexIn);
             uint256 newIndexOut = _skipBptIndex(indexOut);
-            amountIn = super._onSwapGivenOut(request, balances, newIndexIn, newIndexOut);
 
-            uint256 amountInWithFee = _addSwapFeeAmount(amountIn);
-            balances[newIndexIn] = balances[newIndexIn].add(amountInWithFee);
-            balances[newIndexOut] = balances[newIndexOut].sub(request.amount);
+            // Note however that we can skip all of this if there are no protocol fees to be paid!
+            if (protocolSwapFeePercentage == 0) {
+                amountIn = super._onSwapGivenOut(request, balances, newIndexIn, newIndexOut);
+            } else {
+                (uint256 amp, ) = _getAmplificationParameter();
 
-            _trackDueProtocolFeeByInvariantIncrement(previousInvariant, amp, balances, virtualSupply);
+                uint256 previousInvariant = StableMath._calculateInvariant(amp, balances, true);
+
+                amountIn = super._onSwapGivenOut(request, balances, newIndexIn, newIndexOut);
+
+                uint256 amountInWithFee = _addSwapFeeAmount(amountIn);
+                balances[newIndexIn] = balances[newIndexIn].add(amountInWithFee);
+                balances[newIndexOut] = balances[newIndexOut].sub(request.amount);
+
+                _trackDueProtocolFeeByInvariantIncrement(
+                    previousInvariant,
+                    amp,
+                    balances,
+                    virtualSupply,
+                    protocolSwapFeePercentage
+                );
+            }
         }
     }
 
@@ -312,37 +348,34 @@ contract StablePhantomPool is StablePool {
         uint256 previousInvariant,
         uint256 amp,
         uint256[] memory postSwapBalances,
-        uint256 virtualSupply
+        uint256 virtualSupply,
+        uint256 protocolSwapFeePercentage
     ) private {
-        IProtocolFeesCollector collector = getVault().getProtocolFeesCollector();
-        uint256 protocolSwapFeePercentage = collector.getSwapFeePercentage();
-
         // To convert the protocol swap fees to a BPT amount, we compute the invariant growth (which is due exclusively
         // to swap fees), extract the portion that corresponds to protocol swap fees, and then compute the equivalent
         // amout of BPT that would cause such an increase.
+        //
+        // Invariant growth is related to new BPT and supply by:
+        // invariant ratio = (bpt amount + supply) / supply
+        // With some manipulation, this becomes:
+        // (invariant ratio - 1) * supply = bpt amount
+        //
+        // However, a part of the invariant growth was due to non protocol swap fees (i.e. value accrued by the
+        // LPs), so we only mint a percentage of this BPT amount: that which corresponds to protocol fees.
 
-        if (protocolSwapFeePercentage > 0) {
-            // We want to compute what BPT amount produces an equivalent growth in the invariant, where:
-            // invariant ratio = (bpt amount + supply) / supply
-            // With some manipulation, this becomes:
-            // (invariant ratio - 1) * supply = bpt amount
-            // However, a part of the invariant growth was due to non protocol swap fees (i.e. value accrued by the
-            // LPs), so we only mint a percentage of this BPT amount: that which corresponds to protocol fees.
+        // We round down, favoring LP fees.
 
-            // We round down, favoring LP fees.
+        uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances, false);
+        uint256 invariantRatio = postSwapInvariant.divDown(previousInvariant);
 
-            uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances, false);
-            uint256 invariantRatio = postSwapInvariant.divDown(previousInvariant);
+        if (invariantRatio > FixedPoint.ONE) {
+            // This condition should always be met outside of rounding errors (for non-zero swap fees).
 
-            if (invariantRatio > FixedPoint.ONE) {
-                // This condition should always be met outside of rounding errors (for non-zero swap fees).
+            uint256 protocolFeeAmount = protocolSwapFeePercentage.mulDown(
+                invariantRatio.sub(FixedPoint.ONE).mulDown(virtualSupply)
+            );
 
-                uint256 protocolFeeAmount = protocolSwapFeePercentage.mulDown(
-                    invariantRatio.sub(FixedPoint.ONE).mulDown(virtualSupply)
-                );
-
-                _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeeAmount);
-            }
+            _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeeAmount);
         }
     }
 
@@ -350,10 +383,7 @@ contract StablePhantomPool is StablePool {
      * @dev Tracks newly charged protocol fees after a swap where `bptAmount` was either sent or received (i.e. a
      * single-token join or exit).
      */
-    function _trackDueProtocolFeeByBpt(uint256 bptAmount) private {
-        IProtocolFeesCollector collector = getVault().getProtocolFeesCollector();
-        uint256 protocolSwapFeePercentage = collector.getSwapFeePercentage();
-
+    function _trackDueProtocolFeeByBpt(uint256 bptAmount, uint256 protocolSwapFeePercentage) private {
         uint256 feeAmount = _addSwapFeeAmount(bptAmount).sub(bptAmount);
 
         uint256 protocolFeeAmount = feeAmount.mulDown(protocolSwapFeePercentage);
