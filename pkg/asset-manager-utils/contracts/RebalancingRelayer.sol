@@ -105,7 +105,7 @@ contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
                 } else {
                     // We want to ensure that the pool knows about all asset manager returns
                     // to avoid a new LP getting a share of returns earned before they joined.
-                    // We then wpdate the vault with the current managed balance manually.
+                    // We then update the vault with the current managed balance manually.
                     IAssetManager(assetManager).updateBalanceOfPool(poolId);
                 }
             }
