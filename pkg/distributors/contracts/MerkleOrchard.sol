@@ -93,7 +93,7 @@ contract MerkleOrchard is IDistributor, Ownable {
             claimed[claim.rewardToken][claim.rewarder][claim.distribution][liquidityProvider] = true;
 
             // Iterate through all the reward tokens we've seen so far.
-            for (uint256 j = 0; j < rewardTokens.length; i++) {
+            for (uint256 j = 0; j < rewardTokens.length; j++) {
                 // Check if we're already sending some of this token
                 // If so we just want to add to the existing transfer
                 if (rewardTokens[j] == claim.rewardToken) {
