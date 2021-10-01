@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.3.0 (2021-09-24)
+
+### New Deployments
+
+- Deployed `InvestmentPoolFactory` to Mainnet, Polygon and Arbitrum.
+- Deployed `MerkleRedeem` to Mainnet for VITA distribution.
+- Deployed `MerkleRedeem` to Arbitrum for BAL distribution.
+
+## 2.2.0 (2021-09-15)
+
+### New Features
+
+- Added creation code in the `bytecode` directory of each task.
+- Added `getBalancerContractBytecode` to get a contract's creation code, which makes deploying contracts easier to package users.
+
 ## 2.1.3 (2021-08-30)
 
 ### Fixes

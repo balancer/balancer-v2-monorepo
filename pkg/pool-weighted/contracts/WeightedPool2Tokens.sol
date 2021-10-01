@@ -39,7 +39,6 @@ contract WeightedPool2Tokens is
     BalancerPoolToken,
     TemporarilyPausable,
     PoolPriceOracle,
-    WeightedMath,
     WeightedOracleMath
 {
     using FixedPoint for uint256;
@@ -56,7 +55,6 @@ contract WeightedPool2Tokens is
     bytes32 internal _miscData;
     uint256 private _lastInvariant;
 
-    IVault private immutable _vault;
     bytes32 private immutable _poolId;
 
     IERC20 internal immutable _token0;
@@ -106,7 +104,7 @@ contract WeightedPool2Tokens is
         // any Pool created by the same factory), while still making action identifiers unique among different factories
         // if the selectors match, preventing accidental errors.
         Authentication(bytes32(uint256(msg.sender)))
-        BalancerPoolToken(params.name, params.symbol)
+        BalancerPoolToken(params.name, params.symbol, params.vault)
         BasePoolAuthorization(params.owner)
         TemporarilyPausable(params.pauseWindowDuration, params.bufferPeriodDuration)
     {
@@ -122,7 +120,6 @@ contract WeightedPool2Tokens is
         params.vault.registerTokens(poolId, tokens, new address[](2));
 
         // Set immutable state variables - these cannot be read from during construction
-        _vault = params.vault;
         _poolId = poolId;
 
         _token0 = params.token0;
@@ -132,8 +129,8 @@ contract WeightedPool2Tokens is
         _scalingFactor1 = _computeScalingFactor(params.token1);
 
         // Ensure each normalized weight is above them minimum and find the token index of the maximum weight
-        _require(params.normalizedWeight0 >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
-        _require(params.normalizedWeight1 >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
+        _require(params.normalizedWeight0 >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
+        _require(params.normalizedWeight1 >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
         // Ensure that the normalized weights sum to ONE
         uint256 normalizedSum = params.normalizedWeight0.add(params.normalizedWeight1);
@@ -145,10 +142,6 @@ contract WeightedPool2Tokens is
     }
 
     // Getters / Setters
-
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
 
     function getPoolId() public view override returns (bytes32) {
         return _poolId;
@@ -548,7 +541,7 @@ contract WeightedPool2Tokens is
 
         _upscaleArray(amountsIn);
 
-        uint256 bptAmountOut = WeightedMath._calcBptOutGivenExactTokensIn(
+        (uint256 bptAmountOut, ) = WeightedMath._calcBptOutGivenExactTokensIn(
             balances,
             normalizedWeights,
             amountsIn,
@@ -572,7 +565,7 @@ contract WeightedPool2Tokens is
         _require(tokenIndex < 2, Errors.OUT_OF_BOUNDS);
 
         uint256[] memory amountsIn = new uint256[](2);
-        amountsIn[tokenIndex] = WeightedMath._calcTokenInGivenExactBptOut(
+        (amountsIn[tokenIndex], ) = WeightedMath._calcTokenInGivenExactBptOut(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountOut,
@@ -723,9 +716,10 @@ contract WeightedPool2Tokens is
             return _exitExactBPTInForTokenOut(balances, normalizedWeights, userData);
         } else if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(balances, userData);
-        } else {
-            // ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT
+        } else if (kind == BaseWeightedPool.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(balances, normalizedWeights, userData);
+        } else {
+            _revert(Errors.UNHANDLED_EXIT_KIND);
         }
     }
 
@@ -745,7 +739,7 @@ contract WeightedPool2Tokens is
         uint256[] memory amountsOut = new uint256[](2);
 
         // And then assign the result to the selected token
-        amountsOut[tokenIndex] = WeightedMath._calcTokenOutGivenExactBptIn(
+        (amountsOut[tokenIndex], ) = WeightedMath._calcTokenOutGivenExactBptIn(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountIn,
@@ -784,7 +778,7 @@ contract WeightedPool2Tokens is
         InputHelpers.ensureInputLengthMatch(amountsOut.length, 2);
         _upscaleArray(amountsOut);
 
-        uint256 bptAmountIn = WeightedMath._calcBptInGivenExactTokensOut(
+        (uint256 bptAmountIn, ) = WeightedMath._calcBptInGivenExactTokensOut(
             balances,
             normalizedWeights,
             amountsOut,

@@ -133,7 +133,7 @@ contract WeightedPool is BaseWeightedPool {
         uint256 maxNormalizedWeight = 0;
         for (uint8 i = 0; i < numTokens; i++) {
             uint256 normalizedWeight = normalizedWeights[i];
-            _require(normalizedWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
+            _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             normalizedSum = normalizedSum.add(normalizedWeight);
             if (normalizedWeight > maxNormalizedWeight) {
@@ -244,8 +244,8 @@ contract WeightedPool is BaseWeightedPool {
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { normalizedWeights[0] = _normalizedWeight0; } else { return normalizedWeights; }
-            if (totalTokens > 1) { normalizedWeights[1] = _normalizedWeight1; } else { return normalizedWeights; }
+            normalizedWeights[0] = _normalizedWeight0;
+            normalizedWeights[1] = _normalizedWeight1;
             if (totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else { return normalizedWeights; }
             if (totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else { return normalizedWeights; }
             if (totalTokens > 4) { normalizedWeights[4] = _normalizedWeight4; } else { return normalizedWeights; }
@@ -324,8 +324,8 @@ contract WeightedPool is BaseWeightedPool {
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { scalingFactors[0] = _scalingFactor0; } else { return scalingFactors; }
-            if (totalTokens > 1) { scalingFactors[1] = _scalingFactor1; } else { return scalingFactors; }
+            scalingFactors[0] = _scalingFactor0;
+            scalingFactors[1] = _scalingFactor1;
             if (totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
             if (totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
             if (totalTokens > 4) { scalingFactors[4] = _scalingFactor4; } else { return scalingFactors; }
@@ -341,9 +341,9 @@ contract WeightedPool is BaseWeightedPool {
             if (totalTokens > 14) { scalingFactors[14] = _scalingFactor14; } else { return scalingFactors; }
             if (totalTokens > 15) { scalingFactors[15] = _scalingFactor15; } else { return scalingFactors; }
             if (totalTokens > 16) { scalingFactors[16] = _scalingFactor16; } else { return scalingFactors; }
-            if (totalTokens > 17) { scalingFactors[17] = _scalingFactor17; } else { return scalingFactors; }       
+            if (totalTokens > 17) { scalingFactors[17] = _scalingFactor17; } else { return scalingFactors; }
             if (totalTokens > 18) { scalingFactors[18] = _scalingFactor18; } else { return scalingFactors; }
-            if (totalTokens > 19) { scalingFactors[19] = _scalingFactor19; } else { return scalingFactors; }       
+            if (totalTokens > 19) { scalingFactors[19] = _scalingFactor19; } else { return scalingFactors; }
         }
 
         return scalingFactors;

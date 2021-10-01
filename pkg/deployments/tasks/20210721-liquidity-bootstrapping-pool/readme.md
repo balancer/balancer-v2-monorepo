@@ -1,6 +1,6 @@
 # 2021-07-21 - Liquidity Bootstrapping Pool
 
-Deployment of the `LiquidityBootstrappingPool`, for Liquidity Bootstrapping Pools of up to 4 tokens.
+Deployment of the `LiquidityBootstrappingPoolFactory`, for Liquidity Bootstrapping Pools of up to 4 tokens.
 
 ## Useful Files
 

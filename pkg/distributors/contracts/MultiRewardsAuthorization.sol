@@ -28,6 +28,8 @@ abstract contract MultiRewardsAuthorization is Authentication {
 
     mapping(IERC20 => mapping(IERC20 => mapping(address => bool))) private _allowlist;
 
+    event RewarderAllowlisted(address indexed pool, address indexed token, address indexed rewarder);
+
     constructor(IVault vault) {
         _vault = vault;
     }
@@ -70,6 +72,7 @@ abstract contract MultiRewardsAuthorization is Authentication {
         address rewarder
     ) internal {
         _allowlist[pool][rewardsToken][rewarder] = true;
+        emit RewarderAllowlisted(address(pool), address(rewardsToken), rewarder);
     }
 
     function _isAllowlistedRewarder(

@@ -7,7 +7,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 describe('LinearMath', function () {
   let math: Contract;
 
-  const EXPECTED_RELATIVE_ERROR = 1e-16;
+  const EXPECTED_RELATIVE_ERROR = 1e-14;
 
   const params = {
     fee: fp(0.01),
@@ -44,7 +44,7 @@ describe('LinearMath', function () {
     });
   });
 
-  describe('join', () => {
+  describe('swap bpt & main', () => {
     it('given main in', async () => {
       params.rate = fp(1);
       const mainIn = fp(100);
@@ -66,9 +66,7 @@ describe('LinearMath', function () {
       const mainIn = await math.calcMainInPerBptOut(bptOut, mainBalance, wrappedBalance, bptSupply, params);
       expect(mainBalance.add(mainIn)).to.be.equalWithError(fp(546), EXPECTED_RELATIVE_ERROR);
     });
-  });
 
-  describe('exit', () => {
     it('given BPT in', async () => {
       params.rate = fp(1.3);
       const bptIn = fp(100);
@@ -92,14 +90,14 @@ describe('LinearMath', function () {
     });
   });
 
-  describe('swap', () => {
+  describe('swap main & wrapped', () => {
     it('given main out', async () => {
       params.rate = fp(1);
       const mainOut = fp(10);
       const mainBalance = fp(51);
       const wrappedBalance = fp(0);
 
-      const wrappedIn = await math.calcWrappedInPerMainOut(mainOut, mainBalance, wrappedBalance, params);
+      const wrappedIn = await math.calcWrappedInPerMainOut(mainOut, mainBalance, params);
       expect(wrappedBalance.add(wrappedIn)).to.be.equalWithError(fp(10.10101010101010101), EXPECTED_RELATIVE_ERROR);
     });
 
@@ -109,7 +107,7 @@ describe('LinearMath', function () {
       const mainBalance = fp(41);
       const wrappedBalance = fp(10.10101010101010101);
 
-      const wrappedOut = await math.calcWrappedOutPerMainIn(mainIn, mainBalance, wrappedBalance, params);
+      const wrappedOut = await math.calcWrappedOutPerMainIn(mainIn, mainBalance, params);
       expect(wrappedBalance.sub(wrappedOut)).to.be.equalWithError(fp(5.050505050505050505), EXPECTED_RELATIVE_ERROR);
     });
 
@@ -129,6 +127,52 @@ describe('LinearMath', function () {
 
       const mainOut = await math.calcMainOutPerWrappedIn(wrappedIn, mainBalance, params);
       expect(mainBalance.sub(mainOut)).to.be.equalWithError(fp(931.6959803148096), EXPECTED_RELATIVE_ERROR);
+    });
+  });
+
+  describe('swap bpt & wrapped', () => {
+    it('given wrapped in', async () => {
+      params.rate = fp(1);
+      const wrappedIn = fp(50);
+      const wrappedBalance = fp(0);
+      const mainBalance = fp(101);
+      const bptSupply = fp(102.020202020202);
+
+      const bptOut = await math.calcBptOutPerWrappedIn(wrappedIn, mainBalance, wrappedBalance, bptSupply, params);
+      expect(bptSupply.add(bptOut)).to.be.equalWithError(fp(152.020202020202), EXPECTED_RELATIVE_ERROR);
+    });
+
+    it('given BPT out', async () => {
+      params.rate = fp(1.2);
+      const bptOut = fp(10);
+      const mainBalance = fp(101);
+      const wrappedBalance = fp(131);
+      const bptSupply = fp(242.692607692922);
+
+      const wrappedIn = await math.calcWrappedInPerBptOut(bptOut, mainBalance, wrappedBalance, bptSupply, params);
+      expect(wrappedBalance.add(wrappedIn)).to.be.equalWithError(fp(139.900841153356), EXPECTED_RELATIVE_ERROR);
+    });
+
+    it('given BPT in', async () => {
+      params.rate = fp(1);
+      const bptIn = fp(10);
+      const mainBalance = fp(101);
+      const wrappedBalance = fp(131);
+      const bptSupply = fp(242.692607692922);
+
+      const wrappedOut = await math.calcWrappedOutPerBptIn(bptIn, mainBalance, wrappedBalance, bptSupply, params);
+      expect(wrappedBalance.sub(wrappedOut)).to.be.equalWithError(fp(121.398545541402), EXPECTED_RELATIVE_ERROR);
+    });
+
+    it('given wrapped out', async () => {
+      params.rate = fp(1.3);
+      const wrappedOut = fp(10);
+      const wrappedBalance = fp(70);
+      const mainBalance = fp(101);
+      const bptSupply = fp(172.020202020202020202);
+
+      const bptIn = await math.calcBptInPerWrappedOut(wrappedOut, mainBalance, wrappedBalance, bptSupply, params);
+      expect(bptSupply.sub(bptIn)).to.be.equalWithError(fp(160.434561745986), EXPECTED_RELATIVE_ERROR);
     });
   });
 });

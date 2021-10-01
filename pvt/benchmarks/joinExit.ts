@@ -13,8 +13,8 @@ import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 const BPTAmount = bn(1e18);
 const numberJoinsExits = 3;
 const investmentPoolMin = 40;
-const investmentPoolMax = 80;
-const maxInvestmentTokens = 86;
+const investmentPoolMax = 50;
+const maxInvestmentTokens = 50;
 
 let vault: Contract;
 let tokens: TokenList;

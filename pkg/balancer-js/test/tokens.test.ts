@@ -24,20 +24,24 @@ describe('sortTokens', () => {
 
   context('when provided only tokens', () => {
     context('when provided only ERC20s', () => {
-      const UNSORTED_TOKENS_WITH_ETH = [ETH, ...UNSORTED_TOKENS];
+      it('sorts the tokens in ascending order', () => {
+        const [sortedTokens] = assetHelpers.sortTokens(UNSORTED_TOKENS);
+        expect(sortedTokens).to.be.deep.eq(SORTED_TOKENS);
 
-      const SORTED_TOKENS_WITH_ETH = [...SORTED_TOKENS, ETH];
-
-      it('sorts the tokens in ascending order', async () => {
-        const [sortedTokens] = assetHelpers.sortTokens(UNSORTED_TOKENS_WITH_ETH);
-        expect(sortedTokens).to.be.deep.eq(SORTED_TOKENS_WITH_ETH);
+        const UNSORTED_TOKENS_WITH_WETH = [WETH, ...UNSORTED_TOKENS];
+        const SORTED_TOKENS_WITH_WETH = [...SORTED_TOKENS, WETH];
+        const [sortedTokensWithWeth] = assetHelpers.sortTokens(UNSORTED_TOKENS_WITH_WETH);
+        expect(sortedTokensWithWeth).to.be.deep.eq(SORTED_TOKENS_WITH_WETH);
       });
     });
 
     context('when provided a mix of ERC20s and ETH', () => {
-      it('sorts ETH as if it were WETH', async () => {
-        const [sortedTokens] = assetHelpers.sortTokens(UNSORTED_TOKENS);
-        expect(sortedTokens).to.be.deep.eq(SORTED_TOKENS);
+      const UNSORTED_TOKENS_WITH_ETH = [ETH, ...UNSORTED_TOKENS];
+      const SORTED_TOKENS_WITH_ETH = [...SORTED_TOKENS, ETH];
+
+      it('sorts ETH as if it were WETH', () => {
+        const [sortedTokens] = assetHelpers.sortTokens(UNSORTED_TOKENS_WITH_ETH);
+        expect(sortedTokens).to.be.deep.eq(SORTED_TOKENS_WITH_ETH);
       });
     });
   });
@@ -46,12 +50,12 @@ describe('sortTokens', () => {
     const UNSORTED_NUMBERS = [1, 2, 3, 4];
     const UNSORTED_LETTERS = ['a', 'b', 'c', 'd'];
 
-    it('sorts the tokens in ascending order', async () => {
+    it('sorts the tokens in ascending order', () => {
       const [sortedTokens] = assetHelpers.sortTokens(UNSORTED_TOKENS, UNSORTED_NUMBERS, UNSORTED_LETTERS);
       expect(sortedTokens).to.be.deep.eq(SORTED_TOKENS);
     });
 
-    it('maintains relative ordering with tokens array', async () => {
+    it('maintains relative ordering with tokens array', () => {
       const [sortedTokens, sortedNumbers, sortedLetters] = assetHelpers.sortTokens(
         UNSORTED_TOKENS,
         UNSORTED_NUMBERS,

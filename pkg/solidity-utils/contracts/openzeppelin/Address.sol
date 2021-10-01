@@ -88,8 +88,8 @@ library Address {
     }
 
     /**
-     * @dev Tool to verifies that a low level call was successful, and revert if it wasn't, either by bubbling the
-     * revert reason using the provided one.
+     * @dev Tool to verify that a low level call was successful, and revert if it wasn't, either by bubbling up the
+     * revert reason or using the one provided.
      *
      * _Available since v4.3._
      */

@@ -46,7 +46,7 @@ export default class Verifier {
     task: Task,
     name: string,
     address: string,
-    constructorArguments: unknown,
+    constructorArguments: string | unknown[],
     libraries: Libraries = {},
     intent = 1
   ): Promise<string> {
@@ -69,12 +69,13 @@ export default class Verifier {
     task: Task,
     name: string,
     address: string,
-    args: unknown,
+    args: string | unknown[],
     libraries: Libraries = {}
   ): Promise<EtherscanResponse> {
     const deployedBytecodeHex = await retrieveContractBytecode(address, this.network.provider, this.network.name);
     const deployedBytecode = new Bytecode(deployedBytecodeHex);
-    const buildInfo = await task.buildInfo(name);
+    const buildInfos = await task.buildInfos();
+    const buildInfo = this.findBuildInfoWithContract(buildInfos, name);
     const sourceName = this.findContractSourceName(buildInfo, name);
     const contractInformation = await extractMatchingContractInformation(sourceName, name, buildInfo, deployedBytecode);
     if (!contractInformation) throw Error('Could not find a bytecode matching the requested contract');
@@ -82,13 +83,16 @@ export default class Verifier {
     const { libraryLinks } = await getLibraryLinks(contractInformation, libraries);
     contractInformation.libraryLinks = libraryLinks;
 
-    const deployArgumentsEncoded = await encodeArguments(
-      contractInformation.contract.abi,
-      contractInformation.sourceName,
-      contractInformation.contractName,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      args as any[]
-    );
+    const deployArgumentsEncoded =
+      typeof args == 'string'
+        ? args
+        : await encodeArguments(
+            contractInformation.contract.abi,
+            contractInformation.sourceName,
+            contractInformation.contractName,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            args as any[]
+          );
 
     const solcFullVersion = await getLongVersion(contractInformation.solcVersion);
     const etherscanAPIEndpoints = await getEtherscanEndpoints(this.network.provider, this.network.name);
@@ -171,6 +175,18 @@ export default class Verifier {
     const etherscanResponse = new EtherscanResponse(await response.json());
     if (!etherscanResponse.isOk()) throw Error(etherscanResponse.message);
     return etherscanResponse;
+  }
+
+  private findBuildInfoWithContract(buildInfos: BuildInfo[], contractName: string): BuildInfo {
+    const found = buildInfos.find((buildInfo) =>
+      this.getAllFullyQualifiedNames(buildInfo).some((name) => name.contractName === contractName)
+    );
+
+    if (found === undefined) {
+      throw Error(`Could not find a build info for contract ${contractName}`);
+    } else {
+      return found;
+    }
   }
 
   private findContractSourceName(buildInfo: BuildInfo, contractName: string): string {

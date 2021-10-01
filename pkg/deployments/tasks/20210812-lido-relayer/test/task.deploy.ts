@@ -10,8 +10,8 @@ describe('LidoRelayer', function () {
     const input = task.input();
     const output = task.output();
 
-    const relayer = await task.instanceAt('LidoRelayer', output.relayer);
+    const relayer = await task.instanceAt('LidoRelayer', output.LidoRelayer);
 
-    expect(await relayer.getVault()).to.be.equal(input.vault);
+    expect(await relayer.getVault()).to.be.equal(input.Vault);
   });
 });

@@ -17,13 +17,12 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-// This is a contract to emulate file-level functions. Convert to a library
-// after the migration to solc v0.7.1.
+// These functions start with an underscore, as if they were part of a contract and not a library. At some point this
+// should be fixed. Additionally, some variables have non mixed case names (e.g. P_D) that relate to the mathematical
+// derivations.
+// solhint-disable private-vars-leading-underscore, var-name-mixedcase
 
-// solhint-disable private-vars-leading-underscore
-// solhint-disable var-name-mixedcase
-
-contract StableMath {
+library StableMath {
     using FixedPoint for uint256;
 
     uint256 internal constant _MIN_AMP = 1;
@@ -44,6 +43,13 @@ contract StableMath {
     //
     // This means e.g. we can safely multiply a balance by the amplification parameter without worrying about overflow.
 
+    // About swap fees on joins and exits:
+    // Any join or exit that is not perfectly balanced (e.g. all single token joins or exits) is mathematically
+    // equivalent to a perfectly balanced join or  exit followed by a series of swaps. Since these swaps would charge
+    // swap fees, it follows that (some) joins and exits should as well.
+    // On these operations, we split the token amounts in 'taxable' and 'non-taxable' portions, where the 'taxable' part
+    // is the one to which swap fees are applied.
+
     // Computes the invariant given the current balances, using the Newton-Raphson approximation.
     // The amplification parameter equals: A n^(n-1)
     function _calculateInvariant(
@@ -58,7 +64,7 @@ contract StableMath {
         // S = sum of balances                                             n^n P                     //
         // P = product of balances                                                                   //
         // n = number of tokens                                                                      //
-        *********x************************************************************************************/
+        **********************************************************************************************/
 
         // We support rounding up or down.
 
@@ -101,17 +107,19 @@ contract StableMath {
             }
         }
 
-        _revert(Errors.STABLE_GET_BALANCE_DIDNT_CONVERGE);
+        _revert(Errors.STABLE_INVARIANT_DIDNT_CONVERGE);
     }
 
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the current balances.
     // The amplification parameter equals: A n^(n-1)
+    // The invariant should be rounded up.
     function _calcOutGivenIn(
         uint256 amplificationParameter,
         uint256[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
-        uint256 tokenAmountIn
+        uint256 tokenAmountIn,
+        uint256 invariant
     ) internal pure returns (uint256) {
         /**************************************************************************************************************
         // outGivenIn token x for y - polynomial equation to solve                                                   //
@@ -126,10 +134,6 @@ contract StableMath {
         **************************************************************************************************************/
 
         // Amount out, so we round down overall.
-
-        // Given that we need to have a greater final balance out, the invariant needs to be rounded up
-        uint256 invariant = _calculateInvariant(amplificationParameter, balances, true);
-
         balances[tokenIndexIn] = balances[tokenIndexIn].add(tokenAmountIn);
 
         uint256 finalBalanceOut = _getTokenBalanceGivenInvariantAndAllOtherBalances(
@@ -149,12 +153,14 @@ contract StableMath {
     // Computes how many tokens must be sent to a pool if `tokenAmountOut` are sent given the
     // current balances, using the Newton-Raphson approximation.
     // The amplification parameter equals: A n^(n-1)
+    // The invariant should be rounded up.
     function _calcInGivenOut(
         uint256 amplificationParameter,
         uint256[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
-        uint256 tokenAmountOut
+        uint256 tokenAmountOut,
+        uint256 invariant
     ) internal pure returns (uint256) {
         /**************************************************************************************************************
         // inGivenOut token x for y - polynomial equation to solve                                                   //
@@ -169,10 +175,6 @@ contract StableMath {
         **************************************************************************************************************/
 
         // Amount in, so we round up overall.
-
-        // Given that we need to have a greater final balance in, the invariant needs to be rounded up
-        uint256 invariant = _calculateInvariant(amplificationParameter, balances, true);
-
         balances[tokenIndexOut] = balances[tokenIndexOut].sub(tokenAmountOut);
 
         uint256 finalBalanceIn = _getTokenBalanceGivenInvariantAndAllOtherBalances(
@@ -207,7 +209,7 @@ contract StableMath {
 
         // Calculate the weighted balance ratio without considering fees
         uint256[] memory balanceRatiosWithFee = new uint256[](amountsIn.length);
-        // The weighted sum of token balance ratios without fee
+        // The weighted sum of token balance ratios with fee
         uint256 invariantRatioWithFees = 0;
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 currentWeight = balances[i].divDown(sumBalances);
@@ -455,7 +457,7 @@ contract StableMath {
 
         // Result is rounded down
         uint256 accumulatedTokenSwapFees = balances[tokenIndex] - finalBalanceFeeToken;
-        return accumulatedTokenSwapFees.mulDown(protocolSwapFeePercentage).divDown(FixedPoint.ONE);
+        return accumulatedTokenSwapFees.mulDown(protocolSwapFeePercentage);
     }
 
     // Private functions
@@ -481,7 +483,7 @@ contract StableMath {
         sum = sum - balances[tokenIndex];
 
         uint256 inv2 = Math.mul(invariant, invariant);
-        // We remove the balance fromm c by multiplying it
+        // We remove the balance from c by multiplying it
         uint256 c = Math.mul(
             Math.mul(Math.divUp(inv2, Math.mul(ampTimesTotal, P_D)), _AMP_PRECISION),
             balances[tokenIndex]

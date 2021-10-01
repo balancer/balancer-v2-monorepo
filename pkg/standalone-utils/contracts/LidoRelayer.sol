@@ -20,7 +20,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
 
 import "./relayer/RelayerAssetHelpers.sol";
 import "./interfaces/IwstETH.sol";

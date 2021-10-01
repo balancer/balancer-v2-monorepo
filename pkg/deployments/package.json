@@ -1,6 +1,6 @@
 {
   "name": "@balancer-labs/v2-deployments",
-  "version": "2.1.3",
+  "version": "2.3.0",
   "description": "Addresses and ABIs of all Balancer V2 deployed contracts",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/deployments#readme",
@@ -30,7 +30,7 @@
   "devDependencies": {
     "@balancer-labs/balancer-js": "workspace:*",
     "@nomiclabs/hardhat-ethers": "^2.0.1",
-    "@nomiclabs/hardhat-etherscan": "^2.1.3",
+    "@nomiclabs/hardhat-etherscan": "latest",
     "@types/node": "^14.6.0",
     "@typescript-eslint/eslint-plugin": "^4.1.1",
     "@typescript-eslint/parser": "^4.1.1",
