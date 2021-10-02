@@ -26,7 +26,7 @@ import "./interfaces/IDistributorCallback.sol";
 
 pragma solidity ^0.7.0;
 
-contract MerkleOrchard is IDistributor, Ownable {
+contract MerkleOrchard is IDistributor {
     using SafeERC20 for IERC20;
 
     // Recorded distributions
