@@ -14,7 +14,6 @@
 
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/MerkleProof.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
@@ -27,7 +26,7 @@ import "./interfaces/IDistributorCallback.sol";
 
 pragma solidity ^0.7.0;
 
-contract MerkleOrchard is IDistributor, Ownable {
+contract MerkleOrchard is IDistributor {
     using SafeERC20 for IERC20;
 
     // Recorded distributions
@@ -218,7 +217,7 @@ contract MerkleOrchard is IDistributor, Ownable {
 
     /**
      * @notice
-     * Allows the owner to add funds to the contract as a merkle tree, These tokens will
+     * Allows a rewarder to add funds to the contract as a merkle tree, These tokens will
      * be withdrawn from the sender
      * These will be pulled from the user
      */
