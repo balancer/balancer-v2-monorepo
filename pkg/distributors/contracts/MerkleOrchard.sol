@@ -52,7 +52,7 @@ contract MerkleOrchard is IDistributor, Ownable {
         uint256 distribution;
         uint256 balance;
         address rewarder;
-        IERC20 rewardToken;
+        uint256 tokenIndex;
         bytes32[] merkleProof;
     }
 
@@ -60,24 +60,20 @@ contract MerkleOrchard is IDistributor, Ownable {
         address liquidityProvider,
         address recipient,
         Claim[] memory claims,
+        IERC20[] memory tokens,
         bool asInternalBalance
     ) internal {
-        // We want to keep track of the number of unique tokens so we can aggregate transfers
-        uint256 numRewardTokens;
-        IERC20[] memory rewardTokens = new IERC20[](claims.length);
-        uint256[] memory rewardAmounts = new uint256[](claims.length);
+        uint256[] memory amounts = new uint256[](tokens.length);
 
         Claim memory claim;
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
+            IERC20 token = tokens[claim.tokenIndex];
 
-            require(
-                !isClaimed(claim.rewardToken, claim.rewarder, claim.distribution, liquidityProvider),
-                "cannot claim twice"
-            );
+            require(!isClaimed(token, claim.rewarder, claim.distribution, liquidityProvider), "cannot claim twice");
             require(
                 verifyClaim(
-                    claim.rewardToken,
+                    token,
                     claim.rewarder,
                     liquidityProvider,
                     claim.distribution,
@@ -88,44 +84,27 @@ contract MerkleOrchard is IDistributor, Ownable {
             );
 
             require(
-                suppliedBalance[claim.rewardToken][claim.rewarder] >= claim.balance,
-                "rewarder hasn't provided sufficient rewardTokens for claim"
+                suppliedBalance[token][claim.rewarder] >= claim.balance,
+                "rewarder hasn't provided sufficient tokens for claim"
             );
 
-            claimed[claim.rewardToken][claim.rewarder][claim.distribution][liquidityProvider] = true;
+            claimed[token][claim.rewarder][claim.distribution][liquidityProvider] = true;
 
-            // Iterate through all the reward tokens we've seen so far.
-            for (uint256 j = 0; j < rewardTokens.length; j++) {
-                // Check if we're already sending some of this token
-                // If so we just want to add to the existing transfer
-                if (rewardTokens[j] == claim.rewardToken) {
-                    rewardAmounts[j] += claim.balance;
-                    break;
-                } else if (rewardTokens[j] == IERC20(0)) {
-                    // If it's the first time we've seen this token
-                    // record both its address and amount to transfer
-                    rewardTokens[j] = claim.rewardToken;
-                    rewardAmounts[j] = claim.balance;
-                    numRewardTokens += 1;
-                    break;
-                }
-            }
+            amounts[claim.tokenIndex] += claim.balance;
 
-            suppliedBalance[claim.rewardToken][claim.rewarder] =
-                suppliedBalance[claim.rewardToken][claim.rewarder] -
-                claim.balance;
-            emit RewardPaid(recipient, address(claim.rewardToken), claim.balance);
+            suppliedBalance[token][claim.rewarder] = suppliedBalance[token][claim.rewarder] - claim.balance;
+            emit RewardPaid(recipient, address(token), claim.balance);
         }
 
         IVault.UserBalanceOpKind kind = asInternalBalance
             ? IVault.UserBalanceOpKind.TRANSFER_INTERNAL
             : IVault.UserBalanceOpKind.WITHDRAW_INTERNAL;
-        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](numRewardTokens);
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](tokens.length);
 
-        for (uint256 i = 0; i < numRewardTokens; i++) {
+        for (uint256 i = 0; i < tokens.length; i++) {
             ops[i] = IVault.UserBalanceOp({
-                asset: IAsset(address(rewardTokens[i])),
-                amount: rewardAmounts[i],
+                asset: IAsset(address(tokens[i])),
+                amount: amounts[i],
                 sender: address(this),
                 recipient: payable(recipient),
                 kind: kind
@@ -137,19 +116,27 @@ contract MerkleOrchard is IDistributor, Ownable {
     /**
      * @notice Allows a user to claim multiple distributions of reward
      */
-    function claimDistributions(address liquidityProvider, Claim[] memory claims) external {
+    function claimDistributions(
+        address liquidityProvider,
+        Claim[] memory claims,
+        IERC20[] memory tokens
+    ) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
 
-        _processClaims(liquidityProvider, msg.sender, claims, false);
+        _processClaims(liquidityProvider, msg.sender, claims, tokens, false);
     }
 
     /**
      * @notice Allows a user to claim multiple distributions of reward to internal balance
      */
-    function claimDistributionsToInternalBalance(address liquidityProvider, Claim[] memory claims) external {
+    function claimDistributionsToInternalBalance(
+        address liquidityProvider,
+        Claim[] memory claims,
+        IERC20[] memory tokens
+    ) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
 
-        _processClaims(liquidityProvider, msg.sender, claims, true);
+        _processClaims(liquidityProvider, msg.sender, claims, tokens, true);
     }
 
     /**
@@ -159,10 +146,11 @@ contract MerkleOrchard is IDistributor, Ownable {
         address liquidityProvider,
         IDistributorCallback callbackContract,
         bytes calldata callbackData,
-        Claim[] memory claims
+        Claim[] memory claims,
+        IERC20[] memory tokens
     ) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
-        _processClaims(liquidityProvider, address(callbackContract), claims, true);
+        _processClaims(liquidityProvider, address(callbackContract), claims, tokens, true);
         callbackContract.distributorCallback(callbackData);
     }
 
