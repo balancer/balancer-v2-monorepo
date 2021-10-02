@@ -14,7 +14,6 @@
 
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/MerkleProof.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
@@ -27,8 +26,7 @@ import "./interfaces/IDistributorCallback.sol";
 
 pragma solidity ^0.7.0;
 
-contract MerkleOrchard is IDistributor {
-    using FixedPoint for uint256;
+contract MerkleOrchard is IDistributor, Ownable {
     using SafeERC20 for IERC20;
 
     // Recorded distributions
