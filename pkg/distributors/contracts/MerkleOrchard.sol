@@ -66,9 +66,10 @@ contract MerkleOrchard is IDistributor, Ownable {
         uint256[] memory amounts = new uint256[](tokens.length);
 
         Claim memory claim;
+        IERC20 token;
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
-            IERC20 token = tokens[claim.tokenIndex];
+            token = tokens[claim.tokenIndex];
 
             require(!isClaimed(token, claim.rewarder, claim.distribution, liquidityProvider), "cannot claim twice");
             require(
