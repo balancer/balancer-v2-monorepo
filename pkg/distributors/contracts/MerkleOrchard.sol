@@ -26,7 +26,7 @@ import "./interfaces/IDistributorCallback.sol";
 
 pragma solidity ^0.7.0;
 
-contract MerkleOrchard is IDistributor {
+contract MerkleOrchard {
     using SafeERC20 for IERC20;
 
     // Recorded distributions
@@ -37,7 +37,8 @@ contract MerkleOrchard is IDistributor {
     // token > distributor > balance
     mapping(IERC20 => mapping(address => uint256)) public suppliedBalance;
 
-    event RewardAdded(address indexed token, uint256 amount);
+    event DistributionAdded(address indexed token, uint256 amount);
+    event DistributionPaid(address indexed user, address indexed token, uint256 amount);
 
     IVault public immutable vault;
 
@@ -91,7 +92,7 @@ contract MerkleOrchard is IDistributor {
             amounts[claim.tokenIndex] += claim.balance;
 
             suppliedBalance[token][claim.distributor] = suppliedBalance[token][claim.distributor] - claim.balance;
-            emit RewardPaid(recipient, address(token), claim.balance);
+            emit DistributionPaid(recipient, address(token), claim.balance);
         }
 
         IVault.UserBalanceOpKind kind = asInternalBalance
@@ -234,6 +235,6 @@ contract MerkleOrchard is IDistributor {
 
         suppliedBalance[token][msg.sender] = suppliedBalance[token][msg.sender] + amount;
         trees[token][msg.sender][distribution] = _merkleRoot;
-        emit RewardAdded(address(token), amount);
+        emit DistributionAdded(address(token), amount);
     }
 }

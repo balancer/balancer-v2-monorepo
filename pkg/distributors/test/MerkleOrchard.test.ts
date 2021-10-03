@@ -80,7 +80,7 @@ describe('MerkleOrchard', () => {
     expect(result).to.equal(true);
   });
 
-  it('emits RewardAdded when an allocation is stored', async () => {
+  it('emits DistributionAdded when an allocation is stored', async () => {
     const claimBalance = bn('9876');
 
     const elements = [encodeElement(lp1.address, claimBalance)];
@@ -91,7 +91,7 @@ describe('MerkleOrchard', () => {
       await merkleOrchard.connect(distributor).seedAllocations(token.address, distribution1, root, claimBalance)
     ).wait();
 
-    expectEvent.inReceipt(receipt, 'RewardAdded', {
+    expectEvent.inReceipt(receipt, 'DistributionAdded', {
       token: token.address,
       amount: claimBalance,
     });
@@ -171,14 +171,14 @@ describe('MerkleOrchard', () => {
       );
     });
 
-    it('emits RewardPaid when an allocation is claimed', async () => {
+    it('emits DistributionPaid when an allocation is claimed', async () => {
       const receipt = await (
         await merkleOrchard.connect(lp1).claimDistributions(lp1.address, claims, tokenAddresses)
       ).wait();
 
-      expectEvent.inReceipt(receipt, 'RewardPaid', {
+      expectEvent.inReceipt(receipt, 'DistributionPaid', {
         user: lp1.address,
-        rewardToken: token.address,
+        token: token.address,
         amount: claimableBalance,
       });
     });
@@ -367,7 +367,7 @@ describe('MerkleOrchard', () => {
       });
 
       it('allows a user to claim the reward to a callback contract', async () => {
-        const expectedReward = claimBalance1.add(claimBalance2);
+        const expectedClaim = claimBalance1.add(claimBalance2);
         const calldata = utils.defaultAbiCoder.encode([], []);
 
         await expectBalanceChange(
@@ -376,7 +376,7 @@ describe('MerkleOrchard', () => {
               .connect(lp1)
               .claimDistributionsWithCallback(lp1.address, callbackContract.address, calldata, claims, tokenAddresses),
           tokens,
-          [{ account: callbackContract.address, changes: { DAI: ['very-near', expectedReward] } }],
+          [{ account: callbackContract.address, changes: { DAI: ['very-near', expectedClaim] } }],
           vault
         );
       });
