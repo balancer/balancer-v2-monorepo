@@ -30,11 +30,11 @@ contract MerkleOrchard is IDistributor {
     using SafeERC20 for IERC20;
 
     // Recorded distributions
-    // rewardToken > rewarder > distribution > root
+    // token > rewarder > distribution > root
     mapping(IERC20 => mapping(address => mapping(uint256 => bytes32))) public trees;
-    // rewardToken > rewarder distribution > lp > root
+    // token > rewarder distribution > lp > root
     mapping(IERC20 => mapping(address => mapping(uint256 => mapping(address => bool)))) public claimed;
-    // rewardToken > rewarder > balance
+    // token > rewarder > balance
     mapping(IERC20 => mapping(address => uint256)) public suppliedBalance;
 
     event RewardAdded(address indexed token, uint256 amount);
@@ -153,17 +153,17 @@ contract MerkleOrchard is IDistributor {
     }
 
     function isClaimed(
-        IERC20 rewardToken,
+        IERC20 token,
         address rewarder,
         uint256 distribution,
         address liquidityProvider
     ) public view returns (bool) {
-        return claimed[rewardToken][rewarder][distribution][liquidityProvider];
+        return claimed[token][rewarder][distribution][liquidityProvider];
     }
 
     function claimStatus(
         address liquidityProvider,
-        IERC20 rewardToken,
+        IERC20 token,
         address rewarder,
         uint256 begin,
         uint256 end
@@ -172,13 +172,13 @@ contract MerkleOrchard is IDistributor {
         uint256 size = 1 + end - begin;
         bool[] memory arr = new bool[](size);
         for (uint256 i = 0; i < size; i++) {
-            arr[i] = isClaimed(rewardToken, rewarder, begin + i, liquidityProvider);
+            arr[i] = isClaimed(token, rewarder, begin + i, liquidityProvider);
         }
         return arr;
     }
 
     function merkleRoots(
-        IERC20 rewardToken,
+        IERC20 token,
         address rewarder,
         uint256 begin,
         uint256 end
@@ -187,13 +187,13 @@ contract MerkleOrchard is IDistributor {
         uint256 size = 1 + end - begin;
         bytes32[] memory arr = new bytes32[](size);
         for (uint256 i = 0; i < size; i++) {
-            arr[i] = trees[rewardToken][rewarder][begin + i];
+            arr[i] = trees[token][rewarder][begin + i];
         }
         return arr;
     }
 
     function verifyClaim(
-        IERC20 rewardToken,
+        IERC20 token,
         address rewarder,
         address liquidityProvider,
         uint256 distribution,
@@ -201,7 +201,7 @@ contract MerkleOrchard is IDistributor {
         bytes32[] memory merkleProof
     ) public view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
-        return MerkleProof.verify(merkleProof, trees[rewardToken][rewarder][distribution], leaf);
+        return MerkleProof.verify(merkleProof, trees[token][rewarder][distribution], leaf);
     }
 
     /**
@@ -211,19 +211,19 @@ contract MerkleOrchard is IDistributor {
      * These will be pulled from the user
      */
     function seedAllocations(
-        IERC20 rewardToken,
+        IERC20 token,
         uint256 distribution,
         bytes32 _merkleRoot,
         uint256 amount
     ) external {
-        require(trees[rewardToken][msg.sender][distribution] == bytes32(0), "cannot rewrite merkle root");
-        rewardToken.safeTransferFrom(msg.sender, address(this), amount);
+        require(trees[token][msg.sender][distribution] == bytes32(0), "cannot rewrite merkle root");
+        token.safeTransferFrom(msg.sender, address(this), amount);
 
-        rewardToken.approve(address(vault), type(uint256).max);
+        token.approve(address(vault), type(uint256).max);
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
 
         ops[0] = IVault.UserBalanceOp({
-            asset: IAsset(address(rewardToken)),
+            asset: IAsset(address(token)),
             amount: amount,
             sender: address(this),
             recipient: payable(address(this)),
@@ -232,8 +232,8 @@ contract MerkleOrchard is IDistributor {
 
         vault.manageUserBalance(ops);
 
-        suppliedBalance[rewardToken][msg.sender] = suppliedBalance[rewardToken][msg.sender] + amount;
-        trees[rewardToken][msg.sender][distribution] = _merkleRoot;
-        emit RewardAdded(address(rewardToken), amount);
+        suppliedBalance[token][msg.sender] = suppliedBalance[token][msg.sender] + amount;
+        trees[token][msg.sender][distribution] = _merkleRoot;
+        emit RewardAdded(address(token), amount);
     }
 }
