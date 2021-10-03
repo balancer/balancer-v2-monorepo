@@ -30,11 +30,11 @@ contract MerkleOrchard is IDistributor {
     using SafeERC20 for IERC20;
 
     // Recorded distributions
-    // token > rewarder > distribution > root
+    // token > distributor > distribution > root
     mapping(IERC20 => mapping(address => mapping(uint256 => bytes32))) public trees;
-    // token > rewarder distribution > lp > root
+    // token > distributor distribution > lp > root
     mapping(IERC20 => mapping(address => mapping(uint256 => mapping(address => bool)))) public claimed;
-    // token > rewarder > balance
+    // token > distributor > balance
     mapping(IERC20 => mapping(address => uint256)) public suppliedBalance;
 
     event RewardAdded(address indexed token, uint256 amount);
@@ -48,7 +48,7 @@ contract MerkleOrchard is IDistributor {
     struct Claim {
         uint256 distribution;
         uint256 balance;
-        address rewarder;
+        address distributor;
         uint256 tokenIndex;
         bytes32[] merkleProof;
     }
@@ -68,11 +68,11 @@ contract MerkleOrchard is IDistributor {
             claim = claims[i];
             token = tokens[claim.tokenIndex];
 
-            require(!isClaimed(token, claim.rewarder, claim.distribution, liquidityProvider), "cannot claim twice");
+            require(!isClaimed(token, claim.distributor, claim.distribution, liquidityProvider), "cannot claim twice");
             require(
                 verifyClaim(
                     token,
-                    claim.rewarder,
+                    claim.distributor,
                     liquidityProvider,
                     claim.distribution,
                     claim.balance,
@@ -82,15 +82,15 @@ contract MerkleOrchard is IDistributor {
             );
 
             require(
-                suppliedBalance[token][claim.rewarder] >= claim.balance,
-                "rewarder hasn't provided sufficient tokens for claim"
+                suppliedBalance[token][claim.distributor] >= claim.balance,
+                "distributor hasn't provided sufficient tokens for claim"
             );
 
-            claimed[token][claim.rewarder][claim.distribution][liquidityProvider] = true;
+            claimed[token][claim.distributor][claim.distribution][liquidityProvider] = true;
 
             amounts[claim.tokenIndex] += claim.balance;
 
-            suppliedBalance[token][claim.rewarder] = suppliedBalance[token][claim.rewarder] - claim.balance;
+            suppliedBalance[token][claim.distributor] = suppliedBalance[token][claim.distributor] - claim.balance;
             emit RewardPaid(recipient, address(token), claim.balance);
         }
 
@@ -112,7 +112,7 @@ contract MerkleOrchard is IDistributor {
     }
 
     /**
-     * @notice Allows a user to claim multiple distributions of reward
+     * @notice Allows a user to claim multiple distributions
      */
     function claimDistributions(
         address liquidityProvider,
@@ -125,7 +125,7 @@ contract MerkleOrchard is IDistributor {
     }
 
     /**
-     * @notice Allows a user to claim multiple distributions of reward to internal balance
+     * @notice Allows a user to claim multiple distributions to internal balance
      */
     function claimDistributionsToInternalBalance(
         address liquidityProvider,
@@ -138,7 +138,7 @@ contract MerkleOrchard is IDistributor {
     }
 
     /**
-     * @notice Allows a user to claim several distributions of rewards to a callback
+     * @notice Allows a user to claim several distributions to a callback
      */
     function claimDistributionsWithCallback(
         address liquidityProvider,
@@ -154,17 +154,17 @@ contract MerkleOrchard is IDistributor {
 
     function isClaimed(
         IERC20 token,
-        address rewarder,
+        address distributor,
         uint256 distribution,
         address liquidityProvider
     ) public view returns (bool) {
-        return claimed[token][rewarder][distribution][liquidityProvider];
+        return claimed[token][distributor][distribution][liquidityProvider];
     }
 
     function claimStatus(
         address liquidityProvider,
         IERC20 token,
-        address rewarder,
+        address distributor,
         uint256 begin,
         uint256 end
     ) external view returns (bool[] memory) {
@@ -172,14 +172,14 @@ contract MerkleOrchard is IDistributor {
         uint256 size = 1 + end - begin;
         bool[] memory arr = new bool[](size);
         for (uint256 i = 0; i < size; i++) {
-            arr[i] = isClaimed(token, rewarder, begin + i, liquidityProvider);
+            arr[i] = isClaimed(token, distributor, begin + i, liquidityProvider);
         }
         return arr;
     }
 
     function merkleRoots(
         IERC20 token,
-        address rewarder,
+        address distributor,
         uint256 begin,
         uint256 end
     ) external view returns (bytes32[] memory) {
@@ -187,21 +187,21 @@ contract MerkleOrchard is IDistributor {
         uint256 size = 1 + end - begin;
         bytes32[] memory arr = new bytes32[](size);
         for (uint256 i = 0; i < size; i++) {
-            arr[i] = trees[token][rewarder][begin + i];
+            arr[i] = trees[token][distributor][begin + i];
         }
         return arr;
     }
 
     function verifyClaim(
         IERC20 token,
-        address rewarder,
+        address distributor,
         address liquidityProvider,
         uint256 distribution,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) public view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
-        return MerkleProof.verify(merkleProof, trees[token][rewarder][distribution], leaf);
+        return MerkleProof.verify(merkleProof, trees[token][distributor][distribution], leaf);
     }
 
     /**
