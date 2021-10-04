@@ -50,9 +50,7 @@ async function claimDistributions(numberOfDistributions: number, useInternalBala
 
   await token.connect(trader).approve(merkleOrchard.address, amount.mul(numberOfDistributions));
   for (let distribution = 0; distribution < numberOfDistributions; ++distribution) {
-    await (
-      await merkleOrchard.connect(trader).seedAllocations(token.address, distribution, merkleLeaf, amount)
-    ).wait();
+    await (await merkleOrchard.connect(trader).seedAllocations(token.address, distribution, merkleLeaf, amount)).wait();
   }
 
   let receipt;
@@ -61,7 +59,9 @@ async function claimDistributions(numberOfDistributions: number, useInternalBala
       await merkleOrchard.connect(trader).claimDistributionsToInternalBalance(trader.address, claims, tokenAddresses)
     ).wait();
   } else {
-    receipt = await (await merkleOrchard.connect(trader).claimDistributions(trader.address, claims, tokenAddresses)).wait();
+    receipt = await (
+      await merkleOrchard.connect(trader).claimDistributions(trader.address, claims, tokenAddresses)
+    ).wait();
   }
 
   console.log(
