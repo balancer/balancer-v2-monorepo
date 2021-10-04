@@ -57,84 +57,63 @@ describe('MerkleOrchard', () => {
     await tokens.approve({ to: merkleOrchard.address, from: [distributor] });
   });
 
-  it('stores an allocation', async () => {
-    const claimBalance = bn('9876');
+  describe('seedAllocations', () => {
+    const claimBalance: BigNumberish = bn('9876');
+    const root = '0xba10000000000000000000000000000000000000000000000000000000000001';
+    const root2 = '0xba10000000000000000000000000000000000000000000000000000000000002';
 
-    const elements = [encodeElement(lp1.address, claimBalance)];
-    const merkleTree = new MerkleTree(elements);
-    const root = merkleTree.getHexRoot();
+    it('records the expected merkle tree root', async () => {
+      await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0);
+      await merkleOrchard.connect(distributor).seedAllocations(token.address, root2, claimBalance, 1);
 
-    await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0);
-
-    const proof = merkleTree.getHexProof(elements[0]);
-
-    const result = await merkleOrchard.verifyClaim(
-      token.address,
-      distributor.address,
-      lp1.address,
-      0,
-      claimBalance,
-      proof
-    );
-    expect(result).to.equal(true);
-  });
-
-  it('emits DistributionAdded when an allocation is stored', async () => {
-    const claimBalance = bn('9876');
-
-    const elements = [encodeElement(lp1.address, claimBalance)];
-    const merkleTree = new MerkleTree(elements);
-    const root = merkleTree.getHexRoot();
-
-    const receipt = await (
-      await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0)
-    ).wait();
-
-    expectEvent.inReceipt(receipt, 'DistributionAdded', {
-      token: token.address,
-      amount: claimBalance,
+      expect(await merkleOrchard.trees(token.address, distributor.address, 0)).to.equal(root);
+      expect(await merkleOrchard.trees(token.address, distributor.address, 1)).to.equal(root2);
     });
-  });
 
-  it('requisitions tokens when it stores a balance', async () => {
-    const claimBalance = bn('9876');
+    it('emits DistributionAdded', async () => {
+      const receipt = await (
+        await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0)
+      ).wait();
 
-    const elements = [encodeElement(lp1.address, claimBalance)];
-    const merkleTree = new MerkleTree(elements);
-    const root = merkleTree.getHexRoot();
+      expectEvent.inReceipt(receipt, 'DistributionAdded', {
+        token: token.address,
+        amount: claimBalance,
+      });
+    });
 
-    await expectBalanceChange(
-      () => merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0),
-      tokens,
-      [{ account: merkleOrchard, changes: { DAI: claimBalance } }],
-      vault
-    );
-  });
+    it("transfers the expected number of tokens to the MerkleOrchard's internal balance", async () => {
+      await expectBalanceChange(
+        () => merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0),
+        tokens,
+        [{ account: merkleOrchard, changes: { DAI: claimBalance } }],
+        vault
+      );
+    });
 
-  it('stores multiple allocations', async () => {
-    const claimBalance0 = bn('1000');
-    const claimBalance1 = bn('2000');
+    it("increments the distribution channel's nonce", async () => {
+      expect(await merkleOrchard.nextDistributionNonce(token.address, distributor.address)).to.be.eq(0);
+      expect(await merkleOrchard.nextDistributionNonce(token.address, lp1.address)).to.be.eq(0);
 
-    const elements = [encodeElement(lp1.address, claimBalance0), encodeElement(lp2.address, claimBalance1)];
-    const merkleTree = new MerkleTree(elements);
-    const root = merkleTree.getHexRoot();
+      await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0);
 
-    await merkleOrchard.connect(distributor).seedAllocations(token.address, root, bn('3000'), 0);
+      expect(await merkleOrchard.nextDistributionNonce(token.address, distributor.address)).to.be.eq(1);
+      expect(await merkleOrchard.nextDistributionNonce(token.address, lp1.address)).to.be.eq(0);
 
-    const proof0 = merkleTree.getHexProof(elements[0]);
-    let result = await merkleOrchard.verifyClaim(
-      token.address,
-      distributor.address,
-      lp1.address,
-      0,
-      claimBalance0,
-      proof0
-    );
-    expect(result).to.equal(true); //"account 0 should have an allocation";
+      await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 1);
 
-    const proof1 = merkleTree.getHexProof(elements[1]);
-    result = await merkleOrchard.verifyClaim(token.address, distributor.address, lp2.address, 0, claimBalance1, proof1);
-    expect(result).to.equal(true); // "account 1 should have an allocation";
+      expect(await merkleOrchard.nextDistributionNonce(token.address, distributor.address)).to.be.eq(2);
+      expect(await merkleOrchard.nextDistributionNonce(token.address, lp1.address)).to.be.eq(0);
+    });
+
+    context('when provided an invalid nonce', () => {
+      it('reverts', async () => {
+        await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0);
+        // Here's we're providing an old nonce (i.e. we've accidentally created the same distribution twice)
+        await expect(
+          merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0)
+        ).to.be.revertedWith('Invalid nonce');
+      });
+    });
   });
 
   describe('with an allocation', () => {
@@ -221,17 +200,6 @@ describe('MerkleOrchard', () => {
       const errorMsg = 'cannot claim twice';
       await expect(
         merkleOrchard.connect(lp1).claimDistributions(lp1.address, claims, tokenAddresses)
-      ).to.be.revertedWith(errorMsg);
-    });
-
-    it('reverts when an admin attempts to overwrite an allocationn', async () => {
-      const elements2 = [encodeElement(lp1.address, claimableBalance), encodeElement(lp2.address, claimableBalance)];
-      const merkleTree2 = new MerkleTree(elements2);
-      const root2 = merkleTree2.getHexRoot();
-
-      const errorMsg = 'cannot rewrite merkle root';
-      expect(
-        merkleOrchard.connect(admin).seedAllocations(token.address, 0, root2, claimableBalance.mul(2), 0)
       ).to.be.revertedWith(errorMsg);
     });
   });
