@@ -10,8 +10,8 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 interface Claim {
   distribution: BigNumber;
   balance: BigNumber;
-  rewarder: string;
-  rewardToken: string;
+  distributor: string;
+  tokenIndex: BigNumber;
   merkleProof: BytesLike[];
 }
 
@@ -35,32 +35,33 @@ async function claimDistributions(numberOfDistributions: number, useInternalBala
 
   const merkleOrchard = await deploy('v2-distributors/MerkleOrchard', { args: [vault.address] });
 
-  const rewardToken = Object.values(tokens)[0];
-  const rewardAmount = BigNumber.from(100);
-  const merkleLeaf = solidityKeccak256(['address', 'uint256'], [trader.address, rewardAmount]);
+  const token = Object.values(tokens)[0];
+  const tokenAddresses = [token.address];
+  const amount = BigNumber.from(100);
+  const merkleLeaf = solidityKeccak256(['address', 'uint256'], [trader.address, amount]);
 
   const claims: Claim[] = Array.from({ length: numberOfDistributions }, (_, distribution) => ({
     distribution: BigNumber.from(distribution),
-    balance: rewardAmount,
-    rewarder: trader.address,
-    rewardToken: rewardToken.address,
+    balance: amount,
+    distributor: trader.address,
+    tokenIndex: BigNumber.from(0),
     merkleProof: [],
   }));
 
-  await rewardToken.connect(trader).approve(merkleOrchard.address, rewardAmount.mul(numberOfDistributions));
+  await token.connect(trader).approve(merkleOrchard.address, amount.mul(numberOfDistributions));
   for (let distribution = 0; distribution < numberOfDistributions; ++distribution) {
     await (
-      await merkleOrchard.connect(trader).seedAllocations(rewardToken.address, distribution, merkleLeaf, rewardAmount)
+      await merkleOrchard.connect(trader).seedAllocations(token.address, distribution, merkleLeaf, amount)
     ).wait();
   }
 
   let receipt;
   if (useInternalBalance) {
     receipt = await (
-      await merkleOrchard.connect(trader).claimDistributionsToInternalBalance(trader.address, claims)
+      await merkleOrchard.connect(trader).claimDistributionsToInternalBalance(trader.address, claims, tokenAddresses)
     ).wait();
   } else {
-    receipt = await (await merkleOrchard.connect(trader).claimDistributions(trader.address, claims)).wait();
+    receipt = await (await merkleOrchard.connect(trader).claimDistributions(trader.address, claims, tokenAddresses)).wait();
   }
 
   console.log(

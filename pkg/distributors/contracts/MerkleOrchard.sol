@@ -38,7 +38,7 @@ contract MerkleOrchard {
     mapping(bytes32 => uint256) public suppliedBalance;
 
     event DistributionAdded(address indexed token, uint256 amount);
-    event DistributionPaid(address indexed user, address indexed token, uint256 amount);
+    event DistributionSent(address indexed user, address indexed token, uint256 amount);
 
     IVault public immutable vault;
 
@@ -71,53 +71,49 @@ contract MerkleOrchard {
         uint256 currentBits;
         bytes32 currentChannelId;
         uint256 currentWordIndex;
+        uint256 currentClaimAmount;
 
-        // set each loop
         Claim memory claim;
-        IERC20 token;
-        bytes32 channelId;
-
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
-            token = tokens[claim.tokenIndex];
-            channelId = keccak256(abi.encodePacked(address(token), claim.distributor));
 
-
-            // first iteration
+            // When we process a new claim we either
+            // a) aggregate the new claim bit with previous claims of the same channel/claim bitmap
+            // b) set claim status and start aggregating a new set of currentBits for a new channel/word
             if (currentChannelId == bytes32(0)) {
-              currentChannelId = channelId;
-              currentWordIndex = claim.distribution / 256;
+                currentChannelId = keccak256(abi.encodePacked(address(tokens[claim.tokenIndex]), claim.distributor));
+                currentWordIndex = claim.distribution / 256;
+                currentBits = 1 << claim.distribution % 256;
+                currentClaimAmount = claim.balance;
+            } else if (
+                currentChannelId == keccak256(abi.encodePacked(address(tokens[claim.tokenIndex]), claim.distributor))
+            ) {
+                if (currentWordIndex == claim.distribution / 256) {
+                    currentBits |= 1 << claim.distribution % 256;
+                    currentClaimAmount += claim.balance;
+                } else {
+                    _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
+
+                    currentWordIndex = claim.distribution / 256;
+                    currentBits = 1 << claim.distribution % 256;
+                }
+            } else {
+                _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
+                _deductClaimedBalance(currentChannelId, currentClaimAmount);
+
+                currentChannelId = keccak256(abi.encodePacked(address(tokens[claim.tokenIndex]), claim.distributor));
+                currentClaimAmount = claim.balance;
+                currentBits = 1 << claim.distribution % 256;
             }
 
-            // final claim
-            if (i == claims.length - 1 ) {
-              currentBits |= 1 << claim.distribution % 256;
-              _setClaimedBits(currentBits, currentChannelId, liquidityProvider, currentWordIndex);
-
-            // claim is same channel, word as last one, or the first iteration
-            } else if (currentChannelId == channelId && currentWordIndex == claim.distribution / 256) {
-              currentBits |= 1 << claim.distribution % 256;
-
-            // claim is same channel, different word
-            } else if (currentChannelId == channelId && currentWordIndex != claim.distribution / 256) {
-              // claim
-              _setClaimedBits(currentBits, currentChannelId, liquidityProvider, currentWordIndex);
-
-              currentWordIndex = claim.distribution / 256;
-              currentBits = 1 << claim.distribution % 256;
-
-            // claim is a different channel
-            } else {
-              _setClaimedBits(currentBits, currentChannelId, liquidityProvider, currentWordIndex);
-
-              currentChannelId = channelId;
-              currentWordIndex = claim.distribution / 256;
-              currentBits = 1 << claim.distribution % 256;
+            if (i == claims.length - 1) {
+                _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
+                _deductClaimedBalance(currentChannelId, currentClaimAmount);
             }
 
             require(
                 verifyClaim(
-                    token,
+                    tokens[claim.tokenIndex],
                     claim.distributor,
                     liquidityProvider,
                     claim.distribution,
@@ -127,17 +123,7 @@ contract MerkleOrchard {
                 "Incorrect merkle proof"
             );
 
-            require(
-                suppliedBalance[channelId] >= claim.balance,
-                "distributor hasn't provided sufficient tokens for claim"
-            );
-
             amounts[claim.tokenIndex] += claim.balance;
-
-            suppliedBalance[channelId] =
-                suppliedBalance[channelId] -
-                claim.balance;
-            emit DistributionPaid(recipient, address(token), claim.balance);
         }
 
         IVault.UserBalanceOpKind kind = asInternalBalance
@@ -153,6 +139,7 @@ contract MerkleOrchard {
                 recipient: payable(recipient),
                 kind: kind
             });
+            emit DistributionSent(recipient, address(tokens[i]), amounts[i]);
         }
         vault.manageUserBalance(ops);
     }
@@ -208,22 +195,25 @@ contract MerkleOrchard {
         uint256 distributionBitIndex = distribution % 256;
 
         bytes32 channelId = keccak256(abi.encodePacked(token, distributor));
-        return
-            (claimedBitmap[channelId][liquidityProvider][distributionWordIndex] &
-                (1 << distributionBitIndex)) != 0;
+        return (claimedBitmap[channelId][liquidityProvider][distributionWordIndex] & (1 << distributionBitIndex)) != 0;
     }
 
     function _setClaimedBits(
-      uint256 newClaimsBitmap,
-      bytes32 channelId,
-      address liquidityProvider,
-      uint256 wordIndex
+        address liquidityProvider,
+        bytes32 channelId,
+        uint256 wordIndex,
+        uint256 newClaimsBitmap
     ) private {
-      require(
-        (newClaimsBitmap & claimedBitmap[channelId][liquidityProvider][wordIndex]) == 0,
-        'cannot claim twice'
-      );
-      claimedBitmap[channelId][liquidityProvider][wordIndex] |= newClaimsBitmap;
+        require((newClaimsBitmap & claimedBitmap[channelId][liquidityProvider][wordIndex]) == 0, "cannot claim twice");
+        claimedBitmap[channelId][liquidityProvider][wordIndex] |= newClaimsBitmap;
+    }
+
+    function _deductClaimedBalance(bytes32 channelId, uint256 balanceBeingClaimed) private {
+        require(
+            suppliedBalance[channelId] >= balanceBeingClaimed,
+            "distributor hasn't provided sufficient tokens for claim"
+        );
+        suppliedBalance[channelId] -= balanceBeingClaimed;
     }
 
     function claimStatus(
@@ -300,7 +290,7 @@ contract MerkleOrchard {
 
         vault.manageUserBalance(ops);
 
-        suppliedBalance[channelId] = suppliedBalance[channelId] + amount;
+        suppliedBalance[channelId] += amount;
         trees[channelId][distribution] = _merkleRoot;
         emit DistributionAdded(address(token), amount);
     }
