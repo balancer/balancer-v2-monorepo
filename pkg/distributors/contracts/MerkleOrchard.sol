@@ -267,7 +267,7 @@ contract MerkleOrchard {
      * be withdrawn from the sender
      * These will be pulled from the user
      */
-    function seedAllocations(
+    function createDistribution(
         IERC20 token,
         uint256 distribution,
         bytes32 merkleRoot,
