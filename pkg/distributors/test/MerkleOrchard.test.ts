@@ -250,7 +250,7 @@ describe('MerkleOrchard', () => {
     });
   });
 
-  describe('with several allocations in the same reward channel', () => {
+  describe('with several allocations in the same channel', () => {
     const claimBalance1 = bn('1000');
     const claimBalance2 = bn('1234');
 
