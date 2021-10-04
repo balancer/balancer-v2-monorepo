@@ -30,11 +30,7 @@ interface Claim {
 describe('MerkleOrchard', () => {
   let tokens: TokenList, token: Token, vault: Contract, merkleOrchard: Contract, tokenAddresses: string[];
 
-  let admin: SignerWithAddress,
-    distributor: SignerWithAddress,
-    lp1: SignerWithAddress,
-    lp2: SignerWithAddress,
-    other: SignerWithAddress;
+  let admin: SignerWithAddress, distributor: SignerWithAddress, lp1: SignerWithAddress, other: SignerWithAddress;
   const tokenInitialBalance = bn(100e18);
 
   before('setup', async () => {
