@@ -29,9 +29,11 @@ contract MerkleOrchard {
     using SafeERC20 for IERC20;
 
     // Recorded distributions
-    // channelId > distribution > root
+    // channelId > distributionId
+    mapping(bytes32 => uint256) public nextDistributionId;
+    // channelId > distributionId > root
     mapping(bytes32 => mapping(uint256 => bytes32)) private _distributionRoot;
-    // channelId > claimer > distribution / 256 (word index) -> bitmap
+    // channelId > claimer > distributionId / 256 (word index) -> bitmap
     mapping(bytes32 => mapping(address => mapping(uint256 => uint256))) private _claimedBitmap;
     // channelId > balance
     mapping(bytes32 => uint256) private _suppliedBalance;
@@ -39,14 +41,14 @@ contract MerkleOrchard {
     event DistributionAdded(
         address indexed distributor,
         address indexed token,
-        uint256 distribution,
+        uint256 distributionId,
         bytes32 merkleRoot,
         uint256 amount
     );
     event DistributionClaimed(
         address indexed distributor,
         address indexed token,
-        uint256 distribution,
+        uint256 distributionId,
         address indexed claimer,
         address recipient,
         uint256 amount
@@ -59,7 +61,7 @@ contract MerkleOrchard {
     }
 
     struct Claim {
-        uint256 distribution;
+        uint256 distributionId;
         uint256 balance;
         address distributor;
         uint256 tokenIndex;
@@ -67,7 +69,6 @@ contract MerkleOrchard {
     }
 
     // Getters
-
     function getVault() public view returns (IVault) {
         return _vault;
     }
@@ -75,10 +76,10 @@ contract MerkleOrchard {
     function getDistributionRoot(
         IERC20 token,
         address distributor,
-        uint256 distribution
+        uint256 distributionId
     ) external view returns (bytes32) {
         bytes32 channelId = _getChannelId(token, distributor);
-        return _distributionRoot[channelId][distribution];
+        return _distributionRoot[channelId][distributionId];
     }
 
     function getSuppliedBalance(IERC20 token, address distributor) external view returns (uint256) {
@@ -89,10 +90,10 @@ contract MerkleOrchard {
     function isClaimed(
         IERC20 token,
         address distributor,
-        uint256 distribution,
+        uint256 distributionId,
         address claimer
     ) public view returns (bool) {
-        (uint256 distributionWordIndex, uint256 distributionBitIndex) = _getIndices(distribution);
+        (uint256 distributionWordIndex, uint256 distributionBitIndex) = _getIndices(distributionId);
 
         bytes32 channelId = _getChannelId(token, distributor);
         return (_claimedBitmap[channelId][claimer][distributionWordIndex] & (1 << distributionBitIndex)) != 0;
@@ -133,13 +134,13 @@ contract MerkleOrchard {
     function verifyClaim(
         IERC20 token,
         address distributor,
-        uint256 distribution,
+        uint256 distributionId,
         address claimer,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) external view returns (bool) {
         bytes32 channelId = _getChannelId(token, distributor);
-        return _verifyClaim(channelId, distribution, claimer, claimedBalance, merkleProof);
+        return _verifyClaim(channelId, distributionId, claimer, claimedBalance, merkleProof);
     }
 
     // Claim functions
@@ -193,12 +194,13 @@ contract MerkleOrchard {
      */
     function createDistribution(
         IERC20 token,
-        uint256 distribution,
         bytes32 merkleRoot,
-        uint256 amount
+        uint256 amount,
+        uint256 nonce
     ) external {
         bytes32 channelId = _getChannelId(token, msg.sender);
-        require(_distributionRoot[channelId][distribution] == bytes32(0), "cannot rewrite merkle root");
+        require(_distributionRoot[channelId][nonce] == bytes32(0), "cannot rewrite merkle root");
+        require(nextDistributionId[channelId] == nonce, "Invalid distribution ID");
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         token.approve(address(getVault()), type(uint256).max);
@@ -215,8 +217,9 @@ contract MerkleOrchard {
         getVault().manageUserBalance(ops);
 
         _suppliedBalance[channelId] += amount;
-        _distributionRoot[channelId][distribution] = merkleRoot;
-        emit DistributionAdded(msg.sender, address(token), distribution, merkleRoot, amount);
+        _distributionRoot[channelId][nonce] = merkleRoot;
+        nextDistributionId[channelId] = nonce + 1;
+        emit DistributionAdded(msg.sender, address(token), nonce, merkleRoot, amount);
     }
 
     // Helper functions
@@ -253,7 +256,7 @@ contract MerkleOrchard {
 
             // New scope to avoid stack-too-deep issues
             {
-                (uint256 distributionWordIndex, uint256 distributionBitIndex) = _getIndices(claim.distribution);
+                (uint256 distributionWordIndex, uint256 distributionBitIndex) = _getIndices(claim.distributionId);
 
                 if (currentChannelId == _getChannelId(tokens[claim.tokenIndex], claim.distributor)) {
                     if (currentWordIndex == currentWordIndex) {
@@ -299,7 +302,7 @@ contract MerkleOrchard {
             }
 
             require(
-                _verifyClaim(currentChannelId, claim.distribution, claimer, claim.balance, claim.merkleProof),
+                _verifyClaim(currentChannelId, claim.distributionId, claimer, claim.balance, claim.merkleProof),
                 "incorrect merkle proof"
             );
 
@@ -310,7 +313,7 @@ contract MerkleOrchard {
             emit DistributionClaimed(
                 claim.distributor,
                 address(tokens[claim.tokenIndex]),
-                claim.distribution,
+                claim.distributionId,
                 claimer,
                 recipient,
                 claim.balance
@@ -365,21 +368,21 @@ contract MerkleOrchard {
 
     function _verifyClaim(
         bytes32 channelId,
-        uint256 distribution,
+        uint256 distributionId,
         address claimer,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) internal view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(claimer, claimedBalance));
-        return MerkleProof.verify(merkleProof, _distributionRoot[channelId][distribution], leaf);
+        return MerkleProof.verify(merkleProof, _distributionRoot[channelId][distributionId], leaf);
     }
 
-    function _getIndices(uint256 distribution)
+    function _getIndices(uint256 distributionId)
         private
         pure
         returns (uint256 distributionWordIndex, uint256 distributionBitIndex)
     {
-        distributionWordIndex = distribution / 256;
-        distributionBitIndex = distribution % 256;
+        distributionWordIndex = distributionId / 256;
+        distributionBitIndex = distributionId % 256;
     }
 }
