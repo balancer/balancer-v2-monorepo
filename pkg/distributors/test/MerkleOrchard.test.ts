@@ -20,7 +20,7 @@ function encodeElement(address: string, balance: BigNumber): string {
 }
 
 interface Claim {
-  distributionNonce: BigNumberish;
+  distributionId: BigNumberish;
   balance: BigNumber;
   distributor: string;
   tokenIndex: number;
@@ -91,27 +91,27 @@ describe('MerkleOrchard', () => {
     });
 
     it("increments the distribution channel's nonce", async () => {
-      expect(await merkleOrchard.nextDistributionNonce(token.address, distributor.address)).to.be.eq(0);
-      expect(await merkleOrchard.nextDistributionNonce(token.address, lp1.address)).to.be.eq(0);
+      expect(await merkleOrchard.nextDistributionId(token.address, distributor.address)).to.be.eq(0);
+      expect(await merkleOrchard.nextDistributionId(token.address, lp1.address)).to.be.eq(0);
 
       await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0);
 
-      expect(await merkleOrchard.nextDistributionNonce(token.address, distributor.address)).to.be.eq(1);
-      expect(await merkleOrchard.nextDistributionNonce(token.address, lp1.address)).to.be.eq(0);
+      expect(await merkleOrchard.nextDistributionId(token.address, distributor.address)).to.be.eq(1);
+      expect(await merkleOrchard.nextDistributionId(token.address, lp1.address)).to.be.eq(0);
 
       await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 1);
 
-      expect(await merkleOrchard.nextDistributionNonce(token.address, distributor.address)).to.be.eq(2);
-      expect(await merkleOrchard.nextDistributionNonce(token.address, lp1.address)).to.be.eq(0);
+      expect(await merkleOrchard.nextDistributionId(token.address, distributor.address)).to.be.eq(2);
+      expect(await merkleOrchard.nextDistributionId(token.address, lp1.address)).to.be.eq(0);
     });
 
-    context('when provided an invalid nonce', () => {
+    context('when provided an invalid distribution ID', () => {
       it('reverts', async () => {
         await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0);
-        // Here's we're providing an old nonce (i.e. we've accidentally created the same distribution twice)
+        // Here's we're providing an old ID (i.e. we've accidentally created the same distribution twice)
         await expect(
           merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0)
-        ).to.be.revertedWith('Invalid nonce');
+        ).to.be.revertedWith('Invalid distribution ID');
       });
     });
   });
@@ -132,7 +132,7 @@ describe('MerkleOrchard', () => {
 
       claims = [
         {
-          distributionNonce: 0,
+          distributionId: 0,
           balance: claimableBalance,
           distributor: distributor.address,
           tokenIndex: 0,
@@ -182,7 +182,7 @@ describe('MerkleOrchard', () => {
 
       const claimsWithIncorrectClaimableBalance = [
         {
-          distributionNonce: 0,
+          distributionId: 0,
           balance: incorrectClaimedBalance,
           distributor: distributor.address,
           tokenIndex: 0,
@@ -239,14 +239,14 @@ describe('MerkleOrchard', () => {
 
       const claims: Claim[] = [
         {
-          distributionNonce: 0,
+          distributionId: 0,
           balance: claimedBalance1,
           distributor: distributor.address,
           tokenIndex: 0,
           merkleProof: proof1,
         },
         {
-          distributionNonce: 1,
+          distributionId: 1,
           balance: claimedBalance2,
           distributor: distributor.address,
           tokenIndex: 0,
@@ -270,14 +270,14 @@ describe('MerkleOrchard', () => {
 
       const claims: Claim[] = [
         {
-          distributionNonce: 0,
+          distributionId: 0,
           balance: claimedBalance1,
           distributor: distributor.address,
           tokenIndex: 0,
           merkleProof: proof1,
         },
         {
-          distributionNonce: 1,
+          distributionId: 1,
           balance: claimedBalance2,
           distributor: distributor.address,
           tokenIndex: 0,
@@ -317,14 +317,14 @@ describe('MerkleOrchard', () => {
 
         claims = [
           {
-            distributionNonce: 0,
+            distributionId: 0,
             balance: claimBalance1,
             distributor: distributor.address,
             tokenIndex: 0,
             merkleProof: proof1,
           },
           {
-            distributionNonce: 1,
+            distributionId: 1,
             balance: claimBalance2,
             distributor: distributor.address,
             tokenIndex: 0,
@@ -368,7 +368,7 @@ describe('MerkleOrchard', () => {
 
         const claims: Claim[] = [
           {
-            distributionNonce: 0,
+            distributionId: 0,
             balance: claimedBalance1,
             distributor: distributor.address,
             tokenIndex: 0,

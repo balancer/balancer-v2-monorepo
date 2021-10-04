@@ -30,11 +30,11 @@ contract MerkleOrchard {
     using SafeERC20 for IERC20;
 
     // Recorded distributions
-    // token > distributor > distribution
-    mapping(IERC20 => mapping(address => uint256)) public nextDistributionNonce;
-    // token > distributor > distribution > root
+    // token > distributor > distributionId
+    mapping(IERC20 => mapping(address => uint256)) public nextDistributionId;
+    // token > distributor > distributionId > root
     mapping(IERC20 => mapping(address => mapping(uint256 => bytes32))) public trees;
-    // token > distributor > distribution > lp > root
+    // token > distributor > distributionId > lp > root
     mapping(IERC20 => mapping(address => mapping(uint256 => mapping(address => bool)))) public claimed;
     // token > distributor > balance
     mapping(IERC20 => mapping(address => uint256)) public suppliedBalance;
@@ -49,7 +49,7 @@ contract MerkleOrchard {
     }
 
     struct Claim {
-        uint256 distributionNonce;
+        uint256 distributionId;
         uint256 balance;
         address distributor;
         uint256 tokenIndex;
@@ -72,7 +72,7 @@ contract MerkleOrchard {
             token = tokens[claim.tokenIndex];
 
             require(
-                !isClaimed(token, claim.distributor, claim.distributionNonce, liquidityProvider),
+                !isClaimed(token, claim.distributor, claim.distributionId, liquidityProvider),
                 "cannot claim twice"
             );
             require(
@@ -80,7 +80,7 @@ contract MerkleOrchard {
                     token,
                     claim.distributor,
                     liquidityProvider,
-                    claim.distributionNonce,
+                    claim.distributionId,
                     claim.balance,
                     claim.merkleProof
                 ),
@@ -92,7 +92,7 @@ contract MerkleOrchard {
                 "distributor hasn't provided sufficient tokens for claim"
             );
 
-            claimed[token][claim.distributor][claim.distributionNonce][liquidityProvider] = true;
+            claimed[token][claim.distributor][claim.distributionId][liquidityProvider] = true;
 
             amounts[claim.tokenIndex] += claim.balance;
 
@@ -161,10 +161,10 @@ contract MerkleOrchard {
     function isClaimed(
         IERC20 token,
         address distributor,
-        uint256 distributionNonce,
+        uint256 distributionId,
         address liquidityProvider
     ) public view returns (bool) {
-        return claimed[token][distributor][distributionNonce][liquidityProvider];
+        return claimed[token][distributor][distributionId][liquidityProvider];
     }
 
     function claimStatus(
@@ -202,12 +202,12 @@ contract MerkleOrchard {
         IERC20 token,
         address distributor,
         address liquidityProvider,
-        uint256 distributionNonce,
+        uint256 distributionId,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) public view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
-        return MerkleProof.verify(merkleProof, trees[token][distributor][distributionNonce], leaf);
+        return MerkleProof.verify(merkleProof, trees[token][distributor][distributionId], leaf);
     }
 
     /**
@@ -222,7 +222,7 @@ contract MerkleOrchard {
         uint256 amount,
         uint256 nonce
     ) external {
-        require(nextDistributionNonce[token][msg.sender] == nonce, "Invalid nonce");
+        require(nextDistributionId[token][msg.sender] == nonce, "Invalid distribution ID");
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         token.approve(address(vault), type(uint256).max);
@@ -240,7 +240,7 @@ contract MerkleOrchard {
         suppliedBalance[token][msg.sender] = suppliedBalance[token][msg.sender] + amount;
 
         trees[token][msg.sender][nonce] = _merkleRoot;
-        nextDistributionNonce[token][msg.sender] = nonce + 1;
+        nextDistributionId[token][msg.sender] = nonce + 1;
         emit DistributionAdded(address(token), amount);
     }
 }
