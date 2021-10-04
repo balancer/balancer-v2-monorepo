@@ -30,9 +30,10 @@ contract MerkleOrchard {
     using SafeERC20 for IERC20;
 
     // Recorded distributions
+    uint256 public nextDistributionNonce;
     // token > distributor > distribution > root
     mapping(IERC20 => mapping(address => mapping(uint256 => bytes32))) public trees;
-    // token > distributor distribution > lp > root
+    // token > distributor > distribution > lp > root
     mapping(IERC20 => mapping(address => mapping(uint256 => mapping(address => bool)))) public claimed;
     // token > distributor > balance
     mapping(IERC20 => mapping(address => uint256)) public suppliedBalance;
@@ -47,7 +48,7 @@ contract MerkleOrchard {
     }
 
     struct Claim {
-        uint256 distribution;
+        uint256 distributionNonce;
         uint256 balance;
         address distributor;
         uint256 tokenIndex;
@@ -69,13 +70,16 @@ contract MerkleOrchard {
             claim = claims[i];
             token = tokens[claim.tokenIndex];
 
-            require(!isClaimed(token, claim.distributor, claim.distribution, liquidityProvider), "cannot claim twice");
+            require(
+                !isClaimed(token, claim.distributor, claim.distributionNonce, liquidityProvider),
+                "cannot claim twice"
+            );
             require(
                 verifyClaim(
                     token,
                     claim.distributor,
                     liquidityProvider,
-                    claim.distribution,
+                    claim.distributionNonce,
                     claim.balance,
                     claim.merkleProof
                 ),
@@ -87,7 +91,7 @@ contract MerkleOrchard {
                 "distributor hasn't provided sufficient tokens for claim"
             );
 
-            claimed[token][claim.distributor][claim.distribution][liquidityProvider] = true;
+            claimed[token][claim.distributor][claim.distributionNonce][liquidityProvider] = true;
 
             amounts[claim.tokenIndex] += claim.balance;
 
@@ -156,10 +160,10 @@ contract MerkleOrchard {
     function isClaimed(
         IERC20 token,
         address distributor,
-        uint256 distribution,
+        uint256 distributionNonce,
         address liquidityProvider
     ) public view returns (bool) {
-        return claimed[token][distributor][distribution][liquidityProvider];
+        return claimed[token][distributor][distributionNonce][liquidityProvider];
     }
 
     function claimStatus(
@@ -197,12 +201,12 @@ contract MerkleOrchard {
         IERC20 token,
         address distributor,
         address liquidityProvider,
-        uint256 distribution,
+        uint256 distributionNonce,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) public view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
-        return MerkleProof.verify(merkleProof, trees[token][distributor][distribution], leaf);
+        return MerkleProof.verify(merkleProof, trees[token][distributor][distributionNonce], leaf);
     }
 
     /**
@@ -213,11 +217,9 @@ contract MerkleOrchard {
      */
     function seedAllocations(
         IERC20 token,
-        uint256 distribution,
         bytes32 _merkleRoot,
         uint256 amount
     ) external {
-        require(trees[token][msg.sender][distribution] == bytes32(0), "cannot rewrite merkle root");
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         token.approve(address(vault), type(uint256).max);
@@ -234,7 +236,8 @@ contract MerkleOrchard {
         vault.manageUserBalance(ops);
 
         suppliedBalance[token][msg.sender] = suppliedBalance[token][msg.sender] + amount;
-        trees[token][msg.sender][distribution] = _merkleRoot;
+        trees[token][msg.sender][nextDistributionNonce] = _merkleRoot;
+        nextDistributionNonce += 1;
         emit DistributionAdded(address(token), amount);
     }
 }
