@@ -30,7 +30,8 @@ contract MerkleOrchard {
     using SafeERC20 for IERC20;
 
     // Recorded distributions
-    uint256 public nextDistributionNonce;
+    // token > distributor > distribution
+    mapping(IERC20 => mapping(address => uint256)) public nextDistributionNonce;
     // token > distributor > distribution > root
     mapping(IERC20 => mapping(address => mapping(uint256 => bytes32))) public trees;
     // token > distributor > distribution > lp > root
@@ -234,10 +235,11 @@ contract MerkleOrchard {
         });
 
         vault.manageUserBalance(ops);
-
         suppliedBalance[token][msg.sender] = suppliedBalance[token][msg.sender] + amount;
-        trees[token][msg.sender][nextDistributionNonce] = _merkleRoot;
-        nextDistributionNonce += 1;
+
+        uint256 nonce = nextDistributionNonce[token][msg.sender];
+        trees[token][msg.sender][nonce] = _merkleRoot;
+        nextDistributionNonce[token][msg.sender] = nonce + 1;
         emit DistributionAdded(address(token), amount);
     }
 }
