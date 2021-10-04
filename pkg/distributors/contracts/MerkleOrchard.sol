@@ -270,7 +270,7 @@ contract MerkleOrchard {
     function seedAllocations(
         IERC20 token,
         uint256 distribution,
-        bytes32 _merkleRoot,
+        bytes32 merkleRoot,
         uint256 amount
     ) external {
         bytes32 channelId = keccak256(abi.encodePacked(token, msg.sender));
@@ -291,7 +291,7 @@ contract MerkleOrchard {
         vault.manageUserBalance(ops);
 
         suppliedBalance[channelId] += amount;
-        trees[channelId][distribution] = _merkleRoot;
+        trees[channelId][distribution] = merkleRoot;
         emit DistributionAdded(address(token), amount);
     }
 }
