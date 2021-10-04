@@ -219,8 +219,10 @@ contract MerkleOrchard {
     function seedAllocations(
         IERC20 token,
         bytes32 _merkleRoot,
-        uint256 amount
+        uint256 amount,
+        uint256 nonce
     ) external {
+        require(nextDistributionNonce[token][msg.sender] == nonce, "Invalid nonce");
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         token.approve(address(vault), type(uint256).max);
@@ -237,7 +239,6 @@ contract MerkleOrchard {
         vault.manageUserBalance(ops);
         suppliedBalance[token][msg.sender] = suppliedBalance[token][msg.sender] + amount;
 
-        uint256 nonce = nextDistributionNonce[token][msg.sender];
         trees[token][msg.sender][nonce] = _merkleRoot;
         nextDistributionNonce[token][msg.sender] = nonce + 1;
         emit DistributionAdded(address(token), amount);

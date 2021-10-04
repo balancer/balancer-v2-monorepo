@@ -64,7 +64,7 @@ describe('MerkleOrchard', () => {
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
-    await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance);
+    await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0);
 
     const proof = merkleTree.getHexProof(elements[0]);
 
@@ -87,7 +87,7 @@ describe('MerkleOrchard', () => {
     const root = merkleTree.getHexRoot();
 
     const receipt = await (
-      await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance)
+      await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0)
     ).wait();
 
     expectEvent.inReceipt(receipt, 'DistributionAdded', {
@@ -104,7 +104,7 @@ describe('MerkleOrchard', () => {
     const root = merkleTree.getHexRoot();
 
     await expectBalanceChange(
-      () => merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance),
+      () => merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0),
       tokens,
       [{ account: merkleOrchard, changes: { DAI: claimBalance } }],
       vault
@@ -119,7 +119,7 @@ describe('MerkleOrchard', () => {
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
-    await merkleOrchard.connect(distributor).seedAllocations(token.address, root, bn('3000'));
+    await merkleOrchard.connect(distributor).seedAllocations(token.address, root, bn('3000'), 0);
 
     const proof0 = merkleTree.getHexProof(elements[0]);
     let result = await merkleOrchard.verifyClaim(
@@ -148,7 +148,7 @@ describe('MerkleOrchard', () => {
       merkleTree = new MerkleTree(elements);
       const root = merkleTree.getHexRoot();
 
-      await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimableBalance);
+      await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimableBalance, 0);
       const merkleProof: BytesLike[] = merkleTree.getHexProof(elements[0]);
 
       claims = [
@@ -231,7 +231,7 @@ describe('MerkleOrchard', () => {
 
       const errorMsg = 'cannot rewrite merkle root';
       expect(
-        merkleOrchard.connect(admin).seedAllocations(token.address, 0, root2, claimableBalance.mul(2))
+        merkleOrchard.connect(admin).seedAllocations(token.address, 0, root2, claimableBalance.mul(2), 0)
       ).to.be.revertedWith(errorMsg);
     });
   });
@@ -257,9 +257,9 @@ describe('MerkleOrchard', () => {
       merkleTree2 = new MerkleTree(elements2);
       root2 = merkleTree2.getHexRoot();
 
-      await merkleOrchard.connect(distributor).seedAllocations(token.address, root1, claimBalance1);
+      await merkleOrchard.connect(distributor).seedAllocations(token.address, root1, claimBalance1, 0);
 
-      await merkleOrchard.connect(distributor).seedAllocations(token.address, root2, claimBalance2);
+      await merkleOrchard.connect(distributor).seedAllocations(token.address, root2, claimBalance2, 1);
     });
 
     it('allows the user to claim multiple distributions at once', async () => {
