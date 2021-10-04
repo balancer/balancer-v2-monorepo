@@ -34,7 +34,7 @@ describe('MerkleOrchard', () => {
   const tokenInitialBalance = bn(100e18);
 
   before('setup', async () => {
-    [, admin, distributor, lp1, lp2, other] = await ethers.getSigners();
+    [, admin, distributor, lp1, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault and tokens', async () => {
