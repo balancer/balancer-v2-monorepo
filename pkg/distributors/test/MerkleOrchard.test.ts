@@ -327,15 +327,8 @@ describe('MerkleOrchard', () => {
     });
 
     it('reports distributions as unclaimed', async () => {
-      const expectedResult = [false, false];
-      const result = await merkleOrchard.claimStatus(lp1.address, token.address, distributor.address, 1, 2);
-      expect(result).to.eql(expectedResult);
-    });
-
-    it('returns an array of merkle roots', async () => {
-      const expectedResult = [root1, root2];
-      const result = await merkleOrchard.merkleRoots(token.address, distributor.address, 1, 2);
-      expect(result).to.eql(expectedResult); // "claim status should be accurate"
+      expect(await merkleOrchard.claimed(token.address, distributor.address, 1, lp1.address)).to.be.false;
+      expect(await merkleOrchard.claimed(token.address, distributor.address, 2, lp1.address)).to.be.false;
     });
 
     describe('with a callback', () => {
@@ -413,9 +406,8 @@ describe('MerkleOrchard', () => {
       });
 
       it('reports one of the distributions as claimed', async () => {
-        const expectedResult = [true, false];
-        const result = await merkleOrchard.claimStatus(lp1.address, token.address, distributor.address, 1, 2);
-        expect(result).to.eql(expectedResult);
+        expect(await merkleOrchard.claimed(token.address, distributor.address, 1, lp1.address)).to.be.true;
+        expect(await merkleOrchard.claimed(token.address, distributor.address, 2, lp1.address)).to.be.false;
       });
     });
   });

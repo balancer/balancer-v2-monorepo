@@ -162,37 +162,6 @@ contract MerkleOrchard {
         return claimed[token][distributor][distribution][liquidityProvider];
     }
 
-    function claimStatus(
-        address liquidityProvider,
-        IERC20 token,
-        address distributor,
-        uint256 begin,
-        uint256 end
-    ) external view returns (bool[] memory) {
-        require(begin <= end, "distributions must be specified in ascending order");
-        uint256 size = 1 + end - begin;
-        bool[] memory arr = new bool[](size);
-        for (uint256 i = 0; i < size; i++) {
-            arr[i] = isClaimed(token, distributor, begin + i, liquidityProvider);
-        }
-        return arr;
-    }
-
-    function merkleRoots(
-        IERC20 token,
-        address distributor,
-        uint256 begin,
-        uint256 end
-    ) external view returns (bytes32[] memory) {
-        require(begin <= end, "distributions must be specified in ascending order");
-        uint256 size = 1 + end - begin;
-        bytes32[] memory arr = new bytes32[](size);
-        for (uint256 i = 0; i < size; i++) {
-            arr[i] = trees[token][distributor][begin + i];
-        }
-        return arr;
-    }
-
     function verifyClaim(
         IERC20 token,
         address distributor,
