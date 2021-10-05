@@ -112,14 +112,7 @@ contract MerkleOrchard {
             }
 
             require(
-                verifyClaim(
-                    tokens[claim.tokenIndex],
-                    claim.distributor,
-                    liquidityProvider,
-                    claim.distribution,
-                    claim.balance,
-                    claim.merkleProof
-                ),
+                _verifyClaim(currentChannelId, liquidityProvider, claim.distribution, claim.balance, claim.merkleProof),
                 "Incorrect merkle proof"
             );
 
@@ -248,6 +241,17 @@ contract MerkleOrchard {
         return arr;
     }
 
+    function _verifyClaim(
+        bytes32 channelId,
+        address liquidityProvider,
+        uint256 distribution,
+        uint256 claimedBalance,
+        bytes32[] memory merkleProof
+    ) internal view returns (bool) {
+        bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
+        return MerkleProof.verify(merkleProof, trees[channelId][distribution], leaf);
+    }
+
     function verifyClaim(
         IERC20 token,
         address distributor,
@@ -256,9 +260,8 @@ contract MerkleOrchard {
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) public view returns (bool) {
-        bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
         bytes32 channelId = keccak256(abi.encodePacked(token, distributor));
-        return MerkleProof.verify(merkleProof, trees[channelId][distribution], leaf);
+        return _verifyClaim(channelId, liquidityProvider, distribution, claimedBalance, merkleProof);
     }
 
     /**
