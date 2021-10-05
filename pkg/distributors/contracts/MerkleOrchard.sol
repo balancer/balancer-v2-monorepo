@@ -259,7 +259,7 @@ contract MerkleOrchard {
         uint256 distribution,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
-    ) public view returns (bool) {
+    ) external view returns (bool) {
         bytes32 channelId = _getChannelId(token, distributor);
         return _verifyClaim(channelId, liquidityProvider, distribution, claimedBalance, merkleProof);
     }
