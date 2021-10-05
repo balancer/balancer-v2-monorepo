@@ -80,12 +80,7 @@ contract MerkleOrchard {
             // When we process a new claim we either
             // a) aggregate the new claim bit with previous claims of the same channel/claim bitmap
             // b) set claim status and start aggregating a new set of currentBits for a new channel/word
-            if (currentChannelId == bytes32(0)) {
-                currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
-                currentWordIndex = claim.distribution / 256;
-                currentBits = 1 << claim.distribution % 256;
-                currentClaimAmount = claim.balance;
-            } else if (currentChannelId == _getChannelId(tokens[claim.tokenIndex], claim.distributor)) {
+            if (currentChannelId == _getChannelId(tokens[claim.tokenIndex], claim.distributor)) {
                 if (currentWordIndex == claim.distribution / 256) {
                     currentBits |= 1 << claim.distribution % 256;
                 } else {
@@ -96,10 +91,13 @@ contract MerkleOrchard {
                 }
                 currentClaimAmount += claim.balance;
             } else {
-                _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
-                _deductClaimedBalance(currentChannelId, currentClaimAmount);
+                if (currentChannelId != bytes32(0)) {
+                    _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
+                    _deductClaimedBalance(currentChannelId, currentClaimAmount);
+                }
 
                 currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
+                currentWordIndex = claim.distribution / 256;
                 currentClaimAmount = claim.balance;
                 currentBits = 1 << claim.distribution % 256;
             }
