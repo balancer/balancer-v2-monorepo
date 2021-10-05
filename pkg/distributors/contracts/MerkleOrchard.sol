@@ -30,8 +30,8 @@ contract MerkleOrchard {
     using SafeERC20 for IERC20;
 
     // Recorded distributions
-    // channelId > distributor > distribution > root
-    mapping(bytes32 => mapping(uint256 => bytes32)) private _trees;
+    // channelId > distribution > root
+    mapping(bytes32 => mapping(uint256 => bytes32)) private _distributionRoot;
     // channelId > lp > distribution / 256 -> bitmap
     mapping(bytes32 => mapping(address => mapping(uint256 => uint256))) private _claimedBitmap;
     // channelId > balance
@@ -240,7 +240,7 @@ contract MerkleOrchard {
         uint256 size = 1 + end - begin;
         bytes32[] memory arr = new bytes32[](size);
         for (uint256 i = 0; i < size; i++) {
-            arr[i] = _trees[channelId][begin + i];
+            arr[i] = _distributionRoot[channelId][begin + i];
         }
         return arr;
     }
@@ -253,7 +253,7 @@ contract MerkleOrchard {
         bytes32[] memory merkleProof
     ) internal view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
-        return MerkleProof.verify(merkleProof, _trees[channelId][distribution], leaf);
+        return MerkleProof.verify(merkleProof, _distributionRoot[channelId][distribution], leaf);
     }
 
     function verifyClaim(
@@ -281,7 +281,7 @@ contract MerkleOrchard {
         uint256 amount
     ) external {
         bytes32 channelId = _getChannelId(token, msg.sender);
-        require(_trees[channelId][distribution] == bytes32(0), "cannot rewrite merkle root");
+        require(_distributionRoot[channelId][distribution] == bytes32(0), "cannot rewrite merkle root");
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         token.approve(address(getVault()), type(uint256).max);
@@ -298,7 +298,7 @@ contract MerkleOrchard {
         getVault().manageUserBalance(ops);
 
         _suppliedBalance[channelId] += amount;
-        _trees[channelId][distribution] = merkleRoot;
+        _distributionRoot[channelId][distribution] = merkleRoot;
         emit DistributionAdded(address(token), amount);
     }
 }
