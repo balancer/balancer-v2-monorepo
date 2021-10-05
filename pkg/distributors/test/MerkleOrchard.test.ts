@@ -78,8 +78,8 @@ describe('MerkleOrchard', () => {
     const result = await merkleOrchard.verifyClaim(
       token1.address,
       distributor.address,
-      lp1.address,
       1,
+      lp1.address,
       claimBalance,
       proof
     );
@@ -132,8 +132,8 @@ describe('MerkleOrchard', () => {
     let result = await merkleOrchard.verifyClaim(
       token1.address,
       distributor.address,
-      lp1.address,
       1,
+      lp1.address,
       claimBalance0,
       proof0
     );
@@ -143,8 +143,8 @@ describe('MerkleOrchard', () => {
     result = await merkleOrchard.verifyClaim(
       token1.address,
       distributor.address,
-      lp2.address,
       1,
+      lp2.address,
       claimBalance1,
       proof1
     );
@@ -427,7 +427,7 @@ describe('MerkleOrchard', () => {
 
       it('reports one of the distributions as claimed', async () => {
         const expectedResult = [true, false];
-        const result = await merkleOrchard.claimStatus(lp1.address, token1.address, distributor.address, 1, 2);
+        const result = await merkleOrchard.claimStatus(token1.address, distributor.address, lp1.address, 1, 2);
         expect(result).to.eql(expectedResult);
       });
     });

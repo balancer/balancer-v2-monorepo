@@ -88,9 +88,9 @@ contract MerkleOrchard {
     }
 
     function claimStatus(
-        address liquidityProvider,
         IERC20 token,
         address distributor,
+        address liquidityProvider,
         uint256 begin,
         uint256 end
     ) external view returns (bool[] memory) {
@@ -122,13 +122,13 @@ contract MerkleOrchard {
     function verifyClaim(
         IERC20 token,
         address distributor,
-        address liquidityProvider,
         uint256 distribution,
+        address liquidityProvider,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) external view returns (bool) {
         bytes32 channelId = _getChannelId(token, distributor);
-        return _verifyClaim(channelId, liquidityProvider, distribution, claimedBalance, merkleProof);
+        return _verifyClaim(channelId, distribution, liquidityProvider, claimedBalance, merkleProof);
     }
 
     // Claim functions
@@ -244,7 +244,7 @@ contract MerkleOrchard {
                 if (currentWordIndex == claim.distribution / 256) {
                     currentBits |= 1 << claim.distribution % 256;
                 } else {
-                    _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
+                    _setClaimedBits(currentChannelId, liquidityProvider, currentWordIndex, currentBits);
 
                     currentWordIndex = claim.distribution / 256;
                     currentBits = 1 << claim.distribution % 256;
@@ -252,7 +252,7 @@ contract MerkleOrchard {
                 currentClaimAmount += claim.balance;
             } else {
                 if (currentChannelId != bytes32(0)) {
-                    _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
+                    _setClaimedBits(currentChannelId, liquidityProvider, currentWordIndex, currentBits);
                     _deductClaimedBalance(currentChannelId, currentClaimAmount);
                 }
 
@@ -263,12 +263,12 @@ contract MerkleOrchard {
             }
 
             if (i == claims.length - 1) {
-                _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
+                _setClaimedBits(currentChannelId, liquidityProvider, currentWordIndex, currentBits);
                 _deductClaimedBalance(currentChannelId, currentClaimAmount);
             }
 
             require(
-                _verifyClaim(currentChannelId, liquidityProvider, claim.distribution, claim.balance, claim.merkleProof),
+                _verifyClaim(currentChannelId, claim.distribution, liquidityProvider, claim.balance, claim.merkleProof),
                 "Incorrect merkle proof"
             );
 
@@ -294,8 +294,8 @@ contract MerkleOrchard {
     }
 
     function _setClaimedBits(
-        address liquidityProvider,
         bytes32 channelId,
+        address liquidityProvider,
         uint256 wordIndex,
         uint256 newClaimsBitmap
     ) private {
@@ -313,8 +313,8 @@ contract MerkleOrchard {
 
     function _verifyClaim(
         bytes32 channelId,
-        address liquidityProvider,
         uint256 distribution,
+        address liquidityProvider,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) internal view returns (bool) {
