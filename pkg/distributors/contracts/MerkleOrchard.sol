@@ -31,19 +31,19 @@ contract MerkleOrchard {
 
     // Recorded distributions
     // channelId > distributor > distribution > root
-    mapping(bytes32 => mapping(uint256 => bytes32)) public trees;
+    mapping(bytes32 => mapping(uint256 => bytes32)) private _trees;
     // channelId > lp > distribution / 256 -> bitmap
-    mapping(bytes32 => mapping(address => mapping(uint256 => uint256))) public claimedBitmap;
+    mapping(bytes32 => mapping(address => mapping(uint256 => uint256))) private _claimedBitmap;
     // channelId > balance
-    mapping(bytes32 => uint256) public suppliedBalance;
+    mapping(bytes32 => uint256) private _suppliedBalance;
 
     event DistributionAdded(address indexed token, uint256 amount);
     event DistributionSent(address indexed user, address indexed token, uint256 amount);
 
-    IVault public immutable vault;
+    IVault private immutable _vault;
 
-    constructor(IVault _vault) {
-        vault = _vault;
+    constructor(IVault vault) {
+        _vault = vault;
     }
 
     struct Claim {
@@ -130,7 +130,7 @@ contract MerkleOrchard {
             });
             emit DistributionSent(recipient, address(tokens[i]), amounts[i]);
         }
-        vault.manageUserBalance(ops);
+        getVault().manageUserBalance(ops);
     }
 
     /**
@@ -174,6 +174,10 @@ contract MerkleOrchard {
         callbackContract.distributorCallback(callbackData);
     }
 
+    function getVault() public view returns (IVault) {
+        return _vault;
+    }
+
     function isClaimed(
         IERC20 token,
         address distributor,
@@ -184,7 +188,7 @@ contract MerkleOrchard {
         uint256 distributionBitIndex = distribution % 256;
 
         bytes32 channelId = _getChannelId(token, distributor);
-        return (claimedBitmap[channelId][liquidityProvider][distributionWordIndex] & (1 << distributionBitIndex)) != 0;
+        return (_claimedBitmap[channelId][liquidityProvider][distributionWordIndex] & (1 << distributionBitIndex)) != 0;
     }
 
     function _getChannelId(IERC20 token, address distributor) private pure returns (bytes32) {
@@ -197,16 +201,16 @@ contract MerkleOrchard {
         uint256 wordIndex,
         uint256 newClaimsBitmap
     ) private {
-        require((newClaimsBitmap & claimedBitmap[channelId][liquidityProvider][wordIndex]) == 0, "cannot claim twice");
-        claimedBitmap[channelId][liquidityProvider][wordIndex] |= newClaimsBitmap;
+        require((newClaimsBitmap & _claimedBitmap[channelId][liquidityProvider][wordIndex]) == 0, "cannot claim twice");
+        _claimedBitmap[channelId][liquidityProvider][wordIndex] |= newClaimsBitmap;
     }
 
     function _deductClaimedBalance(bytes32 channelId, uint256 balanceBeingClaimed) private {
         require(
-            suppliedBalance[channelId] >= balanceBeingClaimed,
+            _suppliedBalance[channelId] >= balanceBeingClaimed,
             "distributor hasn't provided sufficient tokens for claim"
         );
-        suppliedBalance[channelId] -= balanceBeingClaimed;
+        _suppliedBalance[channelId] -= balanceBeingClaimed;
     }
 
     function claimStatus(
@@ -236,7 +240,7 @@ contract MerkleOrchard {
         uint256 size = 1 + end - begin;
         bytes32[] memory arr = new bytes32[](size);
         for (uint256 i = 0; i < size; i++) {
-            arr[i] = trees[channelId][begin + i];
+            arr[i] = _trees[channelId][begin + i];
         }
         return arr;
     }
@@ -249,7 +253,7 @@ contract MerkleOrchard {
         bytes32[] memory merkleProof
     ) internal view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
-        return MerkleProof.verify(merkleProof, trees[channelId][distribution], leaf);
+        return MerkleProof.verify(merkleProof, _trees[channelId][distribution], leaf);
     }
 
     function verifyClaim(
@@ -277,10 +281,10 @@ contract MerkleOrchard {
         uint256 amount
     ) external {
         bytes32 channelId = _getChannelId(token, msg.sender);
-        require(trees[channelId][distribution] == bytes32(0), "cannot rewrite merkle root");
+        require(_trees[channelId][distribution] == bytes32(0), "cannot rewrite merkle root");
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        token.approve(address(vault), type(uint256).max);
+        token.approve(address(getVault()), type(uint256).max);
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
 
         ops[0] = IVault.UserBalanceOp({
@@ -291,10 +295,10 @@ contract MerkleOrchard {
             kind: IVault.UserBalanceOpKind.DEPOSIT_INTERNAL
         });
 
-        vault.manageUserBalance(ops);
+        getVault().manageUserBalance(ops);
 
-        suppliedBalance[channelId] += amount;
-        trees[channelId][distribution] = merkleRoot;
+        _suppliedBalance[channelId] += amount;
+        _trees[channelId][distribution] = merkleRoot;
         emit DistributionAdded(address(token), amount);
     }
 }
