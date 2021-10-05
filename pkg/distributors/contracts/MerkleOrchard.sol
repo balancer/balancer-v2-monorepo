@@ -54,7 +54,6 @@ contract MerkleOrchard {
         bytes32[] merkleProof;
     }
 
-
     function getVault() public view returns (IVault) {
         return _vault;
     }
@@ -68,10 +67,7 @@ contract MerkleOrchard {
         return _distributionRoot[channelId][distribution];
     }
 
-    function getSuppliedBalance(
-        IERC20 token,
-        address distributor
-    ) external view returns (uint256) {
+    function getSuppliedBalance(IERC20 token, address distributor) external view returns (uint256) {
         bytes32 channelId = _getChannelId(token, distributor);
         return _suppliedBalance[channelId];
     }
