@@ -32,7 +32,7 @@ contract MerkleOrchard {
     // Recorded distributions
     // channelId > distribution > root
     mapping(bytes32 => mapping(uint256 => bytes32)) private _distributionRoot;
-    // channelId > lp > distribution / 256 -> bitmap
+    // channelId > claimer > distribution / 256 -> bitmap
     mapping(bytes32 => mapping(address => mapping(uint256 => uint256))) private _claimedBitmap;
     // channelId > balance
     mapping(bytes32 => uint256) private _suppliedBalance;
