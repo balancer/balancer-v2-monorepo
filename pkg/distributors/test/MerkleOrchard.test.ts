@@ -37,14 +37,14 @@ describe('MerkleOrchard', () => {
 
   let admin: SignerWithAddress,
     distributor: SignerWithAddress,
-    lp1: SignerWithAddress,
-    lp2: SignerWithAddress,
+    claimer1: SignerWithAddress,
+    claimer2: SignerWithAddress,
     other: SignerWithAddress;
   const tokenInitialBalance = bn(100e18);
   const distribution1 = bn(1);
 
   before('setup', async () => {
-    [, admin, distributor, lp1, lp2, other] = await ethers.getSigners();
+    [, admin, distributor, claimer1, claimer2, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault and tokens', async () => {
@@ -67,7 +67,7 @@ describe('MerkleOrchard', () => {
   it('stores an allocation', async () => {
     const claimBalance = bn('9876');
 
-    const elements = [encodeElement(lp1.address, claimBalance)];
+    const elements = [encodeElement(claimer1.address, claimBalance)];
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
@@ -78,8 +78,8 @@ describe('MerkleOrchard', () => {
     const result = await merkleOrchard.verifyClaim(
       token1.address,
       distributor.address,
-      lp1.address,
       1,
+      claimer1.address,
       claimBalance,
       proof
     );
@@ -89,7 +89,7 @@ describe('MerkleOrchard', () => {
   it('emits DistributionAdded when an allocation is stored', async () => {
     const claimBalance = bn('9876');
 
-    const elements = [encodeElement(lp1.address, claimBalance)];
+    const elements = [encodeElement(claimer1.address, claimBalance)];
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
@@ -106,7 +106,7 @@ describe('MerkleOrchard', () => {
   it('requisitions tokens when it stores a balance', async () => {
     const claimBalance = bn('9876');
 
-    const elements = [encodeElement(lp1.address, claimBalance)];
+    const elements = [encodeElement(claimer1.address, claimBalance)];
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
@@ -122,7 +122,7 @@ describe('MerkleOrchard', () => {
     const claimBalance0 = bn('1000');
     const claimBalance1 = bn('2000');
 
-    const elements = [encodeElement(lp1.address, claimBalance0), encodeElement(lp2.address, claimBalance1)];
+    const elements = [encodeElement(claimer1.address, claimBalance0), encodeElement(claimer2.address, claimBalance1)];
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
@@ -132,8 +132,8 @@ describe('MerkleOrchard', () => {
     let result = await merkleOrchard.verifyClaim(
       token1.address,
       distributor.address,
-      lp1.address,
       1,
+      claimer1.address,
       claimBalance0,
       proof0
     );
@@ -143,8 +143,8 @@ describe('MerkleOrchard', () => {
     result = await merkleOrchard.verifyClaim(
       token1.address,
       distributor.address,
-      lp2.address,
       1,
+      claimer2.address,
       claimBalance1,
       proof1
     );
@@ -158,7 +158,7 @@ describe('MerkleOrchard', () => {
     let claims: Claim[];
 
     sharedBeforeEach(async () => {
-      elements = [encodeElement(lp1.address, claimableBalance)];
+      elements = [encodeElement(claimer1.address, claimableBalance)];
       merkleTree = new MerkleTree(elements);
       const root = merkleTree.getHexRoot();
 
@@ -178,35 +178,35 @@ describe('MerkleOrchard', () => {
 
     it('allows the user to claim a single distribution', async () => {
       await expectBalanceChange(
-        () => merkleOrchard.connect(lp1).claimDistributions(lp1.address, claims, tokenAddresses),
+        () => merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses),
         tokens,
-        [{ account: lp1, changes: { DAI: claimableBalance } }]
+        [{ account: claimer1, changes: { DAI: claimableBalance } }]
       );
     });
 
     it('emits DistributionSent when an allocation is claimed', async () => {
       const receipt = await (
-        await merkleOrchard.connect(lp1).claimDistributions(lp1.address, claims, tokenAddresses)
+        await merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses)
       ).wait();
 
       expectEvent.inReceipt(receipt, 'DistributionSent', {
-        user: lp1.address,
+        user: claimer1.address,
         token: token1.address,
         amount: claimableBalance,
       });
     });
 
     it('marks claimed distributions as claimed', async () => {
-      await merkleOrchard.connect(lp1).claimDistributions(lp1.address, claims, tokenAddresses);
+      await merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses);
 
-      const isClaimed = await merkleOrchard.isClaimed(token1.address, distributor.address, 1, lp1.address);
+      const isClaimed = await merkleOrchard.isClaimed(token1.address, distributor.address, 1, claimer1.address);
       expect(isClaimed).to.equal(true); // "claim should be marked as claimed";
     });
 
     it('reverts when a user attempts to claim for another user', async () => {
       const errorMsg = 'user must claim own balance';
       await expect(
-        merkleOrchard.connect(other).claimDistributions(lp1.address, claims, tokenAddresses)
+        merkleOrchard.connect(other).claimDistributions(claimer1.address, claims, tokenAddresses)
       ).to.be.revertedWith(errorMsg);
     });
 
@@ -225,21 +225,26 @@ describe('MerkleOrchard', () => {
         },
       ];
       await expect(
-        merkleOrchard.connect(lp1).claimDistributions(lp1.address, claimsWithIncorrectClaimableBalance, tokenAddresses)
+        merkleOrchard
+          .connect(claimer1)
+          .claimDistributions(claimer1.address, claimsWithIncorrectClaimableBalance, tokenAddresses)
       ).to.be.revertedWith(errorMsg);
     });
 
     it('reverts when the user attempts to claim twice', async () => {
-      await merkleOrchard.connect(lp1).claimDistributions(lp1.address, claims, tokenAddresses);
+      await merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses);
 
       const errorMsg = 'cannot claim twice';
       await expect(
-        merkleOrchard.connect(lp1).claimDistributions(lp1.address, claims, tokenAddresses)
+        merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses)
       ).to.be.revertedWith(errorMsg);
     });
 
     it('reverts when an admin attempts to overwrite an allocationn', async () => {
-      const elements2 = [encodeElement(lp1.address, claimableBalance), encodeElement(lp2.address, claimableBalance)];
+      const elements2 = [
+        encodeElement(claimer1.address, claimableBalance),
+        encodeElement(claimer2.address, claimableBalance),
+      ];
       const merkleTree2 = new MerkleTree(elements2);
       const root2 = merkleTree2.getHexRoot();
 
@@ -263,11 +268,11 @@ describe('MerkleOrchard', () => {
     let root2: string;
 
     sharedBeforeEach(async () => {
-      elements1 = [encodeElement(lp1.address, claimBalance1)];
+      elements1 = [encodeElement(claimer1.address, claimBalance1)];
       merkleTree1 = new MerkleTree(elements1);
       root1 = merkleTree1.getHexRoot();
 
-      elements2 = [encodeElement(lp1.address, claimBalance2)];
+      elements2 = [encodeElement(claimer1.address, claimBalance2)];
       merkleTree2 = new MerkleTree(elements2);
       root2 = merkleTree2.getHexRoot();
 
@@ -301,9 +306,9 @@ describe('MerkleOrchard', () => {
       ];
 
       await expectBalanceChange(
-        () => merkleOrchard.connect(lp1).claimDistributions(lp1.address, claims, tokenAddresses),
+        () => merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses),
         tokens,
-        [{ account: lp1, changes: { DAI: bn('2234') } }]
+        [{ account: claimer1, changes: { DAI: bn('2234') } }]
       );
     });
 
@@ -332,16 +337,17 @@ describe('MerkleOrchard', () => {
       ];
 
       await expectBalanceChange(
-        () => merkleOrchard.connect(lp1).claimDistributionsToInternalBalance(lp1.address, claims, tokenAddresses),
+        () =>
+          merkleOrchard.connect(claimer1).claimDistributionsToInternalBalance(claimer1.address, claims, tokenAddresses),
         tokens,
-        [{ account: lp1, changes: { DAI: bn('2234') } }],
+        [{ account: claimer1, changes: { DAI: bn('2234') } }],
         vault
       );
     });
 
     it('reports distributions as unclaimed', async () => {
       const expectedResult = [false, false];
-      const result = await merkleOrchard.claimStatus(lp1.address, token1.address, distributor.address, 1, 2);
+      const result = await merkleOrchard.claimStatus(claimer1.address, token1.address, distributor.address, 1, 2);
       expect(result).to.eql(expectedResult);
     });
 
@@ -386,8 +392,14 @@ describe('MerkleOrchard', () => {
         await expectBalanceChange(
           () =>
             merkleOrchard
-              .connect(lp1)
-              .claimDistributionsWithCallback(lp1.address, callbackContract.address, calldata, claims, tokenAddresses),
+              .connect(claimer1)
+              .claimDistributionsWithCallback(
+                claimer1.address,
+                claims,
+                tokenAddresses,
+                callbackContract.address,
+                calldata
+              ),
           tokens,
           [{ account: callbackContract.address, changes: { DAI: ['very-near', expectedClaim] } }],
           vault
@@ -399,8 +411,14 @@ describe('MerkleOrchard', () => {
 
         const receipt = await (
           await merkleOrchard
-            .connect(lp1)
-            .claimDistributionsWithCallback(lp1.address, callbackContract.address, calldata, claims, tokenAddresses)
+            .connect(claimer1)
+            .claimDistributionsWithCallback(
+              claimer1.address,
+              claims,
+              tokenAddresses,
+              callbackContract.address,
+              calldata
+            )
         ).wait();
 
         expectEvent.inIndirectReceipt(receipt, callbackContract.interface, 'CallbackReceived', {});
@@ -422,12 +440,12 @@ describe('MerkleOrchard', () => {
           },
         ];
 
-        await merkleOrchard.connect(lp1).claimDistributions(lp1.address, claims, tokenAddresses);
+        await merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses);
       });
 
       it('reports one of the distributions as claimed', async () => {
         const expectedResult = [true, false];
-        const result = await merkleOrchard.claimStatus(lp1.address, token1.address, distributor.address, 1, 2);
+        const result = await merkleOrchard.claimStatus(token1.address, distributor.address, claimer1.address, 1, 2);
         expect(result).to.eql(expectedResult);
       });
     });
@@ -446,11 +464,11 @@ describe('MerkleOrchard', () => {
     let root2: string;
 
     sharedBeforeEach(async () => {
-      elements1 = [encodeElement(lp1.address, claimBalance1)];
+      elements1 = [encodeElement(claimer1.address, claimBalance1)];
       merkleTree1 = new MerkleTree(elements1);
       root1 = merkleTree1.getHexRoot();
 
-      elements2 = [encodeElement(lp1.address, claimBalance2)];
+      elements2 = [encodeElement(claimer1.address, claimBalance2)];
       merkleTree2 = new MerkleTree(elements2);
       root2 = merkleTree2.getHexRoot();
 
@@ -484,9 +502,9 @@ describe('MerkleOrchard', () => {
       ];
 
       await expectBalanceChange(
-        () => merkleOrchard.connect(lp1).claimDistributions(lp1.address, claims, tokenAddresses),
+        () => merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses),
         tokens,
-        [{ account: lp1, changes: { DAI: bn('1000'), BAT: bn('1234') } }]
+        [{ account: claimer1, changes: { DAI: bn('1000'), BAT: bn('1234') } }]
       );
     });
   });
