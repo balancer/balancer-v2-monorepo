@@ -38,7 +38,7 @@ contract MerkleOrchard {
     mapping(bytes32 => uint256) private _suppliedBalance;
 
     event DistributionAdded(bytes32 indexed channelId, IERC20 indexed token, bytes32 merkleRoot, uint256 amount);
-    event DistributionSent(bytes32 indexed channelId, address indexed user, IERC20 indexed token, uint256 amount);
+    event DistributionSent(bytes32 indexed channelId, address indexed claimer, IERC20 indexed token, uint256 amount);
 
     IVault private immutable _vault;
 
@@ -125,7 +125,7 @@ contract MerkleOrchard {
                 if (currentChannelId != bytes32(0)) {
                     _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
                     _deductClaimedBalance(currentChannelId, currentClaimAmount);
-                    emit DistributionSent(currentChannelId, recipient, tokens[claim.tokenIndex], currentClaimAmount);
+                    emit DistributionSent(currentChannelId, liquidityProvider, tokens[claim.tokenIndex], currentClaimAmount);
                 }
 
                 currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
@@ -137,7 +137,7 @@ contract MerkleOrchard {
             if (i == claims.length - 1) {
                 _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
                 _deductClaimedBalance(currentChannelId, currentClaimAmount);
-                emit DistributionSent(currentChannelId, recipient, tokens[claim.tokenIndex], currentClaimAmount);
+                emit DistributionSent(currentChannelId, liquidityProvider, tokens[claim.tokenIndex], currentClaimAmount);
             }
 
             require(

@@ -190,7 +190,7 @@ describe('MerkleOrchard', () => {
       ).wait();
 
       expectEvent.inReceipt(receipt, 'DistributionSent', {
-        user: lp1.address,
+        claimer: lp1.address,
         token: token1.address,
         amount: claimableBalance,
       });
