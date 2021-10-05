@@ -54,6 +54,28 @@ contract MerkleOrchard {
         bytes32[] merkleProof;
     }
 
+
+    function getVault() public view returns (IVault) {
+        return _vault;
+    }
+
+    function getDistributionRoot(
+        IERC20 token,
+        address distributor,
+        uint256 distribution
+    ) external view returns (bytes32) {
+        bytes32 channelId = _getChannelId(token, distributor);
+        return _distributionRoot[channelId][distribution];
+    }
+
+    function getSuppliedBalance(
+        IERC20 token,
+        address distributor
+    ) external view returns (uint256) {
+        bytes32 channelId = _getChannelId(token, distributor);
+        return _suppliedBalance[channelId];
+    }
+
     function _processClaims(
         address liquidityProvider,
         address recipient,
@@ -172,10 +194,6 @@ contract MerkleOrchard {
         require(msg.sender == liquidityProvider, "user must claim own balance");
         _processClaims(liquidityProvider, address(callbackContract), claims, tokens, true);
         callbackContract.distributorCallback(callbackData);
-    }
-
-    function getVault() public view returns (IVault) {
-        return _vault;
     }
 
     function isClaimed(
