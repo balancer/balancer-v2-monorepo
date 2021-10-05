@@ -37,8 +37,8 @@ contract MerkleOrchard {
     // channelId > balance
     mapping(bytes32 => uint256) private _suppliedBalance;
 
-    event DistributionAdded(address indexed token, bytes32 merkleRoot, uint256 amount);
-    event DistributionSent(address indexed user, address indexed token, uint256 amount);
+    event DistributionAdded(bytes32 indexed channelId, IERC20 indexed token, bytes32 merkleRoot, uint256 amount);
+    event DistributionSent(bytes32 indexed channelId, address indexed user, IERC20 indexed token, uint256 amount);
 
     IVault private immutable _vault;
 
@@ -125,6 +125,7 @@ contract MerkleOrchard {
                 if (currentChannelId != bytes32(0)) {
                     _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
                     _deductClaimedBalance(currentChannelId, currentClaimAmount);
+                    emit DistributionSent(currentChannelId, recipient, tokens[claim.tokenIndex], currentClaimAmount);
                 }
 
                 currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
@@ -136,6 +137,7 @@ contract MerkleOrchard {
             if (i == claims.length - 1) {
                 _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
                 _deductClaimedBalance(currentChannelId, currentClaimAmount);
+                emit DistributionSent(currentChannelId, recipient, tokens[claim.tokenIndex], currentClaimAmount);
             }
 
             require(
@@ -159,7 +161,6 @@ contract MerkleOrchard {
                 recipient: payable(recipient),
                 kind: kind
             });
-            emit DistributionSent(recipient, address(tokens[i]), amounts[i]);
         }
         getVault().manageUserBalance(ops);
     }
@@ -281,6 +282,6 @@ contract MerkleOrchard {
 
         _suppliedBalance[channelId] += amount;
         _distributionRoot[channelId][distribution] = merkleRoot;
-        emit DistributionAdded(address(token), merkleRoot, amount);
+        emit DistributionAdded(channelId, token, merkleRoot, amount);
     }
 }
