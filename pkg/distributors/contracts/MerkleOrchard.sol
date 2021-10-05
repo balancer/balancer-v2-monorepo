@@ -54,6 +54,8 @@ contract MerkleOrchard {
         bytes32[] merkleProof;
     }
 
+    // Getters
+
     function getVault() public view returns (IVault) {
         return _vault;
     }
@@ -83,6 +85,133 @@ contract MerkleOrchard {
 
         bytes32 channelId = _getChannelId(token, distributor);
         return (_claimedBitmap[channelId][liquidityProvider][distributionWordIndex] & (1 << distributionBitIndex)) != 0;
+    }
+
+    function claimStatus(
+        address liquidityProvider,
+        IERC20 token,
+        address distributor,
+        uint256 begin,
+        uint256 end
+    ) external view returns (bool[] memory) {
+        require(begin <= end, "distributions must be specified in ascending order");
+        uint256 size = 1 + end - begin;
+        bool[] memory arr = new bool[](size);
+        for (uint256 i = 0; i < size; i++) {
+            arr[i] = isClaimed(token, distributor, begin + i, liquidityProvider);
+        }
+        return arr;
+    }
+
+    function merkleRoots(
+        IERC20 token,
+        address distributor,
+        uint256 begin,
+        uint256 end
+    ) external view returns (bytes32[] memory) {
+        bytes32 channelId = _getChannelId(token, distributor);
+        require(begin <= end, "distributions must be specified in ascending order");
+        uint256 size = 1 + end - begin;
+        bytes32[] memory arr = new bytes32[](size);
+        for (uint256 i = 0; i < size; i++) {
+            arr[i] = _distributionRoot[channelId][begin + i];
+        }
+        return arr;
+    }
+
+    function verifyClaim(
+        IERC20 token,
+        address distributor,
+        address liquidityProvider,
+        uint256 distribution,
+        uint256 claimedBalance,
+        bytes32[] memory merkleProof
+    ) external view returns (bool) {
+        bytes32 channelId = _getChannelId(token, distributor);
+        return _verifyClaim(channelId, liquidityProvider, distribution, claimedBalance, merkleProof);
+    }
+
+    // Claim functions
+
+    /**
+     * @notice Allows a user to claim multiple distributions
+     */
+    function claimDistributions(
+        address liquidityProvider,
+        Claim[] memory claims,
+        IERC20[] memory tokens
+    ) external {
+        require(msg.sender == liquidityProvider, "user must claim own balance");
+
+        _processClaims(liquidityProvider, msg.sender, claims, tokens, false);
+    }
+
+    /**
+     * @notice Allows a user to claim multiple distributions to internal balance
+     */
+    function claimDistributionsToInternalBalance(
+        address liquidityProvider,
+        Claim[] memory claims,
+        IERC20[] memory tokens
+    ) external {
+        require(msg.sender == liquidityProvider, "user must claim own balance");
+
+        _processClaims(liquidityProvider, msg.sender, claims, tokens, true);
+    }
+
+    /**
+     * @notice Allows a user to claim several distributions to a callback
+     */
+    function claimDistributionsWithCallback(
+        address liquidityProvider,
+        IDistributorCallback callbackContract,
+        bytes calldata callbackData,
+        Claim[] memory claims,
+        IERC20[] memory tokens
+    ) external {
+        require(msg.sender == liquidityProvider, "user must claim own balance");
+        _processClaims(liquidityProvider, address(callbackContract), claims, tokens, true);
+        callbackContract.distributorCallback(callbackData);
+    }
+
+    /**
+     * @notice
+     * Allows a distributor to add funds to the contract as a merkle tree, These tokens will
+     * be withdrawn from the sender
+     * These will be pulled from the user
+     */
+    function createDistribution(
+        IERC20 token,
+        uint256 distribution,
+        bytes32 merkleRoot,
+        uint256 amount
+    ) external {
+        bytes32 channelId = _getChannelId(token, msg.sender);
+        require(_distributionRoot[channelId][distribution] == bytes32(0), "cannot rewrite merkle root");
+        token.safeTransferFrom(msg.sender, address(this), amount);
+
+        token.approve(address(getVault()), type(uint256).max);
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
+
+        ops[0] = IVault.UserBalanceOp({
+            asset: IAsset(address(token)),
+            amount: amount,
+            sender: address(this),
+            recipient: payable(address(this)),
+            kind: IVault.UserBalanceOpKind.DEPOSIT_INTERNAL
+        });
+
+        getVault().manageUserBalance(ops);
+
+        _suppliedBalance[channelId] += amount;
+        _distributionRoot[channelId][distribution] = merkleRoot;
+        emit DistributionAdded(address(token), amount);
+    }
+
+    // Helper functions
+
+    function _getChannelId(IERC20 token, address distributor) private pure returns (bytes32) {
+        return keccak256(abi.encodePacked(address(token), distributor));
     }
 
     function _processClaims(
@@ -164,51 +293,6 @@ contract MerkleOrchard {
         getVault().manageUserBalance(ops);
     }
 
-    /**
-     * @notice Allows a user to claim multiple distributions
-     */
-    function claimDistributions(
-        address liquidityProvider,
-        Claim[] memory claims,
-        IERC20[] memory tokens
-    ) external {
-        require(msg.sender == liquidityProvider, "user must claim own balance");
-
-        _processClaims(liquidityProvider, msg.sender, claims, tokens, false);
-    }
-
-    /**
-     * @notice Allows a user to claim multiple distributions to internal balance
-     */
-    function claimDistributionsToInternalBalance(
-        address liquidityProvider,
-        Claim[] memory claims,
-        IERC20[] memory tokens
-    ) external {
-        require(msg.sender == liquidityProvider, "user must claim own balance");
-
-        _processClaims(liquidityProvider, msg.sender, claims, tokens, true);
-    }
-
-    /**
-     * @notice Allows a user to claim several distributions to a callback
-     */
-    function claimDistributionsWithCallback(
-        address liquidityProvider,
-        IDistributorCallback callbackContract,
-        bytes calldata callbackData,
-        Claim[] memory claims,
-        IERC20[] memory tokens
-    ) external {
-        require(msg.sender == liquidityProvider, "user must claim own balance");
-        _processClaims(liquidityProvider, address(callbackContract), claims, tokens, true);
-        callbackContract.distributorCallback(callbackData);
-    }
-
-    function _getChannelId(IERC20 token, address distributor) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(address(token), distributor));
-    }
-
     function _setClaimedBits(
         address liquidityProvider,
         bytes32 channelId,
@@ -227,38 +311,6 @@ contract MerkleOrchard {
         _suppliedBalance[channelId] -= balanceBeingClaimed;
     }
 
-    function claimStatus(
-        address liquidityProvider,
-        IERC20 token,
-        address distributor,
-        uint256 begin,
-        uint256 end
-    ) external view returns (bool[] memory) {
-        require(begin <= end, "distributions must be specified in ascending order");
-        uint256 size = 1 + end - begin;
-        bool[] memory arr = new bool[](size);
-        for (uint256 i = 0; i < size; i++) {
-            arr[i] = isClaimed(token, distributor, begin + i, liquidityProvider);
-        }
-        return arr;
-    }
-
-    function merkleRoots(
-        IERC20 token,
-        address distributor,
-        uint256 begin,
-        uint256 end
-    ) external view returns (bytes32[] memory) {
-        bytes32 channelId = _getChannelId(token, distributor);
-        require(begin <= end, "distributions must be specified in ascending order");
-        uint256 size = 1 + end - begin;
-        bytes32[] memory arr = new bytes32[](size);
-        for (uint256 i = 0; i < size; i++) {
-            arr[i] = _distributionRoot[channelId][begin + i];
-        }
-        return arr;
-    }
-
     function _verifyClaim(
         bytes32 channelId,
         address liquidityProvider,
@@ -268,51 +320,5 @@ contract MerkleOrchard {
     ) internal view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
         return MerkleProof.verify(merkleProof, _distributionRoot[channelId][distribution], leaf);
-    }
-
-    function verifyClaim(
-        IERC20 token,
-        address distributor,
-        address liquidityProvider,
-        uint256 distribution,
-        uint256 claimedBalance,
-        bytes32[] memory merkleProof
-    ) external view returns (bool) {
-        bytes32 channelId = _getChannelId(token, distributor);
-        return _verifyClaim(channelId, liquidityProvider, distribution, claimedBalance, merkleProof);
-    }
-
-    /**
-     * @notice
-     * Allows a distributor to add funds to the contract as a merkle tree, These tokens will
-     * be withdrawn from the sender
-     * These will be pulled from the user
-     */
-    function createDistribution(
-        IERC20 token,
-        uint256 distribution,
-        bytes32 merkleRoot,
-        uint256 amount
-    ) external {
-        bytes32 channelId = _getChannelId(token, msg.sender);
-        require(_distributionRoot[channelId][distribution] == bytes32(0), "cannot rewrite merkle root");
-        token.safeTransferFrom(msg.sender, address(this), amount);
-
-        token.approve(address(getVault()), type(uint256).max);
-        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
-
-        ops[0] = IVault.UserBalanceOp({
-            asset: IAsset(address(token)),
-            amount: amount,
-            sender: address(this),
-            recipient: payable(address(this)),
-            kind: IVault.UserBalanceOpKind.DEPOSIT_INTERNAL
-        });
-
-        getVault().manageUserBalance(ops);
-
-        _suppliedBalance[channelId] += amount;
-        _distributionRoot[channelId][distribution] = merkleRoot;
-        emit DistributionAdded(address(token), amount);
     }
 }
