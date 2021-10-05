@@ -90,13 +90,13 @@ contract MerkleOrchard {
             ) {
                 if (currentWordIndex == claim.distribution / 256) {
                     currentBits |= 1 << claim.distribution % 256;
-                    currentClaimAmount += claim.balance;
                 } else {
                     _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
 
                     currentWordIndex = claim.distribution / 256;
                     currentBits = 1 << claim.distribution % 256;
                 }
+                currentClaimAmount += claim.balance;
             } else {
                 _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
                 _deductClaimedBalance(currentChannelId, currentClaimAmount);
