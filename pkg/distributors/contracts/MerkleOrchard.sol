@@ -76,6 +76,19 @@ contract MerkleOrchard {
         return _suppliedBalance[channelId];
     }
 
+    function isClaimed(
+        IERC20 token,
+        address distributor,
+        uint256 distribution,
+        address liquidityProvider
+    ) public view returns (bool) {
+        uint256 distributionWordIndex = distribution / 256;
+        uint256 distributionBitIndex = distribution % 256;
+
+        bytes32 channelId = _getChannelId(token, distributor);
+        return (_claimedBitmap[channelId][liquidityProvider][distributionWordIndex] & (1 << distributionBitIndex)) != 0;
+    }
+
     function _processClaims(
         address liquidityProvider,
         address recipient,
@@ -194,19 +207,6 @@ contract MerkleOrchard {
         require(msg.sender == liquidityProvider, "user must claim own balance");
         _processClaims(liquidityProvider, address(callbackContract), claims, tokens, true);
         callbackContract.distributorCallback(callbackData);
-    }
-
-    function isClaimed(
-        IERC20 token,
-        address distributor,
-        uint256 distribution,
-        address liquidityProvider
-    ) public view returns (bool) {
-        uint256 distributionWordIndex = distribution / 256;
-        uint256 distributionBitIndex = distribution % 256;
-
-        bytes32 channelId = _getChannelId(token, distributor);
-        return (_claimedBitmap[channelId][liquidityProvider][distributionWordIndex] & (1 << distributionBitIndex)) != 0;
     }
 
     function _getChannelId(IERC20 token, address distributor) private pure returns (bytes32) {
