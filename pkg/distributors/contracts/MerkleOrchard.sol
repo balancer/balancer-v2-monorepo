@@ -81,13 +81,11 @@ contract MerkleOrchard {
             // a) aggregate the new claim bit with previous claims of the same channel/claim bitmap
             // b) set claim status and start aggregating a new set of currentBits for a new channel/word
             if (currentChannelId == bytes32(0)) {
-                currentChannelId = keccak256(abi.encodePacked(address(tokens[claim.tokenIndex]), claim.distributor));
+                currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
                 currentWordIndex = claim.distribution / 256;
                 currentBits = 1 << claim.distribution % 256;
                 currentClaimAmount = claim.balance;
-            } else if (
-                currentChannelId == keccak256(abi.encodePacked(address(tokens[claim.tokenIndex]), claim.distributor))
-            ) {
+            } else if (currentChannelId == _getChannelId(tokens[claim.tokenIndex], claim.distributor)) {
                 if (currentWordIndex == claim.distribution / 256) {
                     currentBits |= 1 << claim.distribution % 256;
                 } else {
@@ -101,7 +99,7 @@ contract MerkleOrchard {
                 _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
                 _deductClaimedBalance(currentChannelId, currentClaimAmount);
 
-                currentChannelId = keccak256(abi.encodePacked(address(tokens[claim.tokenIndex]), claim.distributor));
+                currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
                 currentClaimAmount = claim.balance;
                 currentBits = 1 << claim.distribution % 256;
             }
@@ -187,8 +185,12 @@ contract MerkleOrchard {
         uint256 distributionWordIndex = distribution / 256;
         uint256 distributionBitIndex = distribution % 256;
 
-        bytes32 channelId = keccak256(abi.encodePacked(token, distributor));
+        bytes32 channelId = _getChannelId(token, distributor);
         return (claimedBitmap[channelId][liquidityProvider][distributionWordIndex] & (1 << distributionBitIndex)) != 0;
+    }
+
+    function _getChannelId(IERC20 token, address distributor) private pure returns (bytes32) {
+        return keccak256(abi.encodePacked(address(token), distributor));
     }
 
     function _setClaimedBits(
@@ -231,7 +233,7 @@ contract MerkleOrchard {
         uint256 begin,
         uint256 end
     ) external view returns (bytes32[] memory) {
-        bytes32 channelId = keccak256(abi.encodePacked(token, distributor));
+        bytes32 channelId = _getChannelId(token, distributor);
         require(begin <= end, "distributions must be specified in ascending order");
         uint256 size = 1 + end - begin;
         bytes32[] memory arr = new bytes32[](size);
@@ -260,7 +262,7 @@ contract MerkleOrchard {
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) public view returns (bool) {
-        bytes32 channelId = keccak256(abi.encodePacked(token, distributor));
+        bytes32 channelId = _getChannelId(token, distributor);
         return _verifyClaim(channelId, liquidityProvider, distribution, claimedBalance, merkleProof);
     }
 
@@ -276,7 +278,7 @@ contract MerkleOrchard {
         bytes32 merkleRoot,
         uint256 amount
     ) external {
-        bytes32 channelId = keccak256(abi.encodePacked(token, msg.sender));
+        bytes32 channelId = _getChannelId(token, msg.sender);
         require(trees[channelId][distribution] == bytes32(0), "cannot rewrite merkle root");
         token.safeTransferFrom(msg.sender, address(this), amount);
 
