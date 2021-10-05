@@ -37,8 +37,21 @@ contract MerkleOrchard {
     // channelId > balance
     mapping(bytes32 => uint256) private _suppliedBalance;
 
-    event DistributionAdded(address indexed token, uint256 amount);
-    event DistributionSent(address indexed user, address indexed token, uint256 amount);
+    event DistributionAdded(
+        address indexed distributor,
+        address indexed token,
+        uint256 distribution,
+        bytes32 merkleRoot,
+        uint256 amount
+    );
+    event DistributionClaimed(
+        address indexed distributor,
+        address indexed token,
+        uint256 distribution,
+        address indexed claimer,
+        address recipient,
+        uint256 amount
+    );
 
     IVault private immutable _vault;
 
@@ -205,7 +218,7 @@ contract MerkleOrchard {
 
         _suppliedBalance[channelId] += amount;
         _distributionRoot[channelId][distribution] = merkleRoot;
-        emit DistributionAdded(address(token), amount);
+        emit DistributionAdded(msg.sender, address(token), distribution, merkleRoot, amount);
     }
 
     // Helper functions
@@ -273,6 +286,14 @@ contract MerkleOrchard {
             );
 
             amounts[claim.tokenIndex] += claim.balance;
+            emit DistributionClaimed(
+                claim.distributor,
+                address(tokens[claim.tokenIndex]),
+                claim.distribution,
+                claimer,
+                recipient,
+                claim.balance
+            );
         }
 
         IVault.UserBalanceOpKind kind = asInternalBalance
@@ -288,7 +309,6 @@ contract MerkleOrchard {
                 recipient: payable(recipient),
                 kind: kind
             });
-            emit DistributionSent(recipient, address(tokens[i]), amounts[i]);
         }
         getVault().manageUserBalance(ops);
     }

@@ -99,6 +99,8 @@ describe('MerkleOrchard', () => {
 
     expectEvent.inReceipt(receipt, 'DistributionAdded', {
       token: token1.address,
+      distributor: distributor.address,
+      merkleRoot: root,
       amount: claimBalance,
     });
   });
@@ -184,14 +186,16 @@ describe('MerkleOrchard', () => {
       );
     });
 
-    it('emits DistributionSent when an allocation is claimed', async () => {
+    it('emits DistributionClaimed when an allocation is claimed', async () => {
       const receipt = await (
         await merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses)
       ).wait();
 
-      expectEvent.inReceipt(receipt, 'DistributionSent', {
-        user: claimer1.address,
+      expectEvent.inReceipt(receipt, 'DistributionClaimed', {
+        claimer: claimer1.address,
+        recipient: claimer1.address,
         token: token1.address,
+        distributor: distributor.address,
         amount: claimableBalance,
       });
     });
