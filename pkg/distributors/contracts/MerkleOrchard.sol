@@ -164,10 +164,10 @@ contract MerkleOrchard {
      */
     function claimDistributionsWithCallback(
         address liquidityProvider,
-        IDistributorCallback callbackContract,
-        bytes calldata callbackData,
         Claim[] memory claims,
-        IERC20[] memory tokens
+        IERC20[] memory tokens,
+        IDistributorCallback callbackContract,
+        bytes calldata callbackData
     ) external {
         require(msg.sender == liquidityProvider, "user must claim own balance");
         _processClaims(liquidityProvider, address(callbackContract), claims, tokens, true);
