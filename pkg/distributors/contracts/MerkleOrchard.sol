@@ -37,7 +37,7 @@ contract MerkleOrchard {
     // token > distributor > balance
     mapping(IERC20 => mapping(address => uint256)) public suppliedBalance;
 
-    event DistributionAdded(address indexed token, uint256 amount);
+    event DistributionAdded(address indexed token, bytes32 merkleRoot, uint256 amount);
     event DistributionPaid(address indexed user, address indexed token, uint256 amount);
 
     IVault public immutable vault;
@@ -204,6 +204,6 @@ contract MerkleOrchard {
 
         suppliedBalance[token][msg.sender] = suppliedBalance[token][msg.sender] + amount;
         trees[token][msg.sender][distribution] = _merkleRoot;
-        emit DistributionAdded(address(token), amount);
+        emit DistributionAdded(address(token), _merkleRoot, amount);
     }
 }
