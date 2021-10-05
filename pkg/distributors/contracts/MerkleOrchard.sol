@@ -30,15 +30,15 @@ contract MerkleOrchard {
     using SafeERC20 for IERC20;
 
     // Recorded distributions
-    // token > distributor > distribution > root
-    mapping(IERC20 => mapping(address => mapping(uint256 => bytes32))) public trees;
-    // token > distributor distribution > lp > root
-    mapping(IERC20 => mapping(address => mapping(uint256 => mapping(address => bool)))) public claimed;
-    // token > distributor > balance
-    mapping(IERC20 => mapping(address => uint256)) public suppliedBalance;
+    // channelId > distributor > distribution > root
+    mapping(bytes32 => mapping(uint256 => bytes32)) public trees;
+    // channelId > lp > distribution / 256 -> bitmap
+    mapping(bytes32 => mapping(address => mapping(uint256 => uint256))) public claimedBitmap;
+    // channelId > balance
+    mapping(bytes32 => uint256) public suppliedBalance;
 
     event DistributionAdded(address indexed token, uint256 amount);
-    event DistributionPaid(address indexed user, address indexed token, uint256 amount);
+    event DistributionSent(address indexed user, address indexed token, uint256 amount);
 
     IVault public immutable vault;
 
@@ -63,36 +63,56 @@ contract MerkleOrchard {
     ) internal {
         uint256[] memory amounts = new uint256[](tokens.length);
 
+        // To save gas when setting claimed statuses in storage we group updates
+        // into currentBits for a particular channel, only setting them when a claim
+        // on a new channel is seen, or on the final iteration
+
+        // for aggregating claims
+        uint256 currentBits;
+        bytes32 currentChannelId;
+        uint256 currentWordIndex;
+        uint256 currentClaimAmount;
+
         Claim memory claim;
-        IERC20 token;
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
-            token = tokens[claim.tokenIndex];
 
-            require(!isClaimed(token, claim.distributor, claim.distribution, liquidityProvider), "cannot claim twice");
+            // When we process a new claim we either
+            // a) aggregate the new claim bit with previous claims of the same channel/claim bitmap
+            // b) set claim status and start aggregating a new set of currentBits for a new channel/word
+            if (currentChannelId == _getChannelId(tokens[claim.tokenIndex], claim.distributor)) {
+                if (currentWordIndex == claim.distribution / 256) {
+                    currentBits |= 1 << claim.distribution % 256;
+                } else {
+                    _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
+
+                    currentWordIndex = claim.distribution / 256;
+                    currentBits = 1 << claim.distribution % 256;
+                }
+                currentClaimAmount += claim.balance;
+            } else {
+                if (currentChannelId != bytes32(0)) {
+                    _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
+                    _deductClaimedBalance(currentChannelId, currentClaimAmount);
+                }
+
+                currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
+                currentWordIndex = claim.distribution / 256;
+                currentClaimAmount = claim.balance;
+                currentBits = 1 << claim.distribution % 256;
+            }
+
+            if (i == claims.length - 1) {
+                _setClaimedBits(liquidityProvider, currentChannelId, currentWordIndex, currentBits);
+                _deductClaimedBalance(currentChannelId, currentClaimAmount);
+            }
+
             require(
-                verifyClaim(
-                    token,
-                    claim.distributor,
-                    liquidityProvider,
-                    claim.distribution,
-                    claim.balance,
-                    claim.merkleProof
-                ),
+                _verifyClaim(currentChannelId, liquidityProvider, claim.distribution, claim.balance, claim.merkleProof),
                 "Incorrect merkle proof"
             );
 
-            require(
-                suppliedBalance[token][claim.distributor] >= claim.balance,
-                "distributor hasn't provided sufficient tokens for claim"
-            );
-
-            claimed[token][claim.distributor][claim.distribution][liquidityProvider] = true;
-
             amounts[claim.tokenIndex] += claim.balance;
-
-            suppliedBalance[token][claim.distributor] = suppliedBalance[token][claim.distributor] - claim.balance;
-            emit DistributionPaid(recipient, address(token), claim.balance);
         }
 
         IVault.UserBalanceOpKind kind = asInternalBalance
@@ -108,6 +128,7 @@ contract MerkleOrchard {
                 recipient: payable(recipient),
                 kind: kind
             });
+            emit DistributionSent(recipient, address(tokens[i]), amounts[i]);
         }
         vault.manageUserBalance(ops);
     }
@@ -159,7 +180,33 @@ contract MerkleOrchard {
         uint256 distribution,
         address liquidityProvider
     ) public view returns (bool) {
-        return claimed[token][distributor][distribution][liquidityProvider];
+        uint256 distributionWordIndex = distribution / 256;
+        uint256 distributionBitIndex = distribution % 256;
+
+        bytes32 channelId = _getChannelId(token, distributor);
+        return (claimedBitmap[channelId][liquidityProvider][distributionWordIndex] & (1 << distributionBitIndex)) != 0;
+    }
+
+    function _getChannelId(IERC20 token, address distributor) private pure returns (bytes32) {
+        return keccak256(abi.encodePacked(address(token), distributor));
+    }
+
+    function _setClaimedBits(
+        address liquidityProvider,
+        bytes32 channelId,
+        uint256 wordIndex,
+        uint256 newClaimsBitmap
+    ) private {
+        require((newClaimsBitmap & claimedBitmap[channelId][liquidityProvider][wordIndex]) == 0, "cannot claim twice");
+        claimedBitmap[channelId][liquidityProvider][wordIndex] |= newClaimsBitmap;
+    }
+
+    function _deductClaimedBalance(bytes32 channelId, uint256 balanceBeingClaimed) private {
+        require(
+            suppliedBalance[channelId] >= balanceBeingClaimed,
+            "distributor hasn't provided sufficient tokens for claim"
+        );
+        suppliedBalance[channelId] -= balanceBeingClaimed;
     }
 
     function claimStatus(
@@ -184,13 +231,25 @@ contract MerkleOrchard {
         uint256 begin,
         uint256 end
     ) external view returns (bytes32[] memory) {
+        bytes32 channelId = _getChannelId(token, distributor);
         require(begin <= end, "distributions must be specified in ascending order");
         uint256 size = 1 + end - begin;
         bytes32[] memory arr = new bytes32[](size);
         for (uint256 i = 0; i < size; i++) {
-            arr[i] = trees[token][distributor][begin + i];
+            arr[i] = trees[channelId][begin + i];
         }
         return arr;
+    }
+
+    function _verifyClaim(
+        bytes32 channelId,
+        address liquidityProvider,
+        uint256 distribution,
+        uint256 claimedBalance,
+        bytes32[] memory merkleProof
+    ) internal view returns (bool) {
+        bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
+        return MerkleProof.verify(merkleProof, trees[channelId][distribution], leaf);
     }
 
     function verifyClaim(
@@ -200,24 +259,25 @@ contract MerkleOrchard {
         uint256 distribution,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
-    ) public view returns (bool) {
-        bytes32 leaf = keccak256(abi.encodePacked(liquidityProvider, claimedBalance));
-        return MerkleProof.verify(merkleProof, trees[token][distributor][distribution], leaf);
+    ) external view returns (bool) {
+        bytes32 channelId = _getChannelId(token, distributor);
+        return _verifyClaim(channelId, liquidityProvider, distribution, claimedBalance, merkleProof);
     }
 
     /**
      * @notice
-     * Allows a rewarder to add funds to the contract as a merkle tree, These tokens will
+     * Allows a distributor to add funds to the contract as a merkle tree, These tokens will
      * be withdrawn from the sender
      * These will be pulled from the user
      */
-    function seedAllocations(
+    function createDistribution(
         IERC20 token,
         uint256 distribution,
-        bytes32 _merkleRoot,
+        bytes32 merkleRoot,
         uint256 amount
     ) external {
-        require(trees[token][msg.sender][distribution] == bytes32(0), "cannot rewrite merkle root");
+        bytes32 channelId = _getChannelId(token, msg.sender);
+        require(trees[channelId][distribution] == bytes32(0), "cannot rewrite merkle root");
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         token.approve(address(vault), type(uint256).max);
@@ -233,8 +293,8 @@ contract MerkleOrchard {
 
         vault.manageUserBalance(ops);
 
-        suppliedBalance[token][msg.sender] = suppliedBalance[token][msg.sender] + amount;
-        trees[token][msg.sender][distribution] = _merkleRoot;
+        suppliedBalance[channelId] += amount;
+        trees[channelId][distribution] = merkleRoot;
         emit DistributionAdded(address(token), amount);
     }
 }
