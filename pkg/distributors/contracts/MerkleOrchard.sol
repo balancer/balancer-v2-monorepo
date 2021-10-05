@@ -63,7 +63,7 @@ contract MerkleOrchard {
     ) internal {
         uint256[] memory amounts = new uint256[](tokens.length);
 
-        // To save gas when setting claimed statuses in storange we group updates
+        // To save gas when setting claimed statuses in storage we group updates
         // into currentBits for a particular channel, only setting them when a claim
         // on a new channel is seen, or on the final iteration
 
