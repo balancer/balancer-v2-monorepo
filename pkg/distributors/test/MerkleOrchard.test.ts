@@ -217,7 +217,7 @@ describe('MerkleOrchard', () => {
     it('reverts when the user attempts to claim the wrong balance', async () => {
       const incorrectClaimedBalance = bn('666');
       const merkleProof = merkleTree.getHexProof(elements[0]);
-      const errorMsg = 'Incorrect merkle proof';
+      const errorMsg = 'incorrect merkle proof';
 
       const claimsWithIncorrectClaimableBalance = [
         {

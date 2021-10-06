@@ -281,7 +281,7 @@ contract MerkleOrchard {
 
             require(
                 _verifyClaim(currentChannelId, claim.distribution, claimer, claim.balance, claim.merkleProof),
-                "Incorrect merkle proof"
+                "incorrect merkle proof"
             );
 
             amounts[claim.tokenIndex] += claim.balance;
