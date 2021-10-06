@@ -312,14 +312,21 @@ contract MerkleOrchard {
         getVault().manageUserBalance(ops);
     }
 
+    /**
+     * @dev Sets the bits set in `newClaimsBitmap` for the corresponding distribution.
+     */
     function _setClaimedBits(
         bytes32 channelId,
         address claimer,
         uint256 wordIndex,
         uint256 newClaimsBitmap
     ) private {
-        require((newClaimsBitmap & _claimedBitmap[channelId][claimer][wordIndex]) == 0, "cannot claim twice");
-        _claimedBitmap[channelId][claimer][wordIndex] |= newClaimsBitmap;
+        uint256 currentBitmap = _claimedBitmap[channelId][claimer][wordIndex];
+
+        // All newly set bits must not have been previously set
+        require((newClaimsBitmap & currentBitmap) == 0, "cannot claim twice");
+
+        _claimedBitmap[channelId][claimer][wordIndex] = currentBitmap | newClaimsBitmap;
     }
 
     function _deductClaimedBalance(bytes32 channelId, uint256 balanceBeingClaimed) private {
