@@ -76,6 +76,7 @@ contract StablePhantomPool is StablePool {
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
 
     enum JoinKindPhantom { INIT, COLLECT_PROTOCOL_FEES }
+    enum ExitKindPhantom { EXACT_BPT_IN_FOR_TOKENS_OUT }
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -179,7 +180,7 @@ contract StablePhantomPool is StablePool {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override returns (uint256 amountOut) {
+    ) internal virtual override whenNotPaused returns (uint256 amountOut) {
         _cacheTokenRatesIfNecessary();
 
         uint256 protocolSwapFeePercentage = _cachedProtocolSwapFeePercentage;
@@ -245,7 +246,7 @@ contract StablePhantomPool is StablePool {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override returns (uint256 amountIn) {
+    ) internal virtual override whenNotPaused returns (uint256 amountIn) {
         _cacheTokenRatesIfNecessary();
 
         uint256 protocolSwapFeePercentage = _cachedProtocolSwapFeePercentage;
@@ -314,7 +315,7 @@ contract StablePhantomPool is StablePool {
         uint256 tokenIndex,
         uint256 virtualSupply,
         uint256[] memory balances
-    ) internal view returns (uint256 amountOut) {
+    ) internal view whenNotPaused returns (uint256 amountOut) {
         // Use virtual total supply and zero swap fees for joins.
         (uint256 amp, ) = _getAmplificationParameter();
         amountOut = StableMath._calcTokenOutGivenExactBptIn(amp, balances, tokenIndex, bptIn, virtualSupply, 0);
@@ -328,7 +329,7 @@ contract StablePhantomPool is StablePool {
         uint256 tokenIndex,
         uint256 virtualSupply,
         uint256[] memory balances
-    ) internal view returns (uint256 amountIn) {
+    ) internal view whenNotPaused returns (uint256 amountIn) {
         // Use virtual total supply and zero swap fees for joins
         (uint256 amp, ) = _getAmplificationParameter();
         amountIn = StableMath._calcTokenInGivenExactBptOut(amp, balances, tokenIndex, bptOut, virtualSupply, 0);
@@ -342,7 +343,7 @@ contract StablePhantomPool is StablePool {
         uint256 tokenIndex,
         uint256 virtualSupply,
         uint256[] memory balances
-    ) internal view returns (uint256 bptIn) {
+    ) internal view whenNotPaused returns (uint256 bptIn) {
         // Avoid BPT balance for stable pool math. Use virtual total supply and zero swap fees for exits.
         (uint256 amp, ) = _getAmplificationParameter();
         uint256[] memory amountsOut = new uint256[](_getTotalTokens() - 1);
@@ -358,7 +359,7 @@ contract StablePhantomPool is StablePool {
         uint256 tokenIndex,
         uint256 virtualSupply,
         uint256[] memory balances
-    ) internal view returns (uint256 bptOut) {
+    ) internal view whenNotPaused returns (uint256 bptOut) {
         uint256[] memory amountsIn = new uint256[](_getTotalTokens() - 1);
         amountsIn[tokenIndex] = amountIn;
         (uint256 amp, ) = _getAmplificationParameter();
@@ -515,22 +516,57 @@ contract StablePhantomPool is StablePool {
         bytes32,
         address,
         address,
-        uint256[] memory,
+        uint256[] memory balances,
         uint256,
         uint256,
         uint256[] memory,
-        bytes memory
+        bytes memory userData
     )
         internal
-        pure
+        view
         override
         returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            uint256[] memory dueProtocolFeeAmounts
         )
     {
-        _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
+        ExitKindPhantom kind = userData.exitKind();
+
+        //It handles only proportionally exit
+        if (kind == ExitKindPhantom.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+            //Can exit proportionally only when the pool is paused
+            _ensurePaused();
+
+            (bptAmountIn, amountsOut) = _proportionalExit(balances, userData);
+            // Due protocol fees are all zero.
+            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
+        } else {
+            _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
+        }
+    }
+
+    function _proportionalExit(uint256[] memory balances, bytes memory userData)
+        private
+        view
+        returns (uint256, uint256[] memory)
+    {
+        // This proportional exit function is only enabled if the contract is paused in an attempt to provide users
+        // with a mechanism to retrieve their tokens in case of an emergency.
+        // This particular exit function is the only one available because it is the simplest one, and therefore the
+        // one with the lowest likelihood of errors.
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
+
+        uint256 bptAmountIn = userData.exactBptInForTokensOut();
+        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
+
+        uint256[] memory amountsOut = StableMath._calcTokensOutGivenExactBptIn(
+            balancesWithoutBpt,
+            bptAmountIn,
+            virtualSupply
+        );
+
+        return (bptAmountIn, _addBptItem(amountsOut, 0));
     }
 
     // Scaling factors
@@ -706,16 +742,27 @@ contract StablePhantomPool is StablePool {
         return index < _bptIndex ? index : index.sub(1);
     }
 
-    function _dropBptItem(uint256[] memory _balances)
+    function _dropBptItem(uint256[] memory amounts)
         internal
         view
-        returns (uint256 virtualSupply, uint256[] memory balances)
+        returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt)
     {
-        virtualSupply = _MAX_TOKEN_BALANCE - _balances[_bptIndex] + _dueProtocolFeeBptAmount;
+        virtualSupply = _MAX_TOKEN_BALANCE - amounts[_bptIndex] + _dueProtocolFeeBptAmount;
 
-        balances = new uint256[](_balances.length - 1);
-        for (uint256 i = 0; i < balances.length; i++) {
-            balances[i] = _balances[i < _bptIndex ? i : i + 1];
+        amountsWithoutBpt = new uint256[](amounts.length - 1);
+        for (uint256 i = 0; i < amountsWithoutBpt.length; i++) {
+            amountsWithoutBpt[i] = amounts[i < _bptIndex ? i : i + 1];
+        }
+    }
+
+    function _addBptItem(uint256[] memory amounts, uint256 bptAmount)
+        internal
+        view
+        returns (uint256[] memory amountsWithBpt)
+    {
+        amountsWithBpt = new uint256[](amounts.length + 1);
+        for (uint256 i = 0; i < amountsWithBpt.length; i++) {
+            amountsWithBpt[i] = i == _bptIndex ? bptAmount : amounts[i < _bptIndex ? i : i - 1];
         }
     }
 }
