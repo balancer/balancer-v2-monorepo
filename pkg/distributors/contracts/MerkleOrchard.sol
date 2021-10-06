@@ -31,7 +31,7 @@ contract MerkleOrchard {
     // Recorded distributions
     // channelId > distribution > root
     mapping(bytes32 => mapping(uint256 => bytes32)) private _distributionRoot;
-    // channelId > claimer > distribution / 256 -> bitmap
+    // channelId > claimer > distribution / 256 (word index) -> bitmap
     mapping(bytes32 => mapping(address => mapping(uint256 => uint256))) private _claimedBitmap;
     // channelId > balance
     mapping(bytes32 => uint256) private _suppliedBalance;
@@ -92,8 +92,7 @@ contract MerkleOrchard {
         uint256 distribution,
         address claimer
     ) public view returns (bool) {
-        uint256 distributionWordIndex = distribution / 256;
-        uint256 distributionBitIndex = distribution % 256;
+        (uint256 distributionWordIndex, uint256 distributionBitIndex) = _getIndices(distribution);
 
         bytes32 channelId = _getChannelId(token, distributor);
         return (_claimedBitmap[channelId][claimer][distributionWordIndex] & (1 << distributionBitIndex)) != 0;
@@ -235,45 +234,65 @@ contract MerkleOrchard {
     ) internal {
         uint256[] memory amounts = new uint256[](tokens.length);
 
-        // To save gas when setting claimed statuses in storage we group updates
-        // into currentBits for a particular channel, only setting them when a claim
-        // on a new channel is seen, or on the final iteration
+        // To save gas when setting claimed statuses in storage, we group claims for each channel and word index
+        // (referred to as a 'claims set'), aggregating the claim bits to set and total claimed amount, only committing
+        // to storage when changing claims sets (or when processing the last claim).
+        // This means that callers should sort claims by grouping distribution channels and distributions with the same
+        // word index in order to achieve reduced gas costs.
 
-        // for aggregating claims
-        uint256 currentBits;
-        bytes32 currentChannelId;
+        // Variables to support claims set aggregation
+        bytes32 currentChannelId; // Since channel ids are a hash, the initial zero id can be safely considered invalid
         uint256 currentWordIndex;
-        uint256 currentClaimAmount;
+
+        uint256 currentBits; // The accumulated claimed bits to set in storage
+        uint256 currentClaimAmount; // The accumulated tokens to be claimed from the current channel (not claims set!)
 
         Claim memory claim;
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
 
-            // When we process a new claim we either
-            // a) aggregate the new claim bit with previous claims of the same channel/claim bitmap
-            // b) set claim status and start aggregating a new set of currentBits for a new channel/word
-            if (currentChannelId == _getChannelId(tokens[claim.tokenIndex], claim.distributor)) {
-                if (currentWordIndex == claim.distribution / 256) {
-                    currentBits |= 1 << claim.distribution % 256;
+            // New scope to avoid stack-too-deep issues
+            {
+                (uint256 distributionWordIndex, uint256 distributionBitIndex) = _getIndices(claim.distribution);
+
+                if (currentChannelId == _getChannelId(tokens[claim.tokenIndex], claim.distributor)) {
+                    if (currentWordIndex == currentWordIndex) {
+                        // Same claims set as the previous one: simply track the new bit to set.
+                        currentBits |= 1 << distributionBitIndex;
+                    } else {
+                        // This case is an odd exception: the claims set is not the same, but the channel id is. This
+                        // happens for example when there are so many distributions that they don't fit in a single 32
+                        // byte bitmap.
+                        // Since the channel is the same, we can continue accumulating the claim amount, but must commit
+                        // the previous claim bits as they correspond to a different word index.
+                        _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
+
+                        // Start a new claims set, except channel id is the same as the previous one, and amount is not
+                        // reset.
+                        currentWordIndex = currentWordIndex;
+                        currentBits = 1 << distributionBitIndex;
+                    }
+
+                    // Amounts are always accumulated for the same channel id
+                    currentClaimAmount += claim.balance;
                 } else {
-                    _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
+                    // Skip initial invalid claims set
+                    if (currentChannelId != bytes32(0)) {
+                        // Commit previous claims set
+                        _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
+                        _deductClaimedBalance(currentChannelId, currentClaimAmount);
+                    }
 
-                    currentWordIndex = claim.distribution / 256;
-                    currentBits = 1 << claim.distribution % 256;
+                    // Start a new claims set
+                    currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
+                    currentWordIndex = distributionWordIndex;
+                    currentBits = 1 << distributionBitIndex;
+                    currentClaimAmount = claim.balance;
                 }
-                currentClaimAmount += claim.balance;
-            } else {
-                if (currentChannelId != bytes32(0)) {
-                    _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
-                    _deductClaimedBalance(currentChannelId, currentClaimAmount);
-                }
-
-                currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
-                currentWordIndex = claim.distribution / 256;
-                currentClaimAmount = claim.balance;
-                currentBits = 1 << claim.distribution % 256;
             }
 
+            // Since a claims set is only committed if the next one is not part of the same set, the last claims set
+            // must be manually committed always.
             if (i == claims.length - 1) {
                 _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
                 _deductClaimedBalance(currentChannelId, currentClaimAmount);
@@ -284,7 +303,10 @@ contract MerkleOrchard {
                 "incorrect merkle proof"
             );
 
+            // Note that balances to claim are here accumulated *per token*, independent of the distribution channel and
+            // claims set accounting.
             amounts[claim.tokenIndex] += claim.balance;
+
             emit DistributionClaimed(
                 claim.distributor,
                 address(tokens[claim.tokenIndex]),
@@ -329,6 +351,10 @@ contract MerkleOrchard {
         _claimedBitmap[channelId][claimer][wordIndex] = currentBitmap | newClaimsBitmap;
     }
 
+    /**
+     * @dev Deducts `balanceBeingClaimed` from a distribution channel's allocation. This isolates tokens accross
+     * distribution channels, and prevents claims for one channel from using the tokens of another one.
+     */
     function _deductClaimedBalance(bytes32 channelId, uint256 balanceBeingClaimed) private {
         require(
             _suppliedBalance[channelId] >= balanceBeingClaimed,
@@ -346,5 +372,14 @@ contract MerkleOrchard {
     ) internal view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(claimer, claimedBalance));
         return MerkleProof.verify(merkleProof, _distributionRoot[channelId][distribution], leaf);
+    }
+
+    function _getIndices(uint256 distribution)
+        private
+        pure
+        returns (uint256 distributionWordIndex, uint256 distributionBitIndex)
+    {
+        distributionWordIndex = distribution / 256;
+        distributionBitIndex = distribution % 256;
     }
 }
