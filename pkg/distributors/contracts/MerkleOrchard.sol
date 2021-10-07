@@ -30,7 +30,7 @@ contract MerkleOrchard {
 
     // Recorded distributions
     // channelId > distributionId
-    mapping(bytes32 => uint256) public nextDistributionId;
+    mapping(bytes32 => uint256) private _nextDistributionId;
     // channelId > distributionId > root
     mapping(bytes32 => mapping(uint256 => bytes32)) private _distributionRoot;
     // channelId > claimer > distributionId / 256 (word index) -> bitmap
@@ -85,6 +85,14 @@ contract MerkleOrchard {
     function getSuppliedBalance(IERC20 token, address distributor) external view returns (uint256) {
         bytes32 channelId = _getChannelId(token, distributor);
         return _suppliedBalance[channelId];
+    }
+
+    /**
+     * @notice distribution ids must be sequential and can have an optional offset
+     */
+    function getNextDistributionId(IERC20 token, address distributor) external view returns (uint256) {
+        bytes32 channelId = _getChannelId(token, distributor);
+        return _nextDistributionId[channelId];
     }
 
     function isClaimed(
@@ -199,8 +207,10 @@ contract MerkleOrchard {
         uint256 nonce
     ) external {
         bytes32 channelId = _getChannelId(token, msg.sender);
-        require(_distributionRoot[channelId][nonce] == bytes32(0), "cannot rewrite merkle root");
-        require(nextDistributionId[channelId] == nonce, "Invalid distribution ID");
+        require(
+            _nextDistributionId[channelId] == nonce || _nextDistributionId[channelId] == 0,
+            "invalid distribution ID"
+        );
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         token.approve(address(getVault()), type(uint256).max);
@@ -218,7 +228,7 @@ contract MerkleOrchard {
 
         _suppliedBalance[channelId] += amount;
         _distributionRoot[channelId][nonce] = merkleRoot;
-        nextDistributionId[channelId] = nonce + 1;
+        _nextDistributionId[channelId] = nonce + 1;
         emit DistributionAdded(msg.sender, address(token), nonce, merkleRoot, amount);
     }
 
