@@ -222,7 +222,10 @@ contract MerkleOrchard {
         uint256 amount,
         uint256 nonce
     ) external {
-        require(nextDistributionId[token][msg.sender] == nonce, "Invalid distribution ID");
+        require(
+            nextDistributionId[token][msg.sender] == nonce || nextDistributionId[token][msg.sender] == 0,
+            "Invalid distribution ID"
+        );
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         token.approve(address(vault), type(uint256).max);
