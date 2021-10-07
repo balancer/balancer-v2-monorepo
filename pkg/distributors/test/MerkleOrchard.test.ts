@@ -20,7 +20,7 @@ function encodeElement(address: string, balance: BigNumber): string {
 }
 
 interface Claim {
-  distribution: BigNumber;
+  treeId: BigNumber;
   balance: BigNumber;
   distributor: string;
   tokenIndex: number;
@@ -41,7 +41,7 @@ describe('MerkleOrchard', () => {
     claimer2: SignerWithAddress,
     other: SignerWithAddress;
   const tokenInitialBalance = bn(100e18);
-  const distribution1 = bn(1);
+  const treeId1 = bn(1);
 
   before('setup', async () => {
     [, admin, distributor, claimer1, claimer2, other] = await ethers.getSigners();
@@ -71,7 +71,7 @@ describe('MerkleOrchard', () => {
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
 
-    await merkleOrchard.connect(distributor).createDistribution(token1.address, distribution1, root, claimBalance);
+    await merkleOrchard.connect(distributor).createDistribution(token1.address, treeId1, root, claimBalance);
 
     const proof = merkleTree.getHexProof(elements[0]);
 
@@ -94,7 +94,7 @@ describe('MerkleOrchard', () => {
     const root = merkleTree.getHexRoot();
 
     const receipt = await (
-      await merkleOrchard.connect(distributor).createDistribution(token1.address, distribution1, root, claimBalance)
+      await merkleOrchard.connect(distributor).createDistribution(token1.address, treeId1, root, claimBalance)
     ).wait();
 
     expectEvent.inReceipt(receipt, 'DistributionAdded', {
@@ -113,7 +113,7 @@ describe('MerkleOrchard', () => {
     const root = merkleTree.getHexRoot();
 
     await expectBalanceChange(
-      () => merkleOrchard.connect(distributor).createDistribution(token1.address, distribution1, root, claimBalance),
+      () => merkleOrchard.connect(distributor).createDistribution(token1.address, treeId1, root, claimBalance),
       tokens,
       [{ account: merkleOrchard, changes: { DAI: claimBalance } }],
       vault
@@ -169,7 +169,7 @@ describe('MerkleOrchard', () => {
 
       claims = [
         {
-          distribution: bn(1),
+          treeId: bn(1),
           balance: claimableBalance,
           distributor: distributor.address,
           tokenIndex: 0,
@@ -221,7 +221,7 @@ describe('MerkleOrchard', () => {
 
       const claimsWithIncorrectClaimableBalance = [
         {
-          distribution: 1,
+          treeId: 1,
           balance: incorrectClaimedBalance,
           distributor: distributor.address,
           tokenIndex: 0,
@@ -280,7 +280,7 @@ describe('MerkleOrchard', () => {
       merkleTree2 = new MerkleTree(elements2);
       root2 = merkleTree2.getHexRoot();
 
-      await merkleOrchard.connect(distributor).createDistribution(token1.address, distribution1, root1, claimBalance1);
+      await merkleOrchard.connect(distributor).createDistribution(token1.address, treeId1, root1, claimBalance1);
 
       await merkleOrchard.connect(distributor).createDistribution(token1.address, bn(2), root2, claimBalance2);
     });
@@ -294,14 +294,14 @@ describe('MerkleOrchard', () => {
 
       const claims: Claim[] = [
         {
-          distribution: distribution1,
+          treeId: treeId1,
           balance: claimedBalance1,
           distributor: distributor.address,
           tokenIndex: 0,
           merkleProof: proof1,
         },
         {
-          distribution: bn(2),
+          treeId: bn(2),
           balance: claimedBalance2,
           distributor: distributor.address,
           tokenIndex: 0,
@@ -325,14 +325,14 @@ describe('MerkleOrchard', () => {
 
       const claims: Claim[] = [
         {
-          distribution: distribution1,
+          treeId: treeId1,
           balance: claimedBalance1,
           distributor: distributor.address,
           tokenIndex: 0,
           merkleProof: proof1,
         },
         {
-          distribution: bn(2),
+          treeId: bn(2),
           balance: claimedBalance2,
           distributor: distributor.address,
           tokenIndex: 0,
@@ -373,14 +373,14 @@ describe('MerkleOrchard', () => {
 
         claims = [
           {
-            distribution: bn(1),
+            treeId: bn(1),
             balance: claimBalance1,
             distributor: distributor.address,
             tokenIndex: 0,
             merkleProof: proof1,
           },
           {
-            distribution: bn(2),
+            treeId: bn(2),
             balance: claimBalance2,
             distributor: distributor.address,
             tokenIndex: 0,
@@ -436,7 +436,7 @@ describe('MerkleOrchard', () => {
 
         const claims: Claim[] = [
           {
-            distribution: distribution1,
+            treeId: treeId1,
             balance: claimedBalance1,
             distributor: distributor.address,
             tokenIndex: 0,
@@ -476,7 +476,7 @@ describe('MerkleOrchard', () => {
       merkleTree2 = new MerkleTree(elements2);
       root2 = merkleTree2.getHexRoot();
 
-      await merkleOrchard.connect(distributor).createDistribution(token1.address, distribution1, root1, claimBalance1);
+      await merkleOrchard.connect(distributor).createDistribution(token1.address, treeId1, root1, claimBalance1);
 
       await merkleOrchard.connect(distributor).createDistribution(token2.address, bn(2), root2, claimBalance2);
     });
@@ -490,14 +490,14 @@ describe('MerkleOrchard', () => {
 
       const claims: Claim[] = [
         {
-          distribution: distribution1,
+          treeId: treeId1,
           balance: claimedBalance1,
           distributor: distributor.address,
           tokenIndex: 0,
           merkleProof: proof1,
         },
         {
-          distribution: bn(2),
+          treeId: bn(2),
           balance: claimedBalance2,
           distributor: distributor.address,
           tokenIndex: 1,

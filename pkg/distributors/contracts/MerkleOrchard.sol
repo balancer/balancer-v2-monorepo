@@ -28,25 +28,25 @@ pragma solidity ^0.7.0;
 contract MerkleOrchard {
     using SafeERC20 for IERC20;
 
-    // Recorded distributions
-    // channelId > distribution > root
-    mapping(bytes32 => mapping(uint256 => bytes32)) private _distributionRoot;
-    // channelId > claimer > distribution / 256 -> bitmap
+    // Recorded treeIds
+    // groveId > treeId > merkle root
+    mapping(bytes32 => mapping(uint256 => bytes32)) private _tree;
+    // groveId > claimer > treeId / 256 -> bitmap
     mapping(bytes32 => mapping(address => mapping(uint256 => uint256))) private _claimedBitmap;
-    // channelId > balance
+    // groveId > balance
     mapping(bytes32 => uint256) private _suppliedBalance;
 
     event DistributionAdded(
         address indexed distributor,
         address indexed token,
-        uint256 distribution,
+        uint256 treeId,
         bytes32 merkleRoot,
         uint256 amount
     );
     event DistributionClaimed(
         address indexed distributor,
         address indexed token,
-        uint256 distribution,
+        uint256 treeId,
         address indexed claimer,
         address recipient,
         uint256 amount
@@ -59,7 +59,7 @@ contract MerkleOrchard {
     }
 
     struct Claim {
-        uint256 distribution;
+        uint256 treeId;
         uint256 balance;
         address distributor;
         uint256 tokenIndex;
@@ -75,28 +75,28 @@ contract MerkleOrchard {
     function getDistributionRoot(
         IERC20 token,
         address distributor,
-        uint256 distribution
+        uint256 treeId
     ) external view returns (bytes32) {
-        bytes32 channelId = _getChannelId(token, distributor);
-        return _distributionRoot[channelId][distribution];
+        bytes32 groveId = _getGroveId(token, distributor);
+        return _tree[groveId][treeId];
     }
 
     function getSuppliedBalance(IERC20 token, address distributor) external view returns (uint256) {
-        bytes32 channelId = _getChannelId(token, distributor);
-        return _suppliedBalance[channelId];
+        bytes32 groveId = _getGroveId(token, distributor);
+        return _suppliedBalance[groveId];
     }
 
     function isClaimed(
         IERC20 token,
         address distributor,
-        uint256 distribution,
+        uint256 treeId,
         address claimer
     ) public view returns (bool) {
-        uint256 distributionWordIndex = distribution / 256;
-        uint256 distributionBitIndex = distribution % 256;
+        uint256 treeIdWordIndex = treeId / 256;
+        uint256 treeIdBitIndex = treeId % 256;
 
-        bytes32 channelId = _getChannelId(token, distributor);
-        return (_claimedBitmap[channelId][claimer][distributionWordIndex] & (1 << distributionBitIndex)) != 0;
+        bytes32 groveId = _getGroveId(token, distributor);
+        return (_claimedBitmap[groveId][claimer][treeIdWordIndex] & (1 << treeIdBitIndex)) != 0;
     }
 
     function claimStatus(
@@ -106,7 +106,7 @@ contract MerkleOrchard {
         uint256 begin,
         uint256 end
     ) external view returns (bool[] memory) {
-        require(begin <= end, "distributions must be specified in ascending order");
+        require(begin <= end, "treeIds must be specified in ascending order");
         uint256 size = 1 + end - begin;
         bool[] memory arr = new bool[](size);
         for (uint256 i = 0; i < size; i++) {
@@ -121,12 +121,12 @@ contract MerkleOrchard {
         uint256 begin,
         uint256 end
     ) external view returns (bytes32[] memory) {
-        bytes32 channelId = _getChannelId(token, distributor);
-        require(begin <= end, "distributions must be specified in ascending order");
+        bytes32 groveId = _getGroveId(token, distributor);
+        require(begin <= end, "treeIds must be specified in ascending order");
         uint256 size = 1 + end - begin;
         bytes32[] memory arr = new bytes32[](size);
         for (uint256 i = 0; i < size; i++) {
-            arr[i] = _distributionRoot[channelId][begin + i];
+            arr[i] = _tree[groveId][begin + i];
         }
         return arr;
     }
@@ -134,19 +134,19 @@ contract MerkleOrchard {
     function verifyClaim(
         IERC20 token,
         address distributor,
-        uint256 distribution,
+        uint256 treeId,
         address claimer,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) external view returns (bool) {
-        bytes32 channelId = _getChannelId(token, distributor);
-        return _verifyClaim(channelId, distribution, claimer, claimedBalance, merkleProof);
+        bytes32 groveId = _getGroveId(token, distributor);
+        return _verifyClaim(groveId, treeId, claimer, claimedBalance, merkleProof);
     }
 
     // Claim functions
 
     /**
-     * @notice Allows a user to claim multiple distributions
+     * @notice Allows a user to claim from multiple trees
      */
     function claimDistributions(
         address claimer,
@@ -194,12 +194,12 @@ contract MerkleOrchard {
      */
     function createDistribution(
         IERC20 token,
-        uint256 distribution,
+        uint256 treeId,
         bytes32 merkleRoot,
         uint256 amount
     ) external {
-        bytes32 channelId = _getChannelId(token, msg.sender);
-        require(_distributionRoot[channelId][distribution] == bytes32(0), "cannot rewrite merkle root");
+        bytes32 groveId = _getGroveId(token, msg.sender);
+        require(_tree[groveId][treeId] == bytes32(0), "cannot rewrite merkle root");
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         token.approve(address(getVault()), type(uint256).max);
@@ -215,14 +215,14 @@ contract MerkleOrchard {
 
         getVault().manageUserBalance(ops);
 
-        _suppliedBalance[channelId] += amount;
-        _distributionRoot[channelId][distribution] = merkleRoot;
-        emit DistributionAdded(msg.sender, address(token), distribution, merkleRoot, amount);
+        _suppliedBalance[groveId] += amount;
+        _tree[groveId][treeId] = merkleRoot;
+        emit DistributionAdded(msg.sender, address(token), treeId, merkleRoot, amount);
     }
 
     // Helper functions
 
-    function _getChannelId(IERC20 token, address distributor) private pure returns (bytes32) {
+    function _getGroveId(IERC20 token, address distributor) private pure returns (bytes32) {
         return keccak256(abi.encodePacked(address(token), distributor));
     }
 
@@ -236,12 +236,12 @@ contract MerkleOrchard {
         uint256[] memory amounts = new uint256[](tokens.length);
 
         // To save gas when setting claimed statuses in storage we group updates
-        // into currentBits for a particular channel, only setting them when a claim
-        // on a new channel is seen, or on the final iteration
+        // into currentBits for a particular grove, only setting them when a claim
+        // on a new grove is seen, or on the final iteration
 
         // for aggregating claims
         uint256 currentBits;
-        bytes32 currentChannelId;
+        bytes32 currentGroveId;
         uint256 currentWordIndex;
         uint256 currentClaimAmount;
 
@@ -250,37 +250,37 @@ contract MerkleOrchard {
             claim = claims[i];
 
             // When we process a new claim we either
-            // a) aggregate the new claim bit with previous claims of the same channel/claim bitmap
-            // b) set claim status and start aggregating a new set of currentBits for a new channel/word
-            if (currentChannelId == _getChannelId(tokens[claim.tokenIndex], claim.distributor)) {
-                if (currentWordIndex == claim.distribution / 256) {
-                    currentBits |= 1 << claim.distribution % 256;
+            // a) aggregate the new claim bit with previous claims of the same grove/claim bitmap
+            // b) set claim status and start aggregating a new set of currentBits for a new grove/word
+            if (currentGroveId == _getGroveId(tokens[claim.tokenIndex], claim.distributor)) {
+                if (currentWordIndex == claim.treeId / 256) {
+                    currentBits |= 1 << claim.treeId % 256;
                 } else {
-                    _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
+                    _setClaimedBits(currentGroveId, claimer, currentWordIndex, currentBits);
 
-                    currentWordIndex = claim.distribution / 256;
-                    currentBits = 1 << claim.distribution % 256;
+                    currentWordIndex = claim.treeId / 256;
+                    currentBits = 1 << claim.treeId % 256;
                 }
                 currentClaimAmount += claim.balance;
             } else {
-                if (currentChannelId != bytes32(0)) {
-                    _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
-                    _deductClaimedBalance(currentChannelId, currentClaimAmount);
+                if (currentGroveId != bytes32(0)) {
+                    _setClaimedBits(currentGroveId, claimer, currentWordIndex, currentBits);
+                    _deductClaimedBalance(currentGroveId, currentClaimAmount);
                 }
 
-                currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
-                currentWordIndex = claim.distribution / 256;
+                currentGroveId = _getGroveId(tokens[claim.tokenIndex], claim.distributor);
+                currentWordIndex = claim.treeId / 256;
                 currentClaimAmount = claim.balance;
-                currentBits = 1 << claim.distribution % 256;
+                currentBits = 1 << claim.treeId % 256;
             }
 
             if (i == claims.length - 1) {
-                _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
-                _deductClaimedBalance(currentChannelId, currentClaimAmount);
+                _setClaimedBits(currentGroveId, claimer, currentWordIndex, currentBits);
+                _deductClaimedBalance(currentGroveId, currentClaimAmount);
             }
 
             require(
-                _verifyClaim(currentChannelId, claim.distribution, claimer, claim.balance, claim.merkleProof),
+                _verifyClaim(currentGroveId, claim.treeId, claimer, claim.balance, claim.merkleProof),
                 "incorrect merkle proof"
             );
 
@@ -288,7 +288,7 @@ contract MerkleOrchard {
             emit DistributionClaimed(
                 claim.distributor,
                 address(tokens[claim.tokenIndex]),
-                claim.distribution,
+                claim.treeId,
                 claimer,
                 recipient,
                 claim.balance
@@ -316,35 +316,35 @@ contract MerkleOrchard {
      * @dev Sets the bits set in `newClaimsBitmap` for the corresponding distribution.
      */
     function _setClaimedBits(
-        bytes32 channelId,
+        bytes32 groveId,
         address claimer,
         uint256 wordIndex,
         uint256 newClaimsBitmap
     ) private {
-        uint256 currentBitmap = _claimedBitmap[channelId][claimer][wordIndex];
+        uint256 currentBitmap = _claimedBitmap[groveId][claimer][wordIndex];
 
         // All newly set bits must not have been previously set
         require((newClaimsBitmap & currentBitmap) == 0, "cannot claim twice");
 
-        _claimedBitmap[channelId][claimer][wordIndex] = currentBitmap | newClaimsBitmap;
+        _claimedBitmap[groveId][claimer][wordIndex] = currentBitmap | newClaimsBitmap;
     }
 
-    function _deductClaimedBalance(bytes32 channelId, uint256 balanceBeingClaimed) private {
+    function _deductClaimedBalance(bytes32 groveId, uint256 balanceBeingClaimed) private {
         require(
-            _suppliedBalance[channelId] >= balanceBeingClaimed,
+            _suppliedBalance[groveId] >= balanceBeingClaimed,
             "distributor hasn't provided sufficient tokens for claim"
         );
-        _suppliedBalance[channelId] -= balanceBeingClaimed;
+        _suppliedBalance[groveId] -= balanceBeingClaimed;
     }
 
     function _verifyClaim(
-        bytes32 channelId,
-        uint256 distribution,
+        bytes32 groveId,
+        uint256 treeId,
         address claimer,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) internal view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(claimer, claimedBalance));
-        return MerkleProof.verify(merkleProof, _distributionRoot[channelId][distribution], leaf);
+        return MerkleProof.verify(merkleProof, _tree[groveId][treeId], leaf);
     }
 }
