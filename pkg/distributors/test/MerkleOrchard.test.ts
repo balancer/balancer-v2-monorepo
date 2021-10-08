@@ -101,6 +101,13 @@ describe('MerkleOrchard', () => {
       expect(await merkleOrchard.nextDistributionId(token.address, lp1.address)).to.be.eq(0);
     });
 
+    it('allows the distribution id to have an offset', async () => {
+      await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 72);
+      expect(await merkleOrchard.nextDistributionId(token.address, distributor.address)).to.be.eq(73);
+      await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 73);
+      expect(await merkleOrchard.nextDistributionId(token.address, distributor.address)).to.be.eq(74);
+    });
+
     context('when provided an invalid distribution ID', () => {
       it('reverts', async () => {
         await merkleOrchard.connect(distributor).seedAllocations(token.address, root, claimBalance, 0);
