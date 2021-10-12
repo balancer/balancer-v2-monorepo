@@ -269,7 +269,7 @@ contract MerkleOrchard {
                 (uint256 distributionWordIndex, uint256 distributionBitIndex) = _getIndices(claim.distributionId);
 
                 if (currentChannelId == _getChannelId(tokens[claim.tokenIndex], claim.distributor)) {
-                    if (currentWordIndex == currentWordIndex) {
+                    if (currentWordIndex == distributionWordIndex) {
                         // Same claims set as the previous one: simply track the new bit to set.
                         currentBits |= 1 << distributionBitIndex;
                     } else {
@@ -282,7 +282,7 @@ contract MerkleOrchard {
 
                         // Start a new claims set, except channel id is the same as the previous one, and amount is not
                         // reset.
-                        currentWordIndex = currentWordIndex;
+                        currentWordIndex = distributionWordIndex;
                         currentBits = 1 << distributionBitIndex;
                     }
 

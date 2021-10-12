@@ -491,6 +491,72 @@ describe('MerkleOrchard', () => {
     });
   });
 
+  describe('with allocations in the same channel, crossing claim storage slots', () => {
+    const claimBalance1 = bn('1000');
+    const claimBalance2 = bn('1234');
+
+    let elements1: string[];
+    let merkleTree1: MerkleTree;
+    let root1: string;
+
+    let elements2: string[];
+    let merkleTree2: MerkleTree;
+    let root2: string;
+
+    let proof1: BytesLike[];
+    let proof2: BytesLike[];
+    let claims: Claim[];
+
+    sharedBeforeEach(async () => {
+      elements1 = [encodeElement(claimer1.address, claimBalance1)];
+      merkleTree1 = new MerkleTree(elements1);
+      root1 = merkleTree1.getHexRoot();
+      proof1 = merkleTree1.getHexProof(elements1[0]);
+
+      elements2 = [encodeElement(claimer1.address, claimBalance2)];
+      merkleTree2 = new MerkleTree(elements2);
+      root2 = merkleTree2.getHexRoot();
+      proof2 = merkleTree2.getHexProof(elements2[0]);
+
+      // very end of one claim storage slot
+      await merkleOrchard.connect(distributor).createDistribution(token1.address, root1, claimBalance1, bn(255));
+      // very beginning of the next claim storage slot
+      await merkleOrchard.connect(distributor).createDistribution(token1.address, root2, claimBalance2, bn(256));
+
+      claims = [
+        {
+          distributionId: bn(255),
+          balance: claimBalance1,
+          distributor: distributor.address,
+          tokenIndex: 0,
+          merkleProof: proof1,
+        },
+        {
+          distributionId: bn(256),
+          balance: claimBalance2,
+          distributor: distributor.address,
+          tokenIndex: 0,
+          merkleProof: proof2,
+        },
+      ];
+    });
+
+    it('allows the user to claim multiple distributions at once', async () => {
+      await expectBalanceChange(
+        () => merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses),
+        tokens,
+        [{ account: claimer1, changes: { DAI: bn('2234') } }]
+      );
+    });
+
+    it('marks distributions as claimed', async () => {
+      const expectedResult = [false, true, true, false];
+      await merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses);
+      const result = await merkleOrchard.claimStatus(token1.address, distributor.address, claimer1.address, 254, 257);
+      expect(result).to.eql(expectedResult);
+    });
+  });
+
   describe('with several allocations accross multiple channels', () => {
     const claimBalance1 = bn('1000');
     const claimBalance2 = bn('1234');
