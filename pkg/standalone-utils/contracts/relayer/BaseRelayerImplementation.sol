@@ -25,6 +25,8 @@ import "../interfaces/IBaseRelayerImplementation.sol";
  * @notice Core functionality of a relayer allowing users to approve it to take further actions using a signature
  */
 abstract contract BaseRelayerImplementation is IBaseRelayerImplementation {
+    using Address for address;
+
     IVault private immutable _vault;
     address private immutable _entrypoint;
 
@@ -41,31 +43,15 @@ abstract contract BaseRelayerImplementation is IBaseRelayerImplementation {
         return _entrypoint;
     }
 
+    /**
+     * @notice Sets whether this relayer is authorised to act on behalf of the user
+     */
     function setRelayerApproval(bool approved, bytes calldata authorisation) external payable {
         bytes memory data = abi.encodePacked(
             abi.encodeWithSelector(_vault.setRelayerApproval.selector, msg.sender, address(this), approved),
             authorisation
         );
-        _vaultAction(0, data);
-    }
 
-    /**
-     * @notice Allows calling an arbitrary function on the Vault
-     * @dev To be used only to set relayer approval - other actions should be called with a permanent approval set
-     */
-    function _vaultAction(uint256 value, bytes memory data) private returns (bytes memory) {
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory result) = address(_vault).call{ value: value }(data);
-
-        // Pass up revert if the call failed
-        if (!success) {
-            // solhint-disable-next-line no-inline-assembly
-            assembly {
-                returndatacopy(0, 0, returndatasize())
-                revert(0, returndatasize())
-            }
-        }
-
-        return result;
+        address(_vault).functionCall(data);
     }
 }
