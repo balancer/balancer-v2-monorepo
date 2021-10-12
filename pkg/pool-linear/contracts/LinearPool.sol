@@ -59,8 +59,8 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     IRateProvider private immutable _wrappedTokenRateProvider;
 
     event TargetsSet(uint256 lowerTarget, uint256 upperTarget);
-    event WrappedTokenRateUpdated(uint256 rate);
-    event WrappedTokenRateProviderSet(IRateProvider indexed provider, uint256 cacheDuration);
+    event PriceRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
+    event PriceRateCacheUpdated(IERC20 indexed token, uint256 rate);
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -121,13 +121,17 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
         // Set wrapped token rate cache
         _wrappedTokenRateProvider = params.wrappedTokenRateProvider;
-        emit WrappedTokenRateProviderSet(params.wrappedTokenRateProvider, params.wrappedTokenRateCacheDuration);
+        emit PriceRateProviderSet(
+            params.wrappedToken,
+            params.wrappedTokenRateProvider,
+            params.wrappedTokenRateCacheDuration
+        );
         (bytes32 cache, uint256 rate) = _getNewWrappedTokenRateCache(
             params.wrappedTokenRateProvider,
             params.wrappedTokenRateCacheDuration
         );
         _wrappedTokenRateCache = cache;
-        emit WrappedTokenRateUpdated(rate);
+        emit PriceRateCacheUpdated(params.wrappedToken, rate);
     }
 
     function getMainToken() external view returns (address) {
@@ -473,7 +477,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
     function setWrappedTokenRateCacheDuration(uint256 duration) external authenticate {
         _updateWrappedTokenRateCache(duration);
-        emit WrappedTokenRateProviderSet(getWrappedTokenRateProvider(), duration);
+        emit PriceRateProviderSet(_wrappedToken, getWrappedTokenRateProvider(), duration);
     }
 
     function updateWrappedTokenRateCache() external {
@@ -491,7 +495,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function _updateWrappedTokenRateCache(uint256 duration) private {
         (bytes32 cache, uint256 rate) = _getNewWrappedTokenRateCache(_wrappedTokenRateProvider, duration);
         _wrappedTokenRateCache = cache;
-        emit WrappedTokenRateUpdated(rate);
+        emit PriceRateCacheUpdated(_wrappedToken, rate);
     }
 
     function _getNewWrappedTokenRateCache(IRateProvider provider, uint256 duration)
