@@ -42,7 +42,7 @@ contract RelayerEntrypoint is ReentrancyGuard {
         _require(msg.sender == _vault, Errors.ETH_TRANSFER);
     }
 
-    function getImplementation() public view returns (address) {
+    function getImplementation() external view returns (address) {
         return _implementation;
     }
 
