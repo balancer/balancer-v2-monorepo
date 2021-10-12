@@ -40,14 +40,14 @@ contract MerkleOrchard {
 
     event DistributionAdded(
         address indexed distributor,
-        address indexed token,
+        IERC20 indexed token,
         uint256 distributionId,
         bytes32 merkleRoot,
         uint256 amount
     );
     event DistributionClaimed(
         address indexed distributor,
-        address indexed token,
+        IERC20 indexed token,
         uint256 distributionId,
         address indexed claimer,
         address recipient,
@@ -229,13 +229,13 @@ contract MerkleOrchard {
         _remainingBalance[channelId] += amount;
         _distributionRoot[channelId][distributionId] = merkleRoot;
         _nextDistributionId[channelId] = distributionId + 1;
-        emit DistributionAdded(msg.sender, address(token), distributionId, merkleRoot, amount);
+        emit DistributionAdded(msg.sender, token, distributionId, merkleRoot, amount);
     }
 
     // Helper functions
 
     function _getChannelId(IERC20 token, address distributor) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(address(token), distributor));
+        return keccak256(abi.encodePacked(token, distributor));
     }
 
     function _processClaims(
@@ -322,7 +322,7 @@ contract MerkleOrchard {
 
             emit DistributionClaimed(
                 claim.distributor,
-                address(tokens[claim.tokenIndex]),
+                tokens[claim.tokenIndex],
                 claim.distributionId,
                 claimer,
                 recipient,
