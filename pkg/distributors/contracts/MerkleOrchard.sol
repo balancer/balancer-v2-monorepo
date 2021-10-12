@@ -36,7 +36,7 @@ contract MerkleOrchard {
     // channelId > claimer > distributionId / 256 (word index) -> bitmap
     mapping(bytes32 => mapping(address => mapping(uint256 => uint256))) private _claimedBitmap;
     // channelId > balance
-    mapping(bytes32 => uint256) private _suppliedBalance;
+    mapping(bytes32 => uint256) private _remainingBalance;
 
     event DistributionAdded(
         address indexed distributor,
@@ -82,9 +82,9 @@ contract MerkleOrchard {
         return _distributionRoot[channelId][distributionId];
     }
 
-    function getSuppliedBalance(IERC20 token, address distributor) external view returns (uint256) {
+    function getRemainingBalance(IERC20 token, address distributor) external view returns (uint256) {
         bytes32 channelId = _getChannelId(token, distributor);
-        return _suppliedBalance[channelId];
+        return _remainingBalance[channelId];
     }
 
     /**
@@ -226,7 +226,7 @@ contract MerkleOrchard {
 
         getVault().manageUserBalance(ops);
 
-        _suppliedBalance[channelId] += amount;
+        _remainingBalance[channelId] += amount;
         _distributionRoot[channelId][nonce] = merkleRoot;
         _nextDistributionId[channelId] = nonce + 1;
         emit DistributionAdded(msg.sender, address(token), nonce, merkleRoot, amount);
@@ -370,10 +370,10 @@ contract MerkleOrchard {
      */
     function _deductClaimedBalance(bytes32 channelId, uint256 balanceBeingClaimed) private {
         require(
-            _suppliedBalance[channelId] >= balanceBeingClaimed,
+            _remainingBalance[channelId] >= balanceBeingClaimed,
             "distributor hasn't provided sufficient tokens for claim"
         );
-        _suppliedBalance[channelId] -= balanceBeingClaimed;
+        _remainingBalance[channelId] -= balanceBeingClaimed;
     }
 
     function _verifyClaim(
