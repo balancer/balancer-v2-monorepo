@@ -204,11 +204,11 @@ contract MerkleOrchard {
         IERC20 token,
         bytes32 merkleRoot,
         uint256 amount,
-        uint256 nonce
+        uint256 distributionId
     ) external {
         bytes32 channelId = _getChannelId(token, msg.sender);
         require(
-            _nextDistributionId[channelId] == nonce || _nextDistributionId[channelId] == 0,
+            _nextDistributionId[channelId] == distributionId || _nextDistributionId[channelId] == 0,
             "invalid distribution ID"
         );
         token.safeTransferFrom(msg.sender, address(this), amount);
@@ -227,9 +227,9 @@ contract MerkleOrchard {
         getVault().manageUserBalance(ops);
 
         _remainingBalance[channelId] += amount;
-        _distributionRoot[channelId][nonce] = merkleRoot;
-        _nextDistributionId[channelId] = nonce + 1;
-        emit DistributionAdded(msg.sender, address(token), nonce, merkleRoot, amount);
+        _distributionRoot[channelId][distributionId] = merkleRoot;
+        _nextDistributionId[channelId] = distributionId + 1;
+        emit DistributionAdded(msg.sender, address(token), distributionId, merkleRoot, amount);
     }
 
     // Helper functions
