@@ -21,5 +21,5 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
  * @title IBaseRelayerImplementation
  */
 abstract contract IBaseRelayerImplementation {
-    function getVault() virtual public view returns (IVault);
+    function getVault() public view virtual returns (IVault);
 }

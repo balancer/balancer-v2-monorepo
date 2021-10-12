@@ -24,7 +24,6 @@ import "./relayer/VaultPermit.sol";
  * @title Batch Relayer
  */
 contract BatchRelayer is BaseRelayerImplementation, VaultActions, VaultPermit {
-    
     constructor(IVault vault) BaseRelayerImplementation(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
