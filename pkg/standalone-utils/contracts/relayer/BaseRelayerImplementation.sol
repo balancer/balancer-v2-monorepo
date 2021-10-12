@@ -16,6 +16,8 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+
+import "./RelayerEntrypoint.sol";
 import "../interfaces/IBaseRelayerImplementation.sol";
 
 /**
@@ -24,13 +26,19 @@ import "../interfaces/IBaseRelayerImplementation.sol";
  */
 abstract contract BaseRelayerImplementation is IBaseRelayerImplementation {
     IVault private immutable _vault;
+    address private immutable _entrypoint;
 
     constructor(IVault vault) {
         _vault = vault;
+        _entrypoint = address(new RelayerEntrypoint(vault));
     }
 
     function getVault() public view override returns (IVault) {
         return _vault;
+    }
+
+    function getEntrypoint() public view returns (address) {
+        return _entrypoint;
     }
 
     function setRelayerApproval(bool approved, bytes calldata authorisation) external payable {

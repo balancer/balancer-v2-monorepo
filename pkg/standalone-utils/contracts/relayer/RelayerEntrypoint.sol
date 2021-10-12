@@ -30,9 +30,9 @@ contract RelayerEntrypoint is ReentrancyGuard {
     address private immutable _vault;
     address private immutable _implementation;
 
-    constructor(address implementation) {
-        _vault = address(IBaseRelayerImplementation(implementation).getVault());
-        _implementation = implementation;
+    constructor(IVault vault) {
+        _vault = address(vault);
+        _implementation = msg.sender;
     }
 
     receive() external payable {
