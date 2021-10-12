@@ -386,15 +386,8 @@ describe('MerkleOrchard', () => {
     });
 
     it('reports distributions as unclaimed', async () => {
-      const expectedResult = [false, false];
-      const result = await merkleOrchard.claimStatus(claimer1.address, token1.address, distributor.address, 1, 2);
-      expect(result).to.eql(expectedResult);
-    });
-
-    it('returns an array of merkle roots', async () => {
-      const expectedResult = [root1, root2];
-      const result = await merkleOrchard.merkleRoots(token1.address, distributor.address, 1, 2);
-      expect(result).to.eql(expectedResult); // "claim status should be accurate"
+      expect(await merkleOrchard.isClaimed(token1.address, distributor.address, 1, claimer1.address)).to.eql(false);
+      expect(await merkleOrchard.isClaimed(token1.address, distributor.address, 2, claimer1.address)).to.eql(false);
     });
 
     describe('with a callback', () => {
@@ -484,9 +477,8 @@ describe('MerkleOrchard', () => {
       });
 
       it('reports one of the distributions as claimed', async () => {
-        const expectedResult = [true, false];
-        const result = await merkleOrchard.claimStatus(token1.address, distributor.address, claimer1.address, 1, 2);
-        expect(result).to.eql(expectedResult);
+        expect(await merkleOrchard.isClaimed(token1.address, distributor.address, 1, claimer1.address)).to.eql(true);
+        expect(await merkleOrchard.isClaimed(token1.address, distributor.address, 2, claimer1.address)).to.eql(false);
       });
     });
   });
@@ -550,10 +542,11 @@ describe('MerkleOrchard', () => {
     });
 
     it('marks distributions as claimed', async () => {
-      const expectedResult = [false, true, true, false];
       await merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses);
-      const result = await merkleOrchard.claimStatus(token1.address, distributor.address, claimer1.address, 254, 257);
-      expect(result).to.eql(expectedResult);
+      expect(await merkleOrchard.isClaimed(token1.address, distributor.address, 254, claimer1.address)).to.eql(false);
+      expect(await merkleOrchard.isClaimed(token1.address, distributor.address, 255, claimer1.address)).to.eql(true);
+      expect(await merkleOrchard.isClaimed(token1.address, distributor.address, 256, claimer1.address)).to.eql(true);
+      expect(await merkleOrchard.isClaimed(token1.address, distributor.address, 257, claimer1.address)).to.eql(false);
     });
   });
 
