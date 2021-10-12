@@ -27,6 +27,7 @@ import "../interfaces/IRelayerEntrypoint.sol";
  */
 contract RelayerEntrypoint is IRelayerEntrypoint, ReentrancyGuard {
     using Address for address payable;
+    using Address for address;
 
     address private immutable _vault;
     address private immutable _implementation;
@@ -43,29 +44,14 @@ contract RelayerEntrypoint is IRelayerEntrypoint, ReentrancyGuard {
         _require(msg.sender == _vault, Errors.ETH_TRANSFER);
     }
 
-    function getImplementation() external view returns (address) {
+    function getImplementation() external view override returns (address) {
         return _implementation;
     }
 
-    function multicall(bytes[] calldata data) external payable nonReentrant returns (bytes[] memory results) {
+    function multicall(bytes[] calldata data) external payable override nonReentrant returns (bytes[] memory results) {
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; i++) {
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, bytes memory result) = _implementation.delegatecall(data[i]);
-
-            if (!success) {
-                // If there's no revert reason, provide our own
-                if (result.length < 68) revert("MULTICALL_FAILED");
-
-                // Otherwise, bubble-up the original one
-                // solhint-disable-next-line no-inline-assembly
-                assembly {
-                    returndatacopy(0, 0, returndatasize())
-                    revert(0, returndatasize())
-                }
-            }
-
-            results[i] = result;
+            results[i] = _implementation.functionDelegateCall(data[i]);
         }
 
         _refundETH();

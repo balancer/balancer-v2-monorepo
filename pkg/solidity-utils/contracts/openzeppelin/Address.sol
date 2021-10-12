@@ -88,6 +88,19 @@ library Address {
     }
 
     /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
+     * but performing a delegate call.
+     *
+     * _Available since v3.4._
+     */
+    function functionDelegateCall(address target, bytes memory data) internal returns (bytes memory) {
+        _require(isContract(target), Errors.CALL_TO_NON_CONTRACT);
+
+        (bool success, bytes memory returndata) = target.delegatecall(data);
+        return verifyCallResult(success, returndata);
+    }
+
+    /**
      * @dev Tool to verify that a low level call was successful, and revert if it wasn't, either by bubbling up the
      * revert reason or using the one provided.
      *
