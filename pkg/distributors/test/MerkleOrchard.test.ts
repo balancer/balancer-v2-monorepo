@@ -491,6 +491,65 @@ describe('MerkleOrchard', () => {
     });
   });
 
+  describe('with allocations in the same channel, crossing claim storage slots', () => {
+    const claimBalance1 = bn('1000');
+    const claimBalance2 = bn('1234');
+
+    let elements1: string[];
+    let merkleTree1: MerkleTree;
+    let root1: string;
+
+    let elements2: string[];
+    let merkleTree2: MerkleTree;
+    let root2: string;
+
+    sharedBeforeEach(async () => {
+      elements1 = [encodeElement(claimer1.address, claimBalance1)];
+      merkleTree1 = new MerkleTree(elements1);
+      root1 = merkleTree1.getHexRoot();
+
+      elements2 = [encodeElement(claimer1.address, claimBalance2)];
+      merkleTree2 = new MerkleTree(elements2);
+      root2 = merkleTree2.getHexRoot();
+
+      // very end of one claim storage slot
+      await merkleOrchard.connect(distributor).createDistribution(token1.address, root1, claimBalance1, bn(255));
+      // very beginning of the next claim storage slot
+      await merkleOrchard.connect(distributor).createDistribution(token1.address, root2, claimBalance2, bn(256));
+    });
+
+    it('allows the user to claim multiple distributions at once', async () => {
+      const claimedBalance1 = bn('1000');
+      const claimedBalance2 = bn('1234');
+
+      const proof1: BytesLike[] = merkleTree1.getHexProof(elements1[0]);
+      const proof2: BytesLike[] = merkleTree2.getHexProof(elements2[0]);
+
+      const claims: Claim[] = [
+        {
+          distributionId: bn(255),
+          balance: claimedBalance1,
+          distributor: distributor.address,
+          tokenIndex: 0,
+          merkleProof: proof1,
+        },
+        {
+          distributionId: bn(256),
+          balance: claimedBalance2,
+          distributor: distributor.address,
+          tokenIndex: 0,
+          merkleProof: proof2,
+        },
+      ];
+
+      await expectBalanceChange(
+        () => merkleOrchard.connect(claimer1).claimDistributions(claimer1.address, claims, tokenAddresses),
+        tokens,
+        [{ account: claimer1, changes: { DAI: bn('2234') } }]
+      );
+    });
+  });
+
   describe('with several allocations accross multiple channels', () => {
     const claimBalance1 = bn('1000');
     const claimBalance2 = bn('1234');
