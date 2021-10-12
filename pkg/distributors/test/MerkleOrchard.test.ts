@@ -114,7 +114,7 @@ describe('MerkleOrchard', () => {
     );
   });
 
-  it("increments the distribution channel's nonce", async () => {
+  it("increments the distribution channel's distributionId", async () => {
     const elements = [encodeElement(claimer1.address, claimBalance)];
     const merkleTree = new MerkleTree(elements);
     const root = merkleTree.getHexRoot();
