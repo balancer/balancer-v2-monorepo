@@ -18,13 +18,14 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
-import "../interfaces/IBaseRelayerImplementation.sol";
+import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "../interfaces/IRelayerEntrypoint.sol";
 
 /**
  * @title RelayerEntrypoint
  * @notice Allows safe multicall execution of a relayer's functions
  */
-contract RelayerEntrypoint is ReentrancyGuard {
+contract RelayerEntrypoint is IRelayerEntrypoint, ReentrancyGuard {
     using Address for address payable;
 
     address private immutable _vault;
