@@ -258,16 +258,14 @@ contract MerkleOrchard {
         uint256 currentClaimAmount; // The accumulated tokens to be claimed from the current channel (not claims set!)
 
         Claim memory claim;
-        IERC20 token;
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
-            token = tokens[claim.tokenIndex];
 
             // New scope to avoid stack-too-deep issues
             {
                 (uint256 distributionWordIndex, uint256 distributionBitIndex) = _getIndices(claim.distributionId);
 
-                if (currentChannelId == _getChannelId(token, claim.distributor)) {
+                if (currentChannelId == _getChannelId(tokens[claim.tokenIndex], claim.distributor)) {
                     if (currentWordIndex == distributionWordIndex) {
                         // Same claims set as the previous one: simply track the new bit to set.
                         currentBits |= 1 << distributionBitIndex;
@@ -296,7 +294,7 @@ contract MerkleOrchard {
                     }
 
                     // Start a new claims set
-                    currentChannelId = _getChannelId(token, claim.distributor);
+                    currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
                     currentWordIndex = distributionWordIndex;
                     currentBits = 1 << distributionBitIndex;
                     currentClaimAmount = claim.balance;
@@ -321,7 +319,7 @@ contract MerkleOrchard {
 
             emit DistributionClaimed(
                 claim.distributor,
-                token,
+                tokens[claim.tokenIndex],
                 claim.distributionId,
                 claimer,
                 recipient,
