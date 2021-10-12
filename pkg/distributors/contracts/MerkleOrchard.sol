@@ -195,10 +195,7 @@ contract MerkleOrchard {
     }
 
     /**
-     * @notice
-     * Allows a distributor to add funds to the contract as a merkle tree, These tokens will
-     * be withdrawn from the sender
-     * These will be pulled from the user
+     * @notice Allows a distributor to add funds to the contract as a merkle tree.
      */
     function createDistribution(
         IERC20 token,
