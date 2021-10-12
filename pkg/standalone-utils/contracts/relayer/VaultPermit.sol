@@ -23,13 +23,10 @@ import "../interfaces/IBaseRelayerImplementation.sol";
 
 /**
  * @title VaultPermit
- * @notice Allows users to atomically perform multiple Balancer Vault actions in sequence
- * including token approvals using permit (where supported)
+ * @notice Allows users to approve the Balancer Vault to use their tokens using permit (where supported)
+ * @dev All functions must be payable so that it can be called as part of a multicall involving ETH
  */
 abstract contract VaultPermit is IBaseRelayerImplementation {
-    /**
-     * @dev Must be payable so that it can be called as part of a multicall involving ETH
-     */
     function vaultPermit(
         IERC20Permit token,
         uint256 value,
@@ -41,9 +38,6 @@ abstract contract VaultPermit is IBaseRelayerImplementation {
         token.permit(msg.sender, address(getVault()), value, deadline, v, r, s);
     }
 
-    /**
-     * @dev Must be payable so that it can be called as part of a multicall involving ETH
-     */
     function vaultPermitDAI(
         IERC20PermitDAI token,
         uint256 nonce,
