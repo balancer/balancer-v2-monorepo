@@ -232,6 +232,7 @@ describe('LinearPool', function () {
       const receipt = await pool.setTargets(lowerTarget, upperTarget);
 
       expectEvent.inReceipt(await receipt.wait(), 'TargetsSet', {
+        token: mainToken.address,
         lowerTarget,
         upperTarget,
       });

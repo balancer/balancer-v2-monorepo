@@ -58,7 +58,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     bytes32 private _wrappedTokenRateCache;
     IRateProvider private immutable _wrappedTokenRateProvider;
 
-    event TargetsSet(uint256 lowerTarget, uint256 upperTarget);
+    event TargetsSet(IERC20 indexed token, uint256 lowerTarget, uint256 upperTarget);
     event PriceRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
     event PriceRateCacheUpdated(IERC20 indexed token, uint256 rate);
 
@@ -117,7 +117,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         _lowerTarget = params.lowerTarget;
         _upperTarget = params.upperTarget;
 
-        emit TargetsSet(params.lowerTarget, params.upperTarget);
+        emit TargetsSet(params.mainToken, params.lowerTarget, params.upperTarget);
 
         // Set wrapped token rate cache
         _wrappedTokenRateProvider = params.wrappedTokenRateProvider;
@@ -528,7 +528,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
         _lowerTarget = lowerTarget;
         _upperTarget = upperTarget;
-        emit TargetsSet(lowerTarget, upperTarget);
+        emit TargetsSet(_mainToken, lowerTarget, upperTarget);
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
