@@ -117,6 +117,8 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         _lowerTarget = params.lowerTarget;
         _upperTarget = params.upperTarget;
 
+        emit TargetsSet(params.lowerTarget, params.upperTarget);
+
         // Set wrapped token rate cache
         _wrappedTokenRateProvider = params.wrappedTokenRateProvider;
         emit WrappedTokenRateProviderSet(params.wrappedTokenRateProvider, params.wrappedTokenRateCacheDuration);
