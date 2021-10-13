@@ -41,7 +41,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
 
     constructor(IVault vault) {
         _vault = vault;
-        _entrypoint = new RelayerEntrypoint(vault);
+        _entrypoint = new RelayerEntrypoint(vault, address(this));
     }
 
     function getVault() public view override returns (IVault) {

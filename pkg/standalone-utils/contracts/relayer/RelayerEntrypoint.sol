@@ -48,11 +48,15 @@ contract RelayerEntrypoint is IRelayerEntrypoint, ReentrancyGuard {
     using Address for address;
 
     address private immutable _vault;
-    address private immutable _implementation;
+    address private immutable _library;
 
-    constructor(IVault vault) {
+    /**
+     * @dev This contract is not meant to be deployed directly by an EOA, but rather during construction of a child of
+     * `BaseRelayerLibrary` which will provides its own address to be used as the relayer's library.
+     */ 
+    constructor(IVault vault, address libraryAddress) {
         _vault = address(vault);
-        _implementation = msg.sender;
+        _library = libraryAddress;
     }
 
     receive() external payable {
@@ -62,14 +66,14 @@ contract RelayerEntrypoint is IRelayerEntrypoint, ReentrancyGuard {
         _require(msg.sender == _vault, Errors.ETH_TRANSFER);
     }
 
-    function getImplementation() external view override returns (address) {
-        return _implementation;
+    function getLibrary() external view override returns (address) {
+        return _library;
     }
 
     function multicall(bytes[] calldata data) external payable override nonReentrant returns (bytes[] memory results) {
         results = new bytes[](data.length);
         for (uint256 i = 0; i < data.length; i++) {
-            results[i] = _implementation.functionDelegateCall(data[i]);
+            results[i] = _library.functionDelegateCall(data[i]);
         }
 
         _refundETH();

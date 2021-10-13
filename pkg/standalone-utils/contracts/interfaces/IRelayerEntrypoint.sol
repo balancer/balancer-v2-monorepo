@@ -23,7 +23,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
  * @notice Allows safe multicall execution of a relayer's functions
  */
 interface IRelayerEntrypoint {
-    function getImplementation() external view returns (address);
+    function getLibrary() external view returns (address);
 
     function multicall(bytes[] calldata data) external payable returns (bytes[] memory results);
 }
