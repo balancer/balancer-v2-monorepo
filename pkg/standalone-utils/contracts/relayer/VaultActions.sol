@@ -63,18 +63,22 @@ abstract contract VaultActions is IBaseRelayerImplementation {
 
     function joinPool(
         bytes32 poolId,
+        address sender,
         address recipient,
         IVault.JoinPoolRequest calldata request,
         uint256 value
     ) external payable {
-        getVault().joinPool{ value: value }(poolId, msg.sender, recipient, request);
+        require(sender == msg.sender, "Incorrect sender");
+        getVault().joinPool{ value: value }(poolId, sender, recipient, request);
     }
 
     function exitPool(
         bytes32 poolId,
+        address sender,
         address payable recipient,
         IVault.ExitPoolRequest calldata request
     ) external payable {
-        getVault().exitPool(poolId, msg.sender, recipient, request);
+        require(sender == msg.sender, "Incorrect sender");
+        getVault().exitPool(poolId, sender, recipient, request);
     }
 }
