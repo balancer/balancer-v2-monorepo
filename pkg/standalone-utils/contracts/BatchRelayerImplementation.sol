@@ -21,9 +21,11 @@ import "./relayer/VaultActions.sol";
 import "./relayer/VaultPermit.sol";
 
 /**
- * @title Batch Relayer
+ * @title Batch Relayer Implementation
+ * @notice This contract is not a relayer by itself and calls into it directly will fail.
+ * The associated relayer can be found by calling `getEntrypoint` on this contract.
  */
-contract BatchRelayer is BaseRelayerImplementation, VaultActions, VaultPermit {
+contract BatchRelayerImplementation is BaseRelayerImplementation, VaultActions, VaultPermit {
     constructor(IVault vault) BaseRelayerImplementation(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
