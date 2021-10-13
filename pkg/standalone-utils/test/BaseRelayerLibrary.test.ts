@@ -14,7 +14,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('BaseRelayerLibrary', function () {
   let vault: Contract;
-  let relayer: Contract, relayerImpl: Contract;
+  let relayer: Contract, relayerLibrary: Contract;
 
   let admin: SignerWithAddress, signer: SignerWithAddress;
 
@@ -28,8 +28,8 @@ describe('BaseRelayerLibrary', function () {
     vault = vaultHelper.instance;
 
     // Deploy Relayer
-    relayerImpl = await deploy('BaseRelayerLibrary', { args: [vault.address] });
-    relayer = await deployedAt('RelayerEntrypoint', await relayerImpl.getEntrypoint());
+    relayerLibrary = await deploy('BaseRelayerLibrary', { args: [vault.address] });
+    relayer = await deployedAt('RelayerEntrypoint', await relayerLibrary.getEntrypoint());
   });
 
   describe('multicall', () => {
@@ -68,7 +68,7 @@ describe('BaseRelayerLibrary', function () {
         );
         const callAuthorisation = RelayerAuthorization.encodeCalldataAuthorization('0x', MAX_UINT256, signature);
 
-        approvalData = relayerImpl.interface.encodeFunctionData('setRelayerApproval', [true, callAuthorisation]);
+        approvalData = relayerLibrary.interface.encodeFunctionData('setRelayerApproval', [true, callAuthorisation]);
       });
 
       context('when relayer is authorised by governance', () => {
@@ -88,7 +88,7 @@ describe('BaseRelayerLibrary', function () {
             approved: true,
           });
 
-          const revokeData = relayerImpl.interface.encodeFunctionData('setRelayerApproval', [false, '0x']);
+          const revokeData = relayerLibrary.interface.encodeFunctionData('setRelayerApproval', [false, '0x']);
 
           const revokeTx = await relayer.connect(signer).multicall([revokeData]);
           const revokeReceipt = await revokeTx.wait();
@@ -101,7 +101,7 @@ describe('BaseRelayerLibrary', function () {
         });
 
         it('approval applies to later calls within the same multicall', async () => {
-          const noSigRelayerApproval = relayerImpl.interface.encodeFunctionData('setRelayerApproval', [true, '0x']);
+          const noSigRelayerApproval = relayerLibrary.interface.encodeFunctionData('setRelayerApproval', [true, '0x']);
           await expect(relayer.connect(signer).multicall([approvalData, noSigRelayerApproval])).to.not.be.reverted;
         });
       });
