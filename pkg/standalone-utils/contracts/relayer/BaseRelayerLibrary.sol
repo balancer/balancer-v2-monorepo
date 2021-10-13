@@ -37,18 +37,18 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     using Address for address;
 
     IVault private immutable _vault;
-    address private immutable _entrypoint;
+    IRelayerEntrypoint private immutable _entrypoint;
 
     constructor(IVault vault) {
         _vault = vault;
-        _entrypoint = address(new RelayerEntrypoint(vault));
+        _entrypoint = new RelayerEntrypoint(vault);
     }
 
     function getVault() public view override returns (IVault) {
         return _vault;
     }
 
-    function getEntrypoint() public view returns (address) {
+    function getEntrypoint() public view returns (IRelayerEntrypoint) {
         return _entrypoint;
     }
 
