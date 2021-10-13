@@ -19,10 +19,10 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-import "../interfaces/IRelayerEntrypoint.sol";
+import "../interfaces/IBalancerRelayer.sol";
 
 /**
- * @title RelayerEntrypoint
+ * @title Balancer Relayer
  * @notice Allows safe multicall execution of a relayer's functions
  * @dev
  * Relayers are formed out of a system of two contracts:
@@ -43,7 +43,7 @@ import "../interfaces/IRelayerEntrypoint.sol";
  * will reject calls made if they are not being run from within the context of the entrypoint.
  * e.g. in the case where a user mistakenly calls into the library contract directly.
  */
-contract RelayerEntrypoint is IRelayerEntrypoint, ReentrancyGuard {
+contract BalancerRelayer is IBalancerRelayer, ReentrancyGuard {
     using Address for address payable;
     using Address for address;
 

@@ -17,7 +17,8 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "./RelayerEntrypoint.sol";
+import "./BalancerRelayer.sol";
+import "../interfaces/IBalancerRelayer.sol";
 import "../interfaces/IBaseRelayerLibrary.sol";
 
 /**
@@ -25,7 +26,7 @@ import "../interfaces/IBaseRelayerLibrary.sol";
  * @notice Core functionality of a relayer allowing users to approve it to take further actions using a signature
  * @dev
  * Relayers are formed out of a system of two contracts:
- *  - A `RelayerEntrypoint` contract which acts as a single point of entry into the system through a multicall function
+ *  - A `BalancerRelayer` contract which acts as a single point of entry into the system through a multicall function
  *  - A library contract such as this which defines the allowed behaviour of the relayer
  *
  * NOTE: Only the entrypoint contract should be whitelisted by Balancer governance as a relayer and so the Vault
@@ -37,18 +38,18 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     using Address for address;
 
     IVault private immutable _vault;
-    IRelayerEntrypoint private immutable _entrypoint;
+    IBalancerRelayer private immutable _entrypoint;
 
     constructor(IVault vault) {
         _vault = vault;
-        _entrypoint = new RelayerEntrypoint(vault, address(this));
+        _entrypoint = new BalancerRelayer(vault, address(this));
     }
 
     function getVault() public view override returns (IVault) {
         return _vault;
     }
 
-    function getEntrypoint() public view returns (IRelayerEntrypoint) {
+    function getEntrypoint() public view returns (IBalancerRelayer) {
         return _entrypoint;
     }
 

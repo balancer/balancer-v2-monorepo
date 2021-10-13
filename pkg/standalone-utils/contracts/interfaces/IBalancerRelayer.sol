@@ -19,10 +19,10 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 /**
- * @title IRelayerEntrypoint
+ * @title IBalancerRelayer
  * @notice Allows safe multicall execution of a relayer's functions
  */
-interface IRelayerEntrypoint {
+interface IBalancerRelayer {
     function getLibrary() external view returns (address);
 
     function multicall(bytes[] calldata data) external payable returns (bytes[] memory results);

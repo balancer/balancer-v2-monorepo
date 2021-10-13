@@ -29,7 +29,7 @@ describe('BaseRelayerLibrary', function () {
 
     // Deploy Relayer
     relayerLibrary = await deploy('BaseRelayerLibrary', { args: [vault.address] });
-    relayer = await deployedAt('RelayerEntrypoint', await relayerLibrary.getEntrypoint());
+    relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
   });
 
   describe('multicall', () => {
