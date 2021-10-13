@@ -29,17 +29,19 @@ import "../interfaces/IBaseRelayerLibrary.sol";
 abstract contract VaultPermit is IBaseRelayerLibrary {
     function vaultPermit(
         IERC20Permit token,
+        address owner,
         uint256 value,
         uint256 deadline,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) public payable {
-        token.permit(msg.sender, address(getVault()), value, deadline, v, r, s);
+        token.permit(owner, address(getVault()), value, deadline, v, r, s);
     }
 
     function vaultPermitDAI(
         IERC20PermitDAI token,
+        address holder,
         uint256 nonce,
         uint256 expiry,
         bool allowed,
@@ -47,6 +49,6 @@ abstract contract VaultPermit is IBaseRelayerLibrary {
         bytes32 r,
         bytes32 s
     ) public payable {
-        token.permit(msg.sender, address(getVault()), nonce, expiry, allowed, v, r, s);
+        token.permit(holder, address(getVault()), nonce, expiry, allowed, v, r, s);
     }
 }
