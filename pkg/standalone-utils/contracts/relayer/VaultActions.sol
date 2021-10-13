@@ -22,7 +22,7 @@ import "../interfaces/IBaseRelayerImplementation.sol";
 
 /**
  * @title VaultActions
- * @notice Allows users to atomically perform multiple Balancer Vault actions in sequence
+ * @notice Allows users to call the core functions on the Balancer Vault (swaps/joins/exits/balance management)
  * @dev All functions must be payable so that it can be called as part of a multicall involving ETH
  */
 abstract contract VaultActions is IBaseRelayerImplementation {
