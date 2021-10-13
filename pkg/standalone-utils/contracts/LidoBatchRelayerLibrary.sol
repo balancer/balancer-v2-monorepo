@@ -15,36 +15,19 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../relayer/RelayerAssetHelpers.sol";
+import "./relayer/BaseRelayerLibrary.sol";
 
-contract RelayerAssetHelpersMock is RelayerAssetHelpers {
-    constructor(IVault vault) RelayerAssetHelpers(vault) {}
+import "./relayer/LidoWrapping.sol";
+import "./relayer/VaultActions.sol";
+import "./relayer/VaultPermit.sol";
 
-    function approveToken(
-        IERC20 token,
-        address spender,
-        uint256 amount
-    ) external {
-        _approveToken(token, spender, amount);
-    }
-
-    function sweepETH() external {
-        _sweepETH();
-    }
-
-    function pullToken(
-        address sender,
-        IERC20 token,
-        uint256 amount
-    ) external {
-        _pullToken(sender, token, amount);
-    }
-
-    function pullTokens(
-        address sender,
-        IERC20[] memory tokens,
-        uint256[] memory amounts
-    ) external {
-        _pullTokens(sender, tokens, amounts);
+/**
+ * @title Batch Relayer Library
+ * @notice This contract is not a relayer by itself and calls into it directly will fail.
+ * The associated relayer can be found by calling `getEntrypoint` on this contract.
+ */
+contract LidoBatchRelayerLibrary is BaseRelayerLibrary, LidoWrapping, VaultActions, VaultPermit {
+    constructor(IVault vault, IERC20 wstETH) BaseRelayerLibrary(vault) LidoWrapping(wstETH) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 }

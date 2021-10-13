@@ -65,6 +65,39 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
         address(_vault).functionCall(data);
     }
 
+    function _pullToken(
+        address sender,
+        IERC20 token,
+        uint256 amount
+    ) internal override {
+        if (amount == 0) return;
+        IERC20[] memory tokens = new IERC20[](1);
+        tokens[0] = token;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = amount;
+
+        _pullTokens(sender, tokens, amounts);
+    }
+
+    function _pullTokens(
+        address sender,
+        IERC20[] memory tokens,
+        uint256[] memory amounts
+    ) internal override {
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](tokens.length);
+        for (uint256 i; i < tokens.length; i++) {
+            ops[i] = IVault.UserBalanceOp({
+                asset: IAsset(address(tokens[i])),
+                amount: amounts[i],
+                sender: sender,
+                recipient: payable(address(this)),
+                kind: IVault.UserBalanceOpKind.TRANSFER_EXTERNAL
+            });
+        }
+
+        getVault().manageUserBalance(ops);
+    }
+
     /**
      * @dev Returns true if `amount` is not actually an amount, but rather a chained reference.
      */

@@ -1,35 +1,28 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 
-import {
-  BatchSwapStep,
-  ExitPoolRequest,
-  FundManagement,
-  JoinPoolRequest,
-  SingleSwap,
-  SwapKind,
-  WeightedPoolEncoder,
-} from '@balancer-labs/balancer-js';
+import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { Dictionary } from 'lodash';
 
 describe('LidoRelayer', function () {
   let WETH: Token, wstETH: Token;
   let basePoolId: string;
-  let basePoolTokens: TokenList;
+  let tokens: TokenList;
   let sender: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault, basePool: StablePool;
-  let relayer: Contract;
+  let relayer: Contract, relayerLibrary: Contract;
 
   before('setup signer', async () => {
     [, admin, sender] = await ethers.getSigners();
@@ -43,14 +36,12 @@ describe('LidoRelayer', function () {
 
     const wstETHContract = await deploy('MockWstETH', { args: [WETH.address] });
     wstETH = new Token('wstETH', 'wstETH', 18, wstETHContract);
-
-    relayer = await deploy('LidoRelayer', { args: [vault.address, wstETH.address] });
   });
 
   sharedBeforeEach('deploy pool', async () => {
-    basePoolTokens = new TokenList([WETH, wstETH]).sort();
+    tokens = new TokenList([WETH, wstETH]).sort();
 
-    basePool = await StablePool.create({ tokens: basePoolTokens, vault });
+    basePool = await StablePool.create({ tokens, vault });
     basePoolId = basePool.poolId;
 
     // Seed liquidity in pool
@@ -75,380 +66,482 @@ describe('LidoRelayer', function () {
     await wstETH.instance.connect(sender).approve(vault.address, fp(100));
   });
 
-  describe('swap', () => {
-    let funds: FundManagement;
-    const limit = 0;
-    const deadline = MAX_UINT256;
+  sharedBeforeEach('set up relayer', async () => {
+    // Deploy Relayer
+    relayerLibrary = await deploy('LidoBatchRelayerLibrary', { args: [vault.address, wstETH.address] });
+    relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
-    sharedBeforeEach('build fund management', async () => {
-      funds = {
-        sender: sender.address,
-        fromInternalBalance: false,
-        recipient: sender.address,
-        toInternalBalance: false,
-      };
+    // Authorize Relayer for all actions
+    const relayerActionIds = await Promise.all(
+      ['swap', 'batchSwap', 'joinPool', 'exitPool', 'setRelayerApproval', 'manageUserBalance'].map((action) =>
+        actionId(vault.instance, action)
+      )
+    );
+    const authorizer = await deployedAt('v2-vault/Authorizer', await vault.instance.getAuthorizer());
+    await authorizer.connect(admin).grantRoles(relayerActionIds, relayer.address);
+
+    // Approve relayer by sender
+    await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
+  });
+
+  const CHAINED_REFERENCE_PREFIX = 'ba10';
+  function toChainedReference(key: BigNumberish): BigNumber {
+    // The full padded prefix is 66 characters long, with 64 hex characters and the 0x prefix.
+    const paddedPrefix = `0x${CHAINED_REFERENCE_PREFIX}${'0'.repeat(64 - CHAINED_REFERENCE_PREFIX.length)}`;
+
+    return BigNumber.from(paddedPrefix).add(key);
+  }
+
+  function encodeWrap(sender: string, recipient: string, amount: BigNumberish, outputReference?: BigNumberish): string {
+    return relayerLibrary.interface.encodeFunctionData('wrapStETH', [sender, recipient, amount, outputReference ?? 0]);
+  }
+
+  function encodeUnwrap(
+    sender: string,
+    recipient: string,
+    amount: BigNumberish,
+    outputReference?: BigNumberish
+  ): string {
+    return relayerLibrary.interface.encodeFunctionData('unwrapWstETH', [
+      sender,
+      recipient,
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
+
+  describe('swap', () => {
+    function encodeSwap(params: {
+      poolId: string;
+      kind: SwapKind;
+      tokenIn: Token;
+      tokenOut: Token;
+      amount: BigNumberish;
+      outputReference?: BigNumberish;
+    }): string {
+      return relayerLibrary.interface.encodeFunctionData('swap', [
+        {
+          poolId: params.poolId,
+          kind: params.kind,
+          assetIn: params.tokenIn.address,
+          assetOut: params.tokenOut.address,
+          amount: params.amount,
+          userData: '0x',
+        },
+        { sender: sender.address, recipient: sender.address, fromInternalBalance: false, toInternalBalance: false },
+        0,
+        MAX_UINT256,
+        0,
+        params.outputReference ?? 0,
+      ]);
+    }
+
+    describe('swap using stETH as an input', () => {
+      it('performs the given swap', async () => {
+        const poolId = basePoolId;
+        const tokenIn = tokens.findBySymbol('wstETH');
+        const tokenOut = tokens.WETH;
+        const amount = fp(1);
+
+        const receipt = await (
+          await relayer.connect(sender).multicall([
+            encodeWrap(sender.address, sender.address, amount, toChainedReference(0)),
+            encodeSwap({
+              poolId,
+              kind: SwapKind.GivenIn,
+              tokenIn,
+              tokenOut,
+              amount: toChainedReference(0),
+              outputReference: 0,
+            }),
+          ])
+        ).wait();
+
+        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+          poolId,
+          tokenIn: tokenIn.address,
+          tokenOut: tokenOut.address,
+          // amountIn: singleSwap.amount,
+          // amountOut
+        });
+      });
+
+      it('does not leave dust on the relayer', async () => {
+        const poolId = basePoolId;
+        const tokenIn = tokens.findBySymbol('wstETH');
+        const tokenOut = tokens.WETH;
+        const amount = fp(1);
+
+        await relayer.connect(sender).multicall([
+          encodeWrap(sender.address, sender.address, amount, toChainedReference(0)),
+          encodeSwap({
+            poolId,
+            kind: SwapKind.GivenIn,
+            tokenIn,
+            tokenOut,
+            amount: toChainedReference(0),
+            outputReference: 0,
+          }),
+        ]);
+
+        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+        expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
+      });
     });
 
-    context('when the relayer is authorized', () => {
-      sharedBeforeEach('allow relayer', async () => {
-        const manageUserBalanceAction = await actionId(vault.instance, 'manageUserBalance');
-        const swapAction = await actionId(vault.instance, 'swap');
+    describe('swap using stETH as an output', () => {
+      it('performs the given swap', async () => {
+        const poolId = basePoolId;
+        const tokenIn = tokens.WETH;
+        const tokenOut = tokens.findBySymbol('wstETH');
+        const amount = fp(1);
 
-        await vault.authorizer?.connect(admin).grantRoles([manageUserBalanceAction, swapAction], relayer.address);
-      });
-
-      context('when the user did allow the relayer', () => {
-        sharedBeforeEach('allow relayer', async () => {
-          await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
-        });
-
-        describe('swap using stETH as an input', () => {
-          let singleSwap: SingleSwap;
-
-          sharedBeforeEach('build swap request', async () => {
-            singleSwap = {
+        const receipt = await (
+          await relayer.connect(sender).multicall([
+            encodeSwap({
+              poolId,
               kind: SwapKind.GivenIn,
-              poolId: basePoolId,
-              assetIn: basePoolTokens.findBySymbol('wstETH').address,
-              assetOut: basePoolTokens.WETH.address,
-              amount: fp(1),
-              userData: '0x',
-            };
-          });
+              tokenIn,
+              tokenOut,
+              amount,
+              outputReference: toChainedReference(0),
+            }),
+            encodeUnwrap(sender.address, sender.address, toChainedReference(0)),
+          ])
+        ).wait();
 
-          it('performs the given swap', async () => {
-            const receipt = await relayer.connect(sender).swap(singleSwap, funds, limit, deadline);
-
-            expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'Swap', {
-              poolId: singleSwap.poolId,
-              tokenIn: singleSwap.assetIn,
-              tokenOut: singleSwap.assetOut,
-              amountIn: singleSwap.amount,
-              // amountOut
-            });
-          });
-
-          it('does not leave dust on the relayer', async () => {
-            await relayer.connect(sender).swap(singleSwap, funds, limit, deadline);
-
-            expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-            expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
-          });
-        });
-
-        describe('swap using stETH as an output', () => {
-          let singleSwap: SingleSwap;
-
-          sharedBeforeEach('build swap request', async () => {
-            singleSwap = {
-              kind: SwapKind.GivenIn,
-              poolId: basePoolId,
-              assetIn: basePoolTokens.WETH.address,
-              assetOut: basePoolTokens.findBySymbol('wstETH').address,
-              amount: fp(1),
-              userData: '0x',
-            };
-          });
-
-          it('performs the given swap', async () => {
-            const receipt = await relayer.connect(sender).swap(singleSwap, funds, limit, deadline);
-
-            expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'Swap', {
-              poolId: singleSwap.poolId,
-              tokenIn: singleSwap.assetIn,
-              tokenOut: singleSwap.assetOut,
-              amountIn: singleSwap.amount,
-              // amountOut
-            });
-          });
-
-          it('does not leave dust on the relayer', async () => {
-            await relayer.connect(sender).swap(singleSwap, funds, limit, deadline);
-
-            expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-            expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
-          });
+        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+          poolId,
+          tokenIn: tokenIn.address,
+          tokenOut: tokenOut.address,
+          // amountIn: singleSwap.amount,
+          // amountOut
         });
       });
 
-      context('when the user did not allow the relayer', () => {
-        let singleSwap: SingleSwap;
+      it('does not leave dust on the relayer', async () => {
+        const poolId = basePoolId;
+        const tokenIn = tokens.WETH;
+        const tokenOut = tokens.findBySymbol('wstETH');
+        const amount = fp(1);
 
-        sharedBeforeEach('build swap request', async () => {
-          singleSwap = {
+        await relayer.connect(sender).multicall([
+          encodeSwap({
+            poolId,
             kind: SwapKind.GivenIn,
-            poolId: basePoolId,
-            assetIn: basePoolTokens.WETH.address,
-            assetOut: basePoolTokens.findBySymbol('wstETH').address,
-            amount: fp(1),
-            userData: '0x',
-          };
-        });
+            tokenIn,
+            tokenOut,
+            amount,
+            outputReference: toChainedReference(0),
+          }),
+          encodeUnwrap(sender.address, sender.address, toChainedReference(0)),
+        ]);
 
-        it('reverts', async () => {
-          await expect(relayer.connect(sender).swap(singleSwap, funds, limit, deadline)).to.be.revertedWith(
-            'USER_DOESNT_ALLOW_RELAYER'
-          );
-        });
+        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+        expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
       });
     });
   });
 
   describe('batchSwap', () => {
-    let swaps: BatchSwapStep[];
-    let limits: BigNumberish[];
-    let assets: string[];
-    let funds: FundManagement;
-    const deadline = MAX_UINT256;
+    function encodeBatchSwap(params: {
+      swaps: Array<{
+        poolId: string;
+        tokenIn: Token;
+        tokenOut: Token;
+        amount: BigNumberish;
+      }>;
+      outputReferences?: Dictionary<BigNumberish>;
+    }): string {
+      const outputReferences = new Array(tokens.length).fill(0);
+      if (params.outputReferences != undefined) {
+        for (const symbol in params.outputReferences) {
+          outputReferences[tokens.indexOf(tokens.findBySymbol(symbol))] = params.outputReferences[symbol];
+        }
+      }
 
-    sharedBeforeEach('build fund management', async () => {
-      funds = {
-        sender: sender.address,
-        fromInternalBalance: false,
-        recipient: sender.address,
-        toInternalBalance: false,
-      };
+      return relayerLibrary.interface.encodeFunctionData('batchSwap', [
+        SwapKind.GivenIn,
+        params.swaps.map((swap) => ({
+          poolId: swap.poolId,
+          assetInIndex: tokens.indexOf(swap.tokenIn),
+          assetOutIndex: tokens.indexOf(swap.tokenOut),
+          amount: swap.amount,
+          userData: '0x',
+        })),
+        tokens.addresses,
+        { sender: sender.address, recipient: sender.address, fromInternalBalance: false, toInternalBalance: false },
+        new Array(tokens.length).fill(MAX_INT256),
+        MAX_UINT256,
+        0,
+        outputReferences,
+      ]);
+    }
+
+    describe('swap using stETH as an input', () => {
+      it('performs the given swap', async () => {
+        const poolId = basePoolId;
+        const tokenIn = tokens.findBySymbol('wstETH');
+        const tokenOut = tokens.WETH;
+        const amount = fp(1);
+
+        const receipt = await (
+          await relayer.connect(sender).multicall([
+            encodeWrap(sender.address, sender.address, amount, toChainedReference(0)),
+            encodeBatchSwap({
+              swaps: [{ poolId, tokenIn, tokenOut, amount: toChainedReference(0) }],
+            }),
+          ])
+        ).wait();
+
+        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+          poolId: poolId,
+          tokenIn: tokenIn.address,
+          tokenOut: tokenOut.address,
+          // amountIn,
+          // amountOut
+        });
+      });
+
+      it('does not leave dust on the relayer', async () => {
+        const poolId = basePoolId;
+        const tokenIn = tokens.findBySymbol('wstETH');
+        const tokenOut = tokens.WETH;
+        const amount = fp(1);
+
+        await relayer.connect(sender).multicall([
+          encodeWrap(sender.address, sender.address, amount, toChainedReference(0)),
+          encodeBatchSwap({
+            swaps: [{ poolId, tokenIn, tokenOut, amount: toChainedReference(0) }],
+          }),
+        ]);
+
+        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+        expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
+      });
     });
 
-    context('when the relayer is authorized', () => {
-      sharedBeforeEach('allow relayer', async () => {
-        const manageUserBalanceAction = await actionId(vault.instance, 'manageUserBalance');
-        const batchSwapAction = await actionId(vault.instance, 'batchSwap');
+    describe('swap using stETH as an output', () => {
+      it('performs the given swap', async () => {
+        const poolId = basePoolId;
+        const tokenIn = tokens.WETH;
+        const tokenOut = tokens.findBySymbol('wstETH');
+        const amount = fp(1);
 
-        await vault.authorizer?.connect(admin).grantRoles([manageUserBalanceAction, batchSwapAction], relayer.address);
-      });
+        const receipt = await (
+          await relayer.connect(sender).multicall([
+            encodeBatchSwap({
+              swaps: [{ poolId, tokenIn, tokenOut, amount }],
+              outputReferences: { wstETH: toChainedReference(0) },
+            }),
+            encodeUnwrap(sender.address, sender.address, toChainedReference(0)),
+          ])
+        ).wait();
 
-      context('when the user did allow the relayer', () => {
-        sharedBeforeEach('allow relayer', async () => {
-          await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
-        });
-
-        describe('swap using stETH as an input', () => {
-          sharedBeforeEach('build swap request', async () => {
-            swaps = [
-              {
-                poolId: basePoolId,
-                assetInIndex: basePoolTokens.findIndexBySymbol('wstETH'),
-                assetOutIndex: basePoolTokens.findIndexBySymbol('WETH'),
-                amount: fp(1),
-                userData: '0x',
-              },
-            ];
-
-            assets = basePoolTokens.addresses;
-            limits = basePoolTokens.map((token) => (token.symbol === 'wstETH' ? fp(1) : 0));
-          });
-
-          it('performs the given swap', async () => {
-            const receipt = await relayer
-              .connect(sender)
-              .batchSwap(SwapKind.GivenIn, swaps, assets, funds, limits, deadline);
-
-            expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'Swap', {
-              poolId: swaps[0].poolId,
-              tokenIn: assets[swaps[0].assetInIndex],
-              tokenOut: assets[swaps[0].assetOutIndex],
-              amountIn: swaps[0].amount,
-              // amountOut
-            });
-          });
-
-          it('does not leave dust on the relayer', async () => {
-            await relayer.connect(sender).batchSwap(SwapKind.GivenIn, swaps, assets, funds, limits, deadline);
-
-            expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-            expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
-          });
-        });
-
-        describe('swap using stETH as an output', () => {
-          sharedBeforeEach('build swap request', async () => {
-            swaps = [
-              {
-                poolId: basePoolId,
-                assetInIndex: basePoolTokens.findIndexBySymbol('WETH'),
-                assetOutIndex: basePoolTokens.findIndexBySymbol('wstETH'),
-                amount: fp(1),
-                userData: '0x',
-              },
-            ];
-
-            assets = basePoolTokens.addresses;
-            limits = basePoolTokens.map((token) => (token.symbol === 'wstETH' ? 0 : fp(1)));
-          });
-
-          it('performs the given swap', async () => {
-            const receipt = await relayer
-              .connect(sender)
-              .batchSwap(SwapKind.GivenIn, swaps, assets, funds, limits, deadline);
-
-            expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'Swap', {
-              poolId: swaps[0].poolId,
-              tokenIn: assets[swaps[0].assetInIndex],
-              tokenOut: assets[swaps[0].assetOutIndex],
-              amountIn: swaps[0].amount,
-              // amountOut
-            });
-          });
-
-          it('does not leave dust on the relayer', async () => {
-            await relayer.connect(sender).batchSwap(SwapKind.GivenIn, swaps, assets, funds, limits, deadline);
-
-            expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-            expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
-          });
+        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+          poolId: poolId,
+          tokenIn: tokenIn.address,
+          tokenOut: tokenOut.address,
+          // amountIn,
+          // amountOut
         });
       });
 
-      context('when the user did not allow the relayer', () => {
-        sharedBeforeEach('build swap request', async () => {
-          swaps = [
-            {
-              poolId: basePoolId,
-              assetInIndex: basePoolTokens.findIndexBySymbol('WETH'),
-              assetOutIndex: basePoolTokens.findIndexBySymbol('wstETH'),
-              amount: fp(1),
-              userData: '0x',
-            },
-          ];
+      it('does not leave dust on the relayer', async () => {
+        const poolId = basePoolId;
+        const tokenIn = tokens.WETH;
+        const tokenOut = tokens.findBySymbol('wstETH');
+        const amount = fp(1);
 
-          assets = basePoolTokens.addresses;
-          limits = [fp(1), 0];
-        });
+        await relayer.connect(sender).multicall([
+          encodeBatchSwap({
+            swaps: [{ poolId, tokenIn, tokenOut, amount }],
+            outputReferences: { wstETH: toChainedReference(0) },
+          }),
+          encodeUnwrap(sender.address, sender.address, toChainedReference(0)),
+        ]);
 
-        it('reverts', async () => {
-          await expect(
-            relayer.connect(sender).batchSwap(SwapKind.GivenIn, swaps, assets, funds, limits, deadline)
-          ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
-        });
+        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+        expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
       });
     });
   });
 
   describe('joinPool', () => {
-    let joinRequest: JoinPoolRequest;
-
-    sharedBeforeEach('build join request', async () => {
-      joinRequest = {
-        assets: basePoolTokens.addresses,
-        maxAmountsIn: [0, fp(1)],
-        userData: WeightedPoolEncoder.joinExactTokensInForBPTOut([0, fp(1)], 0),
-        fromInternalBalance: false,
-      };
-    });
+    function encodeJoin(params: {
+      poolId: string;
+      assets: TokenList;
+      maxAmountsIn: BigNumberish[];
+      userData: string;
+      outputReference?: BigNumberish;
+    }): string {
+      return relayerLibrary.interface.encodeFunctionData('joinPool', [
+        params.poolId,
+        0, // WeightedPool
+        sender.address,
+        sender.address,
+        {
+          assets: params.assets.addresses,
+          maxAmountsIn: params.maxAmountsIn,
+          userData: params.userData,
+          fromInternalBalance: false,
+        },
+        0,
+        params.outputReference ?? 0,
+      ]);
+    }
 
     context('when the relayer is authorized', () => {
-      sharedBeforeEach('allow relayer', async () => {
-        const manageUserBalanceAction = await actionId(vault.instance, 'manageUserBalance');
-        const joinAction = await actionId(vault.instance, 'joinPool');
-
-        await vault.authorizer?.connect(admin).grantRoles([manageUserBalanceAction, joinAction], relayer.address);
-      });
-
-      context('when the user did allow the relayer', () => {
-        sharedBeforeEach('allow relayer', async () => {
-          await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
-        });
-
-        it('joins the pool', async () => {
-          const receipt = await relayer
-            .connect(sender)
-            .joinPool(basePoolId, sender.address, sender.address, joinRequest);
-
-          expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'PoolBalanceChanged', {
+      it('joins the pool', async () => {
+        const amount = fp(1);
+        const receipt = await relayer.connect(sender).multicall([
+          encodeWrap(sender.address, sender.address, amount, toChainedReference(0)),
+          encodeJoin({
             poolId: basePoolId,
-            liquidityProvider: sender.address,
-          });
-        });
+            assets: tokens,
+            maxAmountsIn: [0, amount],
+            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut([0, toChainedReference(0)], 0),
+          }),
+        ]);
 
-        it('does not take wstETH from the sender', async () => {
-          const wstETHBalanceBefore = await wstETH.balanceOf(sender);
-          await relayer.connect(sender).joinPool(basePoolId, sender.address, sender.address, joinRequest);
-
-          const wstETHBalanceAfter = await wstETH.balanceOf(sender);
-          expect(wstETHBalanceAfter).to.be.eq(wstETHBalanceBefore);
-        });
-
-        it('does not leave dust on the relayer', async () => {
-          await relayer.connect(sender).joinPool(basePoolId, sender.address, sender.address, joinRequest);
-
-          expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
+        expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'PoolBalanceChanged', {
+          poolId: basePoolId,
+          liquidityProvider: sender.address,
         });
       });
 
-      context('when the user did not allow the relayer', () => {
-        it('reverts', async () => {
-          await expect(
-            relayer.connect(sender).joinPool(basePoolId, sender.address, sender.address, joinRequest)
-          ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
-        });
+      it('does not take wstETH from the sender', async () => {
+        const amount = fp(1);
+
+        const wstETHBalanceBefore = await wstETH.balanceOf(sender);
+
+        await relayer.connect(sender).multicall([
+          encodeWrap(sender.address, sender.address, amount, toChainedReference(0)),
+          encodeJoin({
+            poolId: basePoolId,
+            assets: tokens,
+            maxAmountsIn: [0, amount],
+            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut([0, toChainedReference(0)], 0),
+          }),
+        ]);
+
+        const wstETHBalanceAfter = await wstETH.balanceOf(sender);
+        expect(wstETHBalanceAfter).to.be.eq(wstETHBalanceBefore);
+      });
+
+      it('does not leave dust on the relayer', async () => {
+        const amount = fp(1);
+
+        await relayer.connect(sender).multicall([
+          encodeWrap(sender.address, sender.address, amount, toChainedReference(0)),
+          encodeJoin({
+            poolId: basePoolId,
+            assets: tokens,
+            maxAmountsIn: [0, amount],
+            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut([0, toChainedReference(0)], 0),
+          }),
+        ]);
+
+        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+        expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
       });
     });
   });
 
-  describe('exitPool', () => {
-    let exitRequest: ExitPoolRequest;
+  // describe('exitPool', () => {
+  //   function encodeExit(params: {
+  //     poolId: string;
+  //     assets: TokenList;
+  //     minAmountsOut: BigNumberish[];
+  //     userData: string;
+  //     outputReferences?: Dictionary<BigNumberish>;
+  //   }): string {
+  //     const outputReferences = new Array(params.assets.length).fill(0);
+  //     if (params.outputReferences != undefined) {
+  //       for (const symbol in params.outputReferences) {
+  //         outputReferences[params.assets.indexOf(params.assets.findBySymbol(symbol))] = params.outputReferences[symbol];
+  //       }
+  //     }
 
-    sharedBeforeEach('build exit request', async () => {
-      exitRequest = {
-        assets: basePoolTokens.addresses,
-        minAmountsOut: [0, 0],
-        userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(fp(1), 1),
-        toInternalBalance: false,
-      };
+  //     return relayerLibrary.interface.encodeFunctionData('exitPool', [
+  //       params.poolId,
+  //       0, // WeightedPool
+  //       sender.address,
+  //       sender.address,
+  //       {
+  //         assets: params.assets.addresses,
+  //         minAmountsOut: params.minAmountsOut,
+  //         userData: params.userData,
+  //         toInternalBalance: false,
+  //       },
+  //       0,
+  //       outputReferences,
+  //     ]);
+  //   }
 
-      // Send user some BPT
-      await basePool.instance.connect(admin).transfer(sender.address, fp(1));
-    });
+  //   it('exits the pool', async () => {
+  //     const amount = fp(1);
 
-    context('when the relayer is authorized', () => {
-      sharedBeforeEach('allow relayer', async () => {
-        const manageUserBalanceAction = await actionId(vault.instance, 'manageUserBalance');
-        const exitAction = await actionId(vault.instance, 'exitPool');
+  //     const receipt = await (
+  //       await relayer.connect(sender).multicall([
+  //         encodeExit({
+  //           poolId: basePoolId,
+  //           assets: tokens,
+  //           minAmountsOut: [0, 0],
+  //           userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amount),
+  //           outputReferences: {
+  //             wstETH: toChainedReference(0),
+  //           },
+  //         }),
+  //         encodeUnwrap(sender.address, sender.address, toChainedReference(0)),
+  //       ])
+  //     ).wait();
 
-        await vault.authorizer?.connect(admin).grantRoles([manageUserBalanceAction, exitAction], relayer.address);
-      });
+  //     expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+  //       poolId: basePoolId,
+  //       liquidityProvider: sender.address,
+  //     });
+  //   });
 
-      context('when the user did allow the relayer', () => {
-        sharedBeforeEach('allow relayer', async () => {
-          await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
-        });
+  //   it('does not send wstETH to the recipient', async () => {
+  //     const amount = fp(1);
+  //     const wstETHBalanceBefore = await wstETH.balanceOf(sender);
 
-        it('exits the pool', async () => {
-          const receipt = await relayer
-            .connect(sender)
-            .exitPool(basePoolId, sender.address, sender.address, exitRequest);
+  //     await relayer.connect(sender).multicall([
+  //       encodeExit({
+  //         poolId: basePoolId,
+  //         assets: tokens,
+  //         minAmountsOut: [0, 0],
+  //         userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amount),
+  //         outputReferences: {
+  //           wstETH: toChainedReference(0),
+  //         },
+  //       }),
+  //       encodeUnwrap(sender.address, sender.address, toChainedReference(0)),
+  //     ]);
 
-          expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'PoolBalanceChanged', {
-            poolId: basePoolId,
-            liquidityProvider: sender.address,
-          });
-        });
+  //     const wstETHBalanceAfter = await wstETH.balanceOf(sender);
+  //     expect(wstETHBalanceAfter).to.be.eq(wstETHBalanceBefore);
+  //   });
 
-        it('does not send wstETH to the recipient', async () => {
-          const wstETHBalanceBefore = await wstETH.balanceOf(sender);
-          await relayer.connect(sender).exitPool(basePoolId, sender.address, sender.address, exitRequest);
+  //   it('does not leave dust on the relayer', async () => {
+  //     const amount = fp(1);
 
-          const wstETHBalanceAfter = await wstETH.balanceOf(sender);
-          expect(wstETHBalanceAfter).to.be.eq(wstETHBalanceBefore);
-        });
+  //     await relayer.connect(sender).multicall([
+  //       encodeExit({
+  //         poolId: basePoolId,
+  //         assets: tokens,
+  //         minAmountsOut: [0, 0],
+  //         userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amount),
+  //         outputReferences: {
+  //           wstETH: toChainedReference(0),
+  //         },
+  //       }),
+  //       encodeUnwrap(sender.address, sender.address, toChainedReference(0)),
+  //     ]);
 
-        it('does not leave dust on the relayer', async () => {
-          await relayer.connect(sender).exitPool(basePoolId, sender.address, sender.address, exitRequest);
-
-          expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
-        });
-      });
-
-      context('when the user did not allow the relayer', () => {
-        it('reverts', async () => {
-          await expect(
-            relayer.connect(sender).exitPool(basePoolId, sender.address, sender.address, exitRequest)
-          ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
-        });
-      });
-    });
-  });
+  //     expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+  //     expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
+  //   });
+  // });
 });
