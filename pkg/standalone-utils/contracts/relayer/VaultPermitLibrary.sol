@@ -22,11 +22,11 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "../interfaces/IBaseRelayerLibrary.sol";
 
 /**
- * @title VaultPermit
+ * @title VaultPermit Library
  * @notice Allows users to approve the Balancer Vault to use their tokens using permit (where supported)
  * @dev All functions must be payable so that it can be called as part of a multicall involving ETH
  */
-abstract contract VaultPermit is IBaseRelayerLibrary {
+abstract contract VaultPermitLibrary is IBaseRelayerLibrary {
     function vaultPermit(
         IERC20Permit token,
         address owner,

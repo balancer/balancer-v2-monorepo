@@ -29,7 +29,7 @@ import "../interfaces/IBaseRelayerLibrary.sol";
  *
  * All functions must be payable so that it can be called as part of a multicall involving ETH
  */
-abstract contract VaultActions is IBaseRelayerLibrary {
+abstract contract VaultActionsLibrary is IBaseRelayerLibrary {
     function swap(
         IVault.SingleSwap calldata singleSwap,
         IVault.FundManagement calldata funds,
