@@ -75,7 +75,6 @@ library Address {
      *
      * Requirements:
      *
-     * - `target` must be a contract.
      * - calling `target` with `data` must not revert.
      *
      * _Available since v3.1._
