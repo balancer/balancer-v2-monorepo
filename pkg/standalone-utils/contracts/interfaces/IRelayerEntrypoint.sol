@@ -18,8 +18,6 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
-import "../interfaces/IBaseRelayerImplementation.sol";
-
 /**
  * @title IRelayerEntrypoint
  * @notice Allows safe multicall execution of a relayer's functions
