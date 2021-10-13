@@ -81,8 +81,6 @@ library Address {
      * _Available since v3.1._
      */
     function functionCall(address target, bytes memory data) internal returns (bytes memory) {
-        _require(isContract(target), Errors.CALL_TO_NON_CONTRACT);
-
         (bool success, bytes memory returndata) = target.call(data);
         return verifyCallResult(success, returndata);
     }
@@ -94,8 +92,6 @@ library Address {
      * _Available since v3.4._
      */
     function functionDelegateCall(address target, bytes memory data) internal returns (bytes memory) {
-        _require(isContract(target), Errors.CALL_TO_NON_CONTRACT);
-
         (bool success, bytes memory returndata) = target.delegatecall(data);
         return verifyCallResult(success, returndata);
     }
