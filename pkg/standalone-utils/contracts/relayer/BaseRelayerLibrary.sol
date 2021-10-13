@@ -40,6 +40,11 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     IVault private immutable _vault;
     IBalancerRelayer private immutable _entrypoint;
 
+    // TODO: Do we need to do anything special here?
+    // We're going to be using storage slots in the relayer's context
+    // but as there's no storage variables there this seems safe.
+    mapping(int256 => int256) private _tempStorage;
+
     constructor(IVault vault) {
         _vault = vault;
         _entrypoint = new BalancerRelayer(vault, address(this));
@@ -51,6 +56,16 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
 
     function getEntrypoint() public view returns (IBalancerRelayer) {
         return _entrypoint;
+    }
+
+    function _readTempStorage(int256 key) internal override returns (int256 value) {
+        value = _tempStorage[key];
+        delete _tempStorage[key];
+    }
+
+    function _writeTempStorage(int256 key, int256 value) internal override {
+        if (key >= 0) return;
+        _tempStorage[key] = value;
     }
 
     /**

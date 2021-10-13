@@ -31,27 +31,44 @@ import "../interfaces/IBaseRelayerLibrary.sol";
  */
 abstract contract VaultActions is IBaseRelayerLibrary {
     function swap(
-        IVault.SingleSwap calldata singleSwap,
+        RelayerSingleSwap memory singleSwap,
         IVault.FundManagement calldata funds,
         uint256 limit,
         uint256 deadline,
-        uint256 value
-    ) external payable returns (uint256) {
+        uint256 value,
+        int256 returnKey
+    ) external payable returns (uint256 amountOut) {
         require(funds.sender == msg.sender, "Incorrect sender");
-        return getVault().swap{ value: value }(singleSwap, funds, limit, deadline);
+
+        amountOut = getVault().swap{ value: value }(_processRelayerSingleSwap(singleSwap), funds, limit, deadline);
+
+        // Not possible to overflow as Vault balance guaranteed to fit in uint112
+        _writeTempStorage(returnKey, int256(amountOut));
     }
 
     function batchSwap(
         IVault.SwapKind kind,
-        IVault.BatchSwapStep[] calldata swaps,
+        RelayerBatchSwapStep[] calldata swaps,
         IAsset[] calldata assets,
         IVault.FundManagement calldata funds,
         int256[] calldata limits,
         uint256 deadline,
-        uint256 value
-    ) external payable returns (int256[] memory) {
+        uint256 value,
+        int256[] calldata returnKeys
+    ) external payable returns (int256[] memory amounts) {
         require(funds.sender == msg.sender, "Incorrect sender");
-        return getVault().batchSwap{ value: value }(kind, swaps, assets, funds, limits, deadline);
+        amounts = getVault().batchSwap{ value: value }(
+            kind,
+            _processRelayerBatchSwapSteps(swaps),
+            assets,
+            funds,
+            limits,
+            deadline
+        );
+
+        for (uint256 i = 0; i < amounts.length; i++) {
+            _writeTempStorage(returnKeys[i], amounts[i]);
+        }
     }
 
     function manageUserBalance(IVault.UserBalanceOp[] calldata ops, uint256 value) external payable {
