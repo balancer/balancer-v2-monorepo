@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20PermitDAI.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-import "../interfaces/IBaseRelayerImplementation.sol";
+import "../interfaces/IBaseRelayerLibrary.sol";
 
 /**
  * @title VaultActions
@@ -29,7 +29,7 @@ import "../interfaces/IBaseRelayerImplementation.sol";
  *
  * All functions must be payable so that it can be called as part of a multicall involving ETH
  */
-abstract contract VaultActions is IBaseRelayerImplementation {
+abstract contract VaultActions is IBaseRelayerLibrary {
     function swap(
         IVault.SingleSwap calldata singleSwap,
         IVault.FundManagement calldata funds,

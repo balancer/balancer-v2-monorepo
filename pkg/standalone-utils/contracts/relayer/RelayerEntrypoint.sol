@@ -27,10 +27,10 @@ import "../interfaces/IRelayerEntrypoint.sol";
  * @dev
  * Relayers are formed out of a system of two contracts:
  *  - This contract which acts as a single point of entry into the system through a multicall function
- *  - An implementation contract which defines the allowed behaviour of the relayer
+ *  - A library contract which defines the allowed behaviour of the relayer
  *
- * The relayer entrypoint can then repeatedly delegatecall into the implementation's code to perform actions.
- * We can then run combinations of the implementation contract's functions in the context of the relayer entrypoint
+ * The relayer entrypoint can then repeatedly delegatecall into the library's code to perform actions.
+ * We can then run combinations of the library contract's functions in the context of the relayer entrypoint
  * without having to expose all these functions on the entrypoint contract itself. The multicall function is
  * then a single point of entry for all actions which can be easily protected against reentrancy.
  *
@@ -41,7 +41,7 @@ import "../interfaces/IRelayerEntrypoint.sol";
  *
  * NOTE: Only the entrypoint contract should be whitelisted by Balancer governance as a relayer and so the Vault
  * will reject calls made if they are not being run from within the context of the entrypoint.
- * e.g. in the case where a user mistakenly calls into the implementation contract directly.
+ * e.g. in the case where a user mistakenly calls into the library contract directly.
  */
 contract RelayerEntrypoint is IRelayerEntrypoint, ReentrancyGuard {
     using Address for address payable;

@@ -19,14 +19,14 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20PermitDAI.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "../interfaces/IBaseRelayerImplementation.sol";
+import "../interfaces/IBaseRelayerLibrary.sol";
 
 /**
  * @title VaultPermit
  * @notice Allows users to approve the Balancer Vault to use their tokens using permit (where supported)
  * @dev All functions must be payable so that it can be called as part of a multicall involving ETH
  */
-abstract contract VaultPermit is IBaseRelayerImplementation {
+abstract contract VaultPermit is IBaseRelayerLibrary {
     function vaultPermit(
         IERC20Permit token,
         uint256 value,

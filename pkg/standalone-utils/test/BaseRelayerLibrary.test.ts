@@ -12,7 +12,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
-describe('BaseRelayerImplementation', function () {
+describe('BaseRelayerLibrary', function () {
   let vault: Contract;
   let relayer: Contract, relayerImpl: Contract;
 
@@ -28,7 +28,7 @@ describe('BaseRelayerImplementation', function () {
     vault = vaultHelper.instance;
 
     // Deploy Relayer
-    relayerImpl = await deploy('BaseRelayerImplementation', { args: [vault.address] });
+    relayerImpl = await deploy('BaseRelayerLibrary', { args: [vault.address] });
     relayer = await deployedAt('RelayerEntrypoint', await relayerImpl.getEntrypoint());
   });
 

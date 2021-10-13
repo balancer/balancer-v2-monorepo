@@ -15,11 +15,18 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "./relayer/BaseRelayerLibrary.sol";
+
+import "./relayer/VaultActions.sol";
+import "./relayer/VaultPermit.sol";
 
 /**
- * @title IBaseRelayerImplementation
+ * @title Batch Relayer Library
+ * @notice This contract is not a relayer by itself and calls into it directly will fail.
+ * The associated relayer can be found by calling `getEntrypoint` on this contract.
  */
-abstract contract IBaseRelayerImplementation {
-    function getVault() public view virtual returns (IVault);
+contract BatchRelayerLibrary is BaseRelayerLibrary, VaultActions, VaultPermit {
+    constructor(IVault vault) BaseRelayerLibrary(vault) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }

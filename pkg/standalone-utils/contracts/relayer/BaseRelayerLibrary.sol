@@ -18,22 +18,22 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "./RelayerEntrypoint.sol";
-import "../interfaces/IBaseRelayerImplementation.sol";
+import "../interfaces/IBaseRelayerLibrary.sol";
 
 /**
- * @title BaseRelayerImplementation
+ * @title Base Relayer Library
  * @notice Core functionality of a relayer allowing users to approve it to take further actions using a signature
  * @dev
  * Relayers are formed out of a system of two contracts:
  *  - A `RelayerEntrypoint` contract which acts as a single point of entry into the system through a multicall function
- *  - An implementation contract such as this which defines the allowed behaviour of the relayer
+ *  - A library contract such as this which defines the allowed behaviour of the relayer
  *
  * NOTE: Only the entrypoint contract should be whitelisted by Balancer governance as a relayer and so the Vault
  * will reject calls made if they are not being run from within the context of the entrypoint.
  * This contract should neither be whitelisted as a relayer or called directly by any user.
  * No guarantees can be made about fund safety when calling this contract in an improper manner.
  */
-contract BaseRelayerImplementation is IBaseRelayerImplementation {
+contract BaseRelayerLibrary is IBaseRelayerLibrary {
     using Address for address;
 
     IVault private immutable _vault;
