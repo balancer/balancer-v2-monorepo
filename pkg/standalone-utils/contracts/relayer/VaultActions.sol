@@ -23,8 +23,8 @@ import "../interfaces/IBaseRelayerImplementation.sol";
 /**
  * @title VaultActions
  * @notice Allows users to call the core functions on the Balancer Vault (swaps/joins/exits/balance management)
- * @dev 
- * The relayer is not expected to hold the user's funds so it is expected that the user's address will be provided 
+ * @dev
+ * The relayer is not expected to hold the user's funds so it is expected that the user's address will be provided
  * as the recipient of any token transfers from the Vault.
  *
  * All functions must be payable so that it can be called as part of a multicall involving ETH
