@@ -84,8 +84,7 @@ contract RewardsScheduler {
             _multirewards.notifyRewardAmount(
                 scheduledReward.pool,
                 scheduledReward.rewardsToken,
-                scheduledReward.amount,
-                scheduledReward.rewarder
+                scheduledReward.amount
             );
             emit RewardStarted(
                 rewardId,
@@ -115,10 +114,6 @@ contract RewardsScheduler {
     ) public returns (bytes32 rewardId) {
         rewardId = getRewardId(pool, rewardsToken, msg.sender, startTime);
         require(startTime > block.timestamp, "Reward can only be scheduled for the future");
-        require(
-            _multirewards.isAllowlistedRewarder(pool, rewardsToken, msg.sender),
-            "Only allowlisted rewarders can schedule reward"
-        );
 
         require(_rewards[rewardId].status == RewardStatus.UNINITIALIZED, "Reward has already been scheduled");
 

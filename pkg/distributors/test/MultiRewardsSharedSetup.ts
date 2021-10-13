@@ -70,9 +70,13 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
     args: [vault.address],
   });
 
-  // authorize admin to allowlistRewarders
-  const action = await actionId(stakingContract, 'allowlistRewarder');
-  await authorizer.connect(admin).grantRole(action, admin.address);
+  // authorize admin to add rewards
+
+  const addRewardRole = await actionId(stakingContract, 'addReward');
+  await authorizer.connect(admin).grantRole(addRewardRole, admin.address);
+
+  const setRewardsDurationRole = await actionId(stakingContract, 'setRewardsDuration');
+  await authorizer.connect(admin).grantRole(setRewardsDurationRole, admin.address);
 
   await tokens.mint({ to: lp, amount: tokenInitialBalance });
   await tokens.approve({ to: vault.address, from: [lp] });

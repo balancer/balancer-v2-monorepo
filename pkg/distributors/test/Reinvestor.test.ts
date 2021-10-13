@@ -1,4 +1,3 @@
-import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -17,7 +16,7 @@ import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { setup, tokenInitialBalance, rewardsDuration, rewardsVestingTime } from './MultiRewardsSharedSetup';
 
 describe('Reinvestor', () => {
-  let admin: SignerWithAddress, lp: SignerWithAddress, mockAssetManager: SignerWithAddress;
+  let admin: SignerWithAddress, lp: SignerWithAddress, rewarder: SignerWithAddress;
 
   let rewardTokens: TokenList;
   let vault: Contract;
@@ -26,12 +25,8 @@ describe('Reinvestor', () => {
   let rewardToken: Token;
   let pool: Contract;
 
-  before('deploy base contracts', async () => {
-    [, admin, lp, mockAssetManager] = await ethers.getSigners();
-  });
-
   sharedBeforeEach('set up asset manager and reinvestor', async () => {
-    const { contracts } = await setup();
+    const { contracts, users } = await setup();
 
     pool = contracts.pool;
     vault = contracts.vault;
@@ -39,26 +34,25 @@ describe('Reinvestor', () => {
     rewardToken = contracts.rewardTokens.DAI;
     rewardTokens = contracts.rewardTokens;
 
+    lp = users.lp;
+    admin = users.admin;
+    rewarder = users.rewarder;
+
     callbackContract = await deploy('Reinvestor', { args: [vault.address] });
   });
 
   describe('with a stake and a reward', () => {
     const rewardAmount = fp(1);
     sharedBeforeEach(async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .allowlistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
-      await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
+      await stakingContract.connect(admin).addReward(pool.address, rewardToken.address, rewardsDuration);
 
       const bptBalance = await pool.balanceOf(lp.address);
-
       await pool.connect(lp).approve(stakingContract.address, bptBalance);
-
       await stakingContract.connect(lp)['stake(address,uint256)'](pool.address, bptBalance);
 
-      await stakingContract
-        .connect(mockAssetManager)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, mockAssetManager.address);
+      await rewardToken.approve(stakingContract, MAX_UINT256, { from: rewarder });
+      await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+
       await advanceTime(rewardsVestingTime);
     });
 
@@ -71,10 +65,10 @@ describe('Reinvestor', () => {
         // Creating a BAT-DAI pool
         const tokens = await TokenList.create(['BAT']);
         await tokens.mint({ to: lp, amount: tokenInitialBalance });
-        await tokens.approve({ to: vault.address, from: [lp] });
+        await tokens.approve({ to: vault, from: [lp] });
 
         await rewardTokens.mint({ to: lp, amount: tokenInitialBalance });
-        await rewardTokens.approve({ to: vault.address, from: [lp] });
+        await rewardTokens.approve({ to: vault, from: [lp] });
 
         [assets] = new AssetHelpers(ZERO_ADDRESS).sortTokens([rewardToken.address, tokens.BAT.address]);
         const weights = [fp(0.5), fp(0.5)];
@@ -143,20 +137,12 @@ describe('Reinvestor', () => {
           otherRewardTokens = await TokenList.create(['GRT'], { sorted: true });
           otherRewardToken = otherRewardTokens.GRT;
 
-          await stakingContract
-            .connect(mockAssetManager)
-            .allowlistRewarder(pool.address, otherRewardToken.address, mockAssetManager.address);
+          await otherRewardTokens.mint({ to: admin, amount: bn(100e18) });
+          await otherRewardTokens.approve({ to: stakingContract.address, from: [admin] });
 
-          await otherRewardTokens.mint({ to: mockAssetManager, amount: bn(100e18) });
-          await otherRewardTokens.approve({ to: stakingContract.address, from: [mockAssetManager] });
+          await stakingContract.connect(admin).addReward(pool.address, otherRewardToken.address, rewardsDuration);
 
-          await stakingContract
-            .connect(mockAssetManager)
-            .addReward(pool.address, otherRewardToken.address, rewardsDuration);
-
-          await stakingContract
-            .connect(mockAssetManager)
-            .notifyRewardAmount(pool.address, otherRewardToken.address, fp(3), mockAssetManager.address);
+          await stakingContract.connect(admin).notifyRewardAmount(pool.address, otherRewardToken.address, fp(3));
           await advanceTime(rewardsVestingTime);
         });
 

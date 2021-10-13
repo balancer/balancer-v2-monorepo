@@ -1,4 +1,3 @@
-import { ethers } from 'hardhat';
 import { Contract, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -8,13 +7,14 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { setup, rewardsDuration, rewardsVestingTime } from './MultiRewardsSharedSetup';
 
 describe('Exiter', () => {
-  let lp: SignerWithAddress, rewarder: SignerWithAddress;
+  let lp: SignerWithAddress, rewarder: SignerWithAddress, admin: SignerWithAddress;
 
   let poolTokens: TokenList;
   let vault: Contract;
@@ -23,18 +23,18 @@ describe('Exiter', () => {
   let rewardToken: Token;
   let pool: Contract;
 
-  before('deploy base contracts', async () => {
-    [, , lp, rewarder] = await ethers.getSigners();
-  });
-
   sharedBeforeEach('set up asset manager and exiter', async () => {
-    const { contracts } = await setup();
+    const { contracts, users } = await setup();
 
     pool = contracts.pool;
     vault = contracts.vault;
     stakingContract = contracts.stakingContract;
     rewardToken = contracts.rewardTokens.DAI;
     poolTokens = contracts.tokens;
+
+    lp = users.lp;
+    admin = users.admin;
+    rewarder = users.rewarder;
 
     callbackContract = await deploy('Exiter', { args: [vault.address] });
   });
@@ -45,18 +45,15 @@ describe('Exiter', () => {
     let poolId: string;
 
     sharedBeforeEach(async () => {
-      await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
-      await stakingContract.connect(rewarder).addReward(pool.address, rewardToken.address, rewardsDuration);
+      await stakingContract.connect(admin).addReward(pool.address, rewardToken.address, rewardsDuration);
+
+      await rewardToken.approve(stakingContract, MAX_UINT256, { from: rewarder });
+      await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
 
       const bptBalance = await pool.balanceOf(lp.address);
-
       await pool.connect(lp).approve(stakingContract.address, bptBalance);
-
       await stakingContract.connect(lp).stake(pool.address, bptBalance);
 
-      await stakingContract
-        .connect(rewarder)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address);
       await advanceTime(rewardsVestingTime);
 
       assets = poolTokens.map((pt) => pt.address);

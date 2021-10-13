@@ -1,4 +1,3 @@
-import { ethers } from 'hardhat';
 import { Contract, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -12,9 +11,10 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { setup, rewardsDuration, rewardsVestingTime } from './MultiRewardsSharedSetup';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('Staking contract - callbacks', () => {
-  let lp: SignerWithAddress, mockAssetManager: SignerWithAddress;
+  let lp: SignerWithAddress, rewarder: SignerWithAddress, admin: SignerWithAddress;
 
   let rewardTokens: TokenList;
   let vault: Contract;
@@ -23,12 +23,8 @@ describe('Staking contract - callbacks', () => {
   let rewardToken: Token;
   let pool: Contract;
 
-  before('deploy base contracts', async () => {
-    [, , lp, mockAssetManager] = await ethers.getSigners();
-  });
-
   sharedBeforeEach('set up asset manager and mock callback', async () => {
-    const { contracts } = await setup();
+    const { contracts, users } = await setup();
 
     pool = contracts.pool;
     vault = contracts.vault;
@@ -36,26 +32,26 @@ describe('Staking contract - callbacks', () => {
     rewardToken = contracts.rewardTokens.DAI;
     rewardTokens = contracts.rewardTokens;
 
+    lp = users.lp;
+    admin = users.admin;
+    rewarder = users.rewarder;
+
     callbackContract = await deploy('MockRewardCallback');
   });
 
   describe('with a stake and a reward', () => {
     const rewardAmount = fp(1);
+
     sharedBeforeEach(async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .allowlistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
-      await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
+      await stakingContract.connect(admin).addReward(pool.address, rewardToken.address, rewardsDuration);
 
       const bptBalance = await pool.balanceOf(lp.address);
-
       await pool.connect(lp).approve(stakingContract.address, bptBalance);
-
       await stakingContract.connect(lp).stake(pool.address, bptBalance);
 
-      await stakingContract
-        .connect(mockAssetManager)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, mockAssetManager.address);
+      await rewardToken.approve(stakingContract, MAX_UINT256, { from: rewarder });
+      await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+
       await advanceTime(rewardsVestingTime);
     });
 

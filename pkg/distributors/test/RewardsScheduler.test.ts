@@ -39,13 +39,12 @@ describe('Rewards Scheduler', () => {
     const rewardsSchedulerAddress = await stakingContract.rewardsScheduler();
     rewardsScheduler = await deployedAt('RewardsScheduler', rewardsSchedulerAddress);
 
-    await rewardTokens.approve({ to: rewardsScheduler.address, from: [rewarder] });
+    await stakingContract.connect(admin).addReward(pool.address, rewardsToken.address, rewardsDuration);
 
-    await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardsToken.address, rewarder.address);
-    await stakingContract.connect(rewarder).addReward(pool.address, rewardsToken.address, rewardsDuration);
+    await rewardTokens.approve({ to: rewardsScheduler.address, from: [rewarder] });
   });
 
-  it('allows an allowlisted rewarder to schedule a reward', async () => {
+  it('allows any rewarder to schedule a reward', async () => {
     const time = (await currentTimestamp()).add(3600 * 24);
     const rewardAmount = fp(1);
 
@@ -73,14 +72,6 @@ describe('Rewards Scheduler', () => {
       startTime: time,
       amount: rewardAmount,
     });
-  });
-
-  it('prevents an unallowlisted rewarder to schedule a reward', async () => {
-    const time = (await currentTimestamp()).add(3600 * 24);
-    const rewardAmount = fp(1);
-    await expect(
-      rewardsScheduler.connect(lp).scheduleReward(pool.address, rewardsToken.address, rewardAmount, time)
-    ).to.be.revertedWith('Only allowlisted rewarders can schedule reward');
   });
 
   describe('with a scheduled reward', () => {

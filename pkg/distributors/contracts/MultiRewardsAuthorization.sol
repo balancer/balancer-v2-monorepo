@@ -26,17 +26,8 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 abstract contract MultiRewardsAuthorization is Authentication {
     IVault private immutable _vault;
 
-    mapping(IERC20 => mapping(IERC20 => mapping(address => bool))) private _allowlist;
-
-    event RewarderAllowlisted(address indexed pool, address indexed token, address indexed rewarder);
-
     constructor(IVault vault) {
         _vault = vault;
-    }
-
-    modifier onlyAllowlistedRewarder(IERC20 pool, IERC20 rewardsToken) {
-        require(_isAllowlistedRewarder(pool, rewardsToken, msg.sender), "Only accessible by allowlisted rewarders");
-        _;
     }
 
     modifier onlyAllowlisters(IERC20 pool) {
@@ -61,26 +52,6 @@ abstract contract MultiRewardsAuthorization is Authentication {
         // Access control management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which
         // accounts can call permissioned functions: for example, to perform emergency pauses.
         return getVault().getAuthorizer();
-    }
-
-    /**
-     * @notice Allows a rewarder to be explicitly added to an allowlist of rewarders
-     */
-    function _allowlistRewarder(
-        IERC20 pool,
-        IERC20 rewardsToken,
-        address rewarder
-    ) internal {
-        _allowlist[pool][rewardsToken][rewarder] = true;
-        emit RewarderAllowlisted(address(pool), address(rewardsToken), rewarder);
-    }
-
-    function _isAllowlistedRewarder(
-        IERC20 pool,
-        IERC20 rewardsToken,
-        address rewarder
-    ) internal view returns (bool) {
-        return _allowlist[pool][rewardsToken][rewarder];
     }
 
     /**
