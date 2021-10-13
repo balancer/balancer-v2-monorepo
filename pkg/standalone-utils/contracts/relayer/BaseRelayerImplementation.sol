@@ -24,7 +24,7 @@ import "../interfaces/IBaseRelayerImplementation.sol";
  * @title BaseRelayerImplementation
  * @notice Core functionality of a relayer allowing users to approve it to take further actions using a signature
  */
-abstract contract BaseRelayerImplementation is IBaseRelayerImplementation {
+contract BaseRelayerImplementation is IBaseRelayerImplementation {
     using Address for address;
 
     IVault private immutable _vault;
