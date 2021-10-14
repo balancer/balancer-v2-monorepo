@@ -53,7 +53,7 @@ contract BalancerRelayer is IBalancerRelayer, ReentrancyGuard {
     /**
      * @dev This contract is not meant to be deployed directly by an EOA, but rather during construction of a child of
      * `BaseRelayerLibrary` which will provides its own address to be used as the relayer's library.
-     */ 
+     */
     constructor(IVault vault, address libraryAddress) {
         _vault = address(vault);
         _library = libraryAddress;
