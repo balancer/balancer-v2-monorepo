@@ -965,10 +965,12 @@ describe('StablePhantomPool', () => {
         });
 
         it('can exit proportionally', async () => {
-          //Exit with half of the BPT balance
-          const bptIn = (await pool.balanceOf(sender)).div(2);
+          const previousSenderBptBalance = await pool.balanceOf(sender);
 
-          const expectedAmountsOut = initialBalances.map((balance) => bn(balance).div(2));
+          //Exit with half of the BPT balance
+          const bptIn = (await pool.balanceOf(sender)).div(4);
+
+          const expectedAmountsOut = initialBalances.map((balance) => bn(balance).div(4));
 
           const result = await pool.proportionalExit({ from: sender, bptIn });
 
@@ -976,8 +978,10 @@ describe('StablePhantomPool', () => {
           expect(result.dueProtocolFeeAmounts).to.be.zeros;
           // Balances are reduced by half because we are returning half of the BPT supply
           expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.001);
+
+          const currentSenderBptBalance = await pool.balanceOf(sender);
           // Current BPT balance should have been reduced by half
-          expect(await pool.balanceOf(sender)).to.be.equalWithError(bptIn, 0.001);
+          expect(previousSenderBptBalance.sub(currentSenderBptBalance)).to.be.equalWithError(bptIn, 0.001);
         });
       });
     });

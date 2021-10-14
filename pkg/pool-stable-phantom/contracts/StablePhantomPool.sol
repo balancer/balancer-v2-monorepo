@@ -315,7 +315,7 @@ contract StablePhantomPool is StablePool {
         uint256 tokenIndex,
         uint256 virtualSupply,
         uint256[] memory balances
-    ) internal view whenNotPaused returns (uint256 amountOut) {
+    ) internal view returns (uint256 amountOut) {
         // Use virtual total supply and zero swap fees for joins.
         (uint256 amp, ) = _getAmplificationParameter();
         amountOut = StableMath._calcTokenOutGivenExactBptIn(amp, balances, tokenIndex, bptIn, virtualSupply, 0);
@@ -329,7 +329,7 @@ contract StablePhantomPool is StablePool {
         uint256 tokenIndex,
         uint256 virtualSupply,
         uint256[] memory balances
-    ) internal view whenNotPaused returns (uint256 amountIn) {
+    ) internal view returns (uint256 amountIn) {
         // Use virtual total supply and zero swap fees for joins
         (uint256 amp, ) = _getAmplificationParameter();
         amountIn = StableMath._calcTokenInGivenExactBptOut(amp, balances, tokenIndex, bptOut, virtualSupply, 0);
@@ -343,7 +343,7 @@ contract StablePhantomPool is StablePool {
         uint256 tokenIndex,
         uint256 virtualSupply,
         uint256[] memory balances
-    ) internal view whenNotPaused returns (uint256 bptIn) {
+    ) internal view returns (uint256 bptIn) {
         // Avoid BPT balance for stable pool math. Use virtual total supply and zero swap fees for exits.
         (uint256 amp, ) = _getAmplificationParameter();
         uint256[] memory amountsOut = new uint256[](_getTotalTokens() - 1);
@@ -359,7 +359,7 @@ contract StablePhantomPool is StablePool {
         uint256 tokenIndex,
         uint256 virtualSupply,
         uint256[] memory balances
-    ) internal view whenNotPaused returns (uint256 bptOut) {
+    ) internal view returns (uint256 bptOut) {
         uint256[] memory amountsIn = new uint256[](_getTotalTokens() - 1);
         amountsIn[tokenIndex] = amountIn;
         (uint256 amp, ) = _getAmplificationParameter();
@@ -538,10 +538,11 @@ contract StablePhantomPool is StablePool {
         if (kind == ExitKindPhantom.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             _ensurePaused();
 
-            // Note that this will cause for the user's BPT to be burned, which is not something that happens during regular
-            // operation of this Pool, and may lead to accounting errors. Because of this, it is highly advisable to not continue
-            // using a Pool on which the pause has been turned on and BPT burned once the pause window expires.
-            
+            // Note that this will cause for the user's BPT to be burned, which is not something that happens during
+            // regular operation of this Pool, and may lead to accounting errors. Because of this, it is highly
+            // advisable to not continue using a Pool on which the pause has been turned on and BPT burned once the
+            // pause window expires.
+
             (bptAmountIn, amountsOut) = _proportionalExit(balances, userData);
             // For simplicity, due protocol fees are set to zero.
             dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
@@ -559,7 +560,11 @@ contract StablePhantomPool is StablePool {
         // with a mechanism to retrieve their tokens in case of an emergency.
         // This particular exit function is the only one available because it is the simplest one, and therefore the
         // one with the lowest likelihood of errors.
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
+        (, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
+
+        // For this specific case, we need to calculate the virtual supply taking into consideration the bpt that has
+        // been burned.
+        uint256 virtualSupply = totalSupply() - balances[_bptIndex] + _dueProtocolFeeBptAmount;
 
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
