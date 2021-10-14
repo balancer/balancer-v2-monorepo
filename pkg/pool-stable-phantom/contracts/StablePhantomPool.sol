@@ -533,13 +533,17 @@ contract StablePhantomPool is StablePool {
     {
         ExitKindPhantom kind = userData.exitKind();
 
-        //It handles only proportionally exit
+        // Exits typically revert, except for the proportional exit when the emergency pause mechanism has been
+        // triggered. This allows for a simple and safe way to exit the Pool.
         if (kind == ExitKindPhantom.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            //Can exit proportionally only when the pool is paused
             _ensurePaused();
 
+            // Note that this will cause for the user's BPT to be burned, which is not something that happens during regular
+            // operation of this Pool, and may lead to accounting errors. Because of this, it is highly advisable to not continue
+            // using a Pool on which the pause has been turned on and BPT burned once the pause window expires.
+            
             (bptAmountIn, amountsOut) = _proportionalExit(balances, userData);
-            // Due protocol fees are all zero.
+            // For simplicity, due protocol fees are set to zero.
             dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
         } else {
             _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
