@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-// Based on the Address library from OpenZeppelin Contracts, altered to the checks on whether `functionCall`
-// and `functionDelegateCall` are targetting an address which fails the `isContract` check.
-// This was done was we only use these functions to on our own contracts and so can be confident
-// that they will exist at the point of the call.
-
+// Based on the Address library from OpenZeppelin Contracts, altered by removing the `isContract` checks on
+// `functionCall` and `functionDelegateCall` in order to save gas, as the recipients are known to be contracts.
 
 pragma solidity ^0.7.0;
 
