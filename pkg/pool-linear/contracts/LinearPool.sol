@@ -454,7 +454,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256[] memory amountsOut = _calcTokensOutGivenExactBptIn(
             balances,
             bptAmountIn,
-            totalSupply().sub(balances[_bptIndex]), // _MAX_TOKEN_BALANCE is always greater than BPT balance
+            totalSupply().sub(balances[_bptIndex]),
             _bptIndex
         );
 

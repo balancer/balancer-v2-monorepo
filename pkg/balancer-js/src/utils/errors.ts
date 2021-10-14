@@ -99,6 +99,7 @@ const balancerErrorCodes: Record<string, string> = {
   '428': 'CODE_DEPLOYMENT_FAILED',
   '429': 'CALL_TO_NON_CONTRACT',
   '430': 'LOW_LEVEL_CALL_FAILED',
+  '431': 'NOT_PAUSED',
   '500': 'INVALID_POOL_ID',
   '501': 'CALLER_NOT_POOL',
   '502': 'SENDER_NOT_ASSET_MANAGER',
