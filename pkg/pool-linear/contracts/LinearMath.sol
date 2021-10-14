@@ -288,4 +288,34 @@ contract LinearMath {
                 );
         }
     }
+
+    function _calcTokensOutGivenExactBptIn(
+        uint256[] memory balances,
+        uint256 bptAmountIn,
+        uint256 bptTotalSupply,
+        uint256 bptIndex
+    ) internal pure returns (uint256[] memory) {
+        /**********************************************************************************************
+        // exactBPTInForTokensOut                                                                    //
+        // (per token)                                                                               //
+        // aO = tokenAmountOut             /        bptIn         \                                  //
+        // b = tokenBalance      a0 = b * | ---------------------  |                                 //
+        // bptIn = bptAmountIn             \     bptTotalSupply    /                                 //
+        // bpt = bptTotalSupply                                                                      //
+        **********************************************************************************************/
+
+        // Since we're computing an amount out, we round down overall. This means rounding down on both the
+        // multiplication and division.
+
+        uint256 bptRatio = bptAmountIn.divDown(bptTotalSupply);
+
+        uint256[] memory amountsOut = new uint256[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            if (i != bptIndex) {
+                amountsOut[i] = balances[i].mulDown(bptRatio);
+            }
+        }
+
+        return amountsOut;
+    }
 }
