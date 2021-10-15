@@ -122,20 +122,18 @@ contract MerkleOrchard {
     // Claim functions
 
     /**
-     * @notice Allows a user to claim multiple distributions
+     * @notice Allows anyone to claim multiple distributions for a claimer.
      */
     function claimDistributions(
         address claimer,
         Claim[] memory claims,
         IERC20[] memory tokens
     ) external {
-        require(msg.sender == claimer, "user must claim own balance");
-
-        _processClaims(claimer, msg.sender, claims, tokens, false);
+        _processClaims(claimer, claimer, claims, tokens, false);
     }
 
     /**
-     * @notice Allows a user to claim multiple distributions to internal balance
+     * @notice Allows a user to claim their own multiple distributions to internal balance.
      */
     function claimDistributionsToInternalBalance(
         address claimer,
@@ -143,12 +141,11 @@ contract MerkleOrchard {
         IERC20[] memory tokens
     ) external {
         require(msg.sender == claimer, "user must claim own balance");
-
-        _processClaims(claimer, msg.sender, claims, tokens, true);
+        _processClaims(claimer, claimer, claims, tokens, true);
     }
 
     /**
-     * @notice Allows a user to claim several distributions to a callback
+     * @notice Allows a user to claim their own several distributions to a callback.
      */
     function claimDistributionsWithCallback(
         address claimer,
