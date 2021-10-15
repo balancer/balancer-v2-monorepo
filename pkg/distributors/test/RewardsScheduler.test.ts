@@ -105,7 +105,7 @@ describe('Rewards Scheduler', () => {
     it('responds to getScheduledRewardInfo', async () => {
       const response = await rewardsScheduler.getScheduledRewardInfo(rewardId);
 
-      expect(response.pool).to.equal(pool.address);
+      expect(response.stakingToken).to.equal(pool.address);
       expect(response.rewardsToken).to.equal(rewardsToken.address);
       expect(response.startTime).to.equal(time);
       expect(response.rewarder).to.equal(rewarder.address);
@@ -135,7 +135,7 @@ describe('Rewards Scheduler', () => {
         expectEvent.inReceipt(receipt, 'RewardStarted', {
           rewardId,
           rewarder: rewarder.address,
-          pool: pool.address,
+          stakingToken: pool.address,
           rewardsToken: rewardsToken.address,
           startTime: time,
           amount: rewardAmount,
@@ -146,7 +146,7 @@ describe('Rewards Scheduler', () => {
         const receipt = await (await rewardsScheduler.connect(lp).startRewards([rewardId])).wait();
 
         expectEvent.inIndirectReceipt(receipt, stakingContract.interface, 'RewardAdded', {
-          token: rewardsToken.address,
+          rewardsToken: rewardsToken.address,
           amount: rewardAmount,
         });
       });
