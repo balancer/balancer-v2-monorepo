@@ -339,7 +339,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @param pools The pools to claim rewards for
      */
     function getReward(IERC20[] calldata pools) external nonReentrant {
-        _getReward(pools, msg.sender, false);
+        _getReward(pools, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
     }
 
     /**
@@ -347,7 +347,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @param pools The pools to claim rewards for
      */
     function getRewardAsInternalBalance(IERC20[] calldata pools) external nonReentrant {
-        _getReward(pools, msg.sender, true);
+        _getReward(pools, msg.sender, IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
     }
 
     function _rewardOpsCount(IERC20[] calldata pools) internal view returns (uint256 opsCount) {
@@ -364,12 +364,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     function _getReward(
         IERC20[] calldata pools,
         address recipient,
-        bool asInternalBalance
+        IVault.UserBalanceOpKind kind
     ) internal {
-        IVault.UserBalanceOpKind kind = asInternalBalance
-            ? IVault.UserBalanceOpKind.TRANSFER_INTERNAL
-            : IVault.UserBalanceOpKind.WITHDRAW_INTERNAL;
-
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](_rewardOpsCount(pools));
 
         uint256 idx;
@@ -413,7 +409,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IDistributorCallback callbackContract,
         bytes calldata callbackData
     ) external nonReentrant {
-        _getReward(pools, address(callbackContract), true);
+        _getReward(pools, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
 
         callbackContract.distributorCallback(callbackData);
     }
@@ -427,7 +423,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             IERC20 pool = pools[p];
             unstake(pool, _balances[pool][msg.sender], msg.sender);
         }
-        _getReward(pools, msg.sender, false);
+        _getReward(pools, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
     }
 
     /**
@@ -446,7 +442,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             IERC20 pool = pools[p];
             unstake(pool, _balances[pool][msg.sender], address(callbackContract));
         }
-        _getReward(pools, msg.sender, false);
+        _getReward(pools, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
         callbackContract.distributorCallback(callbackData);
     }
 
