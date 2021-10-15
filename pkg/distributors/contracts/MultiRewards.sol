@@ -336,7 +336,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         _totalSupply[stakingToken] = _totalSupply[stakingToken].sub(amount);
         _balances[stakingToken][msg.sender] = _balances[stakingToken][msg.sender].sub(amount);
         stakingToken.safeTransfer(receiver, amount);
-        emit Withdrawn(address(stakingToken), receiver, amount);
+        emit Withdrawn(address(stakingToken), msg.sender, amount);
     }
 
     /**
