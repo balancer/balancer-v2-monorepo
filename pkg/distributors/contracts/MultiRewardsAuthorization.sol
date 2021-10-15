@@ -26,23 +26,23 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 abstract contract MultiRewardsAuthorization is Authentication {
     IVault private immutable _vault;
 
-    mapping(IERC20 => mapping(IERC20 => mapping(address => bool))) private _allowlist;
+    mapping(IERC20 => mapping(IERC20 => mapping(address => bool))) private _whitelist;
 
-    event RewarderAllowlisted(address indexed stakingToken, address indexed rewardsToken, address indexed rewarder);
+    event RewarderWhitelisted(address indexed stakingToken, address indexed rewardsToken, address indexed rewarder);
 
     constructor(IVault vault) {
         _vault = vault;
     }
 
-    modifier onlyAllowlistedRewarder(IERC20 stakingToken, IERC20 rewardsToken) {
+    modifier onlyWhitelistedRewarder(IERC20 stakingToken, IERC20 rewardsToken) {
         require(
-            _isAllowlistedRewarder(stakingToken, rewardsToken, msg.sender),
-            "Only accessible by allowlisted rewarders"
+            _isWhitelistedRewarder(stakingToken, rewardsToken, msg.sender),
+            "Only accessible by whitelisted rewarders"
         );
         _;
     }
 
-    modifier onlyAllowlisters(IERC20 stakingToken) {
+    modifier onlyWhitelisted(IERC20 stakingToken) {
         require(
             _canPerform(getActionId(msg.sig), msg.sender) ||
                 msg.sender == address(stakingToken) ||
@@ -67,23 +67,23 @@ abstract contract MultiRewardsAuthorization is Authentication {
     }
 
     /**
-     * @notice Allows a rewarder to be explicitly added to an allowlist of rewarders
+     * @notice Allows a rewarder to be explicitly added to an whitelist of rewarders
      */
-    function _allowlistRewarder(
+    function _whitelistRewarder(
         IERC20 stakingToken,
         IERC20 rewardsToken,
         address rewarder
     ) internal {
-        _allowlist[stakingToken][rewardsToken][rewarder] = true;
-        emit RewarderAllowlisted(address(stakingToken), address(rewardsToken), rewarder);
+        _whitelist[stakingToken][rewardsToken][rewarder] = true;
+        emit RewarderWhitelisted(address(stakingToken), address(rewardsToken), rewarder);
     }
 
-    function _isAllowlistedRewarder(
+    function _isWhitelistedRewarder(
         IERC20 stakingToken,
         IERC20 rewardsToken,
         address rewarder
     ) internal view returns (bool) {
-        return _allowlist[stakingToken][rewardsToken][rewarder];
+        return _whitelist[stakingToken][rewardsToken][rewarder];
     }
 
     /**

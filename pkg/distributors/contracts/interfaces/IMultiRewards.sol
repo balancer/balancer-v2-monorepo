@@ -30,13 +30,13 @@ interface IMultiRewards {
         uint256 rewardsDuration
     ) external;
 
-    function allowlistRewarder(
+    function whitelistRewarder(
         IERC20 stakingToken,
         IERC20 rewardsToken,
         address rewarder
     ) external;
 
-    function isAllowlistedRewarder(
+    function isWhitelistedRewarder(
         IERC20 stakingToken,
         IERC20 rewardsToken,
         address rewarder

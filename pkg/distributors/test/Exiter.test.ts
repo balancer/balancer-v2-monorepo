@@ -45,7 +45,7 @@ describe('Exiter', () => {
     let poolId: string;
 
     sharedBeforeEach(async () => {
-      await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
+      await stakingContract.connect(rewarder).whitelistRewarder(pool.address, rewardToken.address, rewarder.address);
       await stakingContract.connect(rewarder).addReward(pool.address, rewardToken.address, rewardsDuration);
 
       const bptBalance = await pool.balanceOf(lp.address);
