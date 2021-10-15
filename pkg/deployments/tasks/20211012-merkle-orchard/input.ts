@@ -7,16 +7,5 @@ export type MerkleOrchardDeployment = {
 const Vault = new Task('20210418-vault');
 
 export default {
-  mainnet: {
-    Vault,
-  },
-  arbitrum: {
-    Vault,
-  },
-  polygon: {
-    Vault,
-  },
-  kovan: {
-    Vault,
-  },
+  Vault,
 };
