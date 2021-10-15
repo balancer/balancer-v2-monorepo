@@ -171,12 +171,14 @@ contract MerkleOrchard {
         uint256 amount,
         uint256 distributionId
     ) external {
-        bytes32 channelId = _getChannelId(token, msg.sender);
+        address distributor = msg.sender;
+
+        bytes32 channelId = _getChannelId(token, distributor);
         require(
             _nextDistributionId[channelId] == distributionId || _nextDistributionId[channelId] == 0,
             "invalid distribution ID"
         );
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        token.safeTransferFrom(distributor, address(this), amount);
 
         token.approve(address(getVault()), amount);
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
@@ -194,7 +196,7 @@ contract MerkleOrchard {
         _remainingBalance[channelId] += amount;
         _distributionRoot[channelId][distributionId] = merkleRoot;
         _nextDistributionId[channelId] = distributionId + 1;
-        emit DistributionAdded(msg.sender, token, distributionId, merkleRoot, amount);
+        emit DistributionAdded(distributor, token, distributionId, merkleRoot, amount);
     }
 
     // Helper functions
