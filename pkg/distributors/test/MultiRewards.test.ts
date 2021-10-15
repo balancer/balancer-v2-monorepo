@@ -61,49 +61,49 @@ describe('Staking contract', () => {
     });
   });
 
-  describe('isAllowlistedRewarder', async () => {
-    it('allows thet asset managers to allowlist themselves', async () => {
-      await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
-      expect(await stakingContract.isAllowlistedRewarder(pool.address, rewardToken.address, rewarder.address)).to.equal(
+  describe('isWhitelistedRewarder', async () => {
+    it('allows asset managers to whitelist themselves', async () => {
+      await stakingContract.connect(rewarder).whitelistRewarder(pool.address, rewardToken.address, rewarder.address);
+      expect(await stakingContract.isWhitelistedRewarder(pool.address, rewardToken.address, rewarder.address)).to.equal(
         true
       );
     });
 
-    it('allows the owner to allowlist someone', async () => {
-      await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardToken.address, lp.address);
+    it('allows the owner to whitelist someone', async () => {
+      await stakingContract.connect(admin).whitelistRewarder(pool.address, rewardToken.address, lp.address);
 
-      expect(await stakingContract.isAllowlistedRewarder(pool.address, rewardToken.address, lp.address)).to.equal(true);
+      expect(await stakingContract.isWhitelistedRewarder(pool.address, rewardToken.address, lp.address)).to.equal(true);
     });
 
     it('returns false for random users', async () => {
-      expect(await stakingContract.isAllowlistedRewarder(pool.address, rewardToken.address, other.address)).to.equal(
+      expect(await stakingContract.isWhitelistedRewarder(pool.address, rewardToken.address, other.address)).to.equal(
         false
       );
     });
 
-    it('reverts if a random user attempts to allowlist themselves', async () => {
+    it('reverts if a random user attempts to whitelist themselves', async () => {
       await expect(
-        stakingContract.connect(other).allowlistRewarder(pool.address, rewardToken.address, other.address)
+        stakingContract.connect(other).whitelistRewarder(pool.address, rewardToken.address, other.address)
       ).to.be.revertedWith('Only accessible by governance, staking token or asset managers');
     });
   });
 
   it('reverts if a rewarder attempts to setRewardsDuration before adding a reward', async () => {
-    await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
+    await stakingContract.connect(rewarder).whitelistRewarder(pool.address, rewardToken.address, rewarder.address);
 
     await expect(
       stakingContract.connect(rewarder).setRewardsDuration(pool.address, rewardToken.address, fp(1000))
     ).to.be.revertedWith('Reward must be configured with addReward');
   });
 
-  it('reverts if a rewarder attempts to setRewardsDuration before being allowlisted', async () => {
+  it('reverts if a rewarder attempts to setRewardsDuration before being whitelisted', async () => {
     await expect(
       stakingContract.connect(rewarder).setRewardsDuration(pool.address, rewardToken.address, fp(1000))
-    ).to.be.revertedWith('Only accessible by allowlisted rewarders');
+    ).to.be.revertedWith('Only accessible by whitelisted rewarders');
   });
 
   it('reverts if a rewarder attempts to notifyRewardAmount before adding a reward', async () => {
-    await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
+    await stakingContract.connect(rewarder).whitelistRewarder(pool.address, rewardToken.address, rewarder.address);
 
     await expect(
       stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, fp(100), rewarder.address)
@@ -112,9 +112,9 @@ describe('Staking contract', () => {
 
   describe('addReward', () => {
     it('sets up a reward for an asset manager', async () => {
-      await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
+      await stakingContract.connect(rewarder).whitelistRewarder(pool.address, rewardToken.address, rewarder.address);
       await stakingContract.connect(rewarder).addReward(pool.address, rewardToken.address, rewardsDuration);
-      expect(await stakingContract.isAllowlistedRewarder(pool.address, rewardToken.address, rewarder.address)).to.equal(
+      expect(await stakingContract.isWhitelistedRewarder(pool.address, rewardToken.address, rewarder.address)).to.equal(
         true
       );
     });
@@ -122,7 +122,7 @@ describe('Staking contract', () => {
 
   describe('stakeWithPermit', () => {
     sharedBeforeEach(async () => {
-      await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
+      await stakingContract.connect(rewarder).whitelistRewarder(pool.address, rewardToken.address, rewarder.address);
       await stakingContract.connect(rewarder).addReward(pool.address, rewardToken.address, rewardsDuration);
     });
 
@@ -154,7 +154,7 @@ describe('Staking contract', () => {
   describe('with two stakes', () => {
     const rewardAmount = fp(1);
     sharedBeforeEach(async () => {
-      await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
+      await stakingContract.connect(rewarder).whitelistRewarder(pool.address, rewardToken.address, rewarder.address);
       await stakingContract.connect(rewarder).addReward(pool.address, rewardToken.address, rewardsDuration);
 
       const bptBalance = await pool.balanceOf(lp.address);
@@ -274,12 +274,12 @@ describe('Staking contract', () => {
           const secondRewardAmount = fp(2);
 
           sharedBeforeEach(async () => {
-            await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardToken.address, other.address);
+            await stakingContract.connect(admin).whitelistRewarder(pool.address, rewardToken.address, other.address);
 
             await rewardTokens.mint({ to: other, amount: rewardTokenInitialBalance });
             await rewardTokens.approve({ to: stakingContract.address, from: [other] });
 
-            await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardToken.address, other.address);
+            await stakingContract.connect(admin).whitelistRewarder(pool.address, rewardToken.address, other.address);
             await stakingContract.connect(other).addReward(pool.address, rewardToken.address, rewardsDuration);
 
             await stakingContract
@@ -339,7 +339,7 @@ describe('Staking contract', () => {
     const rewardAmount = fp(1);
 
     sharedBeforeEach('deploy another pool', async () => {
-      await stakingContract.connect(rewarder).allowlistRewarder(pool.address, rewardToken.address, rewarder.address);
+      await stakingContract.connect(rewarder).whitelistRewarder(pool.address, rewardToken.address, rewarder.address);
       await stakingContract.connect(rewarder).addReward(pool.address, rewardToken.address, rewardsDuration);
       const poolTokens = await TokenList.create(['BAT', 'SNX'], { sorted: true });
       const assetManagers = Array(poolTokens.length).fill(rewarder.address);
@@ -360,7 +360,7 @@ describe('Staking contract', () => {
       });
       const poolId = await pool2.getPoolId();
 
-      await stakingContract.connect(rewarder).allowlistRewarder(pool2.address, rewardToken.address, rewarder.address);
+      await stakingContract.connect(rewarder).whitelistRewarder(pool2.address, rewardToken.address, rewarder.address);
       await stakingContract.connect(rewarder).addReward(pool2.address, rewardToken.address, rewardsDuration);
 
       await poolTokens.mint({ to: lp, amount: tokenInitialBalance });

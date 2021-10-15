@@ -44,7 +44,7 @@ describe('Staking contract - callbacks', () => {
     sharedBeforeEach(async () => {
       await stakingContract
         .connect(mockAssetManager)
-        .allowlistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
+        .whitelistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
       await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
 
       const bptBalance = await pool.balanceOf(lp.address);

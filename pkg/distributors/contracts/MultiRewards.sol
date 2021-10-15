@@ -90,17 +90,17 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice Allows a rewarder to be explicitly added to an allowlist of rewarders
+     * @notice Allows a rewarder to be explicitly added to a whitelist of rewarders
      * @param stakingToken The token that the rewarder can reward for
      * @param rewardsToken The token to be distributed to stakers
      * @param rewarder The address of the rewarder
      */
-    function allowlistRewarder(
+    function whitelistRewarder(
         IERC20 stakingToken,
         IERC20 rewardsToken,
         address rewarder
-    ) external override onlyAllowlisters(stakingToken) {
-        _allowlistRewarder(stakingToken, rewardsToken, rewarder);
+    ) external override onlyWhitelisted(stakingToken) {
+        _whitelistRewarder(stakingToken, rewardsToken, rewarder);
     }
 
     /**
@@ -109,12 +109,12 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @param rewardsToken The token to be distributed to stakers
      * @param rewarder The address of the rewarder
      */
-    function isAllowlistedRewarder(
+    function isWhitelistedRewarder(
         IERC20 stakingToken,
         IERC20 rewardsToken,
         address rewarder
     ) public view override returns (bool) {
-        return _isAllowlistedRewarder(stakingToken, rewardsToken, rewarder);
+        return _isWhitelistedRewarder(stakingToken, rewardsToken, rewarder);
     }
 
     /**
@@ -127,7 +127,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20 stakingToken,
         IERC20 rewardsToken,
         uint256 rewardsDuration
-    ) external override onlyAllowlistedRewarder(stakingToken, rewardsToken) {
+    ) external override onlyWhitelistedRewarder(stakingToken, rewardsToken) {
         require(rewardsDuration > 0, "reward rate must be nonzero");
         require(rewardData[stakingToken][msg.sender][rewardsToken].rewardsDuration == 0, "Duplicate rewards token");
         _rewardTokens[stakingToken].add(address(rewardsToken));
@@ -529,7 +529,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20 stakingToken,
         IERC20 rewardsToken,
         uint256 rewardsDuration
-    ) external onlyAllowlistedRewarder(stakingToken, rewardsToken) {
+    ) external onlyWhitelistedRewarder(stakingToken, rewardsToken) {
         require(
             _rewarders[stakingToken][rewardsToken].contains(msg.sender),
             "Reward must be configured with addReward"

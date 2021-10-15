@@ -116,8 +116,8 @@ contract RewardsScheduler {
         rewardId = getRewardId(stakingToken, rewardsToken, msg.sender, startTime);
         require(startTime > block.timestamp, "Reward can only be scheduled for the future");
         require(
-            _multirewards.isAllowlistedRewarder(stakingToken, rewardsToken, msg.sender),
-            "Only allowlisted rewarders can schedule reward"
+            _multirewards.isWhitelistedRewarder(stakingToken, rewardsToken, msg.sender),
+            "Only whitelisted rewarders can schedule reward"
         );
 
         require(_rewards[rewardId].status == RewardStatus.UNINITIALIZED, "Reward has already been scheduled");
