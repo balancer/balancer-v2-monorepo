@@ -13,6 +13,9 @@ export default {
   arbitrum: {
     Vault,
   },
+  polygon: {
+    Vault,
+  },
   kovan: {
     Vault,
   },
