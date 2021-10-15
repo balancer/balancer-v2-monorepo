@@ -344,7 +344,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @param stakingTokens The staking tokens to claim rewards for
      */
     function getReward(IERC20[] calldata stakingTokens) external nonReentrant {
-        _getReward(stakingTokens, msg.sender, false);
+        _getReward(stakingTokens, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
     }
 
     /**
@@ -352,7 +352,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @param stakingTokens The staking tokens to claim rewards for
      */
     function getRewardAsInternalBalance(IERC20[] calldata stakingTokens) external nonReentrant {
-        _getReward(stakingTokens, msg.sender, true);
+        _getReward(stakingTokens, msg.sender, IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
     }
 
     function _rewardOpsCount(IERC20[] calldata stakingTokens) internal view returns (uint256 opsCount) {
@@ -369,12 +369,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     function _getReward(
         IERC20[] calldata stakingTokens,
         address recipient,
-        bool asInternalBalance
+        IVault.UserBalanceOpKind kind
     ) internal {
-        IVault.UserBalanceOpKind kind = asInternalBalance
-            ? IVault.UserBalanceOpKind.TRANSFER_INTERNAL
-            : IVault.UserBalanceOpKind.WITHDRAW_INTERNAL;
-
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](_rewardOpsCount(stakingTokens));
 
         uint256 idx;
@@ -418,7 +414,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IDistributorCallback callbackContract,
         bytes calldata callbackData
     ) external nonReentrant {
-        _getReward(stakingTokens, address(callbackContract), true);
+        _getReward(stakingTokens, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
 
         callbackContract.distributorCallback(callbackData);
     }
@@ -432,7 +428,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             IERC20 stakingToken = stakingTokens[p];
             unstake(stakingToken, _balances[stakingToken][msg.sender], msg.sender);
         }
-        _getReward(stakingTokens, msg.sender, false);
+        _getReward(stakingTokens, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
     }
 
     /**
@@ -450,7 +446,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             IERC20 stakingToken = stakingTokens[p];
             unstake(stakingToken, _balances[stakingToken][msg.sender], address(callbackContract));
         }
-        _getReward(stakingTokens, msg.sender, false);
+        _getReward(stakingTokens, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
         callbackContract.distributorCallback(callbackData);
     }
 
