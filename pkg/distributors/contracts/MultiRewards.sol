@@ -313,16 +313,12 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         uint256 amount,
         uint256 deadline,
         address account,
-        address recipient,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) external nonReentrant {
-        // Force the sender to be the recipient to ensure signature is not extracted from the
-        // mempool and used for another recipient
-        require(account == recipient, "The recipient must match the account in the permit signature");
         IERC20Permit(address(stakingToken)).permit(account, address(this), amount, deadline, v, r, s);
-        _stakeFor(stakingToken, amount, account, recipient);
+        _stakeFor(stakingToken, amount, account, account);
     }
 
     /**
