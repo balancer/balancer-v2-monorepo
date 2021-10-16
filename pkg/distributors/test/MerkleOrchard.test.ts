@@ -243,10 +243,18 @@ describe('MerkleOrchard', () => {
       expect(isClaimed).to.equal(true); // "claim should be marked as claimed";
     });
 
-    it('reverts when a user attempts to claim for another user', async () => {
+    it('allows anyone to claim for another user', async () => {
+      await expectBalanceChange(
+        () => merkleOrchard.connect(other).claimDistributions(claimer1.address, claims, tokenAddresses),
+        tokens,
+        [{ account: claimer1, changes: { DAI: claimableBalance } }]
+      );
+    });
+
+    it('reverts when a user attempts to claim to internal balance for another user', async () => {
       const errorMsg = 'user must claim own balance';
       await expect(
-        merkleOrchard.connect(other).claimDistributions(claimer1.address, claims, tokenAddresses)
+        merkleOrchard.connect(other).claimDistributionsToInternalBalance(claimer1.address, claims, tokenAddresses)
       ).to.be.revertedWith(errorMsg);
     });
 
