@@ -213,7 +213,7 @@ contract LinearMath {
 
         if (bptSupply == 0) {
             // Return nominal DAI
-            return bptOut.divDown(params.rate);
+            return bptOut.divUp(params.rate);
         }
 
         uint256 nominalMain = _toNominal(mainBalance, params);
