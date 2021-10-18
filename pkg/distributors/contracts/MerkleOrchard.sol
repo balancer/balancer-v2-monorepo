@@ -122,20 +122,18 @@ contract MerkleOrchard {
     // Claim functions
 
     /**
-     * @notice Allows a user to claim multiple distributions
+     * @notice Allows anyone to claim multiple distributions for a claimer.
      */
     function claimDistributions(
         address claimer,
         Claim[] memory claims,
         IERC20[] memory tokens
     ) external {
-        require(msg.sender == claimer, "user must claim own balance");
-
-        _processClaims(claimer, msg.sender, claims, tokens, false);
+        _processClaims(claimer, claimer, claims, tokens, false);
     }
 
     /**
-     * @notice Allows a user to claim multiple distributions to internal balance
+     * @notice Allows a user to claim their own multiple distributions to internal balance.
      */
     function claimDistributionsToInternalBalance(
         address claimer,
@@ -143,12 +141,11 @@ contract MerkleOrchard {
         IERC20[] memory tokens
     ) external {
         require(msg.sender == claimer, "user must claim own balance");
-
-        _processClaims(claimer, msg.sender, claims, tokens, true);
+        _processClaims(claimer, claimer, claims, tokens, true);
     }
 
     /**
-     * @notice Allows a user to claim several distributions to a callback
+     * @notice Allows a user to claim their own several distributions to a callback.
      */
     function claimDistributionsWithCallback(
         address claimer,
@@ -171,12 +168,14 @@ contract MerkleOrchard {
         uint256 amount,
         uint256 distributionId
     ) external {
-        bytes32 channelId = _getChannelId(token, msg.sender);
+        address distributor = msg.sender;
+
+        bytes32 channelId = _getChannelId(token, distributor);
         require(
             _nextDistributionId[channelId] == distributionId || _nextDistributionId[channelId] == 0,
             "invalid distribution ID"
         );
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        token.safeTransferFrom(distributor, address(this), amount);
 
         token.approve(address(getVault()), amount);
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
@@ -194,7 +193,7 @@ contract MerkleOrchard {
         _remainingBalance[channelId] += amount;
         _distributionRoot[channelId][distributionId] = merkleRoot;
         _nextDistributionId[channelId] = distributionId + 1;
-        emit DistributionAdded(msg.sender, token, distributionId, merkleRoot, amount);
+        emit DistributionAdded(distributor, token, distributionId, merkleRoot, amount);
     }
 
     // Helper functions
