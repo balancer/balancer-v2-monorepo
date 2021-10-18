@@ -327,7 +327,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         _totalSupply[pool] = _totalSupply[pool].sub(amount);
         _balances[pool][msg.sender] = _balances[pool][msg.sender].sub(amount);
         pool.safeTransfer(receiver, amount);
-        emit Withdrawn(address(pool), receiver, amount);
+        emit Withdrawn(address(pool), msg.sender, amount);
     }
 
     /**
