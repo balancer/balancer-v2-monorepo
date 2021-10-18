@@ -711,11 +711,44 @@ contract StablePhantomPool is StablePool {
         view
         returns (uint256 virtualSupply, uint256[] memory balances)
     {
+        // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
+        // vault. So the virtualSupply (the bpt supply that is really being used) is defined as:
+        // virtualSupply = _MAX_TOKEN_BALANCE - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
         virtualSupply = _MAX_TOKEN_BALANCE - _balances[_bptIndex] + _dueProtocolFeeBptAmount;
 
         balances = new uint256[](_balances.length - 1);
         for (uint256 i = 0; i < balances.length; i++) {
             balances[i] = _balances[i < _bptIndex ? i : i + 1];
         }
+    }
+
+    /**
+     * @dev The virtual supply is the bpt supply that is really being used.
+     */
+    function virtualSupply() external view returns (uint256) {
+        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(balances, _scalingFactors());
+
+        (uint256 _virtualSupply, ) = _dropBptItem(balances);
+        return _virtualSupply;
+    }
+
+    /**
+     * @dev This function returns the appreciation of one BPT relative to the
+     * underlying tokens. This starts at 1 when the pool is created and grows over time.
+     * Because of preminted BPT, it uses virtualSupply instead of totalSupply.
+     */
+    function getRate() public view override returns (uint256) {
+        (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(balancesIncludingBpt, _scalingFactors());
+
+        (uint256 _virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
+
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        // When calculating the current BPT rate, we may not have paid the protocol fees, therefore
+        // the invariant should be smaller than its current value. Then, we round down overall.
+        uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, false);
+        return invariant.divDown(_virtualSupply);
     }
 }

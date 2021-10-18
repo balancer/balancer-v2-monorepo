@@ -156,6 +156,14 @@ export default class StablePhantomPool {
     return this.instance.getTokenRateCache(typeof token === 'string' ? token : token.address);
   }
 
+  async getRate(): Promise<BigNumber> {
+    return this.instance.getRate();
+  }
+
+  async getVirtualSupply(): Promise<BigNumber> {
+    return this.instance.virtualSupply();
+  }
+
   async updateTokenRateCache(token: Token): Promise<ContractTransaction> {
     return this.instance.updateTokenRateCache(token.address);
   }

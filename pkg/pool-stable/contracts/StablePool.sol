@@ -610,7 +610,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
      * @dev This function returns the appreciation of one BPT relative to the
      * underlying tokens. This starts at 1 when the pool is created and grows over time
      */
-    function getRate() public view override returns (uint256) {
+    function getRate() public view virtual override returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
