@@ -84,7 +84,7 @@ describe('Staking contract', () => {
     it('reverts if a random user attempts to allowlist themselves', async () => {
       await expect(
         stakingContract.connect(other).allowlistRewarder(pool.address, rewardToken.address, other.address)
-      ).to.be.revertedWith("Only accessible by governance, pool or it's asset managers");
+      ).to.be.revertedWith('Only accessible by governance, staking token or asset managers');
     });
   });
 
@@ -173,8 +173,8 @@ describe('Staking contract', () => {
       ).wait();
 
       expectEvent.inReceipt(receipt, 'RewardAdded', {
-        token: rewardToken.address,
-        pool: pool.address,
+        stakingToken: pool.address,
+        rewardsToken: rewardToken.address,
         amount: rewardAmount,
         rewarder: rewarder.address,
       });
