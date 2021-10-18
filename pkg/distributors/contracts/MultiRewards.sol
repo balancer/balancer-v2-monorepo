@@ -50,7 +50,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     struct User {
         uint256 balance;
         mapping(IERC20 => uint256) unpaidRewards; // rewards token => balance
-        mapping(IERC20 => mapping(address => uint256)) paidRewards; // rewards token => rewarder => balance
+        mapping(IERC20 => mapping(address => uint256)) paidRatePerToken; // rewards token => rewarder => paid rate
     }
 
     struct Reward {
@@ -233,8 +233,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         Reward storage reward
     ) private view returns (uint256) {
         User storage user = stakingToken.users[_user];
-        uint256 paidRewards = user.paidRewards[_rewardsToken][_rewarder];
-        return user.balance.mulDown(_rewardPerToken(stakingToken, reward).sub(paidRewards));
+        uint256 paidRatePerToken = user.paidRatePerToken[_rewardsToken][_rewarder];
+        return user.balance.mulDown(_rewardPerToken(stakingToken, reward).sub(paidRatePerToken));
     }
 
     /**
@@ -571,7 +571,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
                 totalUnpaidRewards = totalUnpaidRewards.add(
                     _unaccountedForUnpaidRewards(stakingToken, _rewardsToken, _rewarder, _user, reward)
                 );
-                user.paidRewards[_rewardsToken][_rewarder] = perToken;
+                user.paidRatePerToken[_rewardsToken][_rewarder] = perToken;
             }
         }
         user.unpaidRewards[_rewardsToken] = totalUnpaidRewards;
