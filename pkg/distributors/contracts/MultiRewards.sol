@@ -441,9 +441,9 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice Allows a user to unstake transferring rewards to the user and the unstaked tokens to a callback contract
+     * @notice Allows a user to unstake transferring rewards to a callback contract
      * @param _stakingTokens The staking tokens to claim rewards for
-     * @param _callbackContract The contract where the staked tokens will be transferred
+     * @param _callbackContract The contract where the rewards tokens will be transferred
      * @param _callbackData The data that is used to call the callback contract's 'callback' method
      */
     function exitWithCallback(
@@ -454,10 +454,10 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         for (uint256 i; i < _stakingTokens.length; i++) {
             IERC20 _stakingToken = _stakingTokens[i];
             User storage user = stakingTokens[_stakingToken].users[msg.sender];
-            unstake(_stakingToken, user.balance, address(_callbackContract));
+            unstake(_stakingToken, user.balance, msg.sender);
         }
 
-        _getReward(_stakingTokens, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
+        _getReward(_stakingTokens, address(_callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
         _callbackContract.distributorCallback(_callbackData);
     }
 
