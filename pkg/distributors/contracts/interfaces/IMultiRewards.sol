@@ -20,14 +20,14 @@ interface IMultiRewards {
     function notifyRewardAmount(
         IERC20 stakingToken,
         IERC20 rewardsToken,
-        uint256 reward,
-        address rewarder
+        address rewarder,
+        uint256 amount
     ) external;
 
     function addReward(
         IERC20 stakingToken,
         IERC20 rewardsToken,
-        uint256 rewardsDuration
+        uint256 duration
     ) external;
 
     function whitelistRewarder(

@@ -26,12 +26,11 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
 import "./RewardsScheduler.sol";
+import "./MultiRewardsAuthorization.sol";
 
 import "./interfaces/IMultiRewards.sol";
 import "./interfaces/IDistributorCallback.sol";
 import "./interfaces/IDistributor.sol";
-
-import "./MultiRewardsAuthorization.sol";
 
 // solhint-disable not-rely-on-time
 
@@ -48,35 +47,36 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
     /* ========== STATE VARIABLES ========== */
 
+    struct User {
+        uint256 balance;
+        mapping(IERC20 => uint256) unpaidRewards; // rewards token => balance
+        mapping(IERC20 => mapping(address => uint256)) paidRewards; // rewards token => rewarder => balance
+    }
+
     struct Reward {
-        uint256 rewardsDuration;
+        uint256 duration;
         uint256 periodFinish;
         uint256 rewardRate;
         uint256 lastUpdateTime;
         uint256 rewardPerTokenStored;
     }
 
-    // stakingToken -> rewarder -> rewardToken -> RewardData
-    mapping(IERC20 => mapping(address => mapping(IERC20 => Reward))) public rewardData;
+    struct RewardsToken {
+        mapping(address => Reward) rewards; // rewarder => reward
+        EnumerableSet.AddressSet whitelistedRewarders;
+    }
 
-    // stakingToken -> rewardTokens
-    mapping(IERC20 => EnumerableSet.AddressSet) private _rewardTokens;
-
-    // stakingToken -> rewardToken -> rewarders
-    mapping(IERC20 => mapping(IERC20 => EnumerableSet.AddressSet)) private _rewarders;
-
-    // stakingToken -> rewarder ->  user -> reward token -> amount
-    mapping(IERC20 => mapping(address => mapping(address => mapping(IERC20 => uint256)))) public userRewardPerTokenPaid;
-
-    // stakingToken -> user -> reward token -> amount
-    mapping(IERC20 => mapping(address => mapping(IERC20 => uint256))) public unpaidRewards;
-
-    mapping(IERC20 => uint256) private _totalSupply;
-
-    // stakingToken -> user -> balance staked
-    mapping(IERC20 => mapping(address => uint256)) private _balances;
+    struct StakingToken {
+        uint256 totalSupply;
+        mapping(address => User) users;
+        mapping(IERC20 => RewardsToken) rewardsTokens;
+        EnumerableSet.AddressSet whitelistedRewardsTokens;
+    }
 
     RewardsScheduler public immutable rewardsScheduler;
+
+    // solhint-disable-next-line private-vars-leading-underscore
+    mapping(IERC20 => StakingToken) internal stakingTokens;
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -91,275 +91,282 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
     /**
      * @notice Allows a rewarder to be explicitly added to a whitelist of rewarders
-     * @param stakingToken The token that the rewarder can reward for
-     * @param rewardsToken The token to be distributed to stakers
-     * @param rewarder The address of the rewarder
+     * @param _stakingToken The token that the rewarder can reward for
+     * @param _rewardsToken The token to be distributed to stakers
+     * @param _rewarder The address of the rewarder
      */
     function whitelistRewarder(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        address rewarder
-    ) external override onlyWhitelisted(stakingToken) {
-        _whitelistRewarder(stakingToken, rewardsToken, rewarder);
+        IERC20 _stakingToken,
+        IERC20 _rewardsToken,
+        address _rewarder
+    ) external override onlyWhitelisted(_stakingToken) {
+        _whitelistRewarder(_stakingToken, _rewardsToken, _rewarder);
     }
 
     /**
      * @notice Whether a rewarder can reward a staking token with a reward token
-     * @param stakingToken The token that the rewarder can reward for
-     * @param rewardsToken The token to be distributed to stakers
-     * @param rewarder The address of the rewarder
+     * @param _stakingToken The token that the rewarder can reward for
+     * @param _rewardsToken The token to be distributed to stakers
+     * @param _rewarder The address of the rewarder
      */
     function isWhitelistedRewarder(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        address rewarder
+        IERC20 _stakingToken,
+        IERC20 _rewardsToken,
+        address _rewarder
     ) public view override returns (bool) {
-        return _isWhitelistedRewarder(stakingToken, rewardsToken, rewarder);
+        return _isWhitelistedRewarder(_stakingToken, _rewardsToken, _rewarder);
     }
 
     /**
      * @notice Adds a new reward token to be distributed
-     * @param stakingToken The staking token that will receive rewards
-     * @param rewardsToken The new token to be distributed to stakers
-     * @param rewardsDuration The duration over which each distribution is spread
+     * @param _stakingToken The staking token that will receive rewards
+     * @param _rewardsToken The new token to be distributed to stakers
+     * @param _rewardsDuration The duration over which each distribution is spread
      */
     function addReward(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        uint256 rewardsDuration
-    ) external override onlyWhitelistedRewarder(stakingToken, rewardsToken) {
-        require(rewardsDuration > 0, "reward rate must be nonzero");
-        require(rewardData[stakingToken][msg.sender][rewardsToken].rewardsDuration == 0, "Duplicate rewards token");
-        _rewardTokens[stakingToken].add(address(rewardsToken));
-        _rewarders[stakingToken][rewardsToken].add(msg.sender);
-        rewardData[stakingToken][msg.sender][rewardsToken].rewardsDuration = rewardsDuration;
-        rewardsToken.approve(address(getVault()), type(uint256).max);
+        IERC20 _stakingToken,
+        IERC20 _rewardsToken,
+        uint256 _rewardsDuration
+    ) external override onlyWhitelistedRewarder(_stakingToken, _rewardsToken) {
+        require(_rewardsDuration > 0, "reward rate must be nonzero");
+
+        StakingToken storage stakingToken = stakingTokens[_stakingToken];
+        RewardsToken storage rewardsToken = stakingToken.rewardsTokens[_rewardsToken];
+        Reward storage reward = rewardsToken.rewards[msg.sender];
+        require(reward.duration == 0, "Duplicate rewards token");
+
+        reward.duration = _rewardsDuration;
+        rewardsToken.whitelistedRewarders.add(msg.sender);
+        stakingToken.whitelistedRewardsTokens.add(address(_rewardsToken));
+
+        _rewardsToken.approve(address(getVault()), type(uint256).max);
     }
 
     /* ========== VIEWS ========== */
 
     /**
      * @dev Tells the total supply for a staking token
-     * @param stakingToken The staking token being queried
+     * @param _stakingToken The staking token being queried
      */
-    function totalSupply(IERC20 stakingToken) external view returns (uint256) {
-        return _totalSupply[stakingToken];
+    function totalSupply(IERC20 _stakingToken) external view returns (uint256) {
+        return stakingTokens[_stakingToken].totalSupply;
     }
 
     /**
      * @dev Tells the staked balance of a user for a staking token
-     * @param stakingToken The staking token being queried
-     * @param account The address of the user with staked balance
+     * @param _stakingToken The staking token being queried
+     * @param _user The address of the user with staked balance
      */
-    function balanceOf(IERC20 stakingToken, address account) external view returns (uint256) {
-        return _balances[stakingToken][account];
+    function balanceOf(IERC20 _stakingToken, address _user) external view returns (uint256) {
+        return stakingTokens[_stakingToken].users[_user].balance;
     }
 
     /**
      * @notice This time is used when determining up until what time a reward has been accounted for
-     * @param stakingToken The staking token being queried
-     * @param rewarder The address of the rewarder
-     * @param rewardsToken The token to be distributed to stakers
+     * @param _stakingToken The staking token being queried
+     * @param _rewardsToken The token to be distributed to stakers
+     * @param _rewarder The address of the rewarder
      */
     function lastTimeRewardApplicable(
-        IERC20 stakingToken,
-        address rewarder,
-        IERC20 rewardsToken
+        IERC20 _stakingToken,
+        IERC20 _rewardsToken,
+        address _rewarder
     ) public view returns (uint256) {
-        return _lastTimeRewardApplicable(rewardData[stakingToken][rewarder][rewardsToken]);
+        Reward storage reward = stakingTokens[_stakingToken].rewardsTokens[_rewardsToken].rewards[_rewarder];
+        return _lastTimeRewardApplicable(reward);
     }
 
-    function _lastTimeRewardApplicable(Reward storage data) private view returns (uint256) {
-        return Math.min(block.timestamp, data.periodFinish);
+    function _lastTimeRewardApplicable(Reward storage reward) private view returns (uint256) {
+        return Math.min(block.timestamp, reward.periodFinish);
     }
 
     /**
      * @notice Calculates the amount of reward token per staked tokens
-     * @param stakingToken The staking token being queried
-     * @param rewarder The address of the rewarder
-     * @param rewardsToken The token to be distributed to stakers
+     * @param _stakingToken The staking token being queried
+     * @param _rewardsToken The token to be distributed to users
+     * @param _rewarder The address of the rewarder
      */
     function rewardPerToken(
-        IERC20 stakingToken,
-        address rewarder,
-        IERC20 rewardsToken
+        IERC20 _stakingToken,
+        IERC20 _rewardsToken,
+        address _rewarder
     ) public view returns (uint256) {
-        return _rewardPerToken(stakingToken, rewardData[stakingToken][rewarder][rewardsToken]);
+        StakingToken storage stakingToken = stakingTokens[_stakingToken];
+        Reward storage reward = stakingToken.rewardsTokens[_rewardsToken].rewards[_rewarder];
+        return _rewardPerToken(stakingToken, reward);
     }
 
-    function _rewardPerToken(IERC20 stakingToken, Reward storage data) private view returns (uint256) {
-        if (_totalSupply[stakingToken] == 0) {
-            return data.rewardPerTokenStored;
+    function _rewardPerToken(StakingToken storage stakingToken, Reward storage reward) private view returns (uint256) {
+        uint256 supply = stakingToken.totalSupply;
+        if (supply == 0) {
+            return reward.rewardPerTokenStored;
         }
-        // Underflow is impossible here because lastTimeRewardApplicable(...) is always greater than
-        // last update time
-        uint256 unrewardedDuration = _lastTimeRewardApplicable(data) - data.lastUpdateTime;
 
-        return
-            data.rewardPerTokenStored.add(
-                Math.mul(unrewardedDuration, data.rewardRate).divDown(_totalSupply[stakingToken])
-            );
+        // Underflow is impossible here because lastTimeRewardApplicable(...) is always greater than last update time
+        uint256 unrewardedDuration = _lastTimeRewardApplicable(reward) - reward.lastUpdateTime;
+        return reward.rewardPerTokenStored.add(Math.mul(unrewardedDuration, reward.rewardRate).divDown(supply));
     }
 
     /**
-     * @notice Calculates the amount of `rewardsToken` that `account` is able to claim from a particular rewarder
-     * @param stakingToken The staking token being queried
-     * @param rewarder The address of the rewarder
-     * @param account The address receiving the rewards
-     * @param rewardsToken The token to be distributed to stakers
+     * @notice Calculates the amount of `_rewardsToken` that `_user` is able to claim from a particular rewarder
+     * @param _stakingToken The staking token being queried
+     * @param _rewardsToken The token to be distributed to users
+     * @param _rewarder The address of the rewarder
+     * @param _user The address receiving the rewards
      */
     function unaccountedForUnpaidRewards(
-        IERC20 stakingToken,
-        address rewarder,
-        address account,
-        IERC20 rewardsToken
+        IERC20 _stakingToken,
+        IERC20 _rewardsToken,
+        address _rewarder,
+        address _user
     ) public view returns (uint256) {
-        return
-            _balances[stakingToken][account].mulDown(
-                rewardPerToken(stakingToken, rewarder, rewardsToken).sub(
-                    userRewardPerTokenPaid[stakingToken][rewarder][account][rewardsToken]
-                )
-            );
+        StakingToken storage stakingToken = stakingTokens[_stakingToken];
+        Reward storage reward = stakingToken.rewardsTokens[_rewardsToken].rewards[_rewarder];
+        return _unaccountedForUnpaidRewards(stakingToken, _rewardsToken, _rewarder, _user, reward);
     }
 
     function _unaccountedForUnpaidRewards(
-        IERC20 stakingToken,
-        address rewarder,
-        address account,
-        IERC20 rewardsToken,
-        Reward storage data
+        StakingToken storage stakingToken,
+        IERC20 _rewardsToken,
+        address _rewarder,
+        address _user,
+        Reward storage reward
     ) private view returns (uint256) {
-        return
-            _balances[stakingToken][account].mulDown(
-                _rewardPerToken(stakingToken, data).sub(
-                    userRewardPerTokenPaid[stakingToken][rewarder][account][rewardsToken]
-                )
-            );
+        User storage user = stakingToken.users[_user];
+        uint256 paidRewards = user.paidRewards[_rewardsToken][_rewarder];
+        return user.balance.mulDown(_rewardPerToken(stakingToken, reward).sub(paidRewards));
     }
 
     /**
      * @notice Calculates the total amount of `rewardsToken` that `account` is able to claim
-     * @param stakingToken The staking token being queried
-     * @param account The address receiving the rewards
-     * @param rewardsToken The token to be distributed to stakers
+     * @param _stakingToken The staking token being queried
+     * @param _rewardsToken The token to be distributed to stakers
+     * @param _user The address receiving the rewards
      */
     function totalEarned(
-        IERC20 stakingToken,
-        address account,
-        IERC20 rewardsToken
+        IERC20 _stakingToken,
+        IERC20 _rewardsToken,
+        address _user
     ) public view returns (uint256 total) {
-        uint256 rewardersLength = _rewarders[stakingToken][rewardsToken].length();
-        for (uint256 r; r < rewardersLength; r++) {
-            total = total.add(
-                unaccountedForUnpaidRewards(
-                    stakingToken,
-                    _rewarders[stakingToken][rewardsToken].unchecked_at(r),
-                    account,
-                    rewardsToken
-                )
-            );
+        StakingToken storage stakingToken = stakingTokens[_stakingToken];
+        RewardsToken storage rewardsToken = stakingToken.rewardsTokens[_rewardsToken];
+        EnumerableSet.AddressSet storage whitelistedRewarders = rewardsToken.whitelistedRewarders;
+        uint256 rewardersLength = whitelistedRewarders.length();
+
+        for (uint256 i; i < rewardersLength; i++) {
+            address rewarder = whitelistedRewarders.unchecked_at(i);
+            Reward storage reward = rewardsToken.rewards[rewarder];
+            total = total.add(_unaccountedForUnpaidRewards(stakingToken, _rewardsToken, rewarder, _user, reward));
         }
-        total = total.add(unpaidRewards[stakingToken][account][rewardsToken]);
+
+        total = total.add(stakingToken.users[_user].unpaidRewards[_rewardsToken]);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
     /**
-     * @notice stakes a token on the msg.sender's behalf
-     * @param stakingToken The token to be staked to earn rewards
-     * @param amount Amount of tokens to be staked
+     * @notice Stakes a token on the msg.sender's behalf
+     * @param _stakingToken The token to be staked to earn rewards
+     * @param _amount Amount of tokens to be staked
      */
-    function stake(IERC20 stakingToken, uint256 amount) external nonReentrant {
-        _stakeFor(stakingToken, amount, msg.sender, msg.sender);
+    function stake(IERC20 _stakingToken, uint256 _amount) external nonReentrant {
+        _stakeFor(_stakingToken, _amount, msg.sender, msg.sender);
     }
 
     /**
-     * @notice Stakes a token so that `receiver` can earn rewards
-     * @param stakingToken The token to be staked to earn rewards
-     * @param amount Amount of tokens to be staked
-     * @param receiver The recipient of claimed rewards
+     * @notice Stakes a token so that `_user` can earn rewards
+     * @param _stakingToken The token to be staked to earn rewards
+     * @param _amount Amount of tokens to be staked
+     * @param _user The user staking on behalf of
      */
     function stakeFor(
-        IERC20 stakingToken,
-        uint256 amount,
-        address receiver
+        IERC20 _stakingToken,
+        uint256 _amount,
+        address _user
     ) external nonReentrant {
-        _stakeFor(stakingToken, amount, msg.sender, receiver);
+        _stakeFor(_stakingToken, _amount, _user, msg.sender);
     }
 
     function _stakeFor(
-        IERC20 stakingToken,
-        uint256 amount,
-        address account,
-        address receiver
-    ) internal updateReward(stakingToken, receiver) {
-        require(amount > 0, "Cannot stake 0");
-        _totalSupply[stakingToken] = _totalSupply[stakingToken].add(amount);
-        _balances[stakingToken][receiver] = _balances[stakingToken][receiver].add(amount);
-        stakingToken.safeTransferFrom(account, address(this), amount);
-        emit Staked(address(stakingToken), receiver, amount);
+        IERC20 _stakingToken,
+        uint256 _amount,
+        address _user,
+        address _from
+    ) internal updateReward(_stakingToken, _user) {
+        require(_amount > 0, "Cannot stake 0");
+
+        StakingToken storage stakingToken = stakingTokens[_stakingToken];
+        stakingToken.totalSupply = stakingToken.totalSupply.add(_amount);
+        User storage user = stakingToken.users[_user];
+        user.balance = user.balance.add(_amount);
+
+        _stakingToken.safeTransferFrom(_from, address(this), _amount);
+        emit Staked(address(_stakingToken), _user, _amount);
     }
 
     /**
      * @notice Stake tokens using a permit signature for approval
-     * @param stakingToken The token to be staked to earn rewards
-     * @param amount Amount of tokens to be staked
-     * @param deadline The time at which this expires (unix time)
-     * @param v V of the signature
-     * @param r R of the signature
-     * @param s S of the signature
+     * @param _stakingToken The token to be staked to earn rewards
+     * @param _user User staking tokens for
+     * @param _amount Amount of tokens to be staked
+     * @param _deadline The time at which this expires (unix time)
+     * @param _v V of the signature
+     * @param _r R of the signature
+     * @param _s S of the signature
      */
     function stakeWithPermit(
-        IERC20 stakingToken,
-        uint256 amount,
-        uint256 deadline,
-        address account,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+        IERC20 _stakingToken,
+        uint256 _amount,
+        address _user,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
     ) external nonReentrant {
-        IERC20Permit(address(stakingToken)).permit(account, address(this), amount, deadline, v, r, s);
-        _stakeFor(stakingToken, amount, account, account);
+        IERC20Permit(address(_stakingToken)).permit(_user, address(this), _amount, _deadline, _v, _r, _s);
+        _stakeFor(_stakingToken, _amount, _user, _user);
     }
 
     /**
      * @notice Untakes tokens
-     * @param stakingToken The token to be unstaked
-     * @param amount Amount of tokens to be unstaked
-     * @param receiver The recipient of the staked tokens
+     * @param _stakingToken The token to be unstaked
+     * @param _amount Amount of tokens to be unstaked
+     * @param _receiver The recipient of the staked tokens
      */
     function unstake(
-        IERC20 stakingToken,
-        uint256 amount,
-        address receiver
-    ) public nonReentrant updateReward(stakingToken, msg.sender) {
-        require(amount > 0, "Cannot withdraw 0");
-        _totalSupply[stakingToken] = _totalSupply[stakingToken].sub(amount);
-        _balances[stakingToken][msg.sender] = _balances[stakingToken][msg.sender].sub(amount);
-        stakingToken.safeTransfer(receiver, amount);
-        emit Withdrawn(address(stakingToken), msg.sender, amount);
+        IERC20 _stakingToken,
+        uint256 _amount,
+        address _receiver
+    ) public nonReentrant updateReward(_stakingToken, msg.sender) {
+        require(_amount > 0, "Cannot withdraw 0");
+
+        StakingToken storage stakingToken = stakingTokens[_stakingToken];
+        stakingToken.totalSupply = stakingToken.totalSupply.sub(_amount);
+        User storage user = stakingToken.users[msg.sender];
+        user.balance = user.balance.sub(_amount);
+
+        _stakingToken.safeTransfer(_receiver, _amount);
+        emit Withdrawn(address(_stakingToken), msg.sender, _amount);
     }
 
     /**
      * @notice Allows a user to claim any rewards to an EOA
-     * @param stakingTokens The staking tokens to claim rewards for
+     * @param _stakingTokens The staking tokens to claim rewards for
      */
-    function getReward(IERC20[] calldata stakingTokens) external nonReentrant {
-        _getReward(stakingTokens, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
+    function getReward(IERC20[] memory _stakingTokens) external nonReentrant {
+        _getReward(_stakingTokens, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
     }
 
     /**
      * @notice Allows a user to claim any rewards to an internal balance
-     * @param stakingTokens The staking tokens to claim rewards for
+     * @param _stakingTokens The staking tokens to claim rewards for
      */
-    function getRewardAsInternalBalance(IERC20[] calldata stakingTokens) external nonReentrant {
-        _getReward(stakingTokens, msg.sender, IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
+    function getRewardAsInternalBalance(IERC20[] memory _stakingTokens) external nonReentrant {
+        _getReward(_stakingTokens, msg.sender, IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
     }
 
-    function _rewardOpsCount(IERC20[] calldata stakingTokens) internal view returns (uint256 opsCount) {
-        for (uint256 p; p < stakingTokens.length; p++) {
-            IERC20 stakingToken = stakingTokens[p];
-            uint256 rewardTokensLength = _rewardTokens[stakingToken].length();
-            opsCount += rewardTokensLength;
+    function _rewardOpsCount(IERC20[] memory _stakingTokens) internal view returns (uint256 opsCount) {
+        for (uint256 i; i < _stakingTokens.length; i++) {
+            opsCount += stakingTokens[_stakingTokens[i]].whitelistedRewardsTokens.length();
         }
     }
 
@@ -367,123 +374,126 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @notice Allows a user to claim any rewards to an internal balance or EOA
      */
     function _getReward(
-        IERC20[] calldata stakingTokens,
-        address recipient,
-        IVault.UserBalanceOpKind kind
+        IERC20[] memory _stakingTokens,
+        address _recipient,
+        IVault.UserBalanceOpKind _kind
     ) internal {
-        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](_rewardOpsCount(stakingTokens));
+        uint256 opsIndex;
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](_rewardOpsCount(_stakingTokens));
 
-        uint256 idx;
-        for (uint256 p; p < stakingTokens.length; p++) {
-            IERC20 stakingToken = stakingTokens[p];
+        for (uint256 i; i < _stakingTokens.length; i++) {
+            IERC20 _stakingToken = _stakingTokens[i];
+            StakingToken storage stakingToken = stakingTokens[_stakingToken];
+            EnumerableSet.AddressSet storage rewardsTokens = stakingToken.whitelistedRewardsTokens;
+            uint256 rewardsTokensLength = rewardsTokens.length();
 
-            uint256 tokensLength = _rewardTokens[stakingToken].length();
-            for (uint256 t; t < tokensLength; t++) {
-                IERC20 rewardsToken = IERC20(_rewardTokens[stakingToken].unchecked_at(t));
+            for (uint256 j; j < rewardsTokensLength; j++) {
+                IERC20 _rewardsToken = IERC20(rewardsTokens.unchecked_at(j));
+                _updateReward(stakingToken, _rewardsToken, msg.sender);
+                User storage user = stakingToken.users[msg.sender];
+                uint256 unpaidRewards = user.unpaidRewards[_rewardsToken];
 
-                _updateReward(stakingToken, msg.sender, rewardsToken);
-                uint256 reward = unpaidRewards[stakingToken][msg.sender][rewardsToken];
-
-                if (reward > 0) {
-                    unpaidRewards[stakingToken][msg.sender][rewardsToken] = 0;
-
-                    emit RewardPaid(msg.sender, address(rewardsToken), reward);
+                if (unpaidRewards > 0) {
+                    user.unpaidRewards[_rewardsToken] = 0;
+                    emit RewardPaid(msg.sender, address(_rewardsToken), unpaidRewards);
                 }
 
-                ops[idx] = IVault.UserBalanceOp({
-                    asset: IAsset(address(rewardsToken)),
-                    amount: reward,
+                ops[opsIndex++] = IVault.UserBalanceOp({
+                    asset: IAsset(address(_rewardsToken)),
+                    amount: unpaidRewards,
                     sender: address(this),
-                    recipient: payable(recipient),
-                    kind: kind
+                    recipient: payable(_recipient),
+                    kind: _kind
                 });
-                idx++;
             }
         }
+
         getVault().manageUserBalance(ops);
     }
 
     /**
      * @notice Allows the user to claim rewards to a callback contract
-     * @param stakingTokens An array of staking tokens from which rewards will be claimed
-     * @param callbackContract The contract where rewards will be transferred
-     * @param callbackData The data that is used to call the callback contract's 'callback' method
+     * @param _stakingTokens An array of staking tokens from which rewards will be claimed
+     * @param _callbackContract The contract where rewards will be transferred
+     * @param _callbackData The data that is used to call the callback contract's 'callback' method
      */
     function getRewardWithCallback(
-        IERC20[] calldata stakingTokens,
-        IDistributorCallback callbackContract,
-        bytes calldata callbackData
+        IERC20[] memory _stakingTokens,
+        IDistributorCallback _callbackContract,
+        bytes memory _callbackData
     ) external nonReentrant {
-        _getReward(stakingTokens, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
-
-        callbackContract.distributorCallback(callbackData);
+        _getReward(_stakingTokens, address(_callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
+        _callbackContract.distributorCallback(_callbackData);
     }
 
     /**
      * @notice Allows a user to unstake all their tokens
-     * @param stakingTokens The staking tokens to unstake tokens for
+     * @param _stakingTokens The staking tokens to unstake tokens for
      */
-    function exit(IERC20[] calldata stakingTokens) external {
-        for (uint256 p; p < stakingTokens.length; p++) {
-            IERC20 stakingToken = stakingTokens[p];
-            unstake(stakingToken, _balances[stakingToken][msg.sender], msg.sender);
+    function exit(IERC20[] memory _stakingTokens) external {
+        for (uint256 i; i < _stakingTokens.length; i++) {
+            IERC20 _stakingToken = _stakingTokens[i];
+            User storage user = stakingTokens[_stakingToken].users[msg.sender];
+            unstake(_stakingToken, user.balance, msg.sender);
         }
-        _getReward(stakingTokens, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
+
+        _getReward(_stakingTokens, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
     }
 
     /**
      * @notice Allows a user to unstake transferring rewards to the user and the unstaked tokens to a callback contract
-     * @param stakingTokens The staking tokens to claim rewards for
-     * @param callbackContract The contract where the staked tokens will be transferred
-     * @param callbackData The data that is used to call the callback contract's 'callback' method
+     * @param _stakingTokens The staking tokens to claim rewards for
+     * @param _callbackContract The contract where the staked tokens will be transferred
+     * @param _callbackData The data that is used to call the callback contract's 'callback' method
      */
     function exitWithCallback(
-        IERC20[] calldata stakingTokens,
-        IDistributorCallback callbackContract,
-        bytes calldata callbackData
+        IERC20[] memory _stakingTokens,
+        IDistributorCallback _callbackContract,
+        bytes memory _callbackData
     ) external {
-        for (uint256 p; p < stakingTokens.length; p++) {
-            IERC20 stakingToken = stakingTokens[p];
-            unstake(stakingToken, _balances[stakingToken][msg.sender], address(callbackContract));
+        for (uint256 i; i < _stakingTokens.length; i++) {
+            IERC20 _stakingToken = _stakingTokens[i];
+            User storage user = stakingTokens[_stakingToken].users[msg.sender];
+            unstake(_stakingToken, user.balance, address(_callbackContract));
         }
-        _getReward(stakingTokens, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
-        callbackContract.distributorCallback(callbackData);
+
+        _getReward(_stakingTokens, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
+        _callbackContract.distributorCallback(_callbackData);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
     /**
-     * @notice Allows a rewards distributor, or the reward scheduler
-     * to deposit more tokens to be distributed as rewards
-     * @param stakingToken The staking token being rewarded
-     * @param rewardsToken The token to deposit into staking contract for distribution
-     * @param reward The amount of tokens to deposit
-     * @param rewarder The address issuing the reward (usually msg.sender)
+     * @notice Allows a rewards distributor, or the reward scheduler to deposit more tokens to be distributed as rewards
+     * @param _stakingToken The staking token being rewarded
+     * @param _rewardsToken The token to deposit into staking contract for distribution
+     * @param _rewarder The address issuing the reward (usually msg.sender)
+     * @param _amount The amount of tokens to deposit
      */
     function notifyRewardAmount(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        uint256 reward,
-        address rewarder
-    ) external override updateReward(stakingToken, address(0)) {
+        IERC20 _stakingToken,
+        IERC20 _rewardsToken,
+        address _rewarder,
+        uint256 _amount
+    ) external override updateReward(_stakingToken, address(0)) {
         require(
-            msg.sender == rewarder || msg.sender == address(rewardsScheduler),
+            msg.sender == _rewarder || msg.sender == address(rewardsScheduler),
             "Rewarder must be sender, or rewards scheduler"
         );
 
-        require(_rewarders[stakingToken][rewardsToken].contains(rewarder), "Reward must be configured with addReward");
+        RewardsToken storage rewardsToken = stakingTokens[_stakingToken].rewardsTokens[_rewardsToken];
+        require(rewardsToken.whitelistedRewarders.contains(_rewarder), "Reward must be configured with addReward");
 
-        // handle the transfer of reward tokens via `safeTransferFrom` to reduce the number
+        // Handle the transfer of reward tokens via `safeTransferFrom` to reduce the number
         // of transactions required and ensure correctness of the reward amount
         // Tokens always come from msg.sender because either `msg.sender == rewarder`
         // or the`rewardsScheduler` is holding tokens on behalf of the `rewarder`
-        rewardsToken.safeTransferFrom(msg.sender, address(this), reward);
+        _rewardsToken.safeTransferFrom(msg.sender, address(this), _amount);
 
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
-
         ops[0] = IVault.UserBalanceOp({
-            asset: IAsset(address(rewardsToken)),
-            amount: reward,
+            asset: IAsset(address(_rewardsToken)),
+            amount: _amount,
             sender: address(this),
             recipient: payable(address(this)),
             kind: IVault.UserBalanceOpKind.DEPOSIT_INTERNAL
@@ -491,88 +501,80 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
         getVault().manageUserBalance(ops);
 
-        // Save the storage pointer to compute the slot only once.
-        Reward storage data = rewardData[stakingToken][rewarder][rewardsToken];
-
-        // Cache storage variables to avoid repeated access.
-        uint256 periodFinish = data.periodFinish;
-        uint256 rewardsDuration = data.rewardsDuration;
+        Reward storage reward = rewardsToken.rewards[_rewarder];
+        uint256 periodFinish = reward.periodFinish;
+        uint256 rewardDuration = reward.duration;
 
         if (block.timestamp >= periodFinish) {
-            data.rewardRate = Math.divDown(reward, rewardsDuration);
+            reward.rewardRate = Math.divDown(_amount, rewardDuration);
         } else {
-            uint256 remainingTime = periodFinish - block.timestamp; // Checked arithmetic is not required due to the if
-            uint256 leftoverRewards = Math.mul(remainingTime, data.rewardRate);
-            data.rewardRate = Math.divDown(reward.add(leftoverRewards), rewardsDuration);
+            // Checked arithmetic is not required due to the if
+            uint256 remainingTime = periodFinish - block.timestamp;
+            uint256 leftoverRewards = Math.mul(remainingTime, reward.rewardRate);
+            reward.rewardRate = Math.divDown(_amount.add(leftoverRewards), rewardDuration);
         }
 
-        data.lastUpdateTime = block.timestamp;
-        data.periodFinish = block.timestamp.add(rewardsDuration);
-        emit RewardAdded(address(stakingToken), address(rewardsToken), rewarder, reward);
+        reward.lastUpdateTime = block.timestamp;
+        reward.periodFinish = block.timestamp.add(rewardDuration);
+        emit RewardAdded(address(_stakingToken), address(_rewardsToken), _rewarder, _amount);
     }
 
     /**
-     * @notice set the reward duration for a reward
-     * @param stakingToken The staking token to be set
-     * @param rewardsToken The token for the reward
-     * @param rewardsDuration The duration over which each distribution is spread
+     * @notice Set the reward duration for a reward
+     * @param _stakingToken The staking token to be set
+     * @param _rewardsToken The token for the reward
+     * @param _duration The duration over which each distribution is spread
      */
     function setRewardsDuration(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        uint256 rewardsDuration
-    ) external onlyWhitelistedRewarder(stakingToken, rewardsToken) {
-        require(
-            _rewarders[stakingToken][rewardsToken].contains(msg.sender),
-            "Reward must be configured with addReward"
-        );
-        require(
-            block.timestamp > rewardData[stakingToken][msg.sender][rewardsToken].periodFinish,
-            "Reward period still active"
-        );
-        require(rewardsDuration > 0, "Reward duration must be non-zero");
-        rewardData[stakingToken][msg.sender][rewardsToken].rewardsDuration = rewardsDuration;
-        emit RewardsDurationUpdated(
-            address(stakingToken),
-            address(rewardsToken),
-            msg.sender,
-            rewardData[stakingToken][msg.sender][rewardsToken].rewardsDuration
-        );
+        IERC20 _stakingToken,
+        IERC20 _rewardsToken,
+        uint256 _duration
+    ) external onlyWhitelistedRewarder(_stakingToken, _rewardsToken) {
+        require(_duration > 0, "Reward duration must be non-zero");
+
+        StakingToken storage stakingToken = stakingTokens[_stakingToken];
+        RewardsToken storage rewardsToken = stakingToken.rewardsTokens[_rewardsToken];
+        EnumerableSet.AddressSet storage rewarders = rewardsToken.whitelistedRewarders;
+        require(rewarders.contains(msg.sender), "Reward must be configured with addReward");
+
+        Reward storage reward = rewardsToken.rewards[msg.sender];
+        require(block.timestamp > reward.periodFinish, "Reward period still active");
+
+        reward.duration = _duration;
+        emit RewardsDurationUpdated(address(_stakingToken), address(_rewardsToken), msg.sender, _duration);
     }
 
     /**
-     * @notice update unpaid rewards due to `account` for all rewarders for a particular token
-     *         and updates last update time
+     * @notice Update unpaid rewards due to `_user` for all rewarders for a rewards token and updates last update time
      */
     function _updateReward(
-        IERC20 stakingToken,
-        address account,
-        IERC20 token
+        StakingToken storage stakingToken,
+        IERC20 _rewardsToken,
+        address _user
     ) internal {
-        uint256 totalUnpaidRewards;
-
-        // Save the storage pointer to compute the slot only once.
-        EnumerableSet.AddressSet storage rewarders = _rewarders[stakingToken][token];
+        RewardsToken storage rewardsToken = stakingToken.rewardsTokens[_rewardsToken];
+        EnumerableSet.AddressSet storage rewarders = rewardsToken.whitelistedRewarders;
         uint256 rewardersLength = rewarders.length();
 
-        for (uint256 r; r < rewardersLength; r++) {
-            address rewarder = rewarders.unchecked_at(r);
-            Reward storage data = rewardData[stakingToken][rewarder][token];
+        uint256 totalUnpaidRewards;
+        User storage user = stakingToken.users[_user];
 
-            // Cache storage variables to avoid repeated access.
-            uint256 perToken = _rewardPerToken(stakingToken, data);
-            data.rewardPerTokenStored = perToken;
+        for (uint256 i; i < rewardersLength; i++) {
+            address _rewarder = rewarders.unchecked_at(i);
+            Reward storage reward = rewardsToken.rewards[_rewarder];
+            uint256 perToken = _rewardPerToken(stakingToken, reward);
 
-            data.lastUpdateTime = _lastTimeRewardApplicable(data);
-            if (account != address(0)) {
+            reward.rewardPerTokenStored = perToken;
+            reward.lastUpdateTime = _lastTimeRewardApplicable(reward);
+
+            if (_user != address(0)) {
                 totalUnpaidRewards = totalUnpaidRewards.add(
-                    _unaccountedForUnpaidRewards(stakingToken, rewarder, account, token, data)
+                    _unaccountedForUnpaidRewards(stakingToken, _rewardsToken, _rewarder, _user, reward)
                 );
-                userRewardPerTokenPaid[stakingToken][rewarder][account][token] = perToken;
+                user.paidRewards[_rewardsToken][_rewarder] = perToken;
             }
         }
-
-        unpaidRewards[stakingToken][account][token] = totalUnpaidRewards;
+        user.unpaidRewards[_rewardsToken] = totalUnpaidRewards;
     }
 
     /* ========== MODIFIERS ========== */
@@ -580,11 +582,13 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @notice
      * Updates the rewards due to `account` from all _rewardTokens and _rewarders
      */
-    modifier updateReward(IERC20 stakingToken, address account) {
-        uint256 rewardTokensLength = _rewardTokens[stakingToken].length();
-        for (uint256 t; t < rewardTokensLength; t++) {
-            IERC20 rewardToken = IERC20(_rewardTokens[stakingToken].unchecked_at(t));
-            _updateReward(stakingToken, account, rewardToken);
+    modifier updateReward(IERC20 _stakingToken, address _user) {
+        StakingToken storage stakingToken = stakingTokens[_stakingToken];
+        EnumerableSet.AddressSet storage rewardsTokens = stakingToken.whitelistedRewardsTokens;
+        uint256 rewardTokensLength = rewardsTokens.length();
+        for (uint256 i; i < rewardTokensLength; i++) {
+            address _rewardToken = rewardsTokens.unchecked_at(i);
+            _updateReward(stakingToken, IERC20(_rewardToken), _user);
         }
         _;
     }
