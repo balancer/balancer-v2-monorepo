@@ -434,7 +434,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             // For simplicity, due protocol fees are set to zero.
             dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
         } else {
-            _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
+            _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
         }
     }
 
