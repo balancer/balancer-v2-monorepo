@@ -943,7 +943,7 @@ describe('StablePhantomPool', () => {
       });
     });
 
-    describe('proportional exit', () => {
+    describe.only('proportional exit', () => {
       let sender: SignerWithAddress;
 
       sharedBeforeEach('deploy pool', async () => {
@@ -960,28 +960,76 @@ describe('StablePhantomPool', () => {
       });
 
       context('when paused', () => {
-        sharedBeforeEach('pause pool', async () => {
-          await pool.pause();
+        context('first lp', () => {
+          sharedBeforeEach('pause pool', async () => {
+            await pool.pause();
+          });
+
+          it('can exit proportionally', async () => {
+            const previousSenderBptBalance = await pool.balanceOf(sender);
+
+            //Exit with half of the BPT balance
+            const bptIn = (await pool.balanceOf(sender)).div(4);
+
+            const expectedAmountsOut = initialBalances.map((balance) => bn(balance).div(4));
+
+            const result = await pool.proportionalExit({ from: sender, bptIn });
+
+            // Protocol fees should be zero
+            expect(result.dueProtocolFeeAmounts).to.be.zeros;
+            // Balances are reduced by half because we are returning half of the BPT supply
+            expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.001);
+
+            const currentSenderBptBalance = await pool.balanceOf(sender);
+            // Current BPT balance should have been reduced by half
+            expect(previousSenderBptBalance.sub(currentSenderBptBalance)).to.be.equalWithError(bptIn, 0.001);
+          });
         });
 
-        it('can exit proportionally', async () => {
-          const previousSenderBptBalance = await pool.balanceOf(sender);
+        context('second lps', () => {
+          const amount = fp(100);
 
-          //Exit with half of the BPT balance
-          const bptIn = (await pool.balanceOf(sender)).div(4);
+          sharedBeforeEach('second lp swaps', async () => {
+            await tokens.mint({ to: lp, amount });
+            await tokens.approve({ from: lp, to: pool.vault });
+            await pool.swapGivenIn({
+              in: tokens.first,
+              out: pool.bpt,
+              amount: amount,
+              from: lp,
+              recipient: lp,
+            });
+          });
 
-          const expectedAmountsOut = initialBalances.map((balance) => bn(balance).div(4));
+          sharedBeforeEach('pause pool', async () => {
+            await pool.pause();
+          });
 
-          const result = await pool.proportionalExit({ from: sender, bptIn });
+          sharedBeforeEach('first lp exits', async () => {
+            const bptIn = await pool.balanceOf(sender);
+            await pool.proportionalExit({ from: sender, bptIn });
+          });
 
-          // Protocol fees should be zero
-          expect(result.dueProtocolFeeAmounts).to.be.zeros;
-          // Balances are reduced by half because we are returning half of the BPT supply
-          expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.001);
+          it('can fully exit proportionally', async () => {
+            const previousLpBptBalance = await pool.balanceOf(lp);
 
-          const currentSenderBptBalance = await pool.balanceOf(sender);
-          // Current BPT balance should have been reduced by half
-          expect(previousSenderBptBalance.sub(currentSenderBptBalance)).to.be.equalWithError(bptIn, 0.001);
+            //Exit with all BPT balance
+            const bptIn = await pool.balanceOf(lp);
+
+            const currentBalances = await pool.getBalances();
+            const expectedAmountsOut = currentBalances.map((balance) => bn(balance));
+
+            const result = await pool.proportionalExit({ from: lp, bptIn });
+
+            // Protocol fees should be zero
+            expect(result.dueProtocolFeeAmounts).to.be.zeros;
+            // Balances are reduced by half because we are returning half of the BPT supply
+            expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.001);
+
+            const currentLpBptBalance = await pool.balanceOf(lp);
+            // Current BPT balance should have been reduced by half
+            expect(previousLpBptBalance.sub(currentLpBptBalance)).to.be.equalWithError(bptIn, 0.001);
+          });
         });
       });
     });
