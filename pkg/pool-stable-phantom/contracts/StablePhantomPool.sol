@@ -723,7 +723,10 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * @dev The virtual supply is the bpt supply that is really being used.
+     * @dev Returns the number of tokens in circulation.
+     *
+     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints all BPT, `totalSupply`
+     * remains constant, whereas `virtualSupply` increases as users join the pool and decreases as they exit it.
      */
     function virtualSupply() external view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
