@@ -1090,15 +1090,15 @@ describe('StablePhantomPool', () => {
             // Protocol fees should be zero
             expect(result.dueProtocolFeeAmounts).to.be.zeros;
             // Balances are reduced by half because we are returning half of the BPT supply
-            expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.001);
+            expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.00001);
 
             const currentSenderBptBalance = await pool.balanceOf(sender);
             // Current BPT balance should have been reduced by half
-            expect(previousSenderBptBalance.sub(currentSenderBptBalance)).to.be.equalWithError(bptIn, 0.001);
+            expect(previousSenderBptBalance.sub(currentSenderBptBalance)).to.be.equalWithError(bptIn, 0.00001);
 
             // Current virtual supply
             const currentVirtualSupply = await pool.getVirtualSupply();
-            expect(currentVirtualSupply).to.be.equalWithError(previousVirtualSupply.sub(bptIn), 0.001);
+            expect(currentVirtualSupply).to.be.equalWithError(previousVirtualSupply.sub(bptIn), 0.00001);
           });
         });
 
@@ -1141,7 +1141,7 @@ describe('StablePhantomPool', () => {
             // Protocol fees should be zero
             expect(result.dueProtocolFeeAmounts).to.be.zeros;
             // Balances are reduced by half because we are returning half of the BPT supply
-            expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.001);
+            expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.00001);
 
             const currentLpBptBalance = await pool.balanceOf(lp);
             // Current BPT balance should have been reduced by half
@@ -1150,7 +1150,7 @@ describe('StablePhantomPool', () => {
             // Current virtual supply after full exit is the minted minimumBpt to 0x0
             const minimumBpt = await pool.instance.getMinimumBpt();
             const currentVirtualSupply = await pool.getVirtualSupply();
-            expect(currentVirtualSupply).to.be.equalWithError(minimumBpt, 0.001);
+            expect(currentVirtualSupply).to.be.equalWithError(minimumBpt, 0.00001);
           });
         });
       });
