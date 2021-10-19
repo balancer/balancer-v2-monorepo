@@ -562,8 +562,7 @@ contract StablePhantomPool is StablePool {
         // one with the lowest likelihood of errors.
         (, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
 
-        // For this specific case, we need to calculate the virtual supply taking into consideration the bpt that has
-        // been burned.
+        // Since this process burns BPT, when computing virtual supply we also need to account for all burnt BPT.
         uint256 virtualSupply = totalSupply() - balances[_bptIndex] + _dueProtocolFeeBptAmount;
 
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
