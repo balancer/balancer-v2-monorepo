@@ -711,11 +711,44 @@ contract StablePhantomPool is StablePool {
         view
         returns (uint256 virtualSupply, uint256[] memory balances)
     {
+        // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
+        // vault. So the virtualSupply (the actual supply in circulation) is defined as:
+        // virtualSupply = _MAX_TOKEN_BALANCE - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
         virtualSupply = _MAX_TOKEN_BALANCE - _balances[_bptIndex] + _dueProtocolFeeBptAmount;
 
         balances = new uint256[](_balances.length - 1);
         for (uint256 i = 0; i < balances.length; i++) {
             balances[i] = _balances[i < _bptIndex ? i : i + 1];
         }
+    }
+
+    /**
+     * @dev Returns the number of tokens in circulation.
+     *
+     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints all BPT, `totalSupply`
+     * remains constant, whereas `virtualSupply` increases as users join the pool and decreases as they exit it.
+     */
+    function virtualSupply() external view returns (uint256) {
+        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+        //There is no need to upscale balances because only bpt is used.
+
+        (uint256 _virtualSupply, ) = _dropBptItem(balances);
+        return _virtualSupply;
+    }
+
+    /**
+     * @dev This function returns the appreciation of one BPT relative to the
+     * underlying tokens. This starts at 1 when the pool is created and grows over time.
+     * Because of preminted BPT, it uses virtualSupply instead of totalSupply.
+     */
+    function getRate() public view override returns (uint256) {
+        (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(balancesIncludingBpt, _scalingFactors());
+
+        (uint256 _virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
+
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        return StableMath._getRate(balances, currentAmp, _virtualSupply);
     }
 }

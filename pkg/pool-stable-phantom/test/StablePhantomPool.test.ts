@@ -7,7 +7,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
-import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePhantomPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/types';
 import { advanceTime, currentTimestamp, MINUTE, MONTH } from '@balancer-labs/v2-helpers/src/time';
@@ -875,6 +875,110 @@ describe('StablePhantomPool', () => {
           const feeCollectorBalance = await pool.bpt.balanceOf(feeCollector.address);
 
           expect(feeCollectorBalance).to.be.equal(dueFeeBefore);
+        });
+      });
+    });
+
+    describe('virtual supply', () => {
+      let equalBalances: BigNumber[];
+      const swapFeePercentage = fp(0.1); // 10 %
+      const protocolFeePercentage = fp(0.5); // 50 %
+
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool({ swapFeePercentage });
+        await pool.vault.setSwapFeePercentage(protocolFeePercentage);
+
+        await pool.updateCachedProtocolSwapFeePercentage();
+
+        // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
+        equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? bn(0) : fp(100)));
+        await pool.init({ recipient: lp.address, initialBalances: equalBalances });
+      });
+
+      context('without protocol fees', () => {
+        it('reports correctly', async () => {
+          const senderBptBalance = await pool.balanceOf(lp);
+
+          const virtualSupply = await pool.getVirtualSupply();
+
+          expect(virtualSupply).to.be.equalWithError(senderBptBalance, 0.0001);
+        });
+      });
+
+      context('with protocol fees', () => {
+        sharedBeforeEach('swap bpt in', async () => {
+          const amount = fp(50);
+          const tokenIn = pool.bpt;
+          const tokenOut = tokens.second;
+
+          await tokens.mint({ to: lp, amount });
+          await tokens.approve({ from: lp, to: pool.vault });
+
+          await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient });
+        });
+
+        it('reports correctly', async () => {
+          const dueFee = await pool.getDueProtocolFeeBptAmount();
+          const senderBptBalance = await pool.balanceOf(lp);
+
+          const virtualSupply = await pool.getVirtualSupply();
+
+          expect(virtualSupply).to.be.equalWithError(senderBptBalance.add(dueFee), 0.0001);
+        });
+      });
+    });
+
+    describe('getRate', () => {
+      const swapFeePercentage = fp(0.1); // 10 %
+      const protocolFeePercentage = fp(0.5); // 50 %
+
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool({ swapFeePercentage });
+        await pool.vault.setSwapFeePercentage(protocolFeePercentage);
+
+        await pool.updateCachedProtocolSwapFeePercentage();
+
+        // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
+        const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) =>
+          i == bptIndex ? bn(0) : fp(100)
+        );
+        await pool.init({ recipient: lp.address, initialBalances: equalBalances });
+      });
+
+      context('without protocol fees', () => {
+        it('reports correctly', async () => {
+          const virtualSupply = await pool.getVirtualSupply();
+          const invariant = await pool.estimateInvariant();
+
+          const expectedRate = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+
+          const rate = await pool.getRate();
+
+          expect(rate).to.be.equalWithError(expectedRate, 0.0001);
+        });
+      });
+
+      context('with protocol fees', () => {
+        sharedBeforeEach('swap bpt in', async () => {
+          const amount = fp(50);
+          const tokenIn = pool.bpt;
+          const tokenOut = tokens.second;
+
+          await tokens.mint({ to: lp, amount });
+          await tokens.approve({ from: lp, to: pool.vault });
+
+          await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient });
+        });
+
+        it('reports correctly', async () => {
+          const virtualSupply = await pool.getVirtualSupply();
+          const invariant = await pool.estimateInvariant();
+
+          const expectedRate = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+
+          const rate = await pool.getRate();
+
+          expect(rate).to.be.equalWithError(expectedRate, 0.0001);
         });
       });
     });
