@@ -616,7 +616,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        return _getRate(balances, currentAmp, totalSupply());
+        return StableMath._getRate(balances, currentAmp, totalSupply());
     }
 
     // Amplification
@@ -812,16 +812,5 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
 
     function _getScalingFactor4() internal view returns (uint256) {
         return _scalingFactor4;
-    }
-
-    function _getRate(
-        uint256[] memory balances,
-        uint256 amp,
-        uint256 supply
-    ) internal pure returns (uint256) {
-        // When calculating the current BPT rate, we may not have paid the protocol fees, therefore
-        // the invariant should be smaller than its current value. Then, we round down overall.
-        uint256 invariant = StableMath._calculateInvariant(amp, balances, false);
-        return invariant.divDown(supply);
     }
 }

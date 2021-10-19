@@ -730,7 +730,7 @@ contract StablePhantomPool is StablePool {
      */
     function virtualSupply() external view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
-        _upscaleArray(balances, _scalingFactors());
+        //There is no need to upscale balances because only bpt is used.
 
         (uint256 _virtualSupply, ) = _dropBptItem(balances);
         return _virtualSupply;
@@ -749,6 +749,6 @@ contract StablePhantomPool is StablePool {
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        return _getRate(balances, currentAmp, _virtualSupply);
+        return StableMath._getRate(balances, currentAmp, _virtualSupply);
     }
 }
