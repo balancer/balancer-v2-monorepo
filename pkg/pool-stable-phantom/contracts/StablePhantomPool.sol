@@ -448,7 +448,7 @@ contract StablePhantomPool is StablePool {
         // supply, and have the Vault pull those tokens from the sender as part of the join.
         // Note that the sender need not approve BPT for the Vault as the Vault already has infinite BPT allowance for
         // all accounts.
-        uint256 initialBpt = _MAX_TOKEN_BALANCE.sub(bptAmountOut);
+        uint256 initialBpt = _MAX_TOKEN_BALANCE.sub(bptAmountOut).sub(_getMinimumBpt());
         _mintPoolTokens(sender, initialBpt);
         amountsInIncludingBpt[_bptIndex] = initialBpt;
 
@@ -785,9 +785,10 @@ contract StablePhantomPool is StablePool {
      */
     function virtualSupply() external view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
-        //There is no need to upscale balances because only bpt is used.
 
-        (uint256 _virtualSupply, ) = _dropBptItem(balances);
+        // Since this process burns BPT, when computing virtual supply we also need to account for all burnt BPT.
+        uint256 _virtualSupply = totalSupply() - balances[_bptIndex] + _dueProtocolFeeBptAmount;
+
         return _virtualSupply;
     }
 
