@@ -1077,7 +1077,7 @@ describe('StablePhantomPool', () => {
             const previousVirtualSupply = await pool.getVirtualSupply();
             const previousSenderBptBalance = await pool.balanceOf(sender);
 
-            //Exit with half of the BPT balance
+            //Exit with 1/4 of BPT balance
             const bptIn = (await pool.balanceOf(sender)).div(4);
 
             const currentBalances = await pool.getBalances();
@@ -1089,11 +1089,9 @@ describe('StablePhantomPool', () => {
 
             // Protocol fees should be zero
             expect(result.dueProtocolFeeAmounts).to.be.zeros;
-            // Balances are reduced by half because we are returning half of the BPT supply
             expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.00001);
 
             const currentSenderBptBalance = await pool.balanceOf(sender);
-            // Current BPT balance should have been reduced by half
             expect(previousSenderBptBalance.sub(currentSenderBptBalance)).to.be.equalWithError(bptIn, 0.00001);
 
             // Current virtual supply
@@ -1140,11 +1138,9 @@ describe('StablePhantomPool', () => {
 
             // Protocol fees should be zero
             expect(result.dueProtocolFeeAmounts).to.be.zeros;
-            // Balances are reduced by half because we are returning half of the BPT supply
             expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.00001);
 
             const currentLpBptBalance = await pool.balanceOf(lp);
-            // Current BPT balance should have been reduced by half
             expect(currentLpBptBalance).to.be.equal(0);
 
             // Current virtual supply after full exit is the minted minimumBpt to 0x0
