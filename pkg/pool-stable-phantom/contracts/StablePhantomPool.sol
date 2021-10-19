@@ -448,7 +448,7 @@ contract StablePhantomPool is StablePool {
         // supply, and have the Vault pull those tokens from the sender as part of the join.
         // Note that the sender need not approve BPT for the Vault as the Vault already has infinite BPT allowance for
         // all accounts.
-        uint256 initialBpt = _MAX_TOKEN_BALANCE.sub(bptAmountOut).sub(_getMinimumBpt());
+        uint256 initialBpt = _MAX_TOKEN_BALANCE.sub(bptAmountOut);
         _mintPoolTokens(sender, initialBpt);
         amountsInIncludingBpt[_bptIndex] = initialBpt;
 

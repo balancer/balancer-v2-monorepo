@@ -245,9 +245,8 @@ describe('StablePhantomPool', () => {
 
           it('mints the max amount of BPT minus minimum Bpt', async () => {
             await pool.init({ initialBalances });
-            const minimumBpt = await pool.instance.getMinimumBpt();
 
-            expect(await pool.totalSupply()).to.be.equal(MAX_UINT112.sub(minimumBpt));
+            expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
           });
 
           it('mints the minimum BPT to the address zero', async () => {
@@ -260,20 +259,20 @@ describe('StablePhantomPool', () => {
 
           it('mints the invariant amount of BPT to the recipient', async () => {
             const invariant = await pool.estimateInvariant(initialBalances);
+            const minimumBpt = await pool.instance.getMinimumBpt();
 
             await pool.init({ recipient, initialBalances, from: lp });
 
             expect(await pool.balanceOf(lp)).to.be.zero;
-            expect(await pool.balanceOf(recipient)).to.be.equalWithError(invariant, 0.00001);
+            expect(await pool.balanceOf(recipient)).to.be.equalWithError(invariant.sub(minimumBpt), 0.00001);
           });
 
           it('mints the rest of the BPT to the vault', async () => {
             const invariant = await pool.estimateInvariant(initialBalances);
-            const minimumBpt = await pool.instance.getMinimumBpt();
 
             const { amountsIn, dueProtocolFeeAmounts } = await pool.init({ initialBalances });
 
-            const expectedBPT = MAX_UINT112.sub(minimumBpt).sub(invariant);
+            const expectedBPT = MAX_UINT112.sub(invariant);
             expect(await pool.balanceOf(pool.vault)).to.be.equalWithError(expectedBPT, 0.00001);
 
             expect(dueProtocolFeeAmounts).to.be.zeros;
