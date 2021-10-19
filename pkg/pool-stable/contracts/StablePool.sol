@@ -610,17 +610,13 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
      * @dev This function returns the appreciation of one BPT relative to the
      * underlying tokens. This starts at 1 when the pool is created and grows over time
      */
-    function getRate() public view override returns (uint256) {
+    function getRate() public view virtual override returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(balances, _scalingFactors());
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        _upscaleArray(balances, _scalingFactors());
-
-        // When calculating the current BPT rate, we may not have paid the protocol fees, therefore
-        // the invariant should be smaller than its current value. Then, we round down overall.
-        uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, false);
-        return invariant.divDown(totalSupply());
+        return StableMath._getRate(balances, currentAmp, totalSupply());
     }
 
     // Amplification

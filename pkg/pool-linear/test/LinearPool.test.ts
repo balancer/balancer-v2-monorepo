@@ -232,6 +232,7 @@ describe('LinearPool', function () {
       const receipt = await pool.setTargets(lowerTarget, upperTarget);
 
       expectEvent.inReceipt(await receipt.wait(), 'TargetsSet', {
+        token: mainToken.address,
         lowerTarget,
         upperTarget,
       });
@@ -473,7 +474,10 @@ describe('LinearPool', function () {
           await wrappedTokenRateProvider.mockRate(newRate);
           const receipt = await action();
 
-          expectEvent.inReceipt(await receipt.wait(), 'WrappedTokenRateUpdated', { rate: newRate });
+          expectEvent.inReceipt(await receipt.wait(), 'PriceRateCacheUpdated', {
+            token: wrappedToken.address,
+            rate: newRate,
+          });
         });
       };
 
@@ -550,7 +554,8 @@ describe('LinearPool', function () {
         it('emits an event', async () => {
           const receipt = await pool.setWrappedTokenRateCacheDuration(newDuration, { from: owner });
 
-          expectEvent.inReceipt(await receipt.wait(), 'WrappedTokenRateProviderSet', {
+          expectEvent.inReceipt(await receipt.wait(), 'PriceRateProviderSet', {
+            token: wrappedToken.address,
             provider: wrappedTokenRateProvider.address,
             cacheDuration: newDuration,
           });

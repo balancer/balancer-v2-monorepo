@@ -25,19 +25,19 @@ interface IMultiRewards {
     ) external;
 
     function addReward(
-        IERC20 pool,
+        IERC20 stakingToken,
         IERC20 rewardsToken,
         uint256 rewardsDuration
     ) external;
 
-    function allowlistRewarder(
-        IERC20 pool,
+    function whitelistRewarder(
+        IERC20 stakingToken,
         IERC20 rewardsToken,
         address rewarder
     ) external;
 
-    function isAllowlistedRewarder(
-        IERC20 pool,
+    function isWhitelistedRewarder(
+        IERC20 stakingToken,
         IERC20 rewardsToken,
         address rewarder
     ) external view returns (bool);

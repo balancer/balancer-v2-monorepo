@@ -47,7 +47,7 @@ describe('Reinvestor', () => {
     sharedBeforeEach(async () => {
       await stakingContract
         .connect(mockAssetManager)
-        .allowlistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
+        .whitelistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
       await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
 
       const bptBalance = await pool.balanceOf(lp.address);
@@ -145,7 +145,7 @@ describe('Reinvestor', () => {
 
           await stakingContract
             .connect(mockAssetManager)
-            .allowlistRewarder(pool.address, otherRewardToken.address, mockAssetManager.address);
+            .whitelistRewarder(pool.address, otherRewardToken.address, mockAssetManager.address);
 
           await otherRewardTokens.mint({ to: mockAssetManager, amount: bn(100e18) });
           await otherRewardTokens.approve({ to: stakingContract.address, from: [mockAssetManager] });

@@ -41,11 +41,11 @@ describe('Rewards Scheduler', () => {
 
     await rewardTokens.approve({ to: rewardsScheduler.address, from: [rewarder] });
 
-    await stakingContract.connect(admin).allowlistRewarder(pool.address, rewardsToken.address, rewarder.address);
+    await stakingContract.connect(admin).whitelistRewarder(pool.address, rewardsToken.address, rewarder.address);
     await stakingContract.connect(rewarder).addReward(pool.address, rewardsToken.address, rewardsDuration);
   });
 
-  it('allows an allowlisted rewarder to schedule a reward', async () => {
+  it('allows an whitelisted rewarder to schedule a reward', async () => {
     const time = (await currentTimestamp()).add(3600 * 24);
     const rewardAmount = fp(1);
 
@@ -75,12 +75,12 @@ describe('Rewards Scheduler', () => {
     });
   });
 
-  it('prevents an unallowlisted rewarder to schedule a reward', async () => {
+  it('prevents a non whitelisted rewarder to schedule a reward', async () => {
     const time = (await currentTimestamp()).add(3600 * 24);
     const rewardAmount = fp(1);
     await expect(
       rewardsScheduler.connect(lp).scheduleReward(pool.address, rewardsToken.address, rewardAmount, time)
-    ).to.be.revertedWith('Only allowlisted rewarders can schedule reward');
+    ).to.be.revertedWith('Only whitelisted rewarders can schedule reward');
   });
 
   describe('with a scheduled reward', () => {
@@ -105,7 +105,7 @@ describe('Rewards Scheduler', () => {
     it('responds to getScheduledRewardInfo', async () => {
       const response = await rewardsScheduler.getScheduledRewardInfo(rewardId);
 
-      expect(response.pool).to.equal(pool.address);
+      expect(response.stakingToken).to.equal(pool.address);
       expect(response.rewardsToken).to.equal(rewardsToken.address);
       expect(response.startTime).to.equal(time);
       expect(response.rewarder).to.equal(rewarder.address);
@@ -135,7 +135,7 @@ describe('Rewards Scheduler', () => {
         expectEvent.inReceipt(receipt, 'RewardStarted', {
           rewardId,
           rewarder: rewarder.address,
-          pool: pool.address,
+          stakingToken: pool.address,
           rewardsToken: rewardsToken.address,
           startTime: time,
           amount: rewardAmount,
@@ -146,7 +146,7 @@ describe('Rewards Scheduler', () => {
         const receipt = await (await rewardsScheduler.connect(lp).startRewards([rewardId])).wait();
 
         expectEvent.inIndirectReceipt(receipt, stakingContract.interface, 'RewardAdded', {
-          token: rewardsToken.address,
+          rewardsToken: rewardsToken.address,
           amount: rewardAmount,
         });
       });

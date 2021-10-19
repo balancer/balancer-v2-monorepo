@@ -21,7 +21,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
-import "./interfaces/IDistributor.sol";
 import "./interfaces/IDistributorCallback.sol";
 
 pragma solidity ^0.7.0;
@@ -30,15 +29,30 @@ contract MerkleOrchard {
     using SafeERC20 for IERC20;
 
     // Recorded distributions
-    // channelId > distribution > root
+    // channelId > distributionId
+    mapping(bytes32 => uint256) private _nextDistributionId;
+    // channelId > distributionId > root
     mapping(bytes32 => mapping(uint256 => bytes32)) private _distributionRoot;
-    // channelId > claimer > distribution / 256 -> bitmap
+    // channelId > claimer > distributionId / 256 (word index) -> bitmap
     mapping(bytes32 => mapping(address => mapping(uint256 => uint256))) private _claimedBitmap;
     // channelId > balance
-    mapping(bytes32 => uint256) private _suppliedBalance;
+    mapping(bytes32 => uint256) private _remainingBalance;
 
-    event DistributionAdded(address indexed token, uint256 amount);
-    event DistributionSent(address indexed user, address indexed token, uint256 amount);
+    event DistributionAdded(
+        address indexed distributor,
+        IERC20 indexed token,
+        uint256 distributionId,
+        bytes32 merkleRoot,
+        uint256 amount
+    );
+    event DistributionClaimed(
+        address indexed distributor,
+        IERC20 indexed token,
+        uint256 distributionId,
+        address indexed claimer,
+        address recipient,
+        uint256 amount
+    );
 
     IVault private immutable _vault;
 
@@ -47,7 +61,7 @@ contract MerkleOrchard {
     }
 
     struct Claim {
-        uint256 distribution;
+        uint256 distributionId;
         uint256 balance;
         address distributor;
         uint256 tokenIndex;
@@ -55,7 +69,6 @@ contract MerkleOrchard {
     }
 
     // Getters
-
     function getVault() public view returns (IVault) {
         return _vault;
     }
@@ -63,91 +76,64 @@ contract MerkleOrchard {
     function getDistributionRoot(
         IERC20 token,
         address distributor,
-        uint256 distribution
+        uint256 distributionId
     ) external view returns (bytes32) {
         bytes32 channelId = _getChannelId(token, distributor);
-        return _distributionRoot[channelId][distribution];
+        return _distributionRoot[channelId][distributionId];
     }
 
-    function getSuppliedBalance(IERC20 token, address distributor) external view returns (uint256) {
+    function getRemainingBalance(IERC20 token, address distributor) external view returns (uint256) {
         bytes32 channelId = _getChannelId(token, distributor);
-        return _suppliedBalance[channelId];
+        return _remainingBalance[channelId];
+    }
+
+    /**
+     * @notice distribution ids must be sequential and can have an optional offset
+     */
+    function getNextDistributionId(IERC20 token, address distributor) external view returns (uint256) {
+        bytes32 channelId = _getChannelId(token, distributor);
+        return _nextDistributionId[channelId];
     }
 
     function isClaimed(
         IERC20 token,
         address distributor,
-        uint256 distribution,
+        uint256 distributionId,
         address claimer
     ) public view returns (bool) {
-        uint256 distributionWordIndex = distribution / 256;
-        uint256 distributionBitIndex = distribution % 256;
+        (uint256 distributionWordIndex, uint256 distributionBitIndex) = _getIndices(distributionId);
 
         bytes32 channelId = _getChannelId(token, distributor);
         return (_claimedBitmap[channelId][claimer][distributionWordIndex] & (1 << distributionBitIndex)) != 0;
     }
 
-    function claimStatus(
-        IERC20 token,
-        address distributor,
-        address claimer,
-        uint256 begin,
-        uint256 end
-    ) external view returns (bool[] memory) {
-        require(begin <= end, "distributions must be specified in ascending order");
-        uint256 size = 1 + end - begin;
-        bool[] memory arr = new bool[](size);
-        for (uint256 i = 0; i < size; i++) {
-            arr[i] = isClaimed(token, distributor, begin + i, claimer);
-        }
-        return arr;
-    }
-
-    function merkleRoots(
-        IERC20 token,
-        address distributor,
-        uint256 begin,
-        uint256 end
-    ) external view returns (bytes32[] memory) {
-        bytes32 channelId = _getChannelId(token, distributor);
-        require(begin <= end, "distributions must be specified in ascending order");
-        uint256 size = 1 + end - begin;
-        bytes32[] memory arr = new bytes32[](size);
-        for (uint256 i = 0; i < size; i++) {
-            arr[i] = _distributionRoot[channelId][begin + i];
-        }
-        return arr;
-    }
-
     function verifyClaim(
         IERC20 token,
         address distributor,
-        uint256 distribution,
+        uint256 distributionId,
         address claimer,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) external view returns (bool) {
         bytes32 channelId = _getChannelId(token, distributor);
-        return _verifyClaim(channelId, distribution, claimer, claimedBalance, merkleProof);
+        return _verifyClaim(channelId, distributionId, claimer, claimedBalance, merkleProof);
     }
 
     // Claim functions
 
     /**
-     * @notice Allows a user to claim multiple distributions
+     * @notice Allows anyone to claim multiple distributions for a claimer.
      */
     function claimDistributions(
         address claimer,
         Claim[] memory claims,
         IERC20[] memory tokens
     ) external {
-        require(msg.sender == claimer, "user must claim own balance");
-
-        _processClaims(claimer, msg.sender, claims, tokens, false);
+        _processClaims(claimer, claimer, claims, tokens, false);
     }
 
     /**
-     * @notice Allows a user to claim multiple distributions to internal balance
+     * @notice Allows a user to claim their own multiple distributions to internal balance.
      */
     function claimDistributionsToInternalBalance(
         address claimer,
@@ -155,12 +141,11 @@ contract MerkleOrchard {
         IERC20[] memory tokens
     ) external {
         require(msg.sender == claimer, "user must claim own balance");
-
-        _processClaims(claimer, msg.sender, claims, tokens, true);
+        _processClaims(claimer, claimer, claims, tokens, true);
     }
 
     /**
-     * @notice Allows a user to claim several distributions to a callback
+     * @notice Allows a user to claim their own several distributions to a callback.
      */
     function claimDistributionsWithCallback(
         address claimer,
@@ -175,22 +160,24 @@ contract MerkleOrchard {
     }
 
     /**
-     * @notice
-     * Allows a distributor to add funds to the contract as a merkle tree, These tokens will
-     * be withdrawn from the sender
-     * These will be pulled from the user
+     * @notice Allows a distributor to add funds to the contract as a merkle tree.
      */
     function createDistribution(
         IERC20 token,
-        uint256 distribution,
         bytes32 merkleRoot,
-        uint256 amount
+        uint256 amount,
+        uint256 distributionId
     ) external {
-        bytes32 channelId = _getChannelId(token, msg.sender);
-        require(_distributionRoot[channelId][distribution] == bytes32(0), "cannot rewrite merkle root");
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        address distributor = msg.sender;
 
-        token.approve(address(getVault()), type(uint256).max);
+        bytes32 channelId = _getChannelId(token, distributor);
+        require(
+            _nextDistributionId[channelId] == distributionId || _nextDistributionId[channelId] == 0,
+            "invalid distribution ID"
+        );
+        token.safeTransferFrom(distributor, address(this), amount);
+
+        token.approve(address(getVault()), amount);
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
 
         ops[0] = IVault.UserBalanceOp({
@@ -203,15 +190,16 @@ contract MerkleOrchard {
 
         getVault().manageUserBalance(ops);
 
-        _suppliedBalance[channelId] += amount;
-        _distributionRoot[channelId][distribution] = merkleRoot;
-        emit DistributionAdded(address(token), amount);
+        _remainingBalance[channelId] += amount;
+        _distributionRoot[channelId][distributionId] = merkleRoot;
+        _nextDistributionId[channelId] = distributionId + 1;
+        emit DistributionAdded(distributor, token, distributionId, merkleRoot, amount);
     }
 
     // Helper functions
 
     function _getChannelId(IERC20 token, address distributor) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(address(token), distributor));
+        return keccak256(abi.encodePacked(token, distributor));
     }
 
     function _processClaims(
@@ -223,56 +211,87 @@ contract MerkleOrchard {
     ) internal {
         uint256[] memory amounts = new uint256[](tokens.length);
 
-        // To save gas when setting claimed statuses in storage we group updates
-        // into currentBits for a particular channel, only setting them when a claim
-        // on a new channel is seen, or on the final iteration
+        // To save gas when setting claimed statuses in storage, we group claims for each channel and word index
+        // (referred to as a 'claims set'), aggregating the claim bits to set and total claimed amount, only committing
+        // to storage when changing claims sets (or when processing the last claim).
+        // This means that callers should sort claims by grouping distribution channels and distributions with the same
+        // word index in order to achieve reduced gas costs.
 
-        // for aggregating claims
-        uint256 currentBits;
-        bytes32 currentChannelId;
+        // Variables to support claims set aggregation
+        bytes32 currentChannelId; // Since channel ids are a hash, the initial zero id can be safely considered invalid
         uint256 currentWordIndex;
-        uint256 currentClaimAmount;
+
+        uint256 currentBits; // The accumulated claimed bits to set in storage
+        uint256 currentClaimAmount; // The accumulated tokens to be claimed from the current channel (not claims set!)
 
         Claim memory claim;
         for (uint256 i = 0; i < claims.length; i++) {
             claim = claims[i];
 
-            // When we process a new claim we either
-            // a) aggregate the new claim bit with previous claims of the same channel/claim bitmap
-            // b) set claim status and start aggregating a new set of currentBits for a new channel/word
-            if (currentChannelId == _getChannelId(tokens[claim.tokenIndex], claim.distributor)) {
-                if (currentWordIndex == claim.distribution / 256) {
-                    currentBits |= 1 << claim.distribution % 256;
+            // New scope to avoid stack-too-deep issues
+            {
+                (uint256 distributionWordIndex, uint256 distributionBitIndex) = _getIndices(claim.distributionId);
+
+                if (currentChannelId == _getChannelId(tokens[claim.tokenIndex], claim.distributor)) {
+                    if (currentWordIndex == distributionWordIndex) {
+                        // Same claims set as the previous one: simply track the new bit to set.
+                        currentBits |= 1 << distributionBitIndex;
+                    } else {
+                        // This case is an odd exception: the claims set is not the same, but the channel id is. This
+                        // happens for example when there are so many distributions that they don't fit in a single 32
+                        // byte bitmap.
+                        // Since the channel is the same, we can continue accumulating the claim amount, but must commit
+                        // the previous claim bits as they correspond to a different word index.
+                        _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
+
+                        // Start a new claims set, except channel id is the same as the previous one, and amount is not
+                        // reset.
+                        currentWordIndex = distributionWordIndex;
+                        currentBits = 1 << distributionBitIndex;
+                    }
+
+                    // Amounts are always accumulated for the same channel id
+                    currentClaimAmount += claim.balance;
                 } else {
-                    _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
+                    // Skip initial invalid claims set
+                    if (currentChannelId != bytes32(0)) {
+                        // Commit previous claims set
+                        _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
+                        _deductClaimedBalance(currentChannelId, currentClaimAmount);
+                    }
 
-                    currentWordIndex = claim.distribution / 256;
-                    currentBits = 1 << claim.distribution % 256;
+                    // Start a new claims set
+                    currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
+                    currentWordIndex = distributionWordIndex;
+                    currentBits = 1 << distributionBitIndex;
+                    currentClaimAmount = claim.balance;
                 }
-                currentClaimAmount += claim.balance;
-            } else {
-                if (currentChannelId != bytes32(0)) {
-                    _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
-                    _deductClaimedBalance(currentChannelId, currentClaimAmount);
-                }
-
-                currentChannelId = _getChannelId(tokens[claim.tokenIndex], claim.distributor);
-                currentWordIndex = claim.distribution / 256;
-                currentClaimAmount = claim.balance;
-                currentBits = 1 << claim.distribution % 256;
             }
 
+            // Since a claims set is only committed if the next one is not part of the same set, the last claims set
+            // must be manually committed always.
             if (i == claims.length - 1) {
                 _setClaimedBits(currentChannelId, claimer, currentWordIndex, currentBits);
                 _deductClaimedBalance(currentChannelId, currentClaimAmount);
             }
 
             require(
-                _verifyClaim(currentChannelId, claim.distribution, claimer, claim.balance, claim.merkleProof),
-                "Incorrect merkle proof"
+                _verifyClaim(currentChannelId, claim.distributionId, claimer, claim.balance, claim.merkleProof),
+                "incorrect merkle proof"
             );
 
+            // Note that balances to claim are here accumulated *per token*, independent of the distribution channel and
+            // claims set accounting.
             amounts[claim.tokenIndex] += claim.balance;
+
+            emit DistributionClaimed(
+                claim.distributor,
+                tokens[claim.tokenIndex],
+                claim.distributionId,
+                claimer,
+                recipient,
+                claim.balance
+            );
         }
 
         IVault.UserBalanceOpKind kind = asInternalBalance
@@ -288,37 +307,56 @@ contract MerkleOrchard {
                 recipient: payable(recipient),
                 kind: kind
             });
-            emit DistributionSent(recipient, address(tokens[i]), amounts[i]);
         }
         getVault().manageUserBalance(ops);
     }
 
+    /**
+     * @dev Sets the bits set in `newClaimsBitmap` for the corresponding distribution.
+     */
     function _setClaimedBits(
         bytes32 channelId,
         address claimer,
         uint256 wordIndex,
         uint256 newClaimsBitmap
     ) private {
-        require((newClaimsBitmap & _claimedBitmap[channelId][claimer][wordIndex]) == 0, "cannot claim twice");
-        _claimedBitmap[channelId][claimer][wordIndex] |= newClaimsBitmap;
+        uint256 currentBitmap = _claimedBitmap[channelId][claimer][wordIndex];
+
+        // All newly set bits must not have been previously set
+        require((newClaimsBitmap & currentBitmap) == 0, "cannot claim twice");
+
+        _claimedBitmap[channelId][claimer][wordIndex] = currentBitmap | newClaimsBitmap;
     }
 
+    /**
+     * @dev Deducts `balanceBeingClaimed` from a distribution channel's allocation. This isolates tokens accross
+     * distribution channels, and prevents claims for one channel from using the tokens of another one.
+     */
     function _deductClaimedBalance(bytes32 channelId, uint256 balanceBeingClaimed) private {
         require(
-            _suppliedBalance[channelId] >= balanceBeingClaimed,
+            _remainingBalance[channelId] >= balanceBeingClaimed,
             "distributor hasn't provided sufficient tokens for claim"
         );
-        _suppliedBalance[channelId] -= balanceBeingClaimed;
+        _remainingBalance[channelId] -= balanceBeingClaimed;
     }
 
     function _verifyClaim(
         bytes32 channelId,
-        uint256 distribution,
+        uint256 distributionId,
         address claimer,
         uint256 claimedBalance,
         bytes32[] memory merkleProof
     ) internal view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(claimer, claimedBalance));
-        return MerkleProof.verify(merkleProof, _distributionRoot[channelId][distribution], leaf);
+        return MerkleProof.verify(merkleProof, _distributionRoot[channelId][distributionId], leaf);
+    }
+
+    function _getIndices(uint256 distributionId)
+        private
+        pure
+        returns (uint256 distributionWordIndex, uint256 distributionBitIndex)
+    {
+        distributionWordIndex = distributionId / 256;
+        distributionBitIndex = distributionId % 256;
     }
 }

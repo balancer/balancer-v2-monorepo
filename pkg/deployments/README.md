@@ -71,3 +71,4 @@ Returns an object with all contracts from a deployment and their addresses.
 | Distributor contract for arbitrum BAL rewards    | [`20210913-bal-arbitrum-merkle`](./tasks/20210913-bal-arbitrum-merkle)                   |
 | Distributor contract for VITA rewards            | [`20210920-vita-merkle`](./tasks/20210920-vita-merkle)                                   |
 | Distributor contract for arbitrum MCB rewards    | [`20210928-mcb-arbitrum-merkle`](./tasks/20210928-mcb-arbitrum-merkle)                   |
+| Merkle Orchard Distributor                       | [`20211012-merkle-orchard`](./tasks/20211012-merkle-orchard)                             |
