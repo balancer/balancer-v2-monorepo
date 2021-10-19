@@ -749,9 +749,6 @@ contract StablePhantomPool is StablePool {
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        // When calculating the current BPT rate, we may not have paid the protocol fees, therefore
-        // the invariant should be smaller than its current value. Then, we round down overall.
-        uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, false);
-        return invariant.divDown(_virtualSupply);
+        return _getRate(balances, currentAmp, _virtualSupply);
     }
 }
