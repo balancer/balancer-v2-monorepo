@@ -106,7 +106,7 @@ describe('Staking contract', () => {
     await stakingContract.connect(rewarder).whitelistRewarder(pool.address, rewardToken.address, rewarder.address);
 
     await expect(
-      stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, fp(100), rewarder.address)
+      stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, rewarder.address, fp(100))
     ).to.be.revertedWith('Reward must be configured with addReward');
   });
 
@@ -130,7 +130,7 @@ describe('Staking contract', () => {
       const bptBalance = await pool.balanceOf(lp.address);
 
       const { v, r, s } = await signPermit(pool, lp, stakingContract, bptBalance);
-      await stakingContract.connect(other).stakeWithPermit(pool.address, bptBalance, MAX_UINT256, lp.address, v, r, s);
+      await stakingContract.connect(other).stakeWithPermit(pool.address, bptBalance, lp.address, MAX_UINT256, v, r, s);
 
       const stakedBalance = await stakingContract.balanceOf(pool.address, lp.address);
       expect(stakedBalance).to.be.eq(bptBalance);
@@ -139,6 +139,7 @@ describe('Staking contract', () => {
 
   describe('with two stakes', () => {
     const rewardAmount = fp(1);
+
     sharedBeforeEach(async () => {
       await stakingContract.connect(rewarder).whitelistRewarder(pool.address, rewardToken.address, rewarder.address);
       await stakingContract.connect(rewarder).addReward(pool.address, rewardToken.address, rewardsDuration);
@@ -158,7 +159,7 @@ describe('Staking contract', () => {
         () =>
           stakingContract
             .connect(rewarder)
-            .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address),
+            .notifyRewardAmount(pool.address, rewardToken.address, rewarder.address, rewardAmount),
         rewardTokens,
         [{ account: stakingContract, changes: { DAI: rewardAmount } }],
         vault
@@ -169,7 +170,7 @@ describe('Staking contract', () => {
       const receipt = await (
         await stakingContract
           .connect(rewarder)
-          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address)
+          .notifyRewardAmount(pool.address, rewardToken.address, rewarder.address, rewardAmount)
       ).wait();
 
       expectEvent.inReceipt(receipt, 'RewardAdded', {
@@ -184,7 +185,7 @@ describe('Staking contract', () => {
       sharedBeforeEach(async () => {
         await stakingContract
           .connect(rewarder)
-          .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address);
+          .notifyRewardAmount(pool.address, rewardToken.address, rewarder.address, rewardAmount);
       });
 
       describe('and enough time has passed for all the reward to vest', async () => {
@@ -195,13 +196,13 @@ describe('Staking contract', () => {
         it('distributes the reward according to the fraction of staked LP tokens', async () => {
           // 3/4 share
           const expectedReward = fp(0.75);
-          const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
+          const actualReward = await stakingContract.totalEarned(pool.address, rewardToken.address, lp.address);
 
           expect(actualReward).to.be.equalWithError(expectedReward, 0.0001);
 
           // 1/4 share
           const expectedRewardOther = fp(0.25);
-          const actualRewardOther = await stakingContract.totalEarned(pool.address, other.address, rewardToken.address);
+          const actualRewardOther = await stakingContract.totalEarned(pool.address, rewardToken.address, other.address);
 
           expect(actualRewardOther).to.be.equalWithError(expectedRewardOther, 0.0001);
         });
@@ -243,7 +244,7 @@ describe('Staking contract', () => {
           sharedBeforeEach(async () => {
             await stakingContract
               .connect(rewarder)
-              .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount, rewarder.address);
+              .notifyRewardAmount(pool.address, rewardToken.address, rewarder.address, secondRewardAmount);
             // total reward = fp(3)
             await advanceTime(rewardsVestingTime);
           });
@@ -251,7 +252,7 @@ describe('Staking contract', () => {
           it('calculates totalEarned from both distributions', async () => {
             const expectedReward = rewardAmount.add(secondRewardAmount).mul(3).div(4);
 
-            const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
+            const actualReward = await stakingContract.totalEarned(pool.address, rewardToken.address, lp.address);
             expect(actualReward).to.be.equalWithError(expectedReward, 0.0001);
           });
         });
@@ -270,21 +271,21 @@ describe('Staking contract', () => {
 
             await stakingContract
               .connect(other)
-              .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount, other.address);
+              .notifyRewardAmount(pool.address, rewardToken.address, other.address, secondRewardAmount);
             await advanceTime(rewardsVestingTime);
           });
 
           it('calculates totalEarned from both distributions', async () => {
             const expectedReward = fp(0.75).mul(3);
 
-            const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
+            const actualReward = await stakingContract.totalEarned(pool.address, rewardToken.address, lp.address);
             expect(actualReward).to.be.equalWithError(expectedReward, 0.0001);
           });
 
           it('calculates totalEarned from both distributions for the other user', async () => {
             const expectedReward = fp(0.25).mul(3);
 
-            const actualReward = await stakingContract.totalEarned(pool.address, other.address, rewardToken.address);
+            const actualReward = await stakingContract.totalEarned(pool.address, rewardToken.address, other.address);
             expect(actualReward).to.be.equalWithError(expectedReward, 0.0001);
           });
         });
@@ -305,14 +306,14 @@ describe('Staking contract', () => {
 
           await stakingContract
             .connect(rewarder)
-            .notifyRewardAmount(pool.address, rewardToken.address, secondRewardAmount, rewarder.address);
+            .notifyRewardAmount(pool.address, rewardToken.address, rewarder.address, secondRewardAmount);
           await advanceTime(rewardsVestingTime);
         });
 
         it('adds leftover correctly', async () => {
           const expectedReward = leftoverBalance.add(secondRewardAmount).mul(3).div(4);
 
-          const actualReward = await stakingContract.totalEarned(pool.address, lp.address, rewardToken.address);
+          const actualReward = await stakingContract.totalEarned(pool.address, rewardToken.address, lp.address);
           expect(actualReward).to.be.equalWithError(expectedReward, 0.05);
         });
       });
@@ -376,11 +377,11 @@ describe('Staking contract', () => {
     it('allows you to claim across multiple pools', async () => {
       await stakingContract
         .connect(rewarder)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address);
+        .notifyRewardAmount(pool.address, rewardToken.address, rewarder.address, rewardAmount);
       const rewardAmount2 = fp(0.75);
       await stakingContract
         .connect(rewarder)
-        .notifyRewardAmount(pool2.address, rewardToken.address, rewardAmount2, rewarder.address);
+        .notifyRewardAmount(pool2.address, rewardToken.address, rewarder.address, rewardAmount2);
 
       await advanceTime(rewardsVestingTime);
 
@@ -396,11 +397,11 @@ describe('Staking contract', () => {
     it.skip('emits RewardPaid for each pool', async () => {
       await stakingContract
         .connect(rewarder)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address);
+        .notifyRewardAmount(pool.address, rewardToken.address, rewarder.address, rewardAmount);
       const rewardAmount2 = fp(0.75);
       await stakingContract
         .connect(rewarder)
-        .notifyRewardAmount(pool2.address, rewardToken.address, rewardAmount2, rewarder.address);
+        .notifyRewardAmount(pool2.address, rewardToken.address, rewarder.address, rewardAmount2);
       await advanceTime(rewardsVestingTime);
 
       const receipt = await (await stakingContract.connect(lp).getReward([pool.address])).wait();

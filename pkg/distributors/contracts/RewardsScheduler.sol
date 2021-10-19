@@ -84,8 +84,8 @@ contract RewardsScheduler {
             _multirewards.notifyRewardAmount(
                 scheduledReward.stakingToken,
                 scheduledReward.rewardsToken,
-                scheduledReward.amount,
-                scheduledReward.rewarder
+                scheduledReward.rewarder,
+                scheduledReward.amount
             );
             emit RewardStarted(
                 rewardId,

@@ -56,7 +56,7 @@ describe('Exiter', () => {
 
       await stakingContract
         .connect(rewarder)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, rewarder.address);
+        .notifyRewardAmount(pool.address, rewardToken.address, rewarder.address, rewardAmount);
       await advanceTime(rewardsVestingTime);
 
       assets = poolTokens.map((pt) => pt.address);
