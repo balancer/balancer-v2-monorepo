@@ -712,7 +712,7 @@ contract StablePhantomPool is StablePool {
         returns (uint256 virtualSupply, uint256[] memory balances)
     {
         // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
-        // vault. So the virtualSupply (the bpt supply that is really being used) is defined as:
+        // vault. So the virtualSupply (the actual supply in circulation) is defined as:
         // virtualSupply = _MAX_TOKEN_BALANCE - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
         virtualSupply = _MAX_TOKEN_BALANCE - _balances[_bptIndex] + _dueProtocolFeeBptAmount;
 
