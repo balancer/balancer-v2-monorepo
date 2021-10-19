@@ -786,7 +786,6 @@ contract StablePhantomPool is StablePool {
     function virtualSupply() external view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
 
-        // Since this process burns BPT, when computing virtual supply we also need to account for all burnt BPT.
         uint256 _virtualSupply = totalSupply() - balances[_bptIndex] + _dueProtocolFeeBptAmount;
 
         return _virtualSupply;
