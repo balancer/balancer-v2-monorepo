@@ -582,4 +582,18 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             (actionId == getActionId(this.setWrappedTokenRateCacheDuration.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
+
+    /**
+     * @dev Returns the number of tokens in circulation.
+     *
+     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints all BPT, `totalSupply`
+     * remains constant, whereas `virtualSupply` increases as users join the pool and decreases as they exit it.
+     */
+    function virtualSupply() external view returns (uint256) {
+        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+
+        uint256 _virtualSupply = totalSupply() - balances[_bptIndex];
+
+        return _virtualSupply;
+    }
 }

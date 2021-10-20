@@ -167,6 +167,10 @@ export default class LinearPool {
     return this.instance.getRate();
   }
 
+  async getVirtualSupply(): Promise<BigNumber> {
+    return this.instance.virtualSupply();
+  }
+
   async getTargets(): Promise<{ lowerTarget: BigNumber; upperTarget: BigNumber }> {
     return this.instance.getTargets();
   }
