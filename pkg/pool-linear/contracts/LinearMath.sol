@@ -311,6 +311,7 @@ contract LinearMath {
 
         uint256[] memory amountsOut = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
+            // BPT is skipped as those tokens are not the LPs, but rather the preminted and undistributed amount.
             if (i != bptIndex) {
                 amountsOut[i] = balances[i].mulDown(bptRatio);
             }
