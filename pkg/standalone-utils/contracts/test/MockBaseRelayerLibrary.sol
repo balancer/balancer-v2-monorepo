@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2015, 2016, 2017 Dapphub
+
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -13,17 +15,19 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "../relayer/BaseRelayerLibrary.sol";
 
-/**
- * @title IBaseRelayerLibrary
- */
-abstract contract IBaseRelayerLibrary {
-    function getVault() public view virtual returns (IVault);
+contract MockBaseRelayerLibrary is BaseRelayerLibrary {
+    event TempStorageRead(uint256 value);
 
-    function _readTempStorage(uint256 key) internal virtual returns (uint256 value);
+    constructor(IVault vault) BaseRelayerLibrary(vault) {}
 
-    function _writeTempStorage(uint256 key, uint256 value) internal virtual;
+    function writeTempStorage(uint256 key, uint256 value) external {
+        _writeTempStorage(key, value);
+    }
+
+    function readTempStorage(uint256 key) external {
+        emit TempStorageRead(_readTempStorage(key));
+    }
 }

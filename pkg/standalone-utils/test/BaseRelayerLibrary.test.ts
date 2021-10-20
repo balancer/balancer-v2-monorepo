@@ -11,6 +11,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 
 describe('BaseRelayerLibrary', function () {
   let vault: Contract;
@@ -28,8 +29,45 @@ describe('BaseRelayerLibrary', function () {
     vault = vaultHelper.instance;
 
     // Deploy Relayer
-    relayerLibrary = await deploy('BaseRelayerLibrary', { args: [vault.address] });
+    relayerLibrary = await deploy('MockBaseRelayerLibrary', { args: [vault.address] });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
+  });
+
+  describe('temporary storage', () => {
+    const slot = 5;
+
+    async function expectTempStorageRead(key: BigNumberish, expectedValue: BigNumberish): Promise<void> {
+      const receipt = await (await relayerLibrary.readTempStorage(key)).wait();
+      await expectEvent.inReceipt(receipt, 'TempStorageRead', { value: bn(expectedValue) });
+    }
+
+    it('reads uninitialized slots as zero', async () => {
+      await expectTempStorageRead(slot, 0);
+    });
+
+    it('reads stored data', async () => {
+      await relayerLibrary.writeTempStorage(slot, 5);
+      await expectTempStorageRead(slot, 5);
+    });
+
+    it('writes replace old data', async () => {
+      await relayerLibrary.writeTempStorage(slot, 5);
+      await relayerLibrary.writeTempStorage(slot, 17);
+      await expectTempStorageRead(slot, 17);
+    });
+
+    it('stored data in independent slots', async () => {
+      await relayerLibrary.writeTempStorage(slot, 5);
+      await expectTempStorageRead(slot + 1, 0);
+    });
+
+    it('clears read data', async () => {
+      await relayerLibrary.writeTempStorage(slot, 5);
+      await expectTempStorageRead(slot, 5);
+
+      // The slot is now cleared
+      await expectTempStorageRead(slot, 0);
+    });
   });
 
   describe('multicall', () => {
