@@ -14,7 +14,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { signPermit, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { advanceTime, currentTimestamp } from "@balancer-labs/v2-helpers/src/time";
+import { advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 
 import {
   rewardsDuration,

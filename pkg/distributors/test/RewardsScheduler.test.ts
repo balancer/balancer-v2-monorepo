@@ -7,14 +7,14 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
-import { deploy, deployedAt } from "@balancer-labs/v2-helpers/src/contract";
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { setup, rewardsDuration } from './MultiRewardsSharedSetup';
 
 describe('Rewards Scheduler', () => {
-  let admin: SignerWithAddress, lp: SignerWithAddress, rewarder: SignerWithAddress;
+  let lp: SignerWithAddress, rewarder: SignerWithAddress;
 
   let rewardTokens: TokenList;
   let vault: Contract;
@@ -32,7 +32,6 @@ describe('Rewards Scheduler', () => {
     rewardsToken = contracts.rewardTokens.DAI;
     rewardTokens = contracts.rewardTokens;
 
-    admin = users.admin;
     lp = users.lp;
     rewarder = users.rewarder;
 

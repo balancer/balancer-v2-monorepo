@@ -8,7 +8,6 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 export const tokenInitialBalance = bn(200e18);
 export const rewardTokenInitialBalance = bn(100e18);

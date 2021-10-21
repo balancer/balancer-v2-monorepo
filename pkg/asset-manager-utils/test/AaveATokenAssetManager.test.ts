@@ -7,7 +7,6 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
