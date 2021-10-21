@@ -23,6 +23,14 @@ contract MockBaseRelayerLibrary is BaseRelayerLibrary {
 
     constructor(IVault vault) BaseRelayerLibrary(vault) {}
 
+    function isAmountChainedReference(uint256 amount) public pure returns (bool) {
+        return _isAmountChainedReference(amount);
+    }
+
+    function getChainedReferenceKey(uint256 ref) public pure returns (uint256) {
+        return _getChainedReferenceKey(ref);
+    }
+
     function writeTempStorage(uint256 key, uint256 value) external {
         _writeTempStorage(key, value);
     }
