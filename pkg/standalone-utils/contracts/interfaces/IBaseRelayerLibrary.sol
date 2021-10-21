@@ -22,8 +22,4 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
  */
 abstract contract IBaseRelayerLibrary {
     function getVault() public view virtual returns (IVault);
-
-    function _readTempStorage(uint256 key) internal virtual returns (uint256 value);
-
-    function _writeTempStorage(uint256 key, uint256 value) internal virtual;
 }

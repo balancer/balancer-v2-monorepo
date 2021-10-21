@@ -33,43 +33,6 @@ describe('BaseRelayerLibrary', function () {
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
   });
 
-  describe('temporary storage', () => {
-    const slot = 5;
-
-    async function expectTempStorageRead(key: BigNumberish, expectedValue: BigNumberish): Promise<void> {
-      const receipt = await (await relayerLibrary.readTempStorage(key)).wait();
-      await expectEvent.inReceipt(receipt, 'TempStorageRead', { value: bn(expectedValue) });
-    }
-
-    it('reads uninitialized slots as zero', async () => {
-      await expectTempStorageRead(slot, 0);
-    });
-
-    it('reads stored data', async () => {
-      await relayerLibrary.writeTempStorage(slot, 5);
-      await expectTempStorageRead(slot, 5);
-    });
-
-    it('writes replace old data', async () => {
-      await relayerLibrary.writeTempStorage(slot, 5);
-      await relayerLibrary.writeTempStorage(slot, 17);
-      await expectTempStorageRead(slot, 17);
-    });
-
-    it('stored data in independent slots', async () => {
-      await relayerLibrary.writeTempStorage(slot, 5);
-      await expectTempStorageRead(slot + 1, 0);
-    });
-
-    it('clears read data', async () => {
-      await relayerLibrary.writeTempStorage(slot, 5);
-      await expectTempStorageRead(slot, 5);
-
-      // The slot is now cleared
-      await expectTempStorageRead(slot, 0);
-    });
-  });
-
   describe('chained references', () => {
     const CHAINED_REFERENCE_PREFIX = 'ba10';
 
@@ -81,15 +44,53 @@ describe('BaseRelayerLibrary', function () {
     }
 
     it('identifies immediate amounts', async () => {
-      expect(await relayerLibrary.isAmountChainedReference(5)).to.equal(false);
+      expect(await relayerLibrary.isChainedReference(5)).to.equal(false);
     });
 
     it('identifies chained references', async () => {
-      expect(await relayerLibrary.isAmountChainedReference(toChainedReference(5))).to.equal(true);
+      expect(await relayerLibrary.isChainedReference(toChainedReference(5))).to.equal(true);
     });
 
     it('extracts chained reference keys', async () => {
       expect(await relayerLibrary.getChainedReferenceKey(toChainedReference(5))).to.equal(5);
+    });
+
+    describe('read and write', () => {
+      const key = 5;
+      const reference = toChainedReference(key);
+
+      async function expectChainedReferenceRead(key: BigNumberish, expectedValue: BigNumberish): Promise<void> {
+        const receipt = await (await relayerLibrary.getChainedReferenceValue(key)).wait();
+        await expectEvent.inReceipt(receipt, 'ChainedReferenceValueRead', { value: bn(expectedValue) });
+      }
+
+      it('reads uninitialized references as zero', async () => {
+        await expectChainedReferenceRead(reference, 0);
+      });
+
+      it('reads stored references', async () => {
+        await relayerLibrary.setChainedReferenceValue(reference, 42);
+        await expectChainedReferenceRead(reference, 42);
+      });
+
+      it('writes replace old data', async () => {
+        await relayerLibrary.setChainedReferenceValue(reference, 42);
+        await relayerLibrary.setChainedReferenceValue(reference, 17);
+        await expectChainedReferenceRead(reference, 17);
+      });
+
+      it('stored data in independent slots', async () => {
+        await relayerLibrary.setChainedReferenceValue(reference, 5);
+        await expectChainedReferenceRead(reference.add(1), 0);
+      });
+
+      it('clears read data', async () => {
+        await relayerLibrary.setChainedReferenceValue(reference, 5);
+        await expectChainedReferenceRead(reference, 5);
+
+        // The reference is now cleared
+        await expectChainedReferenceRead(reference, 0);
+      });
     });
   });
 

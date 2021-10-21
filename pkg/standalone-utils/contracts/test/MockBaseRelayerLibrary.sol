@@ -19,23 +19,23 @@ pragma solidity ^0.7.0;
 import "../relayer/BaseRelayerLibrary.sol";
 
 contract MockBaseRelayerLibrary is BaseRelayerLibrary {
-    event TempStorageRead(uint256 value);
+    event ChainedReferenceValueRead(uint256 value);
 
     constructor(IVault vault) BaseRelayerLibrary(vault) {}
 
-    function isAmountChainedReference(uint256 amount) public pure returns (bool) {
-        return _isAmountChainedReference(amount);
+    function isChainedReference(uint256 amount) public pure returns (bool) {
+        return _isChainedReference(amount);
     }
 
     function getChainedReferenceKey(uint256 ref) public pure returns (uint256) {
         return _getChainedReferenceKey(ref);
     }
 
-    function writeTempStorage(uint256 key, uint256 value) external {
-        _writeTempStorage(key, value);
+    function setChainedReferenceValue(uint256 ref, uint256 value) public returns (uint256) {
+        _setChainedReferenceValue(ref, value);
     }
 
-    function readTempStorage(uint256 key) external {
-        emit TempStorageRead(_readTempStorage(key));
+    function getChainedReferenceValue(uint256 ref) public {
+        emit ChainedReferenceValueRead(_getChainedReferenceValue(ref));
     }
 }
