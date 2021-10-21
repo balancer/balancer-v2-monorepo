@@ -26,30 +26,8 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 abstract contract MultiRewardsAuthorization is Authentication {
     IVault private immutable _vault;
 
-    mapping(IERC20 => mapping(IERC20 => mapping(address => bool))) private _whitelist;
-
-    event RewarderWhitelisted(address indexed stakingToken, address indexed rewardsToken, address indexed rewarder);
-
     constructor(IVault vault) {
         _vault = vault;
-    }
-
-    modifier onlyWhitelistedRewarder(IERC20 stakingToken, IERC20 rewardsToken) {
-        require(
-            _isWhitelistedRewarder(stakingToken, rewardsToken, msg.sender),
-            "Only accessible by whitelisted rewarders"
-        );
-        _;
-    }
-
-    modifier onlyWhitelisted(IERC20 stakingToken) {
-        require(
-            _canPerform(getActionId(msg.sig), msg.sender) ||
-                msg.sender == address(stakingToken) ||
-                isAssetManager(stakingToken, msg.sender),
-            "Only accessible by governance, staking token or asset managers"
-        );
-        _;
     }
 
     function getVault() public view returns (IVault) {
@@ -61,46 +39,7 @@ abstract contract MultiRewardsAuthorization is Authentication {
     }
 
     function _getAuthorizer() internal view returns (IAuthorizer) {
-        // Access control management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which
-        // accounts can call permissioned functions: for example, to perform emergency pauses.
         return getVault().getAuthorizer();
-    }
-
-    /**
-     * @notice Allows a rewarder to be explicitly added to an whitelist of rewarders
-     */
-    function _whitelistRewarder(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        address rewarder
-    ) internal {
-        _whitelist[stakingToken][rewardsToken][rewarder] = true;
-        emit RewarderWhitelisted(address(stakingToken), address(rewardsToken), rewarder);
-    }
-
-    function _isWhitelistedRewarder(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        address rewarder
-    ) internal view returns (bool) {
-        return _whitelist[stakingToken][rewardsToken][rewarder];
-    }
-
-    /**
-     * @notice Checks if a rewarder is an asset manager
-     */
-    function isAssetManager(IERC20 stakingToken, address rewarder) public view returns (bool) {
-        IBasePool pool = IBasePool(address(stakingToken));
-        bytes32 poolId = pool.getPoolId();
-        (IERC20[] memory poolTokens, , ) = getVault().getPoolTokens(poolId);
-
-        for (uint256 pt; pt < poolTokens.length; pt++) {
-            (, , , address assetManager) = getVault().getPoolTokenInfo(poolId, poolTokens[pt]);
-            if (assetManager == rewarder) {
-                return true;
-            }
-        }
-        return false;
     }
 
     function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {

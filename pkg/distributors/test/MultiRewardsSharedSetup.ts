@@ -70,10 +70,6 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
     args: [vault.address],
   });
 
-  // authorize admin to whitelist rewarders
-  const action = await actionId(stakingContract, 'whitelistRewarder');
-  await authorizer.connect(admin).grantRole(action, admin.address);
-
   await tokens.mint({ to: lp, amount: tokenInitialBalance });
   await tokens.approve({ to: vault.address, from: [lp] });
 
