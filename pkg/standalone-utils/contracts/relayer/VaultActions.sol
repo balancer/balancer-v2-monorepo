@@ -31,14 +31,26 @@ import "../interfaces/IBaseRelayerLibrary.sol";
  */
 abstract contract VaultActions is IBaseRelayerLibrary {
     function swap(
-        IVault.SingleSwap calldata singleSwap,
+        IVault.SingleSwap memory singleSwap,
         IVault.FundManagement calldata funds,
         uint256 limit,
         uint256 deadline,
-        uint256 value
+        uint256 value,
+        uint256 outputReference
     ) external payable returns (uint256) {
         require(funds.sender == msg.sender, "Incorrect sender");
-        return getVault().swap{ value: value }(singleSwap, funds, limit, deadline);
+
+        if (_isChainedReference(singleSwap.amount)) {
+            singleSwap.amount = _getChainedReferenceValue(singleSwap.amount);
+        }
+
+        uint256 result = getVault().swap{ value: value }(singleSwap, funds, limit, deadline);
+
+        if (_isChainedReference(outputReference)) {
+            _setChainedReferenceValue(outputReference, result);
+        }
+
+        return result;
     }
 
     function batchSwap(

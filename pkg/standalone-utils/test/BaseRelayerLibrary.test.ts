@@ -59,37 +59,37 @@ describe('BaseRelayerLibrary', function () {
       const key = 5;
       const reference = toChainedReference(key);
 
-      async function expectChainedReferenceRead(key: BigNumberish, expectedValue: BigNumberish): Promise<void> {
+      async function expectChainedReferenceContents(key: BigNumberish, expectedValue: BigNumberish): Promise<void> {
         const receipt = await (await relayerLibrary.getChainedReferenceValue(key)).wait();
-        await expectEvent.inReceipt(receipt, 'ChainedReferenceValueRead', { value: bn(expectedValue) });
+        expectEvent.inReceipt(receipt, 'ChainedReferenceValueRead', { value: bn(expectedValue) });
       }
 
       it('reads uninitialized references as zero', async () => {
-        await expectChainedReferenceRead(reference, 0);
+        await expectChainedReferenceContents(reference, 0);
       });
 
       it('reads stored references', async () => {
         await relayerLibrary.setChainedReferenceValue(reference, 42);
-        await expectChainedReferenceRead(reference, 42);
+        await expectChainedReferenceContents(reference, 42);
       });
 
       it('writes replace old data', async () => {
         await relayerLibrary.setChainedReferenceValue(reference, 42);
         await relayerLibrary.setChainedReferenceValue(reference, 17);
-        await expectChainedReferenceRead(reference, 17);
+        await expectChainedReferenceContents(reference, 17);
       });
 
       it('stored data in independent slots', async () => {
         await relayerLibrary.setChainedReferenceValue(reference, 5);
-        await expectChainedReferenceRead(reference.add(1), 0);
+        await expectChainedReferenceContents(reference.add(1), 0);
       });
 
       it('clears read data', async () => {
         await relayerLibrary.setChainedReferenceValue(reference, 5);
-        await expectChainedReferenceRead(reference, 5);
+        await expectChainedReferenceContents(reference, 5);
 
         // The reference is now cleared
-        await expectChainedReferenceRead(reference, 0);
+        await expectChainedReferenceContents(reference, 0);
       });
     });
   });

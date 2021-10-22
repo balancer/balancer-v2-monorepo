@@ -65,17 +65,17 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
         address(_vault).functionCall(data);
     }
 
-    function _isChainedReference(uint256 amount) internal pure returns (bool) {
+    function _isChainedReference(uint256 amount) internal pure override returns (bool) {
         return
             (amount & 0xffff000000000000000000000000000000000000000000000000000000000000) ==
             0xba10000000000000000000000000000000000000000000000000000000000000;
     }
 
-    function _setChainedReferenceValue(uint256 ref, uint256 value) internal {
+    function _setChainedReferenceValue(uint256 ref, uint256 value) internal override {
         _writeTempStorage(_getChainedReferenceKey(ref), value);
     }
 
-    function _getChainedReferenceValue(uint256 ref) internal returns (uint256) {
+    function _getChainedReferenceValue(uint256 ref) internal override returns (uint256) {
         return _readTempStorage(_getChainedReferenceKey(ref));
     }
 
