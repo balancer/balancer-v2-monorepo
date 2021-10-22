@@ -13,6 +13,7 @@ export const MIN_INT22: BigNumber = minInt(22);
 export const MAX_INT22: BigNumber = maxInt(22);
 export const MIN_INT53: BigNumber = minInt(53);
 export const MAX_INT53: BigNumber = maxInt(53);
+export const MIN_INT256: BigNumber = minInt(256);
 export const MAX_INT256: BigNumber = maxInt(256);
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';

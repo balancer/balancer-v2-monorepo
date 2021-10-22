@@ -15,9 +15,14 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20PermitDAI.sol";
+
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+
 import "../interfaces/IBaseRelayerLibrary.sol";
 
 /**
@@ -55,15 +60,39 @@ abstract contract VaultActions is IBaseRelayerLibrary {
 
     function batchSwap(
         IVault.SwapKind kind,
-        IVault.BatchSwapStep[] calldata swaps,
+        IVault.BatchSwapStep[] memory swaps,
         IAsset[] calldata assets,
         IVault.FundManagement calldata funds,
         int256[] calldata limits,
         uint256 deadline,
-        uint256 value
+        uint256 value,
+        uint256[] memory outputReferences
     ) external payable returns (int256[] memory) {
         require(funds.sender == msg.sender, "Incorrect sender");
-        return getVault().batchSwap{ value: value }(kind, swaps, assets, funds, limits, deadline);
+        InputHelpers.ensureInputLengthMatch(assets.length, outputReferences.length);
+
+        for (uint256 i = 0; i < swaps.length; ++i) {
+            uint256 amount = swaps[i].amount;
+            if (_isChainedReference(amount)) {
+                swaps[i].amount = _getChainedReferenceValue(amount);
+            }
+        }
+
+        int256[] memory results = getVault().batchSwap{ value: value }(kind, swaps, assets, funds, limits, deadline);
+
+        for (uint256 i = 0; i < outputReferences.length; ++i) {
+            uint256 ref = outputReferences[i];
+            if (_isChainedReference(ref)) {
+                // Batch swap return values are signed, as they are Vault deltas (positive values stand for assets sent
+                // to the Vault, negatives for assets sent from the Vault). To simplify the chained reference value
+                // model, we simply store the absolute value.
+                // This should be fine for most use cases, as the caller can reason about swap results via the `limits`
+                // parameter.
+                _setChainedReferenceValue(ref, Math.abs(results[i]));
+            }
+        }
+
+        return results;
     }
 
     function manageUserBalance(IVault.UserBalanceOp[] calldata ops, uint256 value) external payable {
