@@ -13,11 +13,11 @@ import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/wei
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { InvestmentPoolEncoder, SwapKind } from '@balancer-labs/balancer-js';
+import { ManagedPoolEncoder, SwapKind } from '@balancer-labs/balancer-js';
 
 import { range } from 'lodash';
 
-describe('InvestmentPool', function () {
+describe('ManagedPool', function () {
   let allTokens: TokenList;
   let poolTokens: TokenList;
   let tooManyWeights: BigNumber[];
@@ -55,7 +55,7 @@ describe('InvestmentPool', function () {
           tokens = allTokens.subset(numTokens);
 
           pool = await WeightedPool.create({
-            poolType: WeightedPoolType.INVESTMENT_POOL,
+            poolType: WeightedPoolType.MANAGED_POOL,
             tokens,
             weights: WEIGHTS.slice(0, numTokens),
             swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
@@ -87,17 +87,17 @@ describe('InvestmentPool', function () {
         tokens: allTokens.subset(1),
         weights: [fp(0.3)],
         owner,
-        poolType: WeightedPoolType.INVESTMENT_POOL,
+        poolType: WeightedPoolType.MANAGED_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
     });
 
-    it('fails with > 100 tokens', async () => {
+    it('fails with > MAX_TOKENS tokens', async () => {
       const params = {
         tokens: allTokens,
         weights: tooManyWeights,
         owner,
-        poolType: WeightedPoolType.INVESTMENT_POOL,
+        poolType: WeightedPoolType.MANAGED_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('MAX_TOKENS');
     });
@@ -107,7 +107,7 @@ describe('InvestmentPool', function () {
         tokens: allTokens.subset(20),
         weights: tooManyWeights,
         owner,
-        poolType: WeightedPoolType.INVESTMENT_POOL,
+        poolType: WeightedPoolType.MANAGED_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
     });
@@ -119,7 +119,7 @@ describe('InvestmentPool', function () {
         tokens: poolTokens,
         weights: poolWeights,
         owner,
-        poolType: WeightedPoolType.INVESTMENT_POOL,
+        poolType: WeightedPoolType.MANAGED_POOL,
         fromFactory: true,
       };
       pool = await WeightedPool.create(params);
@@ -140,7 +140,7 @@ describe('InvestmentPool', function () {
           tokens: poolTokens,
           weights: poolWeights,
           owner,
-          poolType: WeightedPoolType.INVESTMENT_POOL,
+          poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: false,
         };
         pool = await WeightedPool.create(params);
@@ -161,7 +161,7 @@ describe('InvestmentPool', function () {
           tokens: poolTokens,
           weights: poolWeights,
           owner,
-          poolType: WeightedPoolType.INVESTMENT_POOL,
+          poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
         };
         pool = await WeightedPool.create(params);
@@ -192,7 +192,7 @@ describe('InvestmentPool', function () {
       });
 
       it('reverts when querying last invariant', async () => {
-        await expect(pool.getLastInvariant()).to.be.revertedWith('UNHANDLED_BY_INVESTMENT_POOL');
+        await expect(pool.getLastInvariant()).to.be.revertedWith('UNHANDLED_BY_MANAGED_POOL');
       });
 
       it('reverts if swap hook caller is not the vault', async () => {
@@ -224,7 +224,7 @@ describe('InvestmentPool', function () {
           tokens: poolTokens,
           weights: poolWeights,
           owner,
-          poolType: WeightedPoolType.INVESTMENT_POOL,
+          poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
         };
         pool = await WeightedPool.create(params);
@@ -343,7 +343,7 @@ describe('InvestmentPool', function () {
           tokens: poolTokens,
           weights: poolWeights,
           owner,
-          poolType: WeightedPoolType.INVESTMENT_POOL,
+          poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
         };
         pool = await WeightedPool.create(params);
@@ -536,7 +536,7 @@ describe('InvestmentPool', function () {
           tokens: poolTokens,
           weights: poolWeights,
           owner,
-          poolType: WeightedPoolType.INVESTMENT_POOL,
+          poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
           vault,
           swapFeePercentage,
@@ -803,7 +803,7 @@ describe('InvestmentPool', function () {
                 vault.instance.connect(sender).exitPool(await pool.getPoolId(), sender.address, other.address, {
                   assets: poolTokens.addresses,
                   minAmountsOut: new Array(poolTokens.length).fill(bn(0)),
-                  userData: InvestmentPoolEncoder.exitForManagementFees(),
+                  userData: ManagedPoolEncoder.exitForManagementFees(),
                   toInternalBalance: false,
                 })
               ).to.be.revertedWith('UNAUTHORIZED_EXIT');

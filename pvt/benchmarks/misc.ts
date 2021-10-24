@@ -78,7 +78,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   let pool: Contract;
   let joinUserData: string;
 
-  if (poolName == 'WeightedPool' || poolName == 'WeightedPool2Tokens' || poolName == 'InvestmentPool') {
+  if (poolName == 'WeightedPool' || poolName == 'WeightedPool2Tokens' || poolName == 'ManagedPool') {
     const WEIGHTS = range(10000, 10000 + symbols.length);
     const weights = toNormalizedWeights(WEIGHTS.map(bn)); // Equal weights for all tokens
     const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
@@ -86,7 +86,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
     let params;
 
     switch (poolName) {
-      case 'InvestmentPool': {
+      case 'ManagedPool': {
         params = [tokenAddresses, weights, swapFeePercentage];
         break;
       }
@@ -142,7 +142,7 @@ export async function getWeightedPool(
   return size === 2
     ? deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool2Tokens')
     : size > 20
-    ? deployPool(vault, pickTokens(tokens, size, offset), 'InvestmentPool')
+    ? deployPool(vault, pickTokens(tokens, size, offset), 'ManagedPool')
     : deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool');
 }
 
@@ -173,7 +173,7 @@ export async function getSigners(): Promise<{
   return { admin, creator, trader };
 }
 
-type PoolName = 'WeightedPool' | 'WeightedPool2Tokens' | 'StablePool' | 'InvestmentPool';
+type PoolName = 'WeightedPool' | 'WeightedPool2Tokens' | 'StablePool' | 'ManagedPool';
 
 async function deployPoolFromFactory(
   vault: Contract,
@@ -193,7 +193,7 @@ async function deployPoolFromFactory(
   const owner = ZERO_ADDRESS;
   let receipt: ContractReceipt;
 
-  if (poolName == 'InvestmentPool') {
+  if (poolName == 'ManagedPool') {
     const swapEnabledOnStart = true;
     const managementSwapFeePercentage = 0;
 

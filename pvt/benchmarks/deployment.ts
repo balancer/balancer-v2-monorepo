@@ -17,7 +17,7 @@ async function main() {
 
   await measureDeployment('v2-pool-stable/meta/MetaStablePool');
 
-  await measureDeployment('v2-pool-weighted/InvestmentPoolFactory');
+  await measureDeployment('v2-pool-weighted/ManagedPoolFactory');
 }
 
 async function measureDeployment(name: string) {
