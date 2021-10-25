@@ -246,6 +246,10 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     ) external view returns (uint256) {
         UserStaking storage userStaking = _userStakings[stakingToken][user];
         bytes32 distributionId = getDistributionId(stakingToken, rewardsToken, rewarder);
+        return _totalEarned(userStaking, distributionId);
+    }
+
+    function _totalEarned(UserStaking storage userStaking, bytes32 distributionId) internal view returns (uint256) {
         uint256 unpaidRewards = userStaking.distributions[distributionId].unpaidRewards;
         return _unaccountedForUnpaidRewards(userStaking, distributionId).add(unpaidRewards);
     }
@@ -599,9 +603,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      */
     function _updateUserRewardRatePerToken(UserStaking storage userStaking, bytes32 distributionId) internal {
         uint256 rewardPerTokenStored = _updateDistributionRate(distributionId);
-        uint256 unpaidRewards = _unaccountedForUnpaidRewards(userStaking, distributionId);
         UserDistribution storage userDistribution = userStaking.distributions[distributionId];
-        userDistribution.unpaidRewards = unpaidRewards;
+        userDistribution.unpaidRewards = _totalEarned(userStaking, distributionId);
         userDistribution.paidRatePerToken = rewardPerTokenStored;
     }
 
