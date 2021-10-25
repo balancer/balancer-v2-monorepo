@@ -220,6 +220,12 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         view
         returns (uint256)
     {
+        // If the user is not subscribed to the queried distribution, it should be handled as if the user has no stake.
+        // Then, it can be short cut to zero.
+        if (!userStaking.allowedDistributions.contains(distributionId)) {
+            return 0;
+        }
+
         uint256 paidRatePerToken = userStaking.distributions[distributionId].paidRatePerToken;
         uint256 totalRewardPerToken = _rewardPerToken(_getDistribution(distributionId)).sub(paidRatePerToken);
         return userStaking.balance.mulDown(totalRewardPerToken);
@@ -260,9 +266,9 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             uint256 amount = userStaking.balance;
             if (amount == 0) userStaking.allowedDistributions.add(distributionId);
             else {
-                _updateDistributionRate(distributionId);
                 userStaking.allowedDistributions.add(distributionId);
-                _updateUserRewardRatePerToken(userStaking, distributionId);
+                // The unpaid rewards remains the same because was not subscribed to the distribution
+                userStaking.distributions[distributionId].paidRatePerToken = _updateDistributionRate(distributionId);
                 distribution.totalSupply = distribution.totalSupply.add(amount);
                 emit Staked(distributionId, msg.sender, amount);
             }
@@ -581,9 +587,10 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     /**
      * @notice Updates the reward per staked token rate of a distribution
      */
-    function _updateDistributionRate(bytes32 distributionId) internal {
+    function _updateDistributionRate(bytes32 distributionId) internal returns (uint256 rewardPerTokenStored) {
         Distribution storage distribution = _getDistribution(distributionId);
-        distribution.rewardPerTokenStored = _rewardPerToken(distribution);
+        rewardPerTokenStored = _rewardPerToken(distribution);
+        distribution.rewardPerTokenStored = rewardPerTokenStored;
         distribution.lastUpdateTime = _lastTimeRewardApplicable(distribution);
     }
 
@@ -591,11 +598,11 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @notice Updates unpaid rewards due to a user
      */
     function _updateUserRewardRatePerToken(UserStaking storage userStaking, bytes32 distributionId) internal {
-        _updateDistributionRate(distributionId);
+        uint256 rewardPerTokenStored = _updateDistributionRate(distributionId);
         uint256 unpaidRewards = _unaccountedForUnpaidRewards(userStaking, distributionId);
         UserDistribution storage userDistribution = userStaking.distributions[distributionId];
-        userDistribution.paidRatePerToken = _getDistribution(distributionId).rewardPerTokenStored;
         userDistribution.unpaidRewards = unpaidRewards;
+        userDistribution.paidRatePerToken = rewardPerTokenStored;
     }
 
     function _updateDistribution(IERC20 stakingToken, address user) internal {
