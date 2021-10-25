@@ -103,8 +103,8 @@ export default {
         });
         break;
       }
-      case WeightedPoolType.INVESTMENT_POOL: {
-        result = deploy('v2-pool-weighted/InvestmentPool', {
+      case WeightedPoolType.MANAGED_POOL: {
+        result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
             {
               vault: vault.address,
@@ -203,8 +203,8 @@ export default {
         result = deployedAt('v2-pool-weighted/LiquidityBootstrappingPool', event.args.pool);
         break;
       }
-      case WeightedPoolType.INVESTMENT_POOL: {
-        const factory = await deploy('v2-pool-weighted/InvestmentPoolFactory', {
+      case WeightedPoolType.MANAGED_POOL: {
+        const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
           args: [vault.address],
           from,
         });
@@ -220,7 +220,7 @@ export default {
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-        result = deployedAt('v2-pool-weighted/InvestmentPool', event.args.pool);
+        result = deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
         break;
       }
       default: {

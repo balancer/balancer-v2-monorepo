@@ -13,7 +13,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-describe('InvestmentPoolFactory', function () {
+describe('ManagedPoolFactory', function () {
   let tokens: TokenList;
   let factory: Contract;
   let vault: Vault;
@@ -37,7 +37,7 @@ describe('InvestmentPoolFactory', function () {
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
 
-    factory = await deploy('InvestmentPoolFactory', { args: [vault.address] });
+    factory = await deploy('ManagedPoolFactory', { args: [vault.address] });
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
@@ -58,7 +58,7 @@ describe('InvestmentPoolFactory', function () {
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-    return deployedAt('InvestmentPool', event.args.pool);
+    return deployedAt('ManagedPool', event.args.pool);
   }
 
   describe('constructor arguments', () => {

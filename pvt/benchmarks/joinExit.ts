@@ -12,9 +12,9 @@ import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 // setup environment
 const BPTAmount = bn(1e18);
 const numberJoinsExits = 3;
-const investmentPoolMin = 40;
-const investmentPoolMax = 50;
-const maxInvestmentTokens = 50;
+const managedPoolMin = 40;
+const managedPoolMax = 50;
+const maxManagedTokens = 50;
 
 let vault: Contract;
 let tokens: TokenList;
@@ -51,8 +51,8 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = investmentPoolMin; numTokens <= investmentPoolMax; numTokens += 10) {
-    printTokens('Investment pool', numTokens);
+  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += 10) {
+    printTokens('Managed pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
       numTokens,
@@ -63,10 +63,10 @@ async function main() {
   }
   console.log('\n');
 
-  printTokens('Investment pool', maxInvestmentTokens);
+  printTokens('Managed pool', maxManagedTokens);
   await joinAndExitPool(
-    () => getWeightedPool(vault, tokens, maxInvestmentTokens),
-    maxInvestmentTokens,
+    () => getWeightedPool(vault, tokens, maxManagedTokens),
+    maxManagedTokens,
     true,
     joinWeightedUserData,
     exitWeightedUserData
@@ -102,8 +102,8 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = investmentPoolMin; numTokens <= investmentPoolMax; numTokens += 10) {
-    printTokens('Investment pool', numTokens);
+  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += 10) {
+    printTokens('Managed pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
       numTokens,
@@ -114,10 +114,10 @@ async function main() {
   }
   console.log('\n');
 
-  printTokens('Investment pool', maxInvestmentTokens);
+  printTokens('Managed pool', maxManagedTokens);
   await joinAndExitPool(
-    () => getWeightedPool(vault, tokens, maxInvestmentTokens),
-    maxInvestmentTokens,
+    () => getWeightedPool(vault, tokens, maxManagedTokens),
+    maxManagedTokens,
     false,
     joinWeightedUserData,
     exitWeightedUserData
@@ -155,8 +155,8 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = investmentPoolMin; numTokens <= investmentPoolMax; numTokens += 10) {
-    printTokens('Investment pool', numTokens);
+  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += 10) {
+    printTokens('Managed pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
       numTokens,
@@ -168,10 +168,10 @@ async function main() {
   }
   console.log('\n');
 
-  printTokens('Investment pool', maxInvestmentTokens);
+  printTokens('Managed pool', maxManagedTokens);
   await joinAndExitPool(
-    () => getWeightedPool(vault, tokens, maxInvestmentTokens),
-    maxInvestmentTokens,
+    () => getWeightedPool(vault, tokens, maxManagedTokens),
+    maxManagedTokens,
     true,
     joinWeightedUserData,
     exitWeightedUserData,
@@ -207,8 +207,8 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = investmentPoolMin; numTokens <= investmentPoolMax; numTokens += 10) {
-    printTokens('Investment pool', numTokens);
+  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += 10) {
+    printTokens('Managed pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
       numTokens,
@@ -220,10 +220,10 @@ async function main() {
   }
   console.log('\n');
 
-  printTokens('Investment pool', maxInvestmentTokens);
+  printTokens('Managed pool', maxManagedTokens);
   await joinAndExitPool(
-    () => getWeightedPool(vault, tokens, maxInvestmentTokens),
-    maxInvestmentTokens,
+    () => getWeightedPool(vault, tokens, maxManagedTokens),
+    maxManagedTokens,
     false,
     joinWeightedUserData,
     exitWeightedUserData,
