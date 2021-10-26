@@ -13,7 +13,7 @@ import { SwapKind } from '@balancer-labs/balancer-js';
 import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { Dictionary } from 'lodash';
@@ -29,13 +29,21 @@ describe('VaultActions', function () {
     [, admin, sender] = await ethers.getSigners();
   });
 
-  async function setChainedReferenceContents(key: BigNumberish, value: BigNumberish): Promise<void> {
-    await relayer.multicall([relayerLibrary.interface.encodeFunctionData('setChainedReferenceValue', [key, value])]);
+  const CHAINED_REFERENCE_PREFIX = 'ba10';
+  function toChainedReference(key: BigNumberish): BigNumber {
+    // The full padded prefix is 66 characters long, with 64 hex characters and the 0x prefix.
+    const paddedPrefix = `0x${CHAINED_REFERENCE_PREFIX}${'0'.repeat(64 - CHAINED_REFERENCE_PREFIX.length)}`;
+
+    return BigNumber.from(paddedPrefix).add(key);
   }
 
-  async function expectChainedReferenceContents(key: BigNumberish, expectedValue: BigNumberish): Promise<void> {
+  async function setChainedReferenceContents(ref: BigNumberish, value: BigNumberish): Promise<void> {
+    await relayer.multicall([relayerLibrary.interface.encodeFunctionData('setChainedReferenceValue', [ref, value])]);
+  }
+
+  async function expectChainedReferenceContents(ref: BigNumberish, expectedValue: BigNumberish): Promise<void> {
     const receipt = await (
-      await relayer.multicall([relayerLibrary.interface.encodeFunctionData('getChainedReferenceValue', [key])])
+      await relayer.multicall([relayerLibrary.interface.encodeFunctionData('getChainedReferenceValue', [ref])])
     ).wait();
 
     expectEvent.inIndirectReceipt(receipt, relayerLibrary.interface, 'ChainedReferenceValueRead', {
@@ -146,7 +154,7 @@ describe('VaultActions', function () {
             tokenIn: tokens.DAI,
             tokenOut: tokens.MKR,
             amount: amountIn,
-            outputReference: '0xba10000000000000000000000000000000000000000000000000000000000000',
+            outputReference: toChainedReference(0),
           }),
         ])
       ).wait();
@@ -154,14 +162,11 @@ describe('VaultActions', function () {
       const {
         args: { amountOut },
       } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
-      await expectChainedReferenceContents(
-        '0xba10000000000000000000000000000000000000000000000000000000000000',
-        amountOut
-      );
+      await expectChainedReferenceContents(toChainedReference(0), amountOut);
     });
 
     it('swaps with chained references', async () => {
-      await setChainedReferenceContents('0xba10000000000000000000000000000000000000000000000000000000000000', amountIn);
+      await setChainedReferenceContents(toChainedReference(0), amountIn);
 
       const receipt = await (
         await relayer.connect(sender).multicall([
@@ -169,7 +174,7 @@ describe('VaultActions', function () {
             poolId: poolIdA,
             tokenIn: tokens.DAI,
             tokenOut: tokens.MKR,
-            amount: '0xba10000000000000000000000000000000000000000000000000000000000000',
+            amount: toChainedReference(0),
           }),
         ])
       ).wait();
@@ -188,13 +193,13 @@ describe('VaultActions', function () {
                 tokenIn: tokens.DAI,
                 tokenOut: tokens.MKR,
                 amount: amountIn,
-                outputReference: '0xba10000000000000000000000000000000000000000000000000000000000000',
+                outputReference: toChainedReference(0),
               }),
               encodeSwap({
                 poolId: poolIdB,
                 tokenIn: tokens.MKR,
                 tokenOut: tokens.SNX,
-                amount: '0xba10000000000000000000000000000000000000000000000000000000000000',
+                amount: toChainedReference(0),
               }),
             ]),
           tokens,
@@ -284,8 +289,8 @@ describe('VaultActions', function () {
               { poolId: poolIdC, tokenIn: tokens.SNX, tokenOut: tokens.BAT, amount: amountInC },
             ],
             outputReferences: {
-              MKR: '0xba10000000000000000000000000000000000000000000000000000000000000',
-              SNX: '0xba10000000000000000000000000000000000000000000000000000000000001',
+              MKR: toChainedReference(0),
+              SNX: toChainedReference(1),
             },
           }),
         ])
@@ -301,22 +306,13 @@ describe('VaultActions', function () {
         args: { amountIn: amountInSNX },
       } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdC });
 
-      await expectChainedReferenceContents(
-        '0xba10000000000000000000000000000000000000000000000000000000000000',
-        amountOutMKR
-      );
+      await expectChainedReferenceContents(toChainedReference(0), amountOutMKR);
 
-      await expectChainedReferenceContents(
-        '0xba10000000000000000000000000000000000000000000000000000000000001',
-        amountInSNX
-      );
+      await expectChainedReferenceContents(toChainedReference(1), amountInSNX);
     });
 
     it('swaps with chained references', async () => {
-      await setChainedReferenceContents(
-        '0xba10000000000000000000000000000000000000000000000000000000000000',
-        amountInC
-      );
+      await setChainedReferenceContents(toChainedReference(0), amountInC);
 
       const receipt = await (
         await relayer.connect(sender).multicall([
@@ -327,7 +323,7 @@ describe('VaultActions', function () {
                 poolId: poolIdC,
                 tokenIn: tokens.SNX,
                 tokenOut: tokens.BAT,
-                amount: '0xba10000000000000000000000000000000000000000000000000000000000000',
+                amount: toChainedReference(0),
               },
             ],
           }),
@@ -349,8 +345,8 @@ describe('VaultActions', function () {
                   { poolId: poolIdC, tokenIn: tokens.SNX, tokenOut: tokens.BAT, amount: amountInC },
                 ],
                 outputReferences: {
-                  MKR: '0xba10000000000000000000000000000000000000000000000000000000000000',
-                  BAT: '0xba10000000000000000000000000000000000000000000000000000000000001',
+                  MKR: toChainedReference(0),
+                  BAT: toChainedReference(1),
                 },
               }),
               encodeBatchSwap({
@@ -360,14 +356,14 @@ describe('VaultActions', function () {
                     poolId: poolIdB,
                     tokenIn: tokens.MKR,
                     tokenOut: tokens.SNX,
-                    amount: '0xba10000000000000000000000000000000000000000000000000000000000000',
+                    amount: toChainedReference(0),
                   },
                   // Undo first SNX-BAT swap
                   {
                     poolId: poolIdC,
                     tokenIn: tokens.BAT,
                     tokenOut: tokens.SNX,
-                    amount: '0xba10000000000000000000000000000000000000000000000000000000000001',
+                    amount: toChainedReference(1),
                   },
                 ],
               }),
