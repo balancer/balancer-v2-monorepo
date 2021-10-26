@@ -27,10 +27,6 @@ contract MockBaseRelayerLibrary is BaseRelayerLibrary {
         return _isChainedReference(amount);
     }
 
-    function getChainedReferenceKey(uint256 ref) public pure returns (uint256) {
-        return _getChainedReferenceKey(ref);
-    }
-
     function setChainedReferenceValue(uint256 ref, uint256 value) public returns (uint256) {
         _setChainedReferenceValue(ref, value);
     }

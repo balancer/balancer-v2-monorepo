@@ -302,7 +302,7 @@ describe('VaultActions', function () {
       } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdC });
 
       await expectChainedReferenceContents(
-        '0xba1000000000000000000000000000000000000000000000000000000000000',
+        '0xba10000000000000000000000000000000000000000000000000000000000000',
         amountOutMKR
       );
 

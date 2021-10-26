@@ -51,10 +51,6 @@ describe('BaseRelayerLibrary', function () {
       expect(await relayerLibrary.isChainedReference(toChainedReference(5))).to.equal(true);
     });
 
-    it('extracts chained reference keys', async () => {
-      expect(await relayerLibrary.getChainedReferenceKey(toChainedReference(5))).to.equal(5);
-    });
-
     describe('read and write', () => {
       const key = 5;
       const reference = toChainedReference(key);

@@ -78,44 +78,32 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * @dev Stores `value` as the amount referenced by chained reference `ref`.
      */
     function _setChainedReferenceValue(uint256 ref, uint256 value) internal override {
-        _writeTempStorage(_getChainedReferenceKey(ref), value);
+        bytes32 slot = _getTempStorageSlot(ref);
+        assembly {
+            sstore(slot, value)
+        }
     }
 
     /**
      * @dev Returns the amount referenced by chained reference `ref`. Reading an amount clears it, so they can each
      * only be read once.
      */
-    function _getChainedReferenceValue(uint256 ref) internal override returns (uint256) {
-        return _readTempStorage(_getChainedReferenceKey(ref));
-    }
-
-    function _getChainedReferenceKey(uint256 ref) internal pure returns (uint256) {
-        return (ref & 0x0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
-    }
-
-    function _readTempStorage(uint256 key) private returns (uint256 value) {
-        bytes32 slot = _getTempStorageSlot(key);
+    function _getChainedReferenceValue(uint256 ref) internal override returns (uint256 value) {
+        bytes32 slot = _getTempStorageSlot(ref);
         assembly {
             value := sload(slot)
             sstore(slot, 0)
         }
     }
 
-    function _writeTempStorage(uint256 key, uint256 value) private {
-        bytes32 slot = _getTempStorageSlot(key);
-        assembly {
-            sstore(slot, value)
-        }
-    }
-
     bytes32 private immutable _TEMP_STORAGE_PREFIX = keccak256("balancer.base-relayer-library");
 
-    function _getTempStorageSlot(uint256 key) private view returns (bytes32) {
+    function _getTempStorageSlot(uint256 ref) private view returns (bytes32) {
         // This replicates the mechanism Solidity uses to allocate storage slots for mappings, but using a hash as the
         // mapping's storage slot, and subtracting 1 at the end. This should be more enough to prevent collisions with
         // other state variables this or derived contracts might use.
         // See https://docs.soliditylang.org/en/v0.8.9/internals/layout_in_storage.html
 
-        return bytes32(uint256(keccak256(abi.encodePacked(key, _TEMP_STORAGE_PREFIX))) - 1);
+        return bytes32(uint256(keccak256(abi.encodePacked(ref, _TEMP_STORAGE_PREFIX))) - 1);
     }
 }
