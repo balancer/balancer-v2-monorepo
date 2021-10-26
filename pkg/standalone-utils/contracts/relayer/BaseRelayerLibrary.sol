@@ -65,16 +65,26 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
         address(_vault).functionCall(data);
     }
 
+    /**
+     * @dev Returns true if `amount` is not actually an amount, but rather a chained reference.
+     */
     function _isChainedReference(uint256 amount) internal pure override returns (bool) {
         return
             (amount & 0xffff000000000000000000000000000000000000000000000000000000000000) ==
             0xba10000000000000000000000000000000000000000000000000000000000000;
     }
 
+    /**
+     * @dev Stores `value` as the amount referenced by chained reference `ref`.
+     */
     function _setChainedReferenceValue(uint256 ref, uint256 value) internal override {
         _writeTempStorage(_getChainedReferenceKey(ref), value);
     }
 
+    /**
+     * @dev Returns the amount referenced by chained reference `ref`. Reading an amount clears it, so they can each
+     * only be read once.
+     */
     function _getChainedReferenceValue(uint256 ref) internal override returns (uint256) {
         return _readTempStorage(_getChainedReferenceKey(ref));
     }
@@ -102,8 +112,8 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
 
     function _getTempStorageSlot(uint256 key) private view returns (bytes32) {
         // This replicates the mechanism Solidity uses to allocate storage slots for mappings, but using a hash as the
-        // mapping's storage slot, and subtracting 1 at the end. This should be enough to prevent collisions with other
-        // state variables.
+        // mapping's storage slot, and subtracting 1 at the end. This should be more enough to prevent collisions with
+        // other state variables this or derived contracts might use.
         // See https://docs.soliditylang.org/en/v0.8.9/internals/layout_in_storage.html
 
         return bytes32(uint256(keccak256(abi.encodePacked(key, _TEMP_STORAGE_PREFIX))) - 1);
