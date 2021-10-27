@@ -47,7 +47,7 @@ describe('Reinvestor', () => {
     const rewardAmount = fp(1);
 
     sharedBeforeEach(async () => {
-      await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
+      await stakingContract.connect(mockAssetManager).create(pool.address, rewardToken.address, rewardsDuration);
 
       const bptBalance = await pool.balanceOf(lp.address);
 
@@ -136,7 +136,7 @@ describe('Reinvestor', () => {
         expect(bptBalanceAfter.sub(bptBalanceBefore)).to.equal(bn('998703239790478024'));
       });
 
-      describe('addReward', () => {
+      describe('create', () => {
         let anotherId: string;
         let otherRewardTokens: TokenList;
         let otherRewardToken: Token;
@@ -150,7 +150,7 @@ describe('Reinvestor', () => {
 
           await stakingContract
             .connect(mockAssetManager)
-            .addReward(pool.address, otherRewardToken.address, rewardsDuration);
+            .create(pool.address, otherRewardToken.address, rewardsDuration);
 
           anotherId = await stakingContract.getDistributionId(
             pool.address,
