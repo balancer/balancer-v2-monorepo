@@ -23,7 +23,7 @@ interface IMultiRewards {
         uint256 amount
     ) external;
 
-    function addReward(
+    function create(
         IERC20 stakingToken,
         IERC20 rewardsToken,
         uint256 duration

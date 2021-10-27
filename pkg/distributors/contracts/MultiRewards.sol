@@ -86,7 +86,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @param rewardsToken The new token to be distributed to users
      * @param duration The duration over which each distribution is spread
      */
-    function addReward(
+    function create(
         IERC20 stakingToken,
         IERC20 rewardsToken,
         uint256 duration
@@ -518,7 +518,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         _updateDistributionRate(distributionId);
 
         Distribution storage distribution = _getDistribution(distributionId);
-        require(distribution.duration > 0, "Reward must be configured with addReward");
+        require(distribution.duration > 0, "Reward must be configured with create");
 
         rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
         rewardsToken.approve(address(getVault()), amount);
@@ -567,7 +567,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
         bytes32 distributionId = getDistributionId(stakingToken, rewardsToken, msg.sender);
         Distribution storage distribution = _getDistribution(distributionId);
-        require(distribution.duration > 0, "Reward must be configured with addReward");
+        require(distribution.duration > 0, "Reward must be configured with create");
         require(distribution.periodFinish < block.timestamp, "Reward period still active");
 
         distribution.duration = duration;

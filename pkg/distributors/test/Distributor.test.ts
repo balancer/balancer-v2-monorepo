@@ -361,7 +361,7 @@ describe('MultiRewards', () => {
     context('when the given distribution does not exist', () => {
       it('reverts', async () => {
         await expect(distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder })).to.be.revertedWith(
-          'Reward must be configured with addReward'
+          'Reward must be configured with create'
         );
       });
     });
@@ -456,7 +456,7 @@ describe('MultiRewards', () => {
     context('when the given distribution does not exist', () => {
       it('reverts', async () => {
         await expect(distributor.setDuration(stakingToken, rewardsToken, 1, { from: rewarder })).to.be.revertedWith(
-          'Reward must be configured with addReward'
+          'Reward must be configured with create'
         );
       });
     });
