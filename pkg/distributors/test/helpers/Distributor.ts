@@ -98,24 +98,14 @@ export class Distributor {
     return instance.create(TypesConverter.toAddress(stakingToken), TypesConverter.toAddress(rewardsToken), duration);
   }
 
-  async reward(
-    stakingToken: Token,
-    rewardsToken: Token,
-    amount: BigNumberish,
-    params?: TxParams
-  ): Promise<ContractTransaction> {
+  async reward(distribution: string, amount: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.reward(stakingToken.address, rewardsToken.address, amount);
+    return instance.reward(distribution, amount);
   }
 
-  async setDuration(
-    stakingToken: Token,
-    rewardsToken: Token,
-    newDuration: BigNumberish,
-    params?: TxParams
-  ): Promise<ContractTransaction> {
+  async setDuration(distribution: string, newDuration: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.setRewardsDuration(stakingToken.address, rewardsToken.address, newDuration);
+    return instance.setRewardsDuration(distribution, newDuration);
   }
 
   async subscribe(ids: NAry<string>, params?: TxParams): Promise<ContractTransaction> {

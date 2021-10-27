@@ -215,20 +215,15 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
     /**
      * @notice Set the reward duration for a reward
-     * @param stakingToken The staking token to be set
-     * @param rewardsToken The token for the reward
+     * @param distributionId ID of the distribution to be set
      * @param duration The duration over which each distribution is spread
      */
-    function setRewardsDuration(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        uint256 duration
-    ) external {
+    function setRewardsDuration(bytes32 distributionId, uint256 duration) external {
         require(duration > 0, "Reward duration must be non-zero");
 
-        bytes32 distributionId = getDistributionId(stakingToken, rewardsToken, msg.sender);
         Distribution storage distribution = _getDistribution(distributionId);
         require(distribution.duration > 0, "Reward must be configured with create");
+        require(distribution.rewarder == msg.sender, "SENDER_NOT_REWARDER");
         require(distribution.periodFinish < block.timestamp, "Reward period still active");
 
         distribution.duration = duration;
@@ -236,22 +231,18 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice Allows a rewards distributor, or the reward scheduler to deposit more tokens to be distributed as rewards
-     * @param stakingToken The staking token being rewarded
-     * @param rewardsToken The token to deposit into staking contract for distribution
+     * @dev Allows a distributor to deposit more tokens to be distributed as rewards
+     * @param distributionId ID of the distribution to be rewarded
      * @param amount The amount of tokens to deposit
      */
-    function reward(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        uint256 amount
-    ) external override {
-        bytes32 distributionId = getDistributionId(stakingToken, rewardsToken, msg.sender);
+    function reward(bytes32 distributionId, uint256 amount) external override {
         _updateDistributionRate(distributionId);
 
         Distribution storage distribution = _getDistribution(distributionId);
         require(distribution.duration > 0, "Reward must be configured with create");
+        require(distribution.rewarder == msg.sender, "SENDER_NOT_REWARDER");
 
+        IERC20 rewardsToken = distribution.rewardsToken;
         rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
         rewardsToken.approve(address(getVault()), amount);
 
