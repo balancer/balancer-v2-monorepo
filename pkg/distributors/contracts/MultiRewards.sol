@@ -73,9 +73,9 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
     event Staked(bytes32 indexed distribution, address indexed user, uint256 amount);
     event Withdrawn(bytes32 indexed distribution, address indexed user, uint256 amount);
-    event NewReward(bytes32 indexed distribution, IERC20 stakingToken, IERC20 rewardsToken, address rewarder);
+    event NewDistribution(bytes32 indexed distribution, IERC20 stakingToken, IERC20 rewardsToken, address rewarder);
+    event DistributionDurationSet(bytes32 indexed distribution, uint256 duration);
     event RewardAdded(bytes32 indexed distribution, uint256 amount);
-    event RewardDurationSet(bytes32 indexed distribution, uint256 duration);
 
     /**
      * @notice Updates the reward rate for all the distributions a user has signed up for
@@ -210,7 +210,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         distribution.rewardsToken = rewardsToken;
         distribution.stakingToken = stakingToken;
 
-        emit NewReward(distributionId, stakingToken, rewardsToken, msg.sender);
+        emit NewDistribution(distributionId, stakingToken, rewardsToken, msg.sender);
     }
 
     /**
@@ -218,7 +218,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @param distributionId ID of the distribution to be set
      * @param duration The duration over which each distribution is spread
      */
-    function setRewardsDuration(bytes32 distributionId, uint256 duration) external {
+    function setDistributionDuration(bytes32 distributionId, uint256 duration) external {
         require(duration > 0, "Reward duration must be non-zero");
 
         Distribution storage distribution = _getDistribution(distributionId);
@@ -227,7 +227,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         require(distribution.periodFinish < block.timestamp, "Reward period still active");
 
         distribution.duration = duration;
-        emit RewardDurationSet(distributionId, duration);
+        emit DistributionDurationSet(distributionId, duration);
     }
 
     /**

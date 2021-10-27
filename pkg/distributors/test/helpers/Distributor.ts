@@ -105,7 +105,7 @@ export class Distributor {
 
   async setDuration(distribution: string, newDuration: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.setRewardsDuration(distribution, newDuration);
+    return instance.setDistributionDuration(distribution, newDuration);
   }
 
   async subscribe(ids: NAry<string>, params?: TxParams): Promise<ContractTransaction> {

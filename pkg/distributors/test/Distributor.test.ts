@@ -86,7 +86,7 @@ describe('MultiRewards', () => {
           const tx = await distributor.newDistribution(stakingToken, rewardsToken, PERIOD_DURATION, { from: rewarder });
 
           const id = await distributor.getDistributionId(stakingToken, rewardsToken, rewarder);
-          expectEvent.inReceipt(await tx.wait(), 'NewReward', {
+          expectEvent.inReceipt(await tx.wait(), 'NewDistribution', {
             distribution: id,
             stakingToken: stakingToken.address,
             rewardsToken: rewardsToken.address,
@@ -394,10 +394,10 @@ describe('MultiRewards', () => {
             expect(duration).to.be.equal(newDuration);
           });
 
-          it('emits a RewardDurationSet event', async () => {
+          it('emits a DistributionDurationSet event', async () => {
             const tx = await distributor.setDuration(distribution, newDuration, { from: rewarder });
 
-            expectEvent.inReceipt(await tx.wait(), 'RewardDurationSet', {
+            expectEvent.inReceipt(await tx.wait(), 'DistributionDurationSet', {
               distribution: distribution,
               duration: newDuration,
             });
