@@ -91,7 +91,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
             if (_isChainedReference(ref)) {
                 // Batch swap return values are signed, as they are Vault deltas (positive values stand for assets sent
                 // to the Vault, negatives for assets sent from the Vault). To simplify the chained reference value
-                // model, we simqply store the absolute value.
+                // model, we simply store the absolute value.
                 // This should be fine for most use cases, as the caller can reason about swap results via the `limits`
                 // parameter.
                 _setChainedReferenceValue(ref, Math.abs(results[i]));
