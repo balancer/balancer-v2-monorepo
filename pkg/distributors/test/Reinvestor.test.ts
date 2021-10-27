@@ -43,7 +43,9 @@ describe('Reinvestor', () => {
   });
 
   describe('with a stake and a reward', () => {
+    let id: string;
     const rewardAmount = fp(1);
+
     sharedBeforeEach(async () => {
       await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
 
@@ -51,7 +53,7 @@ describe('Reinvestor', () => {
 
       await pool.connect(lp).approve(stakingContract.address, bptBalance);
 
-      const id = await stakingContract.getDistributionId(pool.address, rewardToken.address, mockAssetManager.address);
+      id = await stakingContract.getDistributionId(pool.address, rewardToken.address, mockAssetManager.address);
       await stakingContract.connect(lp).subscribe([id]);
       await stakingContract.connect(lp).stake(pool.address, bptBalance);
 
@@ -109,7 +111,7 @@ describe('Reinvestor', () => {
         const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
 
         const receipt = await (
-          await stakingContract.connect(lp).getRewardWithCallback([pool.address], callbackContract.address, calldata)
+          await stakingContract.connect(lp).getRewardWithCallback([id], callbackContract.address, calldata)
         ).wait();
 
         const deltas = [bn(0), bn(0)];
@@ -129,12 +131,13 @@ describe('Reinvestor', () => {
         const args = [lp.address, destinationPoolId, [rewardToken.address]];
         const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
 
-        await stakingContract.connect(lp).getRewardWithCallback([pool.address], callbackContract.address, calldata);
+        await stakingContract.connect(lp).getRewardWithCallback([id], callbackContract.address, calldata);
         const bptBalanceAfter = await destinationPool.balanceOf(lp.address);
         expect(bptBalanceAfter.sub(bptBalanceBefore)).to.equal(bn('998703239790478024'));
       });
 
       describe('addReward', () => {
+        let anotherId: string;
         let otherRewardTokens: TokenList;
         let otherRewardToken: Token;
 
@@ -149,12 +152,12 @@ describe('Reinvestor', () => {
             .connect(mockAssetManager)
             .addReward(pool.address, otherRewardToken.address, rewardsDuration);
 
-          const id = await stakingContract.getDistributionId(
+          anotherId = await stakingContract.getDistributionId(
             pool.address,
             otherRewardToken.address,
             mockAssetManager.address
           );
-          await stakingContract.connect(lp).subscribe([id]);
+          await stakingContract.connect(lp).subscribe([anotherId]);
 
           await stakingContract
             .connect(mockAssetManager)
@@ -168,7 +171,8 @@ describe('Reinvestor', () => {
           const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
 
           await expectBalanceChange(
-            () => stakingContract.connect(lp).getRewardWithCallback([pool.address], callbackContract.address, calldata),
+            () =>
+              stakingContract.connect(lp).getRewardWithCallback([id, anotherId], callbackContract.address, calldata),
             otherRewardTokens,
             [{ account: lp, changes: { GRT: ['very-near', fp(3)] } }]
           );
