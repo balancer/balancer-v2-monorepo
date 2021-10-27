@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -9,14 +9,15 @@ import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
-import { SwapKind } from '@balancer-labs/balancer-js';
-import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { BigNumber, Contract } from 'ethers';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { Dictionary } from 'lodash';
+import { Interface } from '@ethersproject/abi';
 
 describe('VaultActions', function () {
   let vault: Vault;
@@ -73,7 +74,7 @@ describe('VaultActions', function () {
   });
 
   sharedBeforeEach('set up pools', async () => {
-    tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT']);
+    tokens = (await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'])).sort();
     await tokens.mint({ to: sender });
     await tokens.approve({ to: vault, from: sender });
 
@@ -403,5 +404,89 @@ describe('VaultActions', function () {
 
       expect(amountOutBAT).to.equal(amountInBAT);
     });
+  });
+
+  describe('join pool', () => {
+    const amountInDAI = fp(2);
+    const amountInMKR = fp(5);
+
+    const amountsInA = new Array(2);
+    sharedBeforeEach(async () => {
+      const { tokens: tokensA } = await vault.getPoolTokens(poolIdA);
+
+      amountsInA[tokensA.indexOf(tokens.DAI.address)] = amountInDAI;
+      amountsInA[tokensA.indexOf(tokens.MKR.address)] = amountInMKR;
+    });
+
+    async function encodeJoinPool(params: {
+      poolId: string;
+      userData: string;
+      outputReference?: BigNumberish;
+    }): Promise<string> {
+      const { tokens } = await vault.getPoolTokens(params.poolId);
+
+      return relayerLibrary.interface.encodeFunctionData('joinPool', [
+        params.poolId,
+        sender.address,
+        sender.address,
+        {
+          assets: tokens,
+          maxAmountsIn: new Array(tokens.length).fill(MAX_UINT256),
+          userData: params.userData,
+          fromInternalBalance: false,
+        },
+        0,
+        params.outputReference ?? 0,
+      ]);
+    }
+
+    it('joins with immediate amounts', async () => {
+      await expectBalanceChange(
+        async () =>
+          relayer.connect(sender).multicall([
+            await encodeJoinPool({
+              poolId: poolIdA,
+              userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsInA, 0),
+            }),
+          ]),
+        tokens,
+        {
+          account: sender,
+          changes: {
+            DAI: amountInDAI.mul(-1),
+            MKR: amountInMKR.mul(-1),
+          },
+        }
+      );
+    });
+
+    it('stores BPT amount out as chained reference', async () => {
+      const receipt = await (
+        await relayer.connect(sender).multicall([
+          await encodeJoinPool({
+            poolId: poolIdA,
+            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsInA, 0),
+            outputReference: toChainedReference(0),
+          }),
+        ])
+      ).wait();
+
+      const {
+        args: { value: BPTAmountOut },
+      } = expectEvent.inIndirectReceipt(
+        receipt,
+        new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+        'Transfer',
+        { from: ZERO_ADDRESS, to: sender.address }
+      );
+
+      await expectChainedReferenceContents(toChainedReference(0), BPTAmountOut);
+    });
+
+    describe('weighted pool', () => {
+      it('joins with exact amounts in chained references', async () => {});
+    });
+
+    it('is chainable via multicall', async () => {});
   });
 });

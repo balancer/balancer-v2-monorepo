@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/VaultHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol";
@@ -35,6 +36,8 @@ import "../interfaces/IBaseRelayerLibrary.sol";
  * All functions must be payable so that it can be called as part of a multicall involving ETH
  */
 abstract contract VaultActions is IBaseRelayerLibrary {
+    using Math for uint256;
+
     function swap(
         IVault.SingleSwap memory singleSwap,
         IVault.FundManagement calldata funds,
@@ -85,7 +88,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
             if (_isChainedReference(ref)) {
                 // Batch swap return values are signed, as they are Vault deltas (positive values stand for assets sent
                 // to the Vault, negatives for assets sent from the Vault). To simplify the chained reference value
-                // model, we simply store the absolute value.
+                // model, we simqply store the absolute value.
                 // This should be fine for most use cases, as the caller can reason about swap results via the `limits`
                 // parameter.
                 _setChainedReferenceValue(ref, Math.abs(results[i]));
@@ -107,10 +110,26 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         address sender,
         address recipient,
         IVault.JoinPoolRequest calldata request,
-        uint256 value
+        uint256 value,
+        uint256 outputReference
     ) external payable {
         require(sender == msg.sender, "Incorrect sender");
+
+        // The output of a join is expected to be balance in the Pool's token contract, typically known as BPT (Balancer
+        // Pool Tokens). Since the Vault is unaware of this (BPT is minted directly to the recipient), we manually
+        // measure this balance increase (but only if an output reference is provided).
+        IERC20 BPT = IERC20(VaultHelpers.toPoolAddress(poolId));
+        uint256 maybeInitialRecipientBPT = _isChainedReference(outputReference) ? BPT.balanceOf(recipient) : 0;
+
         getVault().joinPool{ value: value }(poolId, sender, recipient, request);
+
+        if (_isChainedReference(outputReference)) {
+            // In this context, `maybeInitialRecipientBPT` is guaranteed to have been initialized, so we can safely read
+            // from it. Note that we assume that the recipient balance change has a positive sign (i.e. the recipient
+            // received BPT).
+            uint256 finalRecipientBPT = BPT.balanceOf(recipient);
+            _setChainedReferenceValue(outputReference, finalRecipientBPT.sub(maybeInitialRecipientBPT));
+        }
     }
 
     function exitPool(
