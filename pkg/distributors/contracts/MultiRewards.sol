@@ -509,7 +509,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @param rewardsToken The token to deposit into staking contract for distribution
      * @param amount The amount of tokens to deposit
      */
-    function notifyRewardAmount(
+    function reward(
         IERC20 stakingToken,
         IERC20 rewardsToken,
         uint256 amount

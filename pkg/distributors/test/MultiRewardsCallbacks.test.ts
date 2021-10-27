@@ -54,9 +54,7 @@ describe('Staking contract - callbacks', () => {
       await stakingContract.connect(lp).subscribe([id]);
       await stakingContract.connect(lp).stake(pool.address, bptBalance);
 
-      await stakingContract
-        .connect(mockAssetManager)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
+      await stakingContract.connect(mockAssetManager).reward(pool.address, rewardToken.address, rewardAmount);
       await advanceTime(rewardsVestingTime);
     });
 
