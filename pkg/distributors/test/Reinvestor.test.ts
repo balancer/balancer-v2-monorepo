@@ -57,7 +57,7 @@ describe('Reinvestor', () => {
       await stakingContract.connect(lp).subscribe([id]);
       await stakingContract.connect(lp).stake(pool.address, bptBalance);
 
-      await stakingContract.connect(mockAssetManager).reward(pool.address, rewardToken.address, rewardAmount);
+      await stakingContract.connect(mockAssetManager).reward(id, rewardAmount);
       await advanceTime(rewardsVestingTime);
     });
 
@@ -157,7 +157,7 @@ describe('Reinvestor', () => {
           );
           await stakingContract.connect(lp).subscribe([anotherId]);
 
-          await stakingContract.connect(mockAssetManager).reward(pool.address, otherRewardToken.address, fp(3));
+          await stakingContract.connect(mockAssetManager).reward(anotherId, fp(3));
           await advanceTime(rewardsVestingTime);
         });
 

@@ -35,6 +35,7 @@ contract RewardsScheduler {
     enum RewardStatus { UNINITIALIZED, PENDING, STARTED }
 
     struct ScheduledReward {
+        bytes32 distributionId;
         IERC20 stakingToken;
         IERC20 rewardsToken;
         uint256 startTime;
@@ -81,7 +82,7 @@ contract RewardsScheduler {
             ) {
                 scheduledReward.rewardsToken.approve(address(_multiRewards), type(uint256).max);
             }
-            _multiRewards.reward(scheduledReward.stakingToken, scheduledReward.rewardsToken, scheduledReward.amount);
+            _multiRewards.reward(scheduledReward.distributionId, scheduledReward.amount);
             emit RewardStarted(
                 rewardId,
                 scheduledReward.rewarder,
@@ -103,6 +104,7 @@ contract RewardsScheduler {
     }
 
     function scheduleReward(
+        bytes32 distributionId,
         IERC20 stakingToken,
         IERC20 rewardsToken,
         uint256 amount,
@@ -114,6 +116,7 @@ contract RewardsScheduler {
         require(_rewards[rewardId].status == RewardStatus.UNINITIALIZED, "Reward has already been scheduled");
 
         _rewards[rewardId] = ScheduledReward({
+            distributionId: distributionId,
             stakingToken: stakingToken,
             rewardsToken: rewardsToken,
             rewarder: msg.sender,

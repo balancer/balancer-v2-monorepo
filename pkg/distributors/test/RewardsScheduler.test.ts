@@ -12,6 +12,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { setup, rewardsDuration } from './MultiRewardsSharedSetup';
+import { ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('Rewards Scheduler', () => {
   let lp: SignerWithAddress, rewarder: SignerWithAddress;
@@ -47,7 +48,10 @@ describe('Rewards Scheduler', () => {
     const rewardAmount = fp(1);
 
     await expectBalanceChange(
-      () => rewardsScheduler.connect(rewarder).scheduleReward(pool.address, rewardsToken.address, rewardAmount, time),
+      () =>
+        rewardsScheduler
+          .connect(rewarder)
+          .scheduleReward(ZERO_BYTES32, pool.address, rewardsToken.address, rewardAmount, time),
       rewardTokens,
       [{ account: rewardsScheduler.address, changes: { DAI: rewardAmount } }]
     );
@@ -58,7 +62,9 @@ describe('Rewards Scheduler', () => {
     const rewardAmount = fp(1);
 
     const receipt = await (
-      await rewardsScheduler.connect(rewarder).scheduleReward(pool.address, rewardsToken.address, rewardAmount, time)
+      await rewardsScheduler
+        .connect(rewarder)
+        .scheduleReward(ZERO_BYTES32, pool.address, rewardsToken.address, rewardAmount, time)
     ).wait();
 
     const rewardId = await rewardsScheduler.claimId(pool.address, rewardsToken.address, rewarder.address, time);
@@ -80,7 +86,9 @@ describe('Rewards Scheduler', () => {
     sharedBeforeEach(async () => {
       // reward duration is important.  These tests assume a very short duration
       time = (await currentTimestamp()).add(3600 * 24);
-      await rewardsScheduler.connect(rewarder).scheduleReward(pool.address, rewardsToken.address, rewardAmount, time);
+      await rewardsScheduler
+        .connect(rewarder)
+        .scheduleReward(ZERO_BYTES32, pool.address, rewardsToken.address, rewardAmount, time);
 
       rewardId = await rewardsScheduler.claimId(pool.address, rewardsToken.address, rewarder.address, time);
     });

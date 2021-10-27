@@ -156,7 +156,7 @@ describe('MultiRewards', () => {
       const itCreatesANewRewardDistributionPeriod = () => {
         it('updates the last update time of the distribution', async () => {
           const currentTime = await currentTimestamp();
-          await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          await distributor.reward(distribution, REWARDS, { from: rewarder });
 
           const { lastUpdateTime: currentLastUpdate } = await distributor.getDistribution(distribution);
           expect(currentLastUpdate).to.be.at.least(currentTime);
@@ -164,21 +164,21 @@ describe('MultiRewards', () => {
 
         it('sets the end date of the current period', async () => {
           const currentTime = await currentTimestamp();
-          await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          await distributor.reward(distribution, REWARDS, { from: rewarder });
 
           const { periodFinish: currentEndDate } = await distributor.getDistribution(distribution);
           expect(currentEndDate).to.be.at.least(currentTime.add(PERIOD_DURATION));
         });
 
         it('increases the reward rate', async () => {
-          await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          await distributor.reward(distribution, REWARDS, { from: rewarder });
 
           const { rewardRate: currentRewardRate } = await distributor.getDistribution(distribution);
           expect(currentRewardRate).to.be.equal(REWARDS.div(PERIOD_DURATION));
         });
 
         it('emits a RewardAdded event', async () => {
-          const tx = await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          const tx = await distributor.reward(distribution, REWARDS, { from: rewarder });
 
           expectEvent.inReceipt(await tx.wait(), 'RewardAdded', {
             distribution: distribution,
@@ -192,7 +192,7 @@ describe('MultiRewards', () => {
           const { lastUpdateTime: previousLastUpdate } = await distributor.getDistribution(distribution);
 
           const currentTime = await currentTimestamp();
-          await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          await distributor.reward(distribution, REWARDS, { from: rewarder });
 
           const { lastUpdateTime: currentLastUpdate } = await distributor.getDistribution(distribution);
           expect(currentLastUpdate).to.be.gt(previousLastUpdate);
@@ -203,7 +203,7 @@ describe('MultiRewards', () => {
           const { periodFinish: previousEndDate } = await distributor.getDistribution(distribution);
 
           const currentTime = await currentTimestamp();
-          await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          await distributor.reward(distribution, REWARDS, { from: rewarder });
 
           const { periodFinish: currentEndDate } = await distributor.getDistribution(distribution);
           expect(currentEndDate).to.be.gt(previousEndDate);
@@ -214,7 +214,7 @@ describe('MultiRewards', () => {
           const { rewardRate: previousRewardRate, periodFinish } = await distributor.getDistribution(distribution);
 
           const currentTime = await currentTimestamp();
-          await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          await distributor.reward(distribution, REWARDS, { from: rewarder });
 
           const { rewardRate: currentRewardRate } = await distributor.getDistribution(distribution);
           expect(currentRewardRate).to.be.gt(previousRewardRate);
@@ -225,7 +225,7 @@ describe('MultiRewards', () => {
         });
 
         it('emits a RewardAdded event', async () => {
-          const tx = await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          const tx = await distributor.reward(distribution, REWARDS, { from: rewarder });
 
           expectEvent.inReceipt(await tx.wait(), 'RewardAdded', {
             distribution: distribution,
@@ -244,7 +244,7 @@ describe('MultiRewards', () => {
           const previousUser2Rewards = await distributor.totalEarned(distribution, user2);
           expect(previousUser2Rewards).to.be.almostEqual(fp(60e3).mul(rewardedTime).div(PERIOD_DURATION));
 
-          await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          await distributor.reward(distribution, REWARDS, { from: rewarder });
           await advanceTime(PERIOD_DURATION);
 
           const currentUser1Rewards = await distributor.totalEarned(distribution, user1);
@@ -265,7 +265,7 @@ describe('MultiRewards', () => {
           const previousUser2Rewards = await distributor.totalEarned(distribution, user2);
           expect(previousUser2Rewards).to.be.zero;
 
-          await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          await distributor.reward(distribution, REWARDS, { from: rewarder });
           await advanceTime(PERIOD_DURATION);
 
           const currentUser1Rewards = await distributor.totalEarned(distribution, user1);
@@ -278,7 +278,7 @@ describe('MultiRewards', () => {
 
       context('when the given distribution was already rewarded', () => {
         sharedBeforeEach('reward distribution', async () => {
-          await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          await distributor.reward(distribution, REWARDS, { from: rewarder });
         });
 
         context('at the beginning of the reward period', () => {
@@ -307,7 +307,7 @@ describe('MultiRewards', () => {
             const previousUser2Rewards = await distributor.totalEarned(distribution, user2);
             expect(previousUser2Rewards).to.be.almostEqual(fp(60e3));
 
-            await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+            await distributor.reward(distribution, REWARDS, { from: rewarder });
             await advanceTime(PERIOD_DURATION);
 
             const currentUser1Rewards = await distributor.totalEarned(distribution, user1);
@@ -332,7 +332,7 @@ describe('MultiRewards', () => {
             const previousUser2Rewards = await distributor.totalEarned(distribution, user2);
             expect(previousUser2Rewards).to.be.almostEqual(fp(60e3));
 
-            await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+            await distributor.reward(distribution, REWARDS, { from: rewarder });
             await advanceTime(PERIOD_DURATION);
 
             const currentUser1Rewards = await distributor.totalEarned(distribution, user1);
@@ -347,7 +347,7 @@ describe('MultiRewards', () => {
 
     context('when the given distribution does not exist', () => {
       it('reverts', async () => {
-        await expect(distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder })).to.be.revertedWith(
+        await expect(distributor.reward(distribution, REWARDS, { from: rewarder })).to.be.revertedWith(
           'Reward must be configured with create'
         );
       });
@@ -366,22 +366,22 @@ describe('MultiRewards', () => {
 
         const itCannotSetThePeriodDuration = () => {
           it('reverts', async () => {
-            await expect(
-              distributor.setDuration(stakingToken, rewardsToken, newDuration, { from: rewarder })
-            ).to.be.revertedWith('Reward period still active');
+            await expect(distributor.setDuration(distribution, newDuration, { from: rewarder })).to.be.revertedWith(
+              'Reward period still active'
+            );
           });
         };
 
         const itSetsTheDistributionPeriodDuration = () => {
           it('sets the distribution period duration', async () => {
-            await distributor.setDuration(stakingToken, rewardsToken, newDuration, { from: rewarder });
+            await distributor.setDuration(distribution, newDuration, { from: rewarder });
 
             const { duration } = await distributor.getDistribution(distribution);
             expect(duration).to.be.equal(newDuration);
           });
 
           it('emits a RewardDurationSet event', async () => {
-            const tx = await distributor.setDuration(stakingToken, rewardsToken, newDuration, { from: rewarder });
+            const tx = await distributor.setDuration(distribution, newDuration, { from: rewarder });
 
             expectEvent.inReceipt(await tx.wait(), 'RewardDurationSet', {
               distribution: distribution,
@@ -392,7 +392,7 @@ describe('MultiRewards', () => {
 
         context('when there is an on going distribution period', () => {
           sharedBeforeEach('reward distribution', async () => {
-            await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+            await distributor.reward(distribution, REWARDS, { from: rewarder });
           });
 
           context('at the beginning of the reward period', () => {
@@ -433,16 +433,16 @@ describe('MultiRewards', () => {
         const newDuration = 0;
 
         it('reverts', async () => {
-          await expect(
-            distributor.setDuration(stakingToken, rewardsToken, newDuration, { from: rewarder })
-          ).to.be.revertedWith('Reward duration must be non-zero');
+          await expect(distributor.setDuration(distribution, newDuration, { from: rewarder })).to.be.revertedWith(
+            'Reward duration must be non-zero'
+          );
         });
       });
     });
 
     context('when the given distribution does not exist', () => {
       it('reverts', async () => {
-        await expect(distributor.setDuration(stakingToken, rewardsToken, 1, { from: rewarder })).to.be.revertedWith(
+        await expect(distributor.setDuration(distribution, 1, { from: rewarder })).to.be.revertedWith(
           'Reward must be configured with create'
         );
       });
@@ -454,12 +454,12 @@ describe('MultiRewards', () => {
 
     sharedBeforeEach('create distributions', async () => {
       await distributor.newDistribution(stakingToken, rewardsToken, PERIOD_DURATION, { from: rewarder });
-      await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
       distribution = await distributor.getDistributionId(stakingToken, rewardsToken, rewarder);
+      await distributor.reward(distribution, REWARDS, { from: rewarder });
 
       await distributor.newDistribution(anotherStakingToken, anotherRewardsToken, PERIOD_DURATION, { from: rewarder });
-      await distributor.reward(anotherStakingToken, anotherRewardsToken, REWARDS, { from: rewarder });
       anotherDistribution = await distributor.getDistributionId(anotherStakingToken, anotherRewardsToken, rewarder);
+      await distributor.reward(anotherDistribution, REWARDS, { from: rewarder });
     });
 
     const itHandlesStaking = (stake: (token: Token, amount: BigNumberish) => Promise<ContractTransaction>) => {
@@ -819,12 +819,12 @@ describe('MultiRewards', () => {
   describe('withdraw', () => {
     sharedBeforeEach('create distributions', async () => {
       await distributor.newDistribution(stakingToken, rewardsToken, PERIOD_DURATION, { from: rewarder });
-      await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
       distribution = await distributor.getDistributionId(stakingToken, rewardsToken, rewarder);
+      await distributor.reward(distribution, REWARDS, { from: rewarder });
 
       await distributor.newDistribution(anotherStakingToken, anotherRewardsToken, PERIOD_DURATION, { from: rewarder });
-      await distributor.reward(anotherStakingToken, anotherRewardsToken, REWARDS, { from: rewarder });
       anotherDistribution = await distributor.getDistributionId(anotherStakingToken, anotherRewardsToken, rewarder);
+      await distributor.reward(anotherDistribution, REWARDS, { from: rewarder });
     });
 
     context('when the user did specify some amount', () => {
@@ -1033,7 +1033,7 @@ describe('MultiRewards', () => {
 
             it('stops tracking it for future rewards', async () => {
               await distributor.withdraw(stakingToken, amount, { from: user1 });
-              await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+              await distributor.reward(distribution, REWARDS, { from: rewarder });
 
               const previousRewardPerToken = await distributor.rewardPerToken(distribution);
               expect(previousRewardPerToken).to.be.almostEqualFp(45000);
@@ -1134,7 +1134,7 @@ describe('MultiRewards', () => {
 
             it('stops tracking it for future rewards', async () => {
               await distributor.withdraw(stakingToken, amount, { from: user1 });
-              await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+              await distributor.reward(distribution, REWARDS, { from: rewarder });
 
               const previousRewardPerToken = await distributor.rewardPerToken(distribution);
               expect(previousRewardPerToken).to.be.almostEqualFp(37500);
@@ -1182,14 +1182,14 @@ describe('MultiRewards', () => {
     context('when the distribution exists', () => {
       sharedBeforeEach('create distributions', async () => {
         await distributor.newDistribution(stakingToken, rewardsToken, PERIOD_DURATION, { from: rewarder });
-        await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
         distribution = await distributor.getDistributionId(stakingToken, rewardsToken, rewarder);
+        await distributor.reward(distribution, REWARDS, { from: rewarder });
 
         await distributor.newDistribution(anotherStakingToken, anotherRewardsToken, PERIOD_DURATION, {
           from: rewarder,
         });
-        await distributor.reward(anotherStakingToken, anotherRewardsToken, REWARDS, { from: rewarder });
         anotherDistribution = await distributor.getDistributionId(anotherStakingToken, anotherRewardsToken, rewarder);
+        await distributor.reward(anotherDistribution, REWARDS, { from: rewarder });
       });
 
       context('when the user was not subscribed yet', () => {
@@ -1443,7 +1443,7 @@ describe('MultiRewards', () => {
               await stakingToken.mint(user1, balance);
               await stakingToken.approve(distributor, balance, { from: user1 });
               await distributor.stake(stakingToken, balance, { from: user1 });
-              await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+              await distributor.reward(distribution, REWARDS, { from: rewarder });
             });
 
             it('subscribes the user to the distribution', async () => {
@@ -1555,14 +1555,14 @@ describe('MultiRewards', () => {
     context('when the distribution exists', () => {
       sharedBeforeEach('create distributions', async () => {
         await distributor.newDistribution(stakingToken, rewardsToken, PERIOD_DURATION, { from: rewarder });
-        await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
         distribution = await distributor.getDistributionId(stakingToken, rewardsToken, rewarder);
+        await distributor.reward(distribution, REWARDS, { from: rewarder });
 
         await distributor.newDistribution(anotherStakingToken, anotherRewardsToken, PERIOD_DURATION, {
           from: rewarder,
         });
-        await distributor.reward(anotherStakingToken, anotherRewardsToken, REWARDS, { from: rewarder });
         anotherDistribution = await distributor.getDistributionId(anotherStakingToken, anotherRewardsToken, rewarder);
+        await distributor.reward(anotherDistribution, REWARDS, { from: rewarder });
       });
 
       context('when the user was already subscribed', () => {
@@ -1840,7 +1840,7 @@ describe('MultiRewards', () => {
               await stakingToken.mint(user1, balance);
               await stakingToken.approve(distributor, balance, { from: user1 });
               await distributor.stake(stakingToken, balance, { from: user1 });
-              await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+              await distributor.reward(distribution, REWARDS, { from: rewarder });
             });
 
             it('subscribes the user to the distribution', async () => {
@@ -1955,8 +1955,8 @@ describe('MultiRewards', () => {
   describe('claim', () => {
     sharedBeforeEach('create distributions', async () => {
       await distributor.newDistribution(stakingToken, rewardsToken, PERIOD_DURATION, { from: rewarder });
-      await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
       distribution = await distributor.getDistributionId(stakingToken, rewardsToken, rewarder);
+      await distributor.reward(distribution, REWARDS, { from: rewarder });
     });
 
     const itReceivesTheRewards = () => {
@@ -2102,7 +2102,7 @@ describe('MultiRewards', () => {
           await stakingToken.mint(user1, fp(1));
           await stakingToken.approve(distributor, fp(1), { from: user1 });
           await distributor.stake(stakingToken, fp(1), { from: user1 });
-          await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          await distributor.reward(distribution, REWARDS, { from: rewarder });
         });
 
         context('when the user was subscribed to a distribution', () => {
@@ -2149,8 +2149,8 @@ describe('MultiRewards', () => {
 
     sharedBeforeEach('create distributions', async () => {
       await distributor.newDistribution(stakingToken, rewardsToken, PERIOD_DURATION, { from: rewarder });
-      await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
       distribution = await distributor.getDistributionId(stakingToken, rewardsToken, rewarder);
+      await distributor.reward(distribution, REWARDS, { from: rewarder });
     });
 
     const itWithdrawsAndClaims = () => {
@@ -2322,7 +2322,7 @@ describe('MultiRewards', () => {
 
             expect(await distributor.rewardPerToken(distribution)).to.be.almostEqualFp(90e3);
 
-            await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+            await distributor.reward(distribution, REWARDS, { from: rewarder });
             await advanceTime(PERIOD_DURATION);
 
             expect(await distributor.rewardPerToken(distribution)).to.be.almostEqualFp(90e3);
@@ -2358,7 +2358,7 @@ describe('MultiRewards', () => {
 
             expect(await distributor.rewardPerToken(distribution)).to.be.zero;
 
-            await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+            await distributor.reward(distribution, REWARDS, { from: rewarder });
             await advanceTime(PERIOD_DURATION);
 
             expect(await distributor.rewardPerToken(distribution)).to.be.zero;
@@ -2405,7 +2405,7 @@ describe('MultiRewards', () => {
           await stakingToken.mint(user1, balance);
           await stakingToken.approve(distributor, balance, { from: user1 });
           await distributor.stake(stakingToken, balance, { from: user1 });
-          await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          await distributor.reward(distribution, REWARDS, { from: rewarder });
         });
 
         context('when the user was subscribed to a distribution', () => {
@@ -2444,7 +2444,7 @@ describe('MultiRewards', () => {
             // User #2 has staked 2 tokens for 2 periods, while user #1 staked 1 token for 1 period
             expect(await distributor.rewardPerToken(distribution)).to.be.almostEqualFp(75e3);
 
-            await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+            await distributor.reward(distribution, REWARDS, { from: rewarder });
             await advanceTime(PERIOD_DURATION);
 
             // User #2 continues with 2 tokens for one more period
@@ -2482,7 +2482,7 @@ describe('MultiRewards', () => {
             // The other user has staked for 2 periods with 2 tokens
             expect(await distributor.rewardPerToken(distribution)).to.be.almostEqualFp(90e3);
 
-            await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+            await distributor.reward(distribution, REWARDS, { from: rewarder });
             await advanceTime(PERIOD_DURATION);
 
             // The other user continues with his stake of 2 tokens
@@ -2523,8 +2523,8 @@ describe('MultiRewards', () => {
   describe('integration', () => {
     sharedBeforeEach('create distribution', async () => {
       await distributor.newDistribution(stakingToken, rewardsToken, PERIOD_DURATION, { from: rewarder });
-      await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
       distribution = await distributor.getDistributionId(stakingToken, rewardsToken, rewarder);
+      await distributor.reward(distribution, REWARDS, { from: rewarder });
     });
 
     const assertUserRewards = async (
@@ -2558,13 +2558,13 @@ describe('MultiRewards', () => {
       await assertUserRewards(user1, { rate: 0, paid: 0, earned: 0 });
 
       await advanceTime(PERIOD_DURATION);
-      await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+      await distributor.reward(distribution, REWARDS, { from: rewarder });
       await advanceTime(PERIOD_DURATION);
 
       expect(await distributor.rewardPerToken(distribution)).to.be.almostEqualFp(180000);
       await assertUserRewards(user1, { rate: 180000, paid: 0, earned: 180000 });
 
-      await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+      await distributor.reward(distribution, REWARDS, { from: rewarder });
       await advanceTime(PERIOD_DURATION);
 
       expect(await distributor.rewardPerToken(distribution)).to.be.almostEqualFp(270000);
@@ -2605,7 +2605,7 @@ describe('MultiRewards', () => {
       await assertUserRewards(user1, { rate: 60000, paid: 0, earned: 60000 });
 
       // Add new rewards to the distribution
-      await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+      await distributor.reward(distribution, REWARDS, { from: rewarder });
       expect(await distributor.rewardPerToken(distribution)).to.be.almostEqualFp(60000);
 
       // Advance half of the reward period: 60k + 45k = 105k rewards (the 15k of the previous period are lost)
@@ -2719,7 +2719,7 @@ describe('MultiRewards', () => {
       await assertUserRewards(user1, { rate: 60000, paid: 0, earned: 60000 });
       await assertUserRewards(user2, { rate: 15000, paid: 45000, earned: 30000 });
 
-      await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+      await distributor.reward(distribution, REWARDS, { from: rewarder });
       await advanceTime(PERIOD_DURATION / 2);
 
       expect(await distributor.rewardPerToken(distribution)).to.be.almostEqualFp(75000);
@@ -2740,7 +2740,7 @@ describe('MultiRewards', () => {
       await assertUserRewards(user2, { rate: 0, paid: 0, earned: 0 });
 
       await advanceTime(PERIOD_DURATION);
-      await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+      await distributor.reward(distribution, REWARDS, { from: rewarder });
 
       expect(await distributor.rewardPerToken(distribution)).to.be.almostEqualFp(90000);
       await assertUserRewards(user1, { rate: 90000, paid: 0, earned: 90000 });
@@ -2779,7 +2779,7 @@ describe('MultiRewards', () => {
       await assertUserRewards(user2, { rate: 22500, paid: 0.13888, earned: 67500 });
 
       // Reward but with 30k instead of 90k
-      await distributor.reward(stakingToken, rewardsToken, REWARDS.div(3), { from: rewarder });
+      await distributor.reward(distribution, REWARDS.div(3), { from: rewarder });
 
       expect(await distributor.rewardPerToken(distribution)).to.be.almostEqualFp(22500);
       await assertUserRewards(user1, { rate: 22500, paid: 0, earned: 22500 });
@@ -2805,7 +2805,7 @@ describe('MultiRewards', () => {
       await assertUserRewards(user2, { rate: 0, paid: 52500, earned: 0 });
 
       // Reward but with 30k instead of 90k
-      await distributor.reward(stakingToken, rewardsToken, REWARDS.div(3), { from: rewarder });
+      await distributor.reward(distribution, REWARDS.div(3), { from: rewarder });
       await advanceTime(PERIOD_DURATION);
 
       expect(await distributor.rewardPerToken(distribution)).to.be.almostEqualFp(62500);
@@ -2829,7 +2829,7 @@ describe('MultiRewards', () => {
       await assertUserRewards(user2, { rate: 0, paid: 0.13888, earned: 0 });
       await assertUserRewards(user3, { rate: 0.13888, paid: 0, earned: 0 });
       await advanceTime(PERIOD_DURATION);
-      await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+      await distributor.reward(distribution, REWARDS, { from: rewarder });
 
       expect(await distributor.rewardPerToken(distribution)).to.be.almostEqualFp(22500);
       await assertUserRewards(user1, { rate: 22500, paid: 0, earned: 22500 });
@@ -2844,7 +2844,7 @@ describe('MultiRewards', () => {
       await assertUserRewards(user3, { rate: 0, paid: 22500, earned: 0 });
 
       await advanceTime(PERIOD_DURATION);
-      await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+      await distributor.reward(distribution, REWARDS, { from: rewarder });
 
       expect(await distributor.rewardPerToken(distribution)).to.be.almostEqualFp(32500);
       await assertUserRewards(user1, { rate: 32500, paid: 0, earned: 32500 });
@@ -2912,7 +2912,7 @@ describe('MultiRewards', () => {
       await assertUserRewards(user2, { rate: 35000, paid: 10000, earned: 20000 });
       await assertUserRewards(user3, { rate: 5000, paid: 40000, earned: 25000 });
 
-      await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+      await distributor.reward(distribution, REWARDS, { from: rewarder });
       await advanceTime(PERIOD_DURATION / 3);
 
       expect(await distributor.rewardPerToken(distribution)).to.be.almostEqualFp(50000);

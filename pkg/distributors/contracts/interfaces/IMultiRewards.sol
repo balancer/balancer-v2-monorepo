@@ -17,15 +17,11 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
 interface IMultiRewards {
-    function reward(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        uint256 amount
-    ) external;
-
     function create(
         IERC20 stakingToken,
         IERC20 rewardsToken,
         uint256 duration
     ) external returns (bytes32 distributionId);
+
+    function reward(bytes32 distributionId, uint256 amount) external;
 }
