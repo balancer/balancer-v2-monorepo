@@ -427,6 +427,7 @@ describe('VaultActions', function () {
 
       return relayerLibrary.interface.encodeFunctionData('joinPool', [
         params.poolId,
+        0,
         sender.address,
         sender.address,
         {
@@ -440,53 +441,79 @@ describe('VaultActions', function () {
       ]);
     }
 
-    it('joins with immediate amounts', async () => {
-      await expectBalanceChange(
-        async () =>
-          relayer.connect(sender).multicall([
-            await encodeJoinPool({
-              poolId: poolIdA,
-              userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsInA, 0),
-            }),
-          ]),
-        tokens,
-        {
-          account: sender,
-          changes: {
-            DAI: amountInDAI.mul(-1),
-            MKR: amountInMKR.mul(-1),
-          },
-        }
-      );
-    });
-
-    it('stores BPT amount out as chained reference', async () => {
-      const receipt = await (
-        await relayer.connect(sender).multicall([
-          await encodeJoinPool({
-            poolId: poolIdA,
-            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsInA, 0),
-            outputReference: toChainedReference(0),
-          }),
-        ])
-      ).wait();
-
-      const {
-        args: { value: BPTAmountOut },
-      } = expectEvent.inIndirectReceipt(
-        receipt,
-        new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-        'Transfer',
-        { from: ZERO_ADDRESS, to: sender.address }
-      );
-
-      await expectChainedReferenceContents(toChainedReference(0), BPTAmountOut);
-    });
-
     describe('weighted pool', () => {
-      it('joins with exact amounts in chained references', async () => {});
-    });
+      describe('exact tokens in for bpt out', () => {
+        it('joins with immediate amounts', async () => {
+          await expectBalanceChange(
+            async () =>
+              relayer.connect(sender).multicall([
+                await encodeJoinPool({
+                  poolId: poolIdA,
+                  userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsInA, 0),
+                }),
+              ]),
+            tokens,
+            {
+              account: sender,
+              changes: {
+                DAI: amountInDAI.mul(-1),
+                MKR: amountInMKR.mul(-1),
+              },
+            }
+          );
+        });
 
-    it('is chainable via multicall', async () => {});
+        it('stores BPT amount out as chained reference', async () => {
+          const receipt = await (
+            await relayer.connect(sender).multicall([
+              await encodeJoinPool({
+                poolId: poolIdA,
+                userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsInA, 0),
+                outputReference: toChainedReference(0),
+              }),
+            ])
+          ).wait();
+
+          const {
+            args: { value: BPTAmountOut },
+          } = expectEvent.inIndirectReceipt(
+            receipt,
+            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+            'Transfer',
+            { from: ZERO_ADDRESS, to: sender.address }
+          );
+
+          await expectChainedReferenceContents(toChainedReference(0), BPTAmountOut);
+        });
+
+        it('joins with exact amounts in chained references', async () => {
+          await setChainedReferenceContents(toChainedReference(0), amountInMKR);
+
+          const { tokens: tokensA } = await vault.getPoolTokens(poolIdA);
+
+          const amountsIn = new Array(2);
+          amountsIn[tokensA.indexOf(tokens.DAI.address)] = amountInDAI;
+          amountsIn[tokensA.indexOf(tokens.MKR.address)] = toChainedReference(0);
+
+          await expectBalanceChange(
+            async () =>
+              relayer.connect(sender).multicall([
+                await encodeJoinPool({
+                  poolId: poolIdA,
+                  userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsIn, 0),
+                }),
+              ]),
+            tokens,
+            {
+              account: sender,
+              changes: {
+                DAI: amountInDAI.mul(-1),
+                MKR: amountInMKR.mul(-1),
+              },
+            }
+          );
+        });
+      });
+    });
   });
 });

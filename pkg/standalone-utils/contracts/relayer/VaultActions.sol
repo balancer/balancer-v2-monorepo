@@ -24,6 +24,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20PermitDAI.
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
+import "@balancer-labs/v2-pool-weighted/contracts/BaseWeightedPool.sol";
+import "@balancer-labs/v2-pool-weighted/contracts/WeightedPoolUserDataHelpers.sol";
+
 import "../interfaces/IBaseRelayerLibrary.sol";
 
 /**
@@ -105,11 +108,14 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         getVault().manageUserBalance{ value: value }(ops);
     }
 
+    enum PoolKind { WEIGHTED }
+
     function joinPool(
         bytes32 poolId,
+        PoolKind kind,
         address sender,
         address recipient,
-        IVault.JoinPoolRequest calldata request,
+        IVault.JoinPoolRequest memory request,
         uint256 value,
         uint256 outputReference
     ) external payable {
@@ -121,6 +127,8 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         IERC20 BPT = IERC20(VaultHelpers.toPoolAddress(poolId));
         uint256 maybeInitialRecipientBPT = _isChainedReference(outputReference) ? BPT.balanceOf(recipient) : 0;
 
+        request.userData = _doJoinPoolChainedReferenceReplacements(kind, request.userData);
+
         getVault().joinPool{ value: value }(poolId, sender, recipient, request);
 
         if (_isChainedReference(outputReference)) {
@@ -130,6 +138,50 @@ abstract contract VaultActions is IBaseRelayerLibrary {
             uint256 finalRecipientBPT = BPT.balanceOf(recipient);
             _setChainedReferenceValue(outputReference, finalRecipientBPT.sub(maybeInitialRecipientBPT));
         }
+    }
+
+    function _doJoinPoolChainedReferenceReplacements(PoolKind kind, bytes memory userData)
+        private
+        returns (bytes memory)
+    {
+        if (kind == PoolKind.WEIGHTED) {
+            return _doWeightedJoinChainedReferenceReplacements(userData);
+        } else {
+            _revert(Errors.UNHANDLED_JOIN_KIND);
+        }
+    }
+
+    function _doWeightedJoinChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
+        BaseWeightedPool.JoinKind kind = WeightedPoolUserDataHelpers.joinKind(userData);
+
+        if (kind == BaseWeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+            return _doWeightedExactTokensInForBPTOutReplacements(userData);
+        } else {
+            // All other join kinds are 'given out' (i.e the parameter is a BPT amount), so we don't do replacements for
+            // those.
+            return userData;
+        }
+    }
+
+    function _doWeightedExactTokensInForBPTOutReplacements(bytes memory userData) private returns (bytes memory) {
+        (uint256[] memory amountsIn, uint256 minBPTAmountOut) = WeightedPoolUserDataHelpers.exactTokensInForBptOut(
+            userData
+        );
+
+        bool replacedAmounts = false;
+        for (uint256 i = 0; i < amountsIn.length; ++i) {
+            uint256 amount = amountsIn[i];
+            if (_isChainedReference(amount)) {
+                amountsIn[i] = _getChainedReferenceValue(amount);
+                replacedAmounts = true;
+            }
+        }
+
+        // Save gas by only re-encoding the data if we actually performed a replacement
+        return
+            replacedAmounts
+                ? abi.encode(BaseWeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minBPTAmountOut)
+                : userData;
     }
 
     function exitPool(
