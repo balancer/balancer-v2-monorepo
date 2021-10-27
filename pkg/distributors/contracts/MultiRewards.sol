@@ -161,10 +161,10 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @param distributionId ID of the distribution being queried
      * @param user The address receiving the rewards
      */
-    function unaccountedForUnpaidRewards(bytes32 distributionId, address user) external view returns (uint256) {
+    function unaccountedEarned(bytes32 distributionId, address user) external view returns (uint256) {
         IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
         UserStaking storage userStaking = _userStakings[stakingToken][user];
-        return _unaccountedForUnpaidRewards(userStaking, distributionId);
+        return _unaccountedEarned(userStaking, distributionId);
     }
 
     /**
@@ -581,10 +581,10 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
     function _totalEarned(UserStaking storage userStaking, bytes32 distributionId) internal view returns (uint256) {
         uint256 unpaidRewards = userStaking.distributions[distributionId].unpaidRewards;
-        return _unaccountedForUnpaidRewards(userStaking, distributionId).add(unpaidRewards);
+        return _unaccountedEarned(userStaking, distributionId).add(unpaidRewards);
     }
 
-    function _unaccountedForUnpaidRewards(UserStaking storage userStaking, bytes32 distributionId)
+    function _unaccountedEarned(UserStaking storage userStaking, bytes32 distributionId)
         internal
         view
         returns (uint256)
