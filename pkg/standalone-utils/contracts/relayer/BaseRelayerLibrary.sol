@@ -96,14 +96,14 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
         }
     }
 
-    bytes32 private immutable _TEMP_STORAGE_PREFIX = keccak256("balancer.base-relayer-library");
+    bytes32 private constant _TEMP_STORAGE_PREFIX = keccak256("balancer.base-relayer-library");
 
-    function _getTempStorageSlot(uint256 ref) private view returns (bytes32) {
+    function _getTempStorageSlot(uint256 ref) private pure returns (bytes32) {
         // This replicates the mechanism Solidity uses to allocate storage slots for mappings, but using a hash as the
         // mapping's storage slot, and subtracting 1 at the end. This should be more enough to prevent collisions with
         // other state variables this or derived contracts might use.
         // See https://docs.soliditylang.org/en/v0.8.9/internals/layout_in_storage.html
 
-        return bytes32(uint256(keccak256(abi.encodePacked(ref, _TEMP_STORAGE_PREFIX))) - 1);
+        return bytes32(uint256(keccak256(abi.encodePacked(_TEMP_STORAGE_PREFIX, ref))) - 1);
     }
 }
