@@ -166,7 +166,7 @@ export class Distributor {
 
   async withdraw(stakingToken: Token, amount: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
     const sender = params?.from ?? (await getSigner());
-    return this.instance.connect(sender).unstake(stakingToken.address, amount, sender.address);
+    return this.instance.connect(sender).withdraw(stakingToken.address, amount, sender.address);
   }
 
   async claim(distributions: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
