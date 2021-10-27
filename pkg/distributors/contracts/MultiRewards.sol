@@ -393,22 +393,22 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @dev Allows a user to claim any rewards to an EOA
      * @param distributionIds List of distributions claiming the rewards of
      */
-    function getReward(bytes32[] memory distributionIds) external nonReentrant {
-        _getReward(distributionIds, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
+    function claim(bytes32[] memory distributionIds) external nonReentrant {
+        _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
     }
 
     /**
      * @notice Allows a user to claim any rewards to an internal balance
      * @param distributionIds The distributions to claim rewards for
      */
-    function getRewardAsInternalBalance(bytes32[] memory distributionIds) external nonReentrant {
-        _getReward(distributionIds, msg.sender, IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
+    function claimAsInternalBalance(bytes32[] memory distributionIds) external nonReentrant {
+        _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
     }
 
     /**
      * @notice Allows a user to claim any rewards to an internal balance or EOA
      */
-    function _getReward(
+    function _claim(
         bytes32[] memory distributionIds,
         address recipient,
         IVault.UserBalanceOpKind kind
@@ -454,12 +454,12 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
      * @param callbackContract The contract where rewards will be transferred
      * @param callbackData The data that is used to call the callback contract's 'callback' method
      */
-    function getRewardWithCallback(
+    function claimWithCallback(
         bytes32[] memory distributionIds,
         IDistributorCallback callbackContract,
         bytes memory callbackData
     ) external nonReentrant {
-        _getReward(distributionIds, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
+        _claim(distributionIds, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
         callbackContract.distributorCallback(callbackData);
     }
 
@@ -475,7 +475,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             unstake(stakingToken, userStaking.balance, msg.sender);
         }
 
-        _getReward(distributionIds, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
+        _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
     }
 
     /**
@@ -497,7 +497,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             unstake(stakingToken, userStaking.balance, msg.sender);
         }
 
-        _getReward(distributionIds, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
+        _claim(distributionIds, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
         callbackContract.distributorCallback(callbackData);
     }
 
