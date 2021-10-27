@@ -19,12 +19,14 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { Dictionary } from 'lodash';
 import { Interface } from '@ethersproject/abi';
 
-describe.only('VaultActions', function () {
+describe('VaultActions', function () {
   let vault: Vault;
   let tokens: TokenList;
   let relayer: Contract, relayerLibrary: Contract;
   let admin: SignerWithAddress, sender: SignerWithAddress;
+
   let poolIdA: string, poolIdB: string, poolIdC: string;
+  let tokensA: TokenList, tokensB: TokenList, tokensC: TokenList;
 
   before('get signers', async () => {
     [, admin, sender] = await ethers.getSigners();
@@ -79,9 +81,10 @@ describe.only('VaultActions', function () {
     await tokens.approve({ to: vault, from: sender });
 
     // Pool A: DAI-MKR
+    tokensA = new TokenList([tokens.DAI, tokens.MKR]).sort();
     const poolA = await WeightedPool.create({
       poolType: WeightedPoolType.WEIGHTED_POOL,
-      tokens: new TokenList([tokens.DAI, tokens.MKR]).sort(),
+      tokens: tokensA,
       vault,
     });
     await poolA.init({ initialBalances: fp(1000), from: sender });
@@ -89,9 +92,10 @@ describe.only('VaultActions', function () {
     poolIdA = await poolA.getPoolId();
 
     // Pool B: MKR-SNX
+    tokensB = new TokenList([tokens.MKR, tokens.SNX]).sort();
     const poolB = await WeightedPool.create({
       poolType: WeightedPoolType.WEIGHTED_POOL,
-      tokens: new TokenList([tokens.MKR, tokens.SNX]).sort(),
+      tokens: tokensB,
       vault,
     });
     await poolB.init({ initialBalances: fp(1000), from: sender });
@@ -99,9 +103,10 @@ describe.only('VaultActions', function () {
     poolIdB = await poolB.getPoolId();
 
     // Pool C: SNX-BAT
+    tokensC = new TokenList([tokens.SNX, tokens.BAT]).sort();
     const poolC = await WeightedPool.create({
       poolType: WeightedPoolType.WEIGHTED_POOL,
-      tokens: new TokenList([tokens.SNX, tokens.BAT]).sort(),
+      tokens: tokensC,
       vault,
     });
     await poolC.init({ initialBalances: fp(1000), from: sender });
@@ -188,6 +193,10 @@ describe.only('VaultActions', function () {
       0,
       params.outputReference ?? 0,
     ]);
+  }
+
+  function getJoinExitAmounts(poolTokens: TokenList, tokenAmounts: Dictionary<BigNumberish>): Array<BigNumberish> {
+    return poolTokens.map((token) => tokenAmounts[token.symbol] ?? 0);
   }
 
   describe('simple swap', () => {
@@ -433,14 +442,6 @@ describe.only('VaultActions', function () {
     const amountInDAI = fp(2);
     const amountInMKR = fp(5);
 
-    const amountsInA = new Array(2);
-    sharedBeforeEach(async () => {
-      const { tokens: tokensA } = await vault.getPoolTokens(poolIdA);
-
-      amountsInA[tokensA.indexOf(tokens.DAI.address)] = amountInDAI;
-      amountsInA[tokensA.indexOf(tokens.MKR.address)] = amountInMKR;
-    });
-
     describe('weighted pool', () => {
       describe('exact tokens in for bpt out', () => {
         it('joins with immediate amounts', async () => {
@@ -449,7 +450,10 @@ describe.only('VaultActions', function () {
               relayer.connect(sender).multicall([
                 await encodeJoinPool({
                   poolId: poolIdA,
-                  userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsInA, 0),
+                  userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+                    getJoinExitAmounts(tokensA, { DAI: amountInDAI, MKR: amountInMKR }),
+                    0
+                  ),
                 }),
               ]),
             tokens,
@@ -468,7 +472,10 @@ describe.only('VaultActions', function () {
             await relayer.connect(sender).multicall([
               await encodeJoinPool({
                 poolId: poolIdA,
-                userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsInA, 0),
+                userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+                  getJoinExitAmounts(tokensA, { DAI: amountInDAI, MKR: amountInMKR }),
+                  0
+                ),
                 outputReference: toChainedReference(0),
               }),
             ])
@@ -489,18 +496,15 @@ describe.only('VaultActions', function () {
         it('joins with exact amounts in chained references', async () => {
           await setChainedReferenceContents(toChainedReference(0), amountInMKR);
 
-          const { tokens: tokensA } = await vault.getPoolTokens(poolIdA);
-
-          const amountsIn = new Array(2);
-          amountsIn[tokensA.indexOf(tokens.DAI.address)] = amountInDAI;
-          amountsIn[tokensA.indexOf(tokens.MKR.address)] = toChainedReference(0);
-
           await expectBalanceChange(
             async () =>
               relayer.connect(sender).multicall([
                 await encodeJoinPool({
                   poolId: poolIdA,
-                  userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsIn, 0),
+                  userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+                    getJoinExitAmounts(tokensA, { DAI: amountInDAI, MKR: toChainedReference(0) }),
+                    0
+                  ),
                 }),
               ]),
             tokens,
@@ -515,12 +519,6 @@ describe.only('VaultActions', function () {
         });
 
         it('is chainable with swaps via multicall', async () => {
-          const { tokens: tokensB } = await vault.getPoolTokens(poolIdA);
-
-          const amountsInB = new Array(2);
-          amountsInB[tokensB.indexOf(tokens.DAI.address)] = 0;
-          amountsInB[tokensB.indexOf(tokens.MKR.address)] = toChainedReference(0);
-
           const receipt = await (
             await expectBalanceChange(
               () =>
@@ -534,7 +532,10 @@ describe.only('VaultActions', function () {
                   }),
                   encodeJoinPool({
                     poolId: poolIdB,
-                    userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsInB, 0),
+                    userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+                      getJoinExitAmounts(tokensB, { MKR: toChainedReference(0) }),
+                      0
+                    ),
                   }),
                 ]),
               tokens,
@@ -552,15 +553,15 @@ describe.only('VaultActions', function () {
             poolId: poolIdB,
           });
 
-          expect(deltas[tokensB.indexOf(tokens.MKR.address)]).to.equal(amountOutMKR);
-          expect(deltas[tokensB.indexOf(tokens.DAI.address)]).to.equal(0);
+          expect(deltas[tokensB.indexOf(tokens.MKR)]).to.equal(amountOutMKR);
+          expect(deltas[tokensB.indexOf(tokens.SNX)]).to.equal(0);
         });
       });
 
       describe('token in for exact bpt out', () => {
         it('joins with immediate amounts', async () => {
           const bptOut = fp(2);
-          const mkrIndex = (await vault.getPoolTokens(poolIdA)).tokens.indexOf(tokens.MKR.address);
+          const mkrIndex = tokensA.indexOf(tokens.MKR);
 
           await expectBalanceChange(
             async () =>
