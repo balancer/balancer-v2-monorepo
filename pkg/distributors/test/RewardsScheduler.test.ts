@@ -61,7 +61,7 @@ describe('Rewards Scheduler', () => {
       await rewardsScheduler.connect(rewarder).scheduleReward(pool.address, rewardsToken.address, rewardAmount, time)
     ).wait();
 
-    const rewardId = await rewardsScheduler.getRewardId(pool.address, rewardsToken.address, rewarder.address, time);
+    const rewardId = await rewardsScheduler.claimId(pool.address, rewardsToken.address, rewarder.address, time);
 
     expectEvent.inReceipt(receipt, 'RewardScheduled', {
       rewardId,
@@ -82,7 +82,7 @@ describe('Rewards Scheduler', () => {
       time = (await currentTimestamp()).add(3600 * 24);
       await rewardsScheduler.connect(rewarder).scheduleReward(pool.address, rewardsToken.address, rewardAmount, time);
 
-      rewardId = await rewardsScheduler.getRewardId(pool.address, rewardsToken.address, rewarder.address, time);
+      rewardId = await rewardsScheduler.claimId(pool.address, rewardsToken.address, rewarder.address, time);
     });
 
     it('doesnt reward before time has passed', async () => {

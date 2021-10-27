@@ -97,7 +97,7 @@ contract RewardsScheduler {
         }
     }
 
-    function getRewardId(
+    function claimId(
         IERC20 stakingToken,
         IERC20 rewardsToken,
         address rewarder,
@@ -112,7 +112,7 @@ contract RewardsScheduler {
         uint256 amount,
         uint256 startTime
     ) public returns (bytes32 rewardId) {
-        rewardId = getRewardId(stakingToken, rewardsToken, msg.sender, startTime);
+        rewardId = claimId(stakingToken, rewardsToken, msg.sender, startTime);
         require(startTime > block.timestamp, "Reward can only be scheduled for the future");
 
         require(_rewards[rewardId].status == RewardStatus.UNINITIALIZED, "Reward has already been scheduled");

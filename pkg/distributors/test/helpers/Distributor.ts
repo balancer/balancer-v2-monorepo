@@ -172,7 +172,7 @@ export class Distributor {
   async claim(distributions: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
     if (!Array.isArray(distributions)) distributions = [distributions];
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.getReward(distributions);
+    return instance.claim(distributions);
   }
 
   async exit(stakingTokens: NAry<Token>, distributions: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
