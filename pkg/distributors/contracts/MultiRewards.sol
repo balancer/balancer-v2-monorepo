@@ -359,12 +359,12 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice Untakes tokens
-     * @param stakingToken The token to be unstaked
-     * @param amount Amount of tokens to be unstaked
+     * @notice Withdraw tokens
+     * @param stakingToken The token to be withdrawn
+     * @param amount Amount of tokens to be withdrawn
      * @param receiver The recipient of the staked tokens
      */
-    function unstake(
+    function withdraw(
         IERC20 stakingToken,
         uint256 amount,
         address receiver
@@ -373,7 +373,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
         UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
         uint256 currentBalance = userStaking.balance;
-        require(currentBalance >= amount, "UNSTAKE_AMOUNT_UNAVAILABLE");
+        require(currentBalance >= amount, "WITHDRAW_AMOUNT_UNAVAILABLE");
         userStaking.balance = userStaking.balance.sub(amount);
 
         EnumerableSet.Bytes32Set storage distributions = userStaking.allowedDistributions;
@@ -464,23 +464,23 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice Allows a user to unstake all their tokens
-     * @param stakingTokens The staking tokens to unstake tokens from
+     * @notice Allows a user to withdraw all their tokens
+     * @param stakingTokens The staking tokens to withdraw tokens from
      * @param distributionIds The distributions to claim rewards for
      */
     function exit(IERC20[] memory stakingTokens, bytes32[] memory distributionIds) external {
         for (uint256 i; i < stakingTokens.length; i++) {
             IERC20 stakingToken = stakingTokens[i];
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
-            unstake(stakingToken, userStaking.balance, msg.sender);
+            withdraw(stakingToken, userStaking.balance, msg.sender);
         }
 
         _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
     }
 
     /**
-     * @notice Allows a user to unstake transferring rewards to a callback contract
-     * @param stakingTokens The staking tokens to unstake tokens from
+     * @notice Allows a user to withdraw transferring rewards to a callback contract
+     * @param stakingTokens The staking tokens to withdraw tokens from
      * @param distributionIds The distributions to claim rewards for
      * @param callbackContract The contract where the rewards tokens will be transferred
      * @param callbackData The data that is used to call the callback contract's 'callback' method
@@ -494,7 +494,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         for (uint256 i; i < stakingTokens.length; i++) {
             IERC20 stakingToken = stakingTokens[i];
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
-            unstake(stakingToken, userStaking.balance, msg.sender);
+            withdraw(stakingToken, userStaking.balance, msg.sender);
         }
 
         _claim(distributionIds, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);

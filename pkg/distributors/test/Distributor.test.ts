@@ -1192,7 +1192,7 @@ describe('MultiRewards', () => {
 
         it('reverts', async () => {
           await expect(distributor.withdraw(stakingToken, amount, { from: user1 })).to.be.revertedWith(
-            'UNSTAKE_AMOUNT_UNAVAILABLE'
+            'WITHDRAW_AMOUNT_UNAVAILABLE'
           );
         });
       });
