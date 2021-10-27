@@ -81,11 +81,7 @@ contract RewardsScheduler {
             ) {
                 scheduledReward.rewardsToken.approve(address(_multiRewards), type(uint256).max);
             }
-            _multiRewards.notifyRewardAmount(
-                scheduledReward.stakingToken,
-                scheduledReward.rewardsToken,
-                scheduledReward.amount
-            );
+            _multiRewards.reward(scheduledReward.stakingToken, scheduledReward.rewardsToken, scheduledReward.amount);
             emit RewardStarted(
                 rewardId,
                 scheduledReward.rewarder,

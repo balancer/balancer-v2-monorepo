@@ -105,7 +105,7 @@ export class Distributor {
     params?: TxParams
   ): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.notifyRewardAmount(stakingToken.address, rewardsToken.address, amount);
+    return instance.reward(stakingToken.address, rewardsToken.address, amount);
   }
 
   async setDuration(
