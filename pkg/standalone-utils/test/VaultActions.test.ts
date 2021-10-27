@@ -19,7 +19,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { Dictionary } from 'lodash';
 import { Interface } from '@ethersproject/abi';
 
-describe('VaultActions', function () {
+describe.only('VaultActions', function () {
   let vault: Vault;
   let tokens: TokenList;
   let relayer: Contract, relayerLibrary: Contract;
@@ -109,32 +109,89 @@ describe('VaultActions', function () {
     poolIdC = await poolC.getPoolId();
   });
 
-  describe('simple swap', () => {
-    const amountIn = fp(2);
+  function encodeSwap(params: {
+    poolId: string;
+    tokenIn: Token;
+    tokenOut: Token;
+    amount: BigNumberish;
+    outputReference?: BigNumberish;
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('swap', [
+      {
+        poolId: params.poolId,
+        kind: SwapKind.GivenIn,
+        assetIn: params.tokenIn.address,
+        assetOut: params.tokenOut.address,
+        amount: params.amount,
+        userData: '0x',
+      },
+      { sender: sender.address, recipient: sender.address, fromInternalBalance: false, toInternalBalance: false },
+      0,
+      MAX_UINT256,
+      0,
+      params.outputReference ?? 0,
+    ]);
+  }
 
-    function encodeSwap(params: {
+  function encodeBatchSwap(params: {
+    swaps: Array<{
       poolId: string;
       tokenIn: Token;
       tokenOut: Token;
       amount: BigNumberish;
-      outputReference?: BigNumberish;
-    }): string {
-      return relayerLibrary.interface.encodeFunctionData('swap', [
-        {
-          poolId: params.poolId,
-          kind: SwapKind.GivenIn,
-          assetIn: params.tokenIn.address,
-          assetOut: params.tokenOut.address,
-          amount: params.amount,
-          userData: '0x',
-        },
-        { sender: sender.address, recipient: sender.address, fromInternalBalance: false, toInternalBalance: false },
-        0,
-        MAX_UINT256,
-        0,
-        params.outputReference ?? 0,
-      ]);
+    }>;
+    outputReferences?: Dictionary<BigNumberish>;
+  }): string {
+    const outputReferences = new Array(tokens.length).fill(0);
+    if (params.outputReferences != undefined) {
+      for (const symbol in params.outputReferences) {
+        outputReferences[tokens.indexOf(tokens.findBySymbol(symbol))] = params.outputReferences[symbol];
+      }
     }
+
+    return relayerLibrary.interface.encodeFunctionData('batchSwap', [
+      SwapKind.GivenIn,
+      params.swaps.map((swap) => ({
+        poolId: swap.poolId,
+        assetInIndex: tokens.indexOf(swap.tokenIn),
+        assetOutIndex: tokens.indexOf(swap.tokenOut),
+        amount: swap.amount,
+        userData: '0x',
+      })),
+      tokens.addresses,
+      { sender: sender.address, recipient: sender.address, fromInternalBalance: false, toInternalBalance: false },
+      new Array(tokens.length).fill(MAX_INT256),
+      MAX_UINT256,
+      0,
+      outputReferences,
+    ]);
+  }
+
+  async function encodeJoinPool(params: {
+    poolId: string;
+    userData: string;
+    outputReference?: BigNumberish;
+  }): Promise<string> {
+    const { tokens } = await vault.getPoolTokens(params.poolId);
+
+    return relayerLibrary.interface.encodeFunctionData('joinPool', [
+      params.poolId,
+      0,
+      sender.address,
+      sender.address,
+      {
+        assets: tokens,
+        maxAmountsIn: new Array(tokens.length).fill(MAX_UINT256),
+        userData: params.userData,
+        fromInternalBalance: false,
+      },
+      0,
+      params.outputReference ?? 0,
+    ]);
+  }
+
+  describe('simple swap', () => {
+    const amountIn = fp(2);
 
     it('swaps with immediate amounts', async () => {
       await expectBalanceChange(
@@ -222,40 +279,6 @@ describe('VaultActions', function () {
   describe('batch swap', () => {
     const amountInA = fp(2);
     const amountInC = fp(5);
-
-    function encodeBatchSwap(params: {
-      swaps: Array<{
-        poolId: string;
-        tokenIn: Token;
-        tokenOut: Token;
-        amount: BigNumberish;
-      }>;
-      outputReferences?: Dictionary<BigNumberish>;
-    }): string {
-      const outputReferences = new Array(tokens.length).fill(0);
-      if (params.outputReferences != undefined) {
-        for (const symbol in params.outputReferences) {
-          outputReferences[tokens.indexOf(tokens.findBySymbol(symbol))] = params.outputReferences[symbol];
-        }
-      }
-
-      return relayerLibrary.interface.encodeFunctionData('batchSwap', [
-        SwapKind.GivenIn,
-        params.swaps.map((swap) => ({
-          poolId: swap.poolId,
-          assetInIndex: tokens.indexOf(swap.tokenIn),
-          assetOutIndex: tokens.indexOf(swap.tokenOut),
-          amount: swap.amount,
-          userData: '0x',
-        })),
-        tokens.addresses,
-        { sender: sender.address, recipient: sender.address, fromInternalBalance: false, toInternalBalance: false },
-        new Array(tokens.length).fill(MAX_INT256),
-        MAX_UINT256,
-        0,
-        outputReferences,
-      ]);
-    }
 
     it('swaps with immediate amounts', async () => {
       await expectBalanceChange(
@@ -418,29 +441,6 @@ describe('VaultActions', function () {
       amountsInA[tokensA.indexOf(tokens.MKR.address)] = amountInMKR;
     });
 
-    async function encodeJoinPool(params: {
-      poolId: string;
-      userData: string;
-      outputReference?: BigNumberish;
-    }): Promise<string> {
-      const { tokens } = await vault.getPoolTokens(params.poolId);
-
-      return relayerLibrary.interface.encodeFunctionData('joinPool', [
-        params.poolId,
-        0,
-        sender.address,
-        sender.address,
-        {
-          assets: tokens,
-          maxAmountsIn: new Array(tokens.length).fill(MAX_UINT256),
-          userData: params.userData,
-          fromInternalBalance: false,
-        },
-        0,
-        params.outputReference ?? 0,
-      ]);
-    }
-
     describe('weighted pool', () => {
       describe('exact tokens in for bpt out', () => {
         it('joins with immediate amounts', async () => {
@@ -509,6 +509,97 @@ describe('VaultActions', function () {
               changes: {
                 DAI: amountInDAI.mul(-1),
                 MKR: amountInMKR.mul(-1),
+              },
+            }
+          );
+        });
+
+        it('is chainable with swaps via multicall', async () => {
+          const { tokens: tokensB } = await vault.getPoolTokens(poolIdA);
+
+          const amountsInB = new Array(2);
+          amountsInB[tokensB.indexOf(tokens.DAI.address)] = 0;
+          amountsInB[tokensB.indexOf(tokens.MKR.address)] = toChainedReference(0);
+
+          const receipt = await (
+            await expectBalanceChange(
+              () =>
+                relayer.connect(sender).multicall([
+                  encodeSwap({
+                    poolId: poolIdA,
+                    tokenIn: tokens.DAI,
+                    tokenOut: tokens.MKR,
+                    amount: amountInDAI,
+                    outputReference: toChainedReference(0),
+                  }),
+                  encodeJoinPool({
+                    poolId: poolIdB,
+                    userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsInB, 0),
+                  }),
+                ]),
+              tokens,
+              { account: sender, changes: { DAI: amountInDAI.mul(-1) } }
+            )
+          ).wait();
+
+          const {
+            args: { amountOut: amountOutMKR },
+          } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
+
+          const {
+            args: { deltas },
+          } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+            poolId: poolIdB,
+          });
+
+          expect(deltas[tokensB.indexOf(tokens.MKR.address)]).to.equal(amountOutMKR);
+          expect(deltas[tokensB.indexOf(tokens.DAI.address)]).to.equal(0);
+        });
+      });
+
+      describe('token in for exact bpt out', () => {
+        it('joins with immediate amounts', async () => {
+          const bptOut = fp(2);
+          const mkrIndex = (await vault.getPoolTokens(poolIdA)).tokens.indexOf(tokens.MKR.address);
+
+          await expectBalanceChange(
+            async () =>
+              relayer.connect(sender).multicall([
+                await encodeJoinPool({
+                  poolId: poolIdA,
+                  userData: WeightedPoolEncoder.joinTokenInForExactBPTOut(bptOut, mkrIndex),
+                }),
+              ]),
+            tokens,
+            {
+              account: sender,
+              changes: {
+                MKR: ['near', bptOut.mul(-1)], // In a balanced pool, BPT should roughly represent the underlying tokens
+              },
+            }
+          );
+        });
+      });
+
+      describe('all tokens in for exact bpt out', () => {
+        it('joins with immediate amounts', async () => {
+          const bptOut = fp(2);
+
+          await expectBalanceChange(
+            async () =>
+              relayer.connect(sender).multicall([
+                await encodeJoinPool({
+                  poolId: poolIdA,
+                  userData: WeightedPoolEncoder.joinAllTokensInForExactBPTOut(bptOut),
+                }),
+              ]),
+            tokens,
+            {
+              account: sender,
+              changes: {
+                // In a balanced pool, BPT should roughly represent the underlying tokens
+                DAI: ['near', bptOut.div(2).mul(-1)],
+                MKR: ['near', bptOut.div(2).mul(-1)],
               },
             }
           );
