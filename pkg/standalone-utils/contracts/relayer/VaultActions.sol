@@ -124,8 +124,8 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         // The output of a join is expected to be balance in the Pool's token contract, typically known as BPT (Balancer
         // Pool Tokens). Since the Vault is unaware of this (BPT is minted directly to the recipient), we manually
         // measure this balance increase (but only if an output reference is provided).
-        IERC20 BPT = IERC20(VaultHelpers.toPoolAddress(poolId));
-        uint256 maybeInitialRecipientBPT = _isChainedReference(outputReference) ? BPT.balanceOf(recipient) : 0;
+        IERC20 bpt = IERC20(VaultHelpers.toPoolAddress(poolId));
+        uint256 maybeInitialRecipientBPT = _isChainedReference(outputReference) ? bpt.balanceOf(recipient) : 0;
 
         request.userData = _doJoinPoolChainedReferenceReplacements(kind, request.userData);
 
@@ -135,7 +135,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
             // In this context, `maybeInitialRecipientBPT` is guaranteed to have been initialized, so we can safely read
             // from it. Note that we assume that the recipient balance change has a positive sign (i.e. the recipient
             // received BPT).
-            uint256 finalRecipientBPT = BPT.balanceOf(recipient);
+            uint256 finalRecipientBPT = bpt.balanceOf(recipient);
             _setChainedReferenceValue(outputReference, finalRecipientBPT.sub(maybeInitialRecipientBPT));
         }
     }

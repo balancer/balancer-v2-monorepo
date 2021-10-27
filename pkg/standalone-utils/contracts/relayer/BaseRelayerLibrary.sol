@@ -79,6 +79,10 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      */
     function _setChainedReferenceValue(uint256 ref, uint256 value) internal override {
         bytes32 slot = _getTempStorageSlot(ref);
+
+        // Since we do manual calculation of storage slots, it is easier (and cheaper) to rely on internal assembly to
+        // access it.
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             sstore(slot, value)
         }
@@ -90,6 +94,10 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      */
     function _getChainedReferenceValue(uint256 ref) internal override returns (uint256 value) {
         bytes32 slot = _getTempStorageSlot(ref);
+
+        // Since we do manual calculation of storage slots, it is easier (and cheaper) to rely on internal assembly to
+        // access it.
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             value := sload(slot)
             sstore(slot, 0)
