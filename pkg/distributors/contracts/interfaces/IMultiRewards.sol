@@ -27,5 +27,5 @@ interface IMultiRewards {
         IERC20 stakingToken,
         IERC20 rewardsToken,
         uint256 duration
-    ) external;
+    ) external returns (bytes32 distributionId);
 }
