@@ -217,9 +217,9 @@ abstract contract VaultActions is IBaseRelayerLibrary {
             );
             for (uint256 i = 0; i < request.assets.length; i++) {
                 if (_isChainedReference(outputReferences[i])) {
-                    // In this context, `maybeInitialRecipientBalances[i]` is guaranteed to have been initialized, so we can safely read
-                    // from it. Note that we assume that the recipient balance change has a positive sign (i.e. the recipient
-                    // received tokens).
+                    // In this context, `maybeInitialRecipientBalances[i]` is guaranteed to have been initialized, so
+                    // we can safely read from it. Note that we assume that the recipient balance change
+                    // has a positive sign (i.e. the recipient received tokens).
                     _setChainedReferenceValue(
                         outputReferences[i],
                         finalRecipientTokenBalances[i].sub(maybeInitialRecipientBalances[i])
@@ -229,9 +229,9 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         } else {
             for (uint256 i = 0; i < request.assets.length; i++) {
                 if (_isChainedReference(outputReferences[i])) {
-                    // In this context, `maybeInitialRecipientBalances[i]` is guaranteed to have been initialized, so we can safely read
-                    // from it. Note that we assume that the recipient balance change has a positive sign (i.e. the recipient
-                    // received tokens).
+                    // In this context, `maybeInitialRecipientBalances[i]` is guaranteed to have been initialized, so
+                    // we can safely read from it. Note that we assume that the recipient balance change
+                    // has a positive sign (i.e. the recipient received tokens).
                     uint256 finalRecipientTokenBalance = _isETH(request.assets[i])
                         ? recipient.balance
                         : _asIERC20(request.assets[i]).balanceOf(recipient);
@@ -263,8 +263,8 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         } else if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _doWeightedExactBptInForTokensOutReplacements(userData);
         } else {
-            // All other exit kinds are 'given out' (i.e the parameter is a token amount), so we don't do replacements for
-            // those.
+            // All other exit kinds are 'given out' (i.e the parameter is a token amount),
+            // so we don't do replacements for those.
             return userData;
         }
     }
