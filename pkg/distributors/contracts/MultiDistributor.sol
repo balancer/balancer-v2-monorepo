@@ -64,7 +64,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
     struct UserStaking {
         uint256 balance;
-        EnumerableSet.Bytes32Set allowedDistributions;
+        EnumerableSet.Bytes32Set subscribedDistributions;
         mapping(bytes32 => UserDistribution) distributions;
     }
 
@@ -143,7 +143,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
      */
     function isSubscribed(bytes32 distributionId, address user) external view returns (bool) {
         IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
-        return _userStakings[stakingToken][user].allowedDistributions.contains(distributionId);
+        return _userStakings[stakingToken][user].subscribedDistributions.contains(distributionId);
     }
 
     /**
@@ -271,7 +271,6 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
         distribution.lastUpdateTime = block.timestamp;
         distribution.periodFinish = block.timestamp.add(duration);
-
         emit RewardAdded(distributionId, amount);
     }
 
@@ -283,13 +282,13 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
             IERC20 stakingToken = distribution.stakingToken;
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
-            EnumerableSet.Bytes32Set storage allowedDistributions = userStaking.allowedDistributions;
-            require(!allowedDistributions.contains(distributionId), "ALREADY_SUBSCRIBED_DISTRIBUTION");
+            EnumerableSet.Bytes32Set storage subscribedDistributions = userStaking.subscribedDistributions;
+            require(!subscribedDistributions.contains(distributionId), "ALREADY_SUBSCRIBED_DISTRIBUTION");
 
             uint256 amount = userStaking.balance;
-            if (amount == 0) userStaking.allowedDistributions.add(distributionId);
+            if (amount == 0) userStaking.subscribedDistributions.add(distributionId);
             else {
-                userStaking.allowedDistributions.add(distributionId);
+                userStaking.subscribedDistributions.add(distributionId);
                 // The unpaid rewards remains the same because was not subscribed to the distribution
                 userStaking.distributions[distributionId].paidRatePerToken = _updateDistributionRate(distributionId);
                 distribution.totalSupply = distribution.totalSupply.add(amount);
@@ -305,14 +304,14 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
             require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
 
             UserStaking storage userStaking = _userStakings[distribution.stakingToken][msg.sender];
-            EnumerableSet.Bytes32Set storage allowedDistributions = userStaking.allowedDistributions;
-            require(allowedDistributions.contains(distributionId), "DISTRIBUTION_NOT_SUBSCRIBED");
+            EnumerableSet.Bytes32Set storage subscribedDistributions = userStaking.subscribedDistributions;
+            require(subscribedDistributions.contains(distributionId), "DISTRIBUTION_NOT_SUBSCRIBED");
 
             uint256 amount = userStaking.balance;
-            if (amount == 0) userStaking.allowedDistributions.remove(distributionId);
+            if (amount == 0) userStaking.subscribedDistributions.remove(distributionId);
             else {
                 _updateUserRewardRatePerToken(userStaking, distributionId);
-                userStaking.allowedDistributions.remove(distributionId);
+                userStaking.subscribedDistributions.remove(distributionId);
                 distribution.totalSupply = distribution.totalSupply.sub(amount);
                 emit Withdrawn(distributionId, msg.sender, amount);
             }
@@ -383,7 +382,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         require(currentBalance >= amount, "WITHDRAW_AMOUNT_UNAVAILABLE");
         userStaking.balance = userStaking.balance.sub(amount);
 
-        EnumerableSet.Bytes32Set storage distributions = userStaking.allowedDistributions;
+        EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
         uint256 distributionsLength = distributions.length();
 
         for (uint256 i; i < distributionsLength; i++) {
@@ -476,7 +475,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         UserStaking storage userStaking = _userStakings[stakingToken][user];
         userStaking.balance = userStaking.balance.add(amount);
 
-        EnumerableSet.Bytes32Set storage distributions = userStaking.allowedDistributions;
+        EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
         uint256 distributionsLength = distributions.length();
 
         for (uint256 i; i < distributionsLength; i++) {
@@ -506,7 +505,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
             IERC20 stakingToken = distribution.stakingToken;
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
 
-            if (userStaking.allowedDistributions.contains(distributionId)) {
+            if (userStaking.subscribedDistributions.contains(distributionId)) {
                 // Update user distribution rates only if the user is still subscribed
                 _updateUserRewardRatePerToken(userStaking, distributionId);
             }
@@ -534,7 +533,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
     function _updateDistribution(IERC20 stakingToken, address user) internal {
         UserStaking storage userStaking = _userStakings[stakingToken][user];
-        EnumerableSet.Bytes32Set storage distributions = userStaking.allowedDistributions;
+        EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
         uint256 distributionsLength = distributions.length();
 
         for (uint256 i; i < distributionsLength; i++) {
@@ -591,7 +590,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     {
         // If the user is not subscribed to the queried distribution, it should be handled as if the user has no stake.
         // Then, it can be short cut to zero.
-        if (!userStaking.allowedDistributions.contains(distributionId)) {
+        if (!userStaking.subscribedDistributions.contains(distributionId)) {
             return 0;
         }
 
