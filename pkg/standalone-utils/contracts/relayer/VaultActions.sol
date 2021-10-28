@@ -193,8 +193,11 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         InputHelpers.ensureInputLengthMatch(request.assets.length, outputReferences.length);
 
         uint256[] memory maybeInitialRecipientBalances = new uint256[](request.assets.length);
-        if (request.toInternalBalance){
-            maybeInitialRecipientBalances = getVault().getInternalBalance(recipient, _translateToIERC20(request.assets));
+        if (request.toInternalBalance) {
+            maybeInitialRecipientBalances = getVault().getInternalBalance(
+                recipient,
+                _translateToIERC20(request.assets)
+            );
         } else {
             for (uint256 i = 0; i < request.assets.length; i++) {
                 maybeInitialRecipientBalances[i] = _isChainedReference(outputReferences[i])
@@ -207,15 +210,20 @@ abstract contract VaultActions is IBaseRelayerLibrary {
 
         getVault().exitPool(poolId, sender, recipient, request);
 
-
-        if (request.toInternalBalance){
-            uint256[] memory finalRecipientTokenBalances = getVault().getInternalBalance(recipient, _translateToIERC20(request.assets));
+        if (request.toInternalBalance) {
+            uint256[] memory finalRecipientTokenBalances = getVault().getInternalBalance(
+                recipient,
+                _translateToIERC20(request.assets)
+            );
             for (uint256 i = 0; i < request.assets.length; i++) {
                 if (_isChainedReference(outputReferences[i])) {
                     // In this context, `maybeInitialRecipientBalances[i]` is guaranteed to have been initialized, so we can safely read
                     // from it. Note that we assume that the recipient balance change has a positive sign (i.e. the recipient
                     // received tokens).
-                    _setChainedReferenceValue(outputReferences[i], finalRecipientTokenBalances[i].sub(maybeInitialRecipientBalances[i]));
+                    _setChainedReferenceValue(
+                        outputReferences[i],
+                        finalRecipientTokenBalances[i].sub(maybeInitialRecipientBalances[i])
+                    );
                 }
             }
         } else {
@@ -224,8 +232,13 @@ abstract contract VaultActions is IBaseRelayerLibrary {
                     // In this context, `maybeInitialRecipientBalances[i]` is guaranteed to have been initialized, so we can safely read
                     // from it. Note that we assume that the recipient balance change has a positive sign (i.e. the recipient
                     // received tokens).
-                    uint256 finalRecipientTokenBalance = _isETH(request.assets[i]) ? recipient.balance : _asIERC20(request.assets[i]).balanceOf(recipient);
-                    _setChainedReferenceValue(outputReferences[i], finalRecipientTokenBalance.sub(maybeInitialRecipientBalances[i]));
+                    uint256 finalRecipientTokenBalance = _isETH(request.assets[i])
+                        ? recipient.balance
+                        : _asIERC20(request.assets[i]).balanceOf(recipient);
+                    _setChainedReferenceValue(
+                        outputReferences[i],
+                        finalRecipientTokenBalance.sub(maybeInitialRecipientBalances[i])
+                    );
                 }
             }
         }
@@ -257,9 +270,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     function _doWeightedExactBptInForOneTokenOutReplacements(bytes memory userData) private returns (bytes memory) {
-        (uint256 bptAmountIn, uint256 tokenIndex) = WeightedPoolUserDataHelpers.exactBptInForTokenOut(
-            userData
-        );
+        (uint256 bptAmountIn, uint256 tokenIndex) = WeightedPoolUserDataHelpers.exactBptInForTokenOut(userData);
 
         if (_isChainedReference(bptAmountIn)) {
             bptAmountIn = _getChainedReferenceValue(bptAmountIn);
@@ -271,9 +282,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     function _doWeightedExactBptInForTokensOutReplacements(bytes memory userData) private returns (bytes memory) {
-        (uint256 bptAmountIn) = WeightedPoolUserDataHelpers.exactBptInForTokensOut(
-            userData
-        );
+        uint256 bptAmountIn = WeightedPoolUserDataHelpers.exactBptInForTokensOut(userData);
 
         if (_isChainedReference(bptAmountIn)) {
             bptAmountIn = _getChainedReferenceValue(bptAmountIn);

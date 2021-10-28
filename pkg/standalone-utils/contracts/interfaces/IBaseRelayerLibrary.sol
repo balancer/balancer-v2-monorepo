@@ -22,8 +22,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
  * @title IBaseRelayerLibrary
  */
 abstract contract IBaseRelayerLibrary is AssetHelpers {
-
-    constructor(IWETH weth) AssetHelpers(weth){}
+    constructor(IWETH weth) AssetHelpers(weth) {}
 
     function getVault() public view virtual returns (IVault);
 
