@@ -122,7 +122,7 @@ describe('MultiDistributor', () => {
           it('reverts', async () => {
             await expect(
               distributor.newDistribution(stakingToken, rewardsToken, duration, { from: rewarder })
-            ).to.be.revertedWith('reward rate must be nonzero');
+            ).to.be.revertedWith('DISTRIBUTION_DURATION_ZERO');
           });
         });
       });
@@ -136,7 +136,7 @@ describe('MultiDistributor', () => {
       it('reverts', async () => {
         await expect(
           distributor.newDistribution(stakingToken, rewardsToken, PERIOD_DURATION, { from: rewarder })
-        ).to.be.revertedWith('Duplicate rewards token');
+        ).to.be.revertedWith('DISTRIBUTION_ALREADY_CREATED');
       });
     });
   });
@@ -348,7 +348,7 @@ describe('MultiDistributor', () => {
     context('when the given distribution does not exist', () => {
       it('reverts', async () => {
         await expect(distributor.reward(distribution, REWARDS, { from: rewarder })).to.be.revertedWith(
-          'Reward must be configured with create'
+          'DISTRIBUTION_DOES_NOT_EXIST'
         );
       });
     });
@@ -367,7 +367,7 @@ describe('MultiDistributor', () => {
         const itCannotSetThePeriodDuration = () => {
           it('reverts', async () => {
             await expect(distributor.setDuration(distribution, newDuration, { from: rewarder })).to.be.revertedWith(
-              'Reward period still active'
+              'DISTRIBUTION_STILL_ACTIVE'
             );
           });
         };
@@ -434,7 +434,7 @@ describe('MultiDistributor', () => {
 
         it('reverts', async () => {
           await expect(distributor.setDuration(distribution, newDuration, { from: rewarder })).to.be.revertedWith(
-            'Reward duration must be non-zero'
+            'DISTRIBUTION_DURATION_ZERO'
           );
         });
       });
@@ -443,7 +443,7 @@ describe('MultiDistributor', () => {
     context('when the given distribution does not exist', () => {
       it('reverts', async () => {
         await expect(distributor.setDuration(distribution, 1, { from: rewarder })).to.be.revertedWith(
-          'Reward must be configured with create'
+          'DISTRIBUTION_DOES_NOT_EXIST'
         );
       });
     });
@@ -781,7 +781,7 @@ describe('MultiDistributor', () => {
         const amount = 0;
 
         it('reverts', async () => {
-          await expect(stake(stakingToken, amount)).to.be.revertedWith('Cannot stake 0');
+          await expect(stake(stakingToken, amount)).to.be.revertedWith('STAKE_AMOUNT_ZERO');
         });
       });
     };
@@ -1172,7 +1172,7 @@ describe('MultiDistributor', () => {
 
       it('reverts', async () => {
         await expect(distributor.withdraw(stakingToken, amount, { from: user1 })).to.be.revertedWith(
-          'Cannot withdraw 0'
+          'WITHDRAW_AMOUNT_ZERO'
         );
       });
     });
@@ -2375,7 +2375,7 @@ describe('MultiDistributor', () => {
 
           it('reverts', async () => {
             await expect(distributor.exit(stakingToken, distribution, { from: user1 })).to.be.revertedWith(
-              'Cannot withdraw 0'
+              'WITHDRAW_AMOUNT_ZERO'
             );
           });
         });
@@ -2387,7 +2387,7 @@ describe('MultiDistributor', () => {
 
           it('reverts', async () => {
             await expect(distributor.exit(stakingToken, distribution, { from: user1 })).to.be.revertedWith(
-              'Cannot withdraw 0'
+              'WITHDRAW_AMOUNT_ZERO'
             );
           });
         });
@@ -2500,7 +2500,7 @@ describe('MultiDistributor', () => {
 
           it('reverts', async () => {
             await expect(distributor.exit(stakingToken, distribution, { from: user1 })).to.be.revertedWith(
-              'Cannot withdraw 0'
+              'WITHDRAW_AMOUNT_ZERO'
             );
           });
         });
@@ -2512,7 +2512,7 @@ describe('MultiDistributor', () => {
 
           it('reverts', async () => {
             await expect(distributor.exit(stakingToken, distribution, { from: user1 })).to.be.revertedWith(
-              'Cannot withdraw 0'
+              'WITHDRAW_AMOUNT_ZERO'
             );
           });
         });

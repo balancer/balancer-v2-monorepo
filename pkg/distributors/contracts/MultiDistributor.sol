@@ -198,13 +198,13 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         IERC20 rewardsToken,
         uint256 duration
     ) external override returns (bytes32 distributionId) {
-        require(duration > 0, "reward rate must be nonzero");
+        require(duration > 0, "DISTRIBUTION_DURATION_ZERO");
         require(address(stakingToken) != address(0), "STAKING_TOKEN_ZERO_ADDRESS");
         require(address(rewardsToken) != address(0), "REWARDS_TOKEN_ZERO_ADDRESS");
 
         distributionId = getDistributionId(stakingToken, rewardsToken, msg.sender);
         Distribution storage distribution = _getDistribution(distributionId);
-        require(distribution.duration == 0, "Duplicate rewards token");
+        require(distribution.duration == 0, "DISTRIBUTION_ALREADY_CREATED");
         distribution.duration = duration;
         distribution.rewarder = msg.sender;
         distribution.rewardsToken = rewardsToken;
@@ -219,12 +219,12 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
      * @param duration The duration over which each distribution is spread
      */
     function setDistributionDuration(bytes32 distributionId, uint256 duration) external {
-        require(duration > 0, "Reward duration must be non-zero");
+        require(duration > 0, "DISTRIBUTION_DURATION_ZERO");
 
         Distribution storage distribution = _getDistribution(distributionId);
-        require(distribution.duration > 0, "Reward must be configured with create");
+        require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
         require(distribution.rewarder == msg.sender, "SENDER_NOT_REWARDER");
-        require(distribution.periodFinish < block.timestamp, "Reward period still active");
+        require(distribution.periodFinish < block.timestamp, "DISTRIBUTION_STILL_ACTIVE");
 
         distribution.duration = duration;
         emit DistributionDurationSet(distributionId, duration);
@@ -239,7 +239,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         _updateDistributionRate(distributionId);
 
         Distribution storage distribution = _getDistribution(distributionId);
-        require(distribution.duration > 0, "Reward must be configured with create");
+        require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
         require(distribution.rewarder == msg.sender, "SENDER_NOT_REWARDER");
 
         IERC20 rewardsToken = distribution.rewardsToken;
@@ -376,7 +376,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         uint256 amount,
         address receiver
     ) public nonReentrant updateDistribution(stakingToken, msg.sender) {
-        require(amount > 0, "Cannot withdraw 0");
+        require(amount > 0, "WITHDRAW_AMOUNT_ZERO");
 
         UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
         uint256 currentBalance = userStaking.balance;
@@ -471,7 +471,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         address user,
         address from
     ) internal updateDistribution(stakingToken, user) {
-        require(amount > 0, "Cannot stake 0");
+        require(amount > 0, "STAKE_AMOUNT_ZERO");
 
         UserStaking storage userStaking = _userStakings[stakingToken][user];
         userStaking.balance = userStaking.balance.add(amount);
