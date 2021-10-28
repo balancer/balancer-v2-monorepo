@@ -13,11 +13,11 @@ import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 
-import { Distributor } from './helpers/Distributor';
+import { MultiDistributor } from './helpers/MultiDistributor';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
-describe('MultiRewards', () => {
-  let distributor: Distributor;
+describe('MultiDistributor', () => {
+  let distributor: MultiDistributor;
   let distribution: string, anotherDistribution: string;
   let stakingToken: Token, stakingTokens: TokenList;
   let rewardsToken: Token, anotherRewardsToken: Token, rewardsTokens: TokenList;
@@ -32,7 +32,7 @@ describe('MultiRewards', () => {
   });
 
   sharedBeforeEach('deploy distributor', async () => {
-    distributor = await Distributor.create();
+    distributor = await MultiDistributor.create();
   });
 
   sharedBeforeEach('deploy tokens', async () => {

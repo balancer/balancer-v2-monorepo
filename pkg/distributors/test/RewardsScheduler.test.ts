@@ -11,7 +11,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
-import { setup, rewardsDuration } from './MultiRewardsSharedSetup';
+import { setup, rewardsDuration } from './MultiDistributorSharedSetup';
 import { ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('Rewards Scheduler', () => {
@@ -140,7 +140,7 @@ describe('Rewards Scheduler', () => {
         });
       });
 
-      it('emits RewardAdded in MultiRewards', async () => {
+      it('emits RewardAdded in MultiDistributor', async () => {
         const receipt = await (await rewardsScheduler.connect(lp).startRewards([rewardId])).wait();
 
         expectEvent.inIndirectReceipt(receipt, stakingContract.interface, 'RewardAdded', {

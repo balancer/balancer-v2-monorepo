@@ -11,7 +11,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
-import { setup, rewardsDuration, rewardsVestingTime } from './MultiRewardsSharedSetup';
+import { setup, rewardsDuration, rewardsVestingTime } from './MultiDistributorSharedSetup';
 
 describe('Staking contract - callbacks', () => {
   let lp: SignerWithAddress, mockAssetManager: SignerWithAddress;

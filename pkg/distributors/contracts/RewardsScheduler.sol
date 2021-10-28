@@ -16,20 +16,21 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
-import "./interfaces/IMultiRewards.sol";
+
+import "./interfaces/IMultiDistributor.sol";
 
 // solhint-disable not-rely-on-time
 
 /**
- * Scheduler for MultiRewards contract
+ * Scheduler for MultiDistributor contract
  */
 contract RewardsScheduler {
     using SafeERC20 for IERC20;
 
-    IMultiRewards private immutable _multiRewards;
+    IMultiDistributor private immutable _multiDistributor;
 
-    constructor(IMultiRewards multiRewards) {
-        _multiRewards = multiRewards;
+    constructor(IMultiDistributor multiDistributor) {
+        _multiDistributor = multiDistributor;
     }
 
     enum RewardStatus { UNINITIALIZED, PENDING, STARTED }
@@ -77,12 +78,11 @@ contract RewardsScheduler {
 
             _rewards[rewardId].status = RewardStatus.STARTED;
 
-            if (
-                scheduledReward.rewardsToken.allowance(address(this), address(_multiRewards)) < scheduledReward.amount
-            ) {
-                scheduledReward.rewardsToken.approve(address(_multiRewards), type(uint256).max);
+            uint256 allowance = scheduledReward.rewardsToken.allowance(address(this), address(_multiDistributor));
+            if (allowance < scheduledReward.amount) {
+                scheduledReward.rewardsToken.approve(address(_multiDistributor), type(uint256).max);
             }
-            _multiRewards.reward(scheduledReward.distributionId, scheduledReward.amount);
+            _multiDistributor.reward(scheduledReward.distributionId, scheduledReward.amount);
             emit RewardStarted(
                 rewardId,
                 scheduledReward.rewarder,

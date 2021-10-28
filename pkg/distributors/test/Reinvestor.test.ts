@@ -14,7 +14,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
-import { setup, tokenInitialBalance, rewardsDuration, rewardsVestingTime } from './MultiRewardsSharedSetup';
+import { setup, tokenInitialBalance, rewardsDuration, rewardsVestingTime } from './MultiDistributorSharedSetup';
 
 describe('Reinvestor', () => {
   let admin: SignerWithAddress, lp: SignerWithAddress, mockAssetManager: SignerWithAddress;

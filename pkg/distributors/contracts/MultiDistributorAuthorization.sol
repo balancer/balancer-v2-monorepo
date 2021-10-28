@@ -21,9 +21,9 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 /**
- * @dev Base authorization layer implementation for MultiRewards
+ * @dev Base authorization layer implementation for MultiDistributor
  */
-abstract contract MultiRewardsAuthorization is Authentication {
+abstract contract MultiDistributorAuthorization is Authentication {
     IVault private immutable _vault;
 
     constructor(IVault vault) {
