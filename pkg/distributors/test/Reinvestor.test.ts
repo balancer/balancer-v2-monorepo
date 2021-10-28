@@ -1,7 +1,9 @@
 import { ethers } from 'hardhat';
+import { BytesLike, BigNumber } from 'ethers';
 import { expect } from 'chai';
 import { Contract, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { MerkleTree } from '../lib/merkleTree';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -14,22 +16,41 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
-import { setup, tokenInitialBalance, rewardsDuration, rewardsVestingTime } from './MultiDistributorSharedSetup';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { MultiDistributor } from './helpers/MultiDistributor';
+import { setup, tokenInitialBalance } from './MultiDistributorSharedSetup';
+
+function encodeElement(address: string, balance: BigNumber): string {
+  return ethers.utils.solidityKeccak256(['address', 'uint'], [address, balance]);
+}
+
+interface Claim {
+  distributionId: BigNumber;
+  balance: BigNumber;
+  distributor: string;
+  tokenIndex: number;
+  merkleProof: BytesLike[];
+}
 
 describe('Reinvestor', () => {
-  let admin: SignerWithAddress, lp: SignerWithAddress, mockAssetManager: SignerWithAddress;
-
-  let rewardTokens: TokenList;
+  let vault: Contract;
   let vault: Vault;
-  let stakingContract: MultiDistributor;
   let callbackContract: Contract;
-  let rewardToken: Token;
   let pool: Contract;
+  let tokens: TokenList,
+    token1: Token,
+    token2: Token,
+    orchard: Contract,
+    tokenAddresses: string[];
+  let admin: SignerWithAddress,
+    distributor: SignerWithAddress,
+    claimer1: SignerWithAddress,
+    claimer2: SignerWithAddress,
+    other: SignerWithAddress;
+
+  const claimBalance = fp(1);
 
   before('deploy base contracts', async () => {
-    [, admin, lp, mockAssetManager] = await ethers.getSigners();
+    [, admin, distributor, claimer1, claimer2, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('set up asset manager and reinvestor', async () => {
@@ -37,51 +58,61 @@ describe('Reinvestor', () => {
 
     pool = contracts.pool;
     vault = contracts.vault;
-    stakingContract = contracts.stakingContract;
-    rewardToken = contracts.rewardTokens.DAI;
-    rewardTokens = contracts.rewardTokens;
 
     callbackContract = await deploy('Reinvestor', { args: [vault.address] });
+
+    tokens = await TokenList.create(['DAI', 'BAT'], { sorted: true });
+    token1 = tokens.DAI;
+    token2 = tokens.BAT;
+    tokenAddresses = [token1.address, token2.address];
+
+    orchard = await deploy('MerkleOrchard', {
+      args: [vault.address],
+      from: admin,
+    });
+    await tokens.mint({ to: distributor.address, amount: tokenInitialBalance });
+    await tokens.approve({ to: orchard.address, from: [distributor] });
+
   });
 
-  describe('with a stake and a reward', () => {
-    let id: string;
-    const rewardAmount = fp(1);
-
+  describe('with a distribution', () => {
     sharedBeforeEach(async () => {
-      await stakingContract.newDistribution(pool, rewardToken, rewardsDuration, {
-        from: mockAssetManager,
-      });
 
-      const bpt = await Token.deployedAt(pool.address);
+      const elements = [encodeElement(claimer1.address, claimBalance)];
+      const merkleTree = new MerkleTree(elements);
+      const root = merkleTree.getHexRoot();
+      await orchard.connect(distributor).createDistribution(token1.address, root, claimBalance, bn(1));
 
-      const bptBalance = await bpt.balanceOf(lp.address);
-      await bpt.approve(stakingContract, bptBalance, { from: lp });
-
-      id = await stakingContract.getDistributionId(bpt, rewardToken, mockAssetManager);
-      await stakingContract.subscribe(id, { from: lp });
-      await stakingContract.stake(bpt, bptBalance, lp, lp, { from: lp });
-
-      await rewardToken.approve(stakingContract, bptBalance, { from: mockAssetManager });
-      await stakingContract.fundDistribution(id, rewardAmount, { from: mockAssetManager });
-      await advanceTime(rewardsVestingTime);
     });
 
     describe('with a pool to claim into', () => {
       let destinationPool: Contract;
       let destinationPoolId: string;
       let assets: string[];
+      let claims: Claim[];
 
       sharedBeforeEach(async () => {
+        const elements = [encodeElement(claimer1.address, claimBalance)];
+        const merkleTree = new MerkleTree(elements);
+        const root = merkleTree.getHexRoot();
+
+        const merkleProof: BytesLike[] = merkleTree.getHexProof(elements[0]);
+
+        claims = [
+          {
+            distributionId: bn(1),
+            balance: claimBalance,
+            distributor: distributor.address,
+            tokenIndex: 0,
+            merkleProof,
+          },
+        ];
+
         // Creating a BAT-DAI pool
-        const tokens = await TokenList.create(['BAT']);
-        await tokens.mint({ to: lp, amount: tokenInitialBalance });
-        await tokens.approve({ to: vault, from: [lp] });
+        await tokens.mint({ to: claimer1, amount: tokenInitialBalance });
+        await tokens.approve({ to: vault.address, from: [claimer1] });
 
-        await rewardTokens.mint({ to: lp, amount: tokenInitialBalance });
-        await rewardTokens.approve({ to: vault, from: [lp] });
-
-        [assets] = new AssetHelpers(ZERO_ADDRESS).sortTokens([rewardToken.address, tokens.BAT.address]);
+        [assets] = new AssetHelpers(ZERO_ADDRESS).sortTokens([token1.address, tokens.BAT.address]);
         const weights = [fp(0.5), fp(0.5)];
         const assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS];
 
@@ -102,7 +133,7 @@ describe('Reinvestor', () => {
 
         destinationPoolId = await destinationPool.getPoolId();
 
-        await vault.instance.connect(lp).joinPool(destinationPoolId, lp.address, lp.address, {
+        await vault.instance.connect(claimer1).joinPool(destinationPoolId, claimer1.address, claimer1.address, {
           assets,
           maxAmountsIn: Array(assets.length).fill(MAX_UINT256),
           fromInternalBalance: false,
@@ -111,16 +142,15 @@ describe('Reinvestor', () => {
       });
 
       it('emits PoolBalanceChanged when a LP claims to weighted pool', async () => {
-        const args = [lp.address, destinationPoolId, [rewardToken.address]];
+        const args = [claimer1.address, destinationPoolId, [token1.address]];
         const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
 
         const receipt = await (
-          await stakingContract.claimWithCallback(id, lp, callbackContract, calldata, { from: lp })
+          await orchard.connect(claimer1).claimDistributionsWithCallback(claimer1.address, claims, tokenAddresses, callbackContract.address, calldata)
         ).wait();
 
         const deltas = [bn(0), bn(0)];
-        deltas[assets.indexOf(rewardToken.address)] = bn('999999999999999498');
-
+        deltas[assets.indexOf(token1.address)] = claimBalance;
         expectEvent.inIndirectReceipt(receipt, vault.interface, 'PoolBalanceChanged', {
           poolId: destinationPoolId,
           liquidityProvider: callbackContract.address,
@@ -131,47 +161,65 @@ describe('Reinvestor', () => {
       });
 
       it('mints bpt to a LP when they claim to weighted pool', async () => {
-        const bptBalanceBefore = await destinationPool.balanceOf(lp.address);
-        const args = [lp.address, destinationPoolId, [rewardToken.address]];
+        const bptBalanceBefore = await destinationPool.balanceOf(claimer1.address);
+        const args = [claimer1.address, destinationPoolId, [token1.address]];
         const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
 
-        await stakingContract.claimWithCallback(id, lp, callbackContract, calldata, { from: lp });
-        const bptBalanceAfter = await destinationPool.balanceOf(lp.address);
-        expect(bptBalanceAfter.sub(bptBalanceBefore)).to.equal(bn('998703239790478024'));
+        await orchard.connect(claimer1).claimDistributionsWithCallback(claimer1.address, claims, tokenAddresses, callbackContract.address, calldata);
+        const bptBalanceAfter = await destinationPool.balanceOf(claimer1.address);
+        expect(bptBalanceAfter.sub(bptBalanceBefore)).to.be.equalWithError(fp('1'), 2e-3);
       });
 
-      describe('create', () => {
+      describe('createDistribution', () => {
         let anotherId: string;
-        let otherRewardTokens: TokenList;
-        let otherRewardToken: Token;
+        let otherTokens: TokenList;
+        let otherToken: Token;
+        let allTokenAddresses: string[];
 
-        sharedBeforeEach('with multiple rewardTokens', async () => {
-          otherRewardTokens = await TokenList.create(['GRT'], { sorted: true });
-          otherRewardToken = otherRewardTokens.GRT;
+        sharedBeforeEach('with multiple tokens', async () => {
+          otherTokens = await TokenList.create(['GRT'], { sorted: true });
+          otherToken = otherTokens.GRT;
 
-          await otherRewardTokens.mint({ to: mockAssetManager, amount: bn(100e18) });
-          await otherRewardTokens.approve({ to: stakingContract.address, from: [mockAssetManager] });
+          allTokenAddresses = [token1.address, token2.address, otherToken.address];
 
-          const bpt = await Token.deployedAt(pool.address);
+          await otherTokens.mint({ to: distributor, amount: bn(100e18) });
+          await otherTokens.approve({ to: orchard.address, from: [distributor] });
 
-          await stakingContract.newDistribution(bpt, otherRewardToken, rewardsDuration, { from: mockAssetManager });
+          const elements = [encodeElement(claimer1.address, claimBalance)];
+          const merkleTree = new MerkleTree(elements);
+          const root = merkleTree.getHexRoot();
 
-          anotherId = await stakingContract.getDistributionId(bpt, otherRewardToken, mockAssetManager);
-          await stakingContract.subscribe(anotherId, { from: lp });
+          await orchard.connect(distributor).createDistribution(otherToken.address, root, claimBalance, bn(1));
 
-          await stakingContract.fundDistribution(anotherId, fp(3), { from: mockAssetManager });
-          await advanceTime(rewardsVestingTime);
+          const merkleProof: BytesLike[] = merkleTree.getHexProof(elements[0]);
+
+          claims = [
+            {
+              distributionId: bn(1),
+              balance: claimBalance,
+              distributor: distributor.address,
+              tokenIndex: 0,
+              merkleProof,
+            },
+            {
+              distributionId: bn(1),
+              balance: claimBalance,
+              distributor: distributor.address,
+              tokenIndex: 2,
+              merkleProof,
+            },
+          ];
         });
 
-        it('returns rewards that are unused in reinvestment', async () => {
-          const rewardTokenAddresses = [rewardToken.address, otherRewardToken.address];
-          const args = [lp.address, destinationPoolId, rewardTokenAddresses];
+        it('returns tokens that are unused in reinvestment', async () => {
+          const token1Addresses = [token1.address, otherToken.address];
+          const args = [claimer1.address, destinationPoolId, token1Addresses];
           const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
 
           await expectBalanceChange(
-            () => stakingContract.claimWithCallback([id, anotherId], lp, callbackContract, calldata, { from: lp }),
-            otherRewardTokens,
-            [{ account: lp, changes: { GRT: ['very-near', fp(3)] } }]
+            () => orchard.connect(claimer1).claimDistributionsWithCallback(claimer1.address, claims, allTokenAddresses, callbackContract.address, calldata),
+            otherTokens,
+            [{ account: claimer1, changes: { GRT: ['very-near', claimBalance] } }]
           );
         });
       });
