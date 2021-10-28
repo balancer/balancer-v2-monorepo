@@ -147,12 +147,10 @@ describe('VaultActions', function () {
     }>;
     outputReferences?: Dictionary<BigNumberish>;
   }): string {
-    const outputReferences = new Array(tokens.length).fill(0);
-    if (params.outputReferences != undefined) {
-      for (const symbol in params.outputReferences) {
-        outputReferences[tokens.indexOf(tokens.findBySymbol(symbol))] = params.outputReferences[symbol];
-      }
-    }
+    const outputReferences = Object.entries(params.outputReferences ?? {}).map(([symbol, key]) => ({
+      index: tokens.findIndexBySymbol(symbol),
+      key,
+    }));
 
     return relayerLibrary.interface.encodeFunctionData('batchSwap', [
       SwapKind.GivenIn,
