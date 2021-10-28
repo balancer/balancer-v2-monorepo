@@ -350,7 +350,6 @@ describe('ManagedPool', function () {
       });
 
       const UPDATE_DURATION = DAY * 2;
-      const SHORT_UPDATE = MINUTE * 2;
 
       context('when the sender is not the owner', () => {
         it('non-owners cannot update weights', async () => {
@@ -394,12 +393,6 @@ describe('ManagedPool', function () {
             await expect(pool.updateWeightsGradually(sender, now, now.sub(1), poolWeights)).to.be.revertedWith(
               'GRADUAL_UPDATE_TIME_TRAVEL'
             );
-          });
-
-          it('fails if duration is less than the minimum', async () => {
-            await expect(
-              pool.updateWeightsGradually(sender, now, now.add(SHORT_UPDATE), poolWeights)
-            ).to.be.revertedWith('WEIGHT_CHANGE_TOO_FAST');
           });
 
           it('fails with an end weight below the minimum', async () => {
