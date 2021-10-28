@@ -69,7 +69,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         int256[] calldata limits,
         uint256 deadline,
         uint256 value,
-        uint256[] memory outputReferences
+        uint256[] calldata outputReferences
     ) external payable returns (int256[] memory) {
         require(funds.sender == msg.sender, "Incorrect sender");
         InputHelpers.ensureInputLengthMatch(assets.length, outputReferences.length);
@@ -186,13 +186,32 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         PoolKind kind,
         address sender,
         address payable recipient,
-        IVault.ExitPoolRequest memory request
+        IVault.ExitPoolRequest memory request,
+        uint256[] calldata outputReferences
     ) external payable {
         require(sender == msg.sender, "Incorrect sender");
+        InputHelpers.ensureInputLengthMatch(request.assets.length, outputReferences.length);
+
+        uint256[] memory maybeInitialRecipientBalances = new uint256[](request.assets.length);
+        for (uint256 i = 0; i < request.assets.length; i++) {
+            maybeInitialRecipientBalances[i] = _isChainedReference(outputReferences[i])
+                ? IERC20(address(request.assets[i])).balanceOf(recipient)
+                : 0;
+        }
 
         request.userData = _doExitPoolChainedReferenceReplacements(kind, request.userData);
 
         getVault().exitPool(poolId, sender, recipient, request);
+
+        for (uint256 i = 0; i < request.assets.length; i++) {
+            if (_isChainedReference(outputReferences[i])) {
+                // In this context, `maybeInitialRecipientBalances[i]` is guaranteed to have been initialized, so we can safely read
+                // from it. Note that we assume that the recipient balance change has a positive sign (i.e. the recipient
+                // received tokens).
+                uint256 finalRecipientTokenBalance = IERC20(address(request.assets[i])).balanceOf(recipient);
+                _setChainedReferenceValue(outputReferences[i], finalRecipientTokenBalance.sub(maybeInitialRecipientBalances[i]));
+            }
+        }
     }
 
     function _doExitPoolChainedReferenceReplacements(PoolKind kind, bytes memory userData)
