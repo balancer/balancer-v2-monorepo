@@ -26,6 +26,7 @@ import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
 
 import "./LinearMath.sol";
+import "./LinearPoolUserDataHelpers.sol";
 
 /**
  * @dev LinearPool suitable for assets with an equal underlying token with an exact and non-manipulable exchange rate.
@@ -35,6 +36,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
+    using LinearPoolUserDataHelpers for bytes;
 
     uint256 private constant _TOTAL_TOKENS = 3; // Main token, wrapped token, BPT
 
@@ -61,6 +63,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     event TargetsSet(IERC20 indexed token, uint256 lowerTarget, uint256 upperTarget);
     event PriceRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
     event PriceRateCacheUpdated(IERC20 indexed token, uint256 rate);
+    enum ExitKind { EXACT_BPT_IN_FOR_TOKENS_OUT }
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -188,7 +191,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public override onlyVault(request.poolId) returns (uint256) {
+    ) public override onlyVault(request.poolId) whenNotPaused returns (uint256) {
         // Validate indexes.
         // Note, these are no longer used ahead since we can trust the ones used when the pool was registered
         _require(indexIn < _TOTAL_TOKENS && indexOut < _TOTAL_TOKENS, Errors.OUT_OF_BOUNDS);
@@ -253,7 +256,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         SwapRequest memory request,
         uint256[] memory balances,
         Params memory params
-    ) internal view whenNotPaused returns (uint256) {
+    ) internal view returns (uint256) {
         _require(request.tokenOut == _wrappedToken || request.tokenOut == IERC20(this), Errors.INVALID_TOKEN);
         return
             request.tokenOut == _wrappedToken
@@ -271,7 +274,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         SwapRequest memory request,
         uint256[] memory balances,
         Params memory params
-    ) internal view whenNotPaused returns (uint256) {
+    ) internal view returns (uint256) {
         _require(request.tokenOut == _mainToken || request.tokenOut == IERC20(this), Errors.INVALID_TOKEN);
         return
             request.tokenOut == _mainToken
@@ -394,26 +397,68 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
     }
 
+    /**
+     * @dev Proportional exit is only enabled when pool is paused.
+     */
     function _onExitPool(
         bytes32,
         address,
         address,
-        uint256[] memory,
+        uint256[] memory balances,
         uint256,
         uint256,
         uint256[] memory,
-        bytes memory
+        bytes memory userData
     )
         internal
-        pure
+        view
         override
         returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            uint256[] memory dueProtocolFeeAmounts
         )
     {
-        _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
+        ExitKind kind = userData.exitKind();
+
+        // Exits typically revert, except for the proportional exit when the emergency pause mechanism has been
+        // triggered. This allows for a simple and safe way to exit the Pool.
+        if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+            _ensurePaused();
+            // Note that this will cause for the user's BPT to be burned, which is not something that happens during
+            // regular operation of this Pool, and may lead to accounting errors. Because of this, it is highly
+            // advisable to not continue using a Pool on which the pause has been turned on and BPT burned once the
+            // pause window expires.
+
+            (bptAmountIn, amountsOut) = _proportionalExit(balances, userData);
+            // For simplicity, due protocol fees are set to zero.
+            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
+        } else {
+            _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
+        }
+    }
+
+    function _proportionalExit(uint256[] memory balances, bytes memory userData)
+        private
+        view
+        returns (uint256, uint256[] memory)
+    {
+        // This proportional exit function is only enabled if the contract is paused in an attempt to provide users
+        // with a mechanism to retrieve their tokens in case of an emergency.
+        // This particular exit function is the only one available because it is the simplest one, and therefore the
+        // one with the lowest likelihood of errors.
+
+        uint256 bptAmountIn = userData.exactBptInForTokensOut();
+        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
+
+        uint256[] memory amountsOut = _calcTokensOutGivenExactBptIn(
+            balances,
+            bptAmountIn,
+            totalSupply().sub(balances[_bptIndex]),
+            _bptIndex
+        );
+
+        return (bptAmountIn, amountsOut);
     }
 
     function _getMaxTokens() internal pure override returns (uint256) {
@@ -536,5 +581,19 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             (actionId == getActionId(this.setTargets.selector)) ||
             (actionId == getActionId(this.setWrappedTokenRateCacheDuration.selector)) ||
             super._isOwnerOnlyAction(actionId);
+    }
+
+    /**
+     * @dev Returns the number of tokens in circulation.
+     *
+     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints all BPT, `totalSupply`
+     * remains constant, whereas `virtualSupply` increases as users join the pool and decreases as they exit it.
+     */
+    function virtualSupply() external view returns (uint256) {
+        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+
+        uint256 _virtualSupply = totalSupply() - balances[_bptIndex];
+
+        return _virtualSupply;
     }
 }

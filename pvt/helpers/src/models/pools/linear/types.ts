@@ -48,3 +48,17 @@ export type SwapLinearPool = {
   lastChangeBlock?: BigNumberish;
   data?: string;
 };
+
+export type MultiExitGivenInLinearPool = {
+  bptIn: BigNumberish;
+  recipient?: Account;
+  from?: SignerWithAddress;
+  currentBalances?: BigNumberish[];
+  protocolFeePercentage?: BigNumberish;
+  lastChangeBlock?: BigNumberish;
+};
+
+export type ExitResult = {
+  amountsOut: BigNumber[];
+  dueProtocolFeeAmounts: BigNumber[];
+};
