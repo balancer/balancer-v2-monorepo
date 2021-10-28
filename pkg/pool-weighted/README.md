@@ -8,9 +8,9 @@ This package contains the source code for Balancer V2 Weighted Pools, that is, P
 
 The two basic flavors currently in existence are [`WeightedPool`](./contracts/WeightedPool.sol) (basic twenty token version) and [`WeightedPool2Tokens`](./contracts/WeightedPool2Tokens.sol) (limited to two tokens, but supporting price oracles).
 
-The [`smart`](./contracts/smart) directory contains a number of 'smart' variants, which automatically update some of their attributes to support more complex use cases. Examples are [`LiquidityBootstrappingPool`](./contracts/smart/LiquidityBootstrappingPool.sol) for auction-like mechanisms, and [`InvestmentPool`](./contracts/smart/InvestmentPool.sol) for managed portfolios.
+The [`smart`](./contracts/smart) directory contains a number of 'smart' variants, which automatically update some of their attributes to support more complex use cases. Examples are [`LiquidityBootstrappingPool`](./contracts/smart/LiquidityBootstrappingPool.sol) for auction-like mechanisms, and [`ManagedPool`](./contracts/smart/ManagedPool.sol) for managed portfolios.
 
-| :warning: | Investment Pools are still undergoing development and may contain bugs and/or change significantly. |
+| :warning: | Managed Pools are still undergoing development and may contain bugs and/or change significantly. |
 | --------- | :-------------------------------------------------------------------------------------------------- |
 
 Other useful contracts include [`WeightedMath`](./contracts/WeightedMath.sol), which implements the low level calculations required for swaps, joins, exits and price calculations, and [`IPriceOracle`](../pool-utils/contracts/interfaces/IPriceOracle.sol), used to make price oracle queries.

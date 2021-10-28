@@ -41,7 +41,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
         EXACT_BPT_IN_FOR_TOKENS_OUT,
         BPT_IN_FOR_EXACT_TOKENS_OUT,
-        MANAGEMENT_FEE_TOKENS_OUT // for InvestmentPool
+        MANAGEMENT_FEE_TOKENS_OUT // for ManagedPool
     }
 
     constructor(

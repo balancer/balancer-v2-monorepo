@@ -1,14 +1,16 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { defaultAbiCoder } from '@ethersproject/abi';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 
 import { SwapKind } from '@balancer-labs/balancer-js';
+import { actionId } from '../../misc/actions';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { GeneralSwap } from '../../vault/types';
 import { Account, TxParams } from '../../types/types';
-import { SwapLinearPool, RawLinearPoolDeployment } from './types';
+import { SwapLinearPool, RawLinearPoolDeployment, MultiExitGivenInLinearPool, ExitResult } from './types';
 
 import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
@@ -165,6 +167,10 @@ export default class LinearPool {
     return this.instance.getRate();
   }
 
+  async getVirtualSupply(): Promise<BigNumber> {
+    return this.instance.virtualSupply();
+  }
+
   async getTargets(): Promise<{ lowerTarget: BigNumber; upperTarget: BigNumber }> {
     return this.instance.getTargets();
   }
@@ -223,5 +229,39 @@ export default class LinearPool {
       indexIn: params.in,
       indexOut: params.out,
     };
+  }
+
+  async proportionalExit(params: MultiExitGivenInLinearPool): Promise<ExitResult> {
+    const { tokens: allTokens } = await this.getTokens();
+    const data = this._encodeExitExactBPTInForTokensOut(params.bptIn);
+    const currentBalances = params.currentBalances || (await this.getBalances());
+    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+
+    const tx = await this.vault.exitPool({
+      poolAddress: this.address,
+      poolId: this.poolId,
+      recipient: to,
+      currentBalances,
+      tokens: allTokens,
+      lastChangeBlock: params.lastChangeBlock ?? 0,
+      protocolFeePercentage: params.protocolFeePercentage ?? 0,
+      data: data,
+      from: params.from,
+    });
+
+    const receipt = await (await tx).wait();
+    const { deltas, protocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFeeAmounts };
+  }
+
+  private _encodeExitExactBPTInForTokensOut(bptAmountIn: BigNumberish): string {
+    const EXACT_BPT_IN_FOR_TOKENS_OUT = 0;
+    return defaultAbiCoder.encode(['uint256', 'uint256'], [EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn]);
+  }
+
+  async pause(): Promise<void> {
+    const action = await actionId(this.instance, 'setPaused');
+    await this.vault.grantRole(action);
+    await this.instance.setPaused(true);
   }
 }

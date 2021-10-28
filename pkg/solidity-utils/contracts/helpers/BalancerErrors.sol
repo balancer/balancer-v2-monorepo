@@ -153,7 +153,7 @@ library Errors {
     uint256 internal constant UNHANDLED_EXIT_KIND = 336;
     uint256 internal constant UNAUTHORIZED_EXIT = 337;
     uint256 internal constant MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 338;
-    uint256 internal constant UNHANDLED_BY_INVESTMENT_POOL = 339;
+    uint256 internal constant UNHANDLED_BY_MANAGED_POOL = 339;
     uint256 internal constant UNHANDLED_BY_PHANTOM_POOL = 340;
     uint256 internal constant TOKEN_DOES_NOT_HAVE_RATE_PROVIDER = 341;
     uint256 internal constant INVALID_INITIALIZATION = 342;
@@ -191,7 +191,6 @@ library Errors {
     uint256 internal constant CALL_TO_NON_CONTRACT = 429;
     uint256 internal constant LOW_LEVEL_CALL_FAILED = 430;
     uint256 internal constant NOT_PAUSED = 431;
-
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;

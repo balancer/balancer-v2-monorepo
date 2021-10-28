@@ -92,7 +92,7 @@ export class WeightedPoolEncoder {
     );
 }
 
-export class InvestmentPoolEncoder {
+export class ManagedPoolEncoder {
   /**
    * Cannot be constructed.
    */
@@ -101,7 +101,7 @@ export class InvestmentPoolEncoder {
   }
 
   /**
-   * Encodes the userData parameter for exiting an InvestmentPool for withdrawing management fees.
+   * Encodes the userData parameter for exiting a ManagedPool for withdrawing management fees.
    * This can only be done by the pool owner.
    */
   static exitForManagementFees = (): string =>

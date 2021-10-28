@@ -14,31 +14,14 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "./LinearPool.sol";
 
-interface IMultiRewards {
-    function notifyRewardAmount(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        address rewarder,
-        uint256 amount
-    ) external;
+library LinearPoolUserDataHelpers {
+    function exitKind(bytes memory self) internal pure returns (LinearPool.ExitKind) {
+        return abi.decode(self, (LinearPool.ExitKind));
+    }
 
-    function addReward(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        uint256 duration
-    ) external;
-
-    function whitelistRewarder(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        address rewarder
-    ) external;
-
-    function isWhitelistedRewarder(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        address rewarder
-    ) external view returns (bool);
+    function exactBptInForTokensOut(bytes memory self) internal pure returns (uint256 bptAmountIn) {
+        (, bptAmountIn) = abi.decode(self, (LinearPool.ExitKind, uint256));
+    }
 }

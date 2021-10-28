@@ -20,15 +20,15 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
-import "./InvestmentPool.sol";
+import "./ManagedPool.sol";
 
-contract InvestmentPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(InvestmentPool).creationCode) {
+contract ManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(ManagedPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
-     * @dev Deploys a new `InvestmentPool`.
+     * @dev Deploys a new `ManagedPool`.
      */
     function create(
         string memory name,
@@ -45,7 +45,7 @@ contract InvestmentPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWind
         return
             _create(
                 abi.encode(
-                    InvestmentPool.NewPoolParams({
+                    ManagedPool.NewPoolParams({
                         vault: getVault(),
                         name: name,
                         symbol: symbol,

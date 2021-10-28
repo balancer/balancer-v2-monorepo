@@ -102,8 +102,8 @@ contract AaveATokenAssetManager is RewardsAssetManager {
         distributor.notifyRewardAmount(
             IERC20(getPoolAddress()),
             stkAave,
-            stkAave.balanceOf(address(this)),
-            address(this)
+            address(this),
+            stkAave.balanceOf(address(this))
         );
     }
 }

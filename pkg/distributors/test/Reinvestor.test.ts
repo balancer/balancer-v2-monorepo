@@ -58,7 +58,7 @@ describe('Reinvestor', () => {
 
       await stakingContract
         .connect(mockAssetManager)
-        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount, mockAssetManager.address);
+        .notifyRewardAmount(pool.address, rewardToken.address, mockAssetManager.address, rewardAmount);
       await advanceTime(rewardsVestingTime);
     });
 
@@ -156,7 +156,7 @@ describe('Reinvestor', () => {
 
           await stakingContract
             .connect(mockAssetManager)
-            .notifyRewardAmount(pool.address, otherRewardToken.address, fp(3), mockAssetManager.address);
+            .notifyRewardAmount(pool.address, otherRewardToken.address, mockAssetManager.address, fp(3));
           await advanceTime(rewardsVestingTime);
         });
 
