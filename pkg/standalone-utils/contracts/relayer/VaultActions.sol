@@ -19,9 +19,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/VaultHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20PermitDAI.sol";
-
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "@balancer-labs/v2-pool-weighted/contracts/BaseWeightedPool.sol";
