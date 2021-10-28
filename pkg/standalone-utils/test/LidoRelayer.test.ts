@@ -14,6 +14,8 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
+import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { Dictionary } from 'lodash';
 
 describe('LidoRelayer', function () {
@@ -63,7 +65,6 @@ describe('LidoRelayer', function () {
     await WETH.mint(sender, fp(2500));
     await WETH.approve(wstETH.address, fp(150), { from: sender });
     await wstETH.instance.connect(sender).wrap(fp(150));
-    await wstETH.instance.connect(sender).approve(vault.address, fp(100));
   });
 
   sharedBeforeEach('set up relayer', async () => {
@@ -92,6 +93,10 @@ describe('LidoRelayer', function () {
     return BigNumber.from(paddedPrefix).add(key);
   }
 
+  function encodeApprove(token: Token, amount: BigNumberish): string {
+    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
+  }
+
   function encodeWrap(sender: string, recipient: string, amount: BigNumberish, outputReference?: BigNumberish): string {
     return relayerLibrary.interface.encodeFunctionData('wrapStETH', [sender, recipient, amount, outputReference ?? 0]);
   }
@@ -117,6 +122,8 @@ describe('LidoRelayer', function () {
       tokenIn: Token;
       tokenOut: Token;
       amount: BigNumberish;
+      sender: Account;
+      recipient: Account;
       outputReference?: BigNumberish;
     }): string {
       return relayerLibrary.interface.encodeFunctionData('swap', [
@@ -128,7 +135,12 @@ describe('LidoRelayer', function () {
           amount: params.amount,
           userData: '0x',
         },
-        { sender: sender.address, recipient: sender.address, fromInternalBalance: false, toInternalBalance: false },
+        {
+          sender: TypesConverter.toAddress(params.sender),
+          recipient: TypesConverter.toAddress(params.recipient),
+          fromInternalBalance: false,
+          toInternalBalance: false,
+        },
         0,
         MAX_UINT256,
         0,
@@ -145,13 +157,16 @@ describe('LidoRelayer', function () {
 
         const receipt = await (
           await relayer.connect(sender).multicall([
-            encodeWrap(sender.address, sender.address, amount, toChainedReference(0)),
+            encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+            encodeApprove(tokenIn, MAX_UINT256),
             encodeSwap({
               poolId,
               kind: SwapKind.GivenIn,
               tokenIn,
               tokenOut,
               amount: toChainedReference(0),
+              sender: relayer,
+              recipient: sender,
               outputReference: 0,
             }),
           ])
@@ -173,13 +188,16 @@ describe('LidoRelayer', function () {
         const amount = fp(1);
 
         await relayer.connect(sender).multicall([
-          encodeWrap(sender.address, sender.address, amount, toChainedReference(0)),
+          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+          encodeApprove(tokenIn, MAX_UINT256),
           encodeSwap({
             poolId,
             kind: SwapKind.GivenIn,
             tokenIn,
             tokenOut,
             amount: toChainedReference(0),
+            sender: relayer,
+            recipient: sender,
             outputReference: 0,
           }),
         ]);
@@ -204,9 +222,11 @@ describe('LidoRelayer', function () {
               tokenIn,
               tokenOut,
               amount,
+              sender: sender,
+              recipient: relayer,
               outputReference: toChainedReference(0),
             }),
-            encodeUnwrap(sender.address, sender.address, toChainedReference(0)),
+            encodeUnwrap(relayer.address, sender.address, toChainedReference(0)),
           ])
         ).wait();
 
@@ -232,9 +252,11 @@ describe('LidoRelayer', function () {
             tokenIn,
             tokenOut,
             amount,
+            sender,
+            recipient: relayer,
             outputReference: toChainedReference(0),
           }),
-          encodeUnwrap(sender.address, sender.address, toChainedReference(0)),
+          encodeUnwrap(relayer.address, sender.address, toChainedReference(0)),
         ]);
 
         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
@@ -251,6 +273,8 @@ describe('LidoRelayer', function () {
         tokenOut: Token;
         amount: BigNumberish;
       }>;
+      sender: Account;
+      recipient: Account;
       outputReferences?: Dictionary<BigNumberish>;
     }): string {
       const outputReferences = new Array(tokens.length).fill(0);
@@ -270,7 +294,12 @@ describe('LidoRelayer', function () {
           userData: '0x',
         })),
         tokens.addresses,
-        { sender: sender.address, recipient: sender.address, fromInternalBalance: false, toInternalBalance: false },
+        {
+          sender: TypesConverter.toAddress(params.sender),
+          recipient: TypesConverter.toAddress(params.recipient),
+          fromInternalBalance: false,
+          toInternalBalance: false,
+        },
         new Array(tokens.length).fill(MAX_INT256),
         MAX_UINT256,
         0,
@@ -287,9 +316,12 @@ describe('LidoRelayer', function () {
 
         const receipt = await (
           await relayer.connect(sender).multicall([
-            encodeWrap(sender.address, sender.address, amount, toChainedReference(0)),
+            encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+            encodeApprove(tokenIn, MAX_UINT256),
             encodeBatchSwap({
               swaps: [{ poolId, tokenIn, tokenOut, amount: toChainedReference(0) }],
+              sender: relayer,
+              recipient: sender,
             }),
           ])
         ).wait();
@@ -310,9 +342,12 @@ describe('LidoRelayer', function () {
         const amount = fp(1);
 
         await relayer.connect(sender).multicall([
-          encodeWrap(sender.address, sender.address, amount, toChainedReference(0)),
+          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+          encodeApprove(tokenIn, MAX_UINT256),
           encodeBatchSwap({
             swaps: [{ poolId, tokenIn, tokenOut, amount: toChainedReference(0) }],
+            sender: relayer,
+            recipient: sender,
           }),
         ]);
 
@@ -332,9 +367,11 @@ describe('LidoRelayer', function () {
           await relayer.connect(sender).multicall([
             encodeBatchSwap({
               swaps: [{ poolId, tokenIn, tokenOut, amount }],
+              sender: sender,
+              recipient: relayer,
               outputReferences: { wstETH: toChainedReference(0) },
             }),
-            encodeUnwrap(sender.address, sender.address, toChainedReference(0)),
+            encodeUnwrap(relayer.address, sender.address, toChainedReference(0)),
           ])
         ).wait();
 
@@ -356,9 +393,11 @@ describe('LidoRelayer', function () {
         await relayer.connect(sender).multicall([
           encodeBatchSwap({
             swaps: [{ poolId, tokenIn, tokenOut, amount }],
+            sender: sender,
+            recipient: relayer,
             outputReferences: { wstETH: toChainedReference(0) },
           }),
-          encodeUnwrap(sender.address, sender.address, toChainedReference(0)),
+          encodeUnwrap(relayer.address, sender.address, toChainedReference(0)),
         ]);
 
         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
@@ -370,6 +409,8 @@ describe('LidoRelayer', function () {
   describe('joinPool', () => {
     function encodeJoin(params: {
       poolId: string;
+      sender: Account;
+      recipient: Account;
       assets: TokenList;
       maxAmountsIn: BigNumberish[];
       userData: string;
@@ -378,8 +419,8 @@ describe('LidoRelayer', function () {
       return relayerLibrary.interface.encodeFunctionData('joinPool', [
         params.poolId,
         0, // WeightedPool
-        sender.address,
-        sender.address,
+        TypesConverter.toAddress(params.sender),
+        TypesConverter.toAddress(params.recipient),
         {
           assets: params.assets.addresses,
           maxAmountsIn: params.maxAmountsIn,
@@ -394,19 +435,26 @@ describe('LidoRelayer', function () {
     context('when the relayer is authorized', () => {
       it('joins the pool', async () => {
         const amount = fp(1);
+
         const receipt = await relayer.connect(sender).multicall([
-          encodeWrap(sender.address, sender.address, amount, toChainedReference(0)),
+          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+          encodeApprove(wstETH, MAX_UINT256),
           encodeJoin({
             poolId: basePoolId,
             assets: tokens,
-            maxAmountsIn: [0, amount],
-            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut([0, toChainedReference(0)], 0),
+            sender: relayer,
+            recipient: sender,
+            maxAmountsIn: tokens.map(() => MAX_UINT256),
+            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+              tokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
+              0
+            ),
           }),
         ]);
 
         expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'PoolBalanceChanged', {
           poolId: basePoolId,
-          liquidityProvider: sender.address,
+          liquidityProvider: relayer.address,
         });
       });
 
@@ -416,12 +464,18 @@ describe('LidoRelayer', function () {
         const wstETHBalanceBefore = await wstETH.balanceOf(sender);
 
         await relayer.connect(sender).multicall([
-          encodeWrap(sender.address, sender.address, amount, toChainedReference(0)),
+          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+          encodeApprove(wstETH, MAX_UINT256),
           encodeJoin({
             poolId: basePoolId,
+            sender: relayer,
+            recipient: sender,
             assets: tokens,
-            maxAmountsIn: [0, amount],
-            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut([0, toChainedReference(0)], 0),
+            maxAmountsIn: tokens.map(() => MAX_UINT256),
+            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+              tokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
+              0
+            ),
           }),
         ]);
 
@@ -433,12 +487,18 @@ describe('LidoRelayer', function () {
         const amount = fp(1);
 
         await relayer.connect(sender).multicall([
-          encodeWrap(sender.address, sender.address, amount, toChainedReference(0)),
+          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+          encodeApprove(wstETH, MAX_UINT256),
           encodeJoin({
             poolId: basePoolId,
+            sender: relayer,
+            recipient: sender,
             assets: tokens,
-            maxAmountsIn: [0, amount],
-            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut([0, toChainedReference(0)], 0),
+            maxAmountsIn: tokens.map(() => MAX_UINT256),
+            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+              tokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
+              0
+            ),
           }),
         ]);
 
