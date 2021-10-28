@@ -193,23 +193,40 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         InputHelpers.ensureInputLengthMatch(request.assets.length, outputReferences.length);
 
         uint256[] memory maybeInitialRecipientBalances = new uint256[](request.assets.length);
-        for (uint256 i = 0; i < request.assets.length; i++) {
-            maybeInitialRecipientBalances[i] = _isChainedReference(outputReferences[i])
-                ? IERC20(address(request.assets[i])).balanceOf(recipient)
-                : 0;
+        if (request.toInternalBalance){
+            maybeInitialRecipientBalances = getVault().getInternalBalance(recipient, _translateToIERC20(request.assets));
+        } else {
+            for (uint256 i = 0; i < request.assets.length; i++) {
+                maybeInitialRecipientBalances[i] = _isChainedReference(outputReferences[i])
+                    ? _isETH(request.assets[i]) ? recipient.balance : _asIERC20(request.assets[i]).balanceOf(recipient)
+                    : 0;
+            }
         }
 
         request.userData = _doExitPoolChainedReferenceReplacements(kind, request.userData);
 
         getVault().exitPool(poolId, sender, recipient, request);
 
-        for (uint256 i = 0; i < request.assets.length; i++) {
-            if (_isChainedReference(outputReferences[i])) {
-                // In this context, `maybeInitialRecipientBalances[i]` is guaranteed to have been initialized, so we can safely read
-                // from it. Note that we assume that the recipient balance change has a positive sign (i.e. the recipient
-                // received tokens).
-                uint256 finalRecipientTokenBalance = IERC20(address(request.assets[i])).balanceOf(recipient);
-                _setChainedReferenceValue(outputReferences[i], finalRecipientTokenBalance.sub(maybeInitialRecipientBalances[i]));
+
+        if (request.toInternalBalance){
+            uint256[] memory finalRecipientTokenBalances = getVault().getInternalBalance(recipient, _translateToIERC20(request.assets));
+            for (uint256 i = 0; i < request.assets.length; i++) {
+                if (_isChainedReference(outputReferences[i])) {
+                    // In this context, `maybeInitialRecipientBalances[i]` is guaranteed to have been initialized, so we can safely read
+                    // from it. Note that we assume that the recipient balance change has a positive sign (i.e. the recipient
+                    // received tokens).
+                    _setChainedReferenceValue(outputReferences[i], finalRecipientTokenBalances[i].sub(maybeInitialRecipientBalances[i]));
+                }
+            }
+        } else {
+            for (uint256 i = 0; i < request.assets.length; i++) {
+                if (_isChainedReference(outputReferences[i])) {
+                    // In this context, `maybeInitialRecipientBalances[i]` is guaranteed to have been initialized, so we can safely read
+                    // from it. Note that we assume that the recipient balance change has a positive sign (i.e. the recipient
+                    // received tokens).
+                    uint256 finalRecipientTokenBalance = _isETH(request.assets[i]) ? recipient.balance : _asIERC20(request.assets[i]).balanceOf(recipient);
+                    _setChainedReferenceValue(outputReferences[i], finalRecipientTokenBalance.sub(maybeInitialRecipientBalances[i]));
+                }
             }
         }
     }
