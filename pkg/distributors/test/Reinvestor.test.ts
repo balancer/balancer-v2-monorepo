@@ -15,7 +15,6 @@ import { AssetHelpers, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
-import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { setup, tokenInitialBalance } from './MultiDistributorSharedSetup';
 
@@ -32,7 +31,6 @@ interface Claim {
 }
 
 describe('Reinvestor', () => {
-  let vault: Contract;
   let vault: Vault;
   let callbackContract: Contract;
   let pool: Contract;
