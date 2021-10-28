@@ -26,21 +26,21 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
 import "./RewardsScheduler.sol";
-import "./MultiRewardsAuthorization.sol";
+import "./MultiDistributorAuthorization.sol";
 
-import "./interfaces/IMultiRewards.sol";
+import "./interfaces/IMultiDistributor.sol";
 import "./interfaces/IDistributorCallback.sol";
 import "./interfaces/IDistributor.sol";
 
 // solhint-disable not-rely-on-time
 
 /**
- * Balancer MultiRewards claim contract (claim to internal balance) based on
+ * Balancer MultiDistributor claim contract (claim to internal balance) based on
  * Curve Finance's MultiRewards contract, updated to be compatible with solc 0.7.0
  * https://github.com/curvefi/multi-rewards/blob/master/contracts/MultiRewards.sol commit #9947623
  */
 
-contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewardsAuthorization {
+contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, MultiDistributorAuthorization {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -85,9 +85,9 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         _;
     }
 
-    constructor(IVault vault) Authentication(bytes32(uint256(address(this)))) MultiRewardsAuthorization(vault) {
+    constructor(IVault vault) Authentication(bytes32(uint256(address(this)))) MultiDistributorAuthorization(vault) {
         // solhint-disable-previous-line no-empty-blocks
-        // MultiRewards is a singleton, so it simply uses its own address to disambiguate action identifiers
+        // MultiDistributor is a singleton, so it simply uses its own address to disambiguate action identifiers
     }
 
     /**

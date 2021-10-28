@@ -12,17 +12,17 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { getSigner } from '@balancer-labs/v2-deployments/dist/src/signers';
 
-export class Distributor {
+export class MultiDistributor {
   instance: Contract;
   vault: Contract;
   admin: SignerWithAddress;
   authorizer: Contract;
 
-  static async create(): Promise<Distributor> {
+  static async create(): Promise<MultiDistributor> {
     const [admin] = await ethers.getSigners();
     const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
     const vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
-    const instance = await deploy('MultiRewards', { args: [vault.address] });
+    const instance = await deploy('MultiDistributor', { args: [vault.address] });
     return new this(instance, authorizer, vault, admin);
   }
 

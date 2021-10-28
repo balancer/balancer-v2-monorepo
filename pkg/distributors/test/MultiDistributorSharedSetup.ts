@@ -65,7 +65,7 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
   const poolId = await pool.getPoolId();
 
   // Deploy staking contract for pool
-  const stakingContract = await deploy('MultiRewards', {
+  const stakingContract = await deploy('MultiDistributor', {
     args: [vault.address],
   });
 
