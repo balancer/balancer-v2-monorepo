@@ -183,11 +183,68 @@ abstract contract VaultActions is IBaseRelayerLibrary {
 
     function exitPool(
         bytes32 poolId,
+        PoolKind kind,
         address sender,
         address payable recipient,
-        IVault.ExitPoolRequest calldata request
+        IVault.ExitPoolRequest memory request
     ) external payable {
         require(sender == msg.sender, "Incorrect sender");
+
+        request.userData = _doExitPoolChainedReferenceReplacements(kind, request.userData);
+
         getVault().exitPool(poolId, sender, recipient, request);
+    }
+
+    function _doExitPoolChainedReferenceReplacements(PoolKind kind, bytes memory userData)
+        private
+        returns (bytes memory)
+    {
+        if (kind == PoolKind.WEIGHTED) {
+            return _doWeightedExitChainedReferenceReplacements(userData);
+        } else {
+            _revert(Errors.UNHANDLED_EXIT_KIND);
+        }
+    }
+
+    function _doWeightedExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
+        BaseWeightedPool.ExitKind kind = WeightedPoolUserDataHelpers.exitKind(userData);
+
+        if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+            return _doWeightedExactBptInForOneTokenOutReplacements(userData);
+        } else if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+            return _doWeightedExactBptInForTokensOutReplacements(userData);
+        } else {
+            // All other exit kinds are 'given out' (i.e the parameter is a token amount), so we don't do replacements for
+            // those.
+            return userData;
+        }
+    }
+
+    function _doWeightedExactBptInForOneTokenOutReplacements(bytes memory userData) private returns (bytes memory) {
+        (uint256 bptAmountIn, uint256 tokenIndex) = WeightedPoolUserDataHelpers.exactBptInForTokenOut(
+            userData
+        );
+
+        if (_isChainedReference(bptAmountIn)) {
+            bptAmountIn = _getChainedReferenceValue(bptAmountIn);
+            return abi.encode(BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, tokenIndex);
+        } else {
+            // Save gas by only re-encoding the data if we actually performed a replacement
+            return userData;
+        }
+    }
+
+    function _doWeightedExactBptInForTokensOutReplacements(bytes memory userData) private returns (bytes memory) {
+        (uint256 bptAmountIn) = WeightedPoolUserDataHelpers.exactBptInForTokensOut(
+            userData
+        );
+
+        if (_isChainedReference(bptAmountIn)) {
+            bptAmountIn = _getChainedReferenceValue(bptAmountIn);
+            return abi.encode(BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn);
+        } else {
+            // Save gas by only re-encoding the data if we actually performed a replacement
+            return userData;
+        }
     }
 }
