@@ -15,12 +15,16 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-vault/contracts/AssetHelpers.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 /**
  * @title IBaseRelayerLibrary
  */
-abstract contract IBaseRelayerLibrary {
+abstract contract IBaseRelayerLibrary is AssetHelpers {
+
+    constructor(IWETH weth) AssetHelpers(weth){}
+
     function getVault() public view virtual returns (IVault);
 
     function _isChainedReference(uint256 amount) internal pure virtual returns (bool);

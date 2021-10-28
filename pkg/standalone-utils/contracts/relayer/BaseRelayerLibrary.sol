@@ -40,7 +40,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     IVault private immutable _vault;
     IBalancerRelayer private immutable _entrypoint;
 
-    constructor(IVault vault) {
+    constructor(IVault vault) IBaseRelayerLibrary(vault.WETH()) {
         _vault = vault;
         _entrypoint = new BalancerRelayer(vault, address(this));
     }
