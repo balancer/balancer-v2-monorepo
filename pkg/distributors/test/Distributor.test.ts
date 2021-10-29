@@ -487,7 +487,7 @@ describe('MultiRewards', () => {
 
           const itTransfersTheStakingTokensToTheDistributor = () => {
             it('transfers the staking tokens to the distributor', async () => {
-              await expectBalanceChange(() => stake(stakingToken, amount), new TokenList([stakingToken]), [
+              await expectBalanceChange(() => stake(stakingToken, amount), stakingTokens, [
                 { account: from, changes: { [stakingToken.symbol]: amount.mul(-1) } },
                 { account: distributor.address, changes: { [stakingToken.symbol]: amount } },
               ]);
@@ -861,16 +861,14 @@ describe('MultiRewards', () => {
 
         const itTransfersTheStakingTokensToTheUser = () => {
           it('transfers the staking tokens to the user', async () => {
-            const previousUserBalance = await stakingToken.balanceOf(user1);
-            const previousDistributorBalance = await stakingToken.balanceOf(distributor);
-
-            await distributor.withdraw(stakingToken, amount, { from: user1 });
-
-            const currentUserBalance = await stakingToken.balanceOf(user1);
-            expect(currentUserBalance).be.equal(previousUserBalance.add(amount));
-
-            const currentDistributorBalance = await stakingToken.balanceOf(distributor);
-            expect(currentDistributorBalance).be.equal(previousDistributorBalance.sub(amount));
+            await expectBalanceChange(
+              () => distributor.withdraw(stakingToken, amount, { from: user1 }),
+              stakingTokens,
+              [
+                { account: user1, changes: { [stakingToken.symbol]: amount } },
+                { account: distributor.address, changes: { [stakingToken.symbol]: amount.mul(-1) } },
+              ]
+            );
           });
 
           it('decreases the staking balance of the user', async () => {
@@ -989,17 +987,21 @@ describe('MultiRewards', () => {
 
               const previousRewardPerToken = await distributor.rewardPerToken(distribution);
               expect(previousRewardPerToken).to.be.zero;
+              expect(await distributor.totalEarned(distribution, user1)).to.equal(0);
 
               await advanceTime(PERIOD_DURATION);
 
               const currentRewardPerToken = await distributor.rewardPerToken(distribution);
               expect(currentRewardPerToken).to.be.zero;
+              expect(await distributor.totalEarned(distribution, user1)).to.equal(0);
             });
           });
 
           context('when the user was subscribed to the distribution', () => {
-            sharedBeforeEach('subscribe to one distribution', async () => {
-              await distributor.subscribe([distribution], { from: user1 });
+            sharedBeforeEach('subscribe to the distribution', async () => {
+              await distributor.subscribe(distribution, { from: user1 });
+
+              // Half of the duration passes, earning the user half of the total reward
               await advanceTime(PERIOD_DURATION / 2);
             });
 
@@ -1048,7 +1050,6 @@ describe('MultiRewards', () => {
               await distributor.withdraw(stakingToken, amount, { from: user1 });
 
               const distributionData = await distributor.getUserDistribution(distribution, user1);
-              expect(distributionData.unpaidRewards).to.be.almostEqualFp(45000);
               expect(distributionData.paidRatePerToken).to.be.almostEqualFp(45000);
             });
 
@@ -1058,24 +1059,27 @@ describe('MultiRewards', () => {
 
               const previousRewardPerToken = await distributor.rewardPerToken(distribution);
               expect(previousRewardPerToken).to.be.almostEqualFp(45000);
+              const previousEarned = await distributor.totalEarned(distribution, user1);
 
               await advanceTime(PERIOD_DURATION);
 
               const currentRewardPerToken = await distributor.rewardPerToken(distribution);
               expect(currentRewardPerToken).to.be.almostEqualFp(45000);
+              const currentEarned = await distributor.totalEarned(distribution, user1);
+              expect(currentEarned).to.equal(previousEarned);
             });
 
             it('does not claim his rewards', async () => {
               await distributor.withdraw(stakingToken, amount, { from: user1 });
 
               const currentRewards = await distributor.totalEarned(distribution, user1);
-              expect(currentRewards).to.be.almostEqualFp(45000);
+              expect(currentRewards).to.be.almostEqual(REWARDS.div(2));
             });
           });
         });
 
-        context('when there was some other staked amount', () => {
-          sharedBeforeEach('subscribe and stake some amount', async () => {
+        context('when there was some other staked amount from another user', () => {
+          sharedBeforeEach('subscribe and stake some amount from another user', async () => {
             await distributor.subscribeAndStake(distribution, stakingToken, fp(2), { from: user2 });
             // Half of the reward tokens will go to user 2: 45k, meaning 22.5k per token
             await advanceTime(PERIOD_DURATION / 2);
@@ -1159,19 +1163,25 @@ describe('MultiRewards', () => {
 
               const previousRewardPerToken = await distributor.rewardPerToken(distribution);
               expect(previousRewardPerToken).to.be.almostEqualFp(37500);
+              const previousEarned = await distributor.totalEarned(distribution, user1);
 
               await advanceTime(PERIOD_DURATION);
 
               // All new rewards go to user 2, meaning 45k per token
               const currentRewardPerToken = await distributor.rewardPerToken(distribution);
               expect(currentRewardPerToken).to.be.almostEqualFp(82500);
+
+              const currentEarned = await distributor.totalEarned(distribution, user1);
+              expect(currentEarned).to.equal(previousEarned);
             });
 
             it('does not claim his rewards', async () => {
               await distributor.withdraw(stakingToken, amount, { from: user1 });
 
+              // The user only got one third of the rewards for the duration they staked, which was
+              // half the period.
               const currentRewards = await distributor.totalEarned(distribution, user1);
-              expect(currentRewards).to.be.almostEqualFp(15000);
+              expect(currentRewards).to.be.almostEqual(REWARDS.div(2).div(3));
             });
           });
         });
