@@ -54,8 +54,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     uint256 private immutable _scalingFactorMainToken;
     uint256 private immutable _scalingFactorWrappedToken;
 
-    uint256 private _lowerTarget;
-    uint256 private _upperTarget;
+    bytes32 private _packedTargets;
 
     bytes32 private _wrappedTokenRateCache;
     IRateProvider private immutable _wrappedTokenRateProvider;
@@ -114,11 +113,10 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         _scalingFactorMainToken = _computeScalingFactor(params.mainToken);
         _scalingFactorWrappedToken = _computeScalingFactor(params.wrappedToken);
 
-        // Set targets
+        // Set targets by packing them as two uint128 values into a single storage
         _require(params.lowerTarget <= params.upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
         _require(params.upperTarget <= _MAX_TOKEN_BALANCE, Errors.UPPER_TARGET_TOO_HIGH);
-        _lowerTarget = params.lowerTarget;
-        _upperTarget = params.upperTarget;
+        _packedTargets = WordCodec.encodeUint(params.lowerTarget, 0) | WordCodec.encodeUint(params.upperTarget, 128);
 
         emit TargetsSet(params.mainToken, params.lowerTarget, params.upperTarget);
 
@@ -198,11 +196,12 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
         _cacheWrappedTokenRateIfNecessary();
         uint256[] memory scalingFactors = _scalingFactors();
+        (uint256 lowerTarget, uint256 upperTarget) = getTargets();
         Params memory params = Params({
             fee: getSwapFeePercentage(),
             rate: FixedPoint.ONE,
-            lowerTarget: _lowerTarget,
-            upperTarget: _upperTarget
+            lowerTarget: lowerTarget,
+            upperTarget: upperTarget
         });
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
@@ -556,8 +555,9 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         return _wrappedTokenRateCache.getValue();
     }
 
-    function getTargets() external view returns (uint256 lowerTarget, uint256 upperTarget) {
-        return (_lowerTarget, _upperTarget);
+    function getTargets() public view returns (uint256 lowerTarget, uint256 upperTarget) {
+        lowerTarget = _packedTargets.decodeUint128(0);
+        upperTarget = _packedTargets.decodeUint128(128);
     }
 
     function setTargets(uint256 lowerTarget, uint256 upperTarget) external authenticate {
@@ -568,11 +568,13 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
 
         // Targets can only be set when main token balance between targets (free zone)
-        bool isBetweenTargets = balances[_mainIndex] >= _lowerTarget && balances[_mainIndex] <= _upperTarget;
+        (uint256 currentLowerTarget, uint256 currentUpperTarget) = getTargets();
+        bool isBetweenTargets = balances[_mainIndex] >= currentLowerTarget &&
+            balances[_mainIndex] <= currentUpperTarget;
         _require(isBetweenTargets, Errors.OUT_OF_TARGET_RANGE);
 
-        _lowerTarget = lowerTarget;
-        _upperTarget = upperTarget;
+        // Pack targets as two uint128 values into a single storage
+        _packedTargets = WordCodec.encodeUint(lowerTarget, 0) | WordCodec.encodeUint(upperTarget, 128);
         emit TargetsSet(_mainToken, lowerTarget, upperTarget);
     }
 
