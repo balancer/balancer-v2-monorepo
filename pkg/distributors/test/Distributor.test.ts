@@ -676,13 +676,13 @@ describe('MultiRewards', () => {
                 await advanceTime(PERIOD_DURATION);
 
                 const currentRewardPerToken = await distributor.rewardPerToken(distribution);
-                expect(currentRewardPerToken).to.be.almostEqualFp(90000);
+                expect(currentRewardPerToken).to.be.almostEqual(REWARDS);
               });
             });
           });
 
-          context('when there was some previous staked amount', () => {
-            sharedBeforeEach('subscribe and stake some amount', async () => {
+          context('when there was some previous staked amount from another user', () => {
+            sharedBeforeEach('subscribe and stake some amount from another user', async () => {
               await distributor.subscribeAndStake(distribution, stakingToken, fp(2), { from: user2 });
               // Half of the reward tokens will go to user 2: 45k, meaning 22.5k per token
               await advanceTime(PERIOD_DURATION / 2);
@@ -695,18 +695,22 @@ describe('MultiRewards', () => {
               it('does not track it for future rewards', async () => {
                 await stake(stakingToken, amount);
 
+                // The token rate and tokens earned by user 2 are unchanged.
+
                 const previousRewardPerToken = await distributor.rewardPerToken(distribution);
                 expect(previousRewardPerToken).to.be.almostEqualFp(22500);
+                expect(await distributor.totalEarned(distribution, user2)).to.almostEqual(REWARDS.div(2));
 
                 await advanceTime(PERIOD_DURATION);
 
                 const currentRewardPerToken = await distributor.rewardPerToken(distribution);
                 expect(currentRewardPerToken).to.be.almostEqualFp(45000);
+                expect(await distributor.totalEarned(distribution, user2)).to.almostEqual(REWARDS);
               });
             });
 
             context('when the user was subscribed to a distribution', () => {
-              sharedBeforeEach('subscribe distribution', async () => {
+              sharedBeforeEach('subscribe to distribution', async () => {
                 await distributor.subscribe(distribution, { from: to });
               });
 
@@ -765,11 +769,21 @@ describe('MultiRewards', () => {
                 const previousRewardPerToken = await distributor.rewardPerToken(distribution);
                 expect(previousRewardPerToken).to.be.almostEqualFp(22500);
 
+                expect(await distributor.totalEarned(distribution, user1)).to.almostEqual(0);
+                expect(await distributor.totalEarned(distribution, user2)).to.almostEqual(REWARDS.div(2));
+
                 await advanceTime(PERIOD_DURATION);
 
                 // The second half is split between both users, meaning 15k per token
                 const currentRewardPerToken = await distributor.rewardPerToken(distribution);
                 expect(currentRewardPerToken).to.be.almostEqualFp(37500);
+
+                // The second half of the tokens is distributed between users 1 and 2, with one third of what remains going to user 1, and two thirds
+                // going to user 2.
+                expect(await distributor.totalEarned(distribution, user1)).to.almostEqual(REWARDS.div(2).div(3));
+                expect(await distributor.totalEarned(distribution, user2)).to.almostEqual(
+                  REWARDS.div(2).add(REWARDS.div(2).mul(2).div(3))
+                );
               });
             });
           });
