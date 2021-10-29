@@ -116,9 +116,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         // Set targets by packing them as two uint128 values into a single storage
         _require(params.lowerTarget <= params.upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
         _require(params.upperTarget <= _MAX_TOKEN_BALANCE, Errors.UPPER_TARGET_TOO_HIGH);
-        _packedTargets = WordCodec.encodeUint(params.lowerTarget, 0) | WordCodec.encodeUint(params.upperTarget, 128);
-
-        emit TargetsSet(params.mainToken, params.lowerTarget, params.upperTarget);
+        _setTargets(params.mainToken, params.lowerTarget, params.upperTarget);
 
         // Set wrapped token rate cache
         _wrappedTokenRateProvider = params.wrappedTokenRateProvider;
@@ -560,6 +558,17 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         upperTarget = _packedTargets.decodeUint128(128);
     }
 
+    function _setTargets(
+        IERC20 mainToken,
+        uint256 lowerTarget,
+        uint256 upperTarget
+    ) private {
+        // Pack targets as two uint128 values into a single storage. This results in targets being capped to 128 bits,
+        // but that's fine because they are already lower than _MAX_TOKEN_BALANCE which is 112 bits.
+        _packedTargets = WordCodec.encodeUint(lowerTarget, 0) | WordCodec.encodeUint(upperTarget, 128);
+        emit TargetsSet(mainToken, lowerTarget, upperTarget);
+    }
+
     function setTargets(uint256 lowerTarget, uint256 upperTarget) external authenticate {
         _require(lowerTarget <= upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
         _require(upperTarget <= _MAX_TOKEN_BALANCE, Errors.UPPER_TARGET_TOO_HIGH);
@@ -573,9 +582,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             balances[_mainIndex] <= currentUpperTarget;
         _require(isBetweenTargets, Errors.OUT_OF_TARGET_RANGE);
 
-        // Pack targets as two uint128 values into a single storage
-        _packedTargets = WordCodec.encodeUint(lowerTarget, 0) | WordCodec.encodeUint(upperTarget, 128);
-        emit TargetsSet(_mainToken, lowerTarget, upperTarget);
+        _setTargets(_mainToken, lowerTarget, upperTarget);
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
