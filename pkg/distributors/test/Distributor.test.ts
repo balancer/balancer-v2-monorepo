@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { ContractTransaction } from 'ethers';
+import { BigNumber, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -8,7 +8,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
@@ -151,23 +151,32 @@ describe('MultiRewards', () => {
       sharedBeforeEach('stake tokens', async () => {
         await distributor.subscribeAndStake(distribution, stakingToken, fp(1), { from: user1 });
         await distributor.subscribeAndStake(distribution, stakingToken, fp(2), { from: user2 });
+
+        // There are 3 tokens staked, 1 belonging to user1 and 2 belonging to user2. So user1 will get 1/3rd of
+        // the distributed tokens, and user2 will get the other 2/3rds.
       });
+
+      function toUser1Share(amount: BigNumberish): BigNumber {
+        return bn(amount).div(3);
+      }
+
+      function toUser2Share(amount: BigNumberish): BigNumber {
+        return bn(amount).mul(2).div(3);
+      }
 
       const itCreatesANewRewardDistributionPeriod = () => {
         it('updates the last update time of the distribution', async () => {
-          const currentTime = await currentTimestamp();
           await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
 
           const { lastUpdateTime: currentLastUpdate } = await distributor.getDistribution(distribution);
-          expect(currentLastUpdate).to.be.at.least(currentTime);
+          expect(currentLastUpdate).to.equal(await currentTimestamp());
         });
 
         it('sets the end date of the current period', async () => {
-          const currentTime = await currentTimestamp();
           await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
 
           const { periodFinish: currentEndDate } = await distributor.getDistribution(distribution);
-          expect(currentEndDate).to.be.at.least(currentTime.add(PERIOD_DURATION));
+          expect(currentEndDate).to.equal((await currentTimestamp()).add(PERIOD_DURATION));
         });
 
         it('increases the reward rate', async () => {
@@ -191,30 +200,28 @@ describe('MultiRewards', () => {
         it('updates the last update time of the distribution', async () => {
           const { lastUpdateTime: previousLastUpdate } = await distributor.getDistribution(distribution);
 
-          const currentTime = await currentTimestamp();
           await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
 
           const { lastUpdateTime: currentLastUpdate } = await distributor.getDistribution(distribution);
           expect(currentLastUpdate).to.be.gt(previousLastUpdate);
-          expect(currentLastUpdate).to.be.at.least(currentTime);
+          expect(currentLastUpdate).to.equal(await currentTimestamp());
         });
 
         it('extends the end date of the current period', async () => {
           const { periodFinish: previousEndDate } = await distributor.getDistribution(distribution);
 
-          const currentTime = await currentTimestamp();
           await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
 
           const { periodFinish: currentEndDate } = await distributor.getDistribution(distribution);
           expect(currentEndDate).to.be.gt(previousEndDate);
-          expect(currentEndDate).to.be.at.least(currentTime.add(PERIOD_DURATION));
+          expect(currentEndDate).to.be.at.least((await currentTimestamp()).add(PERIOD_DURATION));
         });
 
         it('increases the reward rate', async () => {
           const { rewardRate: previousRewardRate, periodFinish } = await distributor.getDistribution(distribution);
 
-          const currentTime = await currentTimestamp();
           await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          const currentTime = await currentTimestamp();
 
           const { rewardRate: currentRewardRate } = await distributor.getDistribution(distribution);
           expect(currentRewardRate).to.be.gt(previousRewardRate);
@@ -239,19 +246,21 @@ describe('MultiRewards', () => {
           const rewardedTime = currentTime.gt(periodFinish) ? PERIOD_DURATION : currentTime.sub(lastUpdateTime);
 
           const previousUser1Rewards = await distributor.totalEarned(distribution, user1);
-          expect(previousUser1Rewards).to.be.almostEqual(fp(30e3).mul(rewardedTime).div(PERIOD_DURATION));
+          expect(previousUser1Rewards).to.be.almostEqual(toUser1Share(REWARDS).mul(rewardedTime).div(PERIOD_DURATION));
 
           const previousUser2Rewards = await distributor.totalEarned(distribution, user2);
-          expect(previousUser2Rewards).to.be.almostEqual(fp(60e3).mul(rewardedTime).div(PERIOD_DURATION));
+          expect(previousUser2Rewards).to.be.almostEqual(toUser2Share(REWARDS).mul(rewardedTime).div(PERIOD_DURATION));
 
-          await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+          // Add new rewards, double the size of the original ones, and fully process them
+          await distributor.reward(stakingToken, rewardsToken, REWARDS.mul(2), { from: rewarder });
           await advanceTime(PERIOD_DURATION);
 
+          // Each user should now get their share out of the two batches of rewards (three times the original amount)
           const currentUser1Rewards = await distributor.totalEarned(distribution, user1);
-          expect(currentUser1Rewards).to.be.almostEqual(fp(60e3));
+          expect(currentUser1Rewards).to.be.almostEqual(toUser1Share(REWARDS.mul(3)));
 
           const currentUser2Rewards = await distributor.totalEarned(distribution, user2);
-          expect(currentUser2Rewards).to.be.almostEqual(fp(120e3));
+          expect(currentUser2Rewards).to.be.almostEqual(toUser2Share(REWARDS.mul(3)));
         });
       };
 
@@ -269,10 +278,10 @@ describe('MultiRewards', () => {
           await advanceTime(PERIOD_DURATION);
 
           const currentUser1Rewards = await distributor.totalEarned(distribution, user1);
-          expect(currentUser1Rewards).to.be.almostEqual(fp(30e3));
+          expect(currentUser1Rewards).to.be.almostEqual(toUser1Share(REWARDS));
 
           const currentUser2Rewards = await distributor.totalEarned(distribution, user2);
-          expect(currentUser2Rewards).to.be.almostEqual(fp(60e3));
+          expect(currentUser2Rewards).to.be.almostEqual(toUser2Share(REWARDS));
         });
       });
 
@@ -302,19 +311,21 @@ describe('MultiRewards', () => {
 
           it('accrues already given rewards', async () => {
             const previousUser1Rewards = await distributor.totalEarned(distribution, user1);
-            expect(previousUser1Rewards).to.be.almostEqual(fp(30e3));
+            expect(previousUser1Rewards).to.be.almostEqual(toUser1Share(REWARDS));
 
             const previousUser2Rewards = await distributor.totalEarned(distribution, user2);
-            expect(previousUser2Rewards).to.be.almostEqual(fp(60e3));
+            expect(previousUser2Rewards).to.be.almostEqual(toUser2Share(REWARDS));
 
-            await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+            // Add new rewards, double the size of the original ones, and fully process them
+            await distributor.reward(stakingToken, rewardsToken, REWARDS.mul(2), { from: rewarder });
             await advanceTime(PERIOD_DURATION);
 
+            // Each user should now get their share out of the two batches of rewards (three times the original amount)
             const currentUser1Rewards = await distributor.totalEarned(distribution, user1);
-            expect(currentUser1Rewards).to.be.almostEqual(fp(60e3));
+            expect(currentUser1Rewards).to.be.almostEqual(toUser1Share(REWARDS.mul(3)));
 
             const currentUser2Rewards = await distributor.totalEarned(distribution, user2);
-            expect(currentUser2Rewards).to.be.almostEqual(fp(120e3));
+            expect(currentUser2Rewards).to.be.almostEqual(toUser2Share(REWARDS.mul(3)));
           });
         });
 
@@ -327,19 +338,21 @@ describe('MultiRewards', () => {
 
           it('accrues already given rewards', async () => {
             const previousUser1Rewards = await distributor.totalEarned(distribution, user1);
-            expect(previousUser1Rewards).to.be.almostEqual(fp(30e3));
+            expect(previousUser1Rewards).to.be.almostEqual(toUser1Share(REWARDS));
 
             const previousUser2Rewards = await distributor.totalEarned(distribution, user2);
-            expect(previousUser2Rewards).to.be.almostEqual(fp(60e3));
+            expect(previousUser2Rewards).to.be.almostEqual(toUser2Share(REWARDS));
 
-            await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
+            // Add new rewards, double the size of the original ones, and fully process them
+            await distributor.reward(stakingToken, rewardsToken, REWARDS.mul(2), { from: rewarder });
             await advanceTime(PERIOD_DURATION);
 
+            // Each user should now get their share out of the two batches of rewards (three times the original amount)
             const currentUser1Rewards = await distributor.totalEarned(distribution, user1);
-            expect(currentUser1Rewards).to.be.almostEqual(fp(60e3));
+            expect(currentUser1Rewards).to.be.almostEqual(toUser1Share(REWARDS.mul(3)));
 
             const currentUser2Rewards = await distributor.totalEarned(distribution, user2);
-            expect(currentUser2Rewards).to.be.almostEqual(fp(120e3));
+            expect(currentUser2Rewards).to.be.almostEqual(toUser2Share(REWARDS.mul(3)));
           });
         });
       });
