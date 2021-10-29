@@ -287,13 +287,12 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
             IERC20 stakingToken = distribution.stakingToken;
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
             EnumerableSet.Bytes32Set storage subscribedDistributions = userStaking.subscribedDistributions;
-            require(!subscribedDistributions.contains(distributionId), "ALREADY_SUBSCRIBED_DISTRIBUTION");
+            require(userStaking.subscribedDistributions.add(distributionId), "ALREADY_SUBSCRIBED_DISTRIBUTION");
 
             uint256 amount = userStaking.balance;
-            if (amount == 0) userStaking.subscribedDistributions.add(distributionId);
-            else {
+            if (amount > 0) {
                 userStaking.subscribedDistributions.add(distributionId);
-                // The unpaid rewards remains the same because was not subscribed to the distribution
+                // The unpaid rewards remains the same because the user was not subscribed to the distribution
                 userStaking.distributions[distributionId].paidRatePerToken = _updateDistributionRate(distributionId);
                 distribution.totalSupply = distribution.totalSupply.add(amount);
                 emit Staked(distributionId, msg.sender, amount);
@@ -313,11 +312,17 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
             UserStaking storage userStaking = _userStakings[distribution.stakingToken][msg.sender];
             EnumerableSet.Bytes32Set storage subscribedDistributions = userStaking.subscribedDistributions;
-            require(subscribedDistributions.contains(distributionId), "DISTRIBUTION_NOT_SUBSCRIBED");
 
+            // If the user had tokens staked that applied to this distribution, we need to update their standing before
+            // unsubscribing, which is effectively an unstake.
             uint256 amount = userStaking.balance;
-            if (amount == 0) userStaking.subscribedDistributions.remove(distributionId);
-            else {
+            if (amount > 0) {
+                _updateUserRewardRatePerToken(userStaking, distributionId);
+            }
+
+            require(subscribedDistributions.remove(distributionId), "DISTRIBUTION_NOT_SUBSCRIBED");
+
+            if (amount > 0) {
                 _updateUserRewardRatePerToken(userStaking, distributionId);
                 userStaking.subscribedDistributions.remove(distributionId);
                 distribution.totalSupply = distribution.totalSupply.sub(amount);
