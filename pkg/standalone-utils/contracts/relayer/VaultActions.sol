@@ -204,12 +204,10 @@ abstract contract VaultActions is IBaseRelayerLibrary {
             initialRecipientBalances = getVault().getInternalBalance(recipient, filteredAssets);
         } else {
             for (uint256 i = 0; i < outputReferences.length; i++) {
-                if (!request.toInternalBalance) {
-                    IAsset token = request.assets[outputReferences[i].index];
-                    initialRecipientBalances[i] = _isETH(token)
-                        ? recipient.balance
-                        : _asIERC20(token).balanceOf(recipient);
-                }
+                IAsset token = request.assets[outputReferences[i].index];
+                initialRecipientBalances[i] = _isETH(token)
+                    ? recipient.balance
+                    : _asIERC20(token).balanceOf(recipient);
             }
         }
 
