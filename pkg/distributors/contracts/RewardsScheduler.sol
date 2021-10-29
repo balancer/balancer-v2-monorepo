@@ -26,10 +26,10 @@ import "./interfaces/IMultiRewards.sol";
 contract RewardsScheduler {
     using SafeERC20 for IERC20;
 
-    IMultiRewards private immutable _multirewards;
+    IMultiRewards private immutable _multiRewards;
 
-    constructor() {
-        _multirewards = IMultiRewards(msg.sender);
+    constructor(IMultiRewards multiRewards) {
+        _multiRewards = multiRewards;
     }
 
     enum RewardStatus { UNINITIALIZED, PENDING, STARTED }
@@ -77,14 +77,13 @@ contract RewardsScheduler {
             _rewards[rewardId].status = RewardStatus.STARTED;
 
             if (
-                scheduledReward.rewardsToken.allowance(address(this), address(_multirewards)) < scheduledReward.amount
+                scheduledReward.rewardsToken.allowance(address(this), address(_multiRewards)) < scheduledReward.amount
             ) {
-                scheduledReward.rewardsToken.approve(address(_multirewards), type(uint256).max);
+                scheduledReward.rewardsToken.approve(address(_multiRewards), type(uint256).max);
             }
-            _multirewards.notifyRewardAmount(
+            _multiRewards.notifyRewardAmount(
                 scheduledReward.stakingToken,
                 scheduledReward.rewardsToken,
-                scheduledReward.rewarder,
                 scheduledReward.amount
             );
             emit RewardStarted(
@@ -115,10 +114,6 @@ contract RewardsScheduler {
     ) public returns (bytes32 rewardId) {
         rewardId = getRewardId(stakingToken, rewardsToken, msg.sender, startTime);
         require(startTime > block.timestamp, "Reward can only be scheduled for the future");
-        require(
-            _multirewards.isWhitelistedRewarder(stakingToken, rewardsToken, msg.sender),
-            "Only whitelisted rewarders can schedule reward"
-        );
 
         require(_rewards[rewardId].status == RewardStatus.UNINITIALIZED, "Reward has already been scheduled");
 

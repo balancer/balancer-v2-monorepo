@@ -45,20 +45,19 @@ describe('Reinvestor', () => {
   describe('with a stake and a reward', () => {
     const rewardAmount = fp(1);
     sharedBeforeEach(async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .whitelistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
       await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
 
       const bptBalance = await pool.balanceOf(lp.address);
 
       await pool.connect(lp).approve(stakingContract.address, bptBalance);
 
-      await stakingContract.connect(lp)['stake(address,uint256)'](pool.address, bptBalance);
+      const id = await stakingContract.getDistributionId(pool.address, rewardToken.address, mockAssetManager.address);
+      await stakingContract.connect(lp).subscribe([id]);
+      await stakingContract.connect(lp).stake(pool.address, bptBalance);
 
       await stakingContract
         .connect(mockAssetManager)
-        .notifyRewardAmount(pool.address, rewardToken.address, mockAssetManager.address, rewardAmount);
+        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
       await advanceTime(rewardsVestingTime);
     });
 
@@ -143,10 +142,6 @@ describe('Reinvestor', () => {
           otherRewardTokens = await TokenList.create(['GRT'], { sorted: true });
           otherRewardToken = otherRewardTokens.GRT;
 
-          await stakingContract
-            .connect(mockAssetManager)
-            .whitelistRewarder(pool.address, otherRewardToken.address, mockAssetManager.address);
-
           await otherRewardTokens.mint({ to: mockAssetManager, amount: bn(100e18) });
           await otherRewardTokens.approve({ to: stakingContract.address, from: [mockAssetManager] });
 
@@ -154,9 +149,16 @@ describe('Reinvestor', () => {
             .connect(mockAssetManager)
             .addReward(pool.address, otherRewardToken.address, rewardsDuration);
 
+          const id = await stakingContract.getDistributionId(
+            pool.address,
+            otherRewardToken.address,
+            mockAssetManager.address
+          );
+          await stakingContract.connect(lp).subscribe([id]);
+
           await stakingContract
             .connect(mockAssetManager)
-            .notifyRewardAmount(pool.address, otherRewardToken.address, mockAssetManager.address, fp(3));
+            .notifyRewardAmount(pool.address, otherRewardToken.address, fp(3));
           await advanceTime(rewardsVestingTime);
         });
 
