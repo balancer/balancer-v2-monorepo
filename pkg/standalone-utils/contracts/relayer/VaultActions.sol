@@ -88,14 +88,17 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         int256[] memory results = getVault().batchSwap{ value: value }(kind, swaps, assets, funds, limits, deadline);
 
         for (uint256 i = 0; i < outputReferences.length; ++i) {
-            if (_isChainedReference(outputReferences[i].key)) {
-                // Batch swap return values are signed, as they are Vault deltas (positive values stand for assets sent
-                // to the Vault, negatives for assets sent from the Vault). To simplify the chained reference value
-                // model, we simply store the absolute value.
-                // This should be fine for most use cases, as the caller can reason about swap results via the `limits`
-                // parameter.
-                _setChainedReferenceValue(outputReferences[i].key, Math.abs(results[outputReferences[i].index]));
-            }
+            require(
+                _isChainedReference(outputReferences[i].key) && outputReferences[i].index < results.length,
+                "invalid chained reference"
+            );
+
+            // Batch swap return values are signed, as they are Vault deltas (positive values stand for assets sent
+            // to the Vault, negatives for assets sent from the Vault). To simplify the chained reference value
+            // model, we simply store the absolute value.
+            // This should be fine for most use cases, as the caller can reason about swap results via the `limits`
+            // parameter.
+            _setChainedReferenceValue(outputReferences[i].key, Math.abs(results[outputReferences[i].index]));
         }
 
         return results;
@@ -199,15 +202,21 @@ abstract contract VaultActions is IBaseRelayerLibrary {
 
         if (request.toInternalBalance) {
             for (uint256 i = 0; i < outputReferences.length; i++) {
+                require(
+                    _isChainedReference(outputReferences[i].key) && outputReferences[i].index < request.assets.length,
+                    "invalid chained reference"
+                );
                 filteredAssets[i] = _translateToIERC20(request.assets[outputReferences[i].index]);
             }
             initialRecipientBalances = getVault().getInternalBalance(recipient, filteredAssets);
         } else {
             for (uint256 i = 0; i < outputReferences.length; i++) {
+                require(
+                    _isChainedReference(outputReferences[i].key) && outputReferences[i].index < request.assets.length,
+                    "invalid chained reference"
+                );
                 IAsset token = request.assets[outputReferences[i].index];
-                initialRecipientBalances[i] = _isETH(token)
-                    ? recipient.balance
-                    : _asIERC20(token).balanceOf(recipient);
+                initialRecipientBalances[i] = _isETH(token) ? recipient.balance : _asIERC20(token).balanceOf(recipient);
             }
         }
 
@@ -218,24 +227,20 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         if (request.toInternalBalance) {
             uint256[] memory finalRecipientTokenBalances = getVault().getInternalBalance(recipient, filteredAssets);
             for (uint256 i = 0; i < outputReferences.length; i++) {
-                if (_isChainedReference(outputReferences[i].key)) {
-                    _setChainedReferenceValue(
-                        outputReferences[i].key,
-                        finalRecipientTokenBalances[i].sub(initialRecipientBalances[i])
-                    );
-                }
+                _setChainedReferenceValue(
+                    outputReferences[i].key,
+                    finalRecipientTokenBalances[i].sub(initialRecipientBalances[i])
+                );
             }
         } else {
             for (uint256 i = 0; i < outputReferences.length; i++) {
-                if (_isChainedReference(outputReferences[i].key)) {
-                    uint256 finalRecipientTokenBalance = _isETH(request.assets[outputReferences[i].index])
-                        ? recipient.balance
-                        : _asIERC20(request.assets[outputReferences[i].index]).balanceOf(recipient);
-                    _setChainedReferenceValue(
-                        outputReferences[i].key,
-                        finalRecipientTokenBalance.sub(initialRecipientBalances[i])
-                    );
-                }
+                uint256 finalRecipientTokenBalance = _isETH(request.assets[outputReferences[i].index])
+                    ? recipient.balance
+                    : _asIERC20(request.assets[outputReferences[i].index]).balanceOf(recipient);
+                _setChainedReferenceValue(
+                    outputReferences[i].key,
+                    finalRecipientTokenBalance.sub(initialRecipientBalances[i])
+                );
             }
         }
     }
