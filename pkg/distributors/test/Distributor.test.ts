@@ -14,11 +14,12 @@ import { ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/consta
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 
 import { Distributor } from './helpers/Distributor';
+import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
 describe('MultiRewards', () => {
   let distributor: Distributor;
   let distribution: string, anotherDistribution: string;
-  let stakingToken: Token, anotherStakingToken: Token, stakingTokens: TokenList;
+  let stakingToken: Token, stakingTokens: TokenList;
   let rewardsToken: Token, anotherRewardsToken: Token, rewardsTokens: TokenList;
   let user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress;
   let other: SignerWithAddress, rewarder: SignerWithAddress;
@@ -35,9 +36,8 @@ describe('MultiRewards', () => {
   });
 
   sharedBeforeEach('deploy tokens', async () => {
-    stakingTokens = await TokenList.create(2);
+    stakingTokens = await TokenList.create(1);
     stakingToken = stakingTokens.first;
-    anotherStakingToken = stakingTokens.second;
 
     rewardsTokens = await TokenList.create(2);
     rewardsToken = rewardsTokens.first;
@@ -470,9 +470,9 @@ describe('MultiRewards', () => {
       await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
       distribution = await distributor.getDistributionId(stakingToken, rewardsToken, rewarder);
 
-      await distributor.newDistribution(anotherStakingToken, anotherRewardsToken, PERIOD_DURATION, { from: rewarder });
-      await distributor.reward(anotherStakingToken, anotherRewardsToken, REWARDS, { from: rewarder });
-      anotherDistribution = await distributor.getDistributionId(anotherStakingToken, anotherRewardsToken, rewarder);
+      await distributor.newDistribution(stakingToken, anotherRewardsToken, PERIOD_DURATION, { from: rewarder });
+      await distributor.reward(stakingToken, anotherRewardsToken, REWARDS, { from: rewarder });
+      anotherDistribution = await distributor.getDistributionId(stakingToken, anotherRewardsToken, rewarder);
     });
 
     const itHandlesStaking = (stake: (token: Token, amount: BigNumberish) => Promise<ContractTransaction>) => {
@@ -487,16 +487,10 @@ describe('MultiRewards', () => {
 
           const itTransfersTheStakingTokensToTheDistributor = () => {
             it('transfers the staking tokens to the distributor', async () => {
-              const previousUserBalance = await stakingToken.balanceOf(from);
-              const previousDistributorBalance = await stakingToken.balanceOf(distributor);
-
-              await stake(stakingToken, amount);
-
-              const currentUserBalance = await stakingToken.balanceOf(from);
-              expect(currentUserBalance).be.equal(previousUserBalance.sub(amount));
-
-              const currentDistributorBalance = await stakingToken.balanceOf(distributor);
-              expect(currentDistributorBalance).be.equal(previousDistributorBalance.add(amount));
+              await expectBalanceChange(() => stake(stakingToken, amount), new TokenList([stakingToken]), [
+                { account: from, changes: { [stakingToken.symbol]: amount.mul(-1) } },
+                { account: distributor.address, changes: { [stakingToken.symbol]: amount } },
+              ]);
             });
 
             it('increases the staking balance of the user', async () => {
@@ -835,9 +829,9 @@ describe('MultiRewards', () => {
       await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
       distribution = await distributor.getDistributionId(stakingToken, rewardsToken, rewarder);
 
-      await distributor.newDistribution(anotherStakingToken, anotherRewardsToken, PERIOD_DURATION, { from: rewarder });
-      await distributor.reward(anotherStakingToken, anotherRewardsToken, REWARDS, { from: rewarder });
-      anotherDistribution = await distributor.getDistributionId(anotherStakingToken, anotherRewardsToken, rewarder);
+      await distributor.newDistribution(stakingToken, anotherRewardsToken, PERIOD_DURATION, { from: rewarder });
+      await distributor.reward(stakingToken, anotherRewardsToken, REWARDS, { from: rewarder });
+      anotherDistribution = await distributor.getDistributionId(stakingToken, anotherRewardsToken, rewarder);
     });
 
     context('when the user did specify some amount', () => {
@@ -1198,11 +1192,11 @@ describe('MultiRewards', () => {
         await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
         distribution = await distributor.getDistributionId(stakingToken, rewardsToken, rewarder);
 
-        await distributor.newDistribution(anotherStakingToken, anotherRewardsToken, PERIOD_DURATION, {
+        await distributor.newDistribution(stakingToken, anotherRewardsToken, PERIOD_DURATION, {
           from: rewarder,
         });
-        await distributor.reward(anotherStakingToken, anotherRewardsToken, REWARDS, { from: rewarder });
-        anotherDistribution = await distributor.getDistributionId(anotherStakingToken, anotherRewardsToken, rewarder);
+        await distributor.reward(stakingToken, anotherRewardsToken, REWARDS, { from: rewarder });
+        anotherDistribution = await distributor.getDistributionId(stakingToken, anotherRewardsToken, rewarder);
       });
 
       context('when the user was not subscribed yet', () => {
@@ -1571,11 +1565,11 @@ describe('MultiRewards', () => {
         await distributor.reward(stakingToken, rewardsToken, REWARDS, { from: rewarder });
         distribution = await distributor.getDistributionId(stakingToken, rewardsToken, rewarder);
 
-        await distributor.newDistribution(anotherStakingToken, anotherRewardsToken, PERIOD_DURATION, {
+        await distributor.newDistribution(stakingToken, anotherRewardsToken, PERIOD_DURATION, {
           from: rewarder,
         });
-        await distributor.reward(anotherStakingToken, anotherRewardsToken, REWARDS, { from: rewarder });
-        anotherDistribution = await distributor.getDistributionId(anotherStakingToken, anotherRewardsToken, rewarder);
+        await distributor.reward(stakingToken, anotherRewardsToken, REWARDS, { from: rewarder });
+        anotherDistribution = await distributor.getDistributionId(stakingToken, anotherRewardsToken, rewarder);
       });
 
       context('when the user was already subscribed', () => {
