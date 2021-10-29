@@ -638,4 +638,55 @@ describe('Staking contract', () => {
       });
     });
   });
+
+  describe('getReward', () => {
+    let id: string;
+
+    sharedBeforeEach('create distribution and subscribe', async () => {
+      await stakingContract.connect(rewarder).addReward(pool.address, rewardToken.address, rewardsDuration);
+      id = await stakingContract.getDistributionId(pool.address, rewardToken.address, rewarder.address);
+      await stakingContract.connect(rewarder).notifyRewardAmount(pool.address, rewardToken.address, fp(100));
+    });
+
+    it('claims rewards properly', async () => {
+      const balance = await pool.balanceOf(lp.address);
+      await pool.connect(lp).approve(stakingContract.address, balance);
+
+      // Stake 1/4 of the BPT to another address during the first half of the distribution period
+      await stakingContract.connect(lp).stakeFor(pool.address, balance.div(4), other.address);
+      await stakingContract.connect(other).subscribe([id]);
+      await advanceTime(rewardsDuration / 2);
+
+      // Stake the rest of the BPT to the LP
+      await stakingContract.connect(lp).stake(pool.address, balance.mul(3).div(4));
+      await stakingContract.connect(lp).subscribe([id]);
+      await advanceTime(rewardsDuration / 2);
+
+      const previousLpBalance = await rewardToken.balanceOf(lp);
+      const expectedLpRewards = await stakingContract.totalEarned(
+        pool.address,
+        rewardToken.address,
+        rewarder.address,
+        lp.address
+      );
+      await stakingContract.connect(lp).getReward([pool.address]);
+      expect(await rewardToken.balanceOf(lp)).to.be.equal(previousLpBalance.add(expectedLpRewards));
+      // The LP got 75% of the rewards for half of the period, so 37.5%
+      expect(expectedLpRewards).to.be.equalWithError(fp(37.5), 0.05);
+
+      const previousOtherBalance = await rewardToken.balanceOf(other);
+      const expectedOtherRewards = await stakingContract.totalEarned(
+        pool.address,
+        rewardToken.address,
+        rewarder.address,
+        other.address
+      );
+
+      await stakingContract.connect(other).getReward([pool.address]);
+      expect(await rewardToken.balanceOf(other)).to.be.at.equal(previousOtherBalance.add(expectedOtherRewards));
+      // The other account got 100% of the rewards for the first half of the period, and then 25% for the second half,
+      // so 100/2 + 25/2 = 62.5%
+      expect(expectedOtherRewards).to.be.equalWithError(fp(62.5), 0.05);
+    });
+  });
 });
