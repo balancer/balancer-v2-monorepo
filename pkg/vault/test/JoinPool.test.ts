@@ -35,7 +35,7 @@ describe('Join Pool', () => {
     feesCollector = await deployedAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
     const action = await actionId(feesCollector, 'setSwapFeePercentage');
-    await authorizer.connect(admin).grantRole(action, admin.address);
+    await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
     await feesCollector.connect(admin).setSwapFeePercentage(fp(0.1));
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
@@ -232,7 +232,7 @@ describe('Join Pool', () => {
                 context('when the relayer is whitelisted by the authorizer', () => {
                   sharedBeforeEach('grant permission to relayer', async () => {
                     const action = await actionId(vault, 'joinPool');
-                    await authorizer.connect(admin).grantRole(action, relayer.address);
+                    await authorizer.connect(admin).grantRoleGlobally(action, relayer.address);
                   });
 
                   context('when the relayer is allowed by the user', () => {
@@ -269,7 +269,7 @@ describe('Join Pool', () => {
                 context('when the relayer is not whitelisted by the authorizer', () => {
                   sharedBeforeEach('revoke permission from relayer', async () => {
                     const action = await actionId(vault, 'joinPool');
-                    await authorizer.connect(admin).revokeRole(action, relayer.address);
+                    await authorizer.connect(admin).revokeRoleGlobally(action, relayer.address);
                   });
 
                   context('when the relayer is allowed by the user', () => {
@@ -310,7 +310,7 @@ describe('Join Pool', () => {
           context('when paused', () => {
             sharedBeforeEach('pause', async () => {
               const action = await actionId(vault, 'setPaused');
-              await authorizer.connect(admin).grantRole(action, admin.address);
+              await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
               await vault.connect(admin).setPaused(true);
             });
 

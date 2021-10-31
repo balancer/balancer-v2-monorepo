@@ -325,7 +325,7 @@ abstract contract AccessControl {
     }
 
     function _revokeRoleGlobally(bytes32 role, address account) private {
-        if (_roles[role].globalMembers.add(account)) {
+        if (_roles[role].globalMembers.remove(account)) {
             emit RoleRevokedGlobally(role, account, msg.sender);
         }
     }

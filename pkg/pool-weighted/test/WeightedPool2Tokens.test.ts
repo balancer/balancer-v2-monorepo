@@ -337,7 +337,7 @@ describe('WeightedPool2Tokens', function () {
 
       sharedBeforeEach('grant role to admin', async () => {
         const action = await actionId(pool.instance, 'enableOracle');
-        await pool.vault.grantRole(action, admin);
+        await pool.vault.grantRoleGlobally(action, admin);
       });
 
       context('when it starts enabled', () => {

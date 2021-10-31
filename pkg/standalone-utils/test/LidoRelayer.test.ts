@@ -94,7 +94,7 @@ describe('LidoRelayer', function () {
         const manageUserBalanceAction = await actionId(vault.instance, 'manageUserBalance');
         const swapAction = await actionId(vault.instance, 'swap');
 
-        await vault.authorizer?.connect(admin).grantRoles([manageUserBalanceAction, swapAction], relayer.address);
+        await vault.authorizer?.connect(admin).grantRolesGlobally([manageUserBalanceAction, swapAction], relayer.address);
       });
 
       context('when the user did allow the relayer', () => {
@@ -215,7 +215,7 @@ describe('LidoRelayer', function () {
         const manageUserBalanceAction = await actionId(vault.instance, 'manageUserBalance');
         const batchSwapAction = await actionId(vault.instance, 'batchSwap');
 
-        await vault.authorizer?.connect(admin).grantRoles([manageUserBalanceAction, batchSwapAction], relayer.address);
+        await vault.authorizer?.connect(admin).grantRolesGlobally([manageUserBalanceAction, batchSwapAction], relayer.address);
       });
 
       context('when the user did allow the relayer', () => {
@@ -342,7 +342,9 @@ describe('LidoRelayer', function () {
         const manageUserBalanceAction = await actionId(vault.instance, 'manageUserBalance');
         const joinAction = await actionId(vault.instance, 'joinPool');
 
-        await vault.authorizer?.connect(admin).grantRoles([manageUserBalanceAction, joinAction], relayer.address);
+        await vault.authorizer
+          ?.connect(admin)
+          .grantRolesGlobally([manageUserBalanceAction, joinAction], relayer.address);
       });
 
       context('when the user did allow the relayer', () => {
@@ -407,7 +409,7 @@ describe('LidoRelayer', function () {
         const manageUserBalanceAction = await actionId(vault.instance, 'manageUserBalance');
         const exitAction = await actionId(vault.instance, 'exitPool');
 
-        await vault.authorizer?.connect(admin).grantRoles([manageUserBalanceAction, exitAction], relayer.address);
+        await vault.authorizer?.connect(admin).grantRolesGlobally([manageUserBalanceAction, exitAction], relayer.address);
       });
 
       context('when the user did allow the relayer', () => {
