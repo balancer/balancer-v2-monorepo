@@ -77,7 +77,7 @@ export default {
               pauseWindowDuration: pauseWindowDuration,
               bufferPeriodDuration: bufferPeriodDuration,
               oracleEnabled: oracleEnabled,
-              owner: TypesConverter.toAddress(owner),
+              owner: owner,
             },
           ],
           from,
@@ -96,7 +96,7 @@ export default {
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
-            TypesConverter.toAddress(owner),
+            owner,
             swapEnabledOnStart,
           ],
           from,
@@ -116,7 +116,7 @@ export default {
               assetManagers: assetManagers,
               pauseWindowDuration: pauseWindowDuration,
               bufferPeriodDuration: bufferPeriodDuration,
-              owner: TypesConverter.toAddress(owner),
+              owner: owner,
               swapEnabledOnStart: swapEnabledOnStart,
               managementSwapFeePercentage: managementSwapFeePercentage,
             },
@@ -137,7 +137,7 @@ export default {
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
-            TypesConverter.toAddress(owner),
+            owner,
           ],
           from,
         });
@@ -177,7 +177,7 @@ export default {
           weights,
           swapFeePercentage,
           oracleEnabled,
-          TypesConverter.toAddress(owner)
+          owner
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -195,7 +195,7 @@ export default {
           tokens.addresses,
           weights,
           swapFeePercentage,
-          TypesConverter.toAddress(owner),
+          owner,
           swapEnabledOnStart
         );
         const receipt = await tx.wait();
@@ -214,7 +214,7 @@ export default {
           tokens.addresses,
           weights,
           swapFeePercentage,
-          TypesConverter.toAddress(owner),
+          owner,
           swapEnabledOnStart,
           managementSwapFeePercentage
         );
@@ -232,7 +232,7 @@ export default {
           weights,
           assetManagers,
           swapFeePercentage,
-          TypesConverter.toAddress(owner)
+          owner
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');

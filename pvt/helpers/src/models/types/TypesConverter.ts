@@ -60,6 +60,7 @@ export default {
       managementSwapFeePercentage,
       poolType,
     } = params;
+    if (!params.owner) params.owner = ZERO_ADDRESS;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
     weights = toNormalizedWeights(weights.map(bn));
