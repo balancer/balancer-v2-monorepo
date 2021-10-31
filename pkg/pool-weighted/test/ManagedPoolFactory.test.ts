@@ -18,6 +18,7 @@ describe('ManagedPoolFactory', function () {
   let factory: Contract;
   let vault: Vault;
   let owner: SignerWithAddress;
+  let assetManager: SignerWithAddress;
 
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
@@ -31,7 +32,7 @@ describe('ManagedPoolFactory', function () {
   let createTime: BigNumber;
 
   before('setup signers', async () => {
-    [, owner] = await ethers.getSigners();
+    [, owner, assetManager] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy factory & tokens', async () => {
@@ -44,12 +45,16 @@ describe('ManagedPoolFactory', function () {
   });
 
   async function createPool(swapsEnabled = true): Promise<Contract> {
+    const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
+    assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
+
     const receipt = await (
       await factory.create(
         NAME,
         SYMBOL,
         tokens.addresses,
         WEIGHTS,
+        assetManagers,
         POOL_SWAP_FEE_PERCENTAGE,
         owner.address,
         swapsEnabled,
@@ -84,11 +89,15 @@ describe('ManagedPoolFactory', function () {
       expect(await pool.totalSupply()).to.be.equal(0);
     });
 
-    it('sets zero asset managers', async () => {
+    it('sets asset managers', async () => {
       await tokens.asyncEach(async (token) => {
         const poolId = await pool.getPoolId();
         const info = await vault.getPoolTokenInfo(poolId, token);
-        expect(info.assetManager).to.equal(ZERO_ADDRESS);
+        if (token.address == tokens.DAI.address) {
+          expect(info.assetManager).to.equal(assetManager.address);
+        } else {
+          expect(info.assetManager).to.equal(ZERO_ADDRESS);
+        }
       });
     });
 
