@@ -633,7 +633,7 @@ describe('VaultActions', function () {
     });
   });
 
-  describe.only('exit pool', () => {
+  describe('exit pool', () => {
     const amountInBPT = fp(1);
 
     async function getBPT(poolId: string): Promise<TokenList> {
