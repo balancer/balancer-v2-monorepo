@@ -87,7 +87,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
     switch (poolName) {
       case 'ManagedPool': {
-        params = [tokenAddresses, weights, swapFeePercentage];
+        params = [tokenAddresses, weights, assetManagers, swapFeePercentage];
         break;
       }
       case 'WeightedPool2Tokens': {
