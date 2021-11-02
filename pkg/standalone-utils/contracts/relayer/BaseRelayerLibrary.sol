@@ -104,6 +104,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
         }
     }
 
+    // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _TEMP_STORAGE_SUFFIX = keccak256("balancer.base-relayer-library");
 
     function _getTempStorageSlot(uint256 ref) private view returns (bytes32) {
