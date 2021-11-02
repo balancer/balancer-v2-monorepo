@@ -25,9 +25,17 @@ abstract contract IBaseRelayerLibrary {
 
     function approveVault(IERC20 token, uint256 amount) public virtual;
 
-    function _pullToken(address sender, IERC20 token, uint256 amount) internal virtual;
+    function _pullToken(
+        address sender,
+        IERC20 token,
+        uint256 amount
+    ) internal virtual;
 
-    function _pullTokens(address sender, IERC20[] memory tokens, uint256[] memory amounts) internal virtual;
+    function _pullTokens(
+        address sender,
+        IERC20[] memory tokens,
+        uint256[] memory amounts
+    ) internal virtual;
 
     function _isChainedReference(uint256 amount) internal pure virtual returns (bool);
 

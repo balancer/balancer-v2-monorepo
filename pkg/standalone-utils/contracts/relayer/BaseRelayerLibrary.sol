@@ -69,10 +69,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * @notice Approves the Vault to use tokens held on the relayer
      * @dev This is needed for avoiding having to send any intermediate tokens back to the user
      */
-    function approveVault(
-        IERC20 token,
-        uint256 amount
-    ) public override {
+    function approveVault(IERC20 token, uint256 amount) public override {
         // TODO: gas golf this a bit
         token.approve(address(getVault()), amount);
     }
