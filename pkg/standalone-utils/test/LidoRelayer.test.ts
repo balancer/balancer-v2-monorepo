@@ -69,7 +69,7 @@ describe('LidoRelayer', function () {
 
   sharedBeforeEach('set up relayer', async () => {
     // Deploy Relayer
-    relayerLibrary = await deploy('LidoBatchRelayerLibrary', { args: [vault.address, wstETH.address] });
+    relayerLibrary = await deploy('BatchRelayerLibrary', { args: [vault.address, wstETH.address] });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
     // Authorize Relayer for all actions
