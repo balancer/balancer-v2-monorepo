@@ -28,6 +28,8 @@
     "test": "yarn workspaces foreach --parallel --verbose run test"
   },
   "workspaces": [
+    "pkg/typechain",
+    "pkg/balancer-js",
     "pkg/*",
     "pvt/*"
   ]
