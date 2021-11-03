@@ -13,19 +13,11 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "../math/Math.sol";
 
-/**
- * @title IBaseRelayerLibrary
- */
-abstract contract IBaseRelayerLibrary {
-    function getVault() public view virtual returns (IVault);
-
-    function _isChainedReference(uint256 amount) internal pure virtual returns (bool);
-
-    function _setChainedReferenceValue(uint256 ref, uint256 value) internal virtual;
-
-    function _getChainedReferenceValue(uint256 ref) internal virtual returns (uint256);
+contract MathMock {
+    function abs(int256 a) public pure returns (uint256) {
+        return Math.abs(a);
+    }
 }
