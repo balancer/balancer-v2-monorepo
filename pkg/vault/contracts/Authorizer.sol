@@ -15,6 +15,8 @@
 pragma solidity ^0.7.0;
 
 import "./interfaces/IAuthorizer.sol";
+import "./interfaces/IDelayProvider.sol";
+import "./DelayedCall.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/AccessControl.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
@@ -27,17 +29,94 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
  * This temporary implementation is expected to be replaced soon after launch by a more sophisticated one, able to
  * manage permissions across multiple contracts and to natively handle timelocks.
  */
-contract Authorizer is AccessControl, IAuthorizer {
+contract Authorizer is AccessControl, IAuthorizer, IDelayProvider {
+
+    using EnumerableSet for EnumerableSet.AddressSet;
+    
+    mapping(bytes32 => uint256) actionDelays;
+    mapping(bytes32 => EnumerableSet.AddressSet) delayedCalls;
+
+    /**
+     * @dev Emitted when a call is scheduled as part of operation `actionId`.
+     */
+    event DelayedCallScheduled(
+        bytes32 indexed actionId,
+        address where,
+        uint256 value,
+        bytes data,
+        uint256 delay
+    );
+
+    event ActionDelaySet(bytes32 indexed actionId, uint256 delay);
+
     constructor(address admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
+    /**
+     * @dev checks if caller can execute an action in a contract. If actions has
+     * a defined delay, caller must be a DelayedCall contract
+     */
     function canPerform(
         bytes32 actionId,
         address account,
         address where
     ) public view override returns (bool) {
-        return AccessControl.hasRole(actionId, account, where);
+        if (actionDelays[actionId] == 0) {
+            return AccessControl.hasRole(actionId, account, where);
+        } else {
+            return delayedCalls[actionId].contains(msg.sender);
+        }
+    }
+
+    /**
+        Delayed actions
+    
+    */
+    function setActionDelay(bytes32 actionId, uint256 delay, address where) public {
+        require(AccessControl.hasRole(actionId, msg.sender, where), "Invalid permission");
+        actionDelays[actionId] = delay;
+        emit ActionDelaySet(actionId, delay);
+    }
+
+    function setActionDelays(
+        bytes32[] calldata actionIds,
+        uint256[] calldata delays,
+        address[] calldata wheres
+    ) external {
+        require(actionIds.length == delays.length && delays.length == wheres.length, "Arrays with unequal lenght");
+        for (uint256 i = 0; i < actionIds.length; i++) {
+            setActionDelay(actionIds[i], delays[i], wheres[i]);
+        }
+    }
+
+    function getDelay(bytes32 actionId) external override view returns (uint256) {
+        return actionDelays[actionId];
+    }
+
+    function getDelayedCallsAt(bytes32 actionId, uint256 index) external view returns (address) {
+        return delayedCalls[actionId].at(index);
+    }
+
+    function getDelayedCallsCount(bytes32 actionId) external view returns (uint256) {
+        return delayedCalls[actionId].length();
+    }
+
+    /**
+     * @dev deploys a contract that will allow the triggering of a delayed action.
+     */
+    function deployDelayedCall(
+        bytes32 actionId,
+        address where,
+        uint256 value,
+        bytes calldata data
+    ) external returns(address) {
+        require(AccessControl.hasRole(actionId, msg.sender, where), "Invalid permission");
+        require(actionDelays[actionId] > 0, "Not a delayed action");
+        DelayedCall delayedCall = new DelayedCall(data, where, value, this, actionId);
+        delayedCalls[actionId].add(address(delayedCall));
+        emit DelayedCallScheduled(actionId, where, value, data, actionDelays[actionId]);
+        return address(delayedCall);
     }
 
     /**
@@ -131,4 +210,5 @@ contract Authorizer is AccessControl, IAuthorizer {
             revokeRoleGlobally(roles[i], accounts[i]);
         }
     }
+
 }
