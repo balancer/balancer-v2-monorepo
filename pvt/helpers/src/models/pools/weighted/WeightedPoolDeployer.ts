@@ -8,6 +8,7 @@ import WeightedPool from './WeightedPool';
 import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
 import { RawWeightedPoolDeployment, WeightedPoolDeployment, WeightedPoolType } from './types';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -213,6 +214,7 @@ export default {
           SYMBOL,
           tokens.addresses,
           weights,
+          Array(tokens.length).fill(ZERO_ADDRESS),
           swapFeePercentage,
           owner,
           swapEnabledOnStart,
