@@ -30,6 +30,13 @@ import "../interfaces/IControlledPool.sol";
 contract BasePoolController is IBasePoolController, Ownable {
     address public pool;
 
+    // Optional metadata associated with this controller (or the pool bound to it)
+    bytes internal _metadata;
+
+    // Events
+
+    event MetadataUpdated(bytes metadata);
+
     // Modifiers
 
     modifier withBoundPool {
@@ -52,10 +59,16 @@ contract BasePoolController is IBasePoolController, Ownable {
         pool = poolAddress;
     }
 
+    /**
+     * @dev Pass a call to BasePool's setSwapFeePercentage through to the underlying pool
+     */
     function setSwapFeePercentage(uint256 swapFeePercentage) external virtual override onlyOwner withBoundPool {
         IControlledPool(pool).setSwapFeePercentage(swapFeePercentage);
     }
 
+    /**
+     * @dev Pass a call to BasePool's setAssetManagerPoolConfig through to the underlying pool
+     */
     function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig)
         external
         virtual
@@ -65,6 +78,30 @@ contract BasePoolController is IBasePoolController, Ownable {
     {
         IControlledPool(pool).setAssetManagerPoolConfig(token, poolConfig);
     }
+
+    /**
+     * @dev Getter for the optional metadata
+     */
+    function getMetadata() external view returns (bytes memory) {
+        return _metadata;
+    }
+
+    /**
+     * @dev Setter for the admin to set/update the metadata
+     */
+    function updateMetadata(bytes memory metadata) external onlyOwner {
+        _updateMetadata(metadata);
+    }
+
+    // Internal functions
+
+    function _updateMetadata(bytes memory metadata) internal {
+        _metadata = metadata;
+
+        emit MetadataUpdated(metadata);
+    }
+
+    // Private functions
 
     function _ensurePoolIsBound() private view {
         _require(pool != address(0), Errors.UNINITIALIZED);

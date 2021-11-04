@@ -13,11 +13,13 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { encodeInvestmentConfig } from '@balancer-labs/v2-asset-manager-utils/test/helpers/rebalance';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
 const WEIGHTS = [fp(30), fp(60), fp(5), fp(5)];
 const PAUSE_WINDOW_DURATION = MONTH * 3;
 const BUFFER_PERIOD_DURATION = MONTH;
+const METADATA = "0x4b04c67fb743403d339729f8438ecad295a3a015ca144a0945bb6bb9abe3da20";
 
 let admin: SignerWithAddress;
 let other: SignerWithAddress;
@@ -74,6 +76,23 @@ describe('BasePoolController', function () {
       await expect(poolController.connect(admin).setSwapFeePercentage(NEW_SWAP_FEE)).to.be.revertedWith(
         'UNINITIALIZED'
       );
+    });
+
+    it('has no initial metadata', async () => {
+        expect(await poolController.getMetadata()).to.equal("0x");
+    });
+
+    it('owner can set metadata', async () => {
+      const tx = await poolController.connect(admin).updateMetadata(METADATA);
+      expectEvent.inReceipt(await tx.wait(), 'MetadataUpdated', {
+        metadata: METADATA,
+      });
+
+      expect(await poolController.getMetadata()).to.equal(METADATA);
+    });
+
+    it('non-owner cannot set metadata', async () => {
+      await expect(poolController.connect(other).updateMetadata(METADATA)).to.be.revertedWith('CALLER_IS_NOT_OWNER');
     });
   });
 
