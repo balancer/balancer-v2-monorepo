@@ -206,7 +206,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
                     _isChainedReference(outputReferences[i].key) && outputReferences[i].index < request.assets.length,
                     "invalid chained reference"
                 );
-                filteredAssets[i] = _translateToIERC20(request.assets[outputReferences[i].index]);
+                filteredAssets[i] = _asIERC20(request.assets[outputReferences[i].index]);
             }
             initialRecipientBalances = getVault().getInternalBalance(recipient, filteredAssets);
         } else {
