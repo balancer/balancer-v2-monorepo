@@ -31,20 +31,14 @@ contract BasePoolController is IBasePoolController, Ownable {
     address public pool;
 
     // Optional metadata associated with this controller (or the pool bound to it)
-    bytes internal _metadata;
-
-    // Events
+    bytes private _metadata;
 
     event MetadataUpdated(bytes metadata);
-
-    // Modifiers
 
     modifier withBoundPool {
         _ensurePoolIsBound();
         _;
     }
-
-    // External functions
 
     /**
      * @dev The pool needs this controller's address (as its owner), and this controller also needs the
@@ -82,7 +76,7 @@ contract BasePoolController is IBasePoolController, Ownable {
     /**
      * @dev Getter for the optional metadata
      */
-    function getMetadata() external view returns (bytes memory) {
+    function getMetadata() public view returns (bytes memory) {
         return _metadata;
     }
 
@@ -93,15 +87,11 @@ contract BasePoolController is IBasePoolController, Ownable {
         _updateMetadata(metadata);
     }
 
-    // Internal functions
-
-    function _updateMetadata(bytes memory metadata) internal {
+    function _updateMetadata(bytes memory metadata) internal virtual {
         _metadata = metadata;
 
         emit MetadataUpdated(metadata);
     }
-
-    // Private functions
 
     function _ensurePoolIsBound() private view {
         _require(pool != address(0), Errors.UNINITIALIZED);
