@@ -30,7 +30,7 @@ let vault: Vault;
 let poolController: Contract;
 
 before('setup signers', async () => {
-  [admin, other, governance] = await ethers.getSigners();
+  [, admin, other, governance] = await ethers.getSigners();
 });
 
 sharedBeforeEach('deploy Vault and tokens', async () => {
@@ -49,7 +49,7 @@ describe('BasePoolController', function () {
   const NEXT_SWAP_FEE = fp(0.005);
 
   sharedBeforeEach('deploy controller and pool', async () => {
-    poolController = await deploy('BasePoolController');
+    poolController = await deploy('BasePoolController', { from: admin });
 
     const params = {
       vault,
@@ -98,7 +98,7 @@ describe('BasePoolController', function () {
 
   context('pool controller is initialized', () => {
     sharedBeforeEach('initialize pool controller', async () => {
-      await poolController.bindPool(pool.address);
+      await poolController.initialize(pool.address);
     });
 
     it('owner can set the swap fee', async () => {
@@ -114,7 +114,7 @@ describe('BasePoolController', function () {
     });
 
     it('can be transferred', async () => {
-      await poolController.transferOwnership(other.address);
+      await poolController.connect(admin).transferOwnership(other.address);
 
       await expect(poolController.connect(admin).setSwapFeePercentage(NEXT_SWAP_FEE)).to.be.revertedWith(
         'CALLER_IS_NOT_OWNER'
@@ -126,7 +126,7 @@ describe('BasePoolController', function () {
     });
 
     it('can renounce ownership', async () => {
-      await poolController.renounceOwnership();
+      await poolController.connect(admin).renounceOwnership();
 
       await expect(poolController.connect(admin).setSwapFeePercentage(NEXT_SWAP_FEE)).to.be.revertedWith(
         'CALLER_IS_NOT_OWNER'
@@ -185,7 +185,7 @@ describe('BasePoolController', function () {
           args: [vault.address],
         });
 
-        poolController = await deploy('BasePoolController');
+        poolController = await deploy('BasePoolController', { from: admin });
         assetManagers = Array(allTokens.length).fill(ZERO_ADDRESS);
         assetManagers[allTokens.indexOf(allTokens.DAI)] = assetManagerContract.address;
 
@@ -202,7 +202,7 @@ describe('BasePoolController', function () {
         assetManagedPool = await WeightedPool.create(params);
         poolId = await assetManagedPool.getPoolId();
 
-        await poolController.bindPool(assetManagedPool.address);
+        await poolController.initialize(assetManagedPool.address);
         await assetManagerContract.initialize(poolId, distributor.address);
       });
 

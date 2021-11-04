@@ -41,10 +41,17 @@ contract BasePoolController is IBasePoolController, Ownable {
     }
 
     /**
-     * @dev The pool needs this controller's address (as its owner), and this controller also needs the
-     * pool's address to delegate the calls.
+     * @dev The underlying pool owner is immutable, so its address must be known when the pool is deployed.
+     * This means the controller needs to be deployed first. Yet the controller also needs to know the address
+     * of the pool it is controlling.
+     *
+     * We could either pass in a pool factory and have the controller deploy the pool, or have an initialize
+     * function to set the pool address after deployment. This decoupled mechanism seems cleaner.
+     *
+     * It means the pool address must be in storage vs immutable, but for infrequent admin operations, this is
+     * acceptable.
      */
-    function bindPool(address poolAddress) external virtual override {
+    function initialize(address poolAddress) external virtual override {
         _require(
             pool == address(0) && BasePoolAuthorization(poolAddress).getOwner() == address(this),
             Errors.INVALID_INITIALIZATION
