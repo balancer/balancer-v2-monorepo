@@ -19,7 +19,7 @@ const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
 const WEIGHTS = [fp(30), fp(60), fp(5), fp(5)];
 const PAUSE_WINDOW_DURATION = MONTH * 3;
 const BUFFER_PERIOD_DURATION = MONTH;
-const METADATA = "0x4b04c67fb743403d339729f8438ecad295a3a015ca144a0945bb6bb9abe3da20";
+const METADATA = '0x4b04c67fb743403d339729f8438ecad295a3a015ca144a0945bb6bb9abe3da20';
 
 let admin: SignerWithAddress;
 let other: SignerWithAddress;
@@ -79,7 +79,7 @@ describe('BasePoolController', function () {
     });
 
     it('has no initial metadata', async () => {
-        expect(await poolController.getMetadata()).to.equal("0x");
+      expect(await poolController.getMetadata()).to.equal('0x');
     });
 
     it('owner can set metadata', async () => {
