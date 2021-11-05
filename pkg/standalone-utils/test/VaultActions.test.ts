@@ -196,6 +196,7 @@ describe('VaultActions', function () {
   async function encodeExitPool(params: {
     poolId: string;
     userData: string;
+    toInternalBalance: boolean;
     outputReferences?: Dictionary<BigNumberish>;
   }): Promise<string> {
     const { tokens: poolTokens } = await vault.getPoolTokens(params.poolId);
@@ -213,7 +214,7 @@ describe('VaultActions', function () {
         assets: poolTokens,
         minAmountsOut: new Array(poolTokens.length).fill(0),
         userData: params.userData,
-        toInternalBalance: false,
+        toInternalBalance: params.toInternalBalance,
       },
       outputReferences,
     ]);
@@ -641,6 +642,7 @@ describe('VaultActions', function () {
     }
 
     describe('weighted pool', () => {
+      const toInternalBalance = false;
       describe('exact bpt in for tokens', () => {
         it('exits with immediate amounts', async () => {
           await expectBalanceChange(
@@ -649,6 +651,7 @@ describe('VaultActions', function () {
                 await encodeExitPool({
                   poolId: poolIdA,
                   userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(fp(1)),
+                  toInternalBalance,
                 }),
               ]),
             await getBPT(poolIdA),
@@ -667,6 +670,7 @@ describe('VaultActions', function () {
               await encodeExitPool({
                 poolId: poolIdA,
                 userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amountInBPT),
+                toInternalBalance,
                 outputReferences: {
                   DAI: toChainedReference(0),
                   MKR: toChainedReference(1),
@@ -707,6 +711,7 @@ describe('VaultActions', function () {
                 await encodeExitPool({
                   poolId: poolIdA,
                   userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(toChainedReference(0)),
+                  toInternalBalance,
                 }),
               ]),
             await getBPT(poolIdA),
@@ -727,6 +732,7 @@ describe('VaultActions', function () {
                   await encodeExitPool({
                     poolId: poolIdA,
                     userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amountInBPT),
+                    toInternalBalance,
                     outputReferences: {
                       MKR: toChainedReference(0),
                     },
@@ -770,6 +776,7 @@ describe('VaultActions', function () {
                 await encodeExitPool({
                   poolId: poolIdA,
                   userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(fp(1), 0),
+                  toInternalBalance,
                 }),
               ]),
             await getBPT(poolIdA),
@@ -791,6 +798,7 @@ describe('VaultActions', function () {
                   amountInBPT,
                   tokensA.findIndexBySymbol('MKR')
                 ),
+                toInternalBalance,
                 outputReferences: {
                   MKR: toChainedReference(0),
                 },
@@ -823,6 +831,7 @@ describe('VaultActions', function () {
                     toChainedReference(0),
                     tokensA.findIndexBySymbol('MKR')
                   ),
+                  toInternalBalance,
                 }),
               ]),
             await getBPT(poolIdA),
@@ -846,6 +855,7 @@ describe('VaultActions', function () {
                       amountInBPT,
                       tokensA.findIndexBySymbol('MKR')
                     ),
+                    toInternalBalance,
                     outputReferences: {
                       MKR: toChainedReference(0),
                     },
@@ -892,6 +902,7 @@ describe('VaultActions', function () {
                 await encodeExitPool({
                   poolId: poolIdA,
                   userData: WeightedPoolEncoder.exitBPTInForExactTokensOut([amountOutMKR, amountOutDAI], MAX_UINT256),
+                  toInternalBalance,
                 }),
               ]),
             await getBPT(poolIdA),
