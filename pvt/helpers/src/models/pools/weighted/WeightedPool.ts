@@ -595,7 +595,7 @@ export default class WeightedPool {
 
   async pause(): Promise<void> {
     const action = await actionId(this.instance, 'setPaused');
-    await this.vault.grantRole(action);
+    await this.vault.grantRoleGlobally(action);
     await this.instance.setPaused(true);
   }
 

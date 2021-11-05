@@ -289,7 +289,7 @@ describe('Swaps', () => {
       context('when the sender is an approved relayer', () => {
         sharedBeforeEach(async () => {
           const action = await actionId(vault, 'batchSwap');
-          await authorizer.connect(admin).grantRole(action, other.address);
+          await authorizer.connect(admin).grantRoleGlobally(action, other.address);
 
           await vault.connect(trader).setRelayerApproval(trader.address, other.address, true);
         });
@@ -549,7 +549,7 @@ describe('Swaps', () => {
                             sharedBeforeEach('grant permission to relayer', async () => {
                               const single = await actionId(vault, 'swap');
                               const batch = await actionId(vault, 'batchSwap');
-                              await authorizer.connect(admin).grantRoles([single, batch], other.address);
+                              await authorizer.connect(admin).grantRolesGlobally([single, batch], other.address);
                             });
 
                             context('when the relayer is allowed by the user', () => {
@@ -586,7 +586,7 @@ describe('Swaps', () => {
                             sharedBeforeEach('revoke permission from relayer', async () => {
                               const single = await actionId(vault, 'swap');
                               const batch = await actionId(vault, 'batchSwap');
-                              await authorizer.connect(admin).revokeRoles([single, batch], other.address);
+                              await authorizer.connect(admin).revokeRolesGlobally([single, batch], other.address);
                             });
 
                             context('when the relayer is allowed by the user', () => {
@@ -1043,7 +1043,7 @@ describe('Swaps', () => {
                             sharedBeforeEach('grant permission to relayer', async () => {
                               const single = await actionId(vault, 'swap');
                               const batch = await actionId(vault, 'batchSwap');
-                              await authorizer.connect(admin).grantRoles([single, batch], other.address);
+                              await authorizer.connect(admin).grantRolesGlobally([single, batch], other.address);
                             });
 
                             context('when the relayer is allowed by the user', () => {
@@ -1067,7 +1067,7 @@ describe('Swaps', () => {
                             sharedBeforeEach('revoke permission from relayer', async () => {
                               const single = await actionId(vault, 'swap');
                               const batch = await actionId(vault, 'batchSwap');
-                              await authorizer.connect(admin).revokeRoles([single, batch], other.address);
+                              await authorizer.connect(admin).revokeRolesGlobally([single, batch], other.address);
                             });
 
                             context('when the relayer is allowed by the user', () => {

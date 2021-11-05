@@ -125,7 +125,7 @@ describe('Fees', () => {
 
       it('authorized accounts can withdraw protocol fees to any recipient', async () => {
         const action = await actionId(feesCollector, 'withdrawCollectedFees');
-        await vault.grantRole(action, feeCollector);
+        await vault.grantRoleGlobally(action, feeCollector);
 
         await expectBalanceChange(
           () =>
@@ -142,7 +142,7 @@ describe('Fees', () => {
 
       it('protocol fees cannot be over-withdrawn', async () => {
         const action = await actionId(feesCollector, 'withdrawCollectedFees');
-        await vault.grantRole(action, feeCollector);
+        await vault.grantRoleGlobally(action, feeCollector);
 
         await expect(
           vault.withdrawCollectedFees(tokens.DAI.address, bn(0.05e18).add(1), other, { from: feeCollector })

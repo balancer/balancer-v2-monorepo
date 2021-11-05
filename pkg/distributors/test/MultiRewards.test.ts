@@ -54,7 +54,7 @@ describe('Staking contract', () => {
 
     it('tracks authorizer changes in the vault', async () => {
       const action = await actionId(vault, 'setAuthorizer');
-      await authorizer.connect(admin).grantRole(action, admin.address);
+      await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
 
       await vault.connect(admin).setAuthorizer(other.address);
 
