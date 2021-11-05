@@ -5,6 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('Authorizer', () => {
   let authorizer: Contract;
@@ -299,38 +300,79 @@ describe('Authorizer', () => {
       });
     });
   });
-  /*
+
   describe('delayed calls', () => {
-    context('setting of delays', () => {
+    let actionDelayId: string;
+    let setActionDelayEncoded: string;
+    sharedBeforeEach('get action delay Id', async () => {
+      actionDelayId = ethers.utils.keccak256(authorizer.interface.getSighash('setActionDelay'));
+      setActionDelayEncoded = authorizer.interface.encodeFunctionData('setActionDelay', [ROLE_1, 3600]);
+    });
+    context('initial conditions', () => {
+      it('setActionDelay is delayed by minimum delay initially', async () => {
+        expect(await authorizer._SET_ACTION_DELAY()).to.equal(actionDelayId);
+        expect(await authorizer.getDelay(actionDelayId)).to.equal(await authorizer._MIN_DELAY());
+      });
+    });
+
+    context('creating delayed call', () => {
+      sharedBeforeEach('get action delay Id', async () => {
+        actionDelayId = ethers.utils.keccak256(authorizer.interface.getSighash('setActionDelay'));
+        await authorizer.connect(admin).grantRoleGlobally(ROLE_1, grantee.address);
+        await authorizer.connect(admin).grantRoleGlobally(actionDelayId, grantee.address);
+      });
       context('fails creating delayed calls', () => {
-        sharedBeforeEach(' permissions', async () => {
-        });
-
         it('if not authorized', async () => {
-
+          await expect(
+            authorizer.connect(other).deployDelayedCall(ROLE_1, WHERE[0], 0, ROLE_1, true)
+          ).to.be.revertedWith('Invalid permission');
         });
 
         it('if not creating it for a delayed action', async () => {
-
+          await expect(
+            authorizer.connect(grantee).deployDelayedCall(ROLE_1, WHERE[0], 0, ROLE_1, true)
+          ).to.be.revertedWith('Not a delayed action');
         });
-
       });
 
-      context('when the sender is authorized (is DelayedCall)', () => {
-        sharedBeforeEach(' permissions', async () => {
+      context('creates a delayed call', () => {
+        it('successfully', async () => {
+          const delayedCallAddress = await authorizer
+            .connect(grantee)
+            .callStatic.deployDelayedCall(actionDelayId, authorizer.address, 0, setActionDelayEncoded, false);
+          const tx = await authorizer
+            .connect(grantee)
+            .deployDelayedCall(actionDelayId, authorizer.address, 0, setActionDelayEncoded, false);
+          const receipt = await tx.wait();
+          expectEvent.inReceipt(receipt, 'DelayedCallScheduled', {
+            actionId: actionDelayId,
+            callAddress: delayedCallAddress,
+            where: authorizer.address,
+            value: 0,
+            data: setActionDelayEncoded,
+            delay: 3600,
+          });
+          expect(await authorizer.getDelayedCallsAt(actionDelayId, 0)).to.equal(delayedCallAddress);
+          expect(await authorizer.getDelayedCallsCount(actionDelayId)).to.equal(1);
         });
-
-        it('can create delayed call', async () => {
-
-        });
-
-        it('delayed call can set delay', async () => {
-
-        });
-
       });
 
+      context('sets a delay', () => {
+        it('by creating a delayed call that triggers setDelay', async () => {
+          const delayedCallAddress = await authorizer
+            .connect(grantee)
+            .callStatic.deployDelayedCall(actionDelayId, authorizer.address, 0, setActionDelayEncoded, false);
+          await authorizer
+            .connect(grantee)
+            .deployDelayedCall(actionDelayId, authorizer.address, 0, setActionDelayEncoded, false);
+          await authorizer.connect(admin).grantRoleGlobally(actionDelayId, delayedCallAddress);
+          await ethers.provider.send('evm_increaseTime', [3600]);
+          await ethers.provider.send('evm_mine', []);
+          const delayedCall = await ethers.getContractAt('DelayedCall', delayedCallAddress);
+          await delayedCall.trigger();
+          expect(await authorizer.getDelay(ROLE_1)).to.equal(3600);
+        });
+      });
     });
   });
-  */
 });

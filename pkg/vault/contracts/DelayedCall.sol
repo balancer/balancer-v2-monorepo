@@ -16,7 +16,6 @@ pragma solidity ^0.7.0;
 
 import "./interfaces/IDelayProvider.sol";
 import "./interfaces/IAuthorizer.sol";
-import "hardhat/console.sol";
 contract DelayedCall {
 
     IDelayProvider private _delayProvider;
@@ -74,7 +73,6 @@ contract DelayedCall {
         require(!triggered, "Action already triggered");
         triggered = true;
         (bool success, ) = where.call{value: value}(data);
-        console.log(success);
         require(success, "Underlying transaction reverted");
         emit DelayedCallExecuted(actionId, where, value, data);
     }
