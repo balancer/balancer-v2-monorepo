@@ -18,6 +18,7 @@ import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { Dictionary } from 'lodash';
 import { Interface } from '@ethersproject/abi';
+import { Zero } from '@ethersproject/constants';
 
 describe('VaultActions', function () {
   let vault: Vault;
@@ -119,6 +120,7 @@ describe('VaultActions', function () {
     tokenIn: Token;
     tokenOut: Token;
     amount: BigNumberish;
+    fromInternalBalance?: boolean;
     outputReference?: BigNumberish;
   }): string {
     return relayerLibrary.interface.encodeFunctionData('swap', [
@@ -130,7 +132,12 @@ describe('VaultActions', function () {
         amount: params.amount,
         userData: '0x',
       },
-      { sender: sender.address, recipient: sender.address, fromInternalBalance: false, toInternalBalance: false },
+      {
+        sender: sender.address,
+        recipient: sender.address,
+        fromInternalBalance: params.fromInternalBalance ?? false,
+        toInternalBalance: false,
+      },
       0,
       MAX_UINT256,
       0,
@@ -642,7 +649,7 @@ describe('VaultActions', function () {
     }
 
     describe('weighted pool', () => {
-      const toInternalBalance = false;
+      const toInternalBalance = true;
       describe('exact bpt in for tokens', () => {
         it('exits with immediate amounts', async () => {
           await expectBalanceChange(
@@ -679,24 +686,49 @@ describe('VaultActions', function () {
             ])
           ).wait();
 
-          const {
-            args: { value: daiAmountOut },
-          } = expectEvent.inIndirectReceipt(
-            receipt,
-            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-            'Transfer',
-            { from: vault.address, to: sender.address },
-            tokens.DAI.address
-          );
-          const {
-            args: { value: mkrAmountOut },
-          } = expectEvent.inIndirectReceipt(
-            receipt,
-            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-            'Transfer',
-            { from: vault.address, to: sender.address },
-            tokens.MKR.address
-          );
+          let daiAmountOut = Zero;
+          let mkrAmountOut = Zero;
+          if (toInternalBalance) {
+            const daiTransfer = expectEvent.inIndirectReceipt(
+              receipt,
+              vault.instance.interface,
+              'InternalBalanceChanged',
+              {
+                user: sender.address,
+                token: tokens.DAI.address,
+              }
+            );
+            const mkrTransfer = expectEvent.inIndirectReceipt(
+              receipt,
+              vault.instance.interface,
+              'InternalBalanceChanged',
+              {
+                user: sender.address,
+                token: tokens.MKR.address,
+              }
+            );
+
+            daiAmountOut = daiTransfer.args.delta;
+            mkrAmountOut = mkrTransfer.args.delta;
+          } else {
+            const daiTransfer = expectEvent.inIndirectReceipt(
+              receipt,
+              new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+              'Transfer',
+              { from: vault.address, to: sender.address },
+              tokens.DAI.address
+            );
+            const mkrTransfer = expectEvent.inIndirectReceipt(
+              receipt,
+              new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+              'Transfer',
+              { from: vault.address, to: sender.address },
+              tokens.MKR.address
+            );
+
+            daiAmountOut = daiTransfer.args.value;
+            mkrAmountOut = mkrTransfer.args.value;
+          }
 
           await expectChainedReferenceContents(toChainedReference(0), daiAmountOut);
           await expectChainedReferenceContents(toChainedReference(1), mkrAmountOut);
@@ -741,6 +773,7 @@ describe('VaultActions', function () {
                     poolId: poolIdA,
                     tokenIn: tokens.MKR,
                     tokenOut: tokens.DAI,
+                    fromInternalBalance: toInternalBalance,
                     amount: toChainedReference(0),
                   }),
                 ]),
@@ -806,15 +839,30 @@ describe('VaultActions', function () {
             ])
           ).wait();
 
-          const {
-            args: { value: mkrAmountOut },
-          } = expectEvent.inIndirectReceipt(
-            receipt,
-            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-            'Transfer',
-            { from: vault.address, to: sender.address },
-            tokens.MKR.address
-          );
+          let mkrAmountOut = Zero;
+          if (toInternalBalance) {
+            const mkrTransfer = expectEvent.inIndirectReceipt(
+              receipt,
+              vault.instance.interface,
+              'InternalBalanceChanged',
+              {
+                user: sender.address,
+                token: tokens.MKR.address,
+              }
+            );
+
+            mkrAmountOut = mkrTransfer.args.delta;
+          } else {
+            const mkrTransfer = expectEvent.inIndirectReceipt(
+              receipt,
+              new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+              'Transfer',
+              { from: vault.address, to: sender.address },
+              tokens.MKR.address
+            );
+
+            mkrAmountOut = mkrTransfer.args.value;
+          }
 
           await expectChainedReferenceContents(toChainedReference(0), mkrAmountOut);
         });
