@@ -40,7 +40,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     IVault private immutable _vault;
     IBalancerRelayer private immutable _entrypoint;
 
-    constructor(IVault vault) {
+    constructor(IVault vault) IBaseRelayerLibrary(vault.WETH()) {
         _vault = vault;
         _entrypoint = new BalancerRelayer(vault, address(this));
     }
@@ -109,6 +109,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
         }
     }
 
+    // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _TEMP_STORAGE_SUFFIX = keccak256("balancer.base-relayer-library");
 
     function _getTempStorageSlot(uint256 ref) private view returns (bytes32) {
