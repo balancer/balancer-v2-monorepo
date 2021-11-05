@@ -113,9 +113,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         _scalingFactorMainToken = _computeScalingFactor(params.mainToken);
         _scalingFactorWrappedToken = _computeScalingFactor(params.wrappedToken);
 
-        // Set targets by packing them as two uint128 values into a single storage
-        _require(params.lowerTarget <= params.upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
-        _require(params.upperTarget <= _MAX_TOKEN_BALANCE, Errors.UPPER_TARGET_TOO_HIGH);
+        // Set initial targets
         _setTargets(params.mainToken, params.lowerTarget, params.upperTarget);
 
         // Set wrapped token rate cache
@@ -563,6 +561,9 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256 lowerTarget,
         uint256 upperTarget
     ) private {
+        _require(lowerTarget <= upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
+        _require(upperTarget <= _MAX_TOKEN_BALANCE, Errors.UPPER_TARGET_TOO_HIGH);
+
         // Pack targets as two uint128 values into a single storage. This results in targets being capped to 128 bits,
         // but that's fine because they are already lower than _MAX_TOKEN_BALANCE which is 112 bits.
         _packedTargets = WordCodec.encodeUint(lowerTarget, 0) | WordCodec.encodeUint(upperTarget, 128);
@@ -570,9 +571,6 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     }
 
     function setTargets(uint256 lowerTarget, uint256 upperTarget) external authenticate {
-        _require(lowerTarget <= upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
-        _require(upperTarget <= _MAX_TOKEN_BALANCE, Errors.UPPER_TARGET_TOO_HIGH);
-
         bytes32 poolId = getPoolId();
         (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
 
