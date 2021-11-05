@@ -48,7 +48,9 @@
     "typescript": "^4.0.2"
   },
   "dependencies": {
-    "@balancer-labs/typechain": "workspace:*",
+    "@balancer-labs/typechain": "workspace:*"
+  },
+  "peerDependencies": {
     "@ethersproject/abi": "^5.4.0",
     "@ethersproject/abstract-signer": "^5.4.0",
     "@ethersproject/address": "^5.4.0",

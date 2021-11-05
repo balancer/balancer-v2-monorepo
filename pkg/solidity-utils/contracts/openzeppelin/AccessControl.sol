@@ -304,6 +304,7 @@ abstract contract AccessControl {
     }
 
     function _grantRole(bytes32 role, address account, address where) private {
+        require(where != address(0), "Where can't be GLOBAL_ROLE_ADMIN");
         if (_roles[role].membersByContract[where].add(account)) {
             emit RoleGranted(role, account, msg.sender, where);
         }

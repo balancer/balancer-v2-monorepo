@@ -114,7 +114,11 @@ contract Authorizer is AccessControl, IAuthorizer, IDelayProvider {
     /**
      * @dev Grants multiple roles to a single account for a set of contracts.
      */
-    function grantRoles(bytes32[] memory roles, address account, address[] calldata where) external {
+    function grantRoles(
+        bytes32[] memory roles,
+        address account,
+        address[] calldata where
+    ) external {
         for (uint256 i = 0; i < roles.length; i++) {
             grantRole(roles[i], account, where);
         }
@@ -132,7 +136,11 @@ contract Authorizer is AccessControl, IAuthorizer, IDelayProvider {
     /**
      * @dev Grants roles to a list of accounts for a set of contracts.
      */
-    function grantRolesToMany(bytes32[] memory roles, address[] memory accounts, address[] calldata where) external {
+    function grantRolesToMany(
+        bytes32[] memory roles,
+        address[] memory accounts,
+        address[] calldata where
+    ) external {
         InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
         for (uint256 i = 0; i < roles.length; i++) {
             grantRole(roles[i], accounts[i], where);
@@ -152,7 +160,11 @@ contract Authorizer is AccessControl, IAuthorizer, IDelayProvider {
     /**
      * @dev Revokes multiple roles from a single account for a set of contracts.
      */
-    function revokeRoles(bytes32[] memory roles, address account, address[] calldata where) external {
+    function revokeRoles(
+        bytes32[] memory roles,
+        address account,
+        address[] calldata where
+    ) external {
         for (uint256 i = 0; i < roles.length; i++) {
             revokeRole(roles[i], account, where);
         }
@@ -170,7 +182,11 @@ contract Authorizer is AccessControl, IAuthorizer, IDelayProvider {
     /**
      * @dev Revokes roles from a list of accounts across a set of contracts
      */
-    function revokeRolesFromMany(bytes32[] memory roles, address[] memory accounts, address[] calldata where) external {
+    function revokeRolesFromMany(
+        bytes32[] memory roles,
+        address[] memory accounts,
+        address[] calldata where
+    ) external {
         InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
         for (uint256 i = 0; i < roles.length; i++) {
             revokeRole(roles[i], accounts[i], where);
