@@ -310,8 +310,8 @@ describe('Authorizer', () => {
     });
     context('initial conditions', () => {
       it('setActionDelay is delayed by minimum delay initially', async () => {
-        expect(await authorizer._SET_ACTION_DELAY()).to.equal(actionDelayId);
-        expect(await authorizer.getDelay(actionDelayId)).to.equal(await authorizer._MIN_DELAY());
+        expect(await authorizer.SET_ACTION_DELAY()).to.equal(actionDelayId);
+        expect(await authorizer.getDelay(actionDelayId)).to.equal(await authorizer.MIN_DELAY());
       });
     });
 

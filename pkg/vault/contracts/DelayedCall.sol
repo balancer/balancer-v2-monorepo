@@ -16,8 +16,8 @@ pragma solidity ^0.7.0;
 
 import "./interfaces/IDelayProvider.sol";
 import "./interfaces/IAuthorizer.sol";
-contract DelayedCall {
 
+contract DelayedCall {
     IDelayProvider private _delayProvider;
     IAuthorizer private _authorizer;
     bool public triggered = false;
@@ -30,15 +30,14 @@ contract DelayedCall {
     bool public cancelled;
 
     /**
-    * @dev Emitted when a call is performed as part of operation `id`.
-    */
+     * @dev Emitted when a call is performed as part of operation `id`.
+     */
     event DelayedCallExecuted(bytes32 indexed actionId, address where, uint256 value, bytes data);
 
     /**
-    * @dev Emitted when a call is cancelled
-    */
+     * @dev Emitted when a call is cancelled
+     */
     event DelayedCallCancelled(bytes32 indexed actionId, address where, uint256 value, bytes data);
-
 
     constructor(
         bytes memory _data,
@@ -63,7 +62,7 @@ contract DelayedCall {
         actionId = _actionId;
         cancelled = false;
     }
-  
+
     function trigger() external {
         require(!cancelled, "Action is cancelled");
         require(isReadyToCall(), "Action triggered too soon");
@@ -72,11 +71,11 @@ contract DelayedCall {
         }
         require(!triggered, "Action already triggered");
         triggered = true;
-        (bool success, ) = where.call{value: value}(data);
+        (bool success, ) = where.call{ value: value }(data);
         require(success, "Underlying transaction reverted");
         emit DelayedCallExecuted(actionId, where, value, data);
     }
-    
+
     function cancel() external {
         require(_authorizer.canPerform(actionId, msg.sender, where), "Not Authorized");
         require(!cancelled, "Action already cancelled");
@@ -85,9 +84,7 @@ contract DelayedCall {
         emit DelayedCallCancelled(actionId, where, value, data);
     }
 
-    function isReadyToCall() public view returns(bool) {
-        return block.timestamp > _delayProvider.getDelay(actionId) + start; 
+    function isReadyToCall() public view returns (bool) {
+        return block.timestamp > _delayProvider.getDelay(actionId) + start;
     }
-
-
 }
