@@ -102,7 +102,6 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
     }
 
     function stakeETH(
-        address sender,
         address recipient,
         uint256 amount,
         uint256 outputReference
@@ -123,7 +122,6 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
     }
 
     function stakeETHAndWrap(
-        address sender,
         address recipient,
         uint256 amount,
         uint256 outputReference
