@@ -206,7 +206,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
             IAsset asset = request.assets[outputReferences[i].index];
             if (request.toInternalBalance) {
                 trackedTokens[i] = _asIERC20(asset);
-            } else {    
+            } else {
                 initialRecipientBalances[i] = _isETH(asset) ? recipient.balance : _asIERC20(asset).balanceOf(recipient);
             }
         }
