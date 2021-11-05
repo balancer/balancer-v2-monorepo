@@ -15,51 +15,81 @@
 pragma solidity ^0.7.0;
 
 import "./interfaces/IDelayProvider.sol";
-
+import "./interfaces/IAuthorizer.sol";
+import "hardhat/console.sol";
 contract DelayedCall {
 
-    bool private _triggered = false;
-    IDelayProvider private delayProvider;
+    IDelayProvider private _delayProvider;
+    IAuthorizer private _authorizer;
+    bool public triggered = false;
     uint256 public start;
     address public where;
     bytes public data;
     bytes32 public actionId;
     uint256 public value;
+    bool public immutable isTriggerPermissioned;
+    bool public cancelled;
 
     /**
     * @dev Emitted when a call is performed as part of operation `id`.
     */
-    event CallExecuted(bytes32 indexed actionId, address where, uint256 value, bytes data);
+    event DelayedCallExecuted(bytes32 indexed actionId, address where, uint256 value, bytes data);
+
+    /**
+    * @dev Emitted when a call is cancelled
+    */
+    event DelayedCallCancelled(bytes32 indexed actionId, address where, uint256 value, bytes data);
+
 
     constructor(
         bytes memory _data,
         address _where,
         uint256 _value,
-        IDelayProvider _delayProvider,
+        IDelayProvider __delayProvider,
+        IAuthorizer __authorizer,
+        bool _isTriggerPermissioned,
         bytes32 _actionId
     ) {
-        require(address(delayProvider) != address(0), "Empty delay provider");
+        require(address(__delayProvider) != address(0), "Empty delay provider");
         require(address(_where) != address(0), "Where cannot be zero address");
         require(_actionId != "", "Invalid actionId");
-        delayProvider = _delayProvider;
+        require(address(__authorizer) != address(0), "IAuthorizer cannot be zero address");
+        _delayProvider = __delayProvider;
+        _authorizer = __authorizer;
+        isTriggerPermissioned = _isTriggerPermissioned;
         where = _where;
         data = _data;
         start = block.timestamp;
         value = _value;
         actionId = _actionId;
+        cancelled = false;
     }
   
     function trigger() external {
+        require(!cancelled, "Action is cancelled");
         require(isReadyToCall(), "Action triggered too soon");
-        require(!_triggered, "Action already triggered");
-        _triggered = true;
+        if (isTriggerPermissioned) {
+            require(_authorizer.canPerform(actionId, msg.sender, where), "Not Authorized");
+        }
+        require(!triggered, "Action already triggered");
+        triggered = true;
         (bool success, ) = where.call{value: value}(data);
+        console.log(success);
         require(success, "Underlying transaction reverted");
-        emit CallExecuted(actionId, where, value, data);
+        emit DelayedCallExecuted(actionId, where, value, data);
+    }
+    
+    function cancel() external {
+        require(_authorizer.canPerform(actionId, msg.sender, where), "Not Authorized");
+        require(!cancelled, "Action already cancelled");
+        require(!triggered, "Cannot cancel triggered action");
+        cancelled = true;
+        emit DelayedCallCancelled(actionId, where, value, data);
     }
 
     function isReadyToCall() public view returns(bool) {
-        return block.timestamp > delayProvider.getDelay(actionId) + start; 
-    }   
+        return block.timestamp > _delayProvider.getDelay(actionId) + start; 
+    }
+
 
 }
