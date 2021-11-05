@@ -9,7 +9,7 @@ import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/Stable
 
 import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
@@ -17,17 +17,18 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { Dictionary } from 'lodash';
+import { Interface } from '@ethersproject/abi';
 
 describe('LidoRelayer', function () {
   let WETH: Token, wstETH: Token;
   let basePoolId: string;
   let tokens: TokenList;
-  let sender: SignerWithAddress, admin: SignerWithAddress;
+  let sender: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault, basePool: StablePool;
   let relayer: Contract, relayerLibrary: Contract;
 
   before('setup signer', async () => {
-    [, admin, sender] = await ethers.getSigners();
+    [, admin, sender, recipient] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy Vault', async () => {
@@ -166,7 +167,7 @@ describe('LidoRelayer', function () {
               tokenOut,
               amount: toChainedReference(0),
               sender: relayer,
-              recipient: sender,
+              recipient,
               outputReference: 0,
             }),
           ])
@@ -179,6 +180,13 @@ describe('LidoRelayer', function () {
           // amountIn: singleSwap.amount,
           // amountOut
         });
+
+        expectEvent.inIndirectReceipt(
+          receipt,
+          new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+          'Transfer',
+          { to: recipient.address }
+        );
       });
 
       it('does not leave dust on the relayer', async () => {
@@ -197,7 +205,7 @@ describe('LidoRelayer', function () {
             tokenOut,
             amount: toChainedReference(0),
             sender: relayer,
-            recipient: sender,
+            recipient,
             outputReference: 0,
           }),
         ]);
@@ -226,7 +234,7 @@ describe('LidoRelayer', function () {
               recipient: relayer,
               outputReference: toChainedReference(0),
             }),
-            encodeUnwrap(relayer.address, sender.address, toChainedReference(0)),
+            encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
           ])
         ).wait();
 
@@ -237,6 +245,13 @@ describe('LidoRelayer', function () {
           // amountIn: singleSwap.amount,
           // amountOut
         });
+
+        expectEvent.inIndirectReceipt(
+          receipt,
+          new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+          'Transfer',
+          { to: recipient.address }
+        );
       });
 
       it('does not leave dust on the relayer', async () => {
@@ -256,7 +271,7 @@ describe('LidoRelayer', function () {
             recipient: relayer,
             outputReference: toChainedReference(0),
           }),
-          encodeUnwrap(relayer.address, sender.address, toChainedReference(0)),
+          encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
         ]);
 
         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
@@ -321,7 +336,7 @@ describe('LidoRelayer', function () {
             encodeBatchSwap({
               swaps: [{ poolId, tokenIn, tokenOut, amount: toChainedReference(0) }],
               sender: relayer,
-              recipient: sender,
+              recipient: recipient,
             }),
           ])
         ).wait();
@@ -333,6 +348,13 @@ describe('LidoRelayer', function () {
           // amountIn,
           // amountOut
         });
+
+        expectEvent.inIndirectReceipt(
+          receipt,
+          new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+          'Transfer',
+          { to: recipient.address }
+        );
       });
 
       it('does not leave dust on the relayer', async () => {
@@ -347,7 +369,7 @@ describe('LidoRelayer', function () {
           encodeBatchSwap({
             swaps: [{ poolId, tokenIn, tokenOut, amount: toChainedReference(0) }],
             sender: relayer,
-            recipient: sender,
+            recipient: recipient,
           }),
         ]);
 
@@ -371,7 +393,7 @@ describe('LidoRelayer', function () {
               recipient: relayer,
               outputReferences: { wstETH: toChainedReference(0) },
             }),
-            encodeUnwrap(relayer.address, sender.address, toChainedReference(0)),
+            encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
           ])
         ).wait();
 
@@ -382,6 +404,13 @@ describe('LidoRelayer', function () {
           // amountIn,
           // amountOut
         });
+
+        expectEvent.inIndirectReceipt(
+          receipt,
+          new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+          'Transfer',
+          { to: recipient.address }
+        );
       });
 
       it('does not leave dust on the relayer', async () => {
@@ -397,7 +426,7 @@ describe('LidoRelayer', function () {
             recipient: relayer,
             outputReferences: { wstETH: toChainedReference(0) },
           }),
-          encodeUnwrap(relayer.address, sender.address, toChainedReference(0)),
+          encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
         ]);
 
         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
@@ -443,7 +472,7 @@ describe('LidoRelayer', function () {
             poolId: basePoolId,
             assets: tokens,
             sender: relayer,
-            recipient: sender,
+            recipient: recipient,
             maxAmountsIn: tokens.map(() => MAX_UINT256),
             userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
               tokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
@@ -469,7 +498,7 @@ describe('LidoRelayer', function () {
           encodeJoin({
             poolId: basePoolId,
             sender: relayer,
-            recipient: sender,
+            recipient,
             assets: tokens,
             maxAmountsIn: tokens.map(() => MAX_UINT256),
             userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
@@ -492,7 +521,7 @@ describe('LidoRelayer', function () {
           encodeJoin({
             poolId: basePoolId,
             sender: relayer,
-            recipient: sender,
+            recipient,
             assets: tokens,
             maxAmountsIn: tokens.map(() => MAX_UINT256),
             userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
