@@ -299,4 +299,38 @@ describe('Authorizer', () => {
       });
     });
   });
+  /*
+  describe('delayed calls', () => {
+    context('setting of delays', () => {
+      context('fails creating delayed calls', () => {
+        sharedBeforeEach(' permissions', async () => {
+        });
+
+        it('if not authorized', async () => {
+
+        });
+
+        it('if not creating it for a delayed action', async () => {
+
+        });
+
+      });
+
+      context('when the sender is authorized (is DelayedCall)', () => {
+        sharedBeforeEach(' permissions', async () => {
+        });
+
+        it('can create delayed call', async () => {
+
+        });
+
+        it('delayed call can set delay', async () => {
+
+        });
+
+      });
+
+    });
+  });
+  */
 });
