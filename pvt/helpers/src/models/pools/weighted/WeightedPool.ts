@@ -186,6 +186,10 @@ export default class WeightedPool {
     return this.instance.getSample(oracleIndex);
   }
 
+  async getOwner(): Promise<string> {
+    return this.instance.getOwner();
+  }
+
   async getSwapFeePercentage(): Promise<BigNumber> {
     return this.instance.getSwapFeePercentage();
   }
@@ -593,6 +597,16 @@ export default class WeightedPool {
     const action = await actionId(this.instance, 'setPaused');
     await this.vault.grantRoleGlobally(action);
     await this.instance.setPaused(true);
+  }
+
+  async setPaused(paused: boolean): Promise<void> {
+    await this.instance.setPaused(paused);
+  }
+
+  async isPaused(): Promise<boolean> {
+    const result = await this.instance.getPausedState();
+
+    return result.paused;
   }
 
   async enableOracle(txParams: TxParams): Promise<VoidResult> {

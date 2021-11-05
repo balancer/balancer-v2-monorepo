@@ -25,7 +25,7 @@ export type RawWeightedPoolDeployment = {
   oracleEnabled?: boolean;
   swapEnabledOnStart?: boolean;
   managementSwapFeePercentage?: BigNumberish;
-  owner?: SignerWithAddress;
+  owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   vault?: Vault;
@@ -44,7 +44,7 @@ export type WeightedPoolDeployment = {
   oracleEnabled: boolean;
   swapEnabledOnStart: boolean;
   managementSwapFeePercentage: BigNumberish;
-  owner?: SignerWithAddress;
+  owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
 };
