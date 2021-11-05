@@ -21,6 +21,7 @@ const BUFFER_PERIOD_DURATION = MONTH;
 const METADATA = '0x4b04c67fb743403d339729f8438ecad295a3a015ca144a0945bb6bb9abe3da20';
 
 let admin: SignerWithAddress;
+let owner: SignerWithAddress;
 let other: SignerWithAddress;
 let assetManager: Contract;
 let pool: WeightedPool;
@@ -29,7 +30,7 @@ let vault: Vault;
 let poolController: Contract;
 
 before('setup signers', async () => {
-  [, admin, other] = await ethers.getSigners();
+  [, admin, owner, other] = await ethers.getSigners();
 });
 
 sharedBeforeEach('deploy Vault, asset manager, and tokens', async () => {
@@ -40,7 +41,7 @@ sharedBeforeEach('deploy Vault, asset manager, and tokens', async () => {
   });
 
   allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
-  await allTokens.mint({ to: admin, amount: fp(100) });
+  await allTokens.mint({ to: owner, amount: fp(100) });
 
   assetManager = await deploy('v2-asset-manager-utils/MockAssetManager', { args: [allTokens.DAI.address] });
 });
@@ -50,7 +51,7 @@ describe('BasePoolController', function () {
   const NEXT_SWAP_FEE = fp(0.005);
 
   sharedBeforeEach('deploy controller and pool', async () => {
-    poolController = await deploy('BasePoolController', { from: admin });
+    poolController = await deploy('BasePoolController', { from: owner });
     const assetManagers = Array(allTokens.length).fill(ZERO_ADDRESS);
     assetManagers[allTokens.indexOf(allTokens.DAI)] = assetManager.address;
 
@@ -73,11 +74,11 @@ describe('BasePoolController', function () {
     });
 
     it('sets up the pool controller', async () => {
-      expect(await poolController.owner()).to.equal(admin.address);
+      expect(await poolController.owner()).to.equal(owner.address);
     });
 
     it('cannot call functions before initialization', async () => {
-      await expect(poolController.connect(admin).setSwapFeePercentage(NEW_SWAP_FEE)).to.be.revertedWith(
+      await expect(poolController.connect(owner).setSwapFeePercentage(NEW_SWAP_FEE)).to.be.revertedWith(
         'UNINITIALIZED'
       );
     });
@@ -88,7 +89,7 @@ describe('BasePoolController', function () {
       });
 
       it('lets the owner update metadata', async () => {
-        const tx = await poolController.connect(admin).updateMetadata(METADATA);
+        const tx = await poolController.connect(owner).updateMetadata(METADATA);
         expectEvent.inReceipt(await tx.wait(), 'MetadataUpdated', {
           metadata: METADATA,
         });
@@ -109,7 +110,7 @@ describe('BasePoolController', function () {
 
     describe('set swap fee', () => {
       it('lets the owner set the swap fee', async () => {
-        await poolController.connect(admin).setSwapFeePercentage(NEW_SWAP_FEE);
+        await poolController.connect(owner).setSwapFeePercentage(NEW_SWAP_FEE);
 
         expect(await pool.getSwapFeePercentage()).to.equal(NEW_SWAP_FEE);
       });
@@ -130,7 +131,7 @@ describe('BasePoolController', function () {
 
       it('lets the owner set the asset manager config', async () => {
         await poolController
-          .connect(admin)
+          .connect(owner)
           .setAssetManagerPoolConfig(allTokens.DAI.address, encodeInvestmentConfig(poolConfig));
       });
 
@@ -144,9 +145,9 @@ describe('BasePoolController', function () {
     });
 
     it('ownership can be transferred', async () => {
-      await poolController.connect(admin).transferOwnership(other.address);
+      await poolController.connect(owner).transferOwnership(other.address);
 
-      await expect(poolController.connect(admin).setSwapFeePercentage(NEXT_SWAP_FEE)).to.be.revertedWith(
+      await expect(poolController.connect(owner).setSwapFeePercentage(NEXT_SWAP_FEE)).to.be.revertedWith(
         'CALLER_IS_NOT_OWNER'
       );
 
