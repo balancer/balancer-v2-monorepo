@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -11,6 +11,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 
 describe('BaseRelayerLibrary', function () {
   let vault: Contract;
@@ -28,8 +29,65 @@ describe('BaseRelayerLibrary', function () {
     vault = vaultHelper.instance;
 
     // Deploy Relayer
-    relayerLibrary = await deploy('BaseRelayerLibrary', { args: [vault.address] });
+    relayerLibrary = await deploy('MockBaseRelayerLibrary', { args: [vault.address] });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
+  });
+
+  describe('chained references', () => {
+    const CHAINED_REFERENCE_PREFIX = 'ba10';
+
+    function toChainedReference(key: BigNumberish): BigNumber {
+      // The full padded prefix is 66 characters long, with 64 hex characters and the 0x prefix.
+      const paddedPrefix = `0x${CHAINED_REFERENCE_PREFIX}${'0'.repeat(64 - CHAINED_REFERENCE_PREFIX.length)}`;
+
+      return BigNumber.from(paddedPrefix).add(key);
+    }
+
+    it('identifies immediate amounts', async () => {
+      expect(await relayerLibrary.isChainedReference(5)).to.equal(false);
+    });
+
+    it('identifies chained references', async () => {
+      expect(await relayerLibrary.isChainedReference(toChainedReference(5))).to.equal(true);
+    });
+
+    describe('read and write', () => {
+      const key = 5;
+      const reference = toChainedReference(key);
+
+      async function expectChainedReferenceContents(key: BigNumberish, expectedValue: BigNumberish): Promise<void> {
+        const receipt = await (await relayerLibrary.getChainedReferenceValue(key)).wait();
+        expectEvent.inReceipt(receipt, 'ChainedReferenceValueRead', { value: bn(expectedValue) });
+      }
+
+      it('reads uninitialized references as zero', async () => {
+        await expectChainedReferenceContents(reference, 0);
+      });
+
+      it('reads stored references', async () => {
+        await relayerLibrary.setChainedReferenceValue(reference, 42);
+        await expectChainedReferenceContents(reference, 42);
+      });
+
+      it('writes replace old data', async () => {
+        await relayerLibrary.setChainedReferenceValue(reference, 42);
+        await relayerLibrary.setChainedReferenceValue(reference, 17);
+        await expectChainedReferenceContents(reference, 17);
+      });
+
+      it('stored data in independent slots', async () => {
+        await relayerLibrary.setChainedReferenceValue(reference, 5);
+        await expectChainedReferenceContents(reference.add(1), 0);
+      });
+
+      it('clears read data', async () => {
+        await relayerLibrary.setChainedReferenceValue(reference, 5);
+        await expectChainedReferenceContents(reference, 5);
+
+        // The reference is now cleared
+        await expectChainedReferenceContents(reference, 0);
+      });
+    });
   });
 
   describe('multicall', () => {

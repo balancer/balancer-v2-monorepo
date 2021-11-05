@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2015, 2016, 2017 Dapphub
+
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -13,19 +15,23 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "../relayer/BaseRelayerLibrary.sol";
 
-/**
- * @title IBaseRelayerLibrary
- */
-abstract contract IBaseRelayerLibrary {
-    function getVault() public view virtual returns (IVault);
+contract MockBaseRelayerLibrary is BaseRelayerLibrary {
+    event ChainedReferenceValueRead(uint256 value);
 
-    function _isChainedReference(uint256 amount) internal pure virtual returns (bool);
+    constructor(IVault vault) BaseRelayerLibrary(vault) {}
 
-    function _setChainedReferenceValue(uint256 ref, uint256 value) internal virtual;
+    function isChainedReference(uint256 amount) public pure returns (bool) {
+        return _isChainedReference(amount);
+    }
 
-    function _getChainedReferenceValue(uint256 ref) internal virtual returns (uint256);
+    function setChainedReferenceValue(uint256 ref, uint256 value) public returns (uint256) {
+        _setChainedReferenceValue(ref, value);
+    }
+
+    function getChainedReferenceValue(uint256 ref) public {
+        emit ChainedReferenceValueRead(_getChainedReferenceValue(ref));
+    }
 }

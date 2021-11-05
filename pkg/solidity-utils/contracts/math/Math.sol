@@ -6,9 +6,16 @@ import "../helpers/BalancerErrors.sol";
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow checks.
- * Adapted from OpenZeppelin's SafeMath library
+ * Adapted from OpenZeppelin's SafeMath library.
  */
 library Math {
+    /**
+     * @dev Returns the absolute value of a signed integer.
+     */
+    function abs(int256 a) internal pure returns (uint256) {
+        return a > 0 ? uint256(a) : uint256(-a);
+    }
+
     /**
      * @dev Returns the addition of two unsigned integers of 256 bits, reverting on overflow.
      */

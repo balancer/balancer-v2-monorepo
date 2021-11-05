@@ -3,15 +3,7 @@ import typescript from '@rollup/plugin-typescript';
 import dts from 'rollup-plugin-dts';
 import pkg from './package.json';
 
-const external = [
-  '@ethersproject/abi',
-  '@ethersproject/abstract-signer',
-  '@ethersproject/address',
-  '@ethersproject/bignumber',
-  '@ethersproject/bytes',
-  '@ethersproject/constants',
-  '@ethersproject/contracts',
-];
+const external = [...Object.keys(pkg.dependencies), ...Object.keys(pkg.peerDependencies)];
 
 export default [
   {

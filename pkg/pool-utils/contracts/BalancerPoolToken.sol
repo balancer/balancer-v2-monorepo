@@ -14,7 +14,6 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20Permit.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
@@ -32,7 +31,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
  * - Emits 'Approval' events whenever allowance is changed by `transferFrom`
  * - Assigns infinite allowance for all token holders to the Vault
  */
-contract BalancerPoolToken is ERC20, ERC20Permit {
+contract BalancerPoolToken is ERC20Permit {
     IVault private immutable _vault;
 
     constructor(
