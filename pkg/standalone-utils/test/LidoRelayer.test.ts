@@ -11,8 +11,8 @@ import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
@@ -70,7 +70,7 @@ describe('LidoRelayer', function () {
 
   sharedBeforeEach('set up relayer', async () => {
     // Deploy Relayer
-    relayerLibrary = await deploy('BatchRelayerLibrary', { args: [vault.address, wstETH.address] });
+    relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, wstETH.address] });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
     // Authorize Relayer for all actions
@@ -98,65 +98,374 @@ describe('LidoRelayer', function () {
     return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
   }
 
-  function encodeWrap(sender: string, recipient: string, amount: BigNumberish, outputReference?: BigNumberish): string {
-    return relayerLibrary.interface.encodeFunctionData('wrapStETH', [sender, recipient, amount, outputReference ?? 0]);
-  }
-
-  function encodeUnwrap(
-    sender: string,
-    recipient: string,
+  function encodeWrap(
+    sender: Account,
+    recipient: Account,
     amount: BigNumberish,
     outputReference?: BigNumberish
   ): string {
-    return relayerLibrary.interface.encodeFunctionData('unwrapWstETH', [
-      sender,
-      recipient,
+    return relayerLibrary.interface.encodeFunctionData('wrapStETH', [
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(recipient),
       amount,
       outputReference ?? 0,
     ]);
   }
 
-  describe('swap', () => {
-    function encodeSwap(params: {
-      poolId: string;
-      kind: SwapKind;
-      tokenIn: Token;
-      tokenOut: Token;
-      amount: BigNumberish;
-      sender: Account;
-      recipient: Account;
-      outputReference?: BigNumberish;
-    }): string {
-      return relayerLibrary.interface.encodeFunctionData('swap', [
-        {
-          poolId: params.poolId,
-          kind: params.kind,
-          assetIn: params.tokenIn.address,
-          assetOut: params.tokenOut.address,
-          amount: params.amount,
-          userData: '0x',
-        },
-        {
-          sender: TypesConverter.toAddress(params.sender),
-          recipient: TypesConverter.toAddress(params.recipient),
-          fromInternalBalance: false,
-          toInternalBalance: false,
-        },
-        0,
-        MAX_UINT256,
-        0,
-        params.outputReference ?? 0,
-      ]);
-    }
+  function encodeUnwrap(
+    sender: Account,
+    recipient: Account,
+    amount: BigNumberish,
+    outputReference?: BigNumberish
+  ): string {
+    return relayerLibrary.interface.encodeFunctionData('unwrapWstETH', [
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
 
-    describe('swap using stETH as an input', () => {
-      it('performs the given swap', async () => {
-        const poolId = basePoolId;
-        const tokenIn = tokens.findBySymbol('wstETH');
-        const tokenOut = tokens.WETH;
-        const amount = fp(1);
+  function encodeStakeETH(recipient: Account, amount: BigNumberish, outputReference?: BigNumberish): string {
+    return relayerLibrary.interface.encodeFunctionData('stakeETH', [
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
 
-        const receipt = await (
+  function encodeStakeETHAndWrap(recipient: Account, amount: BigNumberish, outputReference?: BigNumberish): string {
+    return relayerLibrary.interface.encodeFunctionData('stakeETHAndWrap', [
+      TypesConverter.toAddress(recipient),
+      amount,
+      outputReference ?? 0,
+    ]);
+  }
+
+  async function setChainedReferenceContents(ref: BigNumberish, value: BigNumberish): Promise<void> {
+    await relayer.multicall([relayerLibrary.interface.encodeFunctionData('setChainedReferenceValue', [ref, value])]);
+  }
+
+  async function expectChainedReferenceContents(ref: BigNumberish, expectedValue: BigNumberish): Promise<void> {
+    const receipt = await (
+      await relayer.multicall([relayerLibrary.interface.encodeFunctionData('getChainedReferenceValue', [ref])])
+    ).wait();
+
+    expectEvent.inIndirectReceipt(receipt, relayerLibrary.interface, 'ChainedReferenceValueRead', {
+      value: bn(expectedValue),
+    });
+  }
+
+  describe('primitives', () => {
+    describe('wrapStETH', () => {
+      let tokenSender: Account, tokenRecipient: Account;
+
+      context('sender = user, recipient = relayer', () => {
+        beforeEach(() => {
+          tokenSender = sender;
+          tokenRecipient = relayer;
+        });
+        testWrap();
+      });
+
+      context('sender = relayer, recipient = relayer', () => {
+        beforeEach(async () => {
+          await WETH.transfer(relayer, fp(1), { from: sender });
+          tokenSender = relayer;
+          tokenRecipient = relayer;
+        });
+        testWrap();
+      });
+
+      context('sender = relayer, recipient = sender', () => {
+        beforeEach(async () => {
+          await WETH.transfer(relayer, fp(1), { from: sender });
+          tokenSender = relayer;
+          tokenRecipient = sender;
+        });
+        testWrap();
+      });
+
+      function testWrap(): void {
+        it('wraps with immediate amounts', async () => {
+          const amount = fp(1);
+
+          const receipt = await (
+            await relayer.connect(sender).multicall([encodeWrap(tokenSender, tokenRecipient, amount)])
+          ).wait();
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+            'Transfer',
+            { to: TypesConverter.toAddress(tokenRecipient) }
+          );
+        });
+
+        it('stores wrap output as chained reference', async () => {
+          const amount = fp(1);
+
+          const receipt = await (
+            await relayer
+              .connect(sender)
+              .multicall([encodeWrap(tokenSender, tokenRecipient, amount, toChainedReference(0))])
+          ).wait();
+
+          const {
+            args: { value: wstETHAmount },
+          } = expectEvent.inIndirectReceipt(
+            receipt,
+            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+            'Transfer',
+            { from: ZERO_ADDRESS, to: TypesConverter.toAddress(relayer) }
+          );
+          await expectChainedReferenceContents(toChainedReference(0), wstETHAmount);
+        });
+
+        it('wraps with chained references', async () => {
+          const amount = fp(1);
+          await setChainedReferenceContents(toChainedReference(0), amount);
+
+          const receipt = await (
+            await relayer.connect(sender).multicall([encodeWrap(tokenSender, tokenRecipient, toChainedReference(0))])
+          ).wait();
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+            'Transfer',
+            { from: relayer.address, to: wstETH.address, value: amount }
+          );
+        });
+      }
+    });
+
+    describe('unwrapWstETH', () => {
+      let tokenSender: Account, tokenRecipient: Account;
+
+      context('sender = user, recipient = relayer', () => {
+        beforeEach(async () => {
+          await wstETH.approve(vault.address, fp(10), { from: sender });
+          tokenSender = sender;
+          tokenRecipient = relayer;
+        });
+        testUnwrap();
+      });
+
+      context('sender = relayer, recipient = relayer', () => {
+        beforeEach(async () => {
+          await wstETH.transfer(relayer, fp(1), { from: sender });
+          tokenSender = relayer;
+          tokenRecipient = relayer;
+        });
+        testUnwrap();
+      });
+
+      context('sender = relayer, recipient = sender', () => {
+        beforeEach(async () => {
+          await wstETH.transfer(relayer, fp(1), { from: sender });
+          tokenSender = relayer;
+          tokenRecipient = sender;
+        });
+        testUnwrap();
+      });
+
+      function testUnwrap(): void {
+        it('unwraps with immediate amounts', async () => {
+          const amount = fp(1);
+
+          const receipt = await (
+            await relayer.connect(sender).multicall([encodeUnwrap(tokenSender, tokenRecipient, amount)])
+          ).wait();
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+            'Transfer',
+            {
+              from:
+                TypesConverter.toAddress(tokenRecipient) !== relayer.address
+                  ? TypesConverter.toAddress(relayer)
+                  : wstETH.address,
+              to: TypesConverter.toAddress(tokenRecipient),
+              value: await wstETH.instance.getStETHByWstETH(amount),
+            },
+            WETH.address
+          );
+        });
+
+        it('stores unwrap output as chained reference', async () => {
+          const amount = fp(1);
+
+          await relayer
+            .connect(sender)
+            .multicall([encodeUnwrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
+
+          const stETHAmount = await wstETH.instance.getStETHByWstETH(amount);
+          await expectChainedReferenceContents(toChainedReference(0), stETHAmount);
+        });
+
+        it('unwraps with chained references', async () => {
+          const amount = fp(1);
+          await setChainedReferenceContents(toChainedReference(0), amount);
+
+          const receipt = await (
+            await relayer.connect(sender).multicall([encodeUnwrap(tokenSender, tokenRecipient, toChainedReference(0))])
+          ).wait();
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+            'Transfer',
+            { from: relayer.address, to: ZERO_ADDRESS, value: amount }
+          );
+        });
+      }
+    });
+
+    describe('stakeETH', () => {
+      let tokenRecipient: Account;
+
+      context('sender = user, recipient = relayer', () => {
+        beforeEach(() => {
+          tokenRecipient = relayer;
+        });
+        testStake();
+      });
+
+      context('sender = relayer, recipient = relayer', () => {
+        beforeEach(() => {
+          tokenRecipient = relayer;
+        });
+        testStake();
+      });
+
+      context('sender = relayer, recipient = sender', () => {
+        beforeEach(() => {
+          tokenRecipient = sender;
+        });
+        testStake();
+      });
+
+      function testStake(): void {
+        it('unwraps with immediate amounts');
+        it('stores unwrap output as chained reference');
+        it('unwraps with chained references');
+      }
+    });
+
+    describe('stakeETHAndWrap', () => {
+      let tokenRecipient: Account;
+
+      context('sender = user, recipient = relayer', () => {
+        beforeEach(() => {
+          tokenRecipient = relayer;
+        });
+        testStake();
+      });
+
+      context('sender = relayer, recipient = relayer', () => {
+        beforeEach(() => {
+          tokenRecipient = relayer;
+        });
+        testStake();
+      });
+
+      context('sender = relayer, recipient = sender', () => {
+        beforeEach(() => {
+          tokenRecipient = sender;
+        });
+        testStake();
+      });
+
+      function testStake(): void {
+        it('unwraps with immediate amounts');
+        it('stores unwrap output as chained reference');
+        it('unwraps with chained references');
+      }
+    });
+  });
+
+  describe('complex actions', () => {
+    describe('swap', () => {
+      function encodeSwap(params: {
+        poolId: string;
+        kind: SwapKind;
+        tokenIn: Token;
+        tokenOut: Token;
+        amount: BigNumberish;
+        sender: Account;
+        recipient: Account;
+        outputReference?: BigNumberish;
+      }): string {
+        return relayerLibrary.interface.encodeFunctionData('swap', [
+          {
+            poolId: params.poolId,
+            kind: params.kind,
+            assetIn: params.tokenIn.address,
+            assetOut: params.tokenOut.address,
+            amount: params.amount,
+            userData: '0x',
+          },
+          {
+            sender: TypesConverter.toAddress(params.sender),
+            recipient: TypesConverter.toAddress(params.recipient),
+            fromInternalBalance: false,
+            toInternalBalance: false,
+          },
+          0,
+          MAX_UINT256,
+          0,
+          params.outputReference ?? 0,
+        ]);
+      }
+
+      describe('swap using stETH as an input', () => {
+        it('performs the given swap', async () => {
+          const poolId = basePoolId;
+          const tokenIn = tokens.findBySymbol('wstETH');
+          const tokenOut = tokens.WETH;
+          const amount = fp(1);
+
+          const receipt = await (
+            await relayer.connect(sender).multicall([
+              encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+              encodeApprove(tokenIn, MAX_UINT256),
+              encodeSwap({
+                poolId,
+                kind: SwapKind.GivenIn,
+                tokenIn,
+                tokenOut,
+                amount: toChainedReference(0),
+                sender: relayer,
+                recipient,
+                outputReference: 0,
+              }),
+            ])
+          ).wait();
+
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+            poolId,
+            tokenIn: tokenIn.address,
+            tokenOut: tokenOut.address,
+            // amountIn: singleSwap.amount,
+            // amountOut
+          });
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+            'Transfer',
+            { to: recipient.address }
+          );
+        });
+
+        it('does not leave dust on the relayer', async () => {
+          const poolId = basePoolId;
+          const tokenIn = tokens.findBySymbol('wstETH');
+          const tokenOut = tokens.WETH;
+          const amount = fp(1);
+
           await relayer.connect(sender).multicall([
             encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
             encodeApprove(tokenIn, MAX_UINT256),
@@ -170,59 +479,58 @@ describe('LidoRelayer', function () {
               recipient,
               outputReference: 0,
             }),
-          ])
-        ).wait();
+          ]);
 
-        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
-          poolId,
-          tokenIn: tokenIn.address,
-          tokenOut: tokenOut.address,
-          // amountIn: singleSwap.amount,
-          // amountOut
+          expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+          expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
+        });
+      });
+
+      describe('swap using stETH as an output', () => {
+        it('performs the given swap', async () => {
+          const poolId = basePoolId;
+          const tokenIn = tokens.WETH;
+          const tokenOut = tokens.findBySymbol('wstETH');
+          const amount = fp(1);
+
+          const receipt = await (
+            await relayer.connect(sender).multicall([
+              encodeSwap({
+                poolId,
+                kind: SwapKind.GivenIn,
+                tokenIn,
+                tokenOut,
+                amount,
+                sender: sender,
+                recipient: relayer,
+                outputReference: toChainedReference(0),
+              }),
+              encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
+            ])
+          ).wait();
+
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+            poolId,
+            tokenIn: tokenIn.address,
+            tokenOut: tokenOut.address,
+            // amountIn: singleSwap.amount,
+            // amountOut
+          });
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+            'Transfer',
+            { to: recipient.address }
+          );
         });
 
-        expectEvent.inIndirectReceipt(
-          receipt,
-          new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-          'Transfer',
-          { to: recipient.address }
-        );
-      });
+        it('does not leave dust on the relayer', async () => {
+          const poolId = basePoolId;
+          const tokenIn = tokens.WETH;
+          const tokenOut = tokens.findBySymbol('wstETH');
+          const amount = fp(1);
 
-      it('does not leave dust on the relayer', async () => {
-        const poolId = basePoolId;
-        const tokenIn = tokens.findBySymbol('wstETH');
-        const tokenOut = tokens.WETH;
-        const amount = fp(1);
-
-        await relayer.connect(sender).multicall([
-          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-          encodeApprove(tokenIn, MAX_UINT256),
-          encodeSwap({
-            poolId,
-            kind: SwapKind.GivenIn,
-            tokenIn,
-            tokenOut,
-            amount: toChainedReference(0),
-            sender: relayer,
-            recipient,
-            outputReference: 0,
-          }),
-        ]);
-
-        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-        expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
-      });
-    });
-
-    describe('swap using stETH as an output', () => {
-      it('performs the given swap', async () => {
-        const poolId = basePoolId;
-        const tokenIn = tokens.WETH;
-        const tokenOut = tokens.findBySymbol('wstETH');
-        const amount = fp(1);
-
-        const receipt = await (
           await relayer.connect(sender).multicall([
             encodeSwap({
               poolId,
@@ -230,106 +538,102 @@ describe('LidoRelayer', function () {
               tokenIn,
               tokenOut,
               amount,
-              sender: sender,
+              sender,
               recipient: relayer,
               outputReference: toChainedReference(0),
             }),
             encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
-          ])
-        ).wait();
+          ]);
 
-        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
-          poolId,
-          tokenIn: tokenIn.address,
-          tokenOut: tokenOut.address,
-          // amountIn: singleSwap.amount,
-          // amountOut
+          expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+          expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
         });
-
-        expectEvent.inIndirectReceipt(
-          receipt,
-          new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-          'Transfer',
-          { to: recipient.address }
-        );
-      });
-
-      it('does not leave dust on the relayer', async () => {
-        const poolId = basePoolId;
-        const tokenIn = tokens.WETH;
-        const tokenOut = tokens.findBySymbol('wstETH');
-        const amount = fp(1);
-
-        await relayer.connect(sender).multicall([
-          encodeSwap({
-            poolId,
-            kind: SwapKind.GivenIn,
-            tokenIn,
-            tokenOut,
-            amount,
-            sender,
-            recipient: relayer,
-            outputReference: toChainedReference(0),
-          }),
-          encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
-        ]);
-
-        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-        expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
       });
     });
-  });
 
-  describe('batchSwap', () => {
-    function encodeBatchSwap(params: {
-      swaps: Array<{
-        poolId: string;
-        tokenIn: Token;
-        tokenOut: Token;
-        amount: BigNumberish;
-      }>;
-      sender: Account;
-      recipient: Account;
-      outputReferences?: Dictionary<BigNumberish>;
-    }): string {
-      const outputReferences = new Array(tokens.length).fill(0);
-      if (params.outputReferences != undefined) {
-        for (const symbol in params.outputReferences) {
-          outputReferences[tokens.indexOf(tokens.findBySymbol(symbol))] = params.outputReferences[symbol];
+    describe('batchSwap', () => {
+      function encodeBatchSwap(params: {
+        swaps: Array<{
+          poolId: string;
+          tokenIn: Token;
+          tokenOut: Token;
+          amount: BigNumberish;
+        }>;
+        sender: Account;
+        recipient: Account;
+        outputReferences?: Dictionary<BigNumberish>;
+      }): string {
+        const outputReferences = new Array(tokens.length).fill(0);
+        if (params.outputReferences != undefined) {
+          for (const symbol in params.outputReferences) {
+            outputReferences[tokens.indexOf(tokens.findBySymbol(symbol))] = params.outputReferences[symbol];
+          }
         }
+
+        return relayerLibrary.interface.encodeFunctionData('batchSwap', [
+          SwapKind.GivenIn,
+          params.swaps.map((swap) => ({
+            poolId: swap.poolId,
+            assetInIndex: tokens.indexOf(swap.tokenIn),
+            assetOutIndex: tokens.indexOf(swap.tokenOut),
+            amount: swap.amount,
+            userData: '0x',
+          })),
+          tokens.addresses,
+          {
+            sender: TypesConverter.toAddress(params.sender),
+            recipient: TypesConverter.toAddress(params.recipient),
+            fromInternalBalance: false,
+            toInternalBalance: false,
+          },
+          new Array(tokens.length).fill(MAX_INT256),
+          MAX_UINT256,
+          0,
+          outputReferences,
+        ]);
       }
 
-      return relayerLibrary.interface.encodeFunctionData('batchSwap', [
-        SwapKind.GivenIn,
-        params.swaps.map((swap) => ({
-          poolId: swap.poolId,
-          assetInIndex: tokens.indexOf(swap.tokenIn),
-          assetOutIndex: tokens.indexOf(swap.tokenOut),
-          amount: swap.amount,
-          userData: '0x',
-        })),
-        tokens.addresses,
-        {
-          sender: TypesConverter.toAddress(params.sender),
-          recipient: TypesConverter.toAddress(params.recipient),
-          fromInternalBalance: false,
-          toInternalBalance: false,
-        },
-        new Array(tokens.length).fill(MAX_INT256),
-        MAX_UINT256,
-        0,
-        outputReferences,
-      ]);
-    }
+      describe('swap using stETH as an input', () => {
+        it('performs the given swap', async () => {
+          const poolId = basePoolId;
+          const tokenIn = tokens.findBySymbol('wstETH');
+          const tokenOut = tokens.WETH;
+          const amount = fp(1);
 
-    describe('swap using stETH as an input', () => {
-      it('performs the given swap', async () => {
-        const poolId = basePoolId;
-        const tokenIn = tokens.findBySymbol('wstETH');
-        const tokenOut = tokens.WETH;
-        const amount = fp(1);
+          const receipt = await (
+            await relayer.connect(sender).multicall([
+              encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+              encodeApprove(tokenIn, MAX_UINT256),
+              encodeBatchSwap({
+                swaps: [{ poolId, tokenIn, tokenOut, amount: toChainedReference(0) }],
+                sender: relayer,
+                recipient: recipient,
+              }),
+            ])
+          ).wait();
 
-        const receipt = await (
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+            poolId: poolId,
+            tokenIn: tokenIn.address,
+            tokenOut: tokenOut.address,
+            // amountIn,
+            // amountOut
+          });
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+            'Transfer',
+            { to: recipient.address }
+          );
+        });
+
+        it('does not leave dust on the relayer', async () => {
+          const poolId = basePoolId;
+          const tokenIn = tokens.findBySymbol('wstETH');
+          const tokenOut = tokens.WETH;
+          const amount = fp(1);
+
           await relayer.connect(sender).multicall([
             encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
             encodeApprove(tokenIn, MAX_UINT256),
@@ -338,54 +642,54 @@ describe('LidoRelayer', function () {
               sender: relayer,
               recipient: recipient,
             }),
-          ])
-        ).wait();
+          ]);
 
-        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
-          poolId: poolId,
-          tokenIn: tokenIn.address,
-          tokenOut: tokenOut.address,
-          // amountIn,
-          // amountOut
+          expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+          expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
+        });
+      });
+
+      describe('swap using stETH as an output', () => {
+        it('performs the given swap', async () => {
+          const poolId = basePoolId;
+          const tokenIn = tokens.WETH;
+          const tokenOut = tokens.findBySymbol('wstETH');
+          const amount = fp(1);
+
+          const receipt = await (
+            await relayer.connect(sender).multicall([
+              encodeBatchSwap({
+                swaps: [{ poolId, tokenIn, tokenOut, amount }],
+                sender: sender,
+                recipient: relayer,
+                outputReferences: { wstETH: toChainedReference(0) },
+              }),
+              encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
+            ])
+          ).wait();
+
+          expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+            poolId: poolId,
+            tokenIn: tokenIn.address,
+            tokenOut: tokenOut.address,
+            // amountIn,
+            // amountOut
+          });
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+            'Transfer',
+            { to: recipient.address }
+          );
         });
 
-        expectEvent.inIndirectReceipt(
-          receipt,
-          new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-          'Transfer',
-          { to: recipient.address }
-        );
-      });
+        it('does not leave dust on the relayer', async () => {
+          const poolId = basePoolId;
+          const tokenIn = tokens.WETH;
+          const tokenOut = tokens.findBySymbol('wstETH');
+          const amount = fp(1);
 
-      it('does not leave dust on the relayer', async () => {
-        const poolId = basePoolId;
-        const tokenIn = tokens.findBySymbol('wstETH');
-        const tokenOut = tokens.WETH;
-        const amount = fp(1);
-
-        await relayer.connect(sender).multicall([
-          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-          encodeApprove(tokenIn, MAX_UINT256),
-          encodeBatchSwap({
-            swaps: [{ poolId, tokenIn, tokenOut, amount: toChainedReference(0) }],
-            sender: relayer,
-            recipient: recipient,
-          }),
-        ]);
-
-        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-        expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
-      });
-    });
-
-    describe('swap using stETH as an output', () => {
-      it('performs the given swap', async () => {
-        const poolId = basePoolId;
-        const tokenIn = tokens.WETH;
-        const tokenOut = tokens.findBySymbol('wstETH');
-        const amount = fp(1);
-
-        const receipt = await (
           await relayer.connect(sender).multicall([
             encodeBatchSwap({
               swaps: [{ poolId, tokenIn, tokenOut, amount }],
@@ -394,243 +698,114 @@ describe('LidoRelayer', function () {
               outputReferences: { wstETH: toChainedReference(0) },
             }),
             encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
-          ])
-        ).wait();
+          ]);
 
-        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
-          poolId: poolId,
-          tokenIn: tokenIn.address,
-          tokenOut: tokenOut.address,
-          // amountIn,
-          // amountOut
+          expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+          expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
+        });
+      });
+    });
+
+    describe('joinPool', () => {
+      function encodeJoin(params: {
+        poolId: string;
+        sender: Account;
+        recipient: Account;
+        assets: TokenList;
+        maxAmountsIn: BigNumberish[];
+        userData: string;
+        outputReference?: BigNumberish;
+      }): string {
+        return relayerLibrary.interface.encodeFunctionData('joinPool', [
+          params.poolId,
+          0, // WeightedPool
+          TypesConverter.toAddress(params.sender),
+          TypesConverter.toAddress(params.recipient),
+          {
+            assets: params.assets.addresses,
+            maxAmountsIn: params.maxAmountsIn,
+            userData: params.userData,
+            fromInternalBalance: false,
+          },
+          0,
+          params.outputReference ?? 0,
+        ]);
+      }
+
+      context('when the relayer is authorized', () => {
+        it('joins the pool', async () => {
+          const amount = fp(1);
+
+          const receipt = await relayer.connect(sender).multicall([
+            encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+            encodeApprove(wstETH, MAX_UINT256),
+            encodeJoin({
+              poolId: basePoolId,
+              assets: tokens,
+              sender: relayer,
+              recipient: recipient,
+              maxAmountsIn: tokens.map(() => MAX_UINT256),
+              userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+                tokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
+                0
+              ),
+            }),
+          ]);
+
+          expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'PoolBalanceChanged', {
+            poolId: basePoolId,
+            liquidityProvider: relayer.address,
+          });
         });
 
-        expectEvent.inIndirectReceipt(
-          receipt,
-          new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-          'Transfer',
-          { to: recipient.address }
-        );
-      });
+        it('does not take wstETH from the sender', async () => {
+          const amount = fp(1);
 
-      it('does not leave dust on the relayer', async () => {
-        const poolId = basePoolId;
-        const tokenIn = tokens.WETH;
-        const tokenOut = tokens.findBySymbol('wstETH');
-        const amount = fp(1);
+          const wstETHBalanceBefore = await wstETH.balanceOf(sender);
 
-        await relayer.connect(sender).multicall([
-          encodeBatchSwap({
-            swaps: [{ poolId, tokenIn, tokenOut, amount }],
-            sender: sender,
-            recipient: relayer,
-            outputReferences: { wstETH: toChainedReference(0) },
-          }),
-          encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
-        ]);
+          await relayer.connect(sender).multicall([
+            encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+            encodeApprove(wstETH, MAX_UINT256),
+            encodeJoin({
+              poolId: basePoolId,
+              sender: relayer,
+              recipient,
+              assets: tokens,
+              maxAmountsIn: tokens.map(() => MAX_UINT256),
+              userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+                tokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
+                0
+              ),
+            }),
+          ]);
 
-        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-        expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
+          const wstETHBalanceAfter = await wstETH.balanceOf(sender);
+          expect(wstETHBalanceAfter).to.be.eq(wstETHBalanceBefore);
+        });
+
+        it('does not leave dust on the relayer', async () => {
+          const amount = fp(1);
+
+          await relayer.connect(sender).multicall([
+            encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+            encodeApprove(wstETH, MAX_UINT256),
+            encodeJoin({
+              poolId: basePoolId,
+              sender: relayer,
+              recipient,
+              assets: tokens,
+              maxAmountsIn: tokens.map(() => MAX_UINT256),
+              userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+                tokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
+                0
+              ),
+            }),
+          ]);
+
+          expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+          expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
+        });
       });
     });
   });
-
-  describe('joinPool', () => {
-    function encodeJoin(params: {
-      poolId: string;
-      sender: Account;
-      recipient: Account;
-      assets: TokenList;
-      maxAmountsIn: BigNumberish[];
-      userData: string;
-      outputReference?: BigNumberish;
-    }): string {
-      return relayerLibrary.interface.encodeFunctionData('joinPool', [
-        params.poolId,
-        0, // WeightedPool
-        TypesConverter.toAddress(params.sender),
-        TypesConverter.toAddress(params.recipient),
-        {
-          assets: params.assets.addresses,
-          maxAmountsIn: params.maxAmountsIn,
-          userData: params.userData,
-          fromInternalBalance: false,
-        },
-        0,
-        params.outputReference ?? 0,
-      ]);
-    }
-
-    context('when the relayer is authorized', () => {
-      it('joins the pool', async () => {
-        const amount = fp(1);
-
-        const receipt = await relayer.connect(sender).multicall([
-          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-          encodeApprove(wstETH, MAX_UINT256),
-          encodeJoin({
-            poolId: basePoolId,
-            assets: tokens,
-            sender: relayer,
-            recipient: recipient,
-            maxAmountsIn: tokens.map(() => MAX_UINT256),
-            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
-              tokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
-              0
-            ),
-          }),
-        ]);
-
-        expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'PoolBalanceChanged', {
-          poolId: basePoolId,
-          liquidityProvider: relayer.address,
-        });
-      });
-
-      it('does not take wstETH from the sender', async () => {
-        const amount = fp(1);
-
-        const wstETHBalanceBefore = await wstETH.balanceOf(sender);
-
-        await relayer.connect(sender).multicall([
-          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-          encodeApprove(wstETH, MAX_UINT256),
-          encodeJoin({
-            poolId: basePoolId,
-            sender: relayer,
-            recipient,
-            assets: tokens,
-            maxAmountsIn: tokens.map(() => MAX_UINT256),
-            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
-              tokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
-              0
-            ),
-          }),
-        ]);
-
-        const wstETHBalanceAfter = await wstETH.balanceOf(sender);
-        expect(wstETHBalanceAfter).to.be.eq(wstETHBalanceBefore);
-      });
-
-      it('does not leave dust on the relayer', async () => {
-        const amount = fp(1);
-
-        await relayer.connect(sender).multicall([
-          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-          encodeApprove(wstETH, MAX_UINT256),
-          encodeJoin({
-            poolId: basePoolId,
-            sender: relayer,
-            recipient,
-            assets: tokens,
-            maxAmountsIn: tokens.map(() => MAX_UINT256),
-            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
-              tokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
-              0
-            ),
-          }),
-        ]);
-
-        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-        expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
-      });
-    });
-  });
-
-  // describe('exitPool', () => {
-  //   function encodeExit(params: {
-  //     poolId: string;
-  //     assets: TokenList;
-  //     minAmountsOut: BigNumberish[];
-  //     userData: string;
-  //     outputReferences?: Dictionary<BigNumberish>;
-  //   }): string {
-  //     const outputReferences = new Array(params.assets.length).fill(0);
-  //     if (params.outputReferences != undefined) {
-  //       for (const symbol in params.outputReferences) {
-  //         outputReferences[params.assets.indexOf(params.assets.findBySymbol(symbol))] = params.outputReferences[symbol];
-  //       }
-  //     }
-
-  //     return relayerLibrary.interface.encodeFunctionData('exitPool', [
-  //       params.poolId,
-  //       0, // WeightedPool
-  //       sender.address,
-  //       sender.address,
-  //       {
-  //         assets: params.assets.addresses,
-  //         minAmountsOut: params.minAmountsOut,
-  //         userData: params.userData,
-  //         toInternalBalance: false,
-  //       },
-  //       0,
-  //       outputReferences,
-  //     ]);
-  //   }
-
-  //   it('exits the pool', async () => {
-  //     const amount = fp(1);
-
-  //     const receipt = await (
-  //       await relayer.connect(sender).multicall([
-  //         encodeExit({
-  //           poolId: basePoolId,
-  //           assets: tokens,
-  //           minAmountsOut: [0, 0],
-  //           userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amount),
-  //           outputReferences: {
-  //             wstETH: toChainedReference(0),
-  //           },
-  //         }),
-  //         encodeUnwrap(sender.address, sender.address, toChainedReference(0)),
-  //       ])
-  //     ).wait();
-
-  //     expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
-  //       poolId: basePoolId,
-  //       liquidityProvider: sender.address,
-  //     });
-  //   });
-
-  //   it('does not send wstETH to the recipient', async () => {
-  //     const amount = fp(1);
-  //     const wstETHBalanceBefore = await wstETH.balanceOf(sender);
-
-  //     await relayer.connect(sender).multicall([
-  //       encodeExit({
-  //         poolId: basePoolId,
-  //         assets: tokens,
-  //         minAmountsOut: [0, 0],
-  //         userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amount),
-  //         outputReferences: {
-  //           wstETH: toChainedReference(0),
-  //         },
-  //       }),
-  //       encodeUnwrap(sender.address, sender.address, toChainedReference(0)),
-  //     ]);
-
-  //     const wstETHBalanceAfter = await wstETH.balanceOf(sender);
-  //     expect(wstETHBalanceAfter).to.be.eq(wstETHBalanceBefore);
-  //   });
-
-  //   it('does not leave dust on the relayer', async () => {
-  //     const amount = fp(1);
-
-  //     await relayer.connect(sender).multicall([
-  //       encodeExit({
-  //         poolId: basePoolId,
-  //         assets: tokens,
-  //         minAmountsOut: [0, 0],
-  //         userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amount),
-  //         outputReferences: {
-  //           wstETH: toChainedReference(0),
-  //         },
-  //       }),
-  //       encodeUnwrap(sender.address, sender.address, toChainedReference(0)),
-  //     ]);
-
-  //     expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-  //     expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
-  //   });
-  // });
 });
