@@ -56,7 +56,11 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     /**
      * @notice Sets whether a particular relayer is authorised to act on behalf of the user
      */
-    function setRelayerApproval(address relayer, bool approved, bytes calldata authorisation) external payable {
+    function setRelayerApproval(
+        address relayer,
+        bool approved,
+        bytes calldata authorisation
+    ) external payable {
         require(relayer == address(this) || !approved, "Relayer can only approve itself");
         bytes memory data = abi.encodePacked(
             abi.encodeWithSelector(_vault.setRelayerApproval.selector, msg.sender, relayer, approved),
