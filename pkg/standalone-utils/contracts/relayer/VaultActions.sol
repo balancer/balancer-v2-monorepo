@@ -194,22 +194,24 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     ) external payable {
         require(sender == msg.sender, "Incorrect sender");
 
-        IERC20[] memory filteredAssets = new IERC20[](outputReferences.length);
+        // To track the changes of internal balances we need an array of token addresses.
+        // We save this here to avoid having to recalculate after we perform the exit.
+        IERC20[] memory trackedTokens = new IERC20[](outputReferences.length);
 
         // Query initial balances for all tokens which we want to record into chained references
         uint256[] memory initialRecipientBalances = new uint256[](outputReferences.length);
         for (uint256 i = 0; i < outputReferences.length; i++) {
             require(_isChainedReference(outputReferences[i].key), "invalid chained reference");
 
+            IAsset asset = request.assets[outputReferences[i].index];
             if (request.toInternalBalance) {
-                filteredAssets[i] = _asIERC20(request.assets[outputReferences[i].index]);
-            } else {
-                IAsset token = request.assets[outputReferences[i].index];
-                initialRecipientBalances[i] = _isETH(token) ? recipient.balance : _asIERC20(token).balanceOf(recipient);
+                trackedTokens[i] = _asIERC20(asset);
+            } else {    
+                initialRecipientBalances[i] = _isETH(asset) ? recipient.balance : _asIERC20(asset).balanceOf(recipient);
             }
         }
         if (request.toInternalBalance) {
-            initialRecipientBalances = getVault().getInternalBalance(recipient, filteredAssets);
+            initialRecipientBalances = getVault().getInternalBalance(recipient, trackedTokens);
         }
 
         // Execute exit from pool
@@ -219,12 +221,13 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         // Query final balances for all tokens of interest
         uint256[] memory finalRecipientTokenBalances = new uint256[](outputReferences.length);
         if (request.toInternalBalance) {
-            finalRecipientTokenBalances = getVault().getInternalBalance(recipient, filteredAssets);
+            finalRecipientTokenBalances = getVault().getInternalBalance(recipient, trackedTokens);
         } else {
             for (uint256 i = 0; i < outputReferences.length; i++) {
-                finalRecipientTokenBalances[i] = _isETH(request.assets[outputReferences[i].index])
+                IAsset asset = request.assets[outputReferences[i].index];
+                finalRecipientTokenBalances[i] = _isETH(asset)
                     ? recipient.balance
-                    : _asIERC20(request.assets[outputReferences[i].index]).balanceOf(recipient);
+                    : _asIERC20(asset).balanceOf(recipient);
             }
         }
 
