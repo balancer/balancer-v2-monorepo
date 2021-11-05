@@ -19,6 +19,7 @@ import "./interfaces/IDelayProvider.sol";
 import "./DelayedCall.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/AccessControl.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+
 /**
  * @dev Basic Authorizer implementation, based on OpenZeppelin's Access Control.
  *
@@ -32,18 +33,25 @@ contract Authorizer is AccessControl, IAuthorizer, IDelayProvider {
     using EnumerableSet for EnumerableSet.AddressSet;
     mapping(bytes32 => uint256) private _actionDelays;
     mapping(bytes32 => EnumerableSet.AddressSet) private _delayedCalls;
-    uint256 constant public _MIN_DELAY = 3600; // 1h in seconds
-    bytes32 constant public _SET_ACTION_DELAY = keccak256(abi.encodePacked(Authorizer.setActionDelay.selector));
+    uint256 public constant MIN_DELAY = 3600; // 1h in seconds
+    bytes32 public constant SET_ACTION_DELAY = keccak256(abi.encodePacked(Authorizer.setActionDelay.selector));
     /**
      * @dev Emitted when a call is scheduled as part of operation `actionId`.
      */
-    event DelayedCallScheduled(bytes32 indexed actionId, address callAddress, address where, uint256 value, bytes data, uint256 delay);
+    event DelayedCallScheduled(
+        bytes32 indexed actionId,
+        address callAddress,
+        address where,
+        uint256 value,
+        bytes data,
+        uint256 delay
+    );
 
     event ActionDelaySet(bytes32 indexed actionId, uint256 delay);
 
     constructor(address admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
-        _setActionDelay(_SET_ACTION_DELAY, _MIN_DELAY);
+        _setActionDelay(SET_ACTION_DELAY, MIN_DELAY);
     }
 
     /**
@@ -66,16 +74,13 @@ contract Authorizer is AccessControl, IAuthorizer, IDelayProvider {
         Delayed actions
     
     */
-    function setActionDelay(
-        bytes32 actionId,
-        uint256 delay
-    ) external {
-        require(canPerform(_SET_ACTION_DELAY, msg.sender, GLOBAL_ROLE_ADMIN), "Cannot schedule");
+    function setActionDelay(bytes32 actionId, uint256 delay) external {
+        require(canPerform(SET_ACTION_DELAY, msg.sender, GLOBAL_ROLE_ADMIN), "Cannot schedule");
         _setActionDelay(actionId, delay);
     }
 
     function _setActionDelay(bytes32 actionId, uint256 delay) internal {
-        require(delay >= _MIN_DELAY, "Delay too short");
+        require(delay >= MIN_DELAY, "Delay too short");
         _actionDelays[actionId] = delay;
         emit ActionDelaySet(actionId, delay);
     }
@@ -101,7 +106,7 @@ contract Authorizer is AccessControl, IAuthorizer, IDelayProvider {
         uint256 value,
         bytes calldata data,
         bool permissionedTrigger
-    ) external returns(address) {
+    ) external returns (address) {
         require(AccessControl.hasRole(actionId, msg.sender, where), "Invalid permission");
         uint256 delay = _actionDelays[actionId];
         require(delay > 0, "Not a delayed action");

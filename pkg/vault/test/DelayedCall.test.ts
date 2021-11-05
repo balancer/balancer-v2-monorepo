@@ -81,7 +81,7 @@ describe('DelayedCall', () => {
         await ethers.provider.send('evm_mine', []);
         const tx = await delayedCall.trigger();
         const receipt = await tx.wait();
-        console.log(receipt.events)
+        console.log(receipt.events);
         expect(await delayedCall.triggered()).to.equal(true);
         expect(await mockAuthorizer.triggeredValue()).to.equal(123);
         expectEvent.inReceipt(receipt, 'DelayedCallExecuted', {
@@ -90,7 +90,6 @@ describe('DelayedCall', () => {
           value: 0,
           data: targetMethodData,
         });
-
       });
 
       it('fails if early', async () => {
