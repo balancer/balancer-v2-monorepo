@@ -19,7 +19,6 @@ import "./interfaces/IDelayProvider.sol";
 import "./DelayedCall.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/AccessControl.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
-
 /**
  * @dev Basic Authorizer implementation, based on OpenZeppelin's Access Control.
  *
@@ -34,12 +33,11 @@ contract Authorizer is AccessControl, IAuthorizer, IDelayProvider {
     mapping(bytes32 => uint256) private _actionDelays;
     mapping(bytes32 => EnumerableSet.AddressSet) private _delayedCalls;
     uint256 constant public _MIN_DELAY = 3600; // 1h in seconds
-
-    bytes32 constant _SET_ACTION_DELAY = keccak256(abi.encodePacked(Authorizer.setActionDelay.selector));
+    bytes32 constant public _SET_ACTION_DELAY = keccak256(abi.encodePacked(Authorizer.setActionDelay.selector));
     /**
      * @dev Emitted when a call is scheduled as part of operation `actionId`.
      */
-    event DelayedCallScheduled(bytes32 indexed actionId, address where, uint256 value, bytes data, uint256 delay);
+    event DelayedCallScheduled(bytes32 indexed actionId, address callAddress, address where, uint256 value, bytes data, uint256 delay);
 
     event ActionDelaySet(bytes32 indexed actionId, uint256 delay);
 
@@ -70,10 +68,9 @@ contract Authorizer is AccessControl, IAuthorizer, IDelayProvider {
     */
     function setActionDelay(
         bytes32 actionId,
-        uint256 delay,
-        address where
+        uint256 delay
     ) external {
-        require(canPerform(actionId, msg.sender, where), "Invalid permission");
+        require(canPerform(_SET_ACTION_DELAY, msg.sender, GLOBAL_ROLE_ADMIN), "Cannot schedule");
         _setActionDelay(actionId, delay);
     }
 
@@ -106,10 +103,11 @@ contract Authorizer is AccessControl, IAuthorizer, IDelayProvider {
         bool permissionedTrigger
     ) external returns(address) {
         require(AccessControl.hasRole(actionId, msg.sender, where), "Invalid permission");
-        require(_actionDelays[actionId] > 0, "Not a delayed action");
+        uint256 delay = _actionDelays[actionId];
+        require(delay > 0, "Not a delayed action");
         DelayedCall delayedCall = new DelayedCall(data, where, value, this, this, permissionedTrigger, actionId);
         _delayedCalls[actionId].add(address(delayedCall));
-        emit DelayedCallScheduled(actionId, where, value, data, _actionDelays[actionId]);
+        emit DelayedCallScheduled(actionId, address(delayedCall), where, value, data, delay);
         return address(delayedCall);
     }
 

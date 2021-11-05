@@ -7,7 +7,7 @@ import { expect } from 'chai';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-describe.only('DelayedCall', () => {
+describe('DelayedCall', () => {
   let mockAuthorizer: Contract;
   let admin: SignerWithAddress, grantee: SignerWithAddress, other: SignerWithAddress;
 
@@ -54,57 +54,6 @@ describe.only('DelayedCall', () => {
         expect(await delayedCall.isTriggerPermissioned()).to.equal(false);
         expect(await delayedCall.cancelled()).to.equal(false);
       });
-      /*
-      it('fails with wrong arguments', async () => {
-        await expect(
-          await deploy('DelayedCall', {
-            args: [
-              targetMethodData,
-              mockAuthorizer.address,
-              0,
-              '0x0000000000000000000000000000000000000000',
-              mockAuthorizer.address,
-              true,
-              ACTION_ID_1,
-            ],
-          }).to.be.revertedWith('Empty delay provider')
-        );
-        await expect(
-          deploy('DelayedCall', {
-            args: [
-              targetMethodData,
-              mockAuthorizer.address,
-              0,
-
-              mockAuthorizer.address,
-              '0x0000000000000000000000000000000000000000',
-              true,
-              ACTION_ID_1,
-            ],
-          }).to.be.revertedWith('IAuthorizer cannot be zero address')
-        );
-        await expect(
-          deploy('DelayedCall', {
-            args: [
-              targetMethodData,
-              '0x0000000000000000000000000000000000000000',
-              0,
-
-              mockAuthorizer.address,
-              mockAuthorizer.address,
-              true,
-              ACTION_ID_1,
-            ],
-          }).to.be.revertedWith('IAuthorizer cannot be zero address')
-        );
-        await expect(
-          deploy('DelayedCall', {
-            args: ['', mockAuthorizer.address, 0, mockAuthorizer.address, mockAuthorizer.address, true, ACTION_ID_1],
-          }).to.be.revertedWith('Invalid actionId')
-        );
-
-      });
-      */
     });
   });
 
@@ -131,19 +80,17 @@ describe.only('DelayedCall', () => {
         await ethers.provider.send('evm_increaseTime', [3600]);
         await ethers.provider.send('evm_mine', []);
         const tx = await delayedCall.trigger();
-        const receipt = tx.wait();
+        const receipt = await tx.wait();
+        console.log(receipt.events)
         expect(await delayedCall.triggered()).to.equal(true);
         expect(await mockAuthorizer.triggeredValue()).to.equal(123);
-
         expectEvent.inReceipt(receipt, 'DelayedCallExecuted', {
           actionId: ACTION_ID_1,
           where: mockAuthorizer.address,
           value: 0,
           data: targetMethodData,
         });
-        expectEvent.inReceipt(receipt, 'MockActionTriggered', {
-          param: 123,
-        });
+
       });
 
       it('fails if early', async () => {
@@ -157,8 +104,7 @@ describe.only('DelayedCall', () => {
         await mockAuthorizer.setDelay(3600);
         await ethers.provider.send('evm_increaseTime', [3600]);
         await ethers.provider.send('evm_mine', []);
-        const tx = await delayedCall.trigger();
-        const receipt = tx.wait();
+        await delayedCall.trigger();
         await expect(delayedCall.trigger()).to.be.revertedWith('Action already triggered');
       });
     });
