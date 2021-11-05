@@ -54,6 +54,8 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
             amount = _getChainedReferenceValue(amount);
         }
 
+        // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
+        // to be sourced from outside the relayer, we must first them pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
             _pullToken(sender, _stETH, amount);
@@ -81,6 +83,8 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
             amount = _getChainedReferenceValue(amount);
         }
 
+        // The unwrap caller is the implicit sender of tokens, so if the goal is for the tokens
+        // to be sourced from outside the relayer, we must first them pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
             _pullToken(sender, _wstETH, amount);
