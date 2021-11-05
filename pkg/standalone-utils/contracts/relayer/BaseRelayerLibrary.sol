@@ -40,7 +40,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     IVault private immutable _vault;
     IBalancerRelayer private immutable _entrypoint;
 
-    constructor(IVault vault) {
+    constructor(IVault vault) IBaseRelayerLibrary(vault.WETH()) {
         _vault = vault;
         _entrypoint = new BalancerRelayer(vault, address(this));
     }
@@ -54,11 +54,16 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     }
 
     /**
-     * @notice Sets whether this relayer is authorised to act on behalf of the user
+     * @notice Sets whether a particular relayer is authorised to act on behalf of the user
      */
-    function setRelayerApproval(bool approved, bytes calldata authorisation) external payable {
+    function setRelayerApproval(
+        address relayer,
+        bool approved,
+        bytes calldata authorisation
+    ) external payable {
+        require(relayer == address(this) || !approved, "Relayer can only approve itself");
         bytes memory data = abi.encodePacked(
-            abi.encodeWithSelector(_vault.setRelayerApproval.selector, msg.sender, address(this), approved),
+            abi.encodeWithSelector(_vault.setRelayerApproval.selector, msg.sender, relayer, approved),
             authorisation
         );
 
@@ -146,6 +151,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
         }
     }
 
+    // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _TEMP_STORAGE_SUFFIX = keccak256("balancer.base-relayer-library");
 
     function _getTempStorageSlot(uint256 ref) private view returns (bytes32) {

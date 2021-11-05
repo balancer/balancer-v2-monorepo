@@ -80,7 +80,7 @@ describe('LidoRelayer', function () {
       )
     );
     const authorizer = await deployedAt('v2-vault/Authorizer', await vault.instance.getAuthorizer());
-    await authorizer.connect(admin).grantRoles(relayerActionIds, relayer.address);
+    await authorizer.connect(admin).grantRolesGlobally(relayerActionIds, relayer.address);
 
     // Approve relayer by sender
     await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
@@ -563,12 +563,10 @@ describe('LidoRelayer', function () {
         recipient: Account;
         outputReferences?: Dictionary<BigNumberish>;
       }): string {
-        const outputReferences = new Array(tokens.length).fill(0);
-        if (params.outputReferences != undefined) {
-          for (const symbol in params.outputReferences) {
-            outputReferences[tokens.indexOf(tokens.findBySymbol(symbol))] = params.outputReferences[symbol];
-          }
-        }
+        const outputReferences = Object.entries(params.outputReferences ?? {}).map(([symbol, key]) => ({
+          index: tokens.findIndexBySymbol(symbol),
+          key,
+        }));
 
         return relayerLibrary.interface.encodeFunctionData('batchSwap', [
           SwapKind.GivenIn,

@@ -9,7 +9,7 @@ import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
-import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { getPoolAddress, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -18,6 +18,7 @@ import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { Dictionary } from 'lodash';
 import { Interface } from '@ethersproject/abi';
+import { Zero } from '@ethersproject/constants';
 
 describe('VaultActions', function () {
   let vault: Vault;
@@ -69,7 +70,7 @@ describe('VaultActions', function () {
       )
     );
     const authorizer = await deployedAt('v2-vault/Authorizer', await vault.instance.getAuthorizer());
-    await authorizer.connect(admin).grantRoles(relayerActionIds, relayer.address);
+    await authorizer.connect(admin).grantRolesGlobally(relayerActionIds, relayer.address);
 
     // Approve relayer by sender
     await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
@@ -119,6 +120,7 @@ describe('VaultActions', function () {
     tokenIn: Token;
     tokenOut: Token;
     amount: BigNumberish;
+    fromInternalBalance?: boolean;
     outputReference?: BigNumberish;
   }): string {
     return relayerLibrary.interface.encodeFunctionData('swap', [
@@ -130,7 +132,12 @@ describe('VaultActions', function () {
         amount: params.amount,
         userData: '0x',
       },
-      { sender: sender.address, recipient: sender.address, fromInternalBalance: false, toInternalBalance: false },
+      {
+        sender: sender.address,
+        recipient: sender.address,
+        fromInternalBalance: params.fromInternalBalance ?? false,
+        toInternalBalance: false,
+      },
       0,
       MAX_UINT256,
       0,
@@ -147,12 +154,10 @@ describe('VaultActions', function () {
     }>;
     outputReferences?: Dictionary<BigNumberish>;
   }): string {
-    const outputReferences = new Array(tokens.length).fill(0);
-    if (params.outputReferences != undefined) {
-      for (const symbol in params.outputReferences) {
-        outputReferences[tokens.indexOf(tokens.findBySymbol(symbol))] = params.outputReferences[symbol];
-      }
-    }
+    const outputReferences = Object.entries(params.outputReferences ?? {}).map(([symbol, key]) => ({
+      index: tokens.findIndexBySymbol(symbol),
+      key,
+    }));
 
     return relayerLibrary.interface.encodeFunctionData('batchSwap', [
       SwapKind.GivenIn,
@@ -192,6 +197,33 @@ describe('VaultActions', function () {
       },
       0,
       params.outputReference ?? 0,
+    ]);
+  }
+
+  async function encodeExitPool(params: {
+    poolId: string;
+    userData: string;
+    toInternalBalance: boolean;
+    outputReferences?: Dictionary<BigNumberish>;
+  }): Promise<string> {
+    const { tokens: poolTokens } = await vault.getPoolTokens(params.poolId);
+    const outputReferences = Object.entries(params.outputReferences ?? {}).map(([symbol, key]) => ({
+      index: poolTokens.findIndex((tokenAddress) => tokenAddress === tokens.findBySymbol(symbol).address),
+      key,
+    }));
+
+    return relayerLibrary.interface.encodeFunctionData('exitPool', [
+      params.poolId,
+      0,
+      sender.address,
+      sender.address,
+      {
+        assets: poolTokens,
+        minAmountsOut: new Array(poolTokens.length).fill(0),
+        userData: params.userData,
+        toInternalBalance: params.toInternalBalance,
+      },
+      outputReferences,
     ]);
   }
 
@@ -605,6 +637,345 @@ describe('VaultActions', function () {
             }
           );
         });
+      });
+    });
+  });
+
+  describe('exit pool', () => {
+    const amountInBPT = fp(1);
+
+    async function getBPT(poolId: string): Promise<TokenList> {
+      return new TokenList([await Token.deployedAt(getPoolAddress(poolId))]);
+    }
+
+    describe('weighted pool', () => {
+      function testExitPool(useInternalBalance: boolean): void {
+        describe('exact bpt in for tokens', () => {
+          it('exits with immediate amounts', async () => {
+            await expectBalanceChange(
+              async () =>
+                relayer.connect(sender).multicall([
+                  await encodeExitPool({
+                    poolId: poolIdA,
+                    userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(fp(1)),
+                    toInternalBalance: useInternalBalance,
+                  }),
+                ]),
+              await getBPT(poolIdA),
+              {
+                account: sender,
+                changes: {
+                  BPT: amountInBPT.mul(-1),
+                },
+              }
+            );
+          });
+
+          it('stores token amount out as chained reference', async () => {
+            const receipt = await (
+              await relayer.connect(sender).multicall([
+                await encodeExitPool({
+                  poolId: poolIdA,
+                  userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amountInBPT),
+                  toInternalBalance: useInternalBalance,
+                  outputReferences: {
+                    DAI: toChainedReference(0),
+                    MKR: toChainedReference(1),
+                  },
+                }),
+              ])
+            ).wait();
+
+            let daiAmountOut = Zero;
+            let mkrAmountOut = Zero;
+            if (useInternalBalance) {
+              const daiTransfer = expectEvent.inIndirectReceipt(
+                receipt,
+                vault.instance.interface,
+                'InternalBalanceChanged',
+                {
+                  user: sender.address,
+                  token: tokens.DAI.address,
+                }
+              );
+              const mkrTransfer = expectEvent.inIndirectReceipt(
+                receipt,
+                vault.instance.interface,
+                'InternalBalanceChanged',
+                {
+                  user: sender.address,
+                  token: tokens.MKR.address,
+                }
+              );
+
+              daiAmountOut = daiTransfer.args.delta;
+              mkrAmountOut = mkrTransfer.args.delta;
+            } else {
+              const daiTransfer = expectEvent.inIndirectReceipt(
+                receipt,
+                new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+                'Transfer',
+                { from: vault.address, to: sender.address },
+                tokens.DAI.address
+              );
+              const mkrTransfer = expectEvent.inIndirectReceipt(
+                receipt,
+                new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+                'Transfer',
+                { from: vault.address, to: sender.address },
+                tokens.MKR.address
+              );
+
+              daiAmountOut = daiTransfer.args.value;
+              mkrAmountOut = mkrTransfer.args.value;
+            }
+
+            await expectChainedReferenceContents(toChainedReference(0), daiAmountOut);
+            await expectChainedReferenceContents(toChainedReference(1), mkrAmountOut);
+          });
+
+          it('exits with exact bpt in chained reference', async () => {
+            await setChainedReferenceContents(toChainedReference(0), amountInBPT);
+
+            await expectBalanceChange(
+              async () =>
+                relayer.connect(sender).multicall([
+                  await encodeExitPool({
+                    poolId: poolIdA,
+                    userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(toChainedReference(0)),
+                    toInternalBalance: useInternalBalance,
+                  }),
+                ]),
+              await getBPT(poolIdA),
+              {
+                account: sender,
+                changes: {
+                  BPT: amountInBPT.mul(-1),
+                },
+              }
+            );
+          });
+
+          it('is chainable with swaps via multicall', async () => {
+            const receipt = await (
+              await expectBalanceChange(
+                async () =>
+                  relayer.connect(sender).multicall([
+                    await encodeExitPool({
+                      poolId: poolIdA,
+                      userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amountInBPT),
+                      toInternalBalance: useInternalBalance,
+                      outputReferences: {
+                        MKR: toChainedReference(0),
+                      },
+                    }),
+                    encodeSwap({
+                      poolId: poolIdA,
+                      tokenIn: tokens.MKR,
+                      tokenOut: tokens.DAI,
+                      fromInternalBalance: useInternalBalance,
+                      amount: toChainedReference(0),
+                    }),
+                  ]),
+                await getBPT(poolIdA),
+                {
+                  account: sender,
+                  changes: {
+                    BPT: amountInBPT.mul(-1),
+                  },
+                }
+              )
+            ).wait();
+
+            const {
+              args: { deltas },
+            } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+              poolId: poolIdA,
+            });
+
+            const {
+              args: { amountIn: amountInMKR },
+            } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
+
+            expect(deltas[tokensA.indexOf(tokens.MKR)].mul(-1)).to.equal(amountInMKR);
+          });
+        });
+
+        describe('exact bpt in for one token', () => {
+          it('exits with immediate amounts', async () => {
+            await expectBalanceChange(
+              async () =>
+                relayer.connect(sender).multicall([
+                  await encodeExitPool({
+                    poolId: poolIdA,
+                    userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(fp(1), 0),
+                    toInternalBalance: useInternalBalance,
+                  }),
+                ]),
+              await getBPT(poolIdA),
+              {
+                account: sender,
+                changes: {
+                  BPT: amountInBPT.mul(-1),
+                },
+              }
+            );
+          });
+
+          it('stores token amount out as chained reference', async () => {
+            const receipt = await (
+              await relayer.connect(sender).multicall([
+                await encodeExitPool({
+                  poolId: poolIdA,
+                  userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(
+                    amountInBPT,
+                    tokensA.findIndexBySymbol('MKR')
+                  ),
+                  toInternalBalance: useInternalBalance,
+                  outputReferences: {
+                    MKR: toChainedReference(0),
+                  },
+                }),
+              ])
+            ).wait();
+
+            let mkrAmountOut = Zero;
+            if (useInternalBalance) {
+              const mkrTransfer = expectEvent.inIndirectReceipt(
+                receipt,
+                vault.instance.interface,
+                'InternalBalanceChanged',
+                {
+                  user: sender.address,
+                  token: tokens.MKR.address,
+                }
+              );
+
+              mkrAmountOut = mkrTransfer.args.delta;
+            } else {
+              const mkrTransfer = expectEvent.inIndirectReceipt(
+                receipt,
+                new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+                'Transfer',
+                { from: vault.address, to: sender.address },
+                tokens.MKR.address
+              );
+
+              mkrAmountOut = mkrTransfer.args.value;
+            }
+
+            await expectChainedReferenceContents(toChainedReference(0), mkrAmountOut);
+          });
+
+          it('exits with exact bpt in chained reference', async () => {
+            await setChainedReferenceContents(toChainedReference(0), amountInBPT);
+
+            await expectBalanceChange(
+              async () =>
+                relayer.connect(sender).multicall([
+                  await encodeExitPool({
+                    poolId: poolIdA,
+                    userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(
+                      toChainedReference(0),
+                      tokensA.findIndexBySymbol('MKR')
+                    ),
+                    toInternalBalance: useInternalBalance,
+                  }),
+                ]),
+              await getBPT(poolIdA),
+              {
+                account: sender,
+                changes: {
+                  BPT: amountInBPT.mul(-1),
+                },
+              }
+            );
+          });
+
+          it('is chainable with swaps via multicall', async () => {
+            const receipt = await (
+              await expectBalanceChange(
+                async () =>
+                  relayer.connect(sender).multicall([
+                    await encodeExitPool({
+                      poolId: poolIdA,
+                      userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(
+                        amountInBPT,
+                        tokensA.findIndexBySymbol('MKR')
+                      ),
+                      toInternalBalance: useInternalBalance,
+                      outputReferences: {
+                        MKR: toChainedReference(0),
+                      },
+                    }),
+                    encodeSwap({
+                      poolId: poolIdA,
+                      tokenIn: tokens.MKR,
+                      tokenOut: tokens.DAI,
+                      amount: toChainedReference(0),
+                      fromInternalBalance: useInternalBalance,
+                    }),
+                  ]),
+                await getBPT(poolIdA),
+                {
+                  account: sender,
+                  changes: {
+                    BPT: amountInBPT.mul(-1),
+                  },
+                }
+              )
+            ).wait();
+
+            const {
+              args: { deltas },
+            } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+              poolId: poolIdA,
+            });
+
+            const {
+              args: { amountIn: amountInMKR },
+            } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
+
+            expect(deltas[tokensA.indexOf(tokens.MKR)].mul(-1)).to.equal(amountInMKR);
+          });
+        });
+
+        describe('bpt in for exact tokens out', () => {
+          const amountOutMKR = fp(1);
+          const amountOutDAI = fp(2);
+
+          it('exits with immediate amounts', async () => {
+            await expectBalanceChange(
+              async () =>
+                relayer.connect(sender).multicall([
+                  await encodeExitPool({
+                    poolId: poolIdA,
+                    userData: WeightedPoolEncoder.exitBPTInForExactTokensOut([amountOutMKR, amountOutDAI], MAX_UINT256),
+                    toInternalBalance: useInternalBalance,
+                  }),
+                ]),
+              await getBPT(poolIdA),
+              {
+                account: sender,
+                changes: {
+                  BPT: ['lt', 0],
+                  MKR: amountOutMKR,
+                  DAI: amountOutDAI,
+                },
+              }
+            );
+          });
+        });
+      }
+
+      describe('exit to external balance', () => {
+        const toInternalBalance = false;
+        testExitPool(toInternalBalance);
+      });
+
+      describe('exit to internal balance', () => {
+        const toInternalBalance = true;
+        testExitPool(toInternalBalance);
       });
     });
   });

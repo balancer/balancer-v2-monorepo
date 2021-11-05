@@ -765,7 +765,7 @@ describe('LinearPool', function () {
 
       sharedBeforeEach('grant role to admin', async () => {
         const action = await actionId(pool.instance, 'setWrappedTokenRateCacheDuration');
-        await pool.vault.grantRole(action, admin);
+        await pool.vault.grantRoleGlobally(action, admin);
       });
 
       const itUpdatesTheCacheDuration = () => {

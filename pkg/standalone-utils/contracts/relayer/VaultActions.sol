@@ -38,6 +38,11 @@ import "../interfaces/IBaseRelayerLibrary.sol";
 abstract contract VaultActions is IBaseRelayerLibrary {
     using Math for uint256;
 
+    struct OutputReference {
+        uint256 index;
+        uint256 key;
+    }
+
     function swap(
         IVault.SingleSwap memory singleSwap,
         IVault.FundManagement calldata funds,
@@ -69,10 +74,9 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         int256[] calldata limits,
         uint256 deadline,
         uint256 value,
-        uint256[] memory outputReferences
+        OutputReference[] calldata outputReferences
     ) external payable returns (int256[] memory) {
         require(funds.sender == msg.sender || funds.sender == address(this), "Incorrect sender");
-        InputHelpers.ensureInputLengthMatch(assets.length, outputReferences.length);
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             uint256 amount = swaps[i].amount;
@@ -84,15 +88,14 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         int256[] memory results = getVault().batchSwap{ value: value }(kind, swaps, assets, funds, limits, deadline);
 
         for (uint256 i = 0; i < outputReferences.length; ++i) {
-            uint256 ref = outputReferences[i];
-            if (_isChainedReference(ref)) {
-                // Batch swap return values are signed, as they are Vault deltas (positive values stand for assets sent
-                // to the Vault, negatives for assets sent from the Vault). To simplify the chained reference value
-                // model, we simply store the absolute value.
-                // This should be fine for most use cases, as the caller can reason about swap results via the `limits`
-                // parameter.
-                _setChainedReferenceValue(ref, Math.abs(results[i]));
-            }
+            require(_isChainedReference(outputReferences[i].key), "invalid chained reference");
+
+            // Batch swap return values are signed, as they are Vault deltas (positive values stand for assets sent
+            // to the Vault, negatives for assets sent from the Vault). To simplify the chained reference value
+            // model, we simply store the absolute value.
+            // This should be fine for most use cases, as the caller can reason about swap results via the `limits`
+            // parameter.
+            _setChainedReferenceValue(outputReferences[i].key, Math.abs(results[outputReferences[i].index]));
         }
 
         return results;
@@ -183,11 +186,106 @@ abstract contract VaultActions is IBaseRelayerLibrary {
 
     function exitPool(
         bytes32 poolId,
+        PoolKind kind,
         address sender,
         address payable recipient,
-        IVault.ExitPoolRequest calldata request
+        IVault.ExitPoolRequest memory request,
+        OutputReference[] calldata outputReferences
     ) external payable {
         require(sender == msg.sender || sender == address(this), "Incorrect sender");
+
+        // To track the changes of internal balances we need an array of token addresses.
+        // We save this here to avoid having to recalculate after we perform the exit.
+        IERC20[] memory trackedTokens = new IERC20[](outputReferences.length);
+
+        // Query initial balances for all tokens which we want to record into chained references
+        uint256[] memory initialRecipientBalances = new uint256[](outputReferences.length);
+        for (uint256 i = 0; i < outputReferences.length; i++) {
+            require(_isChainedReference(outputReferences[i].key), "invalid chained reference");
+
+            IAsset asset = request.assets[outputReferences[i].index];
+            if (request.toInternalBalance) {
+                trackedTokens[i] = _asIERC20(asset);
+            } else {
+                initialRecipientBalances[i] = _isETH(asset) ? recipient.balance : _asIERC20(asset).balanceOf(recipient);
+            }
+        }
+        if (request.toInternalBalance) {
+            initialRecipientBalances = getVault().getInternalBalance(recipient, trackedTokens);
+        }
+
+        // Execute exit from pool
+        request.userData = _doExitPoolChainedReferenceReplacements(kind, request.userData);
         getVault().exitPool(poolId, sender, recipient, request);
+
+        // Query final balances for all tokens of interest
+        uint256[] memory finalRecipientTokenBalances = new uint256[](outputReferences.length);
+        if (request.toInternalBalance) {
+            finalRecipientTokenBalances = getVault().getInternalBalance(recipient, trackedTokens);
+        } else {
+            for (uint256 i = 0; i < outputReferences.length; i++) {
+                IAsset asset = request.assets[outputReferences[i].index];
+                finalRecipientTokenBalances[i] = _isETH(asset)
+                    ? recipient.balance
+                    : _asIERC20(asset).balanceOf(recipient);
+            }
+        }
+
+        // Calculate deltas and save to chained references
+        for (uint256 i = 0; i < outputReferences.length; i++) {
+            _setChainedReferenceValue(
+                outputReferences[i].key,
+                finalRecipientTokenBalances[i].sub(initialRecipientBalances[i])
+            );
+        }
+    }
+
+    function _doExitPoolChainedReferenceReplacements(PoolKind kind, bytes memory userData)
+        private
+        returns (bytes memory)
+    {
+        if (kind == PoolKind.WEIGHTED) {
+            return _doWeightedExitChainedReferenceReplacements(userData);
+        } else {
+            _revert(Errors.UNHANDLED_EXIT_KIND);
+        }
+    }
+
+    function _doWeightedExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
+        BaseWeightedPool.ExitKind kind = WeightedPoolUserDataHelpers.exitKind(userData);
+
+        if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+            return _doWeightedExactBptInForOneTokenOutReplacements(userData);
+        } else if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+            return _doWeightedExactBptInForTokensOutReplacements(userData);
+        } else {
+            // All other exit kinds are 'given out' (i.e the parameter is a token amount),
+            // so we don't do replacements for those.
+            return userData;
+        }
+    }
+
+    function _doWeightedExactBptInForOneTokenOutReplacements(bytes memory userData) private returns (bytes memory) {
+        (uint256 bptAmountIn, uint256 tokenIndex) = WeightedPoolUserDataHelpers.exactBptInForTokenOut(userData);
+
+        if (_isChainedReference(bptAmountIn)) {
+            bptAmountIn = _getChainedReferenceValue(bptAmountIn);
+            return abi.encode(BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, tokenIndex);
+        } else {
+            // Save gas by only re-encoding the data if we actually performed a replacement
+            return userData;
+        }
+    }
+
+    function _doWeightedExactBptInForTokensOutReplacements(bytes memory userData) private returns (bytes memory) {
+        uint256 bptAmountIn = WeightedPoolUserDataHelpers.exactBptInForTokensOut(userData);
+
+        if (_isChainedReference(bptAmountIn)) {
+            bptAmountIn = _getChainedReferenceValue(bptAmountIn);
+            return abi.encode(BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn);
+        } else {
+            // Save gas by only re-encoding the data if we actually performed a replacement
+            return userData;
+        }
     }
 }
