@@ -20,7 +20,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
-import "../BaseWeightedPool.sol";
+import "../LegacyBaseWeightedPool.sol";
 import "../WeightedPoolUserDataHelpers.sol";
 import "./WeightCompression.sol";
 
@@ -47,7 +47,7 @@ import "./WeightCompression.sol";
  * token counts, rebalancing through token changes, gradual weight or fee updates, circuit breakers for
  * IL-protection, and more.
  */
-contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
+contract ManagedPool is LegacyBaseWeightedPool, ReentrancyGuard {
     // solhint-disable not-rely-on-time
 
     using FixedPoint for uint256;
@@ -122,7 +122,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     constructor(NewPoolParams memory params)
-        BaseWeightedPool(
+        LegacyBaseWeightedPool(
             params.vault,
             params.name,
             params.symbol,
@@ -267,7 +267,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             IVault.ExitPoolRequest({
                 assets: _asIAsset(tokens),
                 minAmountsOut: collectedFees,
-                userData: abi.encode(BaseWeightedPool.ExitKind.MANAGEMENT_FEE_TOKENS_OUT),
+                userData: abi.encode(LegacyBaseWeightedPool.ExitKind.MANAGEMENT_FEE_TOKENS_OUT),
                 toInternalBalance: false
             })
         );
@@ -413,7 +413,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // If swaps are disabled, the only join kind that is allowed is the proportional one, as all others involve
         // implicit swaps and alter token prices.
         _require(
-            getSwapEnabled() || userData.joinKind() == JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
+            getSwapEnabled() || JoinKind(uint256(userData.joinKind())) == JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
@@ -448,7 +448,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // If swaps are disabled, the only exit kind that is allowed is the proportional one (as all others involve
         // implicit swaps and alter token prices) and management fee collection (as there's no point in restricting
         // that).
-        ExitKind kind = userData.exitKind();
+        ExitKind kind = ExitKind(uint256(userData.exitKind()));
         _require(
             getSwapEnabled() ||
                 kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT ||
@@ -473,7 +473,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal returns (uint256, uint256[] memory) {
-        ExitKind kind = userData.exitKind();
+        ExitKind kind = ExitKind(uint256(userData.exitKind()));
 
         if (kind == ExitKind.MANAGEMENT_FEE_TOKENS_OUT) {
             return _exitManagerFeeTokensOut(sender);
