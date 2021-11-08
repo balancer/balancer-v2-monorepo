@@ -1,21 +1,12 @@
-import hre, { ethers } from 'hardhat';
+import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('DelayedCall', () => {
   let mockAuthorizer: Contract;
-  let admin: SignerWithAddress, grantee: SignerWithAddress, other: SignerWithAddress;
-
-  const ANYWHERE = ZERO_ADDRESS;
-
-  before('setup signers', async () => {
-    [, admin, grantee, other] = await ethers.getSigners();
-  });
 
   const ACTION_ID_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
   let targetMethodData: string;
@@ -25,7 +16,7 @@ describe('DelayedCall', () => {
   });
 
   describe('DelayedCall Creation', () => {
-    let delayedCallParams: any[];
+    let delayedCallParams: unknown[];
     beforeEach('init DelayedCall params', async () => {
       const value = 0;
       const isTriggerPermissioned = false;

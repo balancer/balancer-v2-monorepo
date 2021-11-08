@@ -34,15 +34,15 @@ contract MockDelayedCallCreator is IDelayProvider, IAuthorizer {
     }
 
     function canPerform(
-        bytes32 actionId,
-        address account,
-        address where
+        bytes32,
+        address,
+        address
     ) external view override returns (bool) {
         return _canPerform;
     }
     
      
-    function getDelay(bytes32 actionId) external override view returns (uint256) {
+    function getDelay(bytes32) external override view returns (uint256) {
         return _delay;
     }
 
