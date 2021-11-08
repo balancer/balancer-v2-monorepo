@@ -33,7 +33,7 @@ contract Authorizer is AccessControl, IAuthorizer, IDelayProvider {
     using EnumerableSet for EnumerableSet.AddressSet;
     mapping(bytes32 => uint256) private _actionDelays;
     mapping(bytes32 => EnumerableSet.AddressSet) private _delayedCalls;
-    uint256 public constant MIN_DELAY = 3600; // 1h in seconds
+    uint256 public constant MIN_DELAY = 1 hours;
     bytes32 public constant SET_ACTION_DELAY = keccak256(abi.encodePacked(Authorizer.setActionDelay.selector));
     /**
      * @dev Emitted when a call is scheduled as part of operation `actionId`.
