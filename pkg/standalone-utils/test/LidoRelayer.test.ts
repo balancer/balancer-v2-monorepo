@@ -474,8 +474,8 @@ describe('LidoRelayer', function () {
       describe('swap using stETH as an input', () => {
         it('performs the given swap', async () => {
           const poolId = basePoolId;
-          const tokenIn = tokens.findBySymbol('wstETH');
-          const tokenOut = tokens.findBySymbol('stETH');
+          const tokenIn = wstETH;
+          const tokenOut = stETH;
           const amount = fp(1);
 
           const receipt = await (
@@ -513,8 +513,8 @@ describe('LidoRelayer', function () {
 
         it('does not leave dust on the relayer', async () => {
           const poolId = basePoolId;
-          const tokenIn = tokens.findBySymbol('wstETH');
-          const tokenOut = tokens.findBySymbol('stETH');
+          const tokenIn = wstETH;
+          const tokenOut = stETH;
           const amount = fp(1);
 
           await relayer.connect(sender).multicall([
@@ -540,8 +540,8 @@ describe('LidoRelayer', function () {
       describe('swap using stETH as an output', () => {
         it('performs the given swap', async () => {
           const poolId = basePoolId;
-          const tokenIn = tokens.findBySymbol('stETH');
-          const tokenOut = tokens.findBySymbol('wstETH');
+          const tokenIn = stETH;
+          const tokenOut = wstETH;
           const amount = fp(1);
 
           const receipt = await (
@@ -578,8 +578,8 @@ describe('LidoRelayer', function () {
 
         it('does not leave dust on the relayer', async () => {
           const poolId = basePoolId;
-          const tokenIn = tokens.findBySymbol('stETH');
-          const tokenOut = tokens.findBySymbol('wstETH');
+          const tokenIn = stETH;
+          const tokenOut = wstETH;
           const amount = fp(1);
 
           await relayer.connect(sender).multicall([
@@ -645,8 +645,8 @@ describe('LidoRelayer', function () {
       describe('swap using stETH as an input', () => {
         it('performs the given swap', async () => {
           const poolId = basePoolId;
-          const tokenIn = tokens.findBySymbol('wstETH');
-          const tokenOut = tokens.findBySymbol('stETH');
+          const tokenIn = wstETH;
+          const tokenOut = stETH;
           const amount = fp(1);
 
           const receipt = await (
@@ -679,8 +679,8 @@ describe('LidoRelayer', function () {
 
         it('does not leave dust on the relayer', async () => {
           const poolId = basePoolId;
-          const tokenIn = tokens.findBySymbol('wstETH');
-          const tokenOut = tokens.findBySymbol('stETH');
+          const tokenIn = wstETH;
+          const tokenOut = stETH;
           const amount = fp(1);
 
           await relayer.connect(sender).multicall([
@@ -701,8 +701,8 @@ describe('LidoRelayer', function () {
       describe('swap using stETH as an output', () => {
         it('performs the given swap', async () => {
           const poolId = basePoolId;
-          const tokenIn = tokens.findBySymbol('stETH');
-          const tokenOut = tokens.findBySymbol('wstETH');
+          const tokenIn = stETH;
+          const tokenOut = wstETH;
           const amount = fp(1);
 
           const receipt = await (
@@ -735,8 +735,8 @@ describe('LidoRelayer', function () {
 
         it('does not leave dust on the relayer', async () => {
           const poolId = basePoolId;
-          const tokenIn = tokens.findBySymbol('stETH');
-          const tokenOut = tokens.findBySymbol('wstETH');
+          const tokenIn = stETH;
+          const tokenOut = wstETH;
           const amount = fp(1);
 
           await relayer.connect(sender).multicall([
