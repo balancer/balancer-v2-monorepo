@@ -36,6 +36,10 @@ import "./BasePoolAuthorization.sol";
  * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with optional
  * Asset Managers, an admin-controlled swap fee percentage, and an emergency pause mechanism.
  *
+ * This Pool pays protocol fees by minting BPT directly to the ProtocolFeeCollector instead of using the
+ * `dueProtocolFees` return value. This results in better rates for users, as the Pool won't unbalance itself right
+ * before they join/exit, as well as in the underlying tokens continuing to provide liquidity.
+ *
  * Note that neither swap fees nor the pause mechanism are used by this contract. They are passed through so that
  * derived contracts can use them via the `_addSwapFeeAmount` and `_subtractSwapFeeAmount` functions, and the
  * `whenNotPaused` modifier.
@@ -111,7 +115,7 @@ abstract contract NewBasePool is IBasePool, BasePoolAuthorization, BalancerPoolT
 
         // Set immutable state variables - these cannot be read from during construction
         _poolId = poolId;
-        _protocolFeesCollector = vault.getProtocolFeesCollector();
+        _protocolFeesCollector = vault.getProtocolFeesCollector(); // Note that this value is immutable in the Vault
     }
 
     // Getters / Setters
@@ -245,6 +249,7 @@ abstract contract NewBasePool is IBasePool, BasePoolAuthorization, BalancerPoolT
             // amountsIn are amounts entering the Pool, so we round up.
             _downscaleUpArray(amountsIn, scalingFactors);
 
+            // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
             return (amountsIn, new uint256[](balances.length));
         }
     }
@@ -279,6 +284,7 @@ abstract contract NewBasePool is IBasePool, BasePoolAuthorization, BalancerPoolT
         // amountsOut are amounts exiting the Pool, so we round down.
         _downscaleDownArray(amountsOut, scalingFactors);
 
+        // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
         return (amountsOut, new uint256[](balances.length));
     }
 
@@ -442,6 +448,9 @@ abstract contract NewBasePool is IBasePool, BasePoolAuthorization, BalancerPoolT
 
     // Internal functions
 
+    /**
+     * @dev Pays protocol fees by minting `bptAmount` to the Protocol Fee Collector.
+     */
     function _payProtocolFees(uint256 bptAmount) internal {
         _mintPoolTokens(address(getProtocolFeesCollector()), bptAmount);
     }

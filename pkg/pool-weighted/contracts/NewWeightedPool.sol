@@ -27,6 +27,11 @@ contract NewWeightedPool is NewBaseWeightedPool {
 
     uint256 private immutable _totalTokens;
 
+    // Due protocol swap fee amounts are computed by measuring the growth of the invariant after a join or exit event
+    // and before the next one - the invariant's growth is due exclusively to swap fees. This avoids spending gas
+    // computing and tracking protocol fees on each individual swap.
+    uint256 private _lastInvariant;
+
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;
     IERC20 internal immutable _token2;
@@ -339,28 +344,21 @@ contract NewWeightedPool is NewBaseWeightedPool {
         return scalingFactors;
     }
 
-    uint256 private _lastInvariant;
-
     function getLastInvariant() public view virtual returns (uint256) {
         return _lastInvariant;
     }
 
-    function _beforeJoinExit(
+    function _getDueProtocolFeesBeforeJoinExit(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256 protocolSwapFeePercentage
     ) internal view override returns (uint256) {
-        // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous join
-        // or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids spending gas
-        // computing them on each individual swap
-
         // Early return if the protocol swap fee percentage is zero, saving gas.
         if (protocolSwapFeePercentage == 0) {
             return 0;
         }
 
         uint256 currentInvariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
-
         return
             WeightedMath._calcDueProtocolFeeBPTAmount(
                 _lastInvariant,
@@ -375,6 +373,9 @@ contract NewWeightedPool is NewBaseWeightedPool {
         uint256[] memory amountsIn,
         uint256[] memory normalizedWeights
     ) internal override {
+        // Update the invariant with the balances the Pool will have after the join, in order to compute the
+        // protocol swap fee amounts due in future joins and exits.
+
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = balances[i].add(amountsIn[i]);
         }

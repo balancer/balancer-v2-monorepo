@@ -26,7 +26,7 @@ import "./WeightedPoolUserDataHelpers.sol";
 /**
  * @dev Base class for WeightedPools containing swap, join and exit logic, but leaving storage and management of
  * the weights to subclasses. Derived contracts can choose to make weights immutable, mutable, or even dynamic
- *  based on local or external logic.
+ * based on local or external logic.
  */
 abstract contract NewBaseWeightedPool is NewBaseMinimalSwapInfoPool {
     using FixedPoint for uint256;
@@ -167,7 +167,7 @@ abstract contract NewBaseWeightedPool is NewBaseMinimalSwapInfoPool {
         // consistent in Pools with similar compositions but different number of tokens.
         uint256 bptAmountOut = Math.mul(invariantAfterJoin, _getTotalTokens());
 
-        // Zero balances
+        // An initialization is technically a join so we process it as such, with the pre-join balances being zero.
         _afterJoin(new uint256[](amountsIn.length), amountsIn, normalizedWeights);
 
         return (bptAmountOut, amountsIn);
@@ -175,18 +175,38 @@ abstract contract NewBaseWeightedPool is NewBaseMinimalSwapInfoPool {
 
     // Join
 
-    function _beforeJoinExit(
+    /**
+     * @dev This function is called before all join and exit events, except initialization and while the emergency pause
+     * is turned on. Returns the amount of BPT to mint to the Protocol Fee Collector as protocol fees, which is applied
+     * immediately.
+     *
+     * Derived contracts might choose to track due protocol fees via different mechanisms, but they all need to process
+     * them before join and exit events, to make sure all debt is paid before new LPs join and current LPs exit.
+     */
+    function _getDueProtocolFeesBeforeJoinExit(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256 protocolSwapFeePercentage
     ) internal virtual returns (uint256);
 
+    /**
+     * @dev Called after every join event with the pre-join balances and token amounts the Pool will receive.
+     *
+     * Some derived Pools require this mechanism to properly track due protocol fees (for example by storing the value
+     * of the invariant after the join), while others may provide an empty implementation.
+     */
     function _afterJoin(
         uint256[] memory balances,
         uint256[] memory amountsIn,
         uint256[] memory normalizedWeights
     ) internal virtual;
 
+    /**
+     * @dev Called after every exit event with the pre-exit balances and token amounts the Pool will send.
+     *
+     * Some derived Pools require this mechanism to properly track due protocol fees (for example by storing the value
+     * of the invariant after the exit), while others may provide an empty implementation.
+     */
     function _afterExit(
         uint256[] memory balances,
         uint256[] memory amountsOut,
@@ -207,8 +227,15 @@ abstract contract NewBaseWeightedPool is NewBaseMinimalSwapInfoPool {
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        uint256 dueProtocolFeeBPTAmount = _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
+        uint256 dueProtocolFeeBPTAmount = _getDueProtocolFeesBeforeJoinExit(
+            balances,
+            normalizedWeights,
+            protocolSwapFeePercentage
+        );
         _payProtocolFees(dueProtocolFeeBPTAmount);
+
+        // Since protocol fees are paid before the join is processed, all calls to `totalSupply` in `_doJoin` will
+        // return the updated value, diluting current LPs.
 
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
             balances,
@@ -217,8 +244,6 @@ abstract contract NewBaseWeightedPool is NewBaseMinimalSwapInfoPool {
             userData
         );
 
-        // Update the invariant with the balances the Pool will have after the join, in order to compute the
-        // protocol swap fee amounts due in future joins and exits.
         _afterJoin(balances, amountsIn, normalizedWeights);
 
         return (bptAmountOut, amountsIn);
@@ -328,19 +353,23 @@ abstract contract NewBaseWeightedPool is NewBaseMinimalSwapInfoPool {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-
         // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
         // out) remain functional.
 
-        // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
-        // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
-        // spending gas calculating the fees on each individual swap.
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+
         // If the contract is paused, swap protocol fee amounts are not charged to avoid extra calculations and
         // reduce the potential for errors.
         if (_isNotPaused()) {
-            uint256 dueProtocolFeeBPTAmount = _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
+            uint256 dueProtocolFeeBPTAmount = _getDueProtocolFeesBeforeJoinExit(
+                balances,
+                normalizedWeights,
+                protocolSwapFeePercentage
+            );
             _payProtocolFees(dueProtocolFeeBPTAmount);
+
+            // Since protocol fees are paid before the exit is processed, all calls to `totalSupply` in `_doExit` will
+            // return the updated value, diluting current LPs.
         }
 
         (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
