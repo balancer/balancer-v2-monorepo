@@ -127,7 +127,7 @@ export default {
         break;
       }
       default: {
-        result = deploy('v2-pool-weighted/WeightedPool', {
+        result = deploy('v2-pool-weighted/NewWeightedPool', {
           args: [
             vault.address,
             NAME,

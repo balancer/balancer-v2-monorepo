@@ -450,4 +450,24 @@ library WeightedMath {
         uint256 tokenAccruedFees = balance.mulDown(power.complement());
         return tokenAccruedFees.mulDown(protocolSwapFeePercentage);
     }
+
+    function _calcDueProtocolFeeBPTAmount(
+        uint256 previousInvariant,
+        uint256 currentInvariant,
+        uint256 bptTotalSupply,
+        uint256 protocolSwapFeePercentage
+    ) internal pure returns (uint256) {
+        if (currentInvariant <= previousInvariant) {
+            // This shouldn't happen outside of rounding errors, but have this safeguard nonetheless to prevent the Pool
+            // from entering a locked state in which joins and exits revert while computing accumulated swap fees.
+            return 0;
+        }
+
+        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less in protocol
+        // fees to the Vault.
+
+        uint256 invariantRatio = currentInvariant.divDown(previousInvariant);
+        uint256 equivalentBPT = bptTotalSupply.mulDown(invariantRatio.sub(FixedPoint.ONE));
+        return equivalentBPT.mulDown(protocolSwapFeePercentage);
+    }
 }
