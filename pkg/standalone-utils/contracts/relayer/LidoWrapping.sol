@@ -113,7 +113,7 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
         uint256 result = IstETH(address(_stETH)).submit{ value: amount }(address(this));
 
         if (recipient != address(this)) {
-            _wstETH.transfer(recipient, result);
+            _stETH.transfer(recipient, result);
         }
 
         if (_isChainedReference(outputReference)) {
