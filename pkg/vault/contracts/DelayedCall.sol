@@ -18,14 +18,14 @@ import "./interfaces/IDelayProvider.sol";
 import "./interfaces/IAuthorizer.sol";
 
 contract DelayedCall {
-    IDelayProvider private _delayProvider;
-    IAuthorizer private _authorizer;
+    IDelayProvider private immutable _delayProvider;
+    IAuthorizer private immutable _authorizer;
     bool public triggered = false;
-    uint256 public start;
-    address public where;
+    uint256 public immutable start;
+    address public immutable where;
     bytes public data;
-    bytes32 public actionId;
-    uint256 public value;
+    bytes32 public immutable actionId;
+    uint256 public immutable value;
     bool public immutable isTriggerPermissioned;
     bool public cancelled;
 
