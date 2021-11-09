@@ -32,10 +32,7 @@ contract MockStETH is TestToken, IstETH {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function submit(address referral) external payable override returns (uint256) {
-        // Silence unused variable warning
-        referral;
-
+    function submit(address) external payable override returns (uint256) {
         _mint(msg.sender, msg.value);
         return msg.value;
     }
