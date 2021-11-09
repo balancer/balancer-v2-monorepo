@@ -166,6 +166,8 @@ describe('LidoRelayer', function () {
   }
 
   describe('primitives', () => {
+    const amount = fp(1);
+
     describe('wrapStETH', () => {
       let tokenSender: Account, tokenRecipient: Account;
 
@@ -197,7 +199,6 @@ describe('LidoRelayer', function () {
 
       function testWrap(): void {
         it('wraps with immediate amounts', async () => {
-          const amount = fp(1);
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
 
           const receipt = await (
@@ -217,7 +218,6 @@ describe('LidoRelayer', function () {
         });
 
         it('stores wrap output as chained reference', async () => {
-          const amount = fp(1);
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
 
           const receipt = await (
@@ -242,7 +242,6 @@ describe('LidoRelayer', function () {
         });
 
         it('wraps with chained references', async () => {
-          const amount = fp(1);
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
           await setChainedReferenceContents(toChainedReference(0), amount);
 
@@ -296,8 +295,6 @@ describe('LidoRelayer', function () {
 
       function testUnwrap(): void {
         it('unwraps with immediate amounts', async () => {
-          const amount = fp(1);
-
           const receipt = await (
             await relayer.connect(sender).multicall([encodeUnwrap(tokenSender, tokenRecipient, amount)])
           ).wait();
@@ -314,8 +311,6 @@ describe('LidoRelayer', function () {
         });
 
         it('stores unwrap output as chained reference', async () => {
-          const amount = fp(1);
-
           await relayer
             .connect(sender)
             .multicall([encodeUnwrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
@@ -325,7 +320,6 @@ describe('LidoRelayer', function () {
         });
 
         it('unwraps with chained references', async () => {
-          const amount = fp(1);
           await setChainedReferenceContents(toChainedReference(0), amount);
 
           const receipt = await (
@@ -371,8 +365,6 @@ describe('LidoRelayer', function () {
 
       function testStake(): void {
         it('stakes with immediate amounts', async () => {
-          const amount = fp(1);
-
           const receipt = await (
             await relayer.connect(sender).multicall([encodeStakeETH(tokenRecipient, amount)], { value: amount })
           ).wait();
@@ -390,8 +382,6 @@ describe('LidoRelayer', function () {
         });
 
         it('stores stake output as chained reference', async () => {
-          const amount = fp(1);
-
           const receipt = await (
             await relayer
               .connect(sender)
@@ -413,7 +403,6 @@ describe('LidoRelayer', function () {
         });
 
         it('stakes with chained references', async () => {
-          const amount = fp(1);
           await setChainedReferenceContents(toChainedReference(0), amount);
 
           const receipt = await (
@@ -462,7 +451,6 @@ describe('LidoRelayer', function () {
 
       function testStake(): void {
         it('stakes with immediate amounts', async () => {
-          const amount = fp(1);
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
 
           const receipt = await (
@@ -482,7 +470,6 @@ describe('LidoRelayer', function () {
         });
 
         it('stores stake output as chained reference', async () => {
-          const amount = fp(1);
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
 
           const receipt = await (
@@ -506,7 +493,6 @@ describe('LidoRelayer', function () {
         });
 
         it('stakes with chained references', async () => {
-          const amount = fp(1);
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
 
           await setChainedReferenceContents(toChainedReference(0), amount);
