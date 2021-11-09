@@ -15,16 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../RelayedBasePool.sol";
+import "../LegacyBasePool.sol";
 
-contract MockRelayedBasePool is RelayedBasePool {
-    uint256 private constant _MINIMUM_BPT = 1e6;
-
+contract MockLegacyBasePool is LegacyBasePool {
     uint256 private immutable _totalTokens;
-
-    event Join(bytes32 poolId, address sender, address recipient, bytes userData, uint256[] balances);
-
-    event Exit(bytes32 poolId, address sender, address recipient, bytes userData, uint256[] balances);
 
     constructor(
         IVault vault,
@@ -36,7 +30,6 @@ contract MockRelayedBasePool is RelayedBasePool {
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        IBasePoolRelayer relayer,
         address owner
     )
         LegacyBasePool(
@@ -51,119 +44,63 @@ contract MockRelayedBasePool is RelayedBasePool {
             bufferPeriodDuration,
             owner
         )
-        RelayedBasePool(relayer)
     {
         _totalTokens = tokens.length;
     }
 
-    function onJoinPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        bytes memory userData
-    ) public override returns (uint256[] memory, uint256[] memory) {
-        emit Join(poolId, sender, recipient, userData, balances);
-        return
-            RelayedBasePool.onJoinPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                protocolSwapFeePercentage,
-                userData
-            );
+    function setMiscData(bytes32 data) external {
+        _setMiscData(data);
     }
 
-    function onExitPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        bytes memory userData
-    ) public override returns (uint256[] memory, uint256[] memory) {
-        emit Exit(poolId, sender, recipient, userData, balances);
-        return
-            RelayedBasePool.onExitPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                protocolSwapFeePercentage,
-                userData
-            );
+    function getMiscData() external view returns (bytes32) {
+        return _getMiscData();
     }
 
     function _onInitializePool(
-        bytes32,
-        address,
-        address,
-        uint256[] memory,
-        bytes memory
-    ) internal view override returns (uint256, uint256[] memory) {
-        return (_MINIMUM_BPT * 2, _ones());
-    }
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    ) internal override returns (uint256, uint256[] memory) {}
 
     function _onJoinPool(
-        bytes32,
-        address,
-        address,
-        uint256[] memory,
-        uint256,
-        uint256,
-        uint256[] memory,
-        bytes memory
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory currentBalances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
+        bytes memory userData
     )
         internal
-        view
         override
         returns (
             uint256,
             uint256[] memory,
             uint256[] memory
         )
-    {
-        return (_MINIMUM_BPT * 2, _ones(), _zeros());
-    }
+    {}
 
     function _onExitPool(
-        bytes32,
-        address,
-        address,
-        uint256[] memory,
-        uint256,
-        uint256,
-        uint256[] memory,
-        bytes memory
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory currentBalances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
+        bytes memory userData
     )
         internal
-        view
         override
         returns (
             uint256,
             uint256[] memory,
             uint256[] memory
         )
-    {
-        return (_MINIMUM_BPT, _ones(), _zeros());
-    }
-
-    function _zeros() private view returns (uint256[] memory) {
-        return new uint256[](_getTotalTokens());
-    }
-
-    function _ones() private view returns (uint256[] memory ones) {
-        ones = new uint256[](_getTotalTokens());
-        for (uint256 i = 0; i < ones.length; i++) {
-            ones[i] = FixedPoint.ONE;
-        }
-    }
+    {}
 
     function _getMaxTokens() internal pure override returns (uint256) {
         return 8;

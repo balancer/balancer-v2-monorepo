@@ -18,7 +18,6 @@ pragma experimental ABIEncoderV2;
 import "../BasePool.sol";
 
 contract MockBasePool is BasePool {
-
     uint256 private immutable _totalTokens;
 
     constructor(
@@ -74,15 +73,7 @@ contract MockBasePool is BasePool {
         uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {}
+    ) internal override returns (uint256, uint256[] memory) {}
 
     function _onExitPool(
         bytes32 poolId,
@@ -93,15 +84,11 @@ contract MockBasePool is BasePool {
         uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {}
+    ) internal override returns (uint256, uint256[] memory) {}
+
+    function payProtocolFees(uint256 bptAmount) public {
+        _payProtocolFees(bptAmount);
+    }
 
     function _getMaxTokens() internal pure override returns (uint256) {
         return 8;
@@ -122,5 +109,5 @@ contract MockBasePool is BasePool {
         for (uint256 i = 0; i < numTokens; i++) {
             scalingFactors[i] = FixedPoint.ONE;
         }
-    }    
+    }
 }

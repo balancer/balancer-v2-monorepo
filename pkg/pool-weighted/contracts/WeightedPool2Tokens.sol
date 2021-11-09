@@ -23,6 +23,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IMinimalSwapInfoPool.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BasePoolAuthorization.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BalancerPoolToken.sol";
 import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";

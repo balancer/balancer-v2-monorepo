@@ -20,13 +20,13 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
-import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/LegacyBaseMinimalSwapInfoPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
 
 import "./StableMath.sol";
 import "./StablePoolUserDataHelpers.sol";
 
-contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
+contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProvider {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using StablePoolUserDataHelpers for bytes;
@@ -89,9 +89,9 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
         uint256 bufferPeriodDuration,
         address owner
     )
-        BasePool(
+        LegacyBasePool(
             vault,
-            // Because we're inheriting from both BaseGeneralPool and BaseMinimalSwapInfoPool we can choose any
+            // Because we're inheriting from both BaseGeneralPool and LegacyBaseMinimalSwapInfoPool we can choose any
             // specialization setting. Since this Pool never registers or deregisters any tokens after construction,
             // picking Two Token when the Pool only has two tokens is free gas savings.
             tokens.length == 2 ? IVault.PoolSpecialization.TWO_TOKEN : IVault.PoolSpecialization.GENERAL,
@@ -179,7 +179,7 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
         return amountIn;
     }
 
-    // Swap - Two Token Pool specialization (from BaseMinimalSwapInfoPool)
+    // Swap - Two Token Pool specialization (from LegacyBaseMinimalSwapInfoPool)
 
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,

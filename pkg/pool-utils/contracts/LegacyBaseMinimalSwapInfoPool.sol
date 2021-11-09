@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./NewBasePool.sol";
+import "./LegacyBasePool.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IMinimalSwapInfoPool.sol";
 
 /**
@@ -25,7 +25,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IMinimalSwapInfoPool.sol";
  * `BasePool`'s virtual functions. Inheriting from this contract lets derived contracts choose the Two Token or Minimal
  * Swap Info specialization settings.
  */
-abstract contract NewBaseMinimalSwapInfoPool is IMinimalSwapInfoPool, NewBasePool {
+abstract contract LegacyBaseMinimalSwapInfoPool is IMinimalSwapInfoPool, LegacyBasePool {
     // Swap Hooks
 
     function onSwap(

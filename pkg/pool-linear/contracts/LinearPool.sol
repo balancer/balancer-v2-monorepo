@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/LegacyBasePool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 
@@ -32,7 +32,7 @@ import "./LinearPoolUserDataHelpers.sol";
  * @dev LinearPool suitable for assets with an equal underlying token with an exact and non-manipulable exchange rate.
  * Requires an external feed of these exchange rates.
  */
-contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
+contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
@@ -83,7 +83,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     }
 
     constructor(NewPoolParams memory params)
-        BasePool(
+        LegacyBasePool(
             params.vault,
             IVault.PoolSpecialization.GENERAL,
             params.name,

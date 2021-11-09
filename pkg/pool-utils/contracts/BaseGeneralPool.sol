@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./BasePool.sol";
+import "./LegacyBasePool.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
 
 /**
@@ -25,7 +25,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
  * `BasePool`'s virtual functions. Inheriting from this contract lets derived contracts choose the General
  * specialization setting.
  */
-abstract contract BaseGeneralPool is IGeneralPool, BasePool {
+abstract contract BaseGeneralPool is IGeneralPool, LegacyBasePool {
     // Swap Hooks
 
     function onSwap(
