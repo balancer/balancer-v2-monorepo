@@ -227,9 +227,7 @@ describe('LidoRelayer', function () {
           ).wait();
 
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
-          const {
-            args: { value: wstETHAmount },
-          } = expectTransferEvent(
+          expectTransferEvent(
             receipt,
             {
               from: relayerIsRecipient ? ZERO_ADDRESS : relayer.address,
@@ -238,7 +236,7 @@ describe('LidoRelayer', function () {
             },
             wstETH
           );
-          await expectChainedReferenceContents(toChainedReference(0), wstETHAmount);
+          await expectChainedReferenceContents(toChainedReference(0), expectedWstETHAmount);
         });
 
         it('wraps with chained references', async () => {
