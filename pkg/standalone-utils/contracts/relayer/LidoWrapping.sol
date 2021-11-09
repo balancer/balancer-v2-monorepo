@@ -31,8 +31,8 @@ import "../interfaces/IwstETH.sol";
 abstract contract LidoWrapping is IBaseRelayerLibrary {
     using Address for address payable;
 
-    IERC20 private immutable _stETH;
-    IERC20 private immutable _wstETH;
+    IstETH private immutable _stETH;
+    IwstETH private immutable _wstETH;
 
     /**
      * @dev The zero address may be passed as wstETH to safely disable this module
@@ -40,8 +40,8 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
      */
     constructor(IERC20 wstETH) {
         // Safely disable stETH wrapping if no address has been passed for wstETH
-        _stETH = wstETH != IERC20(0) ? IERC20(IwstETH(address(wstETH)).stETH()) : IERC20(0);
-        _wstETH = wstETH;
+        _stETH = wstETH != IERC20(0) ? IwstETH(address(wstETH)).stETH() : IstETH(0);
+        _wstETH = IwstETH(address(wstETH));
     }
 
     function wrapStETH(
@@ -62,7 +62,7 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
         }
 
         _stETH.approve(address(_wstETH), amount);
-        uint256 result = IwstETH(address(_wstETH)).wrap(amount);
+        uint256 result = IwstETH(_wstETH).wrap(amount);
 
         if (recipient != address(this)) {
             _wstETH.transfer(recipient, result);
@@ -90,7 +90,7 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
             _pullToken(sender, _wstETH, amount);
         }
 
-        uint256 result = IwstETH(address(_wstETH)).unwrap(amount);
+        uint256 result = _wstETH.unwrap(amount);
 
         if (recipient != address(this)) {
             _stETH.transfer(recipient, result);
@@ -110,7 +110,7 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
             amount = _getChainedReferenceValue(amount);
         }
 
-        uint256 result = IstETH(address(_stETH)).submit{ value: amount }(address(this));
+        uint256 result = _stETH.submit{ value: amount }(address(this));
 
         if (recipient != address(this)) {
             _stETH.transfer(recipient, result);
@@ -138,7 +138,7 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
         // however in this scenario the next line will revert, preventing loss of funds.
 
         // As the wstETH contract doesn't return how much wstETH was minted we must query this separately.
-        uint256 result = IwstETH(address(_wstETH)).getWstETHByStETH(amount);
+        uint256 result = _wstETH.getWstETHByStETH(amount);
 
         if (recipient != address(this)) {
             _wstETH.transfer(recipient, result);
