@@ -34,6 +34,16 @@ describe('BaseRelayerLibrary', function () {
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
   });
 
+  describe('relayer getters', () => {
+    it('returns the library address', async () => {
+      expect(await relayer.getLibrary()).to.equal(relayerLibrary.address);
+    });
+
+    it('returns the vault address', async () => {
+      expect(await relayer.getVault()).to.equal(vault.address);
+    });
+  });
+
   describe('chained references', () => {
     const CHAINED_REFERENCE_PREFIX = 'ba10';
 
