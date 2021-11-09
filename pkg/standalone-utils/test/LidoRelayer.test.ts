@@ -342,23 +342,16 @@ describe('LidoRelayer', function () {
     describe('stakeETH', () => {
       let tokenRecipient: Account;
 
-      context('sender = user, recipient = relayer', () => {
-        beforeEach(() => {
-          tokenRecipient = relayer;
-        });
-        testStake();
-      });
-
-      context('sender = relayer, recipient = relayer', () => {
-        beforeEach(() => {
-          tokenRecipient = relayer;
-        });
-        testStake();
-      });
-
-      context('sender = relayer, recipient = sender', () => {
+      context('recipient = sender', () => {
         beforeEach(() => {
           tokenRecipient = sender;
+        });
+        testStake();
+      });
+
+      context('recipient = relayer', () => {
+        beforeEach(() => {
+          tokenRecipient = relayer;
         });
         testStake();
       });
@@ -428,28 +421,21 @@ describe('LidoRelayer', function () {
     describe('stakeETHAndWrap', () => {
       let tokenRecipient: Account;
 
-      context('sender = user, recipient = relayer', () => {
-        beforeEach(() => {
-          tokenRecipient = relayer;
-        });
-        testStake();
-      });
-
-      context('sender = relayer, recipient = relayer', () => {
-        beforeEach(() => {
-          tokenRecipient = relayer;
-        });
-        testStake();
-      });
-
-      context('sender = relayer, recipient = sender', () => {
+      context('recipient = sender', () => {
         beforeEach(() => {
           tokenRecipient = sender;
         });
-        testStake();
+        testStakeAndWrap();
       });
 
-      function testStake(): void {
+      context('recipient = relayer', () => {
+        beforeEach(() => {
+          tokenRecipient = relayer;
+        });
+        testStakeAndWrap();
+      });
+
+      function testStakeAndWrap(): void {
         it('stakes with immediate amounts', async () => {
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
 
