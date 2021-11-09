@@ -559,8 +559,6 @@ describe('LidoRelayer', function () {
             poolId,
             tokenIn: tokenIn.address,
             tokenOut: tokenOut.address,
-            // amountIn: singleSwap.amount,
-            // amountOut
           });
 
           expectEvent.inIndirectReceipt(
@@ -624,8 +622,6 @@ describe('LidoRelayer', function () {
             poolId,
             tokenIn: tokenIn.address,
             tokenOut: tokenOut.address,
-            // amountIn: singleSwap.amount,
-            // amountOut
           });
 
           expectEvent.inIndirectReceipt(
@@ -725,8 +721,6 @@ describe('LidoRelayer', function () {
             poolId: poolId,
             tokenIn: tokenIn.address,
             tokenOut: tokenOut.address,
-            // amountIn,
-            // amountOut
           });
 
           expectEvent.inIndirectReceipt(
@@ -781,8 +775,6 @@ describe('LidoRelayer', function () {
             poolId: poolId,
             tokenIn: tokenIn.address,
             tokenOut: tokenOut.address,
-            // amountIn,
-            // amountOut
           });
 
           expectEvent.inIndirectReceipt(
