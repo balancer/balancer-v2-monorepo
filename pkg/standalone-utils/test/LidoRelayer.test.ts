@@ -430,9 +430,62 @@ describe('LidoRelayer', function () {
       });
 
       function testStake(): void {
-        it('unwraps with immediate amounts');
-        it('stores unwrap output as chained reference');
-        it('unwraps with chained references');
+        it('stakes with immediate amounts', async () => {
+          const amount = fp(1);
+
+          const receipt = await (
+            await relayer.connect(sender).multicall([encodeStakeETHAndWrap(tokenRecipient, amount)], { value: amount })
+          ).wait();
+
+          expectEvent.inIndirectReceipt(
+            receipt,
+            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+            'Transfer',
+            { to: TypesConverter.toAddress(tokenRecipient) },
+            wstETH.address
+          );
+        });
+
+        it('stores stake output as chained reference', async () => {
+          const amount = fp(1);
+
+          const receipt = await (
+            await relayer
+              .connect(sender)
+              .multicall([encodeStakeETHAndWrap(tokenRecipient, amount, toChainedReference(0))], { value: amount })
+          ).wait();
+
+          const {
+            args: { value: wstETHAmount },
+          } = expectEvent.inIndirectReceipt(
+            receipt,
+            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+            'Transfer',
+            { from: ZERO_ADDRESS, to: relayer.address },
+            wstETH.address
+          );
+          await expectChainedReferenceContents(toChainedReference(0), wstETHAmount);
+        });
+
+        it('stakes with chained references', async () => {
+          const amount = fp(1);
+          await setChainedReferenceContents(toChainedReference(0), amount);
+
+          const receipt = await (
+            await relayer
+              .connect(sender)
+              .multicall([encodeStakeETHAndWrap(tokenRecipient, toChainedReference(0))], { value: amount })
+          ).wait();
+
+          const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
+          expectEvent.inIndirectReceipt(
+            receipt,
+            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
+            'Transfer',
+            { from: ZERO_ADDRESS, to: relayer.address, value: expectedWstETHAmount },
+            wstETH.address
+          );
+        });
       }
     });
   });
