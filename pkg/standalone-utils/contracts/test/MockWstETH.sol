@@ -47,7 +47,7 @@ contract MockWstETH is ERC20, IwstETH {
     }
 
     receive() external payable {
-        stETH.submit{value: msg.value}(address(this));
+        stETH.submit{ value: msg.value }(address(this));
         _mint(msg.sender, getWstETHByStETH(msg.value));
     }
 
