@@ -209,8 +209,8 @@ describe('LidoRelayer', function () {
           expectTransferEvent(
             receipt,
             {
-              from: relayerIsRecipient ? ZERO_ADDRESS : relayer.address,
-              to: relayerIsRecipient ? relayer.address : TypesConverter.toAddress(tokenRecipient),
+              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
+              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: expectedWstETHAmount,
             },
             wstETH
@@ -230,8 +230,8 @@ describe('LidoRelayer', function () {
           expectTransferEvent(
             receipt,
             {
-              from: relayerIsRecipient ? ZERO_ADDRESS : relayer.address,
-              to: relayerIsRecipient ? relayer.address : TypesConverter.toAddress(tokenRecipient),
+              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
+              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: expectedWstETHAmount,
             },
             wstETH
@@ -251,8 +251,8 @@ describe('LidoRelayer', function () {
           expectTransferEvent(
             receipt,
             {
-              from: relayerIsRecipient ? ZERO_ADDRESS : relayer.address,
-              to: relayerIsRecipient ? relayer.address : TypesConverter.toAddress(tokenRecipient),
+              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
+              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: expectedWstETHAmount,
             },
             wstETH
@@ -300,8 +300,8 @@ describe('LidoRelayer', function () {
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(tokenRecipient) !== relayer.address ? relayer.address : wstETH.address,
-              to: TypesConverter.toAddress(tokenRecipient),
+              from: TypesConverter.toAddress(wstETH),
+              to: TypesConverter.toAddress(relayer),
               value: await wstETH.instance.getStETHByWstETH(amount),
             },
             stETH
@@ -383,8 +383,8 @@ describe('LidoRelayer', function () {
           expectTransferEvent(
             receipt,
             {
-              from: relayerIsRecipient ? ZERO_ADDRESS : relayer.address,
-              to: relayerIsRecipient ? relayer.address : TypesConverter.toAddress(tokenRecipient),
+              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
+              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: amount,
             },
             stETH
@@ -406,8 +406,8 @@ describe('LidoRelayer', function () {
           expectTransferEvent(
             receipt,
             {
-              from: relayerIsRecipient ? ZERO_ADDRESS : relayer.address,
-              to: relayerIsRecipient ? relayer.address : TypesConverter.toAddress(tokenRecipient),
+              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
+              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: amount,
             },
             stETH
@@ -445,8 +445,8 @@ describe('LidoRelayer', function () {
           expectTransferEvent(
             receipt,
             {
-              from: relayerIsRecipient ? ZERO_ADDRESS : relayer.address,
-              to: relayerIsRecipient ? relayer.address : TypesConverter.toAddress(tokenRecipient),
+              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
+              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: expectedWstETHAmount,
             },
             wstETH
@@ -466,8 +466,8 @@ describe('LidoRelayer', function () {
           expectTransferEvent(
             receipt,
             {
-              from: relayerIsRecipient ? ZERO_ADDRESS : relayer.address,
-              to: relayerIsRecipient ? relayer.address : TypesConverter.toAddress(tokenRecipient),
+              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
+              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: expectedWstETHAmount,
             },
             wstETH
