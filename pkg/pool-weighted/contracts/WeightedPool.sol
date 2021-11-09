@@ -30,6 +30,9 @@ contract WeightedPool is BaseWeightedPool {
     // Due protocol swap fee amounts are computed by measuring the growth of the invariant after a join or exit event
     // and before the next one - the invariant's growth is due exclusively to swap fees. This avoids spending gas
     // computing and tracking protocol fees on each individual swap.
+    // Note that this is only true because the weights are immutable: other Pools derived from BaseWeightedPool
+    // that feature dynamic weights will see their invariant change because of this, and must therefore rely on a
+    // different mechanism to track due protocol fees.
     uint256 private _lastInvariant;
 
     IERC20 internal immutable _token0;
