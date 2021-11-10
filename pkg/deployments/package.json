@@ -32,6 +32,7 @@
     "@balancer-labs/v2-helpers": "workspace:*",
     "@nomiclabs/hardhat-ethers": "^2.0.1",
     "@nomiclabs/hardhat-etherscan": "latest",
+    "@solidity-parser/parser": "^0.14.0",
     "@types/node": "^14.6.0",
     "@typescript-eslint/eslint-plugin": "^4.1.1",
     "@typescript-eslint/parser": "^4.1.1",
