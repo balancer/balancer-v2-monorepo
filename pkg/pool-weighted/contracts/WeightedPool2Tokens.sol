@@ -624,6 +624,9 @@ contract WeightedPool2Tokens is
             _cacheInvariantAndSupply();
         }
 
+        // Always return zero dueProtocolFeeAmounts to the Vault: protocol fees will be paid in BPT,
+        // by minting directly to the protocolFeeCollector
+
         return (amountsOut, new uint256[](2));
     }
 
