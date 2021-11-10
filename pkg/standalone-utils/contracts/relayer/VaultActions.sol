@@ -21,8 +21,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "@balancer-labs/v2-pool-weighted/contracts/BaseWeightedPool.sol";
-import "@balancer-labs/v2-pool-weighted/contracts/WeightedPoolUserDataHelpers.sol";
+import "@balancer-labs/v2-pool-weighted/contracts/WeightedPoolUserData.sol";
 
 import "../interfaces/IBaseRelayerLibrary.sol";
 
@@ -152,9 +151,9 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     function _doWeightedJoinChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
-        BaseWeightedPool.JoinKind kind = WeightedPoolUserDataHelpers.joinKind(userData);
+        WeightedPoolUserData.JoinKind kind = WeightedPoolUserData.joinKind(userData);
 
-        if (kind == BaseWeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+        if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _doWeightedExactTokensInForBPTOutReplacements(userData);
         } else {
             // All other join kinds are 'given out' (i.e the parameter is a BPT amount), so we don't do replacements for
@@ -164,9 +163,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     function _doWeightedExactTokensInForBPTOutReplacements(bytes memory userData) private returns (bytes memory) {
-        (uint256[] memory amountsIn, uint256 minBPTAmountOut) = WeightedPoolUserDataHelpers.exactTokensInForBptOut(
-            userData
-        );
+        (uint256[] memory amountsIn, uint256 minBPTAmountOut) = WeightedPoolUserData.exactTokensInForBptOut(userData);
 
         bool replacedAmounts = false;
         for (uint256 i = 0; i < amountsIn.length; ++i) {
@@ -180,7 +177,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         // Save gas by only re-encoding the data if we actually performed a replacement
         return
             replacedAmounts
-                ? abi.encode(BaseWeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minBPTAmountOut)
+                ? abi.encode(WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minBPTAmountOut)
                 : userData;
     }
 
@@ -252,11 +249,11 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     function _doWeightedExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
-        BaseWeightedPool.ExitKind kind = WeightedPoolUserDataHelpers.exitKind(userData);
+        WeightedPoolUserData.ExitKind kind = WeightedPoolUserData.exitKind(userData);
 
-        if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+        if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _doWeightedExactBptInForOneTokenOutReplacements(userData);
-        } else if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _doWeightedExactBptInForTokensOutReplacements(userData);
         } else {
             // All other exit kinds are 'given out' (i.e the parameter is a token amount),
@@ -266,11 +263,11 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     function _doWeightedExactBptInForOneTokenOutReplacements(bytes memory userData) private returns (bytes memory) {
-        (uint256 bptAmountIn, uint256 tokenIndex) = WeightedPoolUserDataHelpers.exactBptInForTokenOut(userData);
+        (uint256 bptAmountIn, uint256 tokenIndex) = WeightedPoolUserData.exactBptInForTokenOut(userData);
 
         if (_isChainedReference(bptAmountIn)) {
             bptAmountIn = _getChainedReferenceValue(bptAmountIn);
-            return abi.encode(BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, tokenIndex);
+            return abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, tokenIndex);
         } else {
             // Save gas by only re-encoding the data if we actually performed a replacement
             return userData;
@@ -278,11 +275,11 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     function _doWeightedExactBptInForTokensOutReplacements(bytes memory userData) private returns (bytes memory) {
-        uint256 bptAmountIn = WeightedPoolUserDataHelpers.exactBptInForTokensOut(userData);
+        uint256 bptAmountIn = WeightedPoolUserData.exactBptInForTokensOut(userData);
 
         if (_isChainedReference(bptAmountIn)) {
             bptAmountIn = _getChainedReferenceValue(bptAmountIn);
-            return abi.encode(BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn);
+            return abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn);
         } else {
             // Save gas by only re-encoding the data if we actually performed a replacement
             return userData;
