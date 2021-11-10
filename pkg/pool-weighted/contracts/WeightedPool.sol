@@ -81,10 +81,6 @@ contract WeightedPool is BaseWeightedPool {
     uint256 internal immutable _scalingFactor18;
     uint256 internal immutable _scalingFactor19;
 
-    // The protocol fees will always be charged using the token associated with the max weight in the pool.
-    // Since these Pools will register tokens only once, we can assume this index will be constant.
-    uint256 internal immutable _maxWeightTokenIndex;
-
     uint256 internal immutable _normalizedWeight0;
     uint256 internal immutable _normalizedWeight1;
     uint256 internal immutable _normalizedWeight2;
@@ -135,24 +131,16 @@ contract WeightedPool is BaseWeightedPool {
 
         _totalTokens = numTokens;
 
-        // Ensure  each normalized weight is above them minimum and find the token index of the maximum weight
+        // Ensure each normalized weight is above the minimum
         uint256 normalizedSum = 0;
-        uint256 maxWeightTokenIndex = 0;
-        uint256 maxNormalizedWeight = 0;
         for (uint8 i = 0; i < numTokens; i++) {
             uint256 normalizedWeight = normalizedWeights[i];
             _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             normalizedSum = normalizedSum.add(normalizedWeight);
-            if (normalizedWeight > maxNormalizedWeight) {
-                maxWeightTokenIndex = i;
-                maxNormalizedWeight = normalizedWeight;
-            }
         }
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
-
-        _maxWeightTokenIndex = maxWeightTokenIndex;
 
         _normalizedWeight0 = normalizedWeights[0];
         _normalizedWeight1 = normalizedWeights[1];
