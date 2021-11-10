@@ -18,12 +18,16 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
+import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+
 /**
  * @title IBalancerRelayer
  * @notice Allows safe multicall execution of a relayer's functions
  */
 interface IBalancerRelayer {
     function getLibrary() external view returns (address);
+
+    function getVault() external view returns (IVault);
 
     function multicall(bytes[] calldata data) external payable returns (bytes[] memory results);
 }
