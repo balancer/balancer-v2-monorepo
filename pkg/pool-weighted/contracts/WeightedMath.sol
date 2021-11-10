@@ -463,9 +463,9 @@ library WeightedMath {
             return 0;
         }
 
-        // We can compute by how much the BPT supply should have increased had the invariant growth been due to new users
-        // joining the Pool. This BPT amount is implicitly distributed to all BPT holders proportionally. In order to pay 
-        // protocol fees, we take a percentage of this amount and mint it, slightly diluting all LPs.
+        // We can compute by how much the BPT supply should have increased had the invariant growth been due to new
+        // users joining the Pool. This BPT amount is implicitly distributed to all BPT holders proportionally.
+        // In order to pay protocol fees, we take a percentage of this amount and mint it, slightly diluting all LPs.
 
         // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less in protocol
         // fees to the Vault.
