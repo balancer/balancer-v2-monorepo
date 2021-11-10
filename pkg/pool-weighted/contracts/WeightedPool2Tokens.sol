@@ -64,9 +64,11 @@ contract WeightedPool2Tokens is
     uint256 private immutable _normalizedWeight0;
     uint256 private immutable _normalizedWeight1;
 
-    // The protocol fees will always be charged using the token associated with the max weight in the pool.
-    // Since these Pools will register tokens only once, we can assume this index will be constant.
-    uint256 private immutable _maxWeightTokenIndex;
+    // This Pool pays protocol fees by minting BPT directly to the ProtocolFeeCollector instead of using the
+    // `dueProtocolFees` return value. This results in better rates for users, as the Pool won't unbalance itself right
+    // before they join/exit. Furthermore, the underlying tokens will continue to provide liquidity for traders.
+    // Cache it in this contract to avoid calls to the Vault.
+    IProtocolFeesCollector private immutable _protocolFeesCollector;
 
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
@@ -139,7 +141,9 @@ contract WeightedPool2Tokens is
 
         _normalizedWeight0 = params.normalizedWeight0;
         _normalizedWeight1 = params.normalizedWeight1;
-        _maxWeightTokenIndex = params.normalizedWeight0 >= params.normalizedWeight1 ? 0 : 1;
+
+        // Note that this value is immutable in the Vault
+        _protocolFeesCollector = params.vault.getProtocolFeesCollector();
     }
 
     // Getters / Setters
@@ -167,6 +171,10 @@ contract WeightedPool2Tokens is
         oracleIndex = miscData.oracleIndex();
         oracleEnabled = miscData.oracleEnabled();
         swapFeePercentage = miscData.swapFeePercentage();
+    }
+
+    function getProtocolFeesCollector() public view returns (IProtocolFeesCollector) {
+        return _protocolFeesCollector;
     }
 
     function getSwapFeePercentage() public view returns (uint256) {
@@ -368,6 +376,10 @@ contract WeightedPool2Tokens is
     {
         // All joins, including initializations, are disabled while the contract is paused.
 
+        // Always return zero dueProtocolFeeAmounts to the Vault - protocol fees will be paid in BPT,
+        // by minting directly to the protocolFeeCollector
+        dueProtocolFeeAmounts = new uint256[](2);
+
         uint256 bptAmountOut;
         if (totalSupply() == 0) {
             (bptAmountOut, amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
@@ -381,16 +393,13 @@ contract WeightedPool2Tokens is
 
             // amountsIn are amounts entering the Pool, so we round up.
             _downscaleUpArray(amountsIn);
-
-            // There are no due protocol fee amounts during initialization
-            dueProtocolFeeAmounts = new uint256[](2);
         } else {
             _upscaleArray(balances);
 
             // Update price oracle with the pre-join balances
             _updateOracle(lastChangeBlock, balances[0], balances[1]);
 
-            (bptAmountOut, amountsIn, dueProtocolFeeAmounts) = _onJoinPool(
+            (bptAmountOut, amountsIn) = _onJoinPool(
                 poolId,
                 sender,
                 recipient,
@@ -406,8 +415,6 @@ contract WeightedPool2Tokens is
 
             // amountsIn are amounts entering the Pool, so we round up.
             _downscaleUpArray(amountsIn);
-            // dueProtocolFeeAmounts are amounts exiting the Pool, so we round down.
-            _downscaleDownArray(dueProtocolFeeAmounts);
         }
 
         // Update cached total supply and invariant using the results after the join that will be used for future
@@ -449,7 +456,8 @@ contract WeightedPool2Tokens is
         // consistent in Pools with similar compositions but different number of tokens.
         uint256 bptAmountOut = Math.mul(invariantAfterJoin, 2);
 
-        _lastInvariant = invariantAfterJoin;
+        // An initialization is technically a join so we process it as such, with the pre-join balances being zero.
+        _afterJoin(new uint256[](amountsIn.length), amountsIn, normalizedWeights);
 
         return (bptAmountOut, amountsIn);
     }
@@ -479,39 +487,25 @@ contract WeightedPool2Tokens is
         uint256,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    )
-        private
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {
+    ) private returns (uint256, uint256[] memory) {
         uint256[] memory normalizedWeights = _normalizedWeights();
 
-        // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous join
-        // or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids spending gas
-        // computing them on each individual swap
-        uint256 invariantBeforeJoin = WeightedMath._calculateInvariant(normalizedWeights, balances);
-
-        uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
+        uint256 dueProtocolFeeBPTAmount = _getDueProtocolFeesBeforeJoinExit(
             balances,
             normalizedWeights,
-            _lastInvariant,
-            invariantBeforeJoin,
             protocolSwapFeePercentage
         );
 
-        // Update current balances by subtracting the protocol fee amounts
-        _mutateAmounts(balances, dueProtocolFeeAmounts, FixedPoint.sub);
+        _payProtocolFees(dueProtocolFeeBPTAmount);
+
+        // Since protocol fees are paid before the join is processed, all calls to `totalSupply` in `_doJoin` will
+        // return the updated value, diluting current LPs.
+
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(balances, normalizedWeights, userData);
 
-        // Update the invariant with the balances the Pool will have after the join, in order to compute the
-        // protocol swap fee amounts due in future joins and exits.
-        _mutateAmounts(balances, amountsIn, FixedPoint.add);
-        _lastInvariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
+        _afterJoin(balances, amountsIn, normalizedWeights);
 
-        return (bptAmountOut, amountsIn, dueProtocolFeeAmounts);
+        return (bptAmountOut, amountsIn);
     }
 
     function _doJoin(
@@ -607,7 +601,7 @@ contract WeightedPool2Tokens is
     ) public virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         _upscaleArray(balances);
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _onExitPool(
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = _onExitPool(
             poolId,
             sender,
             recipient,
@@ -621,9 +615,8 @@ contract WeightedPool2Tokens is
 
         _burnPoolTokens(sender, bptAmountIn);
 
-        // Both amountsOut and dueProtocolFeeAmounts are amounts exiting the Pool, so we round down.
+        // AmountsOut are amounts exiting the Pool, so we round down.
         _downscaleDownArray(amountsOut);
-        _downscaleDownArray(dueProtocolFeeAmounts);
 
         // Update cached total supply and invariant using the results after the exit that will be used for future
         // oracle updates, only if the pool was not paused (to minimize code paths taken while paused).
@@ -631,7 +624,7 @@ contract WeightedPool2Tokens is
             _cacheInvariantAndSupply();
         }
 
-        return (amountsOut, dueProtocolFeeAmounts);
+        return (amountsOut, new uint256[](2));
     }
 
     /**
@@ -659,14 +652,7 @@ contract WeightedPool2Tokens is
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    )
-        private
-        returns (
-            uint256 bptAmountIn,
-            uint256[] memory amountsOut,
-            uint256[] memory dueProtocolFeeAmounts
-        )
-    {
+    ) private returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
         // out) remain functional.
 
@@ -676,34 +662,21 @@ contract WeightedPool2Tokens is
             // Update price oracle with the pre-exit balances
             _updateOracle(lastChangeBlock, balances[0], balances[1]);
 
-            // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
-            // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
-            // spending gas calculating the fees on each individual swap.
-            uint256 invariantBeforeExit = WeightedMath._calculateInvariant(normalizedWeights, balances);
-            dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
+            uint256 dueProtocolFeeBPTAmount = _getDueProtocolFeesBeforeJoinExit(
                 balances,
                 normalizedWeights,
-                _lastInvariant,
-                invariantBeforeExit,
                 protocolSwapFeePercentage
             );
 
-            // Update current balances by subtracting the protocol fee amounts
-            _mutateAmounts(balances, dueProtocolFeeAmounts, FixedPoint.sub);
-        } else {
-            // If the contract is paused, swap protocol fee amounts are not charged and the oracle is not updated
-            // to avoid extra calculations and reduce the potential for errors.
-            dueProtocolFeeAmounts = new uint256[](2);
+            _payProtocolFees(dueProtocolFeeBPTAmount);
+
+            // Since protocol fees are paid before the exit is processed, all calls to `totalSupply` in `_doExit` will
+            // return the updated value, diluting current LPs.
         }
 
         (bptAmountIn, amountsOut) = _doExit(balances, normalizedWeights, userData);
 
-        // Update the invariant with the balances the Pool will have after the exit, in order to compute the
-        // protocol swap fees due in future joins and exits.
-        _mutateAmounts(balances, amountsOut, FixedPoint.sub);
-        _lastInvariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
-
-        return (bptAmountIn, amountsOut, dueProtocolFeeAmounts);
+        _afterExit(balances, amountsOut, normalizedWeights);
     }
 
     function _doExit(
@@ -939,46 +912,58 @@ contract WeightedPool2Tokens is
 
     // Helpers
 
-    function _getDueProtocolFeeAmounts(
+    function _getDueProtocolFeesBeforeJoinExit(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
-        uint256 previousInvariant,
-        uint256 currentInvariant,
         uint256 protocolSwapFeePercentage
-    ) private view returns (uint256[] memory) {
-        // Initialize with zeros
-        uint256[] memory dueProtocolFeeAmounts = new uint256[](2);
-
+    ) internal view virtual returns (uint256) {
         // Early return if the protocol swap fee percentage is zero, saving gas.
         if (protocolSwapFeePercentage == 0) {
-            return dueProtocolFeeAmounts;
+            return 0;
         }
 
-        // The protocol swap fees are always paid using the token with the largest weight in the Pool. As this is the
-        // token that is expected to have the largest balance, using it to pay fees should not unbalance the Pool.
-        dueProtocolFeeAmounts[_maxWeightTokenIndex] = WeightedMath._calcDueTokenProtocolSwapFeeAmount(
-            balances[_maxWeightTokenIndex],
-            normalizedWeights[_maxWeightTokenIndex],
-            previousInvariant,
-            currentInvariant,
-            protocolSwapFeePercentage
-        );
-
-        return dueProtocolFeeAmounts;
+        uint256 currentInvariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
+        return
+            WeightedMath._calcDueProtocolFeeBPTAmount(
+                _lastInvariant,
+                currentInvariant,
+                totalSupply(),
+                protocolSwapFeePercentage
+            );
     }
 
     /**
-     * @dev Mutates `amounts` by applying `mutation` with each entry in `arguments`.
-     *
-     * Equivalent to `amounts = amounts.map(mutation)`.
+     * @dev Pays protocol fees by minting `bptAmount` to the Protocol Fee Collector.
      */
-    function _mutateAmounts(
-        uint256[] memory toMutate,
-        uint256[] memory arguments,
-        function(uint256, uint256) pure returns (uint256) mutation
-    ) private pure {
-        toMutate[0] = mutation(toMutate[0], arguments[0]);
-        toMutate[1] = mutation(toMutate[1], arguments[1]);
+    function _payProtocolFees(uint256 bptAmount) internal {
+        _mintPoolTokens(address(getProtocolFeesCollector()), bptAmount);
+    }
+
+    function _afterJoin(
+        uint256[] memory balances,
+        uint256[] memory amountsIn,
+        uint256[] memory normalizedWeights
+    ) internal virtual {
+        // Update the invariant with the balances the Pool will have after the join, in order to compute the
+        // protocol swap fee amounts due in future joins and exits.
+
+        for (uint256 i = 0; i < balances.length; ++i) {
+            balances[i] = balances[i].add(amountsIn[i]);
+        }
+
+        _lastInvariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
+    }
+
+    function _afterExit(
+        uint256[] memory balances,
+        uint256[] memory amountsOut,
+        uint256[] memory normalizedWeights
+    ) internal virtual {
+        for (uint256 i = 0; i < balances.length; ++i) {
+            balances[i] = balances[i].sub(amountsOut[i]);
+        }
+
+        _lastInvariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
 
     /**
@@ -1082,7 +1067,7 @@ contract WeightedPool2Tokens is
         bytes memory userData,
         function(bytes32, address, address, uint256[] memory, uint256, uint256, bytes memory)
             internal
-            returns (uint256, uint256[] memory, uint256[] memory) _action,
+            returns (uint256, uint256[] memory) _action,
         function(uint256[] memory) internal view _downscaleArray
     ) private {
         // This uses the same technique used by the Vault in queryBatchSwap. Refer to that function for a detailed
@@ -1155,7 +1140,7 @@ contract WeightedPool2Tokens is
         } else {
             _upscaleArray(balances);
 
-            (uint256 bptAmount, uint256[] memory tokenAmounts, ) = _action(
+            (uint256 bptAmount, uint256[] memory tokenAmounts) = _action(
                 poolId,
                 sender,
                 recipient,
