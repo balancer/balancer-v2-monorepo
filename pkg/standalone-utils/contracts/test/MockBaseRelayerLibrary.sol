@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2015, 2016, 2017 Dapphub
+
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -13,21 +15,23 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import "../relayer/BaseRelayerLibrary.sol";
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+contract MockBaseRelayerLibrary is BaseRelayerLibrary {
+    event ChainedReferenceValueRead(uint256 value);
 
-/**
- * @title IBalancerRelayer
- * @notice Allows safe multicall execution of a relayer's functions
- */
-interface IBalancerRelayer {
-    function getLibrary() external view returns (address);
+    constructor(IVault vault) BaseRelayerLibrary(vault) {}
 
-    function getVault() external view returns (IVault);
+    function isChainedReference(uint256 amount) public pure returns (bool) {
+        return _isChainedReference(amount);
+    }
 
-    function multicall(bytes[] calldata data) external payable returns (bytes[] memory results);
+    function setChainedReferenceValue(uint256 ref, uint256 value) public returns (uint256) {
+        _setChainedReferenceValue(ref, value);
+    }
+
+    function getChainedReferenceValue(uint256 ref) public {
+        emit ChainedReferenceValueRead(_getChainedReferenceValue(ref));
+    }
 }

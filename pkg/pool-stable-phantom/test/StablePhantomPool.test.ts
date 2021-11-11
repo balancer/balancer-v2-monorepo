@@ -341,7 +341,7 @@ describe('StablePhantomPool', () => {
             const previousBalance = await tokenOut.balanceOf(recipient);
             const expectedAmountOut = await pool.estimateTokenOutGivenTokenIn(tokenIn, tokenOut, amountIn);
 
-            const amountOut = await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount: amountIn, recipient });
+            const { amountOut } = await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount: amountIn, recipient });
             expect(amountOut).to.be.equalWithError(expectedAmountOut, 0.00001);
 
             const currentBalance = await tokenOut.balanceOf(recipient);
@@ -371,7 +371,7 @@ describe('StablePhantomPool', () => {
             const previousBalance = await tokenOut.balanceOf(recipient);
             const expectedAmountIn = await pool.estimateTokenInGivenTokenOut(tokenIn, tokenOut, amountOut);
 
-            const amountIn = await pool.swapGivenOut({ in: tokenIn, out: tokenOut, amount: amountOut, recipient });
+            const { amountIn } = await pool.swapGivenOut({ in: tokenIn, out: tokenOut, amount: amountOut, recipient });
             expect(amountIn).to.be.equalWithError(expectedAmountIn, 0.00001);
 
             const currentBalance = await tokenOut.balanceOf(recipient);
@@ -400,7 +400,7 @@ describe('StablePhantomPool', () => {
             const previousBalance = await tokenOut.balanceOf(recipient);
             const expectedTokenOut = await pool.estimateTokenOutGivenBptIn(tokenOut, bptIn);
 
-            const amountOut = await pool.swapGivenIn({ in: pool.bpt, out: tokenOut, amount: bptIn, recipient });
+            const { amountOut } = await pool.swapGivenIn({ in: pool.bpt, out: tokenOut, amount: bptIn, recipient });
             expect(amountOut).to.be.equalWithError(expectedTokenOut, 0.00001);
 
             const currentBalance = await tokenOut.balanceOf(recipient);
@@ -429,7 +429,7 @@ describe('StablePhantomPool', () => {
             const previousBalance = await pool.balanceOf(recipient);
             const expectedTokenIn = await pool.estimateTokenInGivenBptOut(tokenIn, bptOut);
 
-            const amountIn = await pool.swapGivenOut({ in: tokenIn, out: pool.bpt, amount: bptOut, recipient });
+            const { amountIn } = await pool.swapGivenOut({ in: tokenIn, out: pool.bpt, amount: bptOut, recipient });
             expect(amountIn).to.be.equalWithError(expectedTokenIn, 0.00001);
 
             const currentBalance = await pool.balanceOf(recipient);
@@ -458,7 +458,7 @@ describe('StablePhantomPool', () => {
             const previousBalance = await pool.balanceOf(recipient);
             const expectedBptOut = await pool.estimateBptOutGivenTokenIn(tokenIn, amountIn);
 
-            const amountOut = await pool.swapGivenIn({ in: tokenIn, out: pool.bpt, amount: amountIn, recipient });
+            const { amountOut } = await pool.swapGivenIn({ in: tokenIn, out: pool.bpt, amount: amountIn, recipient });
             expect(amountOut).to.be.equalWithError(expectedBptOut, 0.00001);
 
             const currentBalance = await pool.balanceOf(recipient);
@@ -487,7 +487,7 @@ describe('StablePhantomPool', () => {
             const previousBalance = await tokenOut.balanceOf(recipient);
             const expectedBptIn = await pool.estimateBptInGivenTokenOut(tokenOut, amountOut);
 
-            const amountIn = await pool.swapGivenOut({ in: pool.bpt, out: tokenOut, amount: amountOut, recipient });
+            const { amountIn } = await pool.swapGivenOut({ in: pool.bpt, out: tokenOut, amount: amountOut, recipient });
             expect(amountIn).to.be.equalWithError(expectedBptIn, 0.00001);
 
             const currentBalance = await tokenOut.balanceOf(recipient);
@@ -692,7 +692,7 @@ describe('StablePhantomPool', () => {
 
         sharedBeforeEach('grant role to admin', async () => {
           const action = await actionId(pool.instance, 'setTokenRateCacheDuration');
-          await pool.vault.grantRole(action, admin);
+          await pool.vault.grantRoleGlobally(action, admin);
         });
 
         const itUpdatesTheCacheDuration = () => {
@@ -715,9 +715,9 @@ describe('StablePhantomPool', () => {
 
           it('emits an event', async () => {
             await tokens.asyncEach(async (token, i) => {
-              const receipt = await pool.setTokenRateCacheDuration(token, newDuration, { from: owner });
+              const tx = await pool.setTokenRateCacheDuration(token, newDuration, { from: owner });
 
-              expectEvent.inReceipt(await receipt.wait(), 'TokenRateProviderSet', {
+              expectEvent.inReceipt(await tx.wait(), 'TokenRateProviderSet', {
                 token: token.address,
                 provider: rateProviders[i].address,
                 cacheDuration: newDuration,
@@ -834,73 +834,121 @@ describe('StablePhantomPool', () => {
 
         context('on swaps given in', () => {
           it('tracks fees when swapping tokens', async () => {
+            const previousDueFee = await pool.getDueProtocolFeeBptAmount();
+
             const tokenIn = tokens.first;
             const tokenOut = tokens.second;
+            const { receipt } = await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient });
 
-            await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient });
-
-            const dueFee = await pool.getDueProtocolFeeBptAmount();
+            const currentDueFee = await pool.getDueProtocolFeeBptAmount();
             const aproxFee = getAproxDueFee(amount, AmountKind.WITH_FEE);
 
-            expect(dueFee).to.be.equalWithError(aproxFee, 0.01);
+            expect(currentDueFee).to.be.equalWithError(aproxFee, 0.01);
+
+            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'DueProtocolFeeIncreased', {
+              bptAmount: currentDueFee.sub(previousDueFee),
+            });
           });
 
           it('tracks fees when swapping for BPT (join)', async () => {
+            const previousDueFee = await pool.getDueProtocolFeeBptAmount();
+
             const token = tokens.first;
+            const { amountOut: bptAmount, receipt } = await pool.swapGivenIn({
+              in: token,
+              out: pool.bpt,
+              amount,
+              from: lp,
+              recipient,
+            });
 
-            const bptAmount = await pool.swapGivenIn({ in: token, out: pool.bpt, amount, from: lp, recipient });
-
-            const dueFee = await pool.getDueProtocolFeeBptAmount();
+            const currentDueFee = await pool.getDueProtocolFeeBptAmount();
             const aproxFee = getAproxDueFee(bptAmount, AmountKind.WITHOUT_FEE);
 
-            expect(dueFee).to.be.equalWithError(aproxFee, 0.01);
+            expect(currentDueFee).to.be.equalWithError(aproxFee, 0.01);
+
+            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'DueProtocolFeeIncreased', {
+              bptAmount: currentDueFee.sub(previousDueFee),
+            });
           });
 
           it('tracks fees when swapping BPT (exit)', async () => {
+            const previousDueFee = await pool.getDueProtocolFeeBptAmount();
+
             const token = tokens.first;
+            const { receipt } = await pool.swapGivenIn({ in: pool.bpt, out: token, amount, from: lp, recipient });
 
-            await pool.swapGivenIn({ in: pool.bpt, out: token, amount, from: lp, recipient });
-
-            const dueFee = await pool.getDueProtocolFeeBptAmount();
+            const currentDueFee = await pool.getDueProtocolFeeBptAmount();
             const aproxFee = getAproxDueFee(amount, AmountKind.WITH_FEE);
 
-            expect(dueFee).to.be.equalWithError(aproxFee, 0.01);
+            expect(currentDueFee).to.be.equalWithError(aproxFee, 0.01);
+
+            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'DueProtocolFeeIncreased', {
+              bptAmount: currentDueFee.sub(previousDueFee),
+            });
           });
         });
 
         context('on swaps given out', () => {
           it('tracks fees when swapping tokens', async () => {
+            const previousDueFee = await pool.getDueProtocolFeeBptAmount();
+
             const tokenIn = tokens.first;
             const tokenOut = tokens.second;
+            const { amountIn, receipt } = await pool.swapGivenOut({
+              in: tokenIn,
+              out: tokenOut,
+              amount,
+              from: lp,
+              recipient,
+            });
 
-            const amountIn = await pool.swapGivenOut({ in: tokenIn, out: tokenOut, amount, from: lp, recipient });
-
-            const dueFee = await pool.getDueProtocolFeeBptAmount();
+            const currentDueFee = await pool.getDueProtocolFeeBptAmount();
             const aproxFee = getAproxDueFee(amountIn, AmountKind.WITH_FEE);
 
-            expect(dueFee).to.be.equalWithError(aproxFee, 0.01);
+            expect(currentDueFee).to.be.equalWithError(aproxFee, 0.01);
+
+            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'DueProtocolFeeIncreased', {
+              bptAmount: currentDueFee.sub(previousDueFee),
+            });
           });
 
           it('tracks fees when swapping for BPT (join)', async () => {
+            const previousDueFee = await pool.getDueProtocolFeeBptAmount();
+
             const token = tokens.first;
+            const { receipt } = await pool.swapGivenOut({ in: token, out: pool.bpt, amount, from: lp, recipient });
 
-            await pool.swapGivenOut({ in: token, out: pool.bpt, amount, from: lp, recipient });
-
-            const dueFee = await pool.getDueProtocolFeeBptAmount();
+            const currentDueFee = await pool.getDueProtocolFeeBptAmount();
             const aproxFee = getAproxDueFee(amount, AmountKind.WITHOUT_FEE);
 
-            expect(dueFee).to.be.equalWithError(aproxFee, 0.01);
+            expect(currentDueFee).to.be.equalWithError(aproxFee, 0.01);
+
+            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'DueProtocolFeeIncreased', {
+              bptAmount: currentDueFee.sub(previousDueFee),
+            });
           });
 
           it('tracks fees when swapping BPT (exit)', async () => {
+            const previousDueFee = await pool.getDueProtocolFeeBptAmount();
+
             const token = tokens.first;
+            const { amountIn: bptAmount, receipt } = await pool.swapGivenOut({
+              in: pool.bpt,
+              out: token,
+              amount,
+              from: lp,
+              recipient,
+            });
 
-            const bptAmount = await pool.swapGivenOut({ in: pool.bpt, out: token, amount, from: lp, recipient });
-
-            const dueFee = await pool.getDueProtocolFeeBptAmount();
+            const currentDueFee = await pool.getDueProtocolFeeBptAmount();
             const aproxFee = getAproxDueFee(bptAmount, AmountKind.WITH_FEE);
 
-            expect(dueFee).to.be.equalWithError(aproxFee, 0.01);
+            expect(currentDueFee).to.be.equalWithError(aproxFee, 0.01);
+
+            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'DueProtocolFeeIncreased', {
+              bptAmount: currentDueFee.sub(previousDueFee),
+            });
           });
         });
       });
@@ -915,7 +963,7 @@ describe('StablePhantomPool', () => {
         sharedBeforeEach('accrue fees', async () => {
           const token = tokens.first;
 
-          const bptAmount = await pool.swapGivenIn({
+          const { amountOut: bptAmount } = await pool.swapGivenIn({
             in: token,
             out: pool.bpt,
             amount,

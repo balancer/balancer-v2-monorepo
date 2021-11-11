@@ -42,20 +42,19 @@ describe('Staking contract - callbacks', () => {
   describe('with a stake and a reward', () => {
     const rewardAmount = fp(1);
     sharedBeforeEach(async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .whitelistRewarder(pool.address, rewardToken.address, mockAssetManager.address);
       await stakingContract.connect(mockAssetManager).addReward(pool.address, rewardToken.address, rewardsDuration);
 
       const bptBalance = await pool.balanceOf(lp.address);
 
       await pool.connect(lp).approve(stakingContract.address, bptBalance);
 
+      const id = await stakingContract.getDistributionId(pool.address, rewardToken.address, mockAssetManager.address);
+      await stakingContract.connect(lp).subscribe([id]);
       await stakingContract.connect(lp).stake(pool.address, bptBalance);
 
       await stakingContract
         .connect(mockAssetManager)
-        .notifyRewardAmount(pool.address, rewardToken.address, mockAssetManager.address, rewardAmount);
+        .notifyRewardAmount(pool.address, rewardToken.address, rewardAmount);
       await advanceTime(rewardsVestingTime);
     });
 

@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { defaultAbiCoder } from '@ethersproject/abi';
-import { BigNumber, Contract, ContractTransaction } from 'ethers';
+import { BigNumber, Contract, ContractTransaction, ContractReceipt } from 'ethers';
 
 import { SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
@@ -190,7 +190,7 @@ export default class StablePhantomPool {
 
   async pause(): Promise<void> {
     const action = await actionId(this.instance, 'setPaused');
-    await this.vault.grantRole(action);
+    await this.vault.grantRoleGlobally(action);
     await this.instance.setPaused(true);
   }
 
@@ -261,19 +261,25 @@ export default class StablePhantomPool {
     return calcBptInGivenExactTokensOut(currentBalances, this.amplificationParameter, amountsOut, virtualSupply, 0);
   }
 
-  async swapGivenIn(params: SwapPhantomPool): Promise<BigNumber> {
-    const { amountOut } = await this.swap(await this._buildSwapParams(SwapKind.GivenIn, params));
-    return amountOut;
+  async swapGivenIn(params: SwapPhantomPool): Promise<{ amountOut: BigNumber; receipt: ContractReceipt }> {
+    const { amountOut, receipt } = await this.swap(await this._buildSwapParams(SwapKind.GivenIn, params));
+    return { amountOut, receipt };
   }
 
-  async swapGivenOut(params: SwapPhantomPool): Promise<BigNumber> {
-    const { amountIn } = await this.swap(await this._buildSwapParams(SwapKind.GivenOut, params));
-    return amountIn;
+  async swapGivenOut(params: SwapPhantomPool): Promise<{ amountIn: BigNumber; receipt: ContractReceipt }> {
+    const { amountIn, receipt } = await this.swap(await this._buildSwapParams(SwapKind.GivenOut, params));
+    return { amountIn, receipt };
   }
 
-  async swap(params: GeneralSwap): Promise<{ amountIn: BigNumber; amountOut: BigNumber }> {
+  async swap(params: GeneralSwap): Promise<{ amountIn: BigNumber; amountOut: BigNumber; receipt: ContractReceipt }> {
     const tx = await this.vault.generalSwap(params);
-    return expectEvent.inReceipt(await tx.wait(), 'Swap').args;
+    const receipt = await tx.wait();
+    const args = expectEvent.inReceipt(receipt, 'Swap').args;
+    return {
+      amountIn: args.amountIn,
+      amountOut: args.amountOut,
+      receipt,
+    };
   }
 
   async collectProtocolFees(from: SignerWithAddress): Promise<JoinResult> {

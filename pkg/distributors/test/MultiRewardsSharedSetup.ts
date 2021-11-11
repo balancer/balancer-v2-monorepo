@@ -8,7 +8,6 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 export const tokenInitialBalance = bn(200e18);
 export const rewardTokenInitialBalance = bn(100e18);
@@ -69,10 +68,6 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
   const stakingContract = await deploy('MultiRewards', {
     args: [vault.address],
   });
-
-  // authorize admin to whitelist rewarders
-  const action = await actionId(stakingContract, 'whitelistRewarder');
-  await authorizer.connect(admin).grantRole(action, admin.address);
 
   await tokens.mint({ to: lp, amount: tokenInitialBalance });
   await tokens.approve({ to: vault.address, from: [lp] });

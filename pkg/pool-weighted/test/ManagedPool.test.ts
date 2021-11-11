@@ -86,7 +86,6 @@ describe('ManagedPool', function () {
       const params = {
         tokens: allTokens.subset(1),
         weights: [fp(0.3)],
-        owner,
         poolType: WeightedPoolType.MANAGED_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
@@ -96,7 +95,6 @@ describe('ManagedPool', function () {
       const params = {
         tokens: allTokens,
         weights: tooManyWeights,
-        owner,
         poolType: WeightedPoolType.MANAGED_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('MAX_TOKENS');
@@ -106,7 +104,6 @@ describe('ManagedPool', function () {
       const params = {
         tokens: allTokens.subset(20),
         weights: tooManyWeights,
-        owner,
         poolType: WeightedPoolType.MANAGED_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
@@ -118,7 +115,6 @@ describe('ManagedPool', function () {
       const params = {
         tokens: poolTokens,
         weights: poolWeights,
-        owner,
         poolType: WeightedPoolType.MANAGED_POOL,
         fromFactory: true,
       };
@@ -139,7 +135,7 @@ describe('ManagedPool', function () {
         const params = {
           tokens: poolTokens,
           weights: poolWeights,
-          owner,
+          owner: owner.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: false,
         };
@@ -160,7 +156,6 @@ describe('ManagedPool', function () {
         const params = {
           tokens: poolTokens,
           weights: poolWeights,
-          owner,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
         };
@@ -223,7 +218,7 @@ describe('ManagedPool', function () {
         const params = {
           tokens: poolTokens,
           weights: poolWeights,
-          owner,
+          owner: owner.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
         };
@@ -342,7 +337,7 @@ describe('ManagedPool', function () {
         const params = {
           tokens: poolTokens,
           weights: poolWeights,
-          owner,
+          owner: owner.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
         };
@@ -350,7 +345,6 @@ describe('ManagedPool', function () {
       });
 
       const UPDATE_DURATION = DAY * 2;
-      const SHORT_UPDATE = MINUTE * 2;
 
       context('when the sender is not the owner', () => {
         it('non-owners cannot update weights', async () => {
@@ -394,12 +388,6 @@ describe('ManagedPool', function () {
             await expect(pool.updateWeightsGradually(sender, now, now.sub(1), poolWeights)).to.be.revertedWith(
               'GRADUAL_UPDATE_TIME_TRAVEL'
             );
-          });
-
-          it('fails if duration is less than the minimum', async () => {
-            await expect(
-              pool.updateWeightsGradually(sender, now, now.add(SHORT_UPDATE), poolWeights)
-            ).to.be.revertedWith('WEIGHT_CHANGE_TOO_FAST');
           });
 
           it('fails with an end weight below the minimum', async () => {
@@ -535,7 +523,7 @@ describe('ManagedPool', function () {
         const params = {
           tokens: poolTokens,
           weights: poolWeights,
-          owner,
+          owner: owner.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
           vault,

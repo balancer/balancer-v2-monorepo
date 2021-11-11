@@ -21,7 +21,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "../BaseWeightedPool.sol";
-import "../WeightedPoolUserDataHelpers.sol";
+import "../WeightedPoolUserData.sol";
 import "./WeightCompression.sol";
 
 /**
@@ -53,7 +53,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     using FixedPoint for uint256;
     using WordCodec for bytes32;
     using WeightCompression for uint256;
-    using WeightedPoolUserDataHelpers for bytes;
+    using WeightedPoolUserData for bytes;
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
 
     // State variables
@@ -93,8 +93,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _START_WEIGHT_OFFSET = 0;
     uint256 private constant _END_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
-
-    uint256 private constant _MINIMUM_WEIGHT_CHANGE_DURATION = 1 days;
 
     // Event declarations
 
@@ -185,13 +183,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the mimimum duration of a gradual weight change
-     */
-    function getMinimumWeightChangeDuration() external pure returns (uint256) {
-        return _MINIMUM_WEIGHT_CHANGE_DURATION;
-    }
-
-    /**
      * @dev Return start time, end time, and endWeights as an array.
      * Current weights should be retrieved via `getNormalizedWeights()`.
      */
@@ -246,7 +237,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         startTime = Math.max(currentTime, startTime);
 
         _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
-        _require(endTime - startTime >= _MINIMUM_WEIGHT_CHANGE_DURATION, Errors.WEIGHT_CHANGE_TOO_FAST);
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
@@ -277,7 +267,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             IVault.ExitPoolRequest({
                 assets: _asIAsset(tokens),
                 minAmountsOut: collectedFees,
-                userData: abi.encode(BaseWeightedPool.ExitKind.MANAGEMENT_FEE_TOKENS_OUT),
+                userData: abi.encode(WeightedPoolUserData.ExitKind.MANAGEMENT_FEE_TOKENS_OUT),
                 toInternalBalance: false
             })
         );
@@ -423,7 +413,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // If swaps are disabled, the only join kind that is allowed is the proportional one, as all others involve
         // implicit swaps and alter token prices.
         _require(
-            getSwapEnabled() || userData.joinKind() == JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
+            getSwapEnabled() || userData.joinKind() == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
@@ -458,11 +448,11 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // If swaps are disabled, the only exit kind that is allowed is the proportional one (as all others involve
         // implicit swaps and alter token prices) and management fee collection (as there's no point in restricting
         // that).
-        ExitKind kind = userData.exitKind();
+        WeightedPoolUserData.ExitKind kind = userData.exitKind();
         _require(
             getSwapEnabled() ||
-                kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT ||
-                kind == ExitKind.MANAGEMENT_FEE_TOKENS_OUT,
+                kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT ||
+                kind == WeightedPoolUserData.ExitKind.MANAGEMENT_FEE_TOKENS_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
@@ -483,9 +473,9 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal returns (uint256, uint256[] memory) {
-        ExitKind kind = userData.exitKind();
+        WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
-        if (kind == ExitKind.MANAGEMENT_FEE_TOKENS_OUT) {
+        if (kind == WeightedPoolUserData.ExitKind.MANAGEMENT_FEE_TOKENS_OUT) {
             return _exitManagerFeeTokensOut(sender);
         } else {
             return _doExit(balances, normalizedWeights, scalingFactors, userData);
