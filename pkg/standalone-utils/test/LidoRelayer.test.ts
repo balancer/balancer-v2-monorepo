@@ -185,6 +185,16 @@ describe('LidoRelayer', function () {
             await relayer.connect(sender).multicall([encodeWrap(tokenSender, tokenRecipient, amount)])
           ).wait();
 
+          const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
+          expectTransferEvent(
+            receipt,
+            {
+              from: TypesConverter.toAddress(tokenSender),
+              to: TypesConverter.toAddress(relayerIsSender ? wstETH : relayer),
+              value: amount,
+            },
+            stETH
+          );
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
@@ -200,22 +210,10 @@ describe('LidoRelayer', function () {
         it('stores wrap output as chained reference', async () => {
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
 
-          const receipt = await (
-            await relayer
-              .connect(sender)
-              .multicall([encodeWrap(tokenSender, tokenRecipient, amount, toChainedReference(0))])
-          ).wait();
+          await relayer
+            .connect(sender)
+            .multicall([encodeWrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
-          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
-          expectTransferEvent(
-            receipt,
-            {
-              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
-              value: expectedWstETHAmount,
-            },
-            wstETH
-          );
           await expectChainedReferenceContents(toChainedReference(0), expectedWstETHAmount);
         });
 
@@ -227,6 +225,16 @@ describe('LidoRelayer', function () {
             await relayer.connect(sender).multicall([encodeWrap(tokenSender, tokenRecipient, toChainedReference(0))])
           ).wait();
 
+          const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
+          expectTransferEvent(
+            receipt,
+            {
+              from: TypesConverter.toAddress(tokenSender),
+              to: TypesConverter.toAddress(relayerIsSender ? wstETH : relayer),
+              value: amount,
+            },
+            stETH
+          );
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
@@ -277,11 +285,22 @@ describe('LidoRelayer', function () {
             await relayer.connect(sender).multicall([encodeUnwrap(tokenSender, tokenRecipient, amount)])
           ).wait();
 
+          const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
           expectTransferEvent(
             receipt,
             {
-              from: TypesConverter.toAddress(wstETH),
-              to: TypesConverter.toAddress(relayer),
+              from: TypesConverter.toAddress(tokenSender),
+              to: TypesConverter.toAddress(relayerIsSender ? ZERO_ADDRESS : relayer),
+              value: amount,
+            },
+            wstETH
+          );
+          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
+          expectTransferEvent(
+            receipt,
+            {
+              from: TypesConverter.toAddress(relayerIsRecipient ? wstETH : relayer),
+              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
               value: await wstETH.instance.getStETHByWstETH(amount),
             },
             stETH
@@ -294,6 +313,7 @@ describe('LidoRelayer', function () {
             .multicall([encodeUnwrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
           const stETHAmount = await wstETH.instance.getStETHByWstETH(amount);
+
           await expectChainedReferenceContents(toChainedReference(0), stETHAmount);
         });
 
@@ -304,14 +324,25 @@ describe('LidoRelayer', function () {
             await relayer.connect(sender).multicall([encodeUnwrap(tokenSender, tokenRecipient, toChainedReference(0))])
           ).wait();
 
+          const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
           expectTransferEvent(
             receipt,
             {
-              from: relayer.address,
-              to: ZERO_ADDRESS,
+              from: TypesConverter.toAddress(tokenSender),
+              to: TypesConverter.toAddress(relayerIsSender ? ZERO_ADDRESS : relayer),
               value: amount,
             },
             wstETH
+          );
+          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
+          expectTransferEvent(
+            receipt,
+            {
+              from: TypesConverter.toAddress(relayerIsRecipient ? wstETH : relayer),
+              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
+              value: await wstETH.instance.getStETHByWstETH(amount),
+            },
+            stETH
           );
         });
       }
@@ -353,22 +384,9 @@ describe('LidoRelayer', function () {
         });
 
         it('stores stake output as chained reference', async () => {
-          const receipt = await (
-            await relayer
-              .connect(sender)
-              .multicall([encodeStakeETH(tokenRecipient, amount, toChainedReference(0))], { value: amount })
-          ).wait();
-
-          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
-          expectTransferEvent(
-            receipt,
-            {
-              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
-              value: amount,
-            },
-            stETH
-          );
+          await relayer
+            .connect(sender)
+            .multicall([encodeStakeETH(tokenRecipient, amount, toChainedReference(0))], { value: amount });
 
           await expectChainedReferenceContents(toChainedReference(0), amount);
         });
@@ -436,22 +454,9 @@ describe('LidoRelayer', function () {
         it('stores stake output as chained reference', async () => {
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
 
-          const receipt = await (
-            await relayer
-              .connect(sender)
-              .multicall([encodeStakeETHAndWrap(tokenRecipient, amount, toChainedReference(0))], { value: amount })
-          ).wait();
-
-          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
-          expectTransferEvent(
-            receipt,
-            {
-              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
-              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
-              value: expectedWstETHAmount,
-            },
-            wstETH
-          );
+          await relayer
+            .connect(sender)
+            .multicall([encodeStakeETHAndWrap(tokenRecipient, amount, toChainedReference(0))], { value: amount });
 
           await expectChainedReferenceContents(toChainedReference(0), expectedWstETHAmount);
         });
