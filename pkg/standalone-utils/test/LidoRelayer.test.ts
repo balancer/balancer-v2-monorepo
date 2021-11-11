@@ -785,6 +785,13 @@ describe('LidoRelayer', function () {
           poolId,
           liquidityProvider: relayer.address,
         });
+
+        // BPT minted to recipient
+        expectTransferEvent(
+          receipt,
+          { from: ZERO_ADDRESS, to: recipient.address },
+          await Token.deployedAt(pool.address)
+        );
       });
 
       it('does not take wstETH from the sender', async () => {
