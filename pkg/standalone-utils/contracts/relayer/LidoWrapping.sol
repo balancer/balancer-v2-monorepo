@@ -90,6 +90,7 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
             _pullToken(sender, _wstETH, amount);
         }
 
+        // No approval is needed here as wstETH is burned directly from the relayer's account
         uint256 result = _wstETH.unwrap(amount);
 
         if (recipient != address(this)) {
