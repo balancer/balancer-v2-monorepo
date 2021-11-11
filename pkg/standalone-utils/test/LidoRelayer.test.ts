@@ -812,79 +812,77 @@ describe('LidoRelayer', function () {
         ]);
       }
 
-      context('when the relayer is authorized', () => {
-        it('joins the pool', async () => {
-          const amount = fp(1);
+      it('joins the pool', async () => {
+        const amount = fp(1);
 
-          const receipt = await relayer.connect(sender).multicall([
-            encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-            encodeApprove(wstETH, MAX_UINT256),
-            encodeJoin({
-              poolId,
-              assets: poolTokens,
-              sender: relayer,
-              recipient: recipient,
-              maxAmountsIn: poolTokens.map(() => MAX_UINT256),
-              userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
-                poolTokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
-                0
-              ),
-            }),
-          ]);
-
-          expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'PoolBalanceChanged', {
+        const receipt = await relayer.connect(sender).multicall([
+          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+          encodeApprove(wstETH, MAX_UINT256),
+          encodeJoin({
             poolId,
-            liquidityProvider: relayer.address,
-          });
+            assets: poolTokens,
+            sender: relayer,
+            recipient: recipient,
+            maxAmountsIn: poolTokens.map(() => MAX_UINT256),
+            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+              poolTokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
+              0
+            ),
+          }),
+        ]);
+
+        expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'PoolBalanceChanged', {
+          poolId,
+          liquidityProvider: relayer.address,
         });
+      });
 
-        it('does not take wstETH from the sender', async () => {
-          const amount = fp(1);
+      it('does not take wstETH from the sender', async () => {
+        const amount = fp(1);
 
-          const wstETHBalanceBefore = await wstETH.balanceOf(sender);
+        const wstETHBalanceBefore = await wstETH.balanceOf(sender);
 
-          await relayer.connect(sender).multicall([
-            encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-            encodeApprove(wstETH, MAX_UINT256),
-            encodeJoin({
-              poolId,
-              sender: relayer,
-              recipient,
-              assets: poolTokens,
-              maxAmountsIn: poolTokens.map(() => MAX_UINT256),
-              userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
-                poolTokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
-                0
-              ),
-            }),
-          ]);
+        await relayer.connect(sender).multicall([
+          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+          encodeApprove(wstETH, MAX_UINT256),
+          encodeJoin({
+            poolId,
+            sender: relayer,
+            recipient,
+            assets: poolTokens,
+            maxAmountsIn: poolTokens.map(() => MAX_UINT256),
+            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+              poolTokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
+              0
+            ),
+          }),
+        ]);
 
-          const wstETHBalanceAfter = await wstETH.balanceOf(sender);
-          expect(wstETHBalanceAfter).to.be.eq(wstETHBalanceBefore);
-        });
+        const wstETHBalanceAfter = await wstETH.balanceOf(sender);
+        expect(wstETHBalanceAfter).to.be.eq(wstETHBalanceBefore);
+      });
 
-        it('does not leave dust on the relayer', async () => {
-          const amount = fp(1);
+      it('does not leave dust on the relayer', async () => {
+        const amount = fp(1);
 
-          await relayer.connect(sender).multicall([
-            encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-            encodeApprove(wstETH, MAX_UINT256),
-            encodeJoin({
-              poolId,
-              sender: relayer,
-              recipient,
-              assets: poolTokens,
-              maxAmountsIn: poolTokens.map(() => MAX_UINT256),
-              userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
-                poolTokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
-                0
-              ),
-            }),
-          ]);
+        await relayer.connect(sender).multicall([
+          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+          encodeApprove(wstETH, MAX_UINT256),
+          encodeJoin({
+            poolId,
+            sender: relayer,
+            recipient,
+            assets: poolTokens,
+            maxAmountsIn: poolTokens.map(() => MAX_UINT256),
+            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+              poolTokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
+              0
+            ),
+          }),
+        ]);
 
-          expect(await WETH.balanceOf(relayer)).to.be.eq(0);
-          expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
-        });
+        expect(await WETH.balanceOf(relayer)).to.be.eq(0);
+        expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
       });
     });
   });
