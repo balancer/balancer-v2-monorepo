@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-weighted/contracts/BaseWeightedPool.sol";
+import "@balancer-labs/v2-pool-weighted/contracts/WeightedPoolUserData.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
@@ -116,7 +116,7 @@ contract Reinvestor is PoolTokenCache, IDistributorCallback {
         uint256[] memory amountsIn
     ) internal {
         bytes memory userData = abi.encode(
-            BaseWeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+            WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
             amountsIn,
             uint256(0)
         );

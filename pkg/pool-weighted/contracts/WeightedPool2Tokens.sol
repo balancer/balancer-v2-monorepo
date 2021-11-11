@@ -31,7 +31,7 @@ import "@balancer-labs/v2-pool-utils/contracts/oracle/Buffer.sol";
 
 import "./WeightedMath.sol";
 import "./WeightedOracleMath.sol";
-import "./WeightedPoolUserDataHelpers.sol";
+import "./WeightedPoolUserData.sol";
 import "./WeightedPool2TokensMiscData.sol";
 
 contract WeightedPool2Tokens is
@@ -43,7 +43,7 @@ contract WeightedPool2Tokens is
     WeightedOracleMath
 {
     using FixedPoint for uint256;
-    using WeightedPoolUserDataHelpers for bytes;
+    using WeightedPoolUserData for bytes;
     using WeightedPool2TokensMiscData for bytes32;
 
     uint256 private constant _MINIMUM_BPT = 1e6;
@@ -441,8 +441,8 @@ contract WeightedPool2Tokens is
         address,
         bytes memory userData
     ) private returns (uint256, uint256[] memory) {
-        BaseWeightedPool.JoinKind kind = userData.joinKind();
-        _require(kind == BaseWeightedPool.JoinKind.INIT, Errors.UNINITIALIZED);
+        WeightedPoolUserData.JoinKind kind = userData.joinKind();
+        _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, 2);
@@ -513,13 +513,13 @@ contract WeightedPool2Tokens is
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        BaseWeightedPool.JoinKind kind = userData.joinKind();
+        WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
-        if (kind == BaseWeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+        if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(balances, normalizedWeights, userData);
-        } else if (kind == BaseWeightedPool.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+        } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(balances, normalizedWeights, userData);
-        } else if (kind == BaseWeightedPool.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
+        } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
             return _joinAllTokensInForExactBPTOut(balances, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
@@ -687,13 +687,13 @@ contract WeightedPool2Tokens is
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        BaseWeightedPool.ExitKind kind = userData.exitKind();
+        WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
-        if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+        if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(balances, normalizedWeights, userData);
-        } else if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(balances, userData);
-        } else if (kind == BaseWeightedPool.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+        } else if (kind == WeightedPoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(balances, normalizedWeights, userData);
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
