@@ -562,16 +562,15 @@ contract StablePhantomPool is StablePool {
         // one with the lowest likelihood of errors.
         (, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
 
-        // Since this process burns BPT, when computing virtual supply we also need to account for all burnt BPT.
-        uint256 virtualSupply = totalSupply() - balances[_bptIndex] + _dueProtocolFeeBptAmount;
-
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
         uint256[] memory amountsOut = StableMath._calcTokensOutGivenExactBptIn(
             balancesWithoutBpt,
             bptAmountIn,
-            virtualSupply
+            // We need the actual virtual supply here instead of the approximation returnd by _dropBPTItem, as this
+            // process burns BPT, rendering it inaccurate.
+            virtualSupply()
         );
 
         return (bptAmountIn, _addBptItem(amountsOut, 0));
@@ -757,7 +756,11 @@ contract StablePhantomPool is StablePool {
     {
         // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
         // vault. So the virtualSupply (the actual supply in circulation) is defined as:
-        // virtualSupply = _MAX_TOKEN_BALANCE - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
+        // virtualSupply = totalSupply() - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
+        //
+        // However, since this Pool never mints or burns BPT outside of the initial supply (except in the event of an
+        // emergency pause), we can simply use `_MAX_TOKEN_BALANCE` instead of `totalSupply()` and save
+        // gas.
         virtualSupply = _MAX_TOKEN_BALANCE - amounts[_bptIndex] + _dueProtocolFeeBptAmount;
 
         amountsWithoutBpt = new uint256[](amounts.length - 1);
