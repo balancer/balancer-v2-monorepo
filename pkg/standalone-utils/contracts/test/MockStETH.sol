@@ -32,8 +32,11 @@ contract MockStETH is TestToken, IstETH {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    event EthStaked(uint256 amount);
+
     function submit(address) external payable override returns (uint256) {
         _mint(msg.sender, msg.value);
+        emit EthStaked(msg.value);
         return msg.value;
     }
 }

@@ -399,6 +399,8 @@ describe('LidoRelayer', function () {
               .multicall([encodeStakeETH(tokenRecipient, toChainedReference(0))], { value: amount })
           ).wait();
 
+          expectEvent.inIndirectReceipt(receipt, stETH.instance.interface, 'EthStaked', { amount });
+
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
@@ -471,9 +473,16 @@ describe('LidoRelayer', function () {
               .multicall([encodeStakeETHAndWrap(tokenRecipient, toChainedReference(0))], { value: amount })
           ).wait();
 
+          expectEvent.inIndirectReceipt(receipt, stETH.instance.interface, 'EthStaked', { amount });
+
+          const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
           expectTransferEvent(
             receipt,
-            { from: ZERO_ADDRESS, to: relayer.address, value: expectedWstETHAmount },
+            {
+              from: TypesConverter.toAddress(relayerIsRecipient ? ZERO_ADDRESS : relayer),
+              to: TypesConverter.toAddress(relayerIsRecipient ? relayer : tokenRecipient),
+              value: expectedWstETHAmount,
+            },
             wstETH
           );
         });
