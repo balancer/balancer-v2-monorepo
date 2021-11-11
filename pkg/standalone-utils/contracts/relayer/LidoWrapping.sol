@@ -130,15 +130,16 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
             amount = _getChainedReferenceValue(amount);
         }
 
+        // As the wstETH contract doesn't return how much wstETH is minted we must query this separately.
+        uint256 result = _wstETH.getWstETHByStETH(amount);
+
         // The fallback function on the wstETH contract automatically stakes and wraps any ETH which is sent to it.
         // We can then safely just send the ETH and just have to ensure that the call doesn't revert.
+        //
+        // This would be dangerous should `_wstETH` be set to the zero address, however in this scenario
+        // this function would have already reverted on when calling `getWstETHByStETH`, preventing loss of funds.
         payable(address(_wstETH)).sendValue(amount);
 
-        // Note that the previous step would be dangerous should _wstETH be set to the zero address,
-        // however in this scenario the next line will revert, preventing loss of funds.
-
-        // As the wstETH contract doesn't return how much wstETH was minted we must query this separately.
-        uint256 result = _wstETH.getWstETHByStETH(amount);
 
         if (recipient != address(this)) {
             _wstETH.transfer(recipient, result);
