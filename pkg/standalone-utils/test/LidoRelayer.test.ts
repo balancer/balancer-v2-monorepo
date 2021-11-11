@@ -21,7 +21,6 @@ import { Interface } from '@ethersproject/abi';
 
 describe('LidoRelayer', function () {
   let stETH: Token, wstETH: Token;
-  let tokens: TokenList;
   let sender: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;
   let relayer: Contract, relayerLibrary: Contract;
@@ -39,8 +38,6 @@ describe('LidoRelayer', function () {
 
     const wstETHContract = await deploy('MockWstETH', { args: [stETH.address] });
     wstETH = new Token('wstETH', 'wstETH', 18, wstETHContract);
-
-    tokens = new TokenList([stETH, wstETH]).sort();
   });
 
   sharedBeforeEach('mint tokens to sender', async () => {
