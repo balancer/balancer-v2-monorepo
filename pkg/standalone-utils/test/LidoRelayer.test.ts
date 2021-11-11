@@ -567,12 +567,7 @@ describe('LidoRelayer', function () {
             tokenOut: tokenOut.address,
           });
 
-          expectEvent.inIndirectReceipt(
-            receipt,
-            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-            'Transfer',
-            { to: recipient.address }
-          );
+          expectTransferEvent(receipt, { from: vault.address, to: recipient.address }, WETH);
         });
 
         it('does not leave dust on the relayer', async () => {
@@ -628,12 +623,7 @@ describe('LidoRelayer', function () {
             tokenOut: tokenOut.address,
           });
 
-          expectEvent.inIndirectReceipt(
-            receipt,
-            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-            'Transfer',
-            { to: recipient.address }
-          );
+          expectTransferEvent(receipt, { from: relayer.address, to: recipient.address }, stETH);
         });
 
         it('does not leave dust on the relayer', async () => {
@@ -725,12 +715,7 @@ describe('LidoRelayer', function () {
             tokenOut: tokenOut.address,
           });
 
-          expectEvent.inIndirectReceipt(
-            receipt,
-            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-            'Transfer',
-            { to: recipient.address }
-          );
+          expectTransferEvent(receipt, { from: vault.address, to: recipient.address }, tokenOut);
         });
 
         it('does not leave dust on the relayer', async () => {
@@ -777,12 +762,7 @@ describe('LidoRelayer', function () {
             tokenOut: tokenOut.address,
           });
 
-          expectEvent.inIndirectReceipt(
-            receipt,
-            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-            'Transfer',
-            { to: recipient.address }
-          );
+          expectTransferEvent(receipt, { from: relayer.address, to: recipient.address }, stETH);
         });
 
         it('does not leave dust on the relayer', async () => {
