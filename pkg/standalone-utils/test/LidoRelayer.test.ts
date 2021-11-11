@@ -539,20 +539,19 @@ describe('LidoRelayer', function () {
       }
 
       describe('swap using stETH as an input', () => {
-        it('performs the given swap', async () => {
-          const tokenIn = wstETH;
-          const tokenOut = WETH;
-          const amount = fp(1);
+        let receipt: ContractReceipt;
+        const amount = fp(1);
 
-          const receipt = await (
+        sharedBeforeEach('swap stETH for WETH', async () => {
+          receipt = await (
             await relayer.connect(sender).multicall([
               encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-              encodeApprove(tokenIn, MAX_UINT256),
+              encodeApprove(wstETH, MAX_UINT256),
               encodeSwap({
                 poolId,
                 kind: SwapKind.GivenIn,
-                tokenIn,
-                tokenOut,
+                tokenIn: wstETH,
+                tokenOut: WETH,
                 amount: toChainedReference(0),
                 sender: relayer,
                 recipient,
@@ -560,91 +559,57 @@ describe('LidoRelayer', function () {
               }),
             ])
           ).wait();
+        });
 
+        it('performs the given swap', async () => {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId,
-            tokenIn: tokenIn.address,
-            tokenOut: tokenOut.address,
+            tokenIn: wstETH.address,
+            tokenOut: WETH.address,
           });
 
           expectTransferEvent(receipt, { from: vault.address, to: recipient.address }, WETH);
         });
 
         it('does not leave dust on the relayer', async () => {
-          const tokenIn = wstETH;
-          const tokenOut = WETH;
-          const amount = fp(1);
-
-          await relayer.connect(sender).multicall([
-            encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-            encodeApprove(tokenIn, MAX_UINT256),
-            encodeSwap({
-              poolId,
-              kind: SwapKind.GivenIn,
-              tokenIn,
-              tokenOut,
-              amount: toChainedReference(0),
-              sender: relayer,
-              recipient,
-              outputReference: 0,
-            }),
-          ]);
-
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
           expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
         });
       });
 
       describe('swap using stETH as an output', () => {
-        it('performs the given swap', async () => {
-          const tokenIn = WETH;
-          const tokenOut = wstETH;
-          const amount = fp(1);
+        let receipt: ContractReceipt;
+        const amount = fp(1);
 
-          const receipt = await (
+        sharedBeforeEach('swap WETH for stETH', async () => {
+          receipt = await (
             await relayer.connect(sender).multicall([
               encodeSwap({
                 poolId,
                 kind: SwapKind.GivenIn,
-                tokenIn,
-                tokenOut,
+                tokenIn: WETH,
+                tokenOut: wstETH,
                 amount,
-                sender: sender,
+                sender,
                 recipient: relayer,
                 outputReference: toChainedReference(0),
               }),
               encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
             ])
           ).wait();
+        });
 
+        it('performs the given swap', async () => {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId,
-            tokenIn: tokenIn.address,
-            tokenOut: tokenOut.address,
+            tokenIn: WETH.address,
+            tokenOut: wstETH.address,
           });
 
           expectTransferEvent(receipt, { from: relayer.address, to: recipient.address }, stETH);
         });
 
         it('does not leave dust on the relayer', async () => {
-          const tokenIn = WETH;
-          const tokenOut = wstETH;
-          const amount = fp(1);
-
-          await relayer.connect(sender).multicall([
-            encodeSwap({
-              poolId,
-              kind: SwapKind.GivenIn,
-              tokenIn,
-              tokenOut,
-              amount,
-              sender,
-              recipient: relayer,
-              outputReference: toChainedReference(0),
-            }),
-            encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
-          ]);
-
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
           expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
         });
@@ -692,62 +657,48 @@ describe('LidoRelayer', function () {
       }
 
       describe('swap using stETH as an input', () => {
-        it('performs the given swap', async () => {
-          const tokenIn = wstETH;
-          const tokenOut = WETH;
-          const amount = fp(1);
+        let receipt: ContractReceipt;
+        const amount = fp(1);
 
-          const receipt = await (
+        sharedBeforeEach('swap stETH for WETH', async () => {
+          receipt = await (
             await relayer.connect(sender).multicall([
               encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-              encodeApprove(tokenIn, MAX_UINT256),
+              encodeApprove(wstETH, MAX_UINT256),
               encodeBatchSwap({
-                swaps: [{ poolId, tokenIn, tokenOut, amount: toChainedReference(0) }],
+                swaps: [{ poolId, tokenIn: wstETH, tokenOut: WETH, amount: toChainedReference(0) }],
                 sender: relayer,
                 recipient: recipient,
               }),
             ])
           ).wait();
+        });
 
+        it('performs the given swap', async () => {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId: poolId,
-            tokenIn: tokenIn.address,
-            tokenOut: tokenOut.address,
+            tokenIn: wstETH.address,
+            tokenOut: WETH.address,
           });
 
-          expectTransferEvent(receipt, { from: vault.address, to: recipient.address }, tokenOut);
+          expectTransferEvent(receipt, { from: vault.address, to: recipient.address }, WETH);
         });
 
         it('does not leave dust on the relayer', async () => {
-          const tokenIn = wstETH;
-          const tokenOut = WETH;
-          const amount = fp(1);
-
-          await relayer.connect(sender).multicall([
-            encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-            encodeApprove(tokenIn, MAX_UINT256),
-            encodeBatchSwap({
-              swaps: [{ poolId, tokenIn, tokenOut, amount: toChainedReference(0) }],
-              sender: relayer,
-              recipient: recipient,
-            }),
-          ]);
-
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
           expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
         });
       });
 
       describe('swap using stETH as an output', () => {
-        it('performs the given swap', async () => {
-          const tokenIn = WETH;
-          const tokenOut = wstETH;
-          const amount = fp(1);
+        let receipt: ContractReceipt;
+        const amount = fp(1);
 
-          const receipt = await (
+        sharedBeforeEach('swap WETH for stETH', async () => {
+          receipt = await (
             await relayer.connect(sender).multicall([
               encodeBatchSwap({
-                swaps: [{ poolId, tokenIn, tokenOut, amount }],
+                swaps: [{ poolId, tokenIn: WETH, tokenOut: wstETH, amount }],
                 sender: sender,
                 recipient: relayer,
                 outputReferences: { wstETH: toChainedReference(0) },
@@ -755,31 +706,19 @@ describe('LidoRelayer', function () {
               encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
             ])
           ).wait();
+        });
 
+        it('performs the given swap', async () => {
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId: poolId,
-            tokenIn: tokenIn.address,
-            tokenOut: tokenOut.address,
+            tokenIn: WETH.address,
+            tokenOut: wstETH.address,
           });
 
           expectTransferEvent(receipt, { from: relayer.address, to: recipient.address }, stETH);
         });
 
         it('does not leave dust on the relayer', async () => {
-          const tokenIn = WETH;
-          const tokenOut = wstETH;
-          const amount = fp(1);
-
-          await relayer.connect(sender).multicall([
-            encodeBatchSwap({
-              swaps: [{ poolId, tokenIn, tokenOut, amount }],
-              sender: sender,
-              recipient: relayer,
-              outputReferences: { wstETH: toChainedReference(0) },
-            }),
-            encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
-          ]);
-
           expect(await WETH.balanceOf(relayer)).to.be.eq(0);
           expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
         });
@@ -812,75 +751,44 @@ describe('LidoRelayer', function () {
         ]);
       }
 
+      let receipt: ContractReceipt;
+      let senderWstETHBalanceBefore: BigNumber;
+      const amount = fp(1);
+
+      sharedBeforeEach('join the pool', async () => {
+        senderWstETHBalanceBefore = await wstETH.balanceOf(sender);
+        receipt = await (
+          await relayer.connect(sender).multicall([
+            encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+            encodeApprove(wstETH, MAX_UINT256),
+            encodeJoin({
+              poolId,
+              assets: poolTokens,
+              sender: relayer,
+              recipient: recipient,
+              maxAmountsIn: poolTokens.map(() => MAX_UINT256),
+              userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+                poolTokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
+                0
+              ),
+            }),
+          ])
+        ).wait();
+      });
+
       it('joins the pool', async () => {
-        const amount = fp(1);
-
-        const receipt = await relayer.connect(sender).multicall([
-          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-          encodeApprove(wstETH, MAX_UINT256),
-          encodeJoin({
-            poolId,
-            assets: poolTokens,
-            sender: relayer,
-            recipient: recipient,
-            maxAmountsIn: poolTokens.map(() => MAX_UINT256),
-            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
-              poolTokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
-              0
-            ),
-          }),
-        ]);
-
-        expectEvent.inIndirectReceipt(await receipt.wait(), vault.instance.interface, 'PoolBalanceChanged', {
+        expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
           poolId,
           liquidityProvider: relayer.address,
         });
       });
 
       it('does not take wstETH from the sender', async () => {
-        const amount = fp(1);
-
-        const wstETHBalanceBefore = await wstETH.balanceOf(sender);
-
-        await relayer.connect(sender).multicall([
-          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-          encodeApprove(wstETH, MAX_UINT256),
-          encodeJoin({
-            poolId,
-            sender: relayer,
-            recipient,
-            assets: poolTokens,
-            maxAmountsIn: poolTokens.map(() => MAX_UINT256),
-            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
-              poolTokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
-              0
-            ),
-          }),
-        ]);
-
-        const wstETHBalanceAfter = await wstETH.balanceOf(sender);
-        expect(wstETHBalanceAfter).to.be.eq(wstETHBalanceBefore);
+        const senderWstETHBalanceAfter = await wstETH.balanceOf(sender);
+        expect(senderWstETHBalanceAfter).to.be.eq(senderWstETHBalanceBefore);
       });
 
       it('does not leave dust on the relayer', async () => {
-        const amount = fp(1);
-
-        await relayer.connect(sender).multicall([
-          encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
-          encodeApprove(wstETH, MAX_UINT256),
-          encodeJoin({
-            poolId,
-            sender: relayer,
-            recipient,
-            assets: poolTokens,
-            maxAmountsIn: poolTokens.map(() => MAX_UINT256),
-            userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
-              poolTokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
-              0
-            ),
-          }),
-        ]);
-
         expect(await WETH.balanceOf(relayer)).to.be.eq(0);
         expect(await wstETH.balanceOf(relayer)).to.be.eq(0);
       });
