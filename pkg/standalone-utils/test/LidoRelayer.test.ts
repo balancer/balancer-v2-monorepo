@@ -158,6 +158,14 @@ describe('LidoRelayer', function () {
         testWrap();
       });
 
+      context('sender = user, recipient = sender', () => {
+        beforeEach(() => {
+          tokenSender = sender;
+          tokenRecipient = sender;
+        });
+        testWrap();
+      });
+
       context('sender = relayer, recipient = relayer', () => {
         beforeEach(async () => {
           await stETH.transfer(relayer, fp(1), { from: sender });
@@ -260,6 +268,15 @@ describe('LidoRelayer', function () {
         testUnwrap();
       });
 
+      context('sender = user, recipient = sender', () => {
+        beforeEach(async () => {
+          await wstETH.approve(vault.address, fp(10), { from: sender });
+          tokenSender = sender;
+          tokenRecipient = sender;
+        });
+        testUnwrap();
+      });
+
       context('sender = relayer, recipient = relayer', () => {
         beforeEach(async () => {
           await wstETH.transfer(relayer, fp(1), { from: sender });
@@ -312,7 +329,6 @@ describe('LidoRelayer', function () {
             .multicall([encodeUnwrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
           const stETHAmount = await wstETH.instance.getStETHByWstETH(amount);
-
           await expectChainedReferenceContents(toChainedReference(0), stETHAmount);
         });
 
