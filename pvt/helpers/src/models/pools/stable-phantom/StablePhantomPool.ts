@@ -168,7 +168,7 @@ export default class StablePhantomPool {
   }
 
   async getVirtualSupply(): Promise<BigNumber> {
-    return this.instance.virtualSupply();
+    return this.instance.getVirtualSupply();
   }
 
   async updateTokenRateCache(token: Token): Promise<ContractTransaction> {

@@ -575,7 +575,7 @@ contract StablePhantomPool is StablePool {
             bptAmountIn,
             // We need the actual virtual supply here instead of the approximation returnd by _dropBPTItem, as this
             // process burns BPT, rendering it inaccurate.
-            virtualSupply()
+            _getVirtualSupply(balances[_bptIndex])
         );
 
         return (bptAmountIn, _addBptItem(amountsOut, 0));
@@ -789,29 +789,32 @@ contract StablePhantomPool is StablePool {
      * @dev Returns the number of tokens in circulation.
      *
      * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints all BPT, `totalSupply`
-     * remains constant, whereas `virtualSupply` increases as users join the pool and decreases as they exit it.
+     * remains constant, whereas `getVirtualSupply` increases as users join the pool and decreases as they exit it.
      */
-    function virtualSupply() external view returns (uint256) {
+    function getVirtualSupply() external view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+        // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
+        // one.
+        return _getVirtualSupply(balances[_bptIndex]);
+    }
 
-        uint256 _virtualSupply = totalSupply() - balances[_bptIndex] + _dueProtocolFeeBptAmount;
-
-        return _virtualSupply;
+    function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
+        return totalSupply() - bptBalance + _dueProtocolFeeBptAmount;
     }
 
     /**
      * @dev This function returns the appreciation of one BPT relative to the
      * underlying tokens. This starts at 1 when the pool is created and grows over time.
-     * Because of preminted BPT, it uses virtualSupply instead of totalSupply.
+     * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
      */
     function getRate() public view override returns (uint256) {
         (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
         _upscaleArray(balancesIncludingBpt, _scalingFactors());
 
-        (uint256 _virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        return StableMath._getRate(balances, currentAmp, _virtualSupply);
+        return StableMath._getRate(balances, currentAmp, virtualSupply);
     }
 }
