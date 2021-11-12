@@ -141,7 +141,6 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
         // this function would have already reverted on when calling `getWstETHByStETH`, preventing loss of funds.
         payable(address(_wstETH)).sendValue(amount);
 
-
         if (recipient != address(this)) {
             _wstETH.transfer(recipient, result);
         }
