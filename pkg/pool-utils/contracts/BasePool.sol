@@ -37,8 +37,8 @@ import "./BasePoolAuthorization.sol";
  * Asset Managers, an admin-controlled swap fee percentage, and an emergency pause mechanism.
  *
  * This Pool pays protocol fees by minting BPT directly to the ProtocolFeeCollector instead of using the
- * `dueProtocolFees` return value. This results in better rates for users, as the Pool won't unbalance itself right
- * before they join/exit. Furthermore, the underlying tokens will continue to provide liquidity for traders.
+ * `dueProtocolFees` return value. This results in the underlying tokens continuing to provide liquidity
+ * for traders, while still keeping gas usage to a minimum since only a single token (the BPT) is transferred.
  *
  * Note that neither swap fees nor the pause mechanism are used by this contract. They are passed through so that
  * derived contracts can use them via the `_addSwapFeeAmount` and `_subtractSwapFeeAmount` functions, and the
