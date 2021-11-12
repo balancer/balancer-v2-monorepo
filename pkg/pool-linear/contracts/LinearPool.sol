@@ -570,17 +570,30 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         emit TargetsSet(mainToken, lowerTarget, upperTarget);
     }
 
-    function setTargets(uint256 lowerTarget, uint256 upperTarget) external authenticate {
+    function setTargets(uint256 newLowerTarget, uint256 newUpperTarget) external authenticate {
         bytes32 poolId = getPoolId();
         (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
 
-        // Targets can only be set when main token balance between targets (free zone)
-        (uint256 currentLowerTarget, uint256 currentUpperTarget) = getTargets();
-        bool isBetweenTargets = balances[_mainIndex] >= currentLowerTarget &&
-            balances[_mainIndex] <= currentUpperTarget;
-        _require(isBetweenTargets, Errors.OUT_OF_TARGET_RANGE);
+        // For a new target range to be valid:
+        //  - the pool must currently be between the current targets (meaning no fees are currently pending)
+        //  - the pool must currently be between the new targets (meaning setting them does not cause for fees to be
+        //    pending)
+        //
+        // The first requirement could be relaxed, as the LPs actually benefit from the pending fees not being paid out,
+        // but being stricter makes analysis easier at little expense.
 
-        _setTargets(_mainToken, lowerTarget, upperTarget);
+        (uint256 currentLowerTarget, uint256 currentUpperTarget) = getTargets();
+        _require(
+            balances[_mainIndex] >= currentLowerTarget && balances[_mainIndex] <= currentUpperTarget,
+            Errors.OUT_OF_TARGET_RANGE
+        );
+
+        _require(
+            balances[_mainIndex] >= newLowerTarget && balances[_mainIndex] <= newUpperTarget,
+            Errors.OUT_OF_NEW_TARGET_RANGE
+        );
+
+        _setTargets(_mainToken, newLowerTarget, newUpperTarget);
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
