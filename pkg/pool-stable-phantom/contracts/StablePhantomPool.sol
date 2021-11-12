@@ -799,7 +799,7 @@ contract StablePhantomPool is StablePool {
     }
 
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
-        return totalSupply() - bptBalance + _dueProtocolFeeBptAmount;
+        return totalSupply().sub(bptBalance).add(_dueProtocolFeeBptAmount);
     }
 
     /**
