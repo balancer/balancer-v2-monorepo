@@ -825,7 +825,7 @@ describe('LidoRelayer', function () {
         );
       });
 
-      it('does not take wstETH from the sender', async () => {
+      it('does not take wstETH from the user', async () => {
         const senderWstETHBalanceAfter = await wstETH.balanceOf(senderUser);
         expect(senderWstETHBalanceAfter).to.be.eq(senderWstETHBalanceBefore);
       });
