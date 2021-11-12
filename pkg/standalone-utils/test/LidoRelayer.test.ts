@@ -20,12 +20,12 @@ import { Dictionary } from 'lodash';
 
 describe('LidoRelayer', function () {
   let stETH: Token, wstETH: Token;
-  let sender: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
+  let senderUser: SignerWithAddress, recipientUser: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;
   let relayer: Contract, relayerLibrary: Contract;
 
   before('setup signer', async () => {
-    [, admin, sender, recipient] = await ethers.getSigners();
+    [, admin, senderUser, recipientUser] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy Vault', async () => {
@@ -39,13 +39,13 @@ describe('LidoRelayer', function () {
     wstETH = new Token('wstETH', 'wstETH', 18, wstETHContract);
   });
 
-  sharedBeforeEach('mint tokens to sender', async () => {
-    await stETH.mint(sender, fp(100));
-    await stETH.approve(vault.address, fp(100), { from: sender });
+  sharedBeforeEach('mint tokens to senderUser', async () => {
+    await stETH.mint(senderUser, fp(100));
+    await stETH.approve(vault.address, fp(100), { from: senderUser });
 
-    await stETH.mint(sender, fp(2500));
-    await stETH.approve(wstETH.address, fp(150), { from: sender });
-    await wstETH.instance.connect(sender).wrap(fp(150));
+    await stETH.mint(senderUser, fp(2500));
+    await stETH.approve(wstETH.address, fp(150), { from: senderUser });
+    await wstETH.instance.connect(senderUser).wrap(fp(150));
   });
 
   sharedBeforeEach('set up relayer', async () => {
@@ -63,7 +63,7 @@ describe('LidoRelayer', function () {
     await authorizer.connect(admin).grantRolesGlobally(relayerActionIds, relayer.address);
 
     // Approve relayer by sender
-    await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
+    await vault.instance.connect(senderUser).setRelayerApproval(senderUser.address, relayer.address, true);
   });
 
   const CHAINED_REFERENCE_PREFIX = 'ba10';
@@ -150,36 +150,36 @@ describe('LidoRelayer', function () {
     describe('wrapStETH', () => {
       let tokenSender: Account, tokenRecipient: Account;
 
-      context('sender = user, recipient = relayer', () => {
+      context('sender = senderUser, recipient = relayer', () => {
         beforeEach(() => {
-          tokenSender = sender;
+          tokenSender = senderUser;
           tokenRecipient = relayer;
         });
         testWrap();
       });
 
-      context('sender = user, recipient = sender', () => {
+      context('sender = senderUser, recipient = senderUser', () => {
         beforeEach(() => {
-          tokenSender = sender;
-          tokenRecipient = sender;
+          tokenSender = senderUser;
+          tokenRecipient = senderUser;
         });
         testWrap();
       });
 
       context('sender = relayer, recipient = relayer', () => {
         beforeEach(async () => {
-          await stETH.transfer(relayer, fp(1), { from: sender });
+          await stETH.transfer(relayer, fp(1), { from: senderUser });
           tokenSender = relayer;
           tokenRecipient = relayer;
         });
         testWrap();
       });
 
-      context('sender = relayer, recipient = sender', () => {
+      context('sender = relayer, recipient = senderUser', () => {
         beforeEach(async () => {
-          await stETH.transfer(relayer, fp(1), { from: sender });
+          await stETH.transfer(relayer, fp(1), { from: senderUser });
           tokenSender = relayer;
-          tokenRecipient = sender;
+          tokenRecipient = senderUser;
         });
         testWrap();
       });
@@ -189,7 +189,7 @@ describe('LidoRelayer', function () {
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
 
           const receipt = await (
-            await relayer.connect(sender).multicall([encodeWrap(tokenSender, tokenRecipient, amount)])
+            await relayer.connect(senderUser).multicall([encodeWrap(tokenSender, tokenRecipient, amount)])
           ).wait();
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
@@ -218,7 +218,7 @@ describe('LidoRelayer', function () {
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
 
           await relayer
-            .connect(sender)
+            .connect(senderUser)
             .multicall([encodeWrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
           await expectChainedReferenceContents(toChainedReference(0), expectedWstETHAmount);
@@ -229,7 +229,9 @@ describe('LidoRelayer', function () {
           await setChainedReferenceContents(toChainedReference(0), amount);
 
           const receipt = await (
-            await relayer.connect(sender).multicall([encodeWrap(tokenSender, tokenRecipient, toChainedReference(0))])
+            await relayer
+              .connect(senderUser)
+              .multicall([encodeWrap(tokenSender, tokenRecipient, toChainedReference(0))])
           ).wait();
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
@@ -259,38 +261,38 @@ describe('LidoRelayer', function () {
     describe('unwrapWstETH', () => {
       let tokenSender: Account, tokenRecipient: Account;
 
-      context('sender = user, recipient = relayer', () => {
+      context('sender = senderUser, recipient = relayer', () => {
         beforeEach(async () => {
-          await wstETH.approve(vault.address, fp(10), { from: sender });
-          tokenSender = sender;
+          await wstETH.approve(vault.address, fp(10), { from: senderUser });
+          tokenSender = senderUser;
           tokenRecipient = relayer;
         });
         testUnwrap();
       });
 
-      context('sender = user, recipient = sender', () => {
+      context('sender = senderUser, recipient = senderUser', () => {
         beforeEach(async () => {
-          await wstETH.approve(vault.address, fp(10), { from: sender });
-          tokenSender = sender;
-          tokenRecipient = sender;
+          await wstETH.approve(vault.address, fp(10), { from: senderUser });
+          tokenSender = senderUser;
+          tokenRecipient = senderUser;
         });
         testUnwrap();
       });
 
       context('sender = relayer, recipient = relayer', () => {
         beforeEach(async () => {
-          await wstETH.transfer(relayer, fp(1), { from: sender });
+          await wstETH.transfer(relayer, fp(1), { from: senderUser });
           tokenSender = relayer;
           tokenRecipient = relayer;
         });
         testUnwrap();
       });
 
-      context('sender = relayer, recipient = sender', () => {
+      context('sender = relayer, recipient = senderUser', () => {
         beforeEach(async () => {
-          await wstETH.transfer(relayer, fp(1), { from: sender });
+          await wstETH.transfer(relayer, fp(1), { from: senderUser });
           tokenSender = relayer;
-          tokenRecipient = sender;
+          tokenRecipient = senderUser;
         });
         testUnwrap();
       });
@@ -298,7 +300,7 @@ describe('LidoRelayer', function () {
       function testUnwrap(): void {
         it('unwraps with immediate amounts', async () => {
           const receipt = await (
-            await relayer.connect(sender).multicall([encodeUnwrap(tokenSender, tokenRecipient, amount)])
+            await relayer.connect(senderUser).multicall([encodeUnwrap(tokenSender, tokenRecipient, amount)])
           ).wait();
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
@@ -325,7 +327,7 @@ describe('LidoRelayer', function () {
 
         it('stores unwrap output as chained reference', async () => {
           await relayer
-            .connect(sender)
+            .connect(senderUser)
             .multicall([encodeUnwrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
           const stETHAmount = await wstETH.instance.getStETHByWstETH(amount);
@@ -336,7 +338,9 @@ describe('LidoRelayer', function () {
           await setChainedReferenceContents(toChainedReference(0), amount);
 
           const receipt = await (
-            await relayer.connect(sender).multicall([encodeUnwrap(tokenSender, tokenRecipient, toChainedReference(0))])
+            await relayer
+              .connect(senderUser)
+              .multicall([encodeUnwrap(tokenSender, tokenRecipient, toChainedReference(0))])
           ).wait();
 
           const relayerIsSender = TypesConverter.toAddress(tokenSender) === relayer.address;
@@ -366,9 +370,9 @@ describe('LidoRelayer', function () {
     describe('stakeETH', () => {
       let tokenRecipient: Account;
 
-      context('recipient = sender', () => {
+      context('recipient = senderUser', () => {
         beforeEach(() => {
-          tokenRecipient = sender;
+          tokenRecipient = senderUser;
         });
         testStake();
       });
@@ -383,7 +387,7 @@ describe('LidoRelayer', function () {
       function testStake(): void {
         it('stakes with immediate amounts', async () => {
           const receipt = await (
-            await relayer.connect(sender).multicall([encodeStakeETH(tokenRecipient, amount)], { value: amount })
+            await relayer.connect(senderUser).multicall([encodeStakeETH(tokenRecipient, amount)], { value: amount })
           ).wait();
 
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
@@ -400,7 +404,7 @@ describe('LidoRelayer', function () {
 
         it('stores stake output as chained reference', async () => {
           await relayer
-            .connect(sender)
+            .connect(senderUser)
             .multicall([encodeStakeETH(tokenRecipient, amount, toChainedReference(0))], { value: amount });
 
           await expectChainedReferenceContents(toChainedReference(0), amount);
@@ -411,7 +415,7 @@ describe('LidoRelayer', function () {
 
           const receipt = await (
             await relayer
-              .connect(sender)
+              .connect(senderUser)
               .multicall([encodeStakeETH(tokenRecipient, toChainedReference(0))], { value: amount })
           ).wait();
 
@@ -434,9 +438,9 @@ describe('LidoRelayer', function () {
     describe('stakeETHAndWrap', () => {
       let tokenRecipient: Account;
 
-      context('recipient = sender', () => {
+      context('recipient = senderUser', () => {
         beforeEach(() => {
-          tokenRecipient = sender;
+          tokenRecipient = senderUser;
         });
         testStakeAndWrap();
       });
@@ -453,7 +457,9 @@ describe('LidoRelayer', function () {
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
 
           const receipt = await (
-            await relayer.connect(sender).multicall([encodeStakeETHAndWrap(tokenRecipient, amount)], { value: amount })
+            await relayer
+              .connect(senderUser)
+              .multicall([encodeStakeETHAndWrap(tokenRecipient, amount)], { value: amount })
           ).wait();
 
           const relayerIsRecipient = TypesConverter.toAddress(tokenRecipient) === relayer.address;
@@ -472,7 +478,7 @@ describe('LidoRelayer', function () {
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
 
           await relayer
-            .connect(sender)
+            .connect(senderUser)
             .multicall([encodeStakeETHAndWrap(tokenRecipient, amount, toChainedReference(0))], { value: amount });
 
           await expectChainedReferenceContents(toChainedReference(0), expectedWstETHAmount);
@@ -485,7 +491,7 @@ describe('LidoRelayer', function () {
 
           const receipt = await (
             await relayer
-              .connect(sender)
+              .connect(senderUser)
               .multicall([encodeStakeETHAndWrap(tokenRecipient, toChainedReference(0))], { value: amount })
           ).wait();
 
@@ -519,8 +525,8 @@ describe('LidoRelayer', function () {
       pool = await StablePool.create({ tokens: poolTokens, vault });
       poolId = pool.poolId;
 
-      await WETH.mint(sender, fp(2));
-      await WETH.approve(vault, MAX_UINT256, { from: sender });
+      await WETH.mint(senderUser, fp(2));
+      await WETH.approve(vault, MAX_UINT256, { from: senderUser });
 
       // Seed liquidity in pool
       await WETH.mint(admin, fp(200));
@@ -573,8 +579,8 @@ describe('LidoRelayer', function () {
 
         sharedBeforeEach('swap stETH for WETH', async () => {
           receipt = await (
-            await relayer.connect(sender).multicall([
-              encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+            await relayer.connect(senderUser).multicall([
+              encodeWrap(senderUser.address, relayer.address, amount, toChainedReference(0)),
               encodeApprove(wstETH, MAX_UINT256),
               encodeSwap({
                 poolId,
@@ -583,7 +589,7 @@ describe('LidoRelayer', function () {
                 tokenOut: WETH,
                 amount: toChainedReference(0),
                 sender: relayer,
-                recipient,
+                recipient: recipientUser,
                 outputReference: 0,
               }),
             ])
@@ -597,7 +603,7 @@ describe('LidoRelayer', function () {
             tokenOut: WETH.address,
           });
 
-          expectTransferEvent(receipt, { from: vault.address, to: recipient.address }, WETH);
+          expectTransferEvent(receipt, { from: vault.address, to: recipientUser.address }, WETH);
         });
 
         it('does not leave dust on the relayer', async () => {
@@ -612,18 +618,18 @@ describe('LidoRelayer', function () {
 
         sharedBeforeEach('swap WETH for stETH', async () => {
           receipt = await (
-            await relayer.connect(sender).multicall([
+            await relayer.connect(senderUser).multicall([
               encodeSwap({
                 poolId,
                 kind: SwapKind.GivenIn,
                 tokenIn: WETH,
                 tokenOut: wstETH,
                 amount,
-                sender,
+                sender: senderUser,
                 recipient: relayer,
                 outputReference: toChainedReference(0),
               }),
-              encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
+              encodeUnwrap(relayer.address, recipientUser.address, toChainedReference(0)),
             ])
           ).wait();
         });
@@ -635,7 +641,7 @@ describe('LidoRelayer', function () {
             tokenOut: wstETH.address,
           });
 
-          expectTransferEvent(receipt, { from: relayer.address, to: recipient.address }, stETH);
+          expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, stETH);
         });
 
         it('does not leave dust on the relayer', async () => {
@@ -691,13 +697,13 @@ describe('LidoRelayer', function () {
 
         sharedBeforeEach('swap stETH for WETH', async () => {
           receipt = await (
-            await relayer.connect(sender).multicall([
-              encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+            await relayer.connect(senderUser).multicall([
+              encodeWrap(senderUser.address, relayer.address, amount, toChainedReference(0)),
               encodeApprove(wstETH, MAX_UINT256),
               encodeBatchSwap({
                 swaps: [{ poolId, tokenIn: wstETH, tokenOut: WETH, amount: toChainedReference(0) }],
                 sender: relayer,
-                recipient: recipient,
+                recipient: recipientUser,
               }),
             ])
           ).wait();
@@ -710,7 +716,7 @@ describe('LidoRelayer', function () {
             tokenOut: WETH.address,
           });
 
-          expectTransferEvent(receipt, { from: vault.address, to: recipient.address }, WETH);
+          expectTransferEvent(receipt, { from: vault.address, to: recipientUser.address }, WETH);
         });
 
         it('does not leave dust on the relayer', async () => {
@@ -725,14 +731,14 @@ describe('LidoRelayer', function () {
 
         sharedBeforeEach('swap WETH for stETH', async () => {
           receipt = await (
-            await relayer.connect(sender).multicall([
+            await relayer.connect(senderUser).multicall([
               encodeBatchSwap({
                 swaps: [{ poolId, tokenIn: WETH, tokenOut: wstETH, amount }],
-                sender: sender,
+                sender: senderUser,
                 recipient: relayer,
                 outputReferences: { wstETH: toChainedReference(0) },
               }),
-              encodeUnwrap(relayer.address, recipient.address, toChainedReference(0)),
+              encodeUnwrap(relayer.address, recipientUser.address, toChainedReference(0)),
             ])
           ).wait();
         });
@@ -744,7 +750,7 @@ describe('LidoRelayer', function () {
             tokenOut: wstETH.address,
           });
 
-          expectTransferEvent(receipt, { from: relayer.address, to: recipient.address }, stETH);
+          expectTransferEvent(receipt, { from: relayer.address, to: recipientUser.address }, stETH);
         });
 
         it('does not leave dust on the relayer', async () => {
@@ -785,16 +791,16 @@ describe('LidoRelayer', function () {
       const amount = fp(1);
 
       sharedBeforeEach('join the pool', async () => {
-        senderWstETHBalanceBefore = await wstETH.balanceOf(sender);
+        senderWstETHBalanceBefore = await wstETH.balanceOf(senderUser);
         receipt = await (
-          await relayer.connect(sender).multicall([
-            encodeWrap(sender.address, relayer.address, amount, toChainedReference(0)),
+          await relayer.connect(senderUser).multicall([
+            encodeWrap(senderUser.address, relayer.address, amount, toChainedReference(0)),
             encodeApprove(wstETH, MAX_UINT256),
             encodeJoin({
               poolId,
               assets: poolTokens,
               sender: relayer,
-              recipient: recipient,
+              recipient: recipientUser,
               maxAmountsIn: poolTokens.map(() => MAX_UINT256),
               userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
                 poolTokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
@@ -814,13 +820,13 @@ describe('LidoRelayer', function () {
         // BPT minted to recipient
         expectTransferEvent(
           receipt,
-          { from: ZERO_ADDRESS, to: recipient.address },
+          { from: ZERO_ADDRESS, to: recipientUser.address },
           await Token.deployedAt(pool.address)
         );
       });
 
       it('does not take wstETH from the sender', async () => {
-        const senderWstETHBalanceAfter = await wstETH.balanceOf(sender);
+        const senderWstETHBalanceAfter = await wstETH.balanceOf(senderUser);
         expect(senderWstETHBalanceAfter).to.be.eq(senderWstETHBalanceBefore);
       });
 
