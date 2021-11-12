@@ -230,13 +230,18 @@ interface IStaticATokenLM is IERC20 {
 
     function getLastRewardBlock() external view returns (uint256);
 
+    // solhint-disable-next-line func-name-mixedcase
     function LENDING_POOL() external returns (address);
 
+    // solhint-disable-next-line func-name-mixedcase
     function INCENTIVES_CONTROLLER() external returns (address);
 
+    // solhint-disable-next-line func-name-mixedcase
     function ATOKEN() external returns (IERC20);
 
+    // solhint-disable-next-line func-name-mixedcase
     function ASSET() external returns (IERC20);
 
+    // solhint-disable-next-line func-name-mixedcase
     function REWARD_TOKEN() external returns (IERC20);
 }
