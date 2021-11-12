@@ -80,7 +80,7 @@ abstract contract AaveWrapping is IBaseRelayerLibrary {
             _pullToken(sender, staticToken, amount);
         }
 
-        // Static Tokens are outright burned by `withdraw`, so we don't need to grant allowance as there will be no transfer
+        // No approval is needed here as the Static Tokens are burned directly from the relayer's account
         (, uint256 result) = staticToken.withdraw(recipient, amount, toUnderlying);
 
         if (_isChainedReference(outputReference)) {
