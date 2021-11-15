@@ -91,7 +91,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Tells the identifier used for a specific distribution
+     * @dev Returns the identifier used for a specific distribution
      * @param stakingToken The staking token of the distribution
      * @param rewardsToken The rewards token of the distribution
      * @param rewarder The rewarder of the distribution
@@ -105,7 +105,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Tells the information of a distribution
+     * @dev Returns the information of a distribution
      * @param distributionId ID of the distribution being queried
      */
     function getDistribution(bytes32 distributionId) external view returns (Distribution memory) {
@@ -121,7 +121,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Tells the total supply for a distribution
+     * @dev Returns the total supply for a distribution
      * @param distributionId ID of the distribution being queried
      */
     function totalSupply(bytes32 distributionId) external view returns (uint256) {
@@ -129,7 +129,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Tells the time until when a reward has been accounted for
+     * @dev Returns the time until when a reward has been accounted for
      * @param distributionId ID of the distribution being queried
      */
     function lastTimeRewardApplicable(bytes32 distributionId) public view returns (uint256) {
@@ -137,7 +137,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Tells if a user is subscribed to a distribution or not
+     * @dev Returns if a user is subscribed to a distribution or not
      * @param distributionId ID of the distribution being queried
      * @param user The address of the user being queried
      */
@@ -147,7 +147,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Tells the information of a distribution for a user
+     * @dev Returns the information of a distribution for a user
      * @param distributionId ID of the distribution being queried
      * @param user Address of the user being queried
      */
@@ -157,7 +157,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Tells the unaccounted earned rewards for a user until now for a particular distribution
+     * @dev Returns the unaccounted earned rewards for a user until now for a particular distribution
      * @param distributionId ID of the distribution being queried
      * @param user Address of the user being queried
      */
@@ -168,7 +168,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Tells the total earned rewards for a user until now for a particular distribution
+     * @dev Returns the total earned rewards for a user until now for a particular distribution
      * @param distributionId ID of the distribution being queried
      * @param user Address of the user being queried
      */
@@ -179,7 +179,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Tells the staked balance of a user for a staking token
+     * @dev Returns the staked balance of a user for a staking token
      * @param stakingToken The staking token being queried
      * @param user Address of the user being queried
      */
