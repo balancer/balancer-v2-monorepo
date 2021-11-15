@@ -59,7 +59,7 @@ const setup = async () => {
   const poolId = await pool.getPoolId();
 
   // Deploy staking contract for pool
-  const distributor = await deploy('v2-distributors/MultiRewards', {
+  const distributor = await deploy('v2-distributors/MultiDistributor', {
     args: [vault.address],
   });
 

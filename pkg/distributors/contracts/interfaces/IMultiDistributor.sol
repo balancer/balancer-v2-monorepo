@@ -24,4 +24,10 @@ interface IMultiDistributor {
     ) external returns (bytes32 distributionId);
 
     function reward(bytes32 distributionId, uint256 amount) external;
+
+    function getDistributionId(
+        IERC20 stakingToken,
+        IERC20 rewardsToken,
+        address rewarder
+    ) external pure returns (bytes32);
 }
