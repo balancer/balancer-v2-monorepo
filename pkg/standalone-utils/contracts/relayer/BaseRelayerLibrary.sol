@@ -71,6 +71,48 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     }
 
     /**
+     * @notice Approves the Vault to use tokens held on the relayer
+     * @dev This is needed for avoiding having to send any intermediate tokens back to the user
+     */
+    function approveVault(IERC20 token, uint256 amount) public override {
+        // TODO: gas golf this a bit
+        token.approve(address(getVault()), amount);
+    }
+
+    function _pullToken(
+        address sender,
+        IERC20 token,
+        uint256 amount
+    ) internal override {
+        if (amount == 0) return;
+        IERC20[] memory tokens = new IERC20[](1);
+        tokens[0] = token;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = amount;
+
+        _pullTokens(sender, tokens, amounts);
+    }
+
+    function _pullTokens(
+        address sender,
+        IERC20[] memory tokens,
+        uint256[] memory amounts
+    ) internal override {
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](tokens.length);
+        for (uint256 i; i < tokens.length; i++) {
+            ops[i] = IVault.UserBalanceOp({
+                asset: IAsset(address(tokens[i])),
+                amount: amounts[i],
+                sender: sender,
+                recipient: payable(address(this)),
+                kind: IVault.UserBalanceOpKind.TRANSFER_EXTERNAL
+            });
+        }
+
+        getVault().manageUserBalance(ops);
+    }
+
+    /**
      * @dev Returns true if `amount` is not actually an amount, but rather a chained reference.
      */
     function _isChainedReference(uint256 amount) internal pure override returns (bool) {

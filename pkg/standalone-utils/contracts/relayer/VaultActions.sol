@@ -50,7 +50,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         uint256 value,
         uint256 outputReference
     ) external payable returns (uint256) {
-        require(funds.sender == msg.sender, "Incorrect sender");
+        require(funds.sender == msg.sender || funds.sender == address(this), "Incorrect sender");
 
         if (_isChainedReference(singleSwap.amount)) {
             singleSwap.amount = _getChainedReferenceValue(singleSwap.amount);
@@ -75,7 +75,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         uint256 value,
         OutputReference[] calldata outputReferences
     ) external payable returns (int256[] memory) {
-        require(funds.sender == msg.sender, "Incorrect sender");
+        require(funds.sender == msg.sender || funds.sender == address(this), "Incorrect sender");
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             uint256 amount = swaps[i].amount;
@@ -102,7 +102,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
 
     function manageUserBalance(IVault.UserBalanceOp[] calldata ops, uint256 value) external payable {
         for (uint256 i = 0; i < ops.length; i++) {
-            require(ops[i].sender == msg.sender, "Incorrect sender");
+            require(ops[i].sender == msg.sender || ops[i].sender == address(this), "Incorrect sender");
         }
         getVault().manageUserBalance{ value: value }(ops);
     }
@@ -118,7 +118,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         uint256 value,
         uint256 outputReference
     ) external payable {
-        require(sender == msg.sender, "Incorrect sender");
+        require(sender == msg.sender || sender == address(this), "Incorrect sender");
 
         // The output of a join is expected to be balance in the Pool's token contract, typically known as BPT (Balancer
         // Pool Tokens). Since the Vault is unaware of this (BPT is minted directly to the recipient), we manually
@@ -189,7 +189,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         IVault.ExitPoolRequest memory request,
         OutputReference[] calldata outputReferences
     ) external payable {
-        require(sender == msg.sender, "Incorrect sender");
+        require(sender == msg.sender || sender == address(this), "Incorrect sender");
 
         // To track the changes of internal balances we need an array of token addresses.
         // We save this here to avoid having to recalculate after we perform the exit.
