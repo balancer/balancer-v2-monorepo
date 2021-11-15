@@ -100,7 +100,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         IERC20 stakingToken,
         IERC20 rewardsToken,
         address rewarder
-    ) public pure returns (bytes32) {
+    ) public pure override returns (bytes32) {
         return keccak256(abi.encodePacked(stakingToken, rewardsToken, rewarder));
     }
 
