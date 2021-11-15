@@ -80,8 +80,8 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     /**
      * @dev Updates the reward rate for all the distributions that a user has signed up for a staking token
      */
-    modifier updateDistribution(IERC20 stakingToken, address user) {
-        _updateDistribution(stakingToken, user);
+    modifier updateDistributions(IERC20 stakingToken, address user) {
+        _updateDistributions(stakingToken, user);
         _;
     }
 
@@ -387,7 +387,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         IERC20 stakingToken,
         uint256 amount,
         address receiver
-    ) public nonReentrant updateDistribution(stakingToken, msg.sender) {
+    ) public nonReentrant updateDistributions(stakingToken, msg.sender) {
         require(amount > 0, "WITHDRAW_AMOUNT_ZERO");
 
         UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
@@ -482,7 +482,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         uint256 amount,
         address user,
         address from
-    ) internal updateDistribution(stakingToken, user) {
+    ) internal updateDistributions(stakingToken, user) {
         require(amount > 0, "STAKE_AMOUNT_ZERO");
 
         UserStaking storage userStaking = _userStakings[stakingToken][user];
@@ -541,7 +541,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         getVault().manageUserBalance(ops);
     }
 
-    function _updateDistribution(IERC20 stakingToken, address user) internal {
+    function _updateDistributions(IERC20 stakingToken, address user) internal {
         UserStaking storage userStaking = _userStakings[stakingToken][user];
         EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
         uint256 distributionsLength = distributions.length();
