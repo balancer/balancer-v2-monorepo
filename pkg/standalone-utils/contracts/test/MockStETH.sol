@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2015, 2016, 2017 Dapphub
+
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -13,21 +15,28 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "./relayer/BaseRelayerLibrary.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-import "./relayer/LidoWrapping.sol";
-import "./relayer/VaultActions.sol";
-import "./relayer/VaultPermit.sol";
+import "./TestToken.sol";
 
-/**
- * @title Batch Relayer Library
- * @notice This contract is not a relayer by itself and calls into it directly will fail.
- * The associated relayer can be found by calling `getEntrypoint` on this contract.
- */
-contract BatchRelayerLibrary is BaseRelayerLibrary, LidoWrapping, VaultActions, VaultPermit {
-    constructor(IVault vault, IERC20 wstETH) BaseRelayerLibrary(vault) LidoWrapping(wstETH) {
+import "../interfaces/IstETH.sol";
+
+contract MockStETH is TestToken, IstETH {
+    constructor(
+        address admin,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    ) TestToken(admin, name, symbol, decimals) {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    event EthStaked(uint256 amount);
+
+    function submit(address) external payable override returns (uint256) {
+        _mint(msg.sender, msg.value);
+        emit EthStaked(msg.value);
+        return msg.value;
     }
 }

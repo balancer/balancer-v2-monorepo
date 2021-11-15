@@ -13,21 +13,12 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "./relayer/BaseRelayerLibrary.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
-import "./relayer/LidoWrapping.sol";
-import "./relayer/VaultActions.sol";
-import "./relayer/VaultPermit.sol";
+// solhint-disable-next-line max-line-length
+// Based on https://github.com/lidofinance/lido-dao/blob/816bf1d0995ba5cfdfc264de4acda34a7fe93eba/contracts/0.4.24/Lido.sol
 
-/**
- * @title Batch Relayer Library
- * @notice This contract is not a relayer by itself and calls into it directly will fail.
- * The associated relayer can be found by calling `getEntrypoint` on this contract.
- */
-contract BatchRelayerLibrary is BaseRelayerLibrary, LidoWrapping, VaultActions, VaultPermit {
-    constructor(IVault vault, IERC20 wstETH) BaseRelayerLibrary(vault) LidoWrapping(wstETH) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
+interface IstETH is IERC20 {
+    function submit(address referral) external payable returns (uint256);
 }
