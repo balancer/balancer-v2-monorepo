@@ -287,11 +287,11 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
             IERC20 stakingToken = distribution.stakingToken;
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
             EnumerableSet.Bytes32Set storage subscribedDistributions = userStaking.subscribedDistributions;
-            require(userStaking.subscribedDistributions.add(distributionId), "ALREADY_SUBSCRIBED_DISTRIBUTION");
+            require(subscribedDistributions.add(distributionId), "ALREADY_SUBSCRIBED_DISTRIBUTION");
 
             uint256 amount = userStaking.balance;
             if (amount > 0) {
-                userStaking.subscribedDistributions.add(distributionId);
+                subscribedDistributions.add(distributionId);
                 // The unpaid rewards remains the same because the user was not subscribed to the distribution
                 userStaking.distributions[distributionId].paidRatePerToken = _updateDistributionRate(distributionId);
                 distribution.totalSupply = distribution.totalSupply.add(amount);
