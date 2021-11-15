@@ -402,6 +402,23 @@ describe('LidoRelayer', function () {
           );
         });
 
+        it('returns excess ETH', async () => {
+          const excess = fp(1.5);
+          const senderBalanceBefore = await ethers.provider.getBalance(senderUser.address);
+
+          const tx = await relayer
+            .connect(senderUser)
+            .multicall([encodeStakeETH(tokenRecipient, amount)], { value: amount.add(excess) });
+          const receipt = await tx.wait();
+
+          expectTransferEvent(receipt, { value: amount }, stETH);
+
+          const txCost = tx.gasPrice.mul(receipt.gasUsed);
+          expect(await ethers.provider.getBalance(senderUser.address)).to.equal(
+            senderBalanceBefore.sub(txCost).sub(amount)
+          );
+        });
+
         it('stores stake output as chained reference', async () => {
           await relayer
             .connect(senderUser)
