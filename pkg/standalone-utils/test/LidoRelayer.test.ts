@@ -168,7 +168,7 @@ describe('LidoRelayer', function () {
 
       context('sender = relayer, recipient = relayer', () => {
         beforeEach(async () => {
-          await stETH.transfer(relayer, fp(1), { from: senderUser });
+          await stETH.transfer(relayer, amount, { from: senderUser });
           tokenSender = relayer;
           tokenRecipient = relayer;
         });
@@ -177,7 +177,7 @@ describe('LidoRelayer', function () {
 
       context('sender = relayer, recipient = senderUser', () => {
         beforeEach(async () => {
-          await stETH.transfer(relayer, fp(1), { from: senderUser });
+          await stETH.transfer(relayer, amount, { from: senderUser });
           tokenSender = relayer;
           tokenRecipient = senderUser;
         });
@@ -281,7 +281,7 @@ describe('LidoRelayer', function () {
 
       context('sender = relayer, recipient = relayer', () => {
         beforeEach(async () => {
-          await wstETH.transfer(relayer, fp(1), { from: senderUser });
+          await wstETH.transfer(relayer, amount, { from: senderUser });
           tokenSender = relayer;
           tokenRecipient = relayer;
         });
@@ -290,7 +290,7 @@ describe('LidoRelayer', function () {
 
       context('sender = relayer, recipient = senderUser', () => {
         beforeEach(async () => {
-          await wstETH.transfer(relayer, fp(1), { from: senderUser });
+          await wstETH.transfer(relayer, amount, { from: senderUser });
           tokenSender = relayer;
           tokenRecipient = senderUser;
         });
