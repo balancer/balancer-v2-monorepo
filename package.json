@@ -23,7 +23,7 @@
     "Tom French <tom@balancer.finance>"
   ],
   "scripts": {
-    "build": "yarn workspaces foreach --parallel --verbose  run build",
+    "build": "yarn workspaces foreach --parallel --topological-dev --verbose  run build",
     "lint": "yarn workspaces foreach --parallel --verbose run lint",
     "test": "yarn workspaces foreach --parallel --verbose run test"
   },
