@@ -50,6 +50,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     struct Distribution {
         IERC20 stakingToken;
         IERC20 rewardsToken;
+        address rewarder;
         uint256 totalSupply;
         uint256 duration;
         uint256 periodFinish;
@@ -89,13 +90,16 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         IERC20 stakingToken,
         IERC20 rewardsToken,
         uint256 duration
-    ) external override {
+    ) external override returns (bytes32 distributionId) {
         require(duration > 0, "reward rate must be nonzero");
+        require(address(stakingToken) != address(0), "STAKING_TOKEN_ZERO_ADDRESS");
+        require(address(rewardsToken) != address(0), "REWARDS_TOKEN_ZERO_ADDRESS");
 
-        bytes32 distributionId = getDistributionId(stakingToken, rewardsToken, msg.sender);
+        distributionId = getDistributionId(stakingToken, rewardsToken, msg.sender);
         Distribution storage distribution = _getDistribution(distributionId);
         require(distribution.duration == 0, "Duplicate rewards token");
         distribution.duration = duration;
+        distribution.rewarder = msg.sender;
         distribution.rewardsToken = rewardsToken;
         distribution.stakingToken = stakingToken;
 
@@ -127,6 +131,16 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
+     * @dev Tells the information of a distribution for a user
+     * @param distributionId ID of the distribution being queried
+     * @param user Address of the user being queried
+     */
+    function getUserDistribution(bytes32 distributionId, address user) external view returns (UserDistribution memory) {
+        IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
+        return _userStakings[stakingToken][user].distributions[distributionId];
+    }
+
+    /**
      * @dev Tells if a user is subscribed to a distribution or not
      * @param distributionId ID of the distribution being queried
      * @param user The address of the user being queried
@@ -154,17 +168,11 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice This time is used when determining up until what time a reward has been accounted for
-     * @param stakingToken The staking token being queried
-     * @param rewardsToken The token to be distributed to users
-     * @param rewarder The address of the rewarder
+     * @dev Tell the time until when a reward has been accounted for
+     * @param distributionId ID of the distribution being queried
      */
-    function lastTimeRewardApplicable(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        address rewarder
-    ) public view returns (uint256) {
-        return _lastTimeRewardApplicable(_getDistribution(stakingToken, rewardsToken, rewarder));
+    function lastTimeRewardApplicable(bytes32 distributionId) public view returns (uint256) {
+        return _lastTimeRewardApplicable(_getDistribution(distributionId));
     }
 
     function _lastTimeRewardApplicable(Distribution storage distribution) private view returns (uint256) {
@@ -172,17 +180,11 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice Calculates the amount of reward token per staked tokens
-     * @param stakingToken The staking token being queried
-     * @param rewardsToken The token to be distributed to users
-     * @param rewarder The address of the rewarder
+     * @dev Calculates the reward rate per token for a distribution
+     * @param distributionId ID of the distribution being queried
      */
-    function rewardPerToken(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        address rewarder
-    ) public view returns (uint256) {
-        return _rewardPerToken(_getDistribution(stakingToken, rewardsToken, rewarder));
+    function rewardPerToken(bytes32 distributionId) public view returns (uint256) {
+        return _rewardPerToken(_getDistribution(distributionId));
     }
 
     function _rewardPerToken(Distribution storage distribution) private view returns (uint256) {
@@ -198,20 +200,13 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice Calculates the amount of `rewardsToken` that `user` is able to claim from a particular rewarder
-     * @param stakingToken The staking token being queried
-     * @param rewardsToken The token to be distributed to users
-     * @param rewarder The address of the rewarder
+     * @dev Calculates the rewards amount that a user is able to claim for a particular distribution
+     * @param distributionId ID of the distribution being queried
      * @param user The address receiving the rewards
      */
-    function unaccountedForUnpaidRewards(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        address rewarder,
-        address user
-    ) public view returns (uint256) {
+    function unaccountedForUnpaidRewards(bytes32 distributionId, address user) external view returns (uint256) {
+        IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
         UserStaking storage userStaking = _userStakings[stakingToken][user];
-        bytes32 distributionId = getDistributionId(stakingToken, rewardsToken, rewarder);
         return _unaccountedForUnpaidRewards(userStaking, distributionId);
     }
 
@@ -232,20 +227,13 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice Calculates the total amount of `rewardsToken` that `user` is able to claim for a distribution
-     * @param stakingToken The staking token of the distribution being queried
-     * @param rewardsToken The rewards token of the distribution being queried
-     * @param rewarder The rewarder of the distribution being queried
+     * @dev Calculates the total rewards amount that a user is able to claim for a distribution
+     * @param distributionId ID of the distribution being queried
      * @param user The address receiving the rewards
      */
-    function totalEarned(
-        IERC20 stakingToken,
-        IERC20 rewardsToken,
-        address rewarder,
-        address user
-    ) external view returns (uint256) {
+    function totalEarned(bytes32 distributionId, address user) external view returns (uint256) {
+        IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
         UserStaking storage userStaking = _userStakings[stakingToken][user];
-        bytes32 distributionId = getDistributionId(stakingToken, rewardsToken, rewarder);
         return _totalEarned(userStaking, distributionId);
     }
 
@@ -384,6 +372,8 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
         require(amount > 0, "Cannot withdraw 0");
 
         UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
+        uint256 currentBalance = userStaking.balance;
+        require(currentBalance >= amount, "UNSTAKE_AMOUNT_UNAVAILABLE");
         userStaking.balance = userStaking.balance.sub(amount);
 
         EnumerableSet.Bytes32Set storage distributions = userStaking.allowedDistributions;
@@ -400,66 +390,59 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
     }
 
     /**
-     * @notice Allows a user to claim any rewards to an EOA
-     * @param stakingTokens The staking tokens to claim rewards for
+     * @dev Allows a user to claim any rewards to an EOA
+     * @param distributionIds List of distributions claiming the rewards of
      */
-    function getReward(IERC20[] memory stakingTokens) external nonReentrant {
-        _getReward(stakingTokens, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
+    function getReward(bytes32[] memory distributionIds) external nonReentrant {
+        _getReward(distributionIds, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
     }
 
     /**
      * @notice Allows a user to claim any rewards to an internal balance
-     * @param stakingTokens The staking tokens to claim rewards for
+     * @param distributionIds The distributions to claim rewards for
      */
-    function getRewardAsInternalBalance(IERC20[] memory stakingTokens) external nonReentrant {
-        _getReward(stakingTokens, msg.sender, IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
-    }
-
-    function _rewardOpsCount(IERC20[] memory stakingTokens) internal view returns (uint256 opsCount) {
-        for (uint256 i; i < stakingTokens.length; i++) {
-            UserStaking storage userStaking = _userStakings[stakingTokens[i]][msg.sender];
-            opsCount += userStaking.allowedDistributions.length();
-        }
+    function getRewardAsInternalBalance(bytes32[] memory distributionIds) external nonReentrant {
+        _getReward(distributionIds, msg.sender, IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
     }
 
     /**
      * @notice Allows a user to claim any rewards to an internal balance or EOA
      */
     function _getReward(
-        IERC20[] memory stakingTokens,
+        bytes32[] memory distributionIds,
         address recipient,
         IVault.UserBalanceOpKind kind
     ) internal {
-        uint256 opsIndex;
-        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](_rewardOpsCount(stakingTokens));
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](distributionIds.length);
 
-        for (uint256 i; i < stakingTokens.length; i++) {
-            UserStaking storage userStaking = _userStakings[stakingTokens[i]][msg.sender];
-            EnumerableSet.Bytes32Set storage distributions = userStaking.allowedDistributions;
-            uint256 distributionsLength = distributions.length();
+        for (uint256 i; i < distributionIds.length; i++) {
+            bytes32 distributionId = distributionIds[i];
+            Distribution storage distribution = _getDistribution(distributionId);
 
-            for (uint256 j; j < distributionsLength; j++) {
-                bytes32 distributionId = distributions.unchecked_at(j);
+            IERC20 stakingToken = distribution.stakingToken;
+            UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
+
+            if (userStaking.allowedDistributions.contains(distributionId)) {
+                // Update user distribution rates only if the user is still subscribed
                 _updateUserRewardRatePerToken(userStaking, distributionId);
-
-                Distribution storage distribution = _getDistribution(distributionId);
-                UserDistribution storage userDistribution = userStaking.distributions[distributionId];
-                uint256 unpaidRewards = userDistribution.unpaidRewards;
-                address rewardsToken = address(distribution.rewardsToken);
-
-                if (unpaidRewards > 0) {
-                    userDistribution.unpaidRewards = 0;
-                    emit RewardPaid(msg.sender, rewardsToken, unpaidRewards);
-                }
-
-                ops[opsIndex++] = IVault.UserBalanceOp({
-                    asset: IAsset(rewardsToken),
-                    amount: unpaidRewards,
-                    sender: address(this),
-                    recipient: payable(recipient),
-                    kind: kind
-                });
             }
+
+            UserDistribution storage userDistribution = userStaking.distributions[distributionId];
+            uint256 unpaidRewards = userDistribution.unpaidRewards;
+            address rewardsToken = address(distribution.rewardsToken);
+
+            if (unpaidRewards > 0) {
+                userDistribution.unpaidRewards = 0;
+                emit RewardPaid(msg.sender, rewardsToken, unpaidRewards);
+            }
+
+            ops[i] = IVault.UserBalanceOp({
+                asset: IAsset(rewardsToken),
+                amount: unpaidRewards,
+                sender: address(this),
+                recipient: payable(recipient),
+                kind: kind
+            });
         }
 
         getVault().manageUserBalance(ops);
@@ -467,41 +450,44 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
 
     /**
      * @notice Allows the user to claim rewards to a callback contract
-     * @param stakingTokens An array of staking tokens from which rewards will be claimed
+     * @param distributionIds The distributions to claim rewards for
      * @param callbackContract The contract where rewards will be transferred
      * @param callbackData The data that is used to call the callback contract's 'callback' method
      */
     function getRewardWithCallback(
-        IERC20[] memory stakingTokens,
+        bytes32[] memory distributionIds,
         IDistributorCallback callbackContract,
         bytes memory callbackData
     ) external nonReentrant {
-        _getReward(stakingTokens, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
+        _getReward(distributionIds, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
         callbackContract.distributorCallback(callbackData);
     }
 
     /**
      * @notice Allows a user to unstake all their tokens
-     * @param stakingTokens The staking tokens to unstake tokens for
+     * @param stakingTokens The staking tokens to unstake tokens from
+     * @param distributionIds The distributions to claim rewards for
      */
-    function exit(IERC20[] memory stakingTokens) external {
+    function exit(IERC20[] memory stakingTokens, bytes32[] memory distributionIds) external {
         for (uint256 i; i < stakingTokens.length; i++) {
             IERC20 stakingToken = stakingTokens[i];
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
             unstake(stakingToken, userStaking.balance, msg.sender);
         }
 
-        _getReward(stakingTokens, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
+        _getReward(distributionIds, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
     }
 
     /**
      * @notice Allows a user to unstake transferring rewards to a callback contract
-     * @param stakingTokens The staking tokens to claim rewards for
+     * @param stakingTokens The staking tokens to unstake tokens from
+     * @param distributionIds The distributions to claim rewards for
      * @param callbackContract The contract where the rewards tokens will be transferred
      * @param callbackData The data that is used to call the callback contract's 'callback' method
      */
     function exitWithCallback(
         IERC20[] memory stakingTokens,
+        bytes32[] memory distributionIds,
         IDistributorCallback callbackContract,
         bytes memory callbackData
     ) external {
@@ -511,7 +497,7 @@ contract MultiRewards is IMultiRewards, IDistributor, ReentrancyGuard, MultiRewa
             unstake(stakingToken, userStaking.balance, msg.sender);
         }
 
-        _getReward(stakingTokens, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
+        _getReward(distributionIds, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
         callbackContract.distributorCallback(callbackData);
     }
 
