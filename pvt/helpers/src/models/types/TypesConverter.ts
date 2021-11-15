@@ -1,5 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
+import { ethers } from 'ethers';
 
 import { bn, fp } from '../../numbers';
 import { DAY, MONTH } from '../../time';
@@ -11,7 +12,7 @@ import { RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
 import { RawLinearPoolDeployment, LinearPoolDeployment } from '../pools/linear/types';
 import { RawStablePhantomPoolDeployment, StablePhantomPoolDeployment } from '../pools/stable-phantom/types';
-import { RawWeightedPoolDeployment, WeightedPoolDeployment, WeightedPoolType } from '../pools/weighted/types';
+import { RawWeightedPoolDeployment, WeightedPoolDeployment, WeightedPoolType, BasePoolRights } from '../pools/weighted/types';
 import {
   RawTokenApproval,
   RawTokenMint,
@@ -263,5 +264,26 @@ export default {
   toAddress(to?: Account): string {
     if (!to) return ZERO_ADDRESS;
     return typeof to === 'string' ? to : to.address;
+  },
+
+  toBytes32(value: number): string {
+    const hexy = ethers.utils.hexlify(value);
+    return ethers.utils.hexZeroPad(hexy, 32);
+  },
+
+  toEncodedBasePoolRights(basePoolRights: BasePoolRights): string {
+    let value = 0;
+
+    if (basePoolRights.canTransferOwnership) {
+      value += 1;
+    }
+    if (basePoolRights.canChangeSwapFee) {
+      value += 2;
+    }
+    if (basePoolRights.canUpdateMetadata) {
+      value += 4;
+    }
+
+    return this.toBytes32(value);
   },
 };
