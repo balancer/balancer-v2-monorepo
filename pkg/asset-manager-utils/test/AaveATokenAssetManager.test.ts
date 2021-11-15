@@ -112,12 +112,13 @@ describe('Aave Asset manager', function () {
   });
 
   describe('claimRewards', () => {
+    let id: string;
     const rewardAmount = fp(1);
 
     beforeEach(async () => {
       const bptBalance = await pool.balanceOf(lp.address);
       await pool.connect(lp).approve(distributor.address, bptBalance);
-      const id = await distributor.getDistributionId(pool.address, stkAave.address, assetManager.address);
+      id = await distributor.getDistributionId(pool.address, stkAave.address, assetManager.address);
 
       await distributor.connect(lp).subscribe([id]);
       await distributor.connect(lp).stake(pool.address, bptBalance.mul(3).div(4));
@@ -139,12 +140,7 @@ describe('Aave Asset manager', function () {
       await advanceTime(10);
 
       const expectedReward = fp(0.75);
-      const actualReward = await distributor.totalEarned(
-        pool.address,
-        stkAave.address,
-        assetManager.address,
-        lp.address
-      );
+      const actualReward = await distributor.totalEarned(id, lp.address);
       expect(expectedReward.sub(actualReward).abs()).to.be.lte(100);
     });
   });
