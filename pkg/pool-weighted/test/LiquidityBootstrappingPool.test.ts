@@ -40,7 +40,6 @@ describe('LiquidityBootstrappingPool', function () {
       const params = {
         tokens: allTokens.subset(1),
         weights: [fp(0.3)],
-        owner,
         poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
@@ -50,7 +49,6 @@ describe('LiquidityBootstrappingPool', function () {
       const params = {
         tokens: allTokens,
         weights: tooManyWeights,
-        owner,
         poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('MAX_TOKENS');
@@ -60,7 +58,6 @@ describe('LiquidityBootstrappingPool', function () {
       const params = {
         tokens,
         weights: tooManyWeights,
-        owner,
         poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
@@ -106,7 +103,6 @@ describe('LiquidityBootstrappingPool', function () {
       const params = {
         tokens,
         weights,
-        owner,
         poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
         fromFactory: true,
       };
@@ -127,7 +123,6 @@ describe('LiquidityBootstrappingPool', function () {
         const params = {
           tokens,
           weights,
-          owner,
           poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
           swapEnabledOnStart: false,
         };
@@ -148,7 +143,7 @@ describe('LiquidityBootstrappingPool', function () {
         const params = {
           tokens,
           weights,
-          owner,
+          owner: owner.address,
           poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
           swapEnabledOnStart: true,
         };

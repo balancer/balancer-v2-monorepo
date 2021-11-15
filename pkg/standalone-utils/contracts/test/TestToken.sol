@@ -34,7 +34,7 @@ contract TestToken is AccessControl, ERC20, ERC20Burnable, ERC20Permit {
     }
 
     function mint(address recipient, uint256 amount) external {
-        require(hasRole(MINTER_ROLE, msg.sender), "NOT_MINTER");
+        require(hasRole(MINTER_ROLE, msg.sender, address(this)), "NOT_MINTER");
         _mint(recipient, amount);
     }
 }

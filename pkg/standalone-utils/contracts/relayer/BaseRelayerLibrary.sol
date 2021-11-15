@@ -40,7 +40,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     IVault private immutable _vault;
     IBalancerRelayer private immutable _entrypoint;
 
-    constructor(IVault vault) {
+    constructor(IVault vault) IBaseRelayerLibrary(vault.WETH()) {
         _vault = vault;
         _entrypoint = new BalancerRelayer(vault, address(this));
     }
@@ -54,14 +54,112 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     }
 
     /**
-     * @notice Sets whether this relayer is authorised to act on behalf of the user
+     * @notice Sets whether a particular relayer is authorised to act on behalf of the user
      */
-    function setRelayerApproval(bool approved, bytes calldata authorisation) external payable {
+    function setRelayerApproval(
+        address relayer,
+        bool approved,
+        bytes calldata authorisation
+    ) external payable {
+        require(relayer == address(this) || !approved, "Relayer can only approve itself");
         bytes memory data = abi.encodePacked(
-            abi.encodeWithSelector(_vault.setRelayerApproval.selector, msg.sender, address(this), approved),
+            abi.encodeWithSelector(_vault.setRelayerApproval.selector, msg.sender, relayer, approved),
             authorisation
         );
 
         address(_vault).functionCall(data);
+    }
+
+    /**
+     * @notice Approves the Vault to use tokens held on the relayer
+     * @dev This is needed for avoiding having to send any intermediate tokens back to the user
+     */
+    function approveVault(IERC20 token, uint256 amount) public override {
+        // TODO: gas golf this a bit
+        token.approve(address(getVault()), amount);
+    }
+
+    function _pullToken(
+        address sender,
+        IERC20 token,
+        uint256 amount
+    ) internal override {
+        if (amount == 0) return;
+        IERC20[] memory tokens = new IERC20[](1);
+        tokens[0] = token;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = amount;
+
+        _pullTokens(sender, tokens, amounts);
+    }
+
+    function _pullTokens(
+        address sender,
+        IERC20[] memory tokens,
+        uint256[] memory amounts
+    ) internal override {
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](tokens.length);
+        for (uint256 i; i < tokens.length; i++) {
+            ops[i] = IVault.UserBalanceOp({
+                asset: IAsset(address(tokens[i])),
+                amount: amounts[i],
+                sender: sender,
+                recipient: payable(address(this)),
+                kind: IVault.UserBalanceOpKind.TRANSFER_EXTERNAL
+            });
+        }
+
+        getVault().manageUserBalance(ops);
+    }
+
+    /**
+     * @dev Returns true if `amount` is not actually an amount, but rather a chained reference.
+     */
+    function _isChainedReference(uint256 amount) internal pure override returns (bool) {
+        return
+            (amount & 0xffff000000000000000000000000000000000000000000000000000000000000) ==
+            0xba10000000000000000000000000000000000000000000000000000000000000;
+    }
+
+    /**
+     * @dev Stores `value` as the amount referenced by chained reference `ref`.
+     */
+    function _setChainedReferenceValue(uint256 ref, uint256 value) internal override {
+        bytes32 slot = _getTempStorageSlot(ref);
+
+        // Since we do manual calculation of storage slots, it is easier (and cheaper) to rely on internal assembly to
+        // access it.
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            sstore(slot, value)
+        }
+    }
+
+    /**
+     * @dev Returns the amount referenced by chained reference `ref`. Reading an amount clears it, so they can each
+     * only be read once.
+     */
+    function _getChainedReferenceValue(uint256 ref) internal override returns (uint256 value) {
+        bytes32 slot = _getTempStorageSlot(ref);
+
+        // Since we do manual calculation of storage slots, it is easier (and cheaper) to rely on internal assembly to
+        // access it.
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            value := sload(slot)
+            sstore(slot, 0)
+        }
+    }
+
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 private immutable _TEMP_STORAGE_SUFFIX = keccak256("balancer.base-relayer-library");
+
+    function _getTempStorageSlot(uint256 ref) private view returns (bytes32) {
+        // This replicates the mechanism Solidity uses to allocate storage slots for mappings, but using a hash as the
+        // mapping's storage slot, and subtracting 1 at the end. This should be more enough to prevent collisions with
+        // other state variables this or derived contracts might use.
+        // See https://docs.soliditylang.org/en/v0.8.9/internals/layout_in_storage.html
+
+        return bytes32(uint256(keccak256(abi.encodePacked(ref, _TEMP_STORAGE_SUFFIX))) - 1);
     }
 }

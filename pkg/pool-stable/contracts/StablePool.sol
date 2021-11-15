@@ -24,12 +24,12 @@ import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
 
 import "./StableMath.sol";
-import "./StablePoolUserDataHelpers.sol";
+import "./StablePoolUserData.sol";
 
 contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
-    using StablePoolUserDataHelpers for bytes;
+    using StablePoolUserData for bytes;
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
@@ -74,9 +74,6 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
     // compare invariants that were computed using the same value. We therefore store it whenever we store
     // _lastInvariant.
     uint256 internal _lastInvariantAmp;
-
-    enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
-    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     constructor(
         IVault vault,
@@ -255,8 +252,8 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
         // It would be strange for the Pool to be paused before it is initialized, but for consistency we prevent
         // initialization in this case.
 
-        StablePool.JoinKind kind = userData.joinKind();
-        _require(kind == StablePool.JoinKind.INIT, Errors.UNINITIALIZED);
+        StablePoolUserData.JoinKind kind = userData.joinKind();
+        _require(kind == StablePoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, _getTotalTokens());
@@ -316,11 +313,11 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        JoinKind kind = userData.joinKind();
+        StablePoolUserData.JoinKind kind = userData.joinKind();
 
-        if (kind == JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+        if (kind == StablePoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(balances, scalingFactors, userData);
-        } else if (kind == JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+        } else if (kind == StablePoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(balances, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
@@ -427,13 +424,13 @@ contract StablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        ExitKind kind = userData.exitKind();
+        StablePoolUserData.ExitKind kind = userData.exitKind();
 
-        if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+        if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(balances, userData);
-        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(balances, userData);
-        } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+        } else if (kind == StablePoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(balances, scalingFactors, userData);
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);

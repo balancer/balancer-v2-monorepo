@@ -74,6 +74,7 @@ contract StablePhantomPool is StablePool {
 
     event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
+    event DueProtocolFeeIncreased(uint256 bptAmount);
 
     enum JoinKindPhantom { INIT, COLLECT_PROTOCOL_FEES }
 
@@ -400,6 +401,8 @@ contract StablePhantomPool is StablePool {
             );
 
             _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeeAmount);
+
+            emit DueProtocolFeeIncreased(protocolFeeAmount);
         }
     }
 
@@ -412,6 +415,8 @@ contract StablePhantomPool is StablePool {
 
         uint256 protocolFeeAmount = feeAmount.mulDown(protocolSwapFeePercentage);
         _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeeAmount);
+
+        emit DueProtocolFeeIncreased(protocolFeeAmount);
     }
 
     /**

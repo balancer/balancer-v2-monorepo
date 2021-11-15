@@ -40,7 +40,7 @@ describe('WeightedPool2Tokens', function () {
   const initialBalances = [fp(0.9), fp(1.8)];
 
   sharedBeforeEach('deploy pool', async () => {
-    const params = { poolType: WeightedPoolType.WEIGHTED_POOL_2TOKENS, tokens, weights, owner };
+    const params = { poolType: WeightedPoolType.WEIGHTED_POOL_2TOKENS, tokens, weights };
     pool = await WeightedPool.create(params);
   });
 
@@ -337,7 +337,7 @@ describe('WeightedPool2Tokens', function () {
 
       sharedBeforeEach('grant role to admin', async () => {
         const action = await actionId(pool.instance, 'enableOracle');
-        await pool.vault.grantRole(action, admin);
+        await pool.vault.grantRoleGlobally(action, admin);
       });
 
       context('when it starts enabled', () => {

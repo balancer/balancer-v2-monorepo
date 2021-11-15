@@ -55,7 +55,7 @@ contract TestWETH is AccessControl, IWETH {
 
     // For testing purposes - this creates WETH that cannot be redeemed for ETH via 'withdraw'
     function mint(address destinatary, uint256 amount) external {
-        require(hasRole(MINTER_ROLE, msg.sender), "NOT_MINTER");
+        require(hasRole(MINTER_ROLE, msg.sender, address(this)), "NOT_MINTER");
         balanceOf[destinatary] += amount;
         emit Deposit(destinatary, amount);
     }

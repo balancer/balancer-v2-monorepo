@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2015, 2016, 2017 Dapphub
+
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -13,21 +15,28 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "./TestToken.sol";
 
-/**
- * @title IBalancerRelayer
- * @notice Allows safe multicall execution of a relayer's functions
- */
-interface IBalancerRelayer {
-    function getLibrary() external view returns (address);
+import "../interfaces/IstETH.sol";
 
-    function getVault() external view returns (IVault);
+contract MockStETH is TestToken, IstETH {
+    constructor(
+        address admin,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    ) TestToken(admin, name, symbol, decimals) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
-    function multicall(bytes[] calldata data) external payable returns (bytes[] memory results);
+    event EthStaked(uint256 amount);
+
+    function submit(address) external payable override returns (uint256) {
+        _mint(msg.sender, msg.value);
+        emit EthStaked(msg.value);
+        return msg.value;
+    }
 }
