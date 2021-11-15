@@ -231,8 +231,10 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Deposits rewards tokens to be distributed
-     * @param distributionId ID of the distribution to be rewarded
+     * @notice Deposits tokens to be distributed to stakers subscribed to distribution channel `distributionId`
+     * @dev Starts a new distribution period for `duration` seconds from now.
+     *      If the previous period is still active its undistributed tokens are rolled over into the new period.
+     * @param distributionId ID of the distribution to be funded
      * @param amount The amount of tokens to deposit
      */
     function fundDistribution(bytes32 distributionId, uint256 amount) external override {
@@ -261,8 +263,13 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         uint256 periodFinish = distribution.periodFinish;
 
         if (block.timestamp >= periodFinish) {
+            // Current distribution period has ended so new period consists only of amount provided.
             distribution.rewardRate = Math.divDown(amount, duration);
         } else {
+            // Current distribution period is still in progress.
+            // Calculate number of tokens which haven't been distributed yet and
+            // apply these to the new distribution period being funded.
+
             // Checked arithmetic is not required due to the if
             uint256 remainingTime = periodFinish - block.timestamp;
             uint256 leftoverRewards = Math.mul(remainingTime, distribution.rewardRate);
@@ -499,7 +506,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         }
 
         // We hold stakingTokens in an external balance as BPT needs to be external anyway
-        // in the case where a user is exiting the pool after unstaking. 
+        // in the case where a user is exiting the pool after unstaking.
         // TODO: consider a TRANSFER_EXTERNAL call
         stakingToken.safeTransferFrom(from, address(this), amount);
     }
