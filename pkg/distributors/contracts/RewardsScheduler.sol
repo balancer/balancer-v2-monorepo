@@ -82,7 +82,7 @@ contract RewardsScheduler {
             if (allowance < scheduledReward.amount) {
                 scheduledReward.rewardsToken.approve(address(_multiDistributor), type(uint256).max);
             }
-            _multiDistributor.reward(scheduledReward.distributionId, scheduledReward.amount);
+            _multiDistributor.fundDistribution(scheduledReward.distributionId, scheduledReward.amount);
             emit RewardStarted(
                 rewardId,
                 scheduledReward.rewarder,

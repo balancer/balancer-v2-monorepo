@@ -235,7 +235,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
      * @param distributionId ID of the distribution to be rewarded
      * @param amount The amount of tokens to deposit
      */
-    function reward(bytes32 distributionId, uint256 amount) external override {
+    function fundDistribution(bytes32 distributionId, uint256 amount) external override {
         _updateDistributionRate(distributionId);
 
         Distribution storage distribution = _getDistribution(distributionId);

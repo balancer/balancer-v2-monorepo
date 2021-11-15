@@ -99,7 +99,7 @@ contract AaveATokenAssetManager is RewardsAssetManager {
 
         // Forward to distributor
         IERC20 poolAddress = IERC20(uint256(getPoolId()) >> (12 * 8));
-        distributor.reward(
+        distributor.fundDistribution(
             distributor.getDistributionId(poolAddress, stkAave, address(this)),
             stkAave.balanceOf(address(this))
         );
