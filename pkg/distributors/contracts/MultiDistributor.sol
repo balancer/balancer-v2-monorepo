@@ -498,6 +498,9 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
             emit Staked(distributionId, user, amount);
         }
 
+        // We hold stakingTokens in an external balance as BPT needs to be external anyway
+        // in the case where a user is exiting the pool after unstaking. 
+        // TODO: consider a TRANSFER_EXTERNAL call
         stakingToken.safeTransferFrom(from, address(this), amount);
     }
 
