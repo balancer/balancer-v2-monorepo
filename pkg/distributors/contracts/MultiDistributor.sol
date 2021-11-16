@@ -43,43 +43,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    struct Distribution {
-        IERC20 stakingToken;
-        IERC20 distributionToken;
-        address distributor;
-        uint256 totalSupply;
-        uint256 duration;
-        uint256 periodFinish;
-        uint256 paymentRate;
-        uint256 lastUpdateTime;
-        uint256 paymentPerTokenStored;
-    }
-
-    struct UserDistribution {
-        uint256 unclaimedTokens;
-        uint256 paidRatePerToken;
-    }
-
-    struct UserStaking {
-        uint256 balance;
-        EnumerableSet.Bytes32Set subscribedDistributions;
-        mapping(bytes32 => UserDistribution) distributions;
-    }
-
     mapping(bytes32 => Distribution) internal _distributions;
     mapping(IERC20 => mapping(address => UserStaking)) internal _userStakings;
-
-    event Staked(bytes32 indexed distribution, address indexed user, uint256 amount);
-    event Withdrawn(bytes32 indexed distribution, address indexed user, uint256 amount);
-    event NewDistribution(
-        bytes32 indexed distribution,
-        IERC20 stakingToken,
-        IERC20 distributionToken,
-        address distributor
-    );
-    event DistributionDurationSet(bytes32 indexed distribution, uint256 duration);
-    event DistributionFunded(bytes32 indexed distribution, uint256 amount);
-    event TokensClaimed(address indexed user, address indexed rewardToken, uint256 amount);
 
     /**
      * @dev Updates the payment rate for all the distributions that a user has signed up for a staking token
@@ -112,7 +77,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Returns the information of a distribution
      * @param distributionId ID of the distribution being queried
      */
-    function getDistribution(bytes32 distributionId) external view returns (Distribution memory) {
+    function getDistribution(bytes32 distributionId) external view override returns (Distribution memory) {
         return _getDistribution(distributionId);
     }
 
@@ -120,7 +85,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Calculates the payment per token for a distribution
      * @param distributionId ID of the distribution being queried
      */
-    function paymentPerToken(bytes32 distributionId) public view returns (uint256) {
+    function paymentPerToken(bytes32 distributionId) public view override returns (uint256) {
         return _paymentPerToken(_getDistribution(distributionId));
     }
 
@@ -128,7 +93,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Returns the total supply for a distribution
      * @param distributionId ID of the distribution being queried
      */
-    function totalSupply(bytes32 distributionId) external view returns (uint256) {
+    function totalSupply(bytes32 distributionId) external view override returns (uint256) {
         return _getDistribution(distributionId).totalSupply;
     }
 
@@ -136,7 +101,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Returns the time until when a payment has been accounted for
      * @param distributionId ID of the distribution being queried
      */
-    function lastTimePaymentApplicable(bytes32 distributionId) public view returns (uint256) {
+    function lastTimePaymentApplicable(bytes32 distributionId) public view override returns (uint256) {
         return _lastTimePaymentApplicable(_getDistribution(distributionId));
     }
 
@@ -145,7 +110,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionId ID of the distribution being queried
      * @param user The address of the user being queried
      */
-    function isSubscribed(bytes32 distributionId, address user) external view returns (bool) {
+    function isSubscribed(bytes32 distributionId, address user) external view override returns (bool) {
         IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
         return _userStakings[stakingToken][user].subscribedDistributions.contains(distributionId);
     }
@@ -155,7 +120,12 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionId ID of the distribution being queried
      * @param user Address of the user being queried
      */
-    function getUserDistribution(bytes32 distributionId, address user) external view returns (UserDistribution memory) {
+    function getUserDistribution(bytes32 distributionId, address user)
+        external
+        view
+        override
+        returns (UserDistribution memory)
+    {
         IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
         return _userStakings[stakingToken][user].distributions[distributionId];
     }
@@ -165,7 +135,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionId ID of the distribution being queried
      * @param user Address of the user being queried
      */
-    function unaccountedEarned(bytes32 distributionId, address user) external view returns (uint256) {
+    function unaccountedEarned(bytes32 distributionId, address user) external view override returns (uint256) {
         IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
         UserStaking storage userStaking = _userStakings[stakingToken][user];
         return _unaccountedEarned(userStaking, distributionId);
@@ -176,7 +146,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionId ID of the distribution being queried
      * @param user Address of the user being queried
      */
-    function totalEarned(bytes32 distributionId, address user) external view returns (uint256) {
+    function totalEarned(bytes32 distributionId, address user) external view override returns (uint256) {
         IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
         UserStaking storage userStaking = _userStakings[stakingToken][user];
         return _totalEarned(userStaking, distributionId);
@@ -187,7 +157,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param stakingToken The staking token being queried
      * @param user Address of the user being queried
      */
-    function balanceOf(IERC20 stakingToken, address user) external view returns (uint256) {
+    function balanceOf(IERC20 stakingToken, address user) external view override returns (uint256) {
         return _userStakings[stakingToken][user].balance;
     }
 
@@ -222,7 +192,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionId ID of the distribution to be set
      * @param duration Duration over which each distribution is spread
      */
-    function setDistributionDuration(bytes32 distributionId, uint256 duration) external {
+    function setDistributionDuration(bytes32 distributionId, uint256 duration) external override {
         require(duration > 0, "DISTRIBUTION_DURATION_ZERO");
 
         Distribution storage distribution = _getDistribution(distributionId);
@@ -291,7 +261,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Subscribes a user to a list of distributions
      * @param distributionIds List of distributions to subscribe
      */
-    function subscribe(bytes32[] memory distributionIds) external {
+    function subscribe(bytes32[] memory distributionIds) external override {
         for (uint256 i; i < distributionIds.length; i++) {
             bytes32 distributionId = distributionIds[i];
             Distribution storage distribution = _getDistribution(distributionId);
@@ -317,7 +287,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Unsubscribes a user to a list of distributions
      * @param distributionIds List of distributions to unsubscribe
      */
-    function unsubscribe(bytes32[] memory distributionIds) external {
+    function unsubscribe(bytes32[] memory distributionIds) external override {
         for (uint256 i; i < distributionIds.length; i++) {
             bytes32 distributionId = distributionIds[i];
             Distribution storage distribution = _getDistribution(distributionId);
@@ -349,7 +319,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param stakingToken The token to be staked to be eligible for distributions
      * @param amount Amount of tokens to be staked
      */
-    function stake(IERC20 stakingToken, uint256 amount) external nonReentrant {
+    function stake(IERC20 stakingToken, uint256 amount) external override nonReentrant {
         _stakeFor(stakingToken, amount, msg.sender, msg.sender);
     }
 
@@ -363,7 +333,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         IERC20 stakingToken,
         uint256 amount,
         address user
-    ) external nonReentrant {
+    ) external override nonReentrant {
         _stakeFor(stakingToken, amount, user, msg.sender);
     }
 
@@ -385,7 +355,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external nonReentrant {
+    ) external override nonReentrant {
         IERC20Permit(address(stakingToken)).permit(user, address(this), amount, deadline, v, r, s);
         _stakeFor(stakingToken, amount, user, user);
     }
@@ -400,7 +370,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         IERC20 stakingToken,
         uint256 amount,
         address receiver
-    ) public nonReentrant updateDistributions(stakingToken, msg.sender) {
+    ) public override nonReentrant updateDistributions(stakingToken, msg.sender) {
         require(amount > 0, "WITHDRAW_AMOUNT_ZERO");
 
         UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
@@ -425,7 +395,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Claims earned distribution tokens for a list of distributions
      * @param distributionIds List of distributions to claim
      */
-    function claim(bytes32[] memory distributionIds) external nonReentrant {
+    function claim(bytes32[] memory distributionIds) external override nonReentrant {
         _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
     }
 
@@ -433,7 +403,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Claims earned tokens for a list of distributions to internal balance
      * @param distributionIds List of distributions to claim
      */
-    function claimAsInternalBalance(bytes32[] memory distributionIds) external nonReentrant {
+    function claimAsInternalBalance(bytes32[] memory distributionIds) external override nonReentrant {
         _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
     }
 
@@ -447,7 +417,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         bytes32[] memory distributionIds,
         IDistributorCallback callbackContract,
         bytes memory callbackData
-    ) external nonReentrant {
+    ) external override nonReentrant {
         _claim(distributionIds, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
         callbackContract.distributorCallback(callbackData);
     }
@@ -457,7 +427,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param stakingTokens The staking tokens to withdraw tokens from
      * @param distributionIds The distributions to claim for
      */
-    function exit(IERC20[] memory stakingTokens, bytes32[] memory distributionIds) external {
+    function exit(IERC20[] memory stakingTokens, bytes32[] memory distributionIds) external override {
         for (uint256 i; i < stakingTokens.length; i++) {
             IERC20 stakingToken = stakingTokens[i];
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
@@ -479,7 +449,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         bytes32[] memory distributionIds,
         IDistributorCallback callbackContract,
         bytes memory callbackData
-    ) external {
+    ) external override {
         for (uint256 i; i < stakingTokens.length; i++) {
             IERC20 stakingToken = stakingTokens[i];
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
