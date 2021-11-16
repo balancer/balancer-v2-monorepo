@@ -46,7 +46,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
     struct Distribution {
         IERC20 stakingToken;
-        IERC20 rewardsToken;
+        IERC20 distributionToken;
         address rewarder;
         uint256 totalSupply;
         uint256 duration;
@@ -72,7 +72,12 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
     event Staked(bytes32 indexed distribution, address indexed user, uint256 amount);
     event Withdrawn(bytes32 indexed distribution, address indexed user, uint256 amount);
-    event NewDistribution(bytes32 indexed distribution, IERC20 stakingToken, IERC20 rewardsToken, address rewarder);
+    event NewDistribution(
+        bytes32 indexed distribution,
+        IERC20 stakingToken,
+        IERC20 distributionToken,
+        address rewarder
+    );
     event DistributionDurationSet(bytes32 indexed distribution, uint256 duration);
     event RewardAdded(bytes32 indexed distribution, uint256 amount);
 
@@ -92,15 +97,15 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     /**
      * @dev Returns the identifier used for a specific distribution
      * @param stakingToken The staking token of the distribution
-     * @param rewardsToken The rewards token of the distribution
+     * @param distributionToken The token which is being distributed
      * @param rewarder The rewarder of the distribution
      */
     function getDistributionId(
         IERC20 stakingToken,
-        IERC20 rewardsToken,
+        IERC20 distributionToken,
         address rewarder
     ) public pure override returns (bytes32) {
-        return keccak256(abi.encodePacked(stakingToken, rewardsToken, rewarder));
+        return keccak256(abi.encodePacked(stakingToken, distributionToken, rewarder));
     }
 
     /**
@@ -189,27 +194,27 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     /**
      * @dev Creates a new rewards distribution
      * @param stakingToken The staking token that will receive rewards
-     * @param rewardsToken The rewards token to be distributed to users
+     * @param distributionToken The token to be distributed to users
      * @param duration The duration over which each distribution is spread
      */
     function create(
         IERC20 stakingToken,
-        IERC20 rewardsToken,
+        IERC20 distributionToken,
         uint256 duration
     ) external override returns (bytes32 distributionId) {
         require(duration > 0, "DISTRIBUTION_DURATION_ZERO");
         require(address(stakingToken) != address(0), "STAKING_TOKEN_ZERO_ADDRESS");
-        require(address(rewardsToken) != address(0), "REWARDS_TOKEN_ZERO_ADDRESS");
+        require(address(distributionToken) != address(0), "REWARDS_TOKEN_ZERO_ADDRESS");
 
-        distributionId = getDistributionId(stakingToken, rewardsToken, msg.sender);
+        distributionId = getDistributionId(stakingToken, distributionToken, msg.sender);
         Distribution storage distribution = _getDistribution(distributionId);
         require(distribution.duration == 0, "DISTRIBUTION_ALREADY_CREATED");
         distribution.duration = duration;
         distribution.rewarder = msg.sender;
-        distribution.rewardsToken = rewardsToken;
+        distribution.distributionToken = distributionToken;
         distribution.stakingToken = stakingToken;
 
-        emit NewDistribution(distributionId, stakingToken, rewardsToken, msg.sender);
+        emit NewDistribution(distributionId, stakingToken, distributionToken, msg.sender);
     }
 
     /**
@@ -243,13 +248,13 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
         require(distribution.rewarder == msg.sender, "SENDER_NOT_REWARDER");
 
-        IERC20 rewardsToken = distribution.rewardsToken;
-        rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
-        rewardsToken.approve(address(getVault()), amount);
+        IERC20 distributionToken = distribution.distributionToken;
+        distributionToken.safeTransferFrom(msg.sender, address(this), amount);
+        distributionToken.approve(address(getVault()), amount);
 
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
         ops[0] = IVault.UserBalanceOp({
-            asset: IAsset(address(rewardsToken)),
+            asset: IAsset(address(distributionToken)),
             amount: amount,
             sender: address(this),
             recipient: payable(address(this)),
@@ -531,15 +536,15 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
             UserDistribution storage userDistribution = userStaking.distributions[distributionId];
             uint256 unclaimedTokens = userDistribution.unclaimedTokens;
-            address rewardsToken = address(distribution.rewardsToken);
+            address distributionToken = address(distribution.distributionToken);
 
             if (unclaimedTokens > 0) {
                 userDistribution.unclaimedTokens = 0;
-                emit RewardPaid(msg.sender, rewardsToken, unclaimedTokens);
+                emit RewardPaid(msg.sender, distributionToken, unclaimedTokens);
             }
 
             ops[i] = IVault.UserBalanceOp({
-                asset: IAsset(rewardsToken),
+                asset: IAsset(distributionToken),
                 amount: unclaimedTokens,
                 sender: address(this),
                 recipient: payable(recipient),
@@ -599,7 +604,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Returns the total unclaimed rewards for a user until now for a particular distribution
+     * @dev Returns the total unclaimed tokens for a user for a particular distribution
      * @param userStaking Storage pointer to user's staked position information
      * @param distributionId ID of the distribution being queried
      */
@@ -609,7 +614,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Returns the rewards earned for a particular distribution between 
+     * @dev Returns the tokens earned for a particular distribution between
      *      the last time the user updated their position and now
      * @param userStaking Storage pointer to user's staked position information
      * @param distributionId ID of the distribution being queried
@@ -632,10 +637,10 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
     function _getDistribution(
         IERC20 stakingToken,
-        IERC20 rewardsToken,
+        IERC20 distributionToken,
         address rewarder
     ) internal view returns (Distribution storage) {
-        return _getDistribution(getDistributionId(stakingToken, rewardsToken, rewarder));
+        return _getDistribution(getDistributionId(stakingToken, distributionToken, rewarder));
     }
 
     function _getDistribution(bytes32 id) internal view returns (Distribution storage) {
