@@ -595,8 +595,8 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
         // Underflow is impossible here because lastTimeRewardApplicable(...) is always greater than last update time
         uint256 unrewardedDuration = _lastTimeRewardApplicable(distribution) - distribution.lastUpdateTime;
-        uint256 unrewardedRatePerToken = Math.mul(unrewardedDuration, distribution.rewardRate).divDown(supply);
-        return distribution.rewardPerTokenStored.add(unrewardedRatePerToken);
+        uint256 unrewardedAmountPerToken = Math.mul(unrewardedDuration, distribution.rewardRate).divDown(supply);
+        return distribution.rewardPerTokenStored.add(unrewardedAmountPerToken);
     }
 
     function _lastTimeRewardApplicable(Distribution storage distribution) internal view returns (uint256) {
