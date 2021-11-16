@@ -47,7 +47,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     struct Distribution {
         IERC20 stakingToken;
         IERC20 distributionToken;
-        address rewarder;
+        address distributor;
         uint256 totalSupply;
         uint256 duration;
         uint256 periodFinish;
@@ -210,7 +210,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         Distribution storage distribution = _getDistribution(distributionId);
         require(distribution.duration == 0, "DISTRIBUTION_ALREADY_CREATED");
         distribution.duration = duration;
-        distribution.rewarder = msg.sender;
+        distribution.distributor = msg.sender;
         distribution.distributionToken = distributionToken;
         distribution.stakingToken = stakingToken;
 
@@ -227,7 +227,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
         Distribution storage distribution = _getDistribution(distributionId);
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
-        require(distribution.rewarder == msg.sender, "SENDER_NOT_REWARDER");
+        require(distribution.distributor == msg.sender, "SENDER_NOT_REWARDER");
         require(distribution.periodFinish < block.timestamp, "DISTRIBUTION_STILL_ACTIVE");
 
         distribution.duration = duration;
@@ -246,7 +246,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
         Distribution storage distribution = _getDistribution(distributionId);
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
-        require(distribution.rewarder == msg.sender, "SENDER_NOT_REWARDER");
+        require(distribution.distributor == msg.sender, "SENDER_NOT_REWARDER");
 
         IERC20 distributionToken = distribution.distributionToken;
         distributionToken.safeTransferFrom(msg.sender, address(this), amount);
