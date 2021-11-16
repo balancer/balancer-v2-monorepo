@@ -33,15 +33,49 @@ import "./interfaces/IDistributorCallback.sol";
 // solhint-disable not-rely-on-time
 
 /**
- * Balancer MultiDistributor claim contract (claim to internal balance) based on
- * Curve Finance's MultiRewards contract, updated to be compatible with solc 0.7.0
+ * @title MultiDistributor
+ * Based on Curve Finance's MultiRewards contract updated to be compatible with solc 0.7.0:
  * https://github.com/curvefi/multi-rewards/blob/master/contracts/MultiRewards.sol commit #9947623
  */
-
 contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributorAuthorization {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
+
+    /*
+     * Distribution accounting explanation:
+     *
+     * Distributors can start a distribution channel with a set amount of tokens to be distributed over a period,
+     * from this a `paymentRate` may be easily calculated.
+     *
+     * Two pieces of global information are stored for the amount of tokens paid out:
+     * `paymentPerTokenStored` is the number of tokens claimable from a single staking token staked from the start.
+     * `lastUpdateTime` represents the timestamp of the last time `paymentPerTokenStored` was updated.
+     *
+     * `paymentPerTokenStored` can be calculated by:
+     * 1. Calculating the amount of tokens distributed by multiplying `paymentRate` by the time since `lastUpdateTime`
+     * 2. Dividing this by the supply of staked tokens to get payment per staked token
+     * The existing `paymentPerTokenStored` then incremented by this amount.
+     *
+     * Updating these two values locks in the number of tokens which the current stakers can claim.
+     * This MUST be done whenever the total supply of staked tokens changes otherwise new stakers
+     * will gain a portion of rewards distributed before they staked.
+     *
+     * Each user tracks their own `paidRatePerToken` which determines how many tokens they can claim.
+     * This is done by comparing the global `paymentPerTokenStored` with their own `paidRatePerToken`,
+     * the difference between these two values times their staked balance is their balance of unaccounted rewards.
+     *
+     * This calculation is only correct in the case where the user's staked balance does not change.
+     * Therefore before any stake/unstake/subscribe/unsubscribe they must sync their local rate to the global rate.
+     * Before `paidRatePerToken` is updated to match `paymentPerTokenStored`, the unaccounted rewards
+     * which they have earned is stored in `unclaimedTokens` to be claimed later.
+     *
+     * If staking for the first time `paidRatePerToken` is set `paymentPerTokenStored` with `unclaimedTokens = 0`
+     * to reflect that the user will only start accumulating tokens from that point on.
+     *
+     * After performing the above updates, claiming tokens is handled simply by just zeroing out the users
+     * `unclaimedTokens` and releasing that amount of tokens to them.
+     */
 
     mapping(bytes32 => Distribution) internal _distributions;
     mapping(IERC20 => mapping(address => UserStaking)) internal _userStakings;
