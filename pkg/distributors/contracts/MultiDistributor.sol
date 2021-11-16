@@ -125,7 +125,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Returns the total supply for a distribution
+     * @dev Returns the total supply of tokens subscribed to a distribution
      * @param distributionId ID of the distribution being queried
      */
     function totalSupply(bytes32 distributionId) external view override returns (uint256) {
@@ -133,7 +133,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Returns the time until when a payment has been accounted for
+     * @dev Returns the timestamp up to which a distribution has been distributing tokens
      * @param distributionId ID of the distribution being queried
      */
     function lastTimePaymentApplicable(bytes32 distributionId) public view override returns (uint256) {
