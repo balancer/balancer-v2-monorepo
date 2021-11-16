@@ -51,7 +51,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         uint256 totalSupply;
         uint256 duration;
         uint256 periodFinish;
-        uint256 rewardRate;
+        uint256 paymentRate;
         uint256 lastUpdateTime;
         uint256 rewardPerTokenStored;
     }
@@ -268,7 +268,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
         if (block.timestamp >= periodFinish) {
             // Current distribution period has ended so new period consists only of amount provided.
-            distribution.rewardRate = Math.divDown(amount, duration);
+            distribution.paymentRate = Math.divDown(amount, duration);
         } else {
             // Current distribution period is still in progress.
             // Calculate number of tokens which haven't been distributed yet and
@@ -276,8 +276,8 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
             // Checked arithmetic is not required due to the if
             uint256 remainingTime = periodFinish - block.timestamp;
-            uint256 leftoverRewards = Math.mul(remainingTime, distribution.rewardRate);
-            distribution.rewardRate = Math.divDown(amount.add(leftoverRewards), duration);
+            uint256 leftoverRewards = Math.mul(remainingTime, distribution.paymentRate);
+            distribution.paymentRate = Math.divDown(amount.add(leftoverRewards), duration);
         }
 
         distribution.lastUpdateTime = block.timestamp;
@@ -328,13 +328,13 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
             // unsubscribing, which is effectively an unstake.
             uint256 amount = userStaking.balance;
             if (amount > 0) {
-                _updateUserRewardRatePerToken(userStaking, distributionId);
+                _updateUserPaymentRatePerToken(userStaking, distributionId);
             }
 
             require(subscribedDistributions.remove(distributionId), "DISTRIBUTION_NOT_SUBSCRIBED");
 
             if (amount > 0) {
-                _updateUserRewardRatePerToken(userStaking, distributionId);
+                _updateUserPaymentRatePerToken(userStaking, distributionId);
                 userStaking.subscribedDistributions.remove(distributionId);
                 distribution.totalSupply = distribution.totalSupply.sub(amount);
                 emit Withdrawn(distributionId, msg.sender, amount);
@@ -531,7 +531,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
             if (userStaking.subscribedDistributions.contains(distributionId)) {
                 // Update user distribution rates only if the user is still subscribed
-                _updateUserRewardRatePerToken(userStaking, distributionId);
+                _updateUserPaymentRatePerToken(userStaking, distributionId);
             }
 
             UserDistribution storage userDistribution = userStaking.distributions[distributionId];
@@ -562,11 +562,11 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
         for (uint256 i; i < distributionsLength; i++) {
             bytes32 distributionId = distributions.unchecked_at(i);
-            _updateUserRewardRatePerToken(userStaking, distributionId);
+            _updateUserPaymentRatePerToken(userStaking, distributionId);
         }
     }
 
-    function _updateUserRewardRatePerToken(UserStaking storage userStaking, bytes32 distributionId) internal {
+    function _updateUserPaymentRatePerToken(UserStaking storage userStaking, bytes32 distributionId) internal {
         uint256 rewardPerTokenStored = _updateDistributionRate(distributionId);
         UserDistribution storage userDistribution = userStaking.distributions[distributionId];
         userDistribution.unclaimedTokens = _totalEarned(userStaking, distributionId);
@@ -595,7 +595,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
         // Underflow is impossible here because lastTimeRewardApplicable(...) is always greater than last update time
         uint256 unpaidDuration = _lastTimeRewardApplicable(distribution) - distribution.lastUpdateTime;
-        uint256 unpaidAmountPerToken = Math.mul(unpaidDuration, distribution.rewardRate).divDown(supply);
+        uint256 unpaidAmountPerToken = Math.mul(unpaidDuration, distribution.paymentRate).divDown(supply);
         return distribution.rewardPerTokenStored.add(unpaidAmountPerToken);
     }
 
