@@ -105,6 +105,8 @@ library FixedPoint {
      * the true value (that is, the error function expected - actual is always positive).
      */
     function powDown(uint256 x, uint256 y) internal pure returns (uint256) {
+        // Optimize for when y equals 1.0, 2.0 or 4.0, as those are very simple to implement and occur often in 50/50 and
+        // 80/20 Weighted Pools
         if (y == ONE) {
             return x;
         } else if (y == TWO) {
