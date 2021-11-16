@@ -24,6 +24,7 @@ export type RawWeightedPoolDeployment = {
   bufferPeriodDuration?: BigNumberish;
   oracleEnabled?: boolean;
   swapEnabledOnStart?: boolean;
+  allowlistLPs?: boolean;
   managementSwapFeePercentage?: BigNumberish;
   owner?: string;
   admin?: SignerWithAddress;
@@ -43,6 +44,7 @@ export type WeightedPoolDeployment = {
   poolType: WeightedPoolType;
   oracleEnabled: boolean;
   swapEnabledOnStart: boolean;
+  allowlistLPs: boolean;
   managementSwapFeePercentage: BigNumberish;
   owner?: string;
   admin?: SignerWithAddress;
