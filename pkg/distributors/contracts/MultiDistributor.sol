@@ -278,8 +278,8 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
             // Checked arithmetic is not required due to the if
             uint256 remainingTime = periodFinish - block.timestamp;
-            uint256 leftoverRewards = Math.mul(remainingTime, distribution.paymentRate);
-            distribution.paymentRate = Math.divDown(amount.add(leftoverRewards), duration);
+            uint256 leftoverTokens = Math.mul(remainingTime, distribution.paymentRate);
+            distribution.paymentRate = Math.divDown(amount.add(leftoverTokens), duration);
         }
 
         distribution.lastUpdateTime = block.timestamp;
