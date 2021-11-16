@@ -53,7 +53,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         uint256 periodFinish;
         uint256 paymentRate;
         uint256 lastUpdateTime;
-        uint256 rewardPerTokenStored;
+        uint256 paymentPerTokenStored;
     }
 
     struct UserDistribution {
@@ -121,7 +121,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
      * @param distributionId ID of the distribution being queried
      */
     function rewardPerToken(bytes32 distributionId) public view returns (uint256) {
-        return _rewardPerToken(_getDistribution(distributionId));
+        return _paymentPerToken(_getDistribution(distributionId));
     }
 
     /**
@@ -578,25 +578,25 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
      * @dev This is expected to be called whenever a user's applicable staked balance changes,
      *      either through adding/removing tokens or subscribing/unsubscribing from the distribution.
      * @param distributionId ID of the distribution being updated
-     * @return rewardPerTokenStored The updated number of reward tokens paid per staked token
+     * @return paymentPerTokenStored The updated number of reward tokens paid per staked token
      */
-    function _updateDistributionRate(bytes32 distributionId) internal returns (uint256 rewardPerTokenStored) {
+    function _updateDistributionRate(bytes32 distributionId) internal returns (uint256 paymentPerTokenStored) {
         Distribution storage distribution = _getDistribution(distributionId);
-        rewardPerTokenStored = _rewardPerToken(distribution);
-        distribution.rewardPerTokenStored = rewardPerTokenStored;
+        paymentPerTokenStored = _paymentPerToken(distribution);
+        distribution.paymentPerTokenStored = paymentPerTokenStored;
         distribution.lastUpdateTime = _lastTimeRewardApplicable(distribution);
     }
 
-    function _rewardPerToken(Distribution storage distribution) internal view returns (uint256) {
+    function _paymentPerToken(Distribution storage distribution) internal view returns (uint256) {
         uint256 supply = distribution.totalSupply;
         if (supply == 0) {
-            return distribution.rewardPerTokenStored;
+            return distribution.paymentPerTokenStored;
         }
 
         // Underflow is impossible here because lastTimeRewardApplicable(...) is always greater than last update time
         uint256 unpaidDuration = _lastTimeRewardApplicable(distribution) - distribution.lastUpdateTime;
         uint256 unpaidAmountPerToken = Math.mul(unpaidDuration, distribution.paymentRate).divDown(supply);
-        return distribution.rewardPerTokenStored.add(unpaidAmountPerToken);
+        return distribution.paymentPerTokenStored.add(unpaidAmountPerToken);
     }
 
     function _lastTimeRewardApplicable(Distribution storage distribution) internal view returns (uint256) {
@@ -631,8 +631,8 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         }
 
         uint256 paidRatePerToken = userStaking.distributions[distributionId].paidRatePerToken;
-        uint256 totalRewardPerToken = _rewardPerToken(_getDistribution(distributionId)).sub(paidRatePerToken);
-        return userStaking.balance.mulDown(totalRewardPerToken);
+        uint256 totalPaymentPerToken = _paymentPerToken(_getDistribution(distributionId)).sub(paidRatePerToken);
+        return userStaking.balance.mulDown(totalPaymentPerToken);
     }
 
     function _getDistribution(
