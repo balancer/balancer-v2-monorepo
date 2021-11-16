@@ -133,11 +133,11 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Returns the time until when a reward has been accounted for
+     * @dev Returns the time until when a payment has been accounted for
      * @param distributionId ID of the distribution being queried
      */
-    function lastTimeRewardApplicable(bytes32 distributionId) public view returns (uint256) {
-        return _lastTimeRewardApplicable(_getDistribution(distributionId));
+    function lastTimePaymentApplicable(bytes32 distributionId) public view returns (uint256) {
+        return _lastTimePaymentApplicable(_getDistribution(distributionId));
     }
 
     /**
@@ -584,7 +584,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         Distribution storage distribution = _getDistribution(distributionId);
         paymentPerTokenStored = _paymentPerToken(distribution);
         distribution.paymentPerTokenStored = paymentPerTokenStored;
-        distribution.lastUpdateTime = _lastTimeRewardApplicable(distribution);
+        distribution.lastUpdateTime = _lastTimePaymentApplicable(distribution);
     }
 
     function _paymentPerToken(Distribution storage distribution) internal view returns (uint256) {
@@ -593,13 +593,13 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
             return distribution.paymentPerTokenStored;
         }
 
-        // Underflow is impossible here because lastTimeRewardApplicable(...) is always greater than last update time
-        uint256 unpaidDuration = _lastTimeRewardApplicable(distribution) - distribution.lastUpdateTime;
+        // Underflow is impossible here because _lastTimePaymentApplicable(...) is always greater than last update time
+        uint256 unpaidDuration = _lastTimePaymentApplicable(distribution) - distribution.lastUpdateTime;
         uint256 unpaidAmountPerToken = Math.mul(unpaidDuration, distribution.paymentRate).divDown(supply);
         return distribution.paymentPerTokenStored.add(unpaidAmountPerToken);
     }
 
-    function _lastTimeRewardApplicable(Distribution storage distribution) internal view returns (uint256) {
+    function _lastTimePaymentApplicable(Distribution storage distribution) internal view returns (uint256) {
         return Math.min(block.timestamp, distribution.periodFinish);
     }
 
