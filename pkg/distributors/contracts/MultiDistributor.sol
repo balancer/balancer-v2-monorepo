@@ -57,7 +57,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     struct UserDistribution {
-        uint256 unclaimedRewards;
+        uint256 unclaimedTokens;
         uint256 paidRatePerToken;
     }
 
@@ -530,17 +530,17 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
             }
 
             UserDistribution storage userDistribution = userStaking.distributions[distributionId];
-            uint256 unclaimedRewards = userDistribution.unclaimedRewards;
+            uint256 unclaimedTokens = userDistribution.unclaimedTokens;
             address rewardsToken = address(distribution.rewardsToken);
 
-            if (unclaimedRewards > 0) {
-                userDistribution.unclaimedRewards = 0;
-                emit RewardPaid(msg.sender, rewardsToken, unclaimedRewards);
+            if (unclaimedTokens > 0) {
+                userDistribution.unclaimedTokens = 0;
+                emit RewardPaid(msg.sender, rewardsToken, unclaimedTokens);
             }
 
             ops[i] = IVault.UserBalanceOp({
                 asset: IAsset(rewardsToken),
-                amount: unclaimedRewards,
+                amount: unclaimedTokens,
                 sender: address(this),
                 recipient: payable(recipient),
                 kind: kind
@@ -564,7 +564,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     function _updateUserRewardRatePerToken(UserStaking storage userStaking, bytes32 distributionId) internal {
         uint256 rewardPerTokenStored = _updateDistributionRate(distributionId);
         UserDistribution storage userDistribution = userStaking.distributions[distributionId];
-        userDistribution.unclaimedRewards = _totalEarned(userStaking, distributionId);
+        userDistribution.unclaimedTokens = _totalEarned(userStaking, distributionId);
         userDistribution.paidRatePerToken = rewardPerTokenStored;
     }
 
@@ -604,8 +604,8 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
      * @param distributionId ID of the distribution being queried
      */
     function _totalEarned(UserStaking storage userStaking, bytes32 distributionId) internal view returns (uint256) {
-        uint256 unclaimedRewards = userStaking.distributions[distributionId].unclaimedRewards;
-        return _unaccountedEarned(userStaking, distributionId).add(unclaimedRewards);
+        uint256 unclaimedTokens = userStaking.distributions[distributionId].unclaimedTokens;
+        return _unaccountedEarned(userStaking, distributionId).add(unclaimedTokens);
     }
 
     /**
