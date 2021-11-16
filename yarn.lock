@@ -73,6 +73,13 @@ __metadata:
   resolution: "@balancer-labs/balancer-js@workspace:pkg/balancer-js"
   dependencies:
     "@balancer-labs/typechain": "workspace:*"
+    "@ethersproject/abi": ^5.4.0
+    "@ethersproject/abstract-signer": ^5.4.0
+    "@ethersproject/address": ^5.4.0
+    "@ethersproject/bignumber": ^5.4.0
+    "@ethersproject/bytes": ^5.4.0
+    "@ethersproject/constants": ^5.4.0
+    "@ethersproject/contracts": ^5.4.0
     "@rollup/plugin-commonjs": ^19.0.0
     "@rollup/plugin-node-resolve": ^13.0.0
     "@rollup/plugin-typescript": ^8.2.1
@@ -93,14 +100,6 @@ __metadata:
     ts-node: ^10.0.0
     typechain: ^5.1.1
     typescript: ^4.0.2
-  peerDependencies:
-    "@ethersproject/abi": ^5.4.0
-    "@ethersproject/abstract-signer": ^5.4.0
-    "@ethersproject/address": ^5.4.0
-    "@ethersproject/bignumber": ^5.4.0
-    "@ethersproject/bytes": ^5.4.0
-    "@ethersproject/constants": ^5.4.0
-    "@ethersproject/contracts": ^5.4.0
   languageName: unknown
   linkType: soft
 
@@ -1140,7 +1139,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ethersproject/contracts@npm:5.4.0":
+"@ethersproject/contracts@npm:5.4.0, @ethersproject/contracts@npm:^5.4.0":
   version: 5.4.0
   resolution: "@ethersproject/contracts@npm:5.4.0"
   dependencies:

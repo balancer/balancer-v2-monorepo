@@ -5,7 +5,7 @@ import { BatchRelayerDeployment } from './input';
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as BatchRelayerDeployment;
 
-  const relayerLibraryArgs = [input.Vault];
+  const relayerLibraryArgs = [input.Vault, input.wstETH];
   const relayerLibrary = await task.deployAndVerify('BatchRelayerLibrary', relayerLibraryArgs, from, force);
 
   // The relayer library automatically also deploys the relayer itself: we must verify it

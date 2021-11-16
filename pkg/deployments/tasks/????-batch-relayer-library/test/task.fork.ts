@@ -64,14 +64,14 @@ describe('BatchRelayerLibrary', function () {
     admin = await impersonate(await authorizer.getRoleMember(await authorizer.DEFAULT_ADMIN_ROLE(), 0), fp(100));
   });
 
-  before('approve tokens', async () => {
+  before('approve tokens by sender', async () => {
     // Even though the sender only starts with USDC, they will eventually get DAI and need to use it in the Vault
     await Promise.all(
       [usdc, dai].map(async (token) => await token.connect(sender).approve(vault.address, MAX_UINT256))
     );
   });
 
-  before('approve relayer', async () => {
+  before('approve relayer at the authorizer', async () => {
     const relayerActionIds = await Promise.all(
       ['swap', 'batchSwap', 'joinPool', 'exitPool', 'setRelayerApproval', 'manageUserBalance'].map((action) =>
         vault.getActionId(vault.interface.getSighash(action))
@@ -82,10 +82,12 @@ describe('BatchRelayerLibrary', function () {
     await authorizer.connect(admin).grantRoles(relayerActionIds, relayer.address);
   });
 
-  it('sender can approve relayer, swap and join', async () => {
-    const deadline = await fromNow(30 * MINUTE);
+  afterEach('disapprove relayer by sender', async () => {
+    await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, false);
+  });
 
-    const setApprovalCalldata = library.interface.encodeFunctionData('setRelayerApproval', [
+  async function getApprovalCalldata(deadline: BigNumber): Promise<string> {
+    return library.interface.encodeFunctionData('setRelayerApproval', [
       relayer.address,
       true,
       RelayerAuthorization.encodeCalldataAuthorization(
@@ -100,6 +102,10 @@ describe('BatchRelayerLibrary', function () {
         )
       ),
     ]);
+  }
+
+  it('sender can approve relayer, swap and join', async () => {
+    const deadline = await fromNow(30 * MINUTE);
 
     // Swap USDC for DAI
     const swapCalldata = library.interface.encodeFunctionData('swap', [
@@ -145,7 +151,7 @@ describe('BatchRelayerLibrary', function () {
       0, // No output reference
     ]);
 
-    await relayer.connect(sender).multicall([setApprovalCalldata, swapCalldata, joinCalldata]);
+    await relayer.connect(sender).multicall([getApprovalCalldata(deadline), swapCalldata, joinCalldata]);
 
     const pool = await task.instanceAt('IERC20', ETH_DAI_POOL.slice(0, 42));
     expect(await pool.balanceOf(sender.address)).to.be.gt(0);
