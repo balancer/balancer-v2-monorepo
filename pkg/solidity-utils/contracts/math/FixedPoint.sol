@@ -110,7 +110,8 @@ library FixedPoint {
         } else if (y == TWO) {
             return mulDown(x, x);
         } else if (y == FOUR) {
-            return mulDown(x, mulDown(x, mulDown(x, x)));
+            uint256 square = mulDown(x, x);
+            return mulDown(square, square);
         } else {
             uint256 raw = LogExpMath.pow(x, y);
             uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
@@ -133,7 +134,8 @@ library FixedPoint {
         } else if (y == TWO) {
             return mulUp(x, x);
         } else if (y == FOUR) {
-            return mulUp(x, mulUp(x, mulUp(x, x)));
+            uint256 square = mulUp(x, x);
+            return mulUp(square, square);
         } else {
             uint256 raw = LogExpMath.pow(x, y);
             uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
