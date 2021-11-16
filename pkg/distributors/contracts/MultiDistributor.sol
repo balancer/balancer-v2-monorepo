@@ -227,7 +227,8 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
         Distribution storage distribution = _getDistribution(distributionId);
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
-        require(distribution.distributor == msg.sender, "SENDER_NOT_REWARDER");
+        // TODO: add test for this
+        require(distribution.distributor == msg.sender, "SENDER_NOT_DISTRIBUTOR");
         require(distribution.periodFinish < block.timestamp, "DISTRIBUTION_STILL_ACTIVE");
 
         distribution.duration = duration;
@@ -246,7 +247,8 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
         Distribution storage distribution = _getDistribution(distributionId);
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
-        require(distribution.distributor == msg.sender, "SENDER_NOT_REWARDER");
+        // TODO: add test for this
+        require(distribution.distributor == msg.sender, "SENDER_NOT_DISTRIBUTOR");
 
         IERC20 distributionToken = distribution.distributionToken;
         distributionToken.safeTransferFrom(msg.sender, address(this), amount);
