@@ -18,7 +18,7 @@ import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { Dictionary } from 'lodash';
 
-describe('LidoRelayer', function () {
+describe('LidoWrapping', function () {
   let stETH: Token, wstETH: Token;
   let senderUser: SignerWithAddress, recipientUser: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;

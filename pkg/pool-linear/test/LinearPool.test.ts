@@ -161,10 +161,14 @@ describe('LinearPool', function () {
   });
 
   describe('set targets', () => {
+    const originalLowerTarget = fp(1000);
+    const originalUpperTarget = fp(2000);
+
     sharedBeforeEach('deploy pool', async () => {
-      const lowerTarget = fp(1000);
-      const upperTarget = fp(2000);
-      await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget }, true);
+      await deployPool(
+        { mainToken, wrappedToken, lowerTarget: originalLowerTarget, upperTarget: originalUpperTarget },
+        true
+      );
     });
 
     const setBalances = async (
@@ -186,59 +190,105 @@ describe('LinearPool', function () {
       await pool.vault.updateBalances(poolId, updateBalances);
     };
 
-    it('correctly if inside free zone ', async () => {
-      const mainBalance = fp(1800);
-      const lowerTarget = fp(1500);
-      const upperTarget = fp(2500);
+    context('when outside the current free zone', () => {
+      const newLowerTarget = originalLowerTarget;
+      const newUpperTarget = originalUpperTarget;
 
-      await setBalances(pool, { mainBalance });
+      it('reverts when main balance is below lower target', async () => {
+        await setBalances(pool, { mainBalance: originalLowerTarget.sub(1) });
+        await expect(pool.setTargets(newLowerTarget, newUpperTarget)).to.be.revertedWith('OUT_OF_TARGET_RANGE');
+      });
 
-      await pool.setTargets(lowerTarget, upperTarget);
-
-      const targets = await pool.getTargets();
-      expect(targets.lowerTarget).to.be.equal(lowerTarget);
-      expect(targets.upperTarget).to.be.equal(upperTarget);
+      it('reverts when main balance is above upper target', async () => {
+        await setBalances(pool, { mainBalance: originalUpperTarget.add(1) });
+        await expect(pool.setTargets(newLowerTarget, newUpperTarget)).to.be.revertedWith('OUT_OF_TARGET_RANGE');
+      });
     });
 
-    it('reverts if under free zone', async () => {
-      const mainBalance = fp(100);
-      const lowerTarget = fp(1500);
-      const upperTarget = fp(2500);
+    context('when inside the current free zone', () => {
+      const mainBalance = originalLowerTarget.add(originalUpperTarget).div(2);
+      sharedBeforeEach(async () => {
+        await setBalances(pool, { mainBalance });
+      });
 
-      await setBalances(pool, { mainBalance });
+      context('when outside the new free zone', () => {
+        it('reverts when main balance is below new lower target', async () => {
+          const newLowerTarget = mainBalance.add(1);
+          const newUpperTarget = originalUpperTarget;
 
-      await expect(pool.setTargets(lowerTarget, upperTarget)).to.be.revertedWith('OUT_OF_TARGET_RANGE');
-    });
+          await expect(pool.setTargets(newLowerTarget, newUpperTarget)).to.be.revertedWith('OUT_OF_NEW_TARGET_RANGE');
+        });
 
-    it('reverts if over free zone', async () => {
-      const mainBalance = fp(3000);
-      const lowerTarget = fp(1500);
-      const upperTarget = fp(2500);
+        it('reverts when main balance is above new upper target', async () => {
+          const newLowerTarget = originalLowerTarget;
+          const newUpperTarget = mainBalance.sub(1);
 
-      await setBalances(pool, { mainBalance });
+          await expect(pool.setTargets(newLowerTarget, newUpperTarget)).to.be.revertedWith('OUT_OF_NEW_TARGET_RANGE');
+        });
+      });
 
-      await expect(pool.setTargets(lowerTarget, upperTarget)).to.be.revertedWith('OUT_OF_TARGET_RANGE');
-    });
+      context('when inside the new free zone', () => {
+        it('can increase the upper target', async () => {
+          const newLowerTarget = originalLowerTarget;
+          const newUpperTarget = originalUpperTarget.mul(2);
 
-    it('reverts not owner', async () => {
-      const lowerTarget = fp(1500);
-      const upperTarget = fp(2500);
+          await pool.setTargets(newLowerTarget, newUpperTarget);
+          const { lowerTarget, upperTarget } = await pool.getTargets();
+          expect(lowerTarget).to.equal(newLowerTarget);
+          expect(upperTarget).to.equal(newUpperTarget);
+        });
 
-      await expect(pool.setTargets(lowerTarget, upperTarget, { from: lp })).to.be.revertedWith('SENDER_NOT_ALLOWED');
-    });
+        it('can decrease the upper target', async () => {
+          const newLowerTarget = originalLowerTarget;
+          const newUpperTarget = originalUpperTarget.mul(3).div(4);
 
-    it('emits an event', async () => {
-      const mainBalance = fp(1800);
-      const lowerTarget = fp(1500);
-      const upperTarget = fp(2500);
+          await pool.setTargets(newLowerTarget, newUpperTarget);
+          const { lowerTarget, upperTarget } = await pool.getTargets();
+          expect(lowerTarget).to.equal(newLowerTarget);
+          expect(upperTarget).to.equal(newUpperTarget);
+        });
 
-      await setBalances(pool, { mainBalance });
-      const receipt = await pool.setTargets(lowerTarget, upperTarget);
+        it('can increase the lower target', async () => {
+          const newLowerTarget = originalLowerTarget.mul(4).div(3);
+          const newUpperTarget = originalUpperTarget;
 
-      expectEvent.inReceipt(await receipt.wait(), 'TargetsSet', {
-        token: mainToken.address,
-        lowerTarget,
-        upperTarget,
+          await pool.setTargets(newLowerTarget, newUpperTarget);
+          const { lowerTarget, upperTarget } = await pool.getTargets();
+          expect(lowerTarget).to.equal(newLowerTarget);
+          expect(upperTarget).to.equal(newUpperTarget);
+        });
+
+        it('can decrease the lower target', async () => {
+          const newLowerTarget = originalLowerTarget.div(2);
+          const newUpperTarget = originalUpperTarget;
+
+          await pool.setTargets(newLowerTarget, newUpperTarget);
+          const { lowerTarget, upperTarget } = await pool.getTargets();
+          expect(lowerTarget).to.equal(newLowerTarget);
+          expect(upperTarget).to.equal(newUpperTarget);
+        });
+
+        it('emits an event', async () => {
+          const newLowerTarget = originalLowerTarget.div(2);
+          const newUpperTarget = originalUpperTarget.mul(2);
+
+          const receipt = await pool.setTargets(newLowerTarget, newUpperTarget);
+
+          expectEvent.inReceipt(await receipt.wait(), 'TargetsSet', {
+            token: mainToken.address,
+            lowerTarget: newLowerTarget,
+            upperTarget: newUpperTarget,
+          });
+        });
+
+        it('reverts if the sender is not the owner', async () => {
+          const newLowerTarget = originalLowerTarget.div(2);
+          const newUpperTarget = originalUpperTarget.mul(2);
+
+          await expect(pool.setTargets(newLowerTarget, newUpperTarget, { from: other })).to.be.revertedWith(
+            'SENDER_NOT_ALLOWED'
+          );
+        });
       });
     });
   });

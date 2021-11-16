@@ -68,6 +68,7 @@ const balancerErrorCodes: Record<string, string> = {
   '340': 'UNHANDLED_BY_PHANTOM_POOL',
   '341': 'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER',
   '342': 'INVALID_INITIALIZATION',
+  '343': 'OUT_OF_NEW_TARGET_RANGE',
   '400': 'REENTRANCY',
   '401': 'SENDER_NOT_ALLOWED',
   '402': 'PAUSED',
