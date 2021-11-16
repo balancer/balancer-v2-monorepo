@@ -78,7 +78,7 @@ interface IMultiDistributor {
 
     function unaccountedEarned(bytes32 distributionId, address user) external view returns (uint256);
 
-    function totalEarned(bytes32 distributionId, address user) external view returns (uint256);
+    function totalUnclaimedTokens(bytes32 distributionId, address user) external view returns (uint256);
 
     function balanceOf(IERC20 stakingToken, address user) external view returns (uint256);
 

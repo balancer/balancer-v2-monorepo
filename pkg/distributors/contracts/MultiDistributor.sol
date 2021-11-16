@@ -142,14 +142,14 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Returns the total earned payment for a user until now for a particular distribution
+     * @dev Returns the total unclaimed payment for a user for a particular distribution
      * @param distributionId ID of the distribution being queried
      * @param user Address of the user being queried
      */
-    function totalEarned(bytes32 distributionId, address user) external view override returns (uint256) {
+    function totalUnclaimedTokens(bytes32 distributionId, address user) external view override returns (uint256) {
         IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
         UserStaking storage userStaking = _userStakings[stakingToken][user];
-        return _totalEarned(userStaking, distributionId);
+        return _totalUnclaimedTokens(userStaking, distributionId);
     }
 
     /**
@@ -541,7 +541,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     function _updateUserPaymentRatePerToken(UserStaking storage userStaking, bytes32 distributionId) internal {
         uint256 paymentPerTokenStored = _updateDistributionRate(distributionId);
         UserDistribution storage userDistribution = userStaking.distributions[distributionId];
-        userDistribution.unclaimedTokens = _totalEarned(userStaking, distributionId);
+        userDistribution.unclaimedTokens = _totalUnclaimedTokens(userStaking, distributionId);
         userDistribution.paidRatePerToken = paymentPerTokenStored;
     }
 
@@ -580,7 +580,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param userStaking Storage pointer to user's staked position information
      * @param distributionId ID of the distribution being queried
      */
-    function _totalEarned(UserStaking storage userStaking, bytes32 distributionId) internal view returns (uint256) {
+    function _totalUnclaimedTokens(UserStaking storage userStaking, bytes32 distributionId)
+        internal
+        view
+        returns (uint256)
+    {
         uint256 unclaimedTokens = userStaking.distributions[distributionId].unclaimedTokens;
         return _unaccountedEarned(userStaking, distributionId).add(unclaimedTokens);
     }
