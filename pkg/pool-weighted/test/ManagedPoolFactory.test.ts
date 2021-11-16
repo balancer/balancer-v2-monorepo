@@ -44,7 +44,7 @@ describe('ManagedPoolFactory', function () {
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
 
-  async function createPool(swapsEnabled = true): Promise<Contract> {
+  async function createPool(swapsEnabled = true, allowlistLPs = false): Promise<Contract> {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
 
@@ -58,6 +58,7 @@ describe('ManagedPoolFactory', function () {
         POOL_SWAP_FEE_PERCENTAGE,
         owner.address,
         swapsEnabled,
+        allowlistLPs,
         POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE
       )
     ).wait();
@@ -168,6 +169,18 @@ describe('ManagedPoolFactory', function () {
       const pool = await createPool(false);
 
       expect(await pool.getSwapEnabled()).to.be.false;
+    });
+
+    it('creates it with allowlist enabled', async () => {
+      const pool = await createPool(true, true);
+
+      expect(await pool.getAllowlistLPs()).to.be.true;
+    });
+
+    it('creates it with allowlist disabled', async () => {
+      const pool = await createPool(true);
+
+      expect(await pool.getAllowlistLPs()).to.be.false;
     });
   });
 });

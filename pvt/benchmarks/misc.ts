@@ -195,12 +195,13 @@ async function deployPoolFromFactory(
 
   if (poolName == 'ManagedPool') {
     const swapEnabledOnStart = true;
+    const allowlistLPs = false;
     const managementSwapFeePercentage = 0;
 
     receipt = await (
       await factory
         .connect(args.from)
-        .create(name, symbol, ...args.parameters, owner, swapEnabledOnStart, managementSwapFeePercentage)
+        .create(name, symbol, ...args.parameters, owner, swapEnabledOnStart, allowlistLPs, managementSwapFeePercentage)
     ).wait();
   } else {
     receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)).wait();
