@@ -335,13 +335,13 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             // unsubscribing, which is effectively an unstake.
             uint256 amount = userStaking.balance;
             if (amount > 0) {
-                _updateUserPaymentRatePerToken(userStaking, distributionId);
+                _updateUserTokensPerStake(userStaking, distributionId);
             }
 
             require(subscribedDistributions.remove(distributionId), "DISTRIBUTION_NOT_SUBSCRIBED");
 
             if (amount > 0) {
-                _updateUserPaymentRatePerToken(userStaking, distributionId);
+                _updateUserTokensPerStake(userStaking, distributionId);
                 userStaking.subscribedDistributions.remove(distributionId);
                 distribution.totalSupply = distribution.totalSupply.sub(amount);
                 emit Withdrawn(distributionId, msg.sender, amount);
@@ -538,7 +538,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
             if (userStaking.subscribedDistributions.contains(distributionId)) {
                 // Update user distribution rates only if the user is still subscribed
-                _updateUserPaymentRatePerToken(userStaking, distributionId);
+                _updateUserTokensPerStake(userStaking, distributionId);
             }
 
             UserDistribution storage userDistribution = userStaking.distributions[distributionId];
@@ -569,11 +569,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
         for (uint256 i; i < distributionsLength; i++) {
             bytes32 distributionId = distributions.unchecked_at(i);
-            _updateUserPaymentRatePerToken(userStaking, distributionId);
+            _updateUserTokensPerStake(userStaking, distributionId);
         }
     }
 
-    function _updateUserPaymentRatePerToken(UserStaking storage userStaking, bytes32 distributionId) internal {
+    function _updateUserTokensPerStake(UserStaking storage userStaking, bytes32 distributionId) internal {
         uint256 globalTokensPerStake = _updateDistributionRate(distributionId);
         UserDistribution storage userDistribution = userStaking.distributions[distributionId];
         userDistribution.unclaimedTokens = _totalUnclaimedTokens(userStaking, distributionId);
