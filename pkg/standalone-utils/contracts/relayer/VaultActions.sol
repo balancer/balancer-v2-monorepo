@@ -21,8 +21,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "@balancer-labs/v2-pool-weighted/contracts/BaseWeightedPool.sol";
-import "@balancer-labs/v2-pool-weighted/contracts/WeightedPoolUserDataHelpers.sol";
+import "@balancer-labs/v2-pool-weighted/contracts/WeightedPoolUserData.sol";
 
 import "../interfaces/IBaseRelayerLibrary.sol";
 
@@ -51,7 +50,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         uint256 value,
         uint256 outputReference
     ) external payable returns (uint256) {
-        require(funds.sender == msg.sender, "Incorrect sender");
+        require(funds.sender == msg.sender || funds.sender == address(this), "Incorrect sender");
 
         if (_isChainedReference(singleSwap.amount)) {
             singleSwap.amount = _getChainedReferenceValue(singleSwap.amount);
@@ -76,7 +75,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         uint256 value,
         OutputReference[] calldata outputReferences
     ) external payable returns (int256[] memory) {
-        require(funds.sender == msg.sender, "Incorrect sender");
+        require(funds.sender == msg.sender || funds.sender == address(this), "Incorrect sender");
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             uint256 amount = swaps[i].amount;
@@ -103,7 +102,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
 
     function manageUserBalance(IVault.UserBalanceOp[] calldata ops, uint256 value) external payable {
         for (uint256 i = 0; i < ops.length; i++) {
-            require(ops[i].sender == msg.sender, "Incorrect sender");
+            require(ops[i].sender == msg.sender || ops[i].sender == address(this), "Incorrect sender");
         }
         getVault().manageUserBalance{ value: value }(ops);
     }
@@ -119,7 +118,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         uint256 value,
         uint256 outputReference
     ) external payable {
-        require(sender == msg.sender, "Incorrect sender");
+        require(sender == msg.sender || sender == address(this), "Incorrect sender");
 
         // The output of a join is expected to be balance in the Pool's token contract, typically known as BPT (Balancer
         // Pool Tokens). Since the Vault is unaware of this (BPT is minted directly to the recipient), we manually
@@ -152,9 +151,9 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     function _doWeightedJoinChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
-        BaseWeightedPool.JoinKind kind = WeightedPoolUserDataHelpers.joinKind(userData);
+        WeightedPoolUserData.JoinKind kind = WeightedPoolUserData.joinKind(userData);
 
-        if (kind == BaseWeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+        if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _doWeightedExactTokensInForBPTOutReplacements(userData);
         } else {
             // All other join kinds are 'given out' (i.e the parameter is a BPT amount), so we don't do replacements for
@@ -164,9 +163,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     function _doWeightedExactTokensInForBPTOutReplacements(bytes memory userData) private returns (bytes memory) {
-        (uint256[] memory amountsIn, uint256 minBPTAmountOut) = WeightedPoolUserDataHelpers.exactTokensInForBptOut(
-            userData
-        );
+        (uint256[] memory amountsIn, uint256 minBPTAmountOut) = WeightedPoolUserData.exactTokensInForBptOut(userData);
 
         bool replacedAmounts = false;
         for (uint256 i = 0; i < amountsIn.length; ++i) {
@@ -180,7 +177,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         // Save gas by only re-encoding the data if we actually performed a replacement
         return
             replacedAmounts
-                ? abi.encode(BaseWeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minBPTAmountOut)
+                ? abi.encode(WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minBPTAmountOut)
                 : userData;
     }
 
@@ -192,7 +189,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         IVault.ExitPoolRequest memory request,
         OutputReference[] calldata outputReferences
     ) external payable {
-        require(sender == msg.sender, "Incorrect sender");
+        require(sender == msg.sender || sender == address(this), "Incorrect sender");
 
         // To track the changes of internal balances we need an array of token addresses.
         // We save this here to avoid having to recalculate after we perform the exit.
@@ -252,11 +249,11 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     function _doWeightedExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
-        BaseWeightedPool.ExitKind kind = WeightedPoolUserDataHelpers.exitKind(userData);
+        WeightedPoolUserData.ExitKind kind = WeightedPoolUserData.exitKind(userData);
 
-        if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+        if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _doWeightedExactBptInForOneTokenOutReplacements(userData);
-        } else if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _doWeightedExactBptInForTokensOutReplacements(userData);
         } else {
             // All other exit kinds are 'given out' (i.e the parameter is a token amount),
@@ -266,11 +263,11 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     function _doWeightedExactBptInForOneTokenOutReplacements(bytes memory userData) private returns (bytes memory) {
-        (uint256 bptAmountIn, uint256 tokenIndex) = WeightedPoolUserDataHelpers.exactBptInForTokenOut(userData);
+        (uint256 bptAmountIn, uint256 tokenIndex) = WeightedPoolUserData.exactBptInForTokenOut(userData);
 
         if (_isChainedReference(bptAmountIn)) {
             bptAmountIn = _getChainedReferenceValue(bptAmountIn);
-            return abi.encode(BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, tokenIndex);
+            return abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, tokenIndex);
         } else {
             // Save gas by only re-encoding the data if we actually performed a replacement
             return userData;
@@ -278,11 +275,11 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     }
 
     function _doWeightedExactBptInForTokensOutReplacements(bytes memory userData) private returns (bytes memory) {
-        uint256 bptAmountIn = WeightedPoolUserDataHelpers.exactBptInForTokensOut(userData);
+        uint256 bptAmountIn = WeightedPoolUserData.exactBptInForTokensOut(userData);
 
         if (_isChainedReference(bptAmountIn)) {
             bptAmountIn = _getChainedReferenceValue(bptAmountIn);
-            return abi.encode(BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn);
+            return abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn);
         } else {
             // Save gas by only re-encoding the data if we actually performed a replacement
             return userData;

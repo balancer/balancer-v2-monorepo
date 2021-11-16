@@ -28,6 +28,20 @@ abstract contract IBaseRelayerLibrary is AssetHelpers {
 
     function getVault() public view virtual returns (IVault);
 
+    function approveVault(IERC20 token, uint256 amount) public virtual;
+
+    function _pullToken(
+        address sender,
+        IERC20 token,
+        uint256 amount
+    ) internal virtual;
+
+    function _pullTokens(
+        address sender,
+        IERC20[] memory tokens,
+        uint256[] memory amounts
+    ) internal virtual;
+
     function _isChainedReference(uint256 amount) internal pure virtual returns (bool);
 
     function _setChainedReferenceValue(uint256 ref, uint256 value) internal virtual;

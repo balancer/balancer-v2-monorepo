@@ -573,6 +573,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function setTargets(uint256 lowerTarget, uint256 upperTarget) external authenticate {
         bytes32 poolId = getPoolId();
         (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
+        _upscaleArray(balances, _scalingFactors());
 
         // Targets can only be set when main token balance between targets (free zone)
         (uint256 currentLowerTarget, uint256 currentUpperTarget) = getTargets();

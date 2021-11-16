@@ -18,7 +18,6 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "../interfaces/IBalancerRelayer.sol";
 
 /**
@@ -47,7 +46,7 @@ contract BalancerRelayer is IBalancerRelayer, ReentrancyGuard {
     using Address for address payable;
     using Address for address;
 
-    address private immutable _vault;
+    IVault private immutable _vault;
     address private immutable _library;
 
     /**
@@ -55,7 +54,7 @@ contract BalancerRelayer is IBalancerRelayer, ReentrancyGuard {
      * `BaseRelayerLibrary` which will provides its own address to be used as the relayer's library.
      */
     constructor(IVault vault, address libraryAddress) {
-        _vault = address(vault);
+        _vault = vault;
         _library = libraryAddress;
     }
 
@@ -64,7 +63,11 @@ contract BalancerRelayer is IBalancerRelayer, ReentrancyGuard {
         // with ETH as an output should the relayer be listed as the recipient. This may also happen when
         // joining a pool, performing a swap or managing a user's balance does not use the full ETH value provided.
         // Any excess ETH value will be refunded back to this contract and forwarded back to the original sender.
-        _require(msg.sender == _vault, Errors.ETH_TRANSFER);
+        _require(msg.sender == address(_vault), Errors.ETH_TRANSFER);
+    }
+
+    function getVault() external view override returns (IVault) {
+        return _vault;
     }
 
     function getLibrary() external view override returns (address) {
