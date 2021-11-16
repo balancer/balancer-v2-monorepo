@@ -82,7 +82,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     event DistributionFunded(bytes32 indexed distribution, uint256 amount);
 
     /**
-     * @dev Updates the reward rate for all the distributions that a user has signed up for a staking token
+     * @dev Updates the payment rate for all the distributions that a user has signed up for a staking token
      */
     modifier updateDistributions(IERC20 stakingToken, address user) {
         _updateDistributions(stakingToken, user);
@@ -161,7 +161,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Returns the unaccounted earned rewards for a user until now for a particular distribution
+     * @dev Returns the unaccounted earned payment for a user until now for a particular distribution
      * @param distributionId ID of the distribution being queried
      * @param user Address of the user being queried
      */
@@ -172,7 +172,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Returns the total earned rewards for a user until now for a particular distribution
+     * @dev Returns the total earned payment for a user until now for a particular distribution
      * @param distributionId ID of the distribution being queried
      * @param user Address of the user being queried
      */
@@ -192,8 +192,8 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Creates a new rewards distribution
-     * @param stakingToken The staking token that will receive rewards
+     * @dev Creates a new distribution
+     * @param stakingToken The staking token that will be eligible for this distribution
      * @param distributionToken The token to be distributed to users
      * @param duration The duration over which each distribution is spread
      */
@@ -305,7 +305,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
             uint256 amount = userStaking.balance;
             if (amount > 0) {
                 subscribedDistributions.add(distributionId);
-                // The unclaimed rewards remains the same because the user was not subscribed to the distribution
+                // The unclaimed tokens remains the same because the user was not subscribed to the distribution
                 userStaking.distributions[distributionId].paidRatePerToken = _updateDistributionRate(distributionId);
                 distribution.totalSupply = distribution.totalSupply.add(amount);
                 emit Staked(distributionId, msg.sender, amount);
@@ -346,7 +346,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
     /**
      * @dev Stakes tokens
-     * @param stakingToken The token to be staked to earn rewards
+     * @param stakingToken The token to be staked to be eligible for distributions
      * @param amount Amount of tokens to be staked
      */
     function stake(IERC20 stakingToken, uint256 amount) external nonReentrant {
@@ -355,7 +355,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
     /**
      * @notice Stakes tokens on behalf of other user
-     * @param stakingToken The token to be staked to earn rewards
+     * @param stakingToken The token to be staked to be eligible for distributions
      * @param amount Amount of tokens to be staked
      * @param user The user staking on behalf of
      */
@@ -369,7 +369,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
     /**
      * @dev Stakes tokens using a permit signature for approval
-     * @param stakingToken The token to be staked to earn rewards
+     * @param stakingToken The token to be staked to be eligible for distributions
      * @param user User staking tokens for
      * @param amount Amount of tokens to be staked
      * @param deadline The time at which this expires (unix time)
@@ -422,25 +422,25 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Claims rewards for a list of distributions
-     * @param distributionIds List of distributions claiming the rewards of
+     * @dev Claims earned distribution tokens for a list of distributions
+     * @param distributionIds List of distributions to claim
      */
     function claim(bytes32[] memory distributionIds) external nonReentrant {
         _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
     }
 
     /**
-     * @dev Claims rewards for a list of distributions to internal balance
-     * @param distributionIds The distributions to claim rewards for
+     * @dev Claims earned tokens for a list of distributions to internal balance
+     * @param distributionIds List of distributions to claim
      */
     function claimAsInternalBalance(bytes32[] memory distributionIds) external nonReentrant {
         _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
     }
 
     /**
-     * @dev Claims rewards for a list of distributions to a callback contract
-     * @param distributionIds The distributions to claim rewards for
-     * @param callbackContract The contract where rewards will be transferred
+     * @dev Claims earned tokens for a list of distributions to a callback contract
+     * @param distributionIds List of distributions to claim
+     * @param callbackContract The contract where tokens will be transferred
      * @param callbackData The data that is used to call the callback contract's 'callback' method
      */
     function claimWithCallback(
@@ -453,9 +453,9 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Withdraws staking tokens and claims rewards for a list of distributions
+     * @dev Withdraws staking tokens and claims for a list of distributions
      * @param stakingTokens The staking tokens to withdraw tokens from
-     * @param distributionIds The distributions to claim rewards for
+     * @param distributionIds The distributions to claim for
      */
     function exit(IERC20[] memory stakingTokens, bytes32[] memory distributionIds) external {
         for (uint256 i; i < stakingTokens.length; i++) {
@@ -468,10 +468,10 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Withdraws staking tokens and claims rewards for a list of distributions to a callback contract
+     * @dev Withdraws staking tokens and claims for a list of distributions to a callback contract
      * @param stakingTokens The staking tokens to withdraw tokens from
-     * @param distributionIds The distributions to claim rewards for
-     * @param callbackContract The contract where rewards will be transferred
+     * @param distributionIds The distributions to claim  for
+     * @param callbackContract The contract where tokens will be transferred
      * @param callbackData The data that is used to call the callback contract's 'callback' method
      */
     function exitWithCallback(
@@ -576,11 +576,11 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @notice Updates the amount of rewards per token staked for a distribution
+     * @notice Updates the amount of distribution tokens paid per token staked for a distribution
      * @dev This is expected to be called whenever a user's applicable staked balance changes,
      *      either through adding/removing tokens or subscribing/unsubscribing from the distribution.
      * @param distributionId ID of the distribution being updated
-     * @return paymentPerTokenStored The updated number of reward tokens paid per staked token
+     * @return paymentPerTokenStored The updated number of distribution tokens paid per staked token
      */
     function _updateDistributionRate(bytes32 distributionId) internal returns (uint256 paymentPerTokenStored) {
         Distribution storage distribution = _getDistribution(distributionId);
