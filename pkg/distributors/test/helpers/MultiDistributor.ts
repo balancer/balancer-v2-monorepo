@@ -45,8 +45,8 @@ export class MultiDistributor {
     return this.instance.totalSupply(distributionId);
   }
 
-  async rewardPerToken(distributionId: string): Promise<BigNumber> {
-    return this.instance.rewardPerToken(distributionId);
+  async paymentPerToken(distributionId: string): Promise<BigNumber> {
+    return this.instance.paymentPerToken(distributionId);
   }
 
   async totalEarned(distributionId: string, user: SignerWithAddress): Promise<BigNumber> {

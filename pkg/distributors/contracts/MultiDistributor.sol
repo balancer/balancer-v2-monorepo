@@ -117,10 +117,10 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Calculates the reward rate per token for a distribution
+     * @dev Calculates the payment per token for a distribution
      * @param distributionId ID of the distribution being queried
      */
-    function rewardPerToken(bytes32 distributionId) public view returns (uint256) {
+    function paymentPerToken(bytes32 distributionId) public view returns (uint256) {
         return _paymentPerToken(_getDistribution(distributionId));
     }
 
