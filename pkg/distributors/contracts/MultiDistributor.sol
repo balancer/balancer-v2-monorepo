@@ -57,7 +57,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     struct UserDistribution {
-        uint256 unpaidRewards;
+        uint256 unclaimedRewards;
         uint256 paidRatePerToken;
     }
 
@@ -298,7 +298,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
             uint256 amount = userStaking.balance;
             if (amount > 0) {
                 subscribedDistributions.add(distributionId);
-                // The unpaid rewards remains the same because the user was not subscribed to the distribution
+                // The unclaimed rewards remains the same because the user was not subscribed to the distribution
                 userStaking.distributions[distributionId].paidRatePerToken = _updateDistributionRate(distributionId);
                 distribution.totalSupply = distribution.totalSupply.add(amount);
                 emit Staked(distributionId, msg.sender, amount);
@@ -530,17 +530,17 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
             }
 
             UserDistribution storage userDistribution = userStaking.distributions[distributionId];
-            uint256 unpaidRewards = userDistribution.unpaidRewards;
+            uint256 unclaimedRewards = userDistribution.unclaimedRewards;
             address rewardsToken = address(distribution.rewardsToken);
 
-            if (unpaidRewards > 0) {
-                userDistribution.unpaidRewards = 0;
-                emit RewardPaid(msg.sender, rewardsToken, unpaidRewards);
+            if (unclaimedRewards > 0) {
+                userDistribution.unclaimedRewards = 0;
+                emit RewardPaid(msg.sender, rewardsToken, unclaimedRewards);
             }
 
             ops[i] = IVault.UserBalanceOp({
                 asset: IAsset(rewardsToken),
-                amount: unpaidRewards,
+                amount: unclaimedRewards,
                 sender: address(this),
                 recipient: payable(recipient),
                 kind: kind
@@ -564,7 +564,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     function _updateUserRewardRatePerToken(UserStaking storage userStaking, bytes32 distributionId) internal {
         uint256 rewardPerTokenStored = _updateDistributionRate(distributionId);
         UserDistribution storage userDistribution = userStaking.distributions[distributionId];
-        userDistribution.unpaidRewards = _totalEarned(userStaking, distributionId);
+        userDistribution.unclaimedRewards = _totalEarned(userStaking, distributionId);
         userDistribution.paidRatePerToken = rewardPerTokenStored;
     }
 
@@ -599,13 +599,13 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     /**
-     * @dev Returns the total unpaid rewards for a user until now for a particular distribution
+     * @dev Returns the total unclaimed rewards for a user until now for a particular distribution
      * @param userStaking Storage pointer to user's staked position information
      * @param distributionId ID of the distribution being queried
      */
     function _totalEarned(UserStaking storage userStaking, bytes32 distributionId) internal view returns (uint256) {
-        uint256 unpaidRewards = userStaking.distributions[distributionId].unpaidRewards;
-        return _unaccountedEarned(userStaking, distributionId).add(unpaidRewards);
+        uint256 unclaimedRewards = userStaking.distributions[distributionId].unclaimedRewards;
+        return _unaccountedEarned(userStaking, distributionId).add(unclaimedRewards);
     }
 
     /**
