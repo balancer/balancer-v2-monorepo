@@ -29,7 +29,6 @@ import "./MultiDistributorAuthorization.sol";
 
 import "./interfaces/IMultiDistributor.sol";
 import "./interfaces/IDistributorCallback.sol";
-import "./interfaces/IDistributor.sol";
 
 // solhint-disable not-rely-on-time
 
@@ -39,7 +38,7 @@ import "./interfaces/IDistributor.sol";
  * https://github.com/curvefi/multi-rewards/blob/master/contracts/MultiRewards.sol commit #9947623
  */
 
-contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, MultiDistributorAuthorization {
+contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributorAuthorization {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -80,6 +79,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     );
     event DistributionDurationSet(bytes32 indexed distribution, uint256 duration);
     event DistributionFunded(bytes32 indexed distribution, uint256 amount);
+    event TokensClaimed(address indexed user, address indexed rewardToken, uint256 amount);
 
     /**
      * @dev Updates the payment rate for all the distributions that a user has signed up for a staking token
@@ -542,7 +542,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
             if (unclaimedTokens > 0) {
                 userDistribution.unclaimedTokens = 0;
-                emit RewardPaid(msg.sender, distributionToken, unclaimedTokens);
+                emit TokensClaimed(msg.sender, distributionToken, unclaimedTokens);
             }
 
             ops[i] = IVault.UserBalanceOp({
