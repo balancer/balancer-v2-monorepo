@@ -69,14 +69,14 @@ export class MultiDistributor {
     distributionId: string
   ): Promise<{
     stakingToken: string;
-    rewardsToken: string;
-    rewarder: string;
+    distributionToken: string;
+    distributor: string;
     totalSupply: BigNumber;
     duration: BigNumber;
     periodFinish: BigNumber;
-    rewardRate: BigNumber;
+    paymentRate: BigNumber;
     lastUpdateTime: BigNumber;
-    rewardPerTokenStored: BigNumber;
+    paymentPerTokenStored: BigNumber;
   }> {
     return this.instance.getDistribution(distributionId);
   }
@@ -84,7 +84,7 @@ export class MultiDistributor {
   async getUserDistribution(
     distributionId: string,
     user: SignerWithAddress
-  ): Promise<{ unpaidRewards: BigNumber; paidRatePerToken: BigNumber }> {
+  ): Promise<{ unclaimedTokens: BigNumber; paidRatePerToken: BigNumber }> {
     return this.instance.getUserDistribution(distributionId, user.address);
   }
 
