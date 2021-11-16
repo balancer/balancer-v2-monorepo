@@ -75,7 +75,7 @@ describe('MultiDistributor', () => {
           const data = await distributor.getDistribution(id);
           expect(data.stakingToken).to.be.equal(stakingToken.address);
           expect(data.distributionToken).to.be.equal(distributionToken.address);
-          expect(data.distributor).to.be.equal(distributionOwner.address);
+          expect(data.owner).to.be.equal(distributionOwner.address);
           expect(data.duration).to.be.equal(PERIOD_DURATION);
           expect(data.totalSupply).to.be.zero;
           expect(data.periodFinish).to.be.zero;

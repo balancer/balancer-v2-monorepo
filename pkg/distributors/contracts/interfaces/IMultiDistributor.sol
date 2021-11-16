@@ -24,7 +24,7 @@ interface IMultiDistributor {
     struct Distribution {
         IERC20 stakingToken;
         IERC20 distributionToken;
-        address distributor;
+        address owner;
         uint256 totalSupply;
         uint256 duration;
         uint256 periodFinish;

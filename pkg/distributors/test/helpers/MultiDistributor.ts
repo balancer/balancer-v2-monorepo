@@ -74,7 +74,7 @@ export class MultiDistributor {
   ): Promise<{
     stakingToken: string;
     distributionToken: string;
-    distributor: string;
+    owner: string;
     totalSupply: BigNumber;
     duration: BigNumber;
     periodFinish: BigNumber;
