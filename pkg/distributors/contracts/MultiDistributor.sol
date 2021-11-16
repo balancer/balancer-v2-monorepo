@@ -204,7 +204,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     ) external override returns (bytes32 distributionId) {
         require(duration > 0, "DISTRIBUTION_DURATION_ZERO");
         require(address(stakingToken) != address(0), "STAKING_TOKEN_ZERO_ADDRESS");
-        require(address(distributionToken) != address(0), "REWARDS_TOKEN_ZERO_ADDRESS");
+        require(address(distributionToken) != address(0), "DISTRIBUTION_TOKEN_ZERO_ADDRESS");
 
         distributionId = getDistributionId(stakingToken, distributionToken, msg.sender);
         Distribution storage distribution = _getDistribution(distributionId);

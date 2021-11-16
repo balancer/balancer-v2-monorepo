@@ -120,7 +120,7 @@ describe('MultiDistributor', () => {
               distributor.newDistribution(stakingToken, distributionTokenAddress, PERIOD_DURATION, {
                 from: distributionOwner,
               })
-            ).to.be.revertedWith('REWARDS_TOKEN_ZERO_ADDRESS');
+            ).to.be.revertedWith('DISTRIBUTION_TOKEN_ZERO_ADDRESS');
           });
         });
 
