@@ -12,7 +12,12 @@ import { RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
 import { RawLinearPoolDeployment, LinearPoolDeployment } from '../pools/linear/types';
 import { RawStablePhantomPoolDeployment, StablePhantomPoolDeployment } from '../pools/stable-phantom/types';
-import { RawWeightedPoolDeployment, WeightedPoolDeployment, WeightedPoolType, BasePoolRights } from '../pools/weighted/types';
+import {
+  RawWeightedPoolDeployment,
+  WeightedPoolDeployment,
+  WeightedPoolType,
+  BasePoolRights,
+} from '../pools/weighted/types';
 import {
   RawTokenApproval,
   RawTokenMint,
