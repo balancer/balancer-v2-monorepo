@@ -140,7 +140,7 @@ describe('Aave Asset manager', function () {
       await advanceTime(10);
 
       const expectedReward = fp(0.75);
-      const actualReward = await distributor.totalEarned(id, lp.address);
+      const actualReward = await distributor.totalUnclaimedTokens(id, lp.address);
       expect(expectedReward.sub(actualReward).abs()).to.be.lte(100);
     });
   });
