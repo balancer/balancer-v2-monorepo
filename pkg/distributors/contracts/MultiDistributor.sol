@@ -569,10 +569,10 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
     }
 
     function _updateUserPaymentRatePerToken(UserStaking storage userStaking, bytes32 distributionId) internal {
-        uint256 rewardPerTokenStored = _updateDistributionRate(distributionId);
+        uint256 paymentPerTokenStored = _updateDistributionRate(distributionId);
         UserDistribution storage userDistribution = userStaking.distributions[distributionId];
         userDistribution.unclaimedTokens = _totalEarned(userStaking, distributionId);
-        userDistribution.paidRatePerToken = rewardPerTokenStored;
+        userDistribution.paidRatePerToken = paymentPerTokenStored;
     }
 
     /**
