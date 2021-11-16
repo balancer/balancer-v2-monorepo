@@ -79,7 +79,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         address distributor
     );
     event DistributionDurationSet(bytes32 indexed distribution, uint256 duration);
-    event RewardAdded(bytes32 indexed distribution, uint256 amount);
+    event DistributionFunded(bytes32 indexed distribution, uint256 amount);
 
     /**
      * @dev Updates the reward rate for all the distributions that a user has signed up for a staking token
@@ -282,7 +282,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
 
         distribution.lastUpdateTime = block.timestamp;
         distribution.periodFinish = block.timestamp.add(duration);
-        emit RewardAdded(distributionId, amount);
+        emit DistributionFunded(distributionId, amount);
     }
 
     /**

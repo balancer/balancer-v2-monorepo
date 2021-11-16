@@ -198,10 +198,10 @@ describe('MultiDistributor', () => {
           expect(currentPaymentRate).to.be.equal(REWARDS.div(PERIOD_DURATION));
         });
 
-        it('emits a RewardAdded event', async () => {
+        it('emits a DistributionFunded event', async () => {
           const tx = await distributor.fundDistribution(distribution, REWARDS, { from: distributionOwner });
 
-          expectEvent.inReceipt(await tx.wait(), 'RewardAdded', {
+          expectEvent.inReceipt(await tx.wait(), 'DistributionFunded', {
             distribution: distribution,
             amount: REWARDS,
           });
@@ -243,10 +243,10 @@ describe('MultiDistributor', () => {
           expect(currentPaymentRate).to.be.almostEqual(expectedNewPaymentRate);
         });
 
-        it('emits a RewardAdded event', async () => {
+        it('emits a DistributionFunded event', async () => {
           const tx = await distributor.fundDistribution(distribution, REWARDS, { from: distributionOwner });
 
-          expectEvent.inReceipt(await tx.wait(), 'RewardAdded', {
+          expectEvent.inReceipt(await tx.wait(), 'DistributionFunded', {
             distribution: distribution,
             amount: REWARDS,
           });
