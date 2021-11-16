@@ -61,17 +61,17 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * This MUST be done whenever the total supply of staked tokens changes otherwise new stakers
      * will gain a portion of rewards distributed before they staked.
      *
-     * Each user tracks their own `userRatePerStake` which determines how many tokens they can claim.
-     * This is done by comparing the global `globalTokensPerStake` with their own `userRatePerStake`,
+     * Each user tracks their own `userTokensPerStake` which determines how many tokens they can claim.
+     * This is done by comparing the global `globalTokensPerStake` with their own `userTokensPerStake`,
      * the difference between these two values times their staked balance is their balance of rewards
-     * since `userRatePerStake` was last updated.
+     * since `userTokensPerStake` was last updated.
      *
      * This calculation is only correct in the case where the user's staked balance does not change.
      * Therefore before any stake/unstake/subscribe/unsubscribe they must sync their local rate to the global rate.
-     * Before `userRatePerStake` is updated to match `globalTokensPerStake`, the unaccounted rewards
+     * Before `userTokensPerStake` is updated to match `globalTokensPerStake`, the unaccounted rewards
      * which they have earned is stored in `unclaimedTokens` to be claimed later.
      *
-     * If staking for the first time `userRatePerStake` is set to `globalTokensPerStake` with zero `unclaimedTokens`
+     * If staking for the first time `userTokensPerStake` is set to `globalTokensPerStake` with zero `unclaimedTokens`
      * to reflect that the user will only start accumulating tokens from that point on.
      *
      * After performing the above updates, claiming tokens is handled simply by just zeroing out the users
