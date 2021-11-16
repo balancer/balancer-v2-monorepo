@@ -25,7 +25,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
-import "./RewardsScheduler.sol";
 import "./MultiDistributorAuthorization.sol";
 
 import "./interfaces/IMultiDistributor.sol";
