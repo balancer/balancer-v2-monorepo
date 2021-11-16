@@ -49,28 +49,29 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * from this a `paymentRate` may be easily calculated.
      *
      * Two pieces of global information are stored for the amount of tokens paid out:
-     * `paymentPerTokenStored` is the number of tokens claimable from a single staking token staked from the start.
-     * `lastUpdateTime` represents the timestamp of the last time `paymentPerTokenStored` was updated.
+     * `globalTokensPerStake` is the number of tokens claimable from a single staking token staked from the start.
+     * `lastUpdateTime` represents the timestamp of the last time `globalTokensPerStake` was updated.
      *
-     * `paymentPerTokenStored` can be calculated by:
+     * `globalTokensPerStake` can be calculated by:
      * 1. Calculating the amount of tokens distributed by multiplying `paymentRate` by the time since `lastUpdateTime`
      * 2. Dividing this by the supply of staked tokens to get payment per staked token
-     * The existing `paymentPerTokenStored` then incremented by this amount.
+     * The existing `globalTokensPerStake` then incremented by this amount.
      *
      * Updating these two values locks in the number of tokens which the current stakers can claim.
      * This MUST be done whenever the total supply of staked tokens changes otherwise new stakers
      * will gain a portion of rewards distributed before they staked.
      *
-     * Each user tracks their own `paidRatePerToken` which determines how many tokens they can claim.
-     * This is done by comparing the global `paymentPerTokenStored` with their own `paidRatePerToken`,
-     * the difference between these two values times their staked balance is their balance of unaccounted rewards.
+     * Each user tracks their own `userRatePerStake` which determines how many tokens they can claim.
+     * This is done by comparing the global `globalTokensPerStake` with their own `userRatePerStake`,
+     * the difference between these two values times their staked balance is their balance of rewards
+     * since `userRatePerStake` was last updated.
      *
      * This calculation is only correct in the case where the user's staked balance does not change.
      * Therefore before any stake/unstake/subscribe/unsubscribe they must sync their local rate to the global rate.
-     * Before `paidRatePerToken` is updated to match `paymentPerTokenStored`, the unaccounted rewards
+     * Before `userRatePerStake` is updated to match `globalTokensPerStake`, the unaccounted rewards
      * which they have earned is stored in `unclaimedTokens` to be claimed later.
      *
-     * If staking for the first time `paidRatePerToken` is set `paymentPerTokenStored` with `unclaimedTokens = 0`
+     * If staking for the first time `userRatePerStake` is set to `globalTokensPerStake` with zero `unclaimedTokens`
      * to reflect that the user will only start accumulating tokens from that point on.
      *
      * After performing the above updates, claiming tokens is handled simply by just zeroing out the users
@@ -119,8 +120,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Calculates the payment per token for a distribution
      * @param distributionId ID of the distribution being queried
      */
-    function paymentPerToken(bytes32 distributionId) public view override returns (uint256) {
-        return _paymentPerToken(_getDistribution(distributionId));
+    function tokensPerStake(bytes32 distributionId) public view override returns (uint256) {
+        return _globalTokensPerStake(_getDistribution(distributionId));
     }
 
     /**
@@ -310,7 +311,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             if (amount > 0) {
                 subscribedDistributions.add(distributionId);
                 // The unclaimed tokens remains the same because the user was not subscribed to the distribution
-                userStaking.distributions[distributionId].paidRatePerToken = _updateDistributionRate(distributionId);
+                userStaking.distributions[distributionId].userTokensPerStake = _updateDistributionRate(distributionId);
                 distribution.totalSupply = distribution.totalSupply.add(amount);
                 emit Staked(distributionId, msg.sender, amount);
             }
@@ -573,10 +574,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     function _updateUserPaymentRatePerToken(UserStaking storage userStaking, bytes32 distributionId) internal {
-        uint256 paymentPerTokenStored = _updateDistributionRate(distributionId);
+        uint256 globalTokensPerStake = _updateDistributionRate(distributionId);
         UserDistribution storage userDistribution = userStaking.distributions[distributionId];
         userDistribution.unclaimedTokens = _totalUnclaimedTokens(userStaking, distributionId);
-        userDistribution.paidRatePerToken = paymentPerTokenStored;
+        userDistribution.userTokensPerStake = globalTokensPerStake;
     }
 
     /**
@@ -584,25 +585,25 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev This is expected to be called whenever a user's applicable staked balance changes,
      *      either through adding/removing tokens or subscribing/unsubscribing from the distribution.
      * @param distributionId ID of the distribution being updated
-     * @return paymentPerTokenStored The updated number of distribution tokens paid per staked token
+     * @return globalTokensPerStake The updated number of distribution tokens paid per staked token
      */
-    function _updateDistributionRate(bytes32 distributionId) internal returns (uint256 paymentPerTokenStored) {
+    function _updateDistributionRate(bytes32 distributionId) internal returns (uint256 globalTokensPerStake) {
         Distribution storage distribution = _getDistribution(distributionId);
-        paymentPerTokenStored = _paymentPerToken(distribution);
-        distribution.paymentPerTokenStored = paymentPerTokenStored;
+        globalTokensPerStake = _globalTokensPerStake(distribution);
+        distribution.globalTokensPerStake = globalTokensPerStake;
         distribution.lastUpdateTime = _lastTimePaymentApplicable(distribution);
     }
 
-    function _paymentPerToken(Distribution storage distribution) internal view returns (uint256) {
+    function _globalTokensPerStake(Distribution storage distribution) internal view returns (uint256) {
         uint256 supply = distribution.totalSupply;
         if (supply == 0) {
-            return distribution.paymentPerTokenStored;
+            return distribution.globalTokensPerStake;
         }
 
         // Underflow is impossible here because _lastTimePaymentApplicable(...) is always greater than last update time
         uint256 unpaidDuration = _lastTimePaymentApplicable(distribution) - distribution.lastUpdateTime;
         uint256 unpaidAmountPerToken = Math.mul(unpaidDuration, distribution.paymentRate).divDown(supply);
-        return distribution.paymentPerTokenStored.add(unpaidAmountPerToken);
+        return distribution.globalTokensPerStake.add(unpaidAmountPerToken);
     }
 
     function _lastTimePaymentApplicable(Distribution storage distribution) internal view returns (uint256) {
@@ -640,9 +641,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             return 0;
         }
 
-        uint256 paidRatePerToken = userStaking.distributions[distributionId].paidRatePerToken;
-        uint256 totalPaymentPerToken = _paymentPerToken(_getDistribution(distributionId)).sub(paidRatePerToken);
-        return userStaking.balance.mulDown(totalPaymentPerToken);
+        uint256 userTokensPerStake = userStaking.distributions[distributionId].userTokensPerStake;
+        uint256 unaccountedPaymentPerToken = _globalTokensPerStake(_getDistribution(distributionId)).sub(
+            userTokensPerStake
+        );
+        return userStaking.balance.mulDown(unaccountedPaymentPerToken);
     }
 
     function _getDistribution(

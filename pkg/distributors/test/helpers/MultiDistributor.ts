@@ -45,8 +45,8 @@ export class MultiDistributor {
     return this.instance.totalSupply(distributionId);
   }
 
-  async paymentPerToken(distributionId: string): Promise<BigNumber> {
-    return this.instance.paymentPerToken(distributionId);
+  async tokensPerStake(distributionId: string): Promise<BigNumber> {
+    return this.instance.tokensPerStake(distributionId);
   }
 
   async totalUnclaimedTokens(distributionId: string, user: SignerWithAddress): Promise<BigNumber> {
@@ -80,7 +80,7 @@ export class MultiDistributor {
     periodFinish: BigNumber;
     paymentRate: BigNumber;
     lastUpdateTime: BigNumber;
-    paymentPerTokenStored: BigNumber;
+    globalTokensPerStake: BigNumber;
   }> {
     return this.instance.getDistribution(distributionId);
   }
@@ -88,7 +88,7 @@ export class MultiDistributor {
   async getUserDistribution(
     distributionId: string,
     user: SignerWithAddress
-  ): Promise<{ unclaimedTokens: BigNumber; paidRatePerToken: BigNumber }> {
+  ): Promise<{ unclaimedTokens: BigNumber; userTokensPerStake: BigNumber }> {
     return this.instance.getUserDistribution(distributionId, user.address);
   }
 

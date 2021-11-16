@@ -30,12 +30,12 @@ interface IMultiDistributor {
         uint256 periodFinish;
         uint256 paymentRate;
         uint256 lastUpdateTime;
-        uint256 paymentPerTokenStored;
+        uint256 globalTokensPerStake;
     }
 
     struct UserDistribution {
         uint256 unclaimedTokens;
-        uint256 paidRatePerToken;
+        uint256 userTokensPerStake;
     }
 
     struct UserStaking {
@@ -66,7 +66,7 @@ interface IMultiDistributor {
 
     function getDistribution(bytes32 distributionId) external view returns (Distribution memory);
 
-    function paymentPerToken(bytes32 distributionId) external view returns (uint256);
+    function tokensPerStake(bytes32 distributionId) external view returns (uint256);
 
     function totalSupply(bytes32 distributionId) external view returns (uint256);
 
