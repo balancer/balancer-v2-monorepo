@@ -568,6 +568,13 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         userDistribution.paidRatePerToken = rewardPerTokenStored;
     }
 
+    /**
+     * @notice Updates the amount of rewards per token staked for a distribution
+     * @dev This is expected to be called whenever a user's applicable staked balance changes,
+     *      either through adding/removing tokens or subscribing/unsubscribing from the distribution.
+     * @param distributionId ID of the distribution being updated
+     * @return rewardPerTokenStored The updated number of reward tokens paid per staked token
+     */
     function _updateDistributionRate(bytes32 distributionId) internal returns (uint256 rewardPerTokenStored) {
         Distribution storage distribution = _getDistribution(distributionId);
         rewardPerTokenStored = _rewardPerToken(distribution);
@@ -591,11 +598,22 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         return Math.min(block.timestamp, distribution.periodFinish);
     }
 
+    /**
+     * @dev Returns the total unpaid rewards for a user until now for a particular distribution
+     * @param userStaking Storage pointer to user's staked position information
+     * @param distributionId ID of the distribution being queried
+     */
     function _totalEarned(UserStaking storage userStaking, bytes32 distributionId) internal view returns (uint256) {
         uint256 unpaidRewards = userStaking.distributions[distributionId].unpaidRewards;
         return _unaccountedEarned(userStaking, distributionId).add(unpaidRewards);
     }
 
+    /**
+     * @dev Returns the rewards earned for a particular distribution between 
+     *      the last time the user updated their position and now
+     * @param userStaking Storage pointer to user's staked position information
+     * @param distributionId ID of the distribution being queried
+     */
     function _unaccountedEarned(UserStaking storage userStaking, bytes32 distributionId)
         internal
         view
