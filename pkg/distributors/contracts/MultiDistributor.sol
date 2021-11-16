@@ -76,7 +76,7 @@ contract MultiDistributor is IMultiDistributor, IDistributor, ReentrancyGuard, M
         bytes32 indexed distribution,
         IERC20 stakingToken,
         IERC20 distributionToken,
-        address rewarder
+        address distributor
     );
     event DistributionDurationSet(bytes32 indexed distribution, uint256 duration);
     event RewardAdded(bytes32 indexed distribution, uint256 amount);
