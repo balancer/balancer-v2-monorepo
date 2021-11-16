@@ -76,7 +76,7 @@ interface IMultiDistributor {
 
     function getUserDistribution(bytes32 distributionId, address user) external view returns (UserDistribution memory);
 
-    function unaccountedEarned(bytes32 distributionId, address user) external view returns (uint256);
+    function unaccountedUnclaimedTokens(bytes32 distributionId, address user) external view returns (uint256);
 
     function totalUnclaimedTokens(bytes32 distributionId, address user) external view returns (uint256);
 
