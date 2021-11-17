@@ -2058,27 +2058,29 @@ describe('MultiDistributor', () => {
   });
 
   describe('claim', () => {
+    let from: SignerWithAddress, to: SignerWithAddress;
+
     sharedBeforeEach('create distributions', async () => {
       await distributor.newDistribution(stakingToken, distributionToken, PERIOD_DURATION, { from: distributionOwner });
       distribution = await distributor.getDistributionId(stakingToken, distributionToken, distributionOwner);
       await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
     });
 
-    const itReceivesTheRewards = () => {
+    const itReceivesTheRewards = (claim: (distribution: string) => Promise<ContractTransaction>) => {
       it('transfers the reward tokens to the user', async () => {
-        const rewards = await distributor.getClaimableTokens(distribution, user1);
+        const rewards = await distributor.getClaimableTokens(distribution, from);
 
-        await distributor.claim(distribution, user1, user1, { from: user1 });
+        await claim(distribution);
 
-        expect(await distributor.getClaimableTokens(distribution, user1)).to.be.zero;
+        expect(await distributor.getClaimableTokens(distribution, from)).to.be.zero;
         expect(await distributionToken.balanceOf(user1.address)).to.be.almostEqual(rewards);
       });
 
       it('transfer the tokens from the vault', async () => {
         const previousVaultBalance = await distributionToken.balanceOf(distributor.vault.address);
 
-        const rewards = await distributor.getClaimableTokens(distribution, user1);
-        await distributor.claim(distribution, user1, user1, { from: user1 });
+        const rewards = await distributor.getClaimableTokens(distribution, from);
+        await claim(distribution);
 
         const currentVaultBalance = await distributionToken.balanceOf(distributor.vault.address);
         expect(currentVaultBalance).to.be.equal(previousVaultBalance.sub(rewards));
@@ -2087,7 +2089,7 @@ describe('MultiDistributor', () => {
       it('does not update the reward per token', async () => {
         const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
 
-        await distributor.claim(distribution, user1, user1, { from: user1 });
+        await claim(distribution);
 
         const currentRewardPerToken = await distributor.globalTokensPerStake(distribution);
         expect(currentRewardPerToken).to.be.almostEqual(previousRewardPerToken);
@@ -2096,38 +2098,41 @@ describe('MultiDistributor', () => {
       it('updates the reward per token rates of the user', async () => {
         const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
 
-        await distributor.claim(distribution, user1, user1, { from: user1 });
+        await claim(distribution);
 
-        const { unclaimedTokens, userTokensPerStake } = await distributor.getUserDistribution(distribution, user1);
+        const { unclaimedTokens, userTokensPerStake } = await distributor.getUserDistribution(distribution, from);
         expect(unclaimedTokens).to.be.almostEqual(0);
         expect(userTokensPerStake).to.be.almostEqual(previousRewardPerToken);
       });
 
       it('emits a TokensClaimed event', async () => {
-        const expectedAmount = await distributor.getClaimableTokens(distribution, user1);
+        const expectedAmount = await distributor.getClaimableTokens(distribution, from);
 
-        const tx = await distributor.claim(distribution, user1, user1, { from: user1 });
+        const tx = await claim(distribution);
 
         expectEvent.inReceipt(await tx.wait(), 'TokensClaimed', {
-          user: user1.address,
+          user: from.address,
           rewardToken: distributionToken.address,
           amount: expectedAmount,
         });
       });
     };
 
-    const itIgnoresTheRequest = (updatesUserPaidRate = false) => {
+    const itIgnoresTheRequest = (
+      claim: (distribution: string) => Promise<ContractTransaction>,
+      updatesUserPaidRate = false
+    ) => {
       it('does not transfer any reward tokens to the user', async () => {
-        await distributor.claim(distribution, user1, user1, { from: user1 });
+        await claim(distribution);
 
-        expect(await distributor.getClaimableTokens(distribution, user1)).to.be.almostEqualFp(0);
-        expect(await distributionToken.balanceOf(user1)).to.be.almostEqualFp(0);
+        expect(await distributor.getClaimableTokens(distribution, from)).to.be.almostEqualFp(0);
+        expect(await distributionToken.balanceOf(from)).to.be.almostEqualFp(0);
       });
 
       it('does not update the reward per token', async () => {
         const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
 
-        await distributor.claim(distribution, user1, user1, { from: user1 });
+        await claim(distribution);
 
         const currentRewardPerToken = await distributor.globalTokensPerStake(distribution);
         expect(currentRewardPerToken).to.be.almostEqual(previousRewardPerToken);
@@ -2136,115 +2141,137 @@ describe('MultiDistributor', () => {
       it(`${updatesUserPaidRate ? 'updates' : 'does not update'} the reward per token rates of the user`, async () => {
         const rewardPerToken = await distributor.globalTokensPerStake(distribution);
 
-        await distributor.claim(distribution, user1, user1, { from: user1 });
+        await claim(distribution);
 
-        const { unclaimedTokens, userTokensPerStake } = await distributor.getUserDistribution(distribution, user1);
+        const { unclaimedTokens, userTokensPerStake } = await distributor.getUserDistribution(distribution, from);
         expect(unclaimedTokens).to.be.zero;
         expect(userTokensPerStake).to.be.equal(updatesUserPaidRate ? rewardPerToken : 0);
       });
 
       it('does not emit a TokensClaimed event', async () => {
-        const tx = await distributor.claim(distribution, user1, user1, { from: user1 });
+        const tx = await claim(distribution);
 
         expectEvent.notEmitted(await tx.wait(), 'TokensClaimed');
       });
     };
 
-    context('when there was no other stake from other users', () => {
-      context('when the user had some stake', () => {
+    const itHandlesClaiming = (claim: (distribution: string) => Promise<ContractTransaction>) => {
+      context('when there was no other stake from other users', () => {
+        context('when the user had some stake', () => {
+          sharedBeforeEach('stake some amount', async () => {
+            await stakingToken.mint(from, fp(1));
+            await stakingToken.approve(distributor, fp(1), { from });
+            await distributor.stake(stakingToken, fp(1), from, from, { from });
+          });
+
+          context('when the user was subscribed to a distribution', () => {
+            sharedBeforeEach('subscribe distribution', async () => {
+              await distributor.subscribe(distribution, { from });
+              await advanceTime(PERIOD_DURATION);
+            });
+
+            itReceivesTheRewards(claim);
+          });
+
+          context('when the user was not subscribed to a distribution', () => {
+            sharedBeforeEach('advance some time', async () => {
+              await advanceTime(PERIOD_DURATION);
+            });
+
+            itIgnoresTheRequest(claim);
+          });
+        });
+
+        context('when the user did not stake', () => {
+          context('when the user was subscribed to a distribution', () => {
+            sharedBeforeEach('subscribe distribution', async () => {
+              await distributor.subscribe(distribution, { from });
+              await advanceTime(PERIOD_DURATION);
+            });
+
+            itIgnoresTheRequest(claim);
+          });
+
+          context('when the user was not subscribed to a distribution', () => {
+            sharedBeforeEach('advance some time', async () => {
+              await advanceTime(PERIOD_DURATION);
+            });
+
+            itIgnoresTheRequest(claim);
+          });
+        });
+      });
+
+      context('when there were some other staking users', () => {
         sharedBeforeEach('stake some amount', async () => {
-          await stakingToken.mint(user1, fp(1));
-          await stakingToken.approve(distributor, fp(1), { from: user1 });
-          await distributor.stake(stakingToken, fp(1), user1, user1, { from: user1 });
+          await distributor.subscribeAndStake(distribution, stakingToken, fp(2), { from: user2 });
+          await advanceTime(PERIOD_DURATION);
         });
 
-        context('when the user was subscribed to a distribution', () => {
-          sharedBeforeEach('subscribe distribution', async () => {
-            await distributor.subscribe(distribution, { from: user1 });
-            await advanceTime(PERIOD_DURATION);
+        context('when the user had some stake', () => {
+          sharedBeforeEach('stake some amount', async () => {
+            await stakingToken.mint(from, fp(1));
+            await stakingToken.approve(distributor, fp(1), { from });
+            await distributor.stake(stakingToken, fp(1), from, from, { from });
+            await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
           });
 
-          itReceivesTheRewards();
+          context('when the user was subscribed to a distribution', () => {
+            sharedBeforeEach('subscribe distribution', async () => {
+              await distributor.subscribe(distribution, { from });
+              await advanceTime(PERIOD_DURATION);
+            });
+
+            itReceivesTheRewards(claim);
+          });
+
+          context('when the user was not subscribed to a distribution', () => {
+            sharedBeforeEach('advance some time', async () => {
+              await advanceTime(PERIOD_DURATION);
+            });
+
+            itIgnoresTheRequest(claim);
+          });
         });
 
-        context('when the user was not subscribed to a distribution', () => {
-          sharedBeforeEach('advance some time', async () => {
-            await advanceTime(PERIOD_DURATION);
+        context('when the user did not have stake', () => {
+          context('when the user was subscribed to a distribution', () => {
+            sharedBeforeEach('subscribe distribution', async () => {
+              await distributor.subscribe(distribution, { from });
+              await advanceTime(PERIOD_DURATION);
+            });
+
+            itIgnoresTheRequest(claim, true);
           });
 
-          itIgnoresTheRequest();
+          context('when the user was not subscribed to a distribution', () => {
+            sharedBeforeEach('advance some time', async () => {
+              await advanceTime(PERIOD_DURATION);
+            });
+
+            itIgnoresTheRequest(claim);
+          });
         });
       });
+    };
 
-      context('when the user did not stake', () => {
-        context('when the user was subscribed to a distribution', () => {
-          sharedBeforeEach('subscribe distribution', async () => {
-            await distributor.subscribe(distribution, { from: user1 });
-            await advanceTime(PERIOD_DURATION);
-          });
-
-          itIgnoresTheRequest();
+    describe('claim', () => {
+      context('when sender and recipient are the same', () => {
+        sharedBeforeEach('define sender and recipient', async () => {
+          from = user1;
+          to = user1;
         });
 
-        context('when the user was not subscribed to a distribution', () => {
-          sharedBeforeEach('advance some time', async () => {
-            await advanceTime(PERIOD_DURATION);
-          });
-
-          itIgnoresTheRequest();
-        });
-      });
-    });
-
-    context('when there were some other staking users', () => {
-      sharedBeforeEach('stake some amount', async () => {
-        await distributor.subscribeAndStake(distribution, stakingToken, fp(2), { from: user2 });
-        await advanceTime(PERIOD_DURATION);
+        itHandlesClaiming((distribution: string) => distributor.claim(distribution, from, from, { from }));
       });
 
-      context('when the user had some stake', () => {
-        sharedBeforeEach('stake some amount', async () => {
-          await stakingToken.mint(user1, fp(1));
-          await stakingToken.approve(distributor, fp(1), { from: user1 });
-          await distributor.stake(stakingToken, fp(1), user1, user1, { from: user1 });
-          await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
+      context('when sender and recipient are different', () => {
+        sharedBeforeEach('define sender and recipient', async () => {
+          from = other;
+          to = user1;
         });
 
-        context('when the user was subscribed to a distribution', () => {
-          sharedBeforeEach('subscribe distribution', async () => {
-            await distributor.subscribe(distribution, { from: user1 });
-            await advanceTime(PERIOD_DURATION);
-          });
-
-          itReceivesTheRewards();
-        });
-
-        context('when the user was not subscribed to a distribution', () => {
-          sharedBeforeEach('advance some time', async () => {
-            await advanceTime(PERIOD_DURATION);
-          });
-
-          itIgnoresTheRequest();
-        });
-      });
-
-      context('when the user did not have stake', () => {
-        context('when the user was subscribed to a distribution', () => {
-          sharedBeforeEach('subscribe distribution', async () => {
-            await distributor.subscribe(distribution, { from: user1 });
-            await advanceTime(PERIOD_DURATION);
-          });
-
-          itIgnoresTheRequest(true);
-        });
-
-        context('when the user was not subscribed to a distribution', () => {
-          sharedBeforeEach('advance some time', async () => {
-            await advanceTime(PERIOD_DURATION);
-          });
-
-          itIgnoresTheRequest();
-        });
+        itHandlesClaiming((distribution: string) => distributor.claim(distribution, from, to, { from }));
       });
     });
   });
