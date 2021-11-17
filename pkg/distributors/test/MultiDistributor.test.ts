@@ -839,21 +839,25 @@ describe('MultiDistributor', () => {
     };
 
     describe('stake', () => {
-      sharedBeforeEach('define sender and recipient', async () => {
-        from = user1;
-        to = user1;
+      context('when sender and recipient are the same', () => {
+        sharedBeforeEach('define sender and recipient', async () => {
+          from = user1;
+          to = user1;
+        });
+
+        itHandlesStaking((token: Token, amount: BigNumberish) =>
+          distributor.stake(token, amount, from, from, { from })
+        );
       });
 
-      itHandlesStaking((token: Token, amount: BigNumberish) => distributor.stake(token, amount, from, from, { from }));
-    });
+      context('when sender and recipient are different', () => {
+        sharedBeforeEach('define sender and recipient', async () => {
+          from = other;
+          to = user1;
+        });
 
-    describe('stakeFor', () => {
-      sharedBeforeEach('define sender and recipient', async () => {
-        from = other;
-        to = user1;
+        itHandlesStaking((token: Token, amount: BigNumberish) => distributor.stake(token, amount, from, to, { from }));
       });
-
-      itHandlesStaking((token: Token, amount: BigNumberish) => distributor.stake(token, amount, from, to, { from }));
     });
 
     describe('stakeWithPermit', () => {
