@@ -168,7 +168,7 @@ export default class LinearPool {
   }
 
   async getVirtualSupply(): Promise<BigNumber> {
-    return this.instance.virtualSupply();
+    return this.instance.getVirtualSupply();
   }
 
   async getTargets(): Promise<{ lowerTarget: BigNumber; upperTarget: BigNumber }> {

@@ -446,10 +446,12 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
+        // We need the actual virtual supply here instead of the approximation that is
+        // _MAX_TOKEN_BALANCE - balances[_bptIndex], as this process burns BPT, rendering it inaccurate.
         uint256[] memory amountsOut = _calcTokensOutGivenExactBptIn(
             balances,
             bptAmountIn,
-            totalSupply().sub(balances[_bptIndex]),
+            _getVirtualSupply(balances[_bptIndex]),
             _bptIndex
         );
 
@@ -570,18 +572,31 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
         emit TargetsSet(mainToken, lowerTarget, upperTarget);
     }
 
-    function setTargets(uint256 lowerTarget, uint256 upperTarget) external authenticate {
+    function setTargets(uint256 newLowerTarget, uint256 newUpperTarget) external authenticate {
         bytes32 poolId = getPoolId();
         (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
         _upscaleArray(balances, _scalingFactors());
 
-        // Targets can only be set when main token balance between targets (free zone)
-        (uint256 currentLowerTarget, uint256 currentUpperTarget) = getTargets();
-        bool isBetweenTargets = balances[_mainIndex] >= currentLowerTarget &&
-            balances[_mainIndex] <= currentUpperTarget;
-        _require(isBetweenTargets, Errors.OUT_OF_TARGET_RANGE);
+        // For a new target range to be valid:
+        //  - the pool must currently be between the current targets (meaning no fees are currently pending)
+        //  - the pool must currently be between the new targets (meaning setting them does not cause for fees to be
+        //    pending)
+        //
+        // The first requirement could be relaxed, as the LPs actually benefit from the pending fees not being paid out,
+        // but being stricter makes analysis easier at little expense.
 
-        _setTargets(_mainToken, lowerTarget, upperTarget);
+        (uint256 currentLowerTarget, uint256 currentUpperTarget) = getTargets();
+        _require(
+            balances[_mainIndex] >= currentLowerTarget && balances[_mainIndex] <= currentUpperTarget,
+            Errors.OUT_OF_TARGET_RANGE
+        );
+
+        _require(
+            balances[_mainIndex] >= newLowerTarget && balances[_mainIndex] <= newUpperTarget,
+            Errors.OUT_OF_NEW_TARGET_RANGE
+        );
+
+        _setTargets(_mainToken, newLowerTarget, newUpperTarget);
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
@@ -597,11 +612,15 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
      * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints all BPT, `totalSupply`
      * remains constant, whereas `virtualSupply` increases as users join the pool and decreases as they exit it.
      */
-    function virtualSupply() external view returns (uint256) {
+    function getVirtualSupply() external view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+        // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
+        // one.
 
-        uint256 _virtualSupply = totalSupply() - balances[_bptIndex];
+        return _getVirtualSupply(balances[_bptIndex]);
+    }
 
-        return _virtualSupply;
+    function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
+        return totalSupply().sub(bptBalance);
     }
 }
