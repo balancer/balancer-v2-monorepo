@@ -1,4 +1,5 @@
 import { ethers } from 'hardhat';
+import { defaultAbiCoder } from '@ethersproject/abi';
 import { BigNumber, Contract, ContractTransaction, ContractReceipt } from 'ethers';
 
 import { SwapKind } from '@balancer-labs/balancer-js';
@@ -19,7 +20,13 @@ import StablePhantomPoolDeployer from './StablePhantomPoolDeployer';
 import * as expectEvent from '../../../test/expectEvent';
 
 import { actionId } from '../../misc/actions';
-import { InitStablePool, JoinExitStablePool, JoinResult } from '../stable/types';
+import {
+  InitStablePool,
+  JoinExitStablePool,
+  JoinResult,
+  MultiExitGivenInStablePool,
+  ExitResult,
+} from '../stable/types';
 import {
   calcBptInGivenExactTokensOut,
   calcBptOutGivenExactTokensIn,
@@ -161,7 +168,7 @@ export default class StablePhantomPool {
   }
 
   async getVirtualSupply(): Promise<BigNumber> {
-    return this.instance.virtualSupply();
+    return this.instance.getVirtualSupply();
   }
 
   async updateTokenRateCache(token: Token): Promise<ContractTransaction> {
@@ -333,6 +340,29 @@ export default class StablePhantomPool {
     return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFeeAmounts };
   }
 
+  async proportionalExit(params: MultiExitGivenInStablePool): Promise<ExitResult> {
+    const { tokens: allTokens } = await this.getTokens();
+    const data = this._encodeExitExactBPTInForTokensOut(params.bptIn);
+    const currentBalances = params.currentBalances || (await this.getBalances());
+    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+
+    const tx = await this.vault.exitPool({
+      poolAddress: this.address,
+      poolId: this.poolId,
+      recipient: to,
+      currentBalances,
+      tokens: allTokens,
+      lastChangeBlock: params.lastChangeBlock ?? 0,
+      protocolFeePercentage: params.protocolFeePercentage ?? 0,
+      data: data,
+      from: params.from,
+    });
+
+    const receipt = await (await tx).wait();
+    const { deltas, protocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFeeAmounts };
+  }
+
   private async _buildSwapParams(kind: number, params: SwapPhantomPool): Promise<GeneralSwap> {
     return {
       kind,
@@ -370,6 +400,11 @@ export default class StablePhantomPool {
       protocolFeePercentage: fp(0),
       data: StablePoolEncoder.joinCollectProtocolFees(),
     };
+  }
+
+  private _encodeExitExactBPTInForTokensOut(bptAmountIn: BigNumberish): string {
+    const EXACT_BPT_IN_FOR_TOKENS_OUT = 0;
+    return defaultAbiCoder.encode(['uint256', 'uint256'], [EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn]);
   }
 
   private _skipBptIndex(index: number): number {
