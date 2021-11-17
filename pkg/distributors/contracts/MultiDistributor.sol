@@ -236,7 +236,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
         // Before receiving the tokens, we must update the distribution's rate
         // as we are about to change its payment rate, which affects all other rates.
-        _updateDistributionRate(distributionId);
+        _updateDistributionRate(distribution);
 
         // Get the tokens and deposit them in the Vault as this contract's internal balance, making claims to internal
         // balance, joining pools, etc., use less gas.
@@ -304,7 +304,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
                 // staked tokens and decrease the global per token rate.
                 // The unclaimed tokens remain unchanged as the user was not subscribed to the distribution
                 // and therefore not eligible to receive any unaccounted-for tokens.
-                userStaking.distributions[distributionId].userTokensPerStake = _updateDistributionRate(distributionId);
+                userStaking.distributions[distributionId].userTokensPerStake = _updateDistributionRate(distribution);
                 distribution.totalSupply = distribution.totalSupply.add(amount);
                 emit Staked(distributionId, msg.sender, amount);
             }
@@ -619,7 +619,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     function _updateUserTokensPerStake(UserStaking storage userStaking, bytes32 distributionId) internal {
-        uint256 updatedGlobalTokensPerStake = _updateDistributionRate(distributionId);
+        uint256 updatedGlobalTokensPerStake = _updateDistributionRate(_getDistribution(distributionId));
         UserDistribution storage userDistribution = userStaking.distributions[distributionId];
         userDistribution.unclaimedTokens = _getUnclaimedTokens(
             userStaking,
@@ -633,11 +633,13 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @notice Updates the amount of distribution tokens paid per token staked for a distribution
      * @dev This is expected to be called whenever a user's applicable staked balance changes,
      *      either through adding/removing tokens or subscribing/unsubscribing from the distribution.
-     * @param distributionId ID of the distribution being updated
+     * @param distribution The distribution being updated
      * @return updatedGlobalTokensPerStake The updated number of distribution tokens paid per staked token
      */
-    function _updateDistributionRate(bytes32 distributionId) internal returns (uint256 updatedGlobalTokensPerStake) {
-        Distribution storage distribution = _getDistribution(distributionId);
+    function _updateDistributionRate(Distribution storage distribution)
+        internal
+        returns (uint256 updatedGlobalTokensPerStake)
+    {
         updatedGlobalTokensPerStake = _globalTokensPerStake(distribution);
         distribution.globalTokensPerStake = updatedGlobalTokensPerStake;
         distribution.lastUpdateTime = _lastTimePaymentApplicable(distribution);
