@@ -394,19 +394,22 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Unstake tokens
      * @param stakingToken The token to be unstaked
      * @param amount Amount of tokens to be unstaked
-     * @param receiver The recipient of the staked tokens
+     * @param sender The address which is unstaking its tokens
+     * @param recipient The address which receives the unstaked tokens
      */
     function unstake(
         IERC20 stakingToken,
         uint256 amount,
-        address receiver
+        address sender,
+        address recipient
     ) public override nonReentrant {
+        require(sender == msg.sender, "INVALID_SENDER");
         require(amount > 0, "UNSTAKE_AMOUNT_ZERO");
 
         // Before we reduce the user's staked balance we need to update all of their subscriptions
-        _updateSubscribedDistributions(stakingToken, msg.sender);
+        _updateSubscribedDistributions(stakingToken, sender);
 
-        UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
+        UserStaking storage userStaking = _userStakings[stakingToken][sender];
         uint256 currentBalance = userStaking.balance;
         require(currentBalance >= amount, "UNSTAKE_AMOUNT_UNAVAILABLE");
         userStaking.balance = userStaking.balance.sub(amount);
@@ -420,10 +423,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             bytes32 distributionId = distributions.unchecked_at(i);
             Distribution storage distribution = _getDistribution(distributionId);
             distribution.totalSupply = distribution.totalSupply.sub(amount);
-            emit Unstaked(distributionId, msg.sender, amount);
+            emit Unstaked(distributionId, sender, amount);
         }
 
-        stakingToken.safeTransfer(receiver, amount);
+        stakingToken.safeTransfer(recipient, amount);
     }
 
     /**
@@ -466,7 +469,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         for (uint256 i; i < stakingTokens.length; i++) {
             IERC20 stakingToken = stakingTokens[i];
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
-            unstake(stakingToken, userStaking.balance, msg.sender);
+            unstake(stakingToken, userStaking.balance, msg.sender, msg.sender);
         }
 
         _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
@@ -488,7 +491,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         for (uint256 i; i < stakingTokens.length; i++) {
             IERC20 stakingToken = stakingTokens[i];
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
-            unstake(stakingToken, userStaking.balance, msg.sender);
+            unstake(stakingToken, userStaking.balance, msg.sender, msg.sender);
         }
 
         _claim(distributionIds, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);

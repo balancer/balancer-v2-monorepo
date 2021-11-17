@@ -124,7 +124,8 @@ interface IMultiDistributor {
     function unstake(
         IERC20 stakingToken,
         uint256 amount,
-        address receiver
+        address sender,
+        address recipient
     ) external;
 
     function exit(IERC20[] memory stakingTokens, bytes32[] memory distributionIds) external;
