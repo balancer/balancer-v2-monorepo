@@ -350,15 +350,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             uint256 amount = userStaking.balance;
             if (amount > 0) {
                 _updateUserTokensPerStake(userStaking, distributionId);
-            }
-
-            require(subscribedDistributions.remove(distributionId), "DISTRIBUTION_NOT_SUBSCRIBED");
-
-            if (amount > 0) {
-                _updateUserTokensPerStake(userStaking, distributionId);
                 distribution.totalSupply = distribution.totalSupply.sub(amount);
                 emit Withdrawn(distributionId, msg.sender, amount);
             }
+
+            require(subscribedDistributions.remove(distributionId), "DISTRIBUTION_NOT_SUBSCRIBED");
         }
     }
 
