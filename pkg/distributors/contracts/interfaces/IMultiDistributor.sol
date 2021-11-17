@@ -84,7 +84,7 @@ interface IMultiDistributor {
 
     // Distribution Management
 
-    function create(
+    function createDistribution(
         IERC20 stakingToken,
         IERC20 distributionToken,
         uint256 duration

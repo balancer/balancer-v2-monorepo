@@ -202,7 +202,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionToken The token to be distributed to users
      * @param duration The duration over which each distribution is spread
      */
-    function create(
+    function createDistribution(
         IERC20 stakingToken,
         IERC20 distributionToken,
         uint256 duration

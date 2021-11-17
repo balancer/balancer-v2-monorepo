@@ -47,7 +47,9 @@ describe('Reinvestor', () => {
     const rewardAmount = fp(1);
 
     sharedBeforeEach(async () => {
-      await stakingContract.connect(mockAssetManager).create(pool.address, rewardToken.address, rewardsDuration);
+      await stakingContract
+        .connect(mockAssetManager)
+        .createDistribution(pool.address, rewardToken.address, rewardsDuration);
 
       const bptBalance = await pool.balanceOf(lp.address);
 
@@ -148,7 +150,7 @@ describe('Reinvestor', () => {
 
           await stakingContract
             .connect(mockAssetManager)
-            .create(pool.address, otherRewardToken.address, rewardsDuration);
+            .createDistribution(pool.address, otherRewardToken.address, rewardsDuration);
 
           anotherId = await stakingContract.getDistributionId(
             pool.address,

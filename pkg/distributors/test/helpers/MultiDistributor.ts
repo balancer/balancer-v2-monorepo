@@ -95,7 +95,11 @@ export class MultiDistributor {
     params?: TxParams
   ): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.create(TypesConverter.toAddress(stakingToken), TypesConverter.toAddress(rewardsToken), duration);
+    return instance.createDistribution(
+      TypesConverter.toAddress(stakingToken),
+      TypesConverter.toAddress(rewardsToken),
+      duration
+    );
   }
 
   async fundDistribution(distribution: string, amount: BigNumberish, params?: TxParams): Promise<ContractTransaction> {

@@ -40,7 +40,7 @@ describe('Rewards Scheduler', () => {
 
     await rewardTokens.approve({ to: rewardsScheduler.address, from: [rewarder] });
 
-    await stakingContract.connect(rewarder).create(pool.address, rewardsToken.address, rewardsDuration);
+    await stakingContract.connect(rewarder).createDistribution(pool.address, rewardsToken.address, rewardsDuration);
   });
 
   it('allows anyone to schedule a reward', async () => {
