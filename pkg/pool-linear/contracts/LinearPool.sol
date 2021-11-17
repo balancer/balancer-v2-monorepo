@@ -29,8 +29,14 @@ import "./LinearMath.sol";
 import "./LinearPoolUserData.sol";
 
 /**
- * @dev LinearPool suitable for assets with an equal underlying token with an exact and non-manipulable exchange rate.
- * Requires an external feed of these exchange rates.
+ * @dev Linear Pools are designed to hold two assets: "main" and "wrapped" tokens that have an equal value underlying
+ * token (e.g., DAI and aDAI). The Pool will register three tokens in the Vault however: the two assets and the BPT
+ * itself, so that BPT can be exchanged (effectively joining and exiting) via swaps.
+ *
+ * Unlike most other Pools, this one does not attempt to create revenue by charging fees: value is derived by holding
+ * the wrapped, yield-bearing asset.
+ *
+ * There must be an external feed available to provide an exact, non-manipulable exchange rate between the tokens.
  */
 contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
     using WordCodec for bytes32;
@@ -161,10 +167,10 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
     /**
      * @dev Finishes initialization of the Linear Pool: it is unusable before calling this function.
      *
-     * Since Linear Pools have preminted BPT which is stored in the Vault, we need for an initial join to occur for the
-     * BPT to be deposited. Unfortunately, this cannot be performed during construction as a join involves calling a
-     * callback function on the Pool, and the Pool will not have any code until construction finishes. Therefore, this
-     * must happen in a separate call to this function.
+     * Since Linear Pools have preminted BPT stored in the Vault, they require an initial join to deposit that BPT.
+     * Unfortunately, this cannot be performed during construction, as a join involves a callback function on the
+     * Pool, and the Pool will not have any code until construction finishes. Therefore, this must happen in a
+     * separate call.
      *
      * It is highly recommended to create Linear pools using the LinearPoolFactory, which calls `initialize`
      * automatically.
@@ -193,8 +199,12 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256 indexIn,
         uint256 indexOut
     ) public override onlyVault(request.poolId) whenNotPaused returns (uint256) {
-        // Validate indexes.
-        // Note, these are no longer used ahead since we can trust the ones used when the pool was registered
+        // Validate indices, which are passed in here because Linear Pools have the General specialization.
+        // Note that they are only used within the onSwap function itself.
+        //
+        // Since we know that the order of `balances` must correspond to the token order in the Vault, and we
+        // already stored the indices of all three tokens during construction, there is no need to pass these
+        // indices through to internal functions called from onSwap.
         _require(indexIn < _TOTAL_TOKENS && indexOut < _TOTAL_TOKENS, Errors.OUT_OF_BOUNDS);
 
         _cacheWrappedTokenRateIfNecessary();
@@ -427,10 +437,9 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
         // triggered. This allows for a simple and safe way to exit the Pool.
         if (kind == LinearPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             _ensurePaused();
-            // Note that this will cause for the user's BPT to be burned, which is not something that happens during
+            // Note that this will cause the user's BPT to be burned, which is not something that happens during
             // regular operation of this Pool, and may lead to accounting errors. Because of this, it is highly
-            // advisable to not continue using a Pool on which the pause has been turned on and BPT burned once the
-            // pause window expires.
+            // advisable to stop using a Pool after it is paused and the pause window expires.
 
             (bptAmountIn, amountsOut) = _proportionalExit(balances, userData);
             // For simplicity, due protocol fees are set to zero.
@@ -445,16 +454,17 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
         view
         returns (uint256, uint256[] memory)
     {
-        // This proportional exit function is only enabled if the contract is paused in an attempt to provide users
-        // with a mechanism to retrieve their tokens in case of an emergency.
-        // This particular exit function is the only one available because it is the simplest one, and therefore the
-        // one with the lowest likelihood of errors.
+        // This proportional exit function is only enabled if the contract is paused, to provide users a way to
+        // retrieve their tokens in case of an emergency.
+        //
+        // This particular exit function is the only one available because it is the simplest, and therefore least
+        // likely to revert and lock funds.
 
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
-        // We need the actual virtual supply here instead of the approximation that is
-        // _MAX_TOKEN_BALANCE - balances[_bptIndex], as this process burns BPT, rendering it inaccurate.
+        // This process burns BPT, rendering the "_MAX_TOKEN_BALANCE - balances[_bptIndex]" approximation of the
+        // virtual BPT inaccurate. So we need to calculate it exactly here.
         uint256[] memory amountsOut = _calcTokensOutGivenExactBptIn(
             balances,
             bptAmountIn,
@@ -574,7 +584,7 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
         _require(upperTarget <= _MAX_TOKEN_BALANCE, Errors.UPPER_TARGET_TOO_HIGH);
 
         // Pack targets as two uint128 values into a single storage. This results in targets being capped to 128 bits,
-        // but that's fine because they are already lower than _MAX_TOKEN_BALANCE which is 112 bits.
+        // but that's fine because they are guaranteed to be lower than the 112-bit _MAX_TOKEN_BALANCE.
         _packedTargets =
             WordCodec.encodeUint(lowerTarget, _LOWER_TARGET_OFFSET) |
             WordCodec.encodeUint(upperTarget, _UPPER_TARGET_OFFSET);
@@ -623,8 +633,8 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
      */
     function getVirtualSupply() external view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
-        // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
-        // one.
+        // Note that unlike all other balances, the Vault's BPT balance does not need scaling. BPT are always 18-bits,
+        // so the scaling factor is FixedPoint.ONE.
 
         return _getVirtualSupply(balances[_bptIndex]);
     }
