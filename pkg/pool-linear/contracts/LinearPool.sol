@@ -54,7 +54,14 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     uint256 private immutable _scalingFactorMainToken;
     uint256 private immutable _scalingFactorWrappedToken;
 
+    // Store both targets in one slot
+    // [   128 bits   |    128 bits   ]
+    // [ upper target |  lower target ]
+    // [MSB                        LSB]
     bytes32 private _packedTargets;
+
+    uint256 private constant _LOWER_TARGET_OFFSET = 0;
+    uint256 private constant _UPPER_TARGET_OFFSET = 128;
 
     bytes32 private _wrappedTokenRateCache;
     IRateProvider private immutable _wrappedTokenRateProvider;
@@ -554,8 +561,8 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     }
 
     function getTargets() public view returns (uint256 lowerTarget, uint256 upperTarget) {
-        lowerTarget = _packedTargets.decodeUint128(0);
-        upperTarget = _packedTargets.decodeUint128(128);
+        lowerTarget = _packedTargets.decodeUint128(_LOWER_TARGET_OFFSET);
+        upperTarget = _packedTargets.decodeUint128(_UPPER_TARGET_OFFSET);
     }
 
     function _setTargets(
@@ -568,7 +575,9 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
         // Pack targets as two uint128 values into a single storage. This results in targets being capped to 128 bits,
         // but that's fine because they are already lower than _MAX_TOKEN_BALANCE which is 112 bits.
-        _packedTargets = WordCodec.encodeUint(lowerTarget, 0) | WordCodec.encodeUint(upperTarget, 128);
+        _packedTargets =
+            WordCodec.encodeUint(lowerTarget, _LOWER_TARGET_OFFSET) |
+            WordCodec.encodeUint(upperTarget, _UPPER_TARGET_OFFSET);
         emit TargetsSet(mainToken, lowerTarget, upperTarget);
     }
 
