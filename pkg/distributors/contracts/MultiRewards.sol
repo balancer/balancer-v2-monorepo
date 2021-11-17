@@ -95,7 +95,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Returns the identifier used for a specific distribution
+     * @dev Returns the unique identifier used for a distribution
      * @param stakingToken The staking token of the distribution
      * @param distributionToken The token which is being distributed
      * @param distributor The owner of the distribution
@@ -231,8 +231,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         require(duration > 0, "DISTRIBUTION_DURATION_ZERO");
 
         Distribution storage distribution = _getDistribution(distributionId);
+        // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
+        // sentinel value that marks non-existent distributions.
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
-        // TODO: add test for this
         require(distribution.owner == msg.sender, "SENDER_NOT_OWNER");
         require(distribution.periodFinish < block.timestamp, "DISTRIBUTION_STILL_ACTIVE");
 
@@ -248,13 +249,18 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param amount The amount of tokens to deposit
      */
     function fundDistribution(bytes32 distributionId, uint256 amount) external override {
+        // Before receiving the tokens, we must update the distribution's rate 
+        // as we are about to change its payment rate, which affects all other rates.
         _updateDistributionRate(distributionId);
 
         Distribution storage distribution = _getDistribution(distributionId);
+        // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
+        // sentinel value that marks non-existent distributions.
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
-        // TODO: add test for this
         require(distribution.owner == msg.sender, "SENDER_NOT_DISTRIBUTOR");
 
+        // Get the tokens and deposit them in the Vault as this contract's internal balance, making claims to internal
+        // balance, joining pools, etc., use less gas.
         IERC20 distributionToken = distribution.distributionToken;
         distributionToken.safeTransferFrom(msg.sender, address(this), amount);
         distributionToken.approve(address(getVault()), amount);
@@ -273,13 +279,16 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         uint256 duration = distribution.duration;
         uint256 periodFinish = distribution.periodFinish;
 
+        // The new payment rate will depend on whether or not there's already an ongoing period, in which case the two
+        // will be merged. In both scenarios we round down to avoid paying more tokens than were received.
         if (block.timestamp >= periodFinish) {
             // Current distribution period has ended so new period consists only of amount provided.
             distribution.paymentRate = Math.divDown(amount, duration);
         } else {
             // Current distribution period is still in progress.
-            // Calculate number of tokens which haven't been distributed yet and
-            // apply these to the new distribution period being funded.
+            // Calculate number of tokens which haven't been distributed yet and apply to the new distribution period.
+            // This means that any previously pending tokens will be re-distributed over the extended duration, so if a
+            // constant rate is desired new funding should be applied close to the end date of a distribution.
 
             // Checked arithmetic is not required due to the if
             uint256 remainingTime = periodFinish - block.timestamp;
@@ -310,7 +319,13 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             uint256 amount = userStaking.balance;
             if (amount > 0) {
                 subscribedDistributions.add(distributionId);
-                // The unclaimed tokens remains the same because the user was not subscribed to the distribution
+                // If subscribing to a distribution that uses a staking token for which the user has already staked,
+                // those tokens then immediately become part of the distribution's staked tokens 
+                // (i.e. the user is staking for the new distribution).
+                // This means we need to update the distribution rate, as we are about to change it's total 
+                // staked tokens and decrease the global per token rate.
+                // The unclaimed tokens remain unchanged as the user was not subscribed to the distribution 
+                // and therefore is due no unaccounted-for tokens.
                 userStaking.distributions[distributionId].userTokensPerStake = _updateDistributionRate(distributionId);
                 distribution.totalSupply = distribution.totalSupply.add(amount);
                 emit Staked(distributionId, msg.sender, amount);
@@ -416,6 +431,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
         uint256 distributionsLength = distributions.length();
 
+        // We also need to update all distributions the user was subscribed to,
+        // deducting the unstaked tokens from their totals.
         for (uint256 i; i < distributionsLength; i++) {
             bytes32 distributionId = distributions.unchecked_at(i);
             Distribution storage distribution = _getDistribution(distributionId);
@@ -509,6 +526,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
         uint256 distributionsLength = distributions.length();
 
+        // We also need to update all distributions the user was subscribed to,
+        // adding the staked tokens to their totals.
         for (uint256 i; i < distributionsLength; i++) {
             bytes32 distributionId = distributions.unchecked_at(i);
             Distribution storage distribution = _getDistribution(distributionId);
@@ -518,7 +537,6 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
         // We hold stakingTokens in an external balance as BPT needs to be external anyway
         // in the case where a user is exiting the pool after unstaking.
-        // TODO: consider a TRANSFER_EXTERNAL call
         stakingToken.safeTransferFrom(from, address(this), amount);
     }
 
@@ -536,8 +554,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             IERC20 stakingToken = distribution.stakingToken;
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
 
+            // Note that the user may have unsubscribed from the distribution but still be due tokens. We therefore only
+            // update the distribution if the user is subscribed to it (otherwise, it is already up to date).
             if (userStaking.subscribedDistributions.contains(distributionId)) {
-                // Update user distribution rates only if the user is still subscribed
                 _updateUserTokensPerStake(userStaking, distributionId);
             }
 
