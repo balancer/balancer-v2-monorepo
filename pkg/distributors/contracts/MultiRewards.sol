@@ -81,14 +81,6 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     mapping(bytes32 => Distribution) internal _distributions;
     mapping(IERC20 => mapping(address => UserStaking)) internal _userStakings;
 
-    /**
-     * @dev Updates the payment rate for all the distributions that a user has signed up for a staking token
-     */
-    modifier updateDistributions(IERC20 stakingToken, address user) {
-        _updateDistributions(stakingToken, user);
-        _;
-    }
-
     constructor(IVault vault) Authentication(bytes32(uint256(address(this)))) MultiDistributorAuthorization(vault) {
         // solhint-disable-previous-line no-empty-blocks
         // MultiDistributor is a singleton, so it simply uses its own address to disambiguate action identifiers
@@ -414,8 +406,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         IERC20 stakingToken,
         uint256 amount,
         address receiver
-    ) public override nonReentrant updateDistributions(stakingToken, msg.sender) {
+    ) public override nonReentrant {
         require(amount > 0, "UNSTAKE_AMOUNT_ZERO");
+
+        // Before we reduce the user's staked balance we need to update all of their subscriptions
+        _updateDistributions(stakingToken, msg.sender);
 
         UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
         uint256 currentBalance = userStaking.balance;
@@ -511,8 +506,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         uint256 amount,
         address user,
         address from
-    ) internal updateDistributions(stakingToken, user) {
+    ) internal {
         require(amount > 0, "STAKE_AMOUNT_ZERO");
+
+        // Before we increase the user's staked balance we need to update all of their subscriptions
+        _updateDistributions(stakingToken, user);
 
         UserStaking storage userStaking = _userStakings[stakingToken][user];
         userStaking.balance = userStaking.balance.add(amount);
@@ -575,6 +573,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         getVault().manageUserBalance(ops);
     }
 
+    /**
+     * @dev Updates the payment rate for all the distributions that a user has signed up for a staking token
+     */
     function _updateDistributions(IERC20 stakingToken, address user) internal {
         UserStaking storage userStaking = _userStakings[stakingToken][user];
         EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
