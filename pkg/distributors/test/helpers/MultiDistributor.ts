@@ -49,8 +49,8 @@ export class MultiDistributor {
     return this.instance.tokensPerStake(distributionId);
   }
 
-  async totalUnclaimedTokens(distributionId: string, user: SignerWithAddress): Promise<BigNumber> {
-    return this.instance.totalUnclaimedTokens(distributionId, user.address);
+  async getClaimableTokens(distributionId: string, user: SignerWithAddress): Promise<BigNumber> {
+    return this.instance.getClaimableTokens(distributionId, user.address);
   }
 
   async isSubscribed(distribution: string, user1: SignerWithAddress): Promise<boolean> {

@@ -181,10 +181,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionId ID of the distribution being queried
      * @param user Address of the user being queried
      */
-    function totalUnclaimedTokens(bytes32 distributionId, address user) external view override returns (uint256) {
+    function getClaimableTokens(bytes32 distributionId, address user) external view override returns (uint256) {
         IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
         UserStaking storage userStaking = _userStakings[stakingToken][user];
-        return _totalUnclaimedTokens(userStaking, distributionId);
+        return _getUnclaimedTokens(userStaking, distributionId);
     }
 
     /**
@@ -589,7 +589,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     function _updateUserTokensPerStake(UserStaking storage userStaking, bytes32 distributionId) internal {
         uint256 globalTokensPerStake = _updateDistributionRate(distributionId);
         UserDistribution storage userDistribution = userStaking.distributions[distributionId];
-        userDistribution.unclaimedTokens = _totalUnclaimedTokens(userStaking, distributionId);
+        userDistribution.unclaimedTokens = _getUnclaimedTokens(userStaking, distributionId);
         userDistribution.userTokensPerStake = globalTokensPerStake;
     }
 
@@ -628,7 +628,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param userStaking Storage pointer to user's staked position information
      * @param distributionId ID of the distribution being queried
      */
-    function _totalUnclaimedTokens(UserStaking storage userStaking, bytes32 distributionId)
+    function _getUnclaimedTokens(UserStaking storage userStaking, bytes32 distributionId)
         internal
         view
         returns (uint256)

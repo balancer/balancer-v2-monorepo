@@ -257,12 +257,12 @@ describe('MultiDistributor', () => {
           const { lastUpdateTime, periodFinish } = await distributor.getDistribution(distribution);
           const rewardedTime = currentTime.gt(periodFinish) ? PERIOD_DURATION : currentTime.sub(lastUpdateTime);
 
-          const previousUser1Tokens = await distributor.totalUnclaimedTokens(distribution, user1);
+          const previousUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
           expect(previousUser1Tokens).to.be.almostEqual(
             toUser1Share(DISTRIBUTION_SIZE).mul(rewardedTime).div(PERIOD_DURATION)
           );
 
-          const previousUser2Tokens = await distributor.totalUnclaimedTokens(distribution, user2);
+          const previousUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
           expect(previousUser2Tokens).to.be.almostEqual(
             toUser2Share(DISTRIBUTION_SIZE).mul(rewardedTime).div(PERIOD_DURATION)
           );
@@ -273,10 +273,10 @@ describe('MultiDistributor', () => {
           await advanceTime(PERIOD_DURATION);
 
           // Each user should now get their share out of the two batches of tokens (three times the original amount)
-          const currentUser1Tokens = await distributor.totalUnclaimedTokens(distribution, user1);
+          const currentUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
           expect(currentUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE.mul(3)));
 
-          const currentUser2Tokens = await distributor.totalUnclaimedTokens(distribution, user2);
+          const currentUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
           expect(currentUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE.mul(3)));
         });
       };
@@ -285,19 +285,19 @@ describe('MultiDistributor', () => {
         itCreatesANewRewardDistributionPeriod();
 
         it('starts giving rewards to already subscribed users', async () => {
-          const previousUser1Tokens = await distributor.totalUnclaimedTokens(distribution, user1);
+          const previousUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
           expect(previousUser1Tokens).to.be.zero;
 
-          const previousUser2Tokens = await distributor.totalUnclaimedTokens(distribution, user2);
+          const previousUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
           expect(previousUser2Tokens).to.be.zero;
 
           await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
           await advanceTime(PERIOD_DURATION);
 
-          const currentUser1Tokens = await distributor.totalUnclaimedTokens(distribution, user1);
+          const currentUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
           expect(currentUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE));
 
-          const currentUser2Tokens = await distributor.totalUnclaimedTokens(distribution, user2);
+          const currentUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
           expect(currentUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE));
         });
       });
@@ -327,10 +327,10 @@ describe('MultiDistributor', () => {
           itCreatesANewRewardDistributionPeriod();
 
           it('accrues already given rewards', async () => {
-            const previousUser1Tokens = await distributor.totalUnclaimedTokens(distribution, user1);
+            const previousUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
             expect(previousUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE));
 
-            const previousUser2Tokens = await distributor.totalUnclaimedTokens(distribution, user2);
+            const previousUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
             expect(previousUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE));
 
             // Add new funding, double the size of the original, and fully process them
@@ -338,10 +338,10 @@ describe('MultiDistributor', () => {
             await advanceTime(PERIOD_DURATION);
 
             // Each user should now get their share out of the two batches of tokens (three times the original amount)
-            const currentUser1Tokens = await distributor.totalUnclaimedTokens(distribution, user1);
+            const currentUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
             expect(currentUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE.mul(3)));
 
-            const currentUser2Tokens = await distributor.totalUnclaimedTokens(distribution, user2);
+            const currentUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
             expect(currentUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE.mul(3)));
           });
         });
@@ -354,10 +354,10 @@ describe('MultiDistributor', () => {
           itCreatesANewRewardDistributionPeriod();
 
           it('accrues already given rewards', async () => {
-            const previousUser1Tokens = await distributor.totalUnclaimedTokens(distribution, user1);
+            const previousUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
             expect(previousUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE));
 
-            const previousUser2Tokens = await distributor.totalUnclaimedTokens(distribution, user2);
+            const previousUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
             expect(previousUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE));
 
             // Add new rewards, double the size of the original ones, and fully process them
@@ -365,10 +365,10 @@ describe('MultiDistributor', () => {
             await advanceTime(PERIOD_DURATION);
 
             // Each user should now get their share out of the two batches of rewards (three times the original amount)
-            const currentUser1Tokens = await distributor.totalUnclaimedTokens(distribution, user1);
+            const currentUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
             expect(currentUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE.mul(3)));
 
-            const currentUser2Tokens = await distributor.totalUnclaimedTokens(distribution, user2);
+            const currentUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
             expect(currentUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE.mul(3)));
           });
         });
@@ -724,7 +724,7 @@ describe('MultiDistributor', () => {
 
                 const previousRewardPerToken = await distributor.tokensPerStake(distribution);
                 expect(previousRewardPerToken).to.be.almostEqualFp(22500);
-                expect(await distributor.totalUnclaimedTokens(distribution, user2)).to.almostEqual(
+                expect(await distributor.getClaimableTokens(distribution, user2)).to.almostEqual(
                   DISTRIBUTION_SIZE.div(2)
                 );
 
@@ -732,7 +732,7 @@ describe('MultiDistributor', () => {
 
                 const currentRewardPerToken = await distributor.tokensPerStake(distribution);
                 expect(currentRewardPerToken).to.be.almostEqualFp(45000);
-                expect(await distributor.totalUnclaimedTokens(distribution, user2)).to.almostEqual(DISTRIBUTION_SIZE);
+                expect(await distributor.getClaimableTokens(distribution, user2)).to.almostEqual(DISTRIBUTION_SIZE);
               });
             });
 
@@ -796,8 +796,8 @@ describe('MultiDistributor', () => {
                 const previousRewardPerToken = await distributor.tokensPerStake(distribution);
                 expect(previousRewardPerToken).to.be.almostEqualFp(22500);
 
-                expect(await distributor.totalUnclaimedTokens(distribution, user1)).to.almostEqual(0);
-                expect(await distributor.totalUnclaimedTokens(distribution, user2)).to.almostEqual(
+                expect(await distributor.getClaimableTokens(distribution, user1)).to.almostEqual(0);
+                expect(await distributor.getClaimableTokens(distribution, user2)).to.almostEqual(
                   DISTRIBUTION_SIZE.div(2)
                 );
 
@@ -809,10 +809,10 @@ describe('MultiDistributor', () => {
 
                 // The second half of the tokens is distributed between users 1 and 2, with one third of what remains going to user 1, and two thirds
                 // going to user 2.
-                expect(await distributor.totalUnclaimedTokens(distribution, user1)).to.almostEqual(
+                expect(await distributor.getClaimableTokens(distribution, user1)).to.almostEqual(
                   DISTRIBUTION_SIZE.div(2).div(3)
                 );
-                expect(await distributor.totalUnclaimedTokens(distribution, user2)).to.almostEqual(
+                expect(await distributor.getClaimableTokens(distribution, user2)).to.almostEqual(
                   DISTRIBUTION_SIZE.div(2).add(DISTRIBUTION_SIZE.div(2).mul(2).div(3))
                 );
               });
@@ -1024,13 +1024,13 @@ describe('MultiDistributor', () => {
 
               const previousRewardPerToken = await distributor.tokensPerStake(distribution);
               expect(previousRewardPerToken).to.be.zero;
-              expect(await distributor.totalUnclaimedTokens(distribution, user1)).to.equal(0);
+              expect(await distributor.getClaimableTokens(distribution, user1)).to.equal(0);
 
               await advanceTime(PERIOD_DURATION);
 
               const currentRewardPerToken = await distributor.tokensPerStake(distribution);
               expect(currentRewardPerToken).to.be.zero;
-              expect(await distributor.totalUnclaimedTokens(distribution, user1)).to.equal(0);
+              expect(await distributor.getClaimableTokens(distribution, user1)).to.equal(0);
             });
           });
 
@@ -1096,20 +1096,20 @@ describe('MultiDistributor', () => {
 
               const previousRewardPerToken = await distributor.tokensPerStake(distribution);
               expect(previousRewardPerToken).to.be.almostEqualFp(45000);
-              const previousEarned = await distributor.totalUnclaimedTokens(distribution, user1);
+              const previousEarned = await distributor.getClaimableTokens(distribution, user1);
 
               await advanceTime(PERIOD_DURATION);
 
               const currentRewardPerToken = await distributor.tokensPerStake(distribution);
               expect(currentRewardPerToken).to.be.almostEqualFp(45000);
-              const currentEarned = await distributor.totalUnclaimedTokens(distribution, user1);
+              const currentEarned = await distributor.getClaimableTokens(distribution, user1);
               expect(currentEarned).to.equal(previousEarned);
             });
 
             it('does not claim his rewards', async () => {
               await distributor.withdraw(stakingToken, amount, { from: user1 });
 
-              const currentRewards = await distributor.totalUnclaimedTokens(distribution, user1);
+              const currentRewards = await distributor.getClaimableTokens(distribution, user1);
               expect(currentRewards).to.be.almostEqual(DISTRIBUTION_SIZE.div(2));
             });
           });
@@ -1200,7 +1200,7 @@ describe('MultiDistributor', () => {
 
               const previousRewardPerToken = await distributor.tokensPerStake(distribution);
               expect(previousRewardPerToken).to.be.almostEqualFp(37500);
-              const previousEarned = await distributor.totalUnclaimedTokens(distribution, user1);
+              const previousEarned = await distributor.getClaimableTokens(distribution, user1);
 
               await advanceTime(PERIOD_DURATION);
 
@@ -1208,7 +1208,7 @@ describe('MultiDistributor', () => {
               const currentRewardPerToken = await distributor.tokensPerStake(distribution);
               expect(currentRewardPerToken).to.be.almostEqualFp(82500);
 
-              const currentEarned = await distributor.totalUnclaimedTokens(distribution, user1);
+              const currentEarned = await distributor.getClaimableTokens(distribution, user1);
               expect(currentEarned).to.equal(previousEarned);
             });
 
@@ -1217,7 +1217,7 @@ describe('MultiDistributor', () => {
 
               // The user only got one third of the rewards for the duration they staked, which was
               // half the period.
-              const currentRewards = await distributor.totalUnclaimedTokens(distribution, user1);
+              const currentRewards = await distributor.getClaimableTokens(distribution, user1);
               expect(currentRewards).to.be.almostEqual(DISTRIBUTION_SIZE.div(2).div(3));
             });
           });
@@ -1723,7 +1723,7 @@ describe('MultiDistributor', () => {
               await advanceTime(PERIOD_DURATION);
               await distributor.unsubscribe(distribution, { from: user1 });
 
-              expect(await distributor.totalUnclaimedTokens(distribution, user1)).to.be.zero;
+              expect(await distributor.getClaimableTokens(distribution, user1)).to.be.zero;
             });
 
             it('does not emit a Withdrawn event', async () => {
@@ -1813,7 +1813,7 @@ describe('MultiDistributor', () => {
             it('calculates total earned correctly', async () => {
               await distributor.unsubscribe(distribution, { from: user1 });
 
-              expect(await distributor.totalUnclaimedTokens(distribution, user1)).almostEqualFp(45e3);
+              expect(await distributor.getClaimableTokens(distribution, user1)).almostEqualFp(45e3);
             });
 
             it('emits a Withdrawn event', async () => {
@@ -1905,7 +1905,7 @@ describe('MultiDistributor', () => {
               await advanceTime(PERIOD_DURATION);
               await distributor.unsubscribe(distribution, { from: user1 });
 
-              expect(await distributor.totalUnclaimedTokens(distribution, user1)).to.be.zero;
+              expect(await distributor.getClaimableTokens(distribution, user1)).to.be.zero;
             });
 
             it('does not emit a Withdrawn event', async () => {
@@ -1999,7 +1999,7 @@ describe('MultiDistributor', () => {
               await advanceTime(PERIOD_DURATION);
               await distributor.unsubscribe(distribution, { from: user1 });
 
-              expect(await distributor.totalUnclaimedTokens(distribution, user1)).to.be.almostEqualFp(30e3);
+              expect(await distributor.getClaimableTokens(distribution, user1)).to.be.almostEqualFp(30e3);
             });
 
             it('emits a Withdrawn event', async () => {
@@ -2042,18 +2042,18 @@ describe('MultiDistributor', () => {
 
     const itReceivesTheRewards = () => {
       it('transfers the reward tokens to the user', async () => {
-        const rewards = await distributor.totalUnclaimedTokens(distribution, user1);
+        const rewards = await distributor.getClaimableTokens(distribution, user1);
 
         await distributor.claim(distribution, { from: user1 });
 
-        expect(await distributor.totalUnclaimedTokens(distribution, user1)).to.be.zero;
+        expect(await distributor.getClaimableTokens(distribution, user1)).to.be.zero;
         expect(await distributionToken.balanceOf(user1.address)).to.be.almostEqual(rewards);
       });
 
       it('transfer the tokens from the vault', async () => {
         const previousVaultBalance = await distributionToken.balanceOf(distributor.vault.address);
 
-        const rewards = await distributor.totalUnclaimedTokens(distribution, user1);
+        const rewards = await distributor.getClaimableTokens(distribution, user1);
         await distributor.claim(distribution, { from: user1 });
 
         const currentVaultBalance = await distributionToken.balanceOf(distributor.vault.address);
@@ -2080,7 +2080,7 @@ describe('MultiDistributor', () => {
       });
 
       it('emits a TokensClaimed event', async () => {
-        const expectedAmount = await distributor.totalUnclaimedTokens(distribution, user1);
+        const expectedAmount = await distributor.getClaimableTokens(distribution, user1);
 
         const tx = await distributor.claim(distribution, { from: user1 });
 
@@ -2096,7 +2096,7 @@ describe('MultiDistributor', () => {
       it('does not transfer any reward tokens to the user', async () => {
         await distributor.claim(distribution, { from: user1 });
 
-        expect(await distributor.totalUnclaimedTokens(distribution, user1)).to.be.almostEqualFp(0);
+        expect(await distributor.getClaimableTokens(distribution, user1)).to.be.almostEqualFp(0);
         expect(await distributionToken.balanceOf(user1)).to.be.almostEqualFp(0);
       });
 
@@ -2274,11 +2274,11 @@ describe('MultiDistributor', () => {
       });
 
       it('claims the user rewards', async () => {
-        const expectedClaimAmount = await distributor.totalUnclaimedTokens(distribution, user1);
+        const expectedClaimAmount = await distributor.getClaimableTokens(distribution, user1);
 
         await distributor.exit(stakingToken, distribution, { from: user1 });
 
-        expect(await distributor.totalUnclaimedTokens(distribution, user1)).to.be.zero;
+        expect(await distributor.getClaimableTokens(distribution, user1)).to.be.zero;
         expect(await distributionToken.balanceOf(user1)).to.be.almostEqual(expectedClaimAmount);
       });
 
@@ -2293,7 +2293,7 @@ describe('MultiDistributor', () => {
       });
 
       it('emits a TokensClaimed event', async () => {
-        const expectedClaimAmount = await distributor.totalUnclaimedTokens(distribution, user1);
+        const expectedClaimAmount = await distributor.getClaimableTokens(distribution, user1);
 
         const tx = await distributor.exit(stakingToken, distribution, { from: user1 });
 
@@ -2612,7 +2612,7 @@ describe('MultiDistributor', () => {
       user: SignerWithAddress,
       rewards: { rate: BigNumberish; paid: BigNumberish; earned: BigNumberish }
     ) => {
-      const earned = await distributor.totalUnclaimedTokens(distribution, user);
+      const earned = await distributor.getClaimableTokens(distribution, user);
       const rewardPerToken = await distributor.tokensPerStake(distribution);
       const { userTokensPerStake } = await distributor.getUserDistribution(distribution, user);
 
