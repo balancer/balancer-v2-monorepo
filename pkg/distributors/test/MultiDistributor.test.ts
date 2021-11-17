@@ -873,6 +873,8 @@ describe('MultiDistributor', () => {
   });
 
   describe('unstake', () => {
+    let from: SignerWithAddress, to: SignerWithAddress;
+
     sharedBeforeEach('create distributions', async () => {
       await distributor.newDistribution(stakingToken, distributionToken, PERIOD_DURATION, { from: distributionOwner });
       distribution = await distributor.getDistributionId(stakingToken, distributionToken, distributionOwner);
@@ -889,362 +891,380 @@ describe('MultiDistributor', () => {
       await distributor.fundDistribution(anotherDistribution, DISTRIBUTION_SIZE, { from: distributionOwner });
     });
 
-    context('when the user did specify some amount', () => {
-      const amount = fp(1);
+    const itHandlesUnstaking = (unstake: (token: Token, amount: BigNumberish) => Promise<ContractTransaction>) => {
+      context('when the user did specify some amount', () => {
+        const amount = fp(1);
 
-      context('when the user has previously staked the requested balance', () => {
-        sharedBeforeEach('stake amount', async () => {
-          await stakingTokens.mint({ to: user1, amount });
-          await stakingTokens.approve({ to: distributor, amount, from: user1 });
+        context('when the user has previously staked the requested balance', () => {
+          sharedBeforeEach('stake amount', async () => {
+            await stakingTokens.mint({ to: from, amount });
+            await stakingTokens.approve({ to: distributor, amount, from: from });
 
-          await distributor.stake(stakingToken, amount, user1, user1, { from: user1 });
-        });
+            await distributor.stake(stakingToken, amount, from, from, { from });
+          });
 
-        const itTransfersTheStakingTokensToTheUser = () => {
-          it('transfers the staking tokens to the user', async () => {
-            await expectBalanceChange(
-              () => distributor.unstake(stakingToken, amount, user1, user1, { from: user1 }),
-              stakingTokens,
-              [
-                { account: user1, changes: { [stakingToken.symbol]: amount } },
+          const itTransfersTheStakingTokensToTheUser = () => {
+            it('transfers the staking tokens to the user', async () => {
+              await expectBalanceChange(() => unstake(stakingToken, amount), stakingTokens, [
+                { account: to, changes: { [stakingToken.symbol]: amount } },
                 { account: distributor.address, changes: { [stakingToken.symbol]: amount.mul(-1) } },
-              ]
-            );
-          });
-
-          it('decreases the staking balance of the user', async () => {
-            const previousStakedBalance = await distributor.balanceOf(stakingToken, user1);
-
-            await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
-
-            const currentStakedBalance = await distributor.balanceOf(stakingToken, user1);
-            expect(currentStakedBalance).be.equal(previousStakedBalance.sub(amount));
-          });
-        };
-
-        const itDoesNotAffectAnyDistribution = () => {
-          it('does not emit a Unstaked event', async () => {
-            const tx = await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
-            expectEvent.notEmitted(await tx.wait(), 'Unstaked');
-          });
-
-          it('does not decrease the supply of the distribution', async () => {
-            const previousSupply = await distributor.totalSupply(distribution);
-
-            await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
-
-            const currentSupply = await distributor.totalSupply(distribution);
-            expect(currentSupply).be.equal(previousSupply);
-          });
-
-          it('does not update the last update time of the distribution', async () => {
-            const previousData = await distributor.getDistribution(distribution);
-            expect(previousData.lastUpdateTime).not.to.be.equal(0);
-
-            await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
-
-            const currentData = await distributor.getDistribution(distribution);
-            expect(currentData.lastUpdateTime).to.be.equal(previousData.lastUpdateTime);
-          });
-
-          it('does not update the reward rate stored of the distribution', async () => {
-            const previousData = await distributor.getDistribution(distribution);
-            expect(previousData.globalTokensPerStake).to.be.zero;
-
-            await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
-
-            const currentData = await distributor.getDistribution(distribution);
-            expect(currentData.globalTokensPerStake).to.be.zero;
-          });
-
-          it('does not update the user rates of the distribution', async () => {
-            const previousData = await distributor.getUserDistribution(distribution, user1);
-            expect(previousData.unclaimedTokens).to.be.equal(0);
-            expect(previousData.userTokensPerStake).to.be.equal(0);
-
-            await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
-
-            const currentData = await distributor.getUserDistribution(distribution, user1);
-            expect(currentData.unclaimedTokens).to.be.equal(0);
-            expect(currentData.userTokensPerStake).to.be.equal(0);
-          });
-
-          itDoesNotAffectOtherDistributions();
-        };
-
-        const itDoesNotAffectOtherDistributions = () => {
-          it('does not affect the supply of other distributions', async () => {
-            const previousSupply = await distributor.totalSupply(anotherDistribution);
-            expect(previousSupply).be.zero;
-
-            await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
-
-            const currentSupply = await distributor.totalSupply(anotherDistribution);
-            expect(currentSupply).be.zero;
-          });
-
-          it('does not affect the rates of other distributions', async () => {
-            const previousData = await distributor.getDistribution(anotherDistribution);
-            expect(previousData.lastUpdateTime).not.to.be.equal(0);
-            expect(previousData.globalTokensPerStake).to.be.zero;
-
-            const previousRewardPerToken = await distributor.globalTokensPerStake(anotherDistribution);
-            expect(previousRewardPerToken).to.be.zero;
-
-            await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
-
-            const currentData = await distributor.getDistribution(anotherDistribution);
-            expect(currentData.lastUpdateTime).to.be.equal(previousData.lastUpdateTime);
-            expect(currentData.globalTokensPerStake).to.be.zero;
-
-            const currentRewardPerToken = await distributor.globalTokensPerStake(anotherDistribution);
-            expect(currentRewardPerToken).to.be.zero;
-          });
-
-          it('does not affect the user rates of other distributions', async () => {
-            const previousData = await distributor.getUserDistribution(anotherDistribution, user1);
-            expect(previousData.unclaimedTokens).to.be.zero;
-            expect(previousData.userTokensPerStake).to.be.zero;
-
-            await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
-
-            const currentData = await distributor.getUserDistribution(anotherDistribution, user1);
-            expect(currentData.unclaimedTokens).to.be.zero;
-            expect(currentData.userTokensPerStake).to.be.zero;
-          });
-        };
-
-        context('when there was no other staked amount', () => {
-          context('when the user was not subscribed to a distribution', () => {
-            sharedBeforeEach('accrue some rewards', async () => {
-              await advanceTime(30 * DAY);
+              ]);
             });
 
-            itTransfersTheStakingTokensToTheUser();
-            itDoesNotAffectAnyDistribution();
+            it('decreases the staking balance of the user', async () => {
+              const previousStakedBalance = await distributor.balanceOf(stakingToken, from);
 
-            it('does not track it for future rewards', async () => {
-              await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
+              await unstake(stakingToken, amount);
 
-              const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
-              expect(previousRewardPerToken).to.be.zero;
-              expect(await distributor.getClaimableTokens(distribution, user1)).to.equal(0);
-
-              await advanceTime(PERIOD_DURATION);
-
-              const currentRewardPerToken = await distributor.globalTokensPerStake(distribution);
-              expect(currentRewardPerToken).to.be.zero;
-              expect(await distributor.getClaimableTokens(distribution, user1)).to.equal(0);
+              const currentStakedBalance = await distributor.balanceOf(stakingToken, from);
+              expect(currentStakedBalance).be.equal(previousStakedBalance.sub(amount));
             });
-          });
+          };
 
-          context('when the user was subscribed to the distribution', () => {
-            sharedBeforeEach('subscribe to the distribution', async () => {
-              await distributor.subscribe(distribution, { from: user1 });
-
-              // Half of the duration passes, earning the user half of the total reward
-              await advanceTime(PERIOD_DURATION / 2);
+          const itDoesNotAffectAnyDistribution = () => {
+            it('does not emit a Unstaked event', async () => {
+              const tx = await unstake(stakingToken, amount);
+              expectEvent.notEmitted(await tx.wait(), 'Unstaked');
             });
 
-            itTransfersTheStakingTokensToTheUser();
-            itDoesNotAffectOtherDistributions();
-
-            it('emits a Unstaked event', async () => {
-              const tx = await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
-
-              expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
-                distribution,
-                user: user1.address,
-                amount,
-              });
-            });
-
-            it('decreases the supply of the staking contract for the subscribed distribution', async () => {
+            it('does not decrease the supply of the distribution', async () => {
               const previousSupply = await distributor.totalSupply(distribution);
 
-              await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
+              await unstake(stakingToken, amount);
 
               const currentSupply = await distributor.totalSupply(distribution);
-              expect(currentSupply).be.equal(previousSupply.sub(amount));
+              expect(currentSupply).be.equal(previousSupply);
             });
 
-            it('updates the last update time of the subscribed distribution', async () => {
+            it('does not update the last update time of the distribution', async () => {
               const previousData = await distributor.getDistribution(distribution);
+              expect(previousData.lastUpdateTime).not.to.be.equal(0);
 
-              await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
+              await unstake(stakingToken, amount);
 
               const currentData = await distributor.getDistribution(distribution);
-              expect(currentData.lastUpdateTime).to.be.gt(previousData.lastUpdateTime);
+              expect(currentData.lastUpdateTime).to.be.equal(previousData.lastUpdateTime);
             });
 
-            it('updates the reward rate stored of the subscribed distribution', async () => {
+            it('does not update the reward rate stored of the distribution', async () => {
               const previousData = await distributor.getDistribution(distribution);
               expect(previousData.globalTokensPerStake).to.be.zero;
 
-              await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
+              await unstake(stakingToken, amount);
 
               const currentData = await distributor.getDistribution(distribution);
-              expect(currentData.globalTokensPerStake).to.be.almostEqualFp(45000);
+              expect(currentData.globalTokensPerStake).to.be.zero;
             });
 
-            it('updates the user rates of the subscribed distribution', async () => {
-              await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
+            it('does not update the user rates of the distribution', async () => {
+              const previousData = await distributor.getUserDistribution(distribution, from);
+              expect(previousData.unclaimedTokens).to.be.equal(0);
+              expect(previousData.userTokensPerStake).to.be.equal(0);
 
-              const distributionData = await distributor.getUserDistribution(distribution, user1);
-              expect(distributionData.userTokensPerStake).to.be.almostEqualFp(45000);
+              await unstake(stakingToken, amount);
+
+              const currentData = await distributor.getUserDistribution(distribution, from);
+              expect(currentData.unclaimedTokens).to.be.equal(0);
+              expect(currentData.userTokensPerStake).to.be.equal(0);
             });
 
-            it('stops tracking it for future rewards', async () => {
-              await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
-              await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
+            itDoesNotAffectOtherDistributions();
+          };
 
-              const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
-              expect(previousRewardPerToken).to.be.almostEqualFp(45000);
-              const previousEarned = await distributor.getClaimableTokens(distribution, user1);
+          const itDoesNotAffectOtherDistributions = () => {
+            it('does not affect the supply of other distributions', async () => {
+              const previousSupply = await distributor.totalSupply(anotherDistribution);
+              expect(previousSupply).be.zero;
 
-              await advanceTime(PERIOD_DURATION);
+              await unstake(stakingToken, amount);
 
-              const currentRewardPerToken = await distributor.globalTokensPerStake(distribution);
-              expect(currentRewardPerToken).to.be.almostEqualFp(45000);
-              const currentEarned = await distributor.getClaimableTokens(distribution, user1);
-              expect(currentEarned).to.equal(previousEarned);
+              const currentSupply = await distributor.totalSupply(anotherDistribution);
+              expect(currentSupply).be.zero;
             });
 
-            it('does not claim his rewards', async () => {
-              await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
+            it('does not affect the rates of other distributions', async () => {
+              const previousData = await distributor.getDistribution(anotherDistribution);
+              expect(previousData.lastUpdateTime).not.to.be.equal(0);
+              expect(previousData.globalTokensPerStake).to.be.zero;
 
-              const currentRewards = await distributor.getClaimableTokens(distribution, user1);
-              expect(currentRewards).to.be.almostEqual(DISTRIBUTION_SIZE.div(2));
-            });
-          });
-        });
+              const previousRewardPerToken = await distributor.globalTokensPerStake(anotherDistribution);
+              expect(previousRewardPerToken).to.be.zero;
 
-        context('when there was some other staked amount from another user', () => {
-          sharedBeforeEach('subscribe and stake some amount from another user', async () => {
-            await distributor.subscribeAndStake(distribution, stakingToken, fp(2), { from: user2 });
-            // Half of the reward tokens will go to user 2: 45k, meaning 22.5k per token
-            await advanceTime(PERIOD_DURATION / 2);
-          });
+              await unstake(stakingToken, amount);
 
-          context('when the user was not subscribed to a distribution', () => {
-            itTransfersTheStakingTokensToTheUser();
-            itDoesNotAffectAnyDistribution();
+              const currentData = await distributor.getDistribution(anotherDistribution);
+              expect(currentData.lastUpdateTime).to.be.equal(previousData.lastUpdateTime);
+              expect(currentData.globalTokensPerStake).to.be.zero;
 
-            it('does not track it for future rewards', async () => {
-              await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
-
-              const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
-              expect(previousRewardPerToken).to.be.almostEqualFp(22500);
-
-              await advanceTime(PERIOD_DURATION);
-
-              const currentRewardPerToken = await distributor.globalTokensPerStake(distribution);
-              expect(currentRewardPerToken).to.be.almostEqualFp(45000);
-            });
-          });
-
-          context('when the user was subscribed to a distribution', () => {
-            sharedBeforeEach('subscribe distribution', async () => {
-              await distributor.subscribe(distribution, { from: user1 });
-              await advanceTime(PERIOD_DURATION / 2);
+              const currentRewardPerToken = await distributor.globalTokensPerStake(anotherDistribution);
+              expect(currentRewardPerToken).to.be.zero;
             });
 
-            itTransfersTheStakingTokensToTheUser();
+            it('does not affect the user rates of other distributions', async () => {
+              const previousData = await distributor.getUserDistribution(anotherDistribution, from);
+              expect(previousData.unclaimedTokens).to.be.zero;
+              expect(previousData.userTokensPerStake).to.be.zero;
 
-            it('emits a Unstaked event', async () => {
-              const tx = await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
+              await unstake(stakingToken, amount);
 
-              expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
-                distribution,
-                user: user1.address,
-                amount,
+              const currentData = await distributor.getUserDistribution(anotherDistribution, from);
+              expect(currentData.unclaimedTokens).to.be.zero;
+              expect(currentData.userTokensPerStake).to.be.zero;
+            });
+          };
+
+          context('when there was no other staked amount', () => {
+            context('when the user was not subscribed to a distribution', () => {
+              sharedBeforeEach('accrue some rewards', async () => {
+                await advanceTime(30 * DAY);
+              });
+
+              itTransfersTheStakingTokensToTheUser();
+              itDoesNotAffectAnyDistribution();
+
+              it('does not track it for future rewards', async () => {
+                await unstake(stakingToken, amount);
+
+                const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
+                expect(previousRewardPerToken).to.be.zero;
+                expect(await distributor.getClaimableTokens(distribution, from)).to.equal(0);
+
+                await advanceTime(PERIOD_DURATION);
+
+                const currentRewardPerToken = await distributor.globalTokensPerStake(distribution);
+                expect(currentRewardPerToken).to.be.zero;
+                expect(await distributor.getClaimableTokens(distribution, from)).to.equal(0);
               });
             });
 
-            it('decreases the supply of the staking contract for the subscribed distribution', async () => {
-              const previousSupply = await distributor.totalSupply(distribution);
+            context('when the user was subscribed to the distribution', () => {
+              sharedBeforeEach('subscribe to the distribution', async () => {
+                await distributor.subscribe(distribution, { from });
 
-              await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
+                // Half of the duration passes, earning the user half of the total reward
+                await advanceTime(PERIOD_DURATION / 2);
+              });
 
-              const currentSupply = await distributor.totalSupply(distribution);
-              expect(currentSupply).be.equal(previousSupply.sub(amount));
+              itTransfersTheStakingTokensToTheUser();
+              itDoesNotAffectOtherDistributions();
+
+              it('emits a Unstaked event', async () => {
+                const tx = await unstake(stakingToken, amount);
+
+                expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
+                  distribution,
+                  user: from.address,
+                  amount,
+                });
+              });
+
+              it('decreases the supply of the staking contract for the subscribed distribution', async () => {
+                const previousSupply = await distributor.totalSupply(distribution);
+
+                await unstake(stakingToken, amount);
+
+                const currentSupply = await distributor.totalSupply(distribution);
+                expect(currentSupply).be.equal(previousSupply.sub(amount));
+              });
+
+              it('updates the last update time of the subscribed distribution', async () => {
+                const previousData = await distributor.getDistribution(distribution);
+
+                await unstake(stakingToken, amount);
+
+                const currentData = await distributor.getDistribution(distribution);
+                expect(currentData.lastUpdateTime).to.be.gt(previousData.lastUpdateTime);
+              });
+
+              it('updates the reward rate stored of the subscribed distribution', async () => {
+                const previousData = await distributor.getDistribution(distribution);
+                expect(previousData.globalTokensPerStake).to.be.zero;
+
+                await unstake(stakingToken, amount);
+
+                const currentData = await distributor.getDistribution(distribution);
+                expect(currentData.globalTokensPerStake).to.be.almostEqualFp(45000);
+              });
+
+              it('updates the user rates of the subscribed distribution', async () => {
+                await unstake(stakingToken, amount);
+
+                const distributionData = await distributor.getUserDistribution(distribution, from);
+                expect(distributionData.userTokensPerStake).to.be.almostEqualFp(45000);
+              });
+
+              it('stops tracking it for future rewards', async () => {
+                await unstake(stakingToken, amount);
+                await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
+
+                const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
+                expect(previousRewardPerToken).to.be.almostEqualFp(45000);
+                const previousEarned = await distributor.getClaimableTokens(distribution, from);
+
+                await advanceTime(PERIOD_DURATION);
+
+                const currentRewardPerToken = await distributor.globalTokensPerStake(distribution);
+                expect(currentRewardPerToken).to.be.almostEqualFp(45000);
+                const currentEarned = await distributor.getClaimableTokens(distribution, from);
+                expect(currentEarned).to.equal(previousEarned);
+              });
+
+              it('does not claim his rewards', async () => {
+                await unstake(stakingToken, amount);
+
+                const currentRewards = await distributor.getClaimableTokens(distribution, from);
+                expect(currentRewards).to.be.almostEqual(DISTRIBUTION_SIZE.div(2));
+              });
+            });
+          });
+
+          context('when there was some other staked amount from another user', () => {
+            sharedBeforeEach('subscribe and stake some amount from another user', async () => {
+              await distributor.subscribeAndStake(distribution, stakingToken, fp(2), { from: user2 });
+              // Half of the reward tokens will go to user 2: 45k, meaning 22.5k per token
+              await advanceTime(PERIOD_DURATION / 2);
             });
 
-            it('updates the last update time of the subscribed distribution', async () => {
-              const previousData = await distributor.getDistribution(distribution);
+            context('when the user was not subscribed to a distribution', () => {
+              itTransfersTheStakingTokensToTheUser();
+              itDoesNotAffectAnyDistribution();
 
-              await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
+              it('does not track it for future rewards', async () => {
+                await unstake(stakingToken, amount);
 
-              const currentData = await distributor.getDistribution(distribution);
-              expect(currentData.lastUpdateTime).to.be.gt(previousData.lastUpdateTime);
+                const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
+                expect(previousRewardPerToken).to.be.almostEqualFp(22500);
+
+                await advanceTime(PERIOD_DURATION);
+
+                const currentRewardPerToken = await distributor.globalTokensPerStake(distribution);
+                expect(currentRewardPerToken).to.be.almostEqualFp(45000);
+              });
             });
 
-            it('updates the reward rate stored of the subscribed distribution', async () => {
-              const previousData = await distributor.getDistribution(distribution);
-              expect(previousData.globalTokensPerStake).to.be.almostEqualFp(22500);
+            context('when the user was subscribed to a distribution', () => {
+              sharedBeforeEach('subscribe distribution', async () => {
+                await distributor.subscribe(distribution, { from });
+                await advanceTime(PERIOD_DURATION / 2);
+              });
 
-              await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
+              itTransfersTheStakingTokensToTheUser();
 
-              const currentData = await distributor.getDistribution(distribution);
-              expect(currentData.globalTokensPerStake).to.be.almostEqualFp(37500);
+              it('emits a Unstaked event', async () => {
+                const tx = await unstake(stakingToken, amount);
+
+                expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
+                  distribution,
+                  user: from.address,
+                  amount,
+                });
+              });
+
+              it('decreases the supply of the staking contract for the subscribed distribution', async () => {
+                const previousSupply = await distributor.totalSupply(distribution);
+
+                await unstake(stakingToken, amount);
+
+                const currentSupply = await distributor.totalSupply(distribution);
+                expect(currentSupply).be.equal(previousSupply.sub(amount));
+              });
+
+              it('updates the last update time of the subscribed distribution', async () => {
+                const previousData = await distributor.getDistribution(distribution);
+
+                await unstake(stakingToken, amount);
+
+                const currentData = await distributor.getDistribution(distribution);
+                expect(currentData.lastUpdateTime).to.be.gt(previousData.lastUpdateTime);
+              });
+
+              it('updates the reward rate stored of the subscribed distribution', async () => {
+                const previousData = await distributor.getDistribution(distribution);
+                expect(previousData.globalTokensPerStake).to.be.almostEqualFp(22500);
+
+                await unstake(stakingToken, amount);
+
+                const currentData = await distributor.getDistribution(distribution);
+                expect(currentData.globalTokensPerStake).to.be.almostEqualFp(37500);
+              });
+
+              it('updates the user rates of the subscribed distribution', async () => {
+                await unstake(stakingToken, amount);
+
+                // The second half is split between both users, meaning 15k per token
+                const distributionData = await distributor.getUserDistribution(distribution, from);
+                expect(distributionData.unclaimedTokens).to.be.almostEqualFp(15000);
+                expect(distributionData.userTokensPerStake).to.be.almostEqualFp(37500);
+              });
+
+              it('stops tracking it for future rewards', async () => {
+                await unstake(stakingToken, amount);
+                await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
+
+                const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
+                expect(previousRewardPerToken).to.be.almostEqualFp(37500);
+                const previousEarned = await distributor.getClaimableTokens(distribution, from);
+
+                await advanceTime(PERIOD_DURATION);
+
+                // All new rewards go to user 2, meaning 45k per token
+                const currentRewardPerToken = await distributor.globalTokensPerStake(distribution);
+                expect(currentRewardPerToken).to.be.almostEqualFp(82500);
+
+                const currentEarned = await distributor.getClaimableTokens(distribution, from);
+                expect(currentEarned).to.equal(previousEarned);
+              });
+
+              it('does not claim his rewards', async () => {
+                await unstake(stakingToken, amount);
+
+                // The user only got one third of the rewards for the duration they staked, which was
+                // half the period.
+                const currentRewards = await distributor.getClaimableTokens(distribution, from);
+                expect(currentRewards).to.be.almostEqual(DISTRIBUTION_SIZE.div(2).div(3));
+              });
             });
+          });
+        });
 
-            it('updates the user rates of the subscribed distribution', async () => {
-              await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
+        context('when the user does not have the requested stake', () => {
+          const amount = fp(1001);
 
-              // The second half is split between both users, meaning 15k per token
-              const distributionData = await distributor.getUserDistribution(distribution, user1);
-              expect(distributionData.unclaimedTokens).to.be.almostEqualFp(15000);
-              expect(distributionData.userTokensPerStake).to.be.almostEqualFp(37500);
-            });
-
-            it('stops tracking it for future rewards', async () => {
-              await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
-              await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
-
-              const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
-              expect(previousRewardPerToken).to.be.almostEqualFp(37500);
-              const previousEarned = await distributor.getClaimableTokens(distribution, user1);
-
-              await advanceTime(PERIOD_DURATION);
-
-              // All new rewards go to user 2, meaning 45k per token
-              const currentRewardPerToken = await distributor.globalTokensPerStake(distribution);
-              expect(currentRewardPerToken).to.be.almostEqualFp(82500);
-
-              const currentEarned = await distributor.getClaimableTokens(distribution, user1);
-              expect(currentEarned).to.equal(previousEarned);
-            });
-
-            it('does not claim his rewards', async () => {
-              await distributor.unstake(stakingToken, amount, user1, user1, { from: user1 });
-
-              // The user only got one third of the rewards for the duration they staked, which was
-              // half the period.
-              const currentRewards = await distributor.getClaimableTokens(distribution, user1);
-              expect(currentRewards).to.be.almostEqual(DISTRIBUTION_SIZE.div(2).div(3));
-            });
+          it('reverts', async () => {
+            await expect(unstake(stakingToken, amount)).to.be.revertedWith('UNSTAKE_AMOUNT_UNAVAILABLE');
           });
         });
       });
 
-      context('when the user does not have the requested stake', () => {
-        const amount = fp(1001);
+      context('when the user did not specify any amount', () => {
+        const amount = 0;
 
         it('reverts', async () => {
-          await expect(distributor.unstake(stakingToken, amount, user1, user1, { from: user1 })).to.be.revertedWith(
-            'UNSTAKE_AMOUNT_UNAVAILABLE'
-          );
+          await expect(unstake(stakingToken, amount)).to.be.revertedWith('UNSTAKE_AMOUNT_ZERO');
         });
       });
-    });
+    };
 
-    context('when the user did not specify any amount', () => {
-      const amount = 0;
+    describe('unstake', () => {
+      context('when sender and recipient are the same', () => {
+        sharedBeforeEach('define sender and recipient', async () => {
+          from = user1;
+          to = user1;
+        });
 
-      it('reverts', async () => {
-        await expect(distributor.unstake(stakingToken, amount, user1, user1, { from: user1 })).to.be.revertedWith(
-          'UNSTAKE_AMOUNT_ZERO'
+        itHandlesUnstaking((token: Token, amount: BigNumberish) =>
+          distributor.unstake(token, amount, from, from, { from })
+        );
+      });
+
+      context('when sender and recipient are different', () => {
+        sharedBeforeEach('define sender and recipient', async () => {
+          from = other;
+          to = user1;
+        });
+
+        itHandlesUnstaking((token: Token, amount: BigNumberish) =>
+          distributor.unstake(token, amount, from, to, { from })
         );
       });
     });
