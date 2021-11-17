@@ -114,12 +114,12 @@ export class MultiDistributor {
 
   async subscribe(ids: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.subscribe(Array.isArray(ids) ? ids : [ids]);
+    return instance.subscribeDistributions(Array.isArray(ids) ? ids : [ids]);
   }
 
   async unsubscribe(ids: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.unsubscribe(Array.isArray(ids) ? ids : [ids]);
+    return instance.unsubscribeDistributions(Array.isArray(ids) ? ids : [ids]);
   }
 
   async stake(stakingToken: Token, amount: BigNumberish, params?: TxParams): Promise<ContractTransaction> {

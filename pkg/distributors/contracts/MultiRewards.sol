@@ -305,7 +305,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Subscribes a user to a list of distributions
      * @param distributionIds List of distributions to subscribe
      */
-    function subscribe(bytes32[] memory distributionIds) external override {
+    function subscribeDistributions(bytes32[] memory distributionIds) external override {
         for (uint256 i; i < distributionIds.length; i++) {
             bytes32 distributionId = distributionIds[i];
             Distribution storage distribution = _getDistribution(distributionId);
@@ -336,7 +336,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Unsubscribes a user to a list of distributions
      * @param distributionIds List of distributions to unsubscribe
      */
-    function unsubscribe(bytes32[] memory distributionIds) external override {
+    function unsubscribeDistributions(bytes32[] memory distributionIds) external override {
         for (uint256 i; i < distributionIds.length; i++) {
             bytes32 distributionId = distributionIds[i];
             Distribution storage distribution = _getDistribution(distributionId);

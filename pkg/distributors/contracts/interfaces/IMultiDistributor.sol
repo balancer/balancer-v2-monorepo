@@ -116,9 +116,9 @@ interface IMultiDistributor {
 
     // Subscription
 
-    function subscribe(bytes32[] memory distributionIds) external;
+    function subscribeDistributions(bytes32[] memory distributionIds) external;
 
-    function unsubscribe(bytes32[] memory distributionIds) external;
+    function unsubscribeDistributions(bytes32[] memory distributionIds) external;
 
     // Unstaking
 
