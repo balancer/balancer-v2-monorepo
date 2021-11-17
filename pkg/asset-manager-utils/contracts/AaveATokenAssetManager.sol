@@ -17,7 +17,7 @@ import "./aave/ILendingPool.sol";
 import "./aave/IAaveIncentivesController.sol";
 
 import "./RewardsAssetManager.sol";
-import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiRewards.sol";
+import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiDistributor.sol";
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
@@ -31,7 +31,7 @@ contract AaveATokenAssetManager is RewardsAssetManager {
     IERC20 public immutable stkAave;
 
     // @notice rewards distributor for pool which owns this asset manager
-    IMultiRewards public distributor;
+    IMultiDistributor public distributor;
 
     constructor(
         IVault vault,
@@ -58,9 +58,9 @@ contract AaveATokenAssetManager is RewardsAssetManager {
     function initialize(bytes32 poolId, address rewardsDistributor) public {
         _initialize(poolId);
 
-        distributor = IMultiRewards(rewardsDistributor);
+        distributor = IMultiDistributor(rewardsDistributor);
         IERC20 poolAddress = IERC20(uint256(poolId) >> (12 * 8));
-        distributor.addReward(poolAddress, stkAave, 1);
+        distributor.createDistribution(poolAddress, stkAave, 1);
 
         stkAave.approve(rewardsDistributor, type(uint256).max);
     }
@@ -98,6 +98,10 @@ contract AaveATokenAssetManager is RewardsAssetManager {
         aaveIncentives.claimRewards(assets, type(uint256).max, address(this));
 
         // Forward to distributor
-        distributor.notifyRewardAmount(IERC20(getPoolAddress()), stkAave, stkAave.balanceOf(address(this)));
+        IERC20 poolAddress = IERC20(uint256(getPoolId()) >> (12 * 8));
+        distributor.fundDistribution(
+            distributor.getDistributionId(poolAddress, stkAave, address(this)),
+            stkAave.balanceOf(address(this))
+        );
     }
 }

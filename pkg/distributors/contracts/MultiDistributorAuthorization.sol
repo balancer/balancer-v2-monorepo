@@ -14,16 +14,14 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAuthorizer.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 /**
- * @dev Base authorization layer implementation for MultiRewards
+ * @dev Base authorization layer implementation for MultiDistributor
  */
-abstract contract MultiRewardsAuthorization is Authentication {
+abstract contract MultiDistributorAuthorization is Authentication {
     IVault private immutable _vault;
 
     constructor(IVault vault) {
