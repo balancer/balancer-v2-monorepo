@@ -193,7 +193,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         _cacheWrappedTokenRateIfNecessary();
         uint256[] memory scalingFactors = _scalingFactors();
         (uint256 lowerTarget, uint256 upperTarget) = getTargets();
-        Params memory params = Params({
+        LinearMathParams memory params = LinearMathParams({
             fee: getSwapFeePercentage(),
             rate: FixedPoint.ONE,
             lowerTarget: lowerTarget,
@@ -218,7 +218,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function _onSwapGivenIn(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         if (request.tokenIn == IERC20(this)) {
             return _swapGivenBptIn(request, balances, params);
@@ -234,7 +234,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenBptIn(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         _require(request.tokenOut == _mainToken || request.tokenOut == _wrappedToken, Errors.INVALID_TOKEN);
         return
@@ -250,7 +250,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenMainIn(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         _require(request.tokenOut == _wrappedToken || request.tokenOut == IERC20(this), Errors.INVALID_TOKEN);
         return
@@ -268,7 +268,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenWrappedIn(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         _require(request.tokenOut == _mainToken || request.tokenOut == IERC20(this), Errors.INVALID_TOKEN);
         return
@@ -286,7 +286,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function _onSwapGivenOut(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         if (request.tokenOut == IERC20(this)) {
             return _swapGivenBptOut(request, balances, params);
@@ -302,7 +302,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenBptOut(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         _require(request.tokenIn == _mainToken || request.tokenIn == _wrappedToken, Errors.INVALID_TOKEN);
         return
@@ -318,7 +318,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenMainOut(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         _require(request.tokenIn == _wrappedToken || request.tokenIn == IERC20(this), Errors.INVALID_TOKEN);
         return
@@ -336,7 +336,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenWrappedOut(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         _require(request.tokenIn == _mainToken || request.tokenIn == IERC20(this), Errors.INVALID_TOKEN);
         return
