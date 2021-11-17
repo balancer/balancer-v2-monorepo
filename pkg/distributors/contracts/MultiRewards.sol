@@ -120,7 +120,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Calculates the payment per token for a distribution
      * @param distributionId ID of the distribution being queried
      */
-    function tokensPerStake(bytes32 distributionId) public view override returns (uint256) {
+    function globalTokensPerStake(bytes32 distributionId) public view override returns (uint256) {
         return _globalTokensPerStake(_getDistribution(distributionId));
     }
 
@@ -587,10 +587,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     function _updateUserTokensPerStake(UserStaking storage userStaking, bytes32 distributionId) internal {
-        uint256 globalTokensPerStake = _updateDistributionRate(distributionId);
+        uint256 updatedGlobalTokensPerStake = _updateDistributionRate(distributionId);
         UserDistribution storage userDistribution = userStaking.distributions[distributionId];
         userDistribution.unclaimedTokens = _getUnclaimedTokens(userStaking, distributionId);
-        userDistribution.userTokensPerStake = globalTokensPerStake;
+        userDistribution.userTokensPerStake = updatedGlobalTokensPerStake;
     }
 
     /**
@@ -598,12 +598,12 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev This is expected to be called whenever a user's applicable staked balance changes,
      *      either through adding/removing tokens or subscribing/unsubscribing from the distribution.
      * @param distributionId ID of the distribution being updated
-     * @return globalTokensPerStake The updated number of distribution tokens paid per staked token
+     * @return updatedGlobalTokensPerStake The updated number of distribution tokens paid per staked token
      */
-    function _updateDistributionRate(bytes32 distributionId) internal returns (uint256 globalTokensPerStake) {
+    function _updateDistributionRate(bytes32 distributionId) internal returns (uint256 updatedGlobalTokensPerStake) {
         Distribution storage distribution = _getDistribution(distributionId);
-        globalTokensPerStake = _globalTokensPerStake(distribution);
-        distribution.globalTokensPerStake = globalTokensPerStake;
+        updatedGlobalTokensPerStake = _globalTokensPerStake(distribution);
+        distribution.globalTokensPerStake = updatedGlobalTokensPerStake;
         distribution.lastUpdateTime = _lastTimePaymentApplicable(distribution);
     }
 

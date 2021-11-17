@@ -66,7 +66,7 @@ interface IMultiDistributor {
 
     function getDistribution(bytes32 distributionId) external view returns (Distribution memory);
 
-    function tokensPerStake(bytes32 distributionId) external view returns (uint256);
+    function globalTokensPerStake(bytes32 distributionId) external view returns (uint256);
 
     function totalSupply(bytes32 distributionId) external view returns (uint256);
 
