@@ -154,9 +154,9 @@ export class MultiDistributor {
     await this.stake(stakingToken, amount, params);
   }
 
-  async withdraw(stakingToken: Token, amount: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
+  async unstake(stakingToken: Token, amount: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
     const sender = params?.from ?? (await getSigner());
-    return this.instance.connect(sender).withdraw(stakingToken.address, amount, sender.address);
+    return this.instance.connect(sender).unstake(stakingToken.address, amount, sender.address);
   }
 
   async claim(distributions: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
