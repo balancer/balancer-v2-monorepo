@@ -30,7 +30,11 @@ import "./LinearPoolUserDataHelpers.sol";
 
 /**
  * @dev Linear Pools are designed to hold two assets: "main" and "wrapped" tokens that have an equal value underlying
- * token (e.g., DAI and aDAI).
+ * token (e.g., DAI and aDAI). The Pool will register three tokens in the Vault however: the two assets and the BPT
+ * itself, so that BPT can be exchanged (effectively joining and exiting) via swaps.
+ *
+ * Unlike most other Pools, this one does not attempt to create revenue by charging fees: value is derived by holding
+ * the wrapped, yield-bearing asset.
  *
  * There must be an external feed available to provide an exact, non-manipulable exchange rate between the tokens.
  */
@@ -158,7 +162,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
      *
      * Since Linear Pools have preminted BPT stored in the Vault, they require an initial join to deposit that BPT.
      * Unfortunately, this cannot be performed during construction, as a join involves a callback function on the
-     * Pool: and the Pool will not have any code until construction finishes. Therefore, this must happen in a
+     * Pool, and the Pool will not have any code until construction finishes. Therefore, this must happen in a
      * separate call.
      *
      * It is highly recommended to create Linear pools using the LinearPoolFactory, which calls `initialize`
@@ -428,8 +432,6 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             _ensurePaused();
             // Note that this will cause the user's BPT to be burned, which is not something that happens during
             // regular operation of this Pool, and may lead to accounting errors. Because of this, it is highly
-            // advisable to not continue using a Pool on which the pause has been turned on and BPT burned once the
-            // pause window expires.
             // advisable to stop using a Pool after it is paused and the pause window expires.
 
             (bptAmountIn, amountsOut) = _proportionalExit(balances, userData);
