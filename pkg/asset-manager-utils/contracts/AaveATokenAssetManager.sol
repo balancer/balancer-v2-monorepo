@@ -60,7 +60,7 @@ contract AaveATokenAssetManager is RewardsAssetManager {
 
         distributor = IMultiDistributor(rewardsDistributor);
         IERC20 poolAddress = IERC20(uint256(poolId) >> (12 * 8));
-        distributor.create(poolAddress, stkAave, 1);
+        distributor.createDistribution(poolAddress, stkAave, 1);
 
         stkAave.approve(rewardsDistributor, type(uint256).max);
     }
