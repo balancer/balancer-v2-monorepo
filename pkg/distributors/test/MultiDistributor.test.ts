@@ -84,17 +84,17 @@ describe('MultiDistributor', () => {
           expect(data.globalTokensPerStake).to.be.zero;
         });
 
-        it('emits a NewDistribution event', async () => {
+        it('emits a DistributionCreated event', async () => {
           const tx = await distributor.newDistribution(stakingToken, distributionToken, PERIOD_DURATION, {
             from: distributionOwner,
           });
 
           const id = await distributor.getDistributionId(stakingToken, distributionToken, distributionOwner);
-          expectEvent.inReceipt(await tx.wait(), 'NewDistribution', {
+          expectEvent.inReceipt(await tx.wait(), 'DistributionCreated', {
             distribution: id,
             stakingToken: stakingToken.address,
             distributionToken: distributionToken.address,
-            distributor: distributionOwner.address,
+            owner: distributionOwner.address,
           });
         });
       });

@@ -219,7 +219,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         distribution.distributionToken = distributionToken;
         distribution.stakingToken = stakingToken;
 
-        emit NewDistribution(distributionId, stakingToken, distributionToken, msg.sender);
+        emit DistributionCreated(distributionId, stakingToken, distributionToken, msg.sender);
     }
 
     /**

@@ -46,11 +46,11 @@ interface IMultiDistributor {
 
     event Staked(bytes32 indexed distribution, address indexed user, uint256 amount);
     event Unstaked(bytes32 indexed distribution, address indexed user, uint256 amount);
-    event NewDistribution(
+    event DistributionCreated(
         bytes32 indexed distribution,
         IERC20 stakingToken,
         IERC20 distributionToken,
-        address distributor
+        address owner
     );
     event DistributionDurationSet(bytes32 indexed distribution, uint256 duration);
     event DistributionFunded(bytes32 indexed distribution, uint256 amount);
