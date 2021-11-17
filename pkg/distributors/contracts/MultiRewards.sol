@@ -247,7 +247,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
         require(distribution.owner == msg.sender, "SENDER_NOT_OWNER");
 
-        // Before receiving the tokens, we must update the distribution's rate 
+        // Before receiving the tokens, we must update the distribution's rate
         // as we are about to change its payment rate, which affects all other rates.
         _updateDistributionRate(distributionId);
 
@@ -311,11 +311,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             uint256 amount = userStaking.balance;
             if (amount > 0) {
                 // If subscribing to a distribution that uses a staking token for which the user has already staked,
-                // those tokens then immediately become part of the distribution's staked tokens 
+                // those tokens then immediately become part of the distribution's staked tokens
                 // (i.e. the user is staking for the new distribution).
-                // This means we need to update the distribution rate, as we are about to change it's total 
+                // This means we need to update the distribution rate, as we are about to change it's total
                 // staked tokens and decrease the global per token rate.
-                // The unclaimed tokens remain unchanged as the user was not subscribed to the distribution 
+                // The unclaimed tokens remain unchanged as the user was not subscribed to the distribution
                 // and therefore is due no unaccounted-for tokens.
                 userStaking.distributions[distributionId].userTokensPerStake = _updateDistributionRate(distributionId);
                 distribution.totalSupply = distribution.totalSupply.add(amount);
