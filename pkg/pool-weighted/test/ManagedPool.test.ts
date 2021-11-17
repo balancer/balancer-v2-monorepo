@@ -137,14 +137,14 @@ describe('ManagedPool', function () {
         weights: poolWeights,
         poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
-        allowlistLPs: true,
+        mustAllowlistLPs: true,
         owner: owner.address,
       };
       pool = await WeightedPool.create(params);
     });
 
-    it('shows allowlistLPs on and active', async () => {
-      expect(await pool.getAllowlistLPs()).to.be.true;
+    it('shows mustAllowlistLPs on and active', async () => {
+      expect(await pool.mustAllowlistLPs()).to.be.true;
       expect(await pool.isAllowedAddress(owner.address)).to.be.false;
       expect(await pool.isAllowedAddress(other.address)).to.be.false;
     });

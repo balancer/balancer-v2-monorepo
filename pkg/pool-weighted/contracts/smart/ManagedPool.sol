@@ -79,7 +79,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _TOTAL_TOKENS_OFFSET = 1;
     uint256 private constant _START_TIME_OFFSET = 8;
     uint256 private constant _END_TIME_OFFSET = 40;
-    uint256 private constant _ALLOWLIST_LPS_OFFSET = 72;
+    uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 72;
 
     // 7 bits is enough for the token count, since _MAX_MANAGED_TOKENS is 50
 
@@ -96,7 +96,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _END_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
 
-    // If allowlistLPs is enabled, this is the list of addresses allowed to join the pool
+    // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
     // Event declarations
@@ -125,7 +125,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256 bufferPeriodDuration;
         address owner;
         bool swapEnabledOnStart;
-        bool allowlistLPs;
+        bool mustAllowlistLPs;
         uint256 managementSwapFeePercentage;
     }
 
@@ -147,8 +147,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         _setMiscData(
             _getMiscData().insertUint7(totalTokens, _TOTAL_TOKENS_OFFSET).insertBool(
-                params.allowlistLPs,
-                _ALLOWLIST_LPS_OFFSET
+                params.mustAllowlistLPs,
+                _MUST_ALLOWLIST_LPS_OFFSET
             )
         );
 
@@ -192,15 +192,15 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     /**
      * @dev Returns true if the allowlist for LPs is enabled.
      */
-    function getAllowlistLPs() public view returns (bool) {
-        return _getMiscData().decodeBool(_ALLOWLIST_LPS_OFFSET);
+    function mustAllowlistLPs() public view returns (bool) {
+        return _getMiscData().decodeBool(_MUST_ALLOWLIST_LPS_OFFSET);
     }
 
     /**
      * @dev Verifies that a given address is allowed to hold tokens.
      */
     function isAllowedAddress(address member) public view returns (bool) {
-        return false == getAllowlistLPs() || _allowedAddresses[member];
+        return !mustAllowlistLPs() || _allowedAddresses[member];
     }
 
     /**
@@ -309,8 +309,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
      * @dev Adds an address to the allowlist.
      */
     function addAllowedAddress(address member) external authenticate whenNotPaused {
-        _require(getAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
-        _require(false == isAllowedAddress(member), Errors.ADDRESS_ALREADY_ALLOWLISTED);
+        _require(mustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
+        _require(!isAllowedAddress(member), Errors.ADDRESS_ALREADY_ALLOWLISTED);
 
         _allowedAddresses[member] = true;
         emit AllowlistAddressAdded(member);
@@ -465,7 +465,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
         // Check allowlist for LPs, if applicable
-        _require(getAllowlistLPs() == false || isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
+        _require(!mustAllowlistLPs() || isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
         _subtractCollectedFees(balances);
 

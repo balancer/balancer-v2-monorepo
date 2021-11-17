@@ -39,7 +39,7 @@ contract ManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow 
         uint256 swapFeePercentage,
         address owner,
         bool swapEnabledOnStart,
-        bool allowlistLPs,
+        bool mustAllowlistLPs,
         uint256 managementSwapFeePercentage
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
@@ -59,7 +59,7 @@ contract ManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow 
                         bufferPeriodDuration: bufferPeriodDuration,
                         owner: owner,
                         swapEnabledOnStart: swapEnabledOnStart,
-                        allowlistLPs: allowlistLPs,
+                        mustAllowlistLPs: mustAllowlistLPs,
                         managementSwapFeePercentage: managementSwapFeePercentage
                     })
                 )
