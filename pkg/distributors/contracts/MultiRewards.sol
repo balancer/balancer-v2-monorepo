@@ -249,15 +249,15 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param amount The amount of tokens to deposit
      */
     function fundDistribution(bytes32 distributionId, uint256 amount) external override {
-        // Before receiving the tokens, we must update the distribution's rate 
-        // as we are about to change its payment rate, which affects all other rates.
-        _updateDistributionRate(distributionId);
-
         Distribution storage distribution = _getDistribution(distributionId);
         // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
         // sentinel value that marks non-existent distributions.
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
         require(distribution.owner == msg.sender, "SENDER_NOT_DISTRIBUTOR");
+
+        // Before receiving the tokens, we must update the distribution's rate 
+        // as we are about to change its payment rate, which affects all other rates.
+        _updateDistributionRate(distributionId);
 
         // Get the tokens and deposit them in the Vault as this contract's internal balance, making claims to internal
         // balance, joining pools, etc., use less gas.
