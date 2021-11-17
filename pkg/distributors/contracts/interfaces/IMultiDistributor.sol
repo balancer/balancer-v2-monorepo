@@ -139,12 +139,21 @@ interface IMultiDistributor {
 
     // Claiming
 
-    function claim(bytes32[] memory distributionIds) external;
+    function claim(
+        bytes32[] memory distributionIds,
+        address sender,
+        address recipient
+    ) external;
 
-    function claimAsInternalBalance(bytes32[] memory distributionIds) external;
+    function claimAsInternalBalance(
+        bytes32[] memory distributionIds,
+        address sender,
+        address recipient
+    ) external;
 
     function claimWithCallback(
         bytes32[] memory distributionIds,
+        address sender,
         IDistributorCallback callbackContract,
         bytes memory callbackData
     ) external;

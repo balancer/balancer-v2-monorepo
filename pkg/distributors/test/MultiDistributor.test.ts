@@ -2068,7 +2068,7 @@ describe('MultiDistributor', () => {
       it('transfers the reward tokens to the user', async () => {
         const rewards = await distributor.getClaimableTokens(distribution, user1);
 
-        await distributor.claim(distribution, { from: user1 });
+        await distributor.claim(distribution, user1, user1, { from: user1 });
 
         expect(await distributor.getClaimableTokens(distribution, user1)).to.be.zero;
         expect(await distributionToken.balanceOf(user1.address)).to.be.almostEqual(rewards);
@@ -2078,7 +2078,7 @@ describe('MultiDistributor', () => {
         const previousVaultBalance = await distributionToken.balanceOf(distributor.vault.address);
 
         const rewards = await distributor.getClaimableTokens(distribution, user1);
-        await distributor.claim(distribution, { from: user1 });
+        await distributor.claim(distribution, user1, user1, { from: user1 });
 
         const currentVaultBalance = await distributionToken.balanceOf(distributor.vault.address);
         expect(currentVaultBalance).to.be.equal(previousVaultBalance.sub(rewards));
@@ -2087,7 +2087,7 @@ describe('MultiDistributor', () => {
       it('does not update the reward per token', async () => {
         const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
 
-        await distributor.claim(distribution, { from: user1 });
+        await distributor.claim(distribution, user1, user1, { from: user1 });
 
         const currentRewardPerToken = await distributor.globalTokensPerStake(distribution);
         expect(currentRewardPerToken).to.be.almostEqual(previousRewardPerToken);
@@ -2096,7 +2096,7 @@ describe('MultiDistributor', () => {
       it('updates the reward per token rates of the user', async () => {
         const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
 
-        await distributor.claim(distribution, { from: user1 });
+        await distributor.claim(distribution, user1, user1, { from: user1 });
 
         const { unclaimedTokens, userTokensPerStake } = await distributor.getUserDistribution(distribution, user1);
         expect(unclaimedTokens).to.be.almostEqual(0);
@@ -2106,7 +2106,7 @@ describe('MultiDistributor', () => {
       it('emits a TokensClaimed event', async () => {
         const expectedAmount = await distributor.getClaimableTokens(distribution, user1);
 
-        const tx = await distributor.claim(distribution, { from: user1 });
+        const tx = await distributor.claim(distribution, user1, user1, { from: user1 });
 
         expectEvent.inReceipt(await tx.wait(), 'TokensClaimed', {
           user: user1.address,
@@ -2118,7 +2118,7 @@ describe('MultiDistributor', () => {
 
     const itIgnoresTheRequest = (updatesUserPaidRate = false) => {
       it('does not transfer any reward tokens to the user', async () => {
-        await distributor.claim(distribution, { from: user1 });
+        await distributor.claim(distribution, user1, user1, { from: user1 });
 
         expect(await distributor.getClaimableTokens(distribution, user1)).to.be.almostEqualFp(0);
         expect(await distributionToken.balanceOf(user1)).to.be.almostEqualFp(0);
@@ -2127,7 +2127,7 @@ describe('MultiDistributor', () => {
       it('does not update the reward per token', async () => {
         const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
 
-        await distributor.claim(distribution, { from: user1 });
+        await distributor.claim(distribution, user1, user1, { from: user1 });
 
         const currentRewardPerToken = await distributor.globalTokensPerStake(distribution);
         expect(currentRewardPerToken).to.be.almostEqual(previousRewardPerToken);
@@ -2136,7 +2136,7 @@ describe('MultiDistributor', () => {
       it(`${updatesUserPaidRate ? 'updates' : 'does not update'} the reward per token rates of the user`, async () => {
         const rewardPerToken = await distributor.globalTokensPerStake(distribution);
 
-        await distributor.claim(distribution, { from: user1 });
+        await distributor.claim(distribution, user1, user1, { from: user1 });
 
         const { unclaimedTokens, userTokensPerStake } = await distributor.getUserDistribution(distribution, user1);
         expect(unclaimedTokens).to.be.zero;
@@ -2144,7 +2144,7 @@ describe('MultiDistributor', () => {
       });
 
       it('does not emit a TokensClaimed event', async () => {
-        const tx = await distributor.claim(distribution, { from: user1 });
+        const tx = await distributor.claim(distribution, user1, user1, { from: user1 });
 
         expectEvent.notEmitted(await tx.wait(), 'TokensClaimed');
       });

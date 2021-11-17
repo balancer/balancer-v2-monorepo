@@ -111,7 +111,7 @@ describe('Reinvestor', () => {
         const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
 
         const receipt = await (
-          await stakingContract.connect(lp).claimWithCallback([id], callbackContract.address, calldata)
+          await stakingContract.connect(lp).claimWithCallback([id], lp.address, callbackContract.address, calldata)
         ).wait();
 
         const deltas = [bn(0), bn(0)];
@@ -131,7 +131,7 @@ describe('Reinvestor', () => {
         const args = [lp.address, destinationPoolId, [rewardToken.address]];
         const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
 
-        await stakingContract.connect(lp).claimWithCallback([id], callbackContract.address, calldata);
+        await stakingContract.connect(lp).claimWithCallback([id], lp.address, callbackContract.address, calldata);
         const bptBalanceAfter = await destinationPool.balanceOf(lp.address);
         expect(bptBalanceAfter.sub(bptBalanceBefore)).to.equal(bn('998703239790478024'));
       });
@@ -169,7 +169,10 @@ describe('Reinvestor', () => {
           const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
 
           await expectBalanceChange(
-            () => stakingContract.connect(lp).claimWithCallback([id, anotherId], callbackContract.address, calldata),
+            () =>
+              stakingContract
+                .connect(lp)
+                .claimWithCallback([id, anotherId], lp.address, callbackContract.address, calldata),
             otherRewardTokens,
             [{ account: lp, changes: { GRT: ['very-near', fp(3)] } }]
           );

@@ -167,10 +167,16 @@ export class MultiDistributor {
     return instance.unstake(stakingToken.address, amount, senderAddress, recipientAddress);
   }
 
-  async claim(distributions: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
+  async claim(
+    distributions: NAry<string>,
+    sender: Account,
+    recipient: Account,
+    params?: TxParams
+  ): Promise<ContractTransaction> {
     if (!Array.isArray(distributions)) distributions = [distributions];
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.claim(distributions);
+    const [senderAddress, recipientAddress] = TypesConverter.toAddresses([sender, recipient]);
+    return instance.claim(distributions, senderAddress, recipientAddress);
   }
 
   async exit(stakingTokens: NAry<Token>, distributions: NAry<string>, params?: TxParams): Promise<ContractTransaction> {

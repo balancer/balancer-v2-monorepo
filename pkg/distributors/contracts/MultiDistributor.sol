@@ -432,31 +432,48 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     /**
      * @dev Claims earned distribution tokens for a list of distributions
      * @param distributionIds List of distributions to claim
+     * @param sender The address which earned the tokens being claimed
+     * @param recipient The address which receives the claimed tokens
      */
-    function claim(bytes32[] memory distributionIds) external override nonReentrant {
-        _claim(distributionIds, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL, msg.sender, msg.sender);
+    function claim(
+        bytes32[] memory distributionIds,
+        address sender,
+        address recipient
+    ) external override nonReentrant {
+        require(sender == msg.sender, "INVALID_SENDER");
+        _claim(distributionIds, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL, sender, recipient);
     }
 
     /**
      * @dev Claims earned tokens for a list of distributions to internal balance
      * @param distributionIds List of distributions to claim
+     * @param sender The address which earned the tokens being claimed
+     * @param recipient The address which receives the claimed tokens
      */
-    function claimAsInternalBalance(bytes32[] memory distributionIds) external override nonReentrant {
-        _claim(distributionIds, IVault.UserBalanceOpKind.TRANSFER_INTERNAL, msg.sender, msg.sender);
+    function claimAsInternalBalance(
+        bytes32[] memory distributionIds,
+        address sender,
+        address recipient
+    ) external override nonReentrant {
+        require(sender == msg.sender, "INVALID_SENDER");
+        _claim(distributionIds, IVault.UserBalanceOpKind.TRANSFER_INTERNAL, sender, recipient);
     }
 
     /**
      * @dev Claims earned tokens for a list of distributions to a callback contract
      * @param distributionIds List of distributions to claim
+     * @param sender The address which earned the tokens being claimed
      * @param callbackContract The contract where tokens will be transferred
      * @param callbackData The data that is used to call the callback contract's 'callback' method
      */
     function claimWithCallback(
         bytes32[] memory distributionIds,
+        address sender,
         IDistributorCallback callbackContract,
         bytes memory callbackData
     ) external override nonReentrant {
-        _claim(distributionIds, IVault.UserBalanceOpKind.TRANSFER_INTERNAL, msg.sender,address(callbackContract));
+        require(sender == msg.sender, "INVALID_SENDER");
+        _claim(distributionIds, IVault.UserBalanceOpKind.TRANSFER_INTERNAL, sender, address(callbackContract));
         callbackContract.distributorCallback(callbackData);
     }
 
