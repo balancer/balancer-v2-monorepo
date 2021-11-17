@@ -26,7 +26,7 @@ import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
 
 import "./LinearMath.sol";
-import "./LinearPoolUserDataHelpers.sol";
+import "./LinearPoolUserData.sol";
 
 /**
  * @dev LinearPool suitable for assets with an equal underlying token with an exact and non-manipulable exchange rate.
@@ -36,7 +36,7 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
-    using LinearPoolUserDataHelpers for bytes;
+    using LinearPoolUserData for bytes;
 
     uint256 private constant _TOTAL_TOKENS = 3; // Main token, wrapped token, BPT
 
@@ -54,7 +54,14 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
     uint256 private immutable _scalingFactorMainToken;
     uint256 private immutable _scalingFactorWrappedToken;
 
+    // Store both targets in one slot
+    // [   128 bits   |    128 bits   ]
+    // [ upper target |  lower target ]
+    // [MSB                        LSB]
     bytes32 private _packedTargets;
+
+    uint256 private constant _LOWER_TARGET_OFFSET = 0;
+    uint256 private constant _UPPER_TARGET_OFFSET = 128;
 
     bytes32 private _wrappedTokenRateCache;
     IRateProvider private immutable _wrappedTokenRateProvider;
@@ -193,7 +200,7 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
         _cacheWrappedTokenRateIfNecessary();
         uint256[] memory scalingFactors = _scalingFactors();
         (uint256 lowerTarget, uint256 upperTarget) = getTargets();
-        Params memory params = Params({
+        LinearMathParams memory params = LinearMathParams({
             fee: getSwapFeePercentage(),
             rate: FixedPoint.ONE,
             lowerTarget: lowerTarget,
@@ -218,7 +225,7 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
     function _onSwapGivenIn(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         if (request.tokenIn == IERC20(this)) {
             return _swapGivenBptIn(request, balances, params);
@@ -234,7 +241,7 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenBptIn(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         _require(request.tokenOut == _mainToken || request.tokenOut == _wrappedToken, Errors.INVALID_TOKEN);
         return
@@ -250,7 +257,7 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenMainIn(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         _require(request.tokenOut == _wrappedToken || request.tokenOut == IERC20(this), Errors.INVALID_TOKEN);
         return
@@ -268,7 +275,7 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenWrappedIn(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         _require(request.tokenOut == _mainToken || request.tokenOut == IERC20(this), Errors.INVALID_TOKEN);
         return
@@ -286,7 +293,7 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
     function _onSwapGivenOut(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         if (request.tokenOut == IERC20(this)) {
             return _swapGivenBptOut(request, balances, params);
@@ -302,7 +309,7 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenBptOut(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         _require(request.tokenIn == _mainToken || request.tokenIn == _wrappedToken, Errors.INVALID_TOKEN);
         return
@@ -318,7 +325,7 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenMainOut(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         _require(request.tokenIn == _wrappedToken || request.tokenIn == IERC20(this), Errors.INVALID_TOKEN);
         return
@@ -336,7 +343,7 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenWrappedOut(
         SwapRequest memory request,
         uint256[] memory balances,
-        Params memory params
+        LinearMathParams memory params
     ) internal view returns (uint256) {
         _require(request.tokenIn == _mainToken || request.tokenIn == IERC20(this), Errors.INVALID_TOKEN);
         return
@@ -414,11 +421,11 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        ExitKind kind = userData.exitKind();
+        LinearPoolUserData.ExitKind kind = userData.exitKind();
 
         // Exits typically revert, except for the proportional exit when the emergency pause mechanism has been
         // triggered. This allows for a simple and safe way to exit the Pool.
-        if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        if (kind == LinearPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             _ensurePaused();
             // Note that this will cause for the user's BPT to be burned, which is not something that happens during
             // regular operation of this Pool, and may lead to accounting errors. Because of this, it is highly
@@ -554,8 +561,8 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
     }
 
     function getTargets() public view returns (uint256 lowerTarget, uint256 upperTarget) {
-        lowerTarget = _packedTargets.decodeUint128(0);
-        upperTarget = _packedTargets.decodeUint128(128);
+        lowerTarget = _packedTargets.decodeUint128(_LOWER_TARGET_OFFSET);
+        upperTarget = _packedTargets.decodeUint128(_UPPER_TARGET_OFFSET);
     }
 
     function _setTargets(
@@ -568,7 +575,9 @@ contract LinearPool is LegacyBasePool, IGeneralPool, LinearMath, IRateProvider {
 
         // Pack targets as two uint128 values into a single storage. This results in targets being capped to 128 bits,
         // but that's fine because they are already lower than _MAX_TOKEN_BALANCE which is 112 bits.
-        _packedTargets = WordCodec.encodeUint(lowerTarget, 0) | WordCodec.encodeUint(upperTarget, 128);
+        _packedTargets =
+            WordCodec.encodeUint(lowerTarget, _LOWER_TARGET_OFFSET) |
+            WordCodec.encodeUint(upperTarget, _UPPER_TARGET_OFFSET);
         emit TargetsSet(mainToken, lowerTarget, upperTarget);
     }
 

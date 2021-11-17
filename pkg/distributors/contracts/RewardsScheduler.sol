@@ -16,25 +16,27 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
-import "./interfaces/IMultiRewards.sol";
+
+import "./interfaces/IMultiDistributor.sol";
 
 // solhint-disable not-rely-on-time
 
 /**
- * Scheduler for MultiRewards contract
+ * Scheduler for MultiDistributor contract
  */
 contract RewardsScheduler {
     using SafeERC20 for IERC20;
 
-    IMultiRewards private immutable _multiRewards;
+    IMultiDistributor private immutable _multiDistributor;
 
-    constructor(IMultiRewards multiRewards) {
-        _multiRewards = multiRewards;
+    constructor(IMultiDistributor multiDistributor) {
+        _multiDistributor = multiDistributor;
     }
 
     enum RewardStatus { UNINITIALIZED, PENDING, STARTED }
 
     struct ScheduledReward {
+        bytes32 distributionId;
         IERC20 stakingToken;
         IERC20 rewardsToken;
         uint256 startTime;
@@ -76,16 +78,11 @@ contract RewardsScheduler {
 
             _rewards[rewardId].status = RewardStatus.STARTED;
 
-            if (
-                scheduledReward.rewardsToken.allowance(address(this), address(_multiRewards)) < scheduledReward.amount
-            ) {
-                scheduledReward.rewardsToken.approve(address(_multiRewards), type(uint256).max);
+            uint256 allowance = scheduledReward.rewardsToken.allowance(address(this), address(_multiDistributor));
+            if (allowance < scheduledReward.amount) {
+                scheduledReward.rewardsToken.approve(address(_multiDistributor), type(uint256).max);
             }
-            _multiRewards.notifyRewardAmount(
-                scheduledReward.stakingToken,
-                scheduledReward.rewardsToken,
-                scheduledReward.amount
-            );
+            _multiDistributor.fundDistribution(scheduledReward.distributionId, scheduledReward.amount);
             emit RewardStarted(
                 rewardId,
                 scheduledReward.rewarder,
@@ -97,7 +94,7 @@ contract RewardsScheduler {
         }
     }
 
-    function getRewardId(
+    function claimId(
         IERC20 stakingToken,
         IERC20 rewardsToken,
         address rewarder,
@@ -107,17 +104,19 @@ contract RewardsScheduler {
     }
 
     function scheduleReward(
+        bytes32 distributionId,
         IERC20 stakingToken,
         IERC20 rewardsToken,
         uint256 amount,
         uint256 startTime
     ) public returns (bytes32 rewardId) {
-        rewardId = getRewardId(stakingToken, rewardsToken, msg.sender, startTime);
+        rewardId = claimId(stakingToken, rewardsToken, msg.sender, startTime);
         require(startTime > block.timestamp, "Reward can only be scheduled for the future");
 
         require(_rewards[rewardId].status == RewardStatus.UNINITIALIZED, "Reward has already been scheduled");
 
         _rewards[rewardId] = ScheduledReward({
+            distributionId: distributionId,
             stakingToken: stakingToken,
             rewardsToken: rewardsToken,
             rewarder: msg.sender,
