@@ -1,8 +1,7 @@
-import { expect } from 'chai';
-
 import { Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 
 describe('FixedPoint', () => {
   let lib: Contract;
@@ -13,8 +12,8 @@ describe('FixedPoint', () => {
 
   const checkPow = async (x: number, pow: number) => {
     const result = fp(x ** pow);
-    expect(await lib.powDown(fp(x), fp(pow))).to.equal(result);
-    expect(await lib.powUp(fp(x), fp(pow))).to.equal(result);
+    expectEqualWithError(await lib.powDown(fp(x), fp(pow)), result, 0.00000001);
+    expectEqualWithError(await lib.powUp(fp(x), fp(pow)), result, 0.00000001);
   };
 
   const checkPows = async (pow: number) => {
@@ -27,7 +26,7 @@ describe('FixedPoint', () => {
     });
 
     it('handles big numbers', async () => {
-      await checkPow(158300, pow);
+      await checkPow(15831567871, pow);
     });
   };
 
