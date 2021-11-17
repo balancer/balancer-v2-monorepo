@@ -318,7 +318,6 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
             uint256 amount = userStaking.balance;
             if (amount > 0) {
-                subscribedDistributions.add(distributionId);
                 // If subscribing to a distribution that uses a staking token for which the user has already staked,
                 // those tokens then immediately become part of the distribution's staked tokens 
                 // (i.e. the user is staking for the new distribution).
@@ -357,7 +356,6 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
             if (amount > 0) {
                 _updateUserTokensPerStake(userStaking, distributionId);
-                userStaking.subscribedDistributions.remove(distributionId);
                 distribution.totalSupply = distribution.totalSupply.sub(amount);
                 emit Withdrawn(distributionId, msg.sender, amount);
             }
