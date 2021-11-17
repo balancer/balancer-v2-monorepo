@@ -11,7 +11,8 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
-import { setup, rewardsDuration } from './MultiRewardsSharedSetup';
+import { setup, rewardsDuration } from './MultiDistributorSharedSetup';
+import { ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('Rewards Scheduler', () => {
   let lp: SignerWithAddress, rewarder: SignerWithAddress;
@@ -39,7 +40,7 @@ describe('Rewards Scheduler', () => {
 
     await rewardTokens.approve({ to: rewardsScheduler.address, from: [rewarder] });
 
-    await stakingContract.connect(rewarder).addReward(pool.address, rewardsToken.address, rewardsDuration);
+    await stakingContract.connect(rewarder).createDistribution(pool.address, rewardsToken.address, rewardsDuration);
   });
 
   it('allows anyone to schedule a reward', async () => {
@@ -47,7 +48,10 @@ describe('Rewards Scheduler', () => {
     const rewardAmount = fp(1);
 
     await expectBalanceChange(
-      () => rewardsScheduler.connect(rewarder).scheduleReward(pool.address, rewardsToken.address, rewardAmount, time),
+      () =>
+        rewardsScheduler
+          .connect(rewarder)
+          .scheduleReward(ZERO_BYTES32, pool.address, rewardsToken.address, rewardAmount, time),
       rewardTokens,
       [{ account: rewardsScheduler.address, changes: { DAI: rewardAmount } }]
     );
@@ -58,10 +62,12 @@ describe('Rewards Scheduler', () => {
     const rewardAmount = fp(1);
 
     const receipt = await (
-      await rewardsScheduler.connect(rewarder).scheduleReward(pool.address, rewardsToken.address, rewardAmount, time)
+      await rewardsScheduler
+        .connect(rewarder)
+        .scheduleReward(ZERO_BYTES32, pool.address, rewardsToken.address, rewardAmount, time)
     ).wait();
 
-    const rewardId = await rewardsScheduler.getRewardId(pool.address, rewardsToken.address, rewarder.address, time);
+    const rewardId = await rewardsScheduler.claimId(pool.address, rewardsToken.address, rewarder.address, time);
 
     expectEvent.inReceipt(receipt, 'RewardScheduled', {
       rewardId,
@@ -80,9 +86,11 @@ describe('Rewards Scheduler', () => {
     sharedBeforeEach(async () => {
       // reward duration is important.  These tests assume a very short duration
       time = (await currentTimestamp()).add(3600 * 24);
-      await rewardsScheduler.connect(rewarder).scheduleReward(pool.address, rewardsToken.address, rewardAmount, time);
+      await rewardsScheduler
+        .connect(rewarder)
+        .scheduleReward(ZERO_BYTES32, pool.address, rewardsToken.address, rewardAmount, time);
 
-      rewardId = await rewardsScheduler.getRewardId(pool.address, rewardsToken.address, rewarder.address, time);
+      rewardId = await rewardsScheduler.claimId(pool.address, rewardsToken.address, rewarder.address, time);
     });
 
     it('doesnt reward before time has passed', async () => {
@@ -132,7 +140,7 @@ describe('Rewards Scheduler', () => {
         });
       });
 
-      it('emits RewardAdded in MultiRewards', async () => {
+      it('emits RewardAdded in MultiDistributor', async () => {
         const receipt = await (await rewardsScheduler.connect(lp).startRewards([rewardId])).wait();
 
         expectEvent.inIndirectReceipt(receipt, stakingContract.interface, 'RewardAdded', {
