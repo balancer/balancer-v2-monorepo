@@ -61,12 +61,8 @@ export class MultiDistributor {
     return this.instance.balanceOf(stakingToken.address, user.address);
   }
 
-  async getDistributionId(
-    stakingToken: Token,
-    distributionToken: Token,
-    distributor: SignerWithAddress
-  ): Promise<string> {
-    return this.instance.getDistributionId(stakingToken.address, distributionToken.address, distributor.address);
+  async getDistributionId(stakingToken: Token, distributionToken: Token, owner: SignerWithAddress): Promise<string> {
+    return this.instance.getDistributionId(stakingToken.address, distributionToken.address, owner.address);
   }
 
   async getDistribution(

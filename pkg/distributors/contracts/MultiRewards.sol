@@ -98,14 +98,14 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Returns the unique identifier used for a distribution
      * @param stakingToken The staking token of the distribution
      * @param distributionToken The token which is being distributed
-     * @param distributor The owner of the distribution
+     * @param owner The owner of the distribution
      */
     function getDistributionId(
         IERC20 stakingToken,
         IERC20 distributionToken,
-        address distributor
+        address owner
     ) public pure override returns (bytes32) {
-        return keccak256(abi.encodePacked(stakingToken, distributionToken, distributor));
+        return keccak256(abi.encodePacked(stakingToken, distributionToken, owner));
     }
 
     /**
@@ -664,9 +664,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     function _getDistribution(
         IERC20 stakingToken,
         IERC20 distributionToken,
-        address distributor
+        address owner
     ) internal view returns (Distribution storage) {
-        return _getDistribution(getDistributionId(stakingToken, distributionToken, distributor));
+        return _getDistribution(getDistributionId(stakingToken, distributionToken, owner));
     }
 
     function _getDistribution(bytes32 id) internal view returns (Distribution storage) {

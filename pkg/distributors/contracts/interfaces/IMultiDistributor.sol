@@ -61,7 +61,7 @@ interface IMultiDistributor {
     function getDistributionId(
         IERC20 stakingToken,
         IERC20 distributionToken,
-        address distributor
+        address owner
     ) external pure returns (bytes32);
 
     function getDistribution(bytes32 distributionId) external view returns (Distribution memory);
