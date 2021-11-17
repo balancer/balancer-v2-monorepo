@@ -12,17 +12,17 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { getSigner } from '@balancer-labs/v2-deployments/dist/src/signers';
 
-export class Distributor {
+export class MultiDistributor {
   instance: Contract;
   vault: Contract;
   admin: SignerWithAddress;
   authorizer: Contract;
 
-  static async create(): Promise<Distributor> {
+  static async create(): Promise<MultiDistributor> {
     const [admin] = await ethers.getSigners();
     const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
     const vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
-    const instance = await deploy('MultiRewards', { args: [vault.address] });
+    const instance = await deploy('MultiDistributor', { args: [vault.address] });
     return new this(instance, authorizer, vault, admin);
   }
 
@@ -45,12 +45,12 @@ export class Distributor {
     return this.instance.totalSupply(distributionId);
   }
 
-  async rewardPerToken(distributionId: string): Promise<BigNumber> {
-    return this.instance.rewardPerToken(distributionId);
+  async globalTokensPerStake(distributionId: string): Promise<BigNumber> {
+    return this.instance.globalTokensPerStake(distributionId);
   }
 
-  async totalEarned(distributionId: string, user: SignerWithAddress): Promise<BigNumber> {
-    return this.instance.totalEarned(distributionId, user.address);
+  async getClaimableTokens(distributionId: string, user: SignerWithAddress): Promise<BigNumber> {
+    return this.instance.getClaimableTokens(distributionId, user.address);
   }
 
   async isSubscribed(distribution: string, user1: SignerWithAddress): Promise<boolean> {
@@ -61,22 +61,22 @@ export class Distributor {
     return this.instance.balanceOf(stakingToken.address, user.address);
   }
 
-  async getDistributionId(stakingToken: Token, rewardsToken: Token, rewarder: SignerWithAddress): Promise<string> {
-    return this.instance.getDistributionId(stakingToken.address, rewardsToken.address, rewarder.address);
+  async getDistributionId(stakingToken: Token, distributionToken: Token, owner: SignerWithAddress): Promise<string> {
+    return this.instance.getDistributionId(stakingToken.address, distributionToken.address, owner.address);
   }
 
   async getDistribution(
     distributionId: string
   ): Promise<{
     stakingToken: string;
-    rewardsToken: string;
-    rewarder: string;
+    distributionToken: string;
+    owner: string;
     totalSupply: BigNumber;
     duration: BigNumber;
     periodFinish: BigNumber;
-    rewardRate: BigNumber;
+    paymentRate: BigNumber;
     lastUpdateTime: BigNumber;
-    rewardPerTokenStored: BigNumber;
+    globalTokensPerStake: BigNumber;
   }> {
     return this.instance.getDistribution(distributionId);
   }
@@ -84,7 +84,7 @@ export class Distributor {
   async getUserDistribution(
     distributionId: string,
     user: SignerWithAddress
-  ): Promise<{ unpaidRewards: BigNumber; paidRatePerToken: BigNumber }> {
+  ): Promise<{ unclaimedTokens: BigNumber; userTokensPerStake: BigNumber }> {
     return this.instance.getUserDistribution(distributionId, user.address);
   }
 
@@ -95,37 +95,31 @@ export class Distributor {
     params?: TxParams
   ): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.addReward(TypesConverter.toAddress(stakingToken), TypesConverter.toAddress(rewardsToken), duration);
+    return instance.createDistribution(
+      TypesConverter.toAddress(stakingToken),
+      TypesConverter.toAddress(rewardsToken),
+      duration
+    );
   }
 
-  async reward(
-    stakingToken: Token,
-    rewardsToken: Token,
-    amount: BigNumberish,
-    params?: TxParams
-  ): Promise<ContractTransaction> {
+  async fundDistribution(distribution: string, amount: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.notifyRewardAmount(stakingToken.address, rewardsToken.address, amount);
+    return instance.fundDistribution(distribution, amount);
   }
 
-  async setDuration(
-    stakingToken: Token,
-    rewardsToken: Token,
-    newDuration: BigNumberish,
-    params?: TxParams
-  ): Promise<ContractTransaction> {
+  async setDuration(distribution: string, newDuration: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.setRewardsDuration(stakingToken.address, rewardsToken.address, newDuration);
+    return instance.setDistributionDuration(distribution, newDuration);
   }
 
   async subscribe(ids: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.subscribe(Array.isArray(ids) ? ids : [ids]);
+    return instance.subscribeDistributions(Array.isArray(ids) ? ids : [ids]);
   }
 
   async unsubscribe(ids: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.unsubscribe(Array.isArray(ids) ? ids : [ids]);
+    return instance.unsubscribeDistributions(Array.isArray(ids) ? ids : [ids]);
   }
 
   async stake(stakingToken: Token, amount: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
@@ -164,7 +158,7 @@ export class Distributor {
     await this.stake(stakingToken, amount, params);
   }
 
-  async withdraw(stakingToken: Token, amount: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
+  async unstake(stakingToken: Token, amount: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
     const sender = params?.from ?? (await getSigner());
     return this.instance.connect(sender).unstake(stakingToken.address, amount, sender.address);
   }
@@ -172,7 +166,7 @@ export class Distributor {
   async claim(distributions: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
     if (!Array.isArray(distributions)) distributions = [distributions];
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.getReward(distributions);
+    return instance.claim(distributions);
   }
 
   async exit(stakingTokens: NAry<Token>, distributions: NAry<string>, params?: TxParams): Promise<ContractTransaction> {

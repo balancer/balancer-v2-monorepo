@@ -23,7 +23,7 @@ contract MockLinearMath is LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        Params memory params
+        LinearMathParams memory params
     ) external pure returns (uint256) {
         return _calcBptOutPerMainIn(mainIn, mainBalance, wrappedBalance, bptSupply, params);
     }
@@ -33,7 +33,7 @@ contract MockLinearMath is LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        Params memory params
+        LinearMathParams memory params
     ) external pure returns (uint256) {
         return _calcBptInPerMainOut(mainOut, mainBalance, wrappedBalance, bptSupply, params);
     }
@@ -41,7 +41,7 @@ contract MockLinearMath is LinearMath {
     function calcWrappedOutPerMainIn(
         uint256 mainIn,
         uint256 mainBalance,
-        Params memory params
+        LinearMathParams memory params
     ) external pure returns (uint256) {
         return _calcWrappedOutPerMainIn(mainIn, mainBalance, params);
     }
@@ -49,7 +49,7 @@ contract MockLinearMath is LinearMath {
     function calcWrappedInPerMainOut(
         uint256 mainOut,
         uint256 mainBalance,
-        Params memory params
+        LinearMathParams memory params
     ) external pure returns (uint256) {
         return _calcWrappedInPerMainOut(mainOut, mainBalance, params);
     }
@@ -59,7 +59,7 @@ contract MockLinearMath is LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        Params memory params
+        LinearMathParams memory params
     ) external pure returns (uint256) {
         return _calcMainInPerBptOut(bptOut, mainBalance, wrappedBalance, bptSupply, params);
     }
@@ -69,7 +69,7 @@ contract MockLinearMath is LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        Params memory params
+        LinearMathParams memory params
     ) external pure returns (uint256) {
         return _calcMainOutPerBptIn(bptIn, mainBalance, wrappedBalance, bptSupply, params);
     }
@@ -77,7 +77,7 @@ contract MockLinearMath is LinearMath {
     function calcMainInPerWrappedOut(
         uint256 wrappedOut,
         uint256 mainBalance,
-        Params memory params
+        LinearMathParams memory params
     ) external pure returns (uint256) {
         return _calcMainInPerWrappedOut(wrappedOut, mainBalance, params);
     }
@@ -85,7 +85,7 @@ contract MockLinearMath is LinearMath {
     function calcMainOutPerWrappedIn(
         uint256 wrappedIn,
         uint256 mainBalance,
-        Params memory params
+        LinearMathParams memory params
     ) external pure returns (uint256) {
         return _calcMainOutPerWrappedIn(wrappedIn, mainBalance, params);
     }
@@ -95,7 +95,7 @@ contract MockLinearMath is LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        Params memory params
+        LinearMathParams memory params
     ) external pure returns (uint256) {
         return _calcBptOutPerWrappedIn(wrappedIn, mainBalance, wrappedBalance, bptSupply, params);
     }
@@ -105,7 +105,7 @@ contract MockLinearMath is LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        Params memory params
+        LinearMathParams memory params
     ) external pure returns (uint256) {
         return _calcBptInPerWrappedOut(wrappedOut, mainBalance, wrappedBalance, bptSupply, params);
     }
@@ -115,7 +115,7 @@ contract MockLinearMath is LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        Params memory params
+        LinearMathParams memory params
     ) external pure returns (uint256) {
         return _calcWrappedInPerBptOut(bptOut, mainBalance, wrappedBalance, bptSupply, params);
     }
@@ -125,7 +125,7 @@ contract MockLinearMath is LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        Params memory params
+        LinearMathParams memory params
     ) external pure returns (uint256) {
         return _calcWrappedOutPerBptIn(bptIn, mainBalance, wrappedBalance, bptSupply, params);
     }
