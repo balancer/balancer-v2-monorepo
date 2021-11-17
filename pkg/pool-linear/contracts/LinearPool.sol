@@ -26,7 +26,7 @@ import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
 
 import "./LinearMath.sol";
-import "./LinearPoolUserDataHelpers.sol";
+import "./LinearPoolUserData.sol";
 
 /**
  * @dev LinearPool suitable for assets with an equal underlying token with an exact and non-manipulable exchange rate.
@@ -36,7 +36,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
-    using LinearPoolUserDataHelpers for bytes;
+    using LinearPoolUserData for bytes;
 
     uint256 private constant _TOTAL_TOKENS = 3; // Main token, wrapped token, BPT
 
@@ -414,11 +414,11 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        ExitKind kind = userData.exitKind();
+        LinearPoolUserData.ExitKind kind = userData.exitKind();
 
         // Exits typically revert, except for the proportional exit when the emergency pause mechanism has been
         // triggered. This allows for a simple and safe way to exit the Pool.
-        if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        if (kind == LinearPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             _ensurePaused();
             // Note that this will cause for the user's BPT to be burned, which is not something that happens during
             // regular operation of this Pool, and may lead to accounting errors. Because of this, it is highly
