@@ -201,7 +201,15 @@ async function deployPoolFromFactory(
     receipt = await (
       await factory
         .connect(args.from)
-        .create(name, symbol, ...args.parameters, owner, swapEnabledOnStart, mustAllowlistLPs, managementSwapFeePercentage)
+        .create(
+          name,
+          symbol,
+          ...args.parameters,
+          owner,
+          swapEnabledOnStart,
+          mustAllowlistLPs,
+          managementSwapFeePercentage
+        )
     ).wait();
   } else {
     receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)).wait();
