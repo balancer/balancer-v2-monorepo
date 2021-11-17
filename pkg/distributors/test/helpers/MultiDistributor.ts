@@ -122,19 +122,16 @@ export class MultiDistributor {
     return instance.unsubscribeDistributions(Array.isArray(ids) ? ids : [ids]);
   }
 
-  async stake(stakingToken: Token, amount: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
-    const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.stake(stakingToken.address, amount);
-  }
-
-  async stakeFor(
+  async stake(
     stakingToken: Token,
     amount: BigNumberish,
-    to: SignerWithAddress,
+    sender: Account,
+    recipient: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.stakeFor(stakingToken.address, amount, to.address);
+    const [senderAddress, recipientAddress] = TypesConverter.toAddresses([sender, recipient]);
+    return instance.stake(stakingToken.address, amount, senderAddress, recipientAddress);
   }
 
   async stakeWithPermit(
@@ -155,7 +152,7 @@ export class MultiDistributor {
     await stakingToken.mint(sender, amount);
     await stakingToken.approve(this, amount, params);
     await this.subscribe([id], params);
-    await this.stake(stakingToken, amount, params);
+    await this.stake(stakingToken, amount, sender, sender, params);
   }
 
   async unstake(stakingToken: Token, amount: BigNumberish, params?: TxParams): Promise<ContractTransaction> {

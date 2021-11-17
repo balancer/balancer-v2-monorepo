@@ -54,7 +54,7 @@ describe('Staking contract - callbacks', () => {
 
       id = await stakingContract.getDistributionId(pool.address, rewardToken.address, mockAssetManager.address);
       await stakingContract.connect(lp).subscribeDistributions([id]);
-      await stakingContract.connect(lp).stake(pool.address, bptBalance);
+      await stakingContract.connect(lp).stake(pool.address, bptBalance, lp.address, lp.address);
 
       await stakingContract.connect(mockAssetManager).fundDistribution(id, rewardAmount);
       await advanceTime(rewardsVestingTime);

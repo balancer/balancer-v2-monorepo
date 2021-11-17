@@ -354,23 +354,17 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Stakes tokens
      * @param stakingToken The token to be staked to be eligible for distributions
      * @param amount Amount of tokens to be staked
+     * @param sender The address which provides tokens to stake
+     * @param recipient The address which receives the staked tokens
      */
-    function stake(IERC20 stakingToken, uint256 amount) external override nonReentrant {
-        _stakeFor(stakingToken, amount, msg.sender, msg.sender);
-    }
-
-    /**
-     * @notice Stakes tokens on behalf of other user
-     * @param stakingToken The token to be staked to be eligible for distributions
-     * @param amount Amount of tokens to be staked
-     * @param user The user staking on behalf of
-     */
-    function stakeFor(
+    function stake(
         IERC20 stakingToken,
         uint256 amount,
-        address user
+        address sender,
+        address recipient
     ) external override nonReentrant {
-        _stakeFor(stakingToken, amount, user, msg.sender);
+        require(sender == msg.sender, "INVALID_SENDER");
+        _stake(stakingToken, amount, sender, recipient);
     }
 
     /**
@@ -393,7 +387,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         bytes32 s
     ) external override nonReentrant {
         IERC20Permit(address(stakingToken)).permit(user, address(this), amount, deadline, v, r, s);
-        _stakeFor(stakingToken, amount, user, user);
+        _stake(stakingToken, amount, user, user);
     }
 
     /**
@@ -501,18 +495,18 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         callbackContract.distributorCallback(callbackData);
     }
 
-    function _stakeFor(
+    function _stake(
         IERC20 stakingToken,
         uint256 amount,
-        address user,
-        address from
+        address sender,
+        address recipient
     ) internal {
         require(amount > 0, "STAKE_AMOUNT_ZERO");
 
         // Before we increase the user's staked balance we need to update all of their subscriptions
-        _updateSubscribedDistributions(stakingToken, user);
+        _updateSubscribedDistributions(stakingToken, recipient);
 
-        UserStaking storage userStaking = _userStakings[stakingToken][user];
+        UserStaking storage userStaking = _userStakings[stakingToken][recipient];
         userStaking.balance = userStaking.balance.add(amount);
 
         EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
@@ -524,12 +518,12 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             bytes32 distributionId = distributions.unchecked_at(i);
             Distribution storage distribution = _getDistribution(distributionId);
             distribution.totalSupply = distribution.totalSupply.add(amount);
-            emit Staked(distributionId, user, amount);
+            emit Staked(distributionId, recipient, amount);
         }
 
         // We hold stakingTokens in an external balance as BPT needs to be external anyway
         // in the case where a user is exiting the pool after unstaking.
-        stakingToken.safeTransferFrom(from, address(this), amount);
+        stakingToken.safeTransferFrom(sender, address(this), amount);
     }
 
     function _claim(

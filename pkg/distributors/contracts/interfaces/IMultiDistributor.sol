@@ -96,12 +96,11 @@ interface IMultiDistributor {
 
     // Staking
 
-    function stake(IERC20 stakingToken, uint256 amount) external;
-
-    function stakeFor(
+    function stake(
         IERC20 stakingToken,
         uint256 amount,
-        address user
+        address sender,
+        address recipient
     ) external;
 
     function stakeWithPermit(
