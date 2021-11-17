@@ -253,7 +253,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
         // sentinel value that marks non-existent distributions.
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
-        require(distribution.owner == msg.sender, "SENDER_NOT_DISTRIBUTOR");
+        require(distribution.owner == msg.sender, "SENDER_NOT_OWNER");
 
         // Before receiving the tokens, we must update the distribution's rate 
         // as we are about to change its payment rate, which affects all other rates.
