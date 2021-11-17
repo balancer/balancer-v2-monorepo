@@ -410,7 +410,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         require(amount > 0, "UNSTAKE_AMOUNT_ZERO");
 
         // Before we reduce the user's staked balance we need to update all of their subscriptions
-        _updateDistributions(stakingToken, msg.sender);
+        _updateSubscribedDistributions(stakingToken, msg.sender);
 
         UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
         uint256 currentBalance = userStaking.balance;
@@ -510,7 +510,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         require(amount > 0, "STAKE_AMOUNT_ZERO");
 
         // Before we increase the user's staked balance we need to update all of their subscriptions
-        _updateDistributions(stakingToken, user);
+        _updateSubscribedDistributions(stakingToken, user);
 
         UserStaking storage userStaking = _userStakings[stakingToken][user];
         userStaking.balance = userStaking.balance.add(amount);
@@ -576,7 +576,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     /**
      * @dev Updates the payment rate for all the distributions that a user has signed up for a staking token
      */
-    function _updateDistributions(IERC20 stakingToken, address user) internal {
+    function _updateSubscribedDistributions(IERC20 stakingToken, address user) internal {
         UserStaking storage userStaking = _userStakings[stakingToken][user];
         EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
         uint256 distributionsLength = distributions.length();
