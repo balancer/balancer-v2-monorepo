@@ -434,7 +434,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionIds List of distributions to claim
      */
     function claim(bytes32[] memory distributionIds) external override nonReentrant {
-        _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
+        _claim(distributionIds, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL, msg.sender, msg.sender);
     }
 
     /**
@@ -442,7 +442,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionIds List of distributions to claim
      */
     function claimAsInternalBalance(bytes32[] memory distributionIds) external override nonReentrant {
-        _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
+        _claim(distributionIds, IVault.UserBalanceOpKind.TRANSFER_INTERNAL, msg.sender, msg.sender);
     }
 
     /**
@@ -456,7 +456,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         IDistributorCallback callbackContract,
         bytes memory callbackData
     ) external override nonReentrant {
-        _claim(distributionIds, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
+        _claim(distributionIds, IVault.UserBalanceOpKind.TRANSFER_INTERNAL, msg.sender,address(callbackContract));
         callbackContract.distributorCallback(callbackData);
     }
 
@@ -472,7 +472,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             unstake(stakingToken, userStaking.balance, msg.sender, msg.sender);
         }
 
-        _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
+        _claim(distributionIds, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL, msg.sender, msg.sender);
     }
 
     /**
@@ -494,7 +494,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             unstake(stakingToken, userStaking.balance, msg.sender, msg.sender);
         }
 
-        _claim(distributionIds, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
+        _claim(distributionIds, IVault.UserBalanceOpKind.TRANSFER_INTERNAL, msg.sender, address(callbackContract));
         callbackContract.distributorCallback(callbackData);
     }
 
@@ -531,8 +531,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
     function _claim(
         bytes32[] memory distributionIds,
-        address recipient,
-        IVault.UserBalanceOpKind kind
+        IVault.UserBalanceOpKind kind,
+        address sender,
+        address recipient
     ) internal {
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](distributionIds.length);
 
@@ -541,7 +542,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             Distribution storage distribution = _getDistribution(distributionId);
 
             IERC20 stakingToken = distribution.stakingToken;
-            UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
+            UserStaking storage userStaking = _userStakings[stakingToken][sender];
 
             // Note that the user may have unsubscribed from the distribution but still be due tokens. We therefore only
             // update the distribution if the user is subscribed to it (otherwise, it is already up to date).
@@ -555,7 +556,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
             if (unclaimedTokens > 0) {
                 userDistribution.unclaimedTokens = 0;
-                emit TokensClaimed(msg.sender, distributionToken, unclaimedTokens);
+                emit TokensClaimed(sender, distributionToken, unclaimedTokens);
             }
 
             ops[i] = IVault.UserBalanceOp({
