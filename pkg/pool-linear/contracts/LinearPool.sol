@@ -315,8 +315,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
-        // This process burns BPT, rendering the "_INITIAL_BPT_SUPPLY - balances[_bptIndex]" approximation of the
-        // virtual BPT inaccurate. So we need to calculate it exactly here.
+        // This process burns BPT, rendering `_getApproximateVirtualSupply` inaccurate, so we use the real method here
         uint256[] memory amountsOut = _calcTokensOutGivenExactBptIn(
             balances,
             bptAmountIn,
@@ -393,7 +392,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
                 request.amount,
                 balances[_mainIndex],
                 balances[_wrappedIndex],
-                _INITIAL_BPT_SUPPLY - balances[_bptIndex], // _INITIAL_BPT_SUPPLY is always greater than BPT balance
+                _getApproximateVirtualSupply(balances[_bptIndex]),
                 params
             );
     }
@@ -410,7 +409,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _INITIAL_BPT_SUPPLY - balances[_bptIndex], // _INITIAL_BPT_SUPPLY is always greater than BPT balance
+                    _getApproximateVirtualSupply(balances[_bptIndex]),
                     params
                 )
                 : _calcWrappedOutPerMainIn(request.amount, balances[_mainIndex], params);
@@ -428,7 +427,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _INITIAL_BPT_SUPPLY - balances[_bptIndex], // _INITIAL_BPT_SUPPLY is always greater than BPT balance
+                    _getApproximateVirtualSupply(balances[_bptIndex]),
                     params
                 )
                 : _calcMainOutPerWrappedIn(request.amount, balances[_mainIndex], params);
@@ -461,7 +460,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
                 request.amount,
                 balances[_mainIndex],
                 balances[_wrappedIndex],
-                _INITIAL_BPT_SUPPLY - balances[_bptIndex], // _INITIAL_BPT_SUPPLY is always greater than BPT balance
+                _getApproximateVirtualSupply(balances[_bptIndex]),
                 params
             );
     }
@@ -478,7 +477,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _INITIAL_BPT_SUPPLY - balances[_bptIndex], // _INITIAL_BPT_SUPPLY is always greater than BPT balance
+                    _getApproximateVirtualSupply(balances[_bptIndex]),
                     params
                 )
                 : _calcWrappedInPerMainOut(request.amount, balances[_mainIndex], params);
@@ -496,7 +495,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _INITIAL_BPT_SUPPLY - balances[_bptIndex], // _INITIAL_BPT_SUPPLY is always greater than BPT balance
+                    _getApproximateVirtualSupply(balances[_bptIndex]),
                     params
                 )
                 : _calcMainInPerWrappedOut(request.amount, balances[_mainIndex], params);
@@ -542,8 +541,9 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         bytes32 poolId = getPoolId();
         (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
         _upscaleArray(balances, _scalingFactors());
-        uint256 totalBalance = balances[_mainIndex] + balances[_wrappedIndex];
-        return totalBalance.divUp(_INITIAL_BPT_SUPPLY - balances[_bptIndex]);
+
+        uint256 totalBalance = balances[_mainIndex].add(balances[_wrappedIndex]);
+        return totalBalance.divUp(_getApproximateVirtualSupply(balances[_bptIndex]));
     }
 
     function getWrappedTokenRateProvider() public view returns (IRateProvider) {
@@ -662,13 +662,24 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
      */
     function getVirtualSupply() external view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
-        // Note that unlike all other balances, the Vault's BPT balance does not need scaling. BPT are always 18-bits,
-        // so the scaling factor is FixedPoint.ONE.
+        // We technically don't need to upscale the BPT balance as its scaling factor is equal to one (since BPT has
+        // 18 decimals), but we do it for completeness.
+        uint256 bptBalance = _upscale(balances[_bptIndex], _scalingFactor(this));
 
-        return _getVirtualSupply(balances[_bptIndex]);
+        return _getVirtualSupply(bptBalance);
     }
 
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
         return totalSupply().sub(bptBalance);
+    }
+
+    /**
+     * @dev Computes an approximation of virtual supply, which costs less gas than `_getVirtualSupply` and returns the
+     * same value in all cases except when the emergency pause has been enabled and BPT burned as part of the emergency
+     * exit process.
+     */
+    function _getApproximateVirtualSupply(uint256 bptBalance) internal pure returns (uint256) {
+        // No need for checked arithmetic as _INITIAL_BPT_SUPPLY is always greater than any valid Vault BPT balance.
+        return _INITIAL_BPT_SUPPLY - bptBalance;
     }
 }
