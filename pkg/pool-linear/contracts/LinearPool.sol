@@ -618,6 +618,27 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         _setTargets(_mainToken, newLowerTarget, newUpperTarget);
     }
 
+    function setSwapFeePercentage(uint256 swapFeePercentage) public override {
+        bytes32 poolId = getPoolId();
+        (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
+        uint256 mainTokenBalance = _upscale(balances[_mainIndex], _scalingFactor(_mainToken));
+
+        // For the swap fee percentage to be changeable:
+        //  - the pool must currently be between the current targets (meaning no fees are currently pending)
+        //
+        // As the amount of accrued fees is not explicitly stored but rather derived from the main token balance and the
+        // current swap fee percentage, requiring for no fees to be pending prevents the fee setter from changing the
+        // amount of pending fees, which they could use to e.g. drain Pool funds in the form of inflated fees.
+
+        (uint256 currentLowerTarget, uint256 currentUpperTarget) = getTargets();
+        _require(
+            mainTokenBalance >= currentLowerTarget && mainTokenBalance <= currentUpperTarget,
+            Errors.OUT_OF_TARGET_RANGE
+        );
+
+        super.setSwapFeePercentage(swapFeePercentage);
+    }
+
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
             (actionId == getActionId(this.setTargets.selector)) ||

@@ -185,6 +185,12 @@ export default class LinearPool {
     return pool.setTargets(lowerTarget, upperTarget);
   }
 
+  async setSwapFeePercentage(swapFeePercentage: BigNumber, txParams: TxParams = {}): Promise<ContractTransaction> {
+    const sender = txParams.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    return pool.setSwapFeePercentage(swapFeePercentage);
+  }
+
   async initialize(): Promise<void> {
     return this.instance.initialize();
   }

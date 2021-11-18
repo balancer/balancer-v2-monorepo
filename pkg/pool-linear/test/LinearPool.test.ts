@@ -293,6 +293,68 @@ describe('LinearPool', function () {
     });
   });
 
+  describe('set swap fee percentage', () => {
+    const lowerTarget = fp(1000);
+    const upperTarget = fp(2000);
+
+    const swapFeePercentage = fp(0.1);
+
+    sharedBeforeEach('deploy pool', async () => {
+      await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget }, true);
+    });
+
+    const setBalances = async (
+      pool: LinearPool,
+      balances: { mainBalance?: BigNumber; wrappedBalance?: BigNumber; bptBalance?: BigNumber }
+    ) => {
+      const poolId = await pool.getPoolId();
+
+      const updateBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
+        i == pool.mainIndex
+          ? balances.mainBalance ?? bn(0)
+          : i == pool.wrappedIndex
+          ? balances.wrappedBalance ?? bn(0)
+          : i == pool.bptIndex
+          ? balances.bptBalance ?? bn(0)
+          : bn(0)
+      );
+
+      await pool.vault.updateBalances(poolId, updateBalances);
+    };
+
+    context('when outside the targets', () => {
+      it('reverts when main balance is below lower target', async () => {
+        await setBalances(pool, { mainBalance: lowerTarget.sub(1) });
+        await expect(pool.setSwapFeePercentage(swapFeePercentage)).to.be.revertedWith('OUT_OF_TARGET_RANGE');
+      });
+
+      it('reverts when main balance is above upper target', async () => {
+        await setBalances(pool, { mainBalance: upperTarget.add(1) });
+        await expect(pool.setSwapFeePercentage(swapFeePercentage)).to.be.revertedWith('OUT_OF_TARGET_RANGE');
+      });
+    });
+
+    context('when inside the targets', () => {
+      it('sets the swap fee when main balance equals the lower target', async () => {
+        await setBalances(pool, { mainBalance: lowerTarget });
+        const receipt = await (await pool.setSwapFeePercentage(swapFeePercentage)).wait();
+        expectEvent.inReceipt(receipt, 'SwapFeePercentageChanged', { swapFeePercentage });
+      });
+
+      it('sets the swap fee when main balance is between the targets', async () => {
+        await setBalances(pool, { mainBalance: upperTarget });
+        const receipt = await (await pool.setSwapFeePercentage(swapFeePercentage)).wait();
+        expectEvent.inReceipt(receipt, 'SwapFeePercentageChanged', { swapFeePercentage });
+      });
+
+      it('sets the swap fee when main balance equals the upper target', async () => {
+        await setBalances(pool, { mainBalance: upperTarget.add(lowerTarget).div(2) });
+        const receipt = await (await pool.setSwapFeePercentage(swapFeePercentage)).wait();
+        expectEvent.inReceipt(receipt, 'SwapFeePercentageChanged', { swapFeePercentage });
+      });
+    });
+  });
+
   describe('get rate', () => {
     let poolId: string;
     let balances: BigNumber[];
