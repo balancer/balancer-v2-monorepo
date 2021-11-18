@@ -216,6 +216,113 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         getVault().joinPool(poolId, address(this), address(this), request);
     }
 
+    function _onInitializePool(
+        bytes32,
+        address sender,
+        address recipient,
+        uint256[] memory,
+        bytes memory
+    ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
+        // Linear Pools can only be initialized by the Pool performing the initial join via the `initialize` function.
+        _require(sender == address(this), Errors.INVALID_INITIALIZATION);
+        _require(recipient == address(this), Errors.INVALID_INITIALIZATION);
+
+        // The full BPT supply will be minted and deposited in the Pool. Note that there is no need to approve the Vault
+        // as it already has infinite BPT allowance.
+        uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
+        amountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
+
+        return (_INITIAL_BPT_SUPPLY, amountsIn);
+    }
+
+    function _onJoinPool(
+        bytes32,
+        address,
+        address,
+        uint256[] memory,
+        uint256,
+        uint256,
+        uint256[] memory,
+        bytes memory
+    )
+        internal
+        pure
+        override
+        returns (
+            uint256,
+            uint256[] memory,
+            uint256[] memory
+        )
+    {
+        _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
+    }
+
+    /**
+     * @dev Proportional exit is only enabled when pool is paused.
+     */
+    function _onExitPool(
+        bytes32,
+        address,
+        address,
+        uint256[] memory balances,
+        uint256,
+        uint256,
+        uint256[] memory,
+        bytes memory userData
+    )
+        internal
+        view
+        override
+        returns (
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            uint256[] memory dueProtocolFeeAmounts
+        )
+    {
+        LinearPoolUserData.ExitKind kind = userData.exitKind();
+
+        // Exits typically revert, except for the proportional exit when the emergency pause mechanism has been
+        // triggered. This allows for a simple and safe way to exit the Pool.
+        if (kind == LinearPoolUserData.ExitKind.EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT) {
+            _ensurePaused();
+            // Note that this will cause the user's BPT to be burned, which is not something that happens during
+            // regular operation of this Pool, and may lead to accounting errors. Because of this, it is highly
+            // advisable to stop using a Pool after it is paused and the pause window expires.
+
+            (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
+            // For simplicity, due protocol fees are set to zero.
+            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
+        } else {
+            _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
+        }
+    }
+
+    function _emergencyProportionalExit(uint256[] memory balances, bytes memory userData)
+        private
+        view
+        returns (uint256, uint256[] memory)
+    {
+        // This proportional exit function is only enabled if the contract is paused, to provide users a way to
+        // retrieve their tokens in case of an emergency.
+        //
+        // This particular exit function is the only one available because it is the simplest, and therefore least
+        // likely to revert and lock funds.
+
+        uint256 bptAmountIn = userData.exactBptInForTokensOut();
+        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
+
+        // This process burns BPT, rendering the "_INITIAL_BPT_SUPPLY - balances[_bptIndex]" approximation of the
+        // virtual BPT inaccurate. So we need to calculate it exactly here.
+        uint256[] memory amountsOut = _calcTokensOutGivenExactBptIn(
+            balances,
+            bptAmountIn,
+            _getVirtualSupply(balances[_bptIndex]),
+            _bptIndex
+        );
+
+        return (bptAmountIn, amountsOut);
+    }
+
     function onSwap(
         SwapRequest memory request,
         uint256[] memory balances,
@@ -389,113 +496,6 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
                     params
                 )
                 : _calcMainInPerWrappedOut(request.amount, balances[_mainIndex], params);
-    }
-
-    function _onInitializePool(
-        bytes32,
-        address sender,
-        address recipient,
-        uint256[] memory,
-        bytes memory
-    ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
-        // Linear Pools can only be initialized by the Pool performing the initial join via the `initialize` function.
-        _require(sender == address(this), Errors.INVALID_INITIALIZATION);
-        _require(recipient == address(this), Errors.INVALID_INITIALIZATION);
-
-        // The full BPT supply will be minted and deposited in the Pool. Note that there is no need to approve the Vault
-        // as it already has infinite BPT allowance.
-        uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
-        amountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
-
-        return (_INITIAL_BPT_SUPPLY, amountsIn);
-    }
-
-    function _onJoinPool(
-        bytes32,
-        address,
-        address,
-        uint256[] memory,
-        uint256,
-        uint256,
-        uint256[] memory,
-        bytes memory
-    )
-        internal
-        pure
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {
-        _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
-    }
-
-    /**
-     * @dev Proportional exit is only enabled when pool is paused.
-     */
-    function _onExitPool(
-        bytes32,
-        address,
-        address,
-        uint256[] memory balances,
-        uint256,
-        uint256,
-        uint256[] memory,
-        bytes memory userData
-    )
-        internal
-        view
-        override
-        returns (
-            uint256 bptAmountIn,
-            uint256[] memory amountsOut,
-            uint256[] memory dueProtocolFeeAmounts
-        )
-    {
-        LinearPoolUserData.ExitKind kind = userData.exitKind();
-
-        // Exits typically revert, except for the proportional exit when the emergency pause mechanism has been
-        // triggered. This allows for a simple and safe way to exit the Pool.
-        if (kind == LinearPoolUserData.ExitKind.EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            _ensurePaused();
-            // Note that this will cause the user's BPT to be burned, which is not something that happens during
-            // regular operation of this Pool, and may lead to accounting errors. Because of this, it is highly
-            // advisable to stop using a Pool after it is paused and the pause window expires.
-
-            (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
-            // For simplicity, due protocol fees are set to zero.
-            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
-        } else {
-            _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
-        }
-    }
-
-    function _emergencyProportionalExit(uint256[] memory balances, bytes memory userData)
-        private
-        view
-        returns (uint256, uint256[] memory)
-    {
-        // This proportional exit function is only enabled if the contract is paused, to provide users a way to
-        // retrieve their tokens in case of an emergency.
-        //
-        // This particular exit function is the only one available because it is the simplest, and therefore least
-        // likely to revert and lock funds.
-
-        uint256 bptAmountIn = userData.exactBptInForTokensOut();
-        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
-
-        // This process burns BPT, rendering the "_INITIAL_BPT_SUPPLY - balances[_bptIndex]" approximation of the
-        // virtual BPT inaccurate. So we need to calculate it exactly here.
-        uint256[] memory amountsOut = _calcTokensOutGivenExactBptIn(
-            balances,
-            bptAmountIn,
-            _getVirtualSupply(balances[_bptIndex]),
-            _bptIndex
-        );
-
-        return (bptAmountIn, amountsOut);
     }
 
     function _getMaxTokens() internal pure override returns (uint256) {
