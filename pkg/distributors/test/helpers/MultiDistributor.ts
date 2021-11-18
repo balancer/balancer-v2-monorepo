@@ -25,7 +25,7 @@ export class MultiDistributor {
 
   static async create(vault: Vault): Promise<MultiDistributor> {
     if (!vault.authorizer || !vault.admin) throw 'Invalid Vault deployment';
-    const instance = await deploy('MultiDistributor', { args: [vault.address] });
+    const instance = await deploy('v2-distributors/MultiDistributor', { args: [vault.address] });
     return new this(instance, vault.authorizer, vault.instance, vault.admin);
   }
 
