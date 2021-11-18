@@ -102,7 +102,6 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     event TargetsSet(IERC20 indexed token, uint256 lowerTarget, uint256 upperTarget);
     event PriceRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
     event PriceRateCacheUpdated(IERC20 indexed token, uint256 rate);
-    enum ExitKind { EXACT_BPT_IN_FOR_TOKENS_OUT }
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
