@@ -158,17 +158,6 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Returns the unaccounted earned payment for a user until now for a particular distribution
-     * @param distributionId ID of the distribution being queried
-     * @param user Address of the user being queried
-     */
-    function unaccountedUnclaimedTokens(bytes32 distributionId, address user) external view override returns (uint256) {
-        IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
-        UserStaking storage userStaking = _userStakings[stakingToken][user];
-        return _unaccountedUnclaimedTokens(userStaking, distributionId);
-    }
-
-    /**
      * @dev Returns the total unclaimed payment for a user for a particular distribution
      * @param distributionId ID of the distribution being queried
      * @param user Address of the user being queried
