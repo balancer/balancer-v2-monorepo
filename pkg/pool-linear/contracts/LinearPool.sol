@@ -52,9 +52,6 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
     uint256 private constant _TOTAL_TOKENS = 3; // Main token, wrapped token, BPT
 
-    // Linear Pools don't lock any BPT, since they fully support having zero main and wrapped token balances
-    uint256 private constant _LINEAR_MINIMUM_BPT = 0;
-
     // This is the maximum token amount the Vault can hold. In regular operation, the total BPT supply remains constant
     // and equal to _INITIAL_BPT_SUPPLY, but most of it remains in the Pool, waiting to be exchanged for tokens. The
     // actual amount of BPT in circulation is the total supply minus the amount held by the Pool, and is known as the
@@ -506,7 +503,9 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     }
 
     function _getMinimumBpt() internal pure override returns (uint256) {
-        return _LINEAR_MINIMUM_BPT;
+        // Linear Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
+        // mechanism, ensuring initialization only occurs once.
+        return 0;
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
