@@ -31,7 +31,10 @@ import "./LinearPoolUserData.sol";
 /**
  * @dev Linear Pools are designed to hold two assets: "main" and "wrapped" tokens that have an equal value underlying
  * token (e.g., DAI and waDAI). There must be an external feed available to provide an exact, non-manipulable exchange
- * rate between the tokens. The Pool will register three tokens in the Vault however: the two assets and the BPT itself,
+ * rate between the tokens. In particular, any reversible manipulation (e.g. cause for the rate to increase and then
+ * decrease) can lead to severe issues and loss of funds.
+ *
+ * The Pool will register three tokens in the Vault however: the two assets and the BPT itself,
  * so that BPT can be exchanged (effectively joining and exiting) via swaps.
  *
  * Despite inheriting from BasePool, much of the basic behavior changes. This Pool does not support regular joins and
@@ -538,6 +541,8 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         if (token == _mainToken) {
             return _scalingFactorMainToken;
         } else if (token == _wrappedToken) {
+            // The wrapped token's scaling factor is not constant, but increases over time as the wrapped token
+            // increases in value.
             return _scalingFactorWrappedToken.mulDown(_getWrappedTokenCachedRate());
         } else if (token == this) {
             return FixedPoint.ONE;
@@ -548,20 +553,31 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
         uint256[] memory scalingFactors = new uint256[](_TOTAL_TOKENS);
+
+        // The wrapped token's scaling factor is not constant, but increases over time as the wrapped token increases in
+        // value.
         scalingFactors[_mainIndex] = _scalingFactorMainToken;
         scalingFactors[_wrappedIndex] = _scalingFactorWrappedToken.mulDown(_getWrappedTokenCachedRate());
         scalingFactors[_bptIndex] = FixedPoint.ONE;
+
         return scalingFactors;
     }
 
     // Price rates
 
-    function getRate() public view override returns (uint256) {
+    /**
+     * @dev For a Linear Pool, the rate represents the appreciation of BPT with respect to the underlying tokens. This
+     * rate increases slowly as the wrapped token appreciates in value.
+     */
+    function getRate() external view override returns (uint256) {
         bytes32 poolId = getPoolId();
         (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
         _upscaleArray(balances, _scalingFactors());
 
         uint256 totalBalance = balances[_mainIndex].add(balances[_wrappedIndex]);
+        // Note that we're dividing by the virtual supply, which may be zero (causing this call to revert). However, the
+        // only way for that to happen would be for all LPs to exit the Pool, and nothing prevents new LPs from
+        // joining it later on.
         return totalBalance.divUp(_getApproximateVirtualSupply(balances[_bptIndex]));
     }
 
