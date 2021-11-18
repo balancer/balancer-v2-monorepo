@@ -123,7 +123,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             IVault.PoolSpecialization.GENERAL,
             params.name,
             params.symbol,
-            _sortTokens(params.mainToken, params.wrappedToken, IERC20(this)),
+            _sortTokens(params.mainToken, params.wrappedToken, this),
             new address[](_TOTAL_TOKENS),
             params.swapFeePercentage,
             params.pauseWindowDuration,
@@ -139,7 +139,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         (uint256 mainIndex, uint256 wrappedIndex, uint256 bptIndex) = _getSortedTokenIndexes(
             params.mainToken,
             params.wrappedToken,
-            IERC20(this)
+            this
         );
         _bptIndex = bptIndex;
         _mainIndex = mainIndex;
@@ -370,7 +370,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256[] memory balances,
         LinearMathParams memory params
     ) internal view returns (uint256) {
-        if (request.tokenIn == IERC20(this)) {
+        if (request.tokenIn == this) {
             return _swapGivenBptIn(request, balances, params);
         } else if (request.tokenIn == _mainToken) {
             return _swapGivenMainIn(request, balances, params);
@@ -402,9 +402,9 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256[] memory balances,
         LinearMathParams memory params
     ) internal view returns (uint256) {
-        _require(request.tokenOut == _wrappedToken || request.tokenOut == IERC20(this), Errors.INVALID_TOKEN);
+        _require(request.tokenOut == _wrappedToken || request.tokenOut == this, Errors.INVALID_TOKEN);
         return
-            request.tokenOut == IERC20(this)
+            request.tokenOut == this
                 ? _calcBptOutPerMainIn(
                     request.amount,
                     balances[_mainIndex],
@@ -420,9 +420,9 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256[] memory balances,
         LinearMathParams memory params
     ) internal view returns (uint256) {
-        _require(request.tokenOut == _mainToken || request.tokenOut == IERC20(this), Errors.INVALID_TOKEN);
+        _require(request.tokenOut == _mainToken || request.tokenOut == this, Errors.INVALID_TOKEN);
         return
-            request.tokenOut == IERC20(this)
+            request.tokenOut == this
                 ? _calcBptOutPerWrappedIn(
                     request.amount,
                     balances[_mainIndex],
@@ -438,7 +438,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256[] memory balances,
         LinearMathParams memory params
     ) internal view returns (uint256) {
-        if (request.tokenOut == IERC20(this)) {
+        if (request.tokenOut == this) {
             return _swapGivenBptOut(request, balances, params);
         } else if (request.tokenOut == _mainToken) {
             return _swapGivenMainOut(request, balances, params);
@@ -470,9 +470,9 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256[] memory balances,
         LinearMathParams memory params
     ) internal view returns (uint256) {
-        _require(request.tokenIn == _wrappedToken || request.tokenIn == IERC20(this), Errors.INVALID_TOKEN);
+        _require(request.tokenIn == _wrappedToken || request.tokenIn == this, Errors.INVALID_TOKEN);
         return
-            request.tokenIn == IERC20(this)
+            request.tokenIn == this
                 ? _calcBptInPerMainOut(
                     request.amount,
                     balances[_mainIndex],
@@ -488,9 +488,9 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         uint256[] memory balances,
         LinearMathParams memory params
     ) internal view returns (uint256) {
-        _require(request.tokenIn == _mainToken || request.tokenIn == IERC20(this), Errors.INVALID_TOKEN);
+        _require(request.tokenIn == _mainToken || request.tokenIn == this, Errors.INVALID_TOKEN);
         return
-            request.tokenIn == IERC20(this)
+            request.tokenIn == this
                 ? _calcBptInPerWrappedOut(
                     request.amount,
                     balances[_mainIndex],
@@ -520,7 +520,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             return _scalingFactorMainToken;
         } else if (token == _wrappedToken) {
             return _scalingFactorWrappedToken.mulDown(_getWrappedTokenCachedRate());
-        } else if (token == IERC20(this)) {
+        } else if (token == this) {
             return FixedPoint.ONE;
         } else {
             _revert(Errors.INVALID_TOKEN);
