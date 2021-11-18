@@ -618,8 +618,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         uint256 unpaidDuration = _lastTimePaymentApplicable(distribution) - distribution.lastUpdateTime;
 
         // Note `paymentRate` and `distribution.globalTokensPerStake` are both fixed point values
-        uint256 unpaidAmountPerToken = unpaidDuration.mul(distribution.paymentRate).divDown(supply);
-        return distribution.globalTokensPerStake.add(unpaidAmountPerToken);
+        uint256 unpaidRatePerStake = unpaidDuration.mul(distribution.paymentRate).divDown(supply);
+        return distribution.globalTokensPerStake.add(unpaidRatePerStake);
     }
 
     function _lastTimePaymentApplicable(Distribution storage distribution) internal view returns (uint256) {
