@@ -285,6 +285,11 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         // Exits typically revert, except for the proportional exit when the emergency pause mechanism has been
         // triggered. This allows for a simple and safe way to exit the Pool.
 
+        // Note that the rate cache will not be automatically updated in such a scenario (though this can be still done
+        // manually). This however should not lead to any issues as the rate is not important during the emergency exit.
+        // On the contrary, decoupling the rate provider from the emergency exit might be useful under these
+        // circumstances.
+
         LinearPoolUserData.ExitKind kind = userData.exitKind();
         if (kind != LinearPoolUserData.ExitKind.EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT) {
             _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
@@ -326,22 +331,34 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         return (bptAmountIn, amountsOut);
     }
 
+    /**
+     * @dev Implementation of onSwap, from IGeneralPool.
+     */
     function onSwap(
         SwapRequest memory request,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
     ) public override onlyVault(request.poolId) whenNotPaused returns (uint256) {
-        // Validate indices, which are passed in here because Linear Pools have the General specialization.
-        // Note that they are only used within the onSwap function itself.
-        //
-        // Since we know that the order of `balances` must correspond to the token order in the Vault, and we
-        // already stored the indices of all three tokens during construction, there is no need to pass these
-        // indices through to internal functions called from onSwap.
+        // In most Pools, swaps involve exchanging one token held by the Pool for another. In this case however, since
+        // one of the three tokens is the BPT itself, a swap might also be a join (main/wrapped for BPT) or an exit
+        // (BPT for main/wrapped).
+        // All three swap types (swaps, joins and exits) are fully disabled if the emergency pause is enabled. Under
+        // these circumstances, the Pool should be exited using the regular Vault.exitPool function.
+
+        // Sanity check: this is not entirely necessary as the Vault's interface enforces the indices to be valid, but
+        // the check is cheap to perform.
         _require(indexIn < _TOTAL_TOKENS && indexOut < _TOTAL_TOKENS, Errors.OUT_OF_BOUNDS);
 
+        // Note that we already know the indices of the main token, wrapped token and BPT, so there is no need to pass
+        // these indices to the inner functions.
+
+        // Update the cache before computing the scaling factors, potentially updating the wrapped token's factor if the
+        // cache expired.
         _cacheWrappedTokenRateIfNecessary();
         uint256[] memory scalingFactors = _scalingFactors();
+        _upscaleArray(balances, scalingFactors);
+
         (uint256 lowerTarget, uint256 upperTarget) = getTargets();
         LinearMathParams memory params = LinearMathParams({
             fee: getSwapFeePercentage(),
@@ -351,15 +368,17 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         });
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            _upscaleArray(balances, scalingFactors);
+            // The amount given is for token in, the amount calculated is for token out
             request.amount = _upscale(request.amount, scalingFactors[indexIn]);
             uint256 amountOut = _onSwapGivenIn(request, balances, params);
+
             // amountOut tokens are exiting the Pool, so we round down.
             return _downscaleDown(amountOut, scalingFactors[indexOut]);
         } else {
-            _upscaleArray(balances, scalingFactors);
+            // The amount given is for token out, the amount calculated is for token in
             request.amount = _upscale(request.amount, scalingFactors[indexOut]);
             uint256 amountIn = _onSwapGivenOut(request, balances, params);
+
             // amountIn tokens are entering the Pool, so we round up.
             return _downscaleUp(amountIn, scalingFactors[indexIn]);
         }
