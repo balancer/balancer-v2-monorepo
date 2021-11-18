@@ -392,7 +392,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         bytes32 r,
         bytes32 s
     ) external override nonReentrant {
-        IERC20Permit(address(stakingToken)).permit(user, address(this), amount, deadline, v, r, s);
+        IERC20Permit(address(stakingToken)).permit(user, address(getVault()), amount, deadline, v, r, s);
         _stakeFor(stakingToken, amount, user, user);
     }
 
@@ -529,7 +529,15 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
         // We hold stakingTokens in an external balance as BPT needs to be external anyway
         // in the case where a user is exiting the pool after unstaking.
-        stakingToken.safeTransferFrom(from, address(this), amount);
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
+        ops[0] = IVault.UserBalanceOp({
+            asset: IAsset(address(stakingToken)),
+            amount: amount,
+            sender: from,
+            recipient: payable(address(this)),
+            kind: IVault.UserBalanceOpKind.TRANSFER_EXTERNAL
+        });
+        getVault().manageUserBalance(ops);
     }
 
     function _claim(

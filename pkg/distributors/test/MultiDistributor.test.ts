@@ -15,8 +15,10 @@ import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/sr
 
 import { MultiDistributor } from './helpers/MultiDistributor';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('MultiDistributor', () => {
+  let vault: Vault;
   let distributor: MultiDistributor;
   let distribution: string, anotherDistribution: string;
   let stakingToken: Token, stakingTokens: TokenList;
@@ -32,7 +34,16 @@ describe('MultiDistributor', () => {
   });
 
   sharedBeforeEach('deploy distributor', async () => {
-    distributor = await MultiDistributor.create();
+    vault = await Vault.create();
+    distributor = await MultiDistributor.create(vault);
+
+    // Authorise distributor to use users' vault token approvals
+    const action = await actionId(vault.instance, 'manageUserBalance');
+    await vault.grantRoleGlobally(action, distributor);
+    await vault.setRelayerApproval(user1, distributor, true);
+    await vault.setRelayerApproval(user2, distributor, true);
+    await vault.setRelayerApproval(user3, distributor, true);
+    await vault.setRelayerApproval(other, distributor, true);
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -507,7 +518,7 @@ describe('MultiDistributor', () => {
         context('when the user has the requested balance', () => {
           sharedBeforeEach('mint stake amount', async () => {
             await stakingToken.mint(from, amount);
-            await stakingToken.approve(distributor, amount, { from });
+            await stakingToken.approve(vault, amount, { from });
           });
 
           const itTransfersTheStakingTokensToTheDistributor = () => {
@@ -891,7 +902,7 @@ describe('MultiDistributor', () => {
       context('when the user has previously staked the requested balance', () => {
         sharedBeforeEach('stake amount', async () => {
           await stakingTokens.mint({ to: user1, amount });
-          await stakingTokens.approve({ to: distributor, amount, from: user1 });
+          await stakingTokens.approve({ to: vault, amount, from: user1 });
 
           await distributor.stake(stakingToken, amount, { from: user1 });
         });
@@ -1343,7 +1354,7 @@ describe('MultiDistributor', () => {
 
             sharedBeforeEach('stake tokens', async () => {
               await stakingToken.mint(user1, balance);
-              await stakingToken.approve(distributor, balance, { from: user1 });
+              await stakingToken.approve(vault, balance, { from: user1 });
               await distributor.stake(stakingToken, balance, { from: user1 });
               await advanceTime(PERIOD_DURATION / 2);
             });
@@ -1512,7 +1523,7 @@ describe('MultiDistributor', () => {
 
             sharedBeforeEach('stake tokens', async () => {
               await stakingToken.mint(user1, balance);
-              await stakingToken.approve(distributor, balance, { from: user1 });
+              await stakingToken.approve(vault, balance, { from: user1 });
               await distributor.stake(stakingToken, balance, { from: user1 });
               await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
             });
@@ -1733,7 +1744,7 @@ describe('MultiDistributor', () => {
 
             sharedBeforeEach('stake tokens', async () => {
               await stakingToken.mint(user1, balance);
-              await stakingToken.approve(distributor, balance, { from: user1 });
+              await stakingToken.approve(vault, balance, { from: user1 });
               await distributor.stake(stakingToken, balance, { from: user1 });
               await advanceTime(PERIOD_DURATION / 2);
             });
@@ -1915,7 +1926,7 @@ describe('MultiDistributor', () => {
 
             sharedBeforeEach('stake tokens', async () => {
               await stakingToken.mint(user1, balance);
-              await stakingToken.approve(distributor, balance, { from: user1 });
+              await stakingToken.approve(vault, balance, { from: user1 });
               await distributor.stake(stakingToken, balance, { from: user1 });
               await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
             });
@@ -2126,7 +2137,7 @@ describe('MultiDistributor', () => {
       context('when the user had some stake', () => {
         sharedBeforeEach('stake some amount', async () => {
           await stakingToken.mint(user1, fp(1));
-          await stakingToken.approve(distributor, fp(1), { from: user1 });
+          await stakingToken.approve(vault, fp(1), { from: user1 });
           await distributor.stake(stakingToken, fp(1), { from: user1 });
         });
 
@@ -2177,7 +2188,7 @@ describe('MultiDistributor', () => {
       context('when the user had some stake', () => {
         sharedBeforeEach('stake some amount', async () => {
           await stakingToken.mint(user1, fp(1));
-          await stakingToken.approve(distributor, fp(1), { from: user1 });
+          await stakingToken.approve(vault, fp(1), { from: user1 });
           await distributor.stake(stakingToken, fp(1), { from: user1 });
           await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
         });
@@ -2364,7 +2375,7 @@ describe('MultiDistributor', () => {
       context('when the user had some stake', () => {
         sharedBeforeEach('stake some amount', async () => {
           await stakingToken.mint(user1, balance);
-          await stakingToken.approve(distributor, balance, { from: user1 });
+          await stakingToken.approve(vault, balance, { from: user1 });
           await distributor.stake(stakingToken, balance, { from: user1 });
         });
 
@@ -2480,7 +2491,7 @@ describe('MultiDistributor', () => {
       context('when the user had some stake', () => {
         sharedBeforeEach('stake some amount', async () => {
           await stakingToken.mint(user1, balance);
-          await stakingToken.approve(distributor, balance, { from: user1 });
+          await stakingToken.approve(vault, balance, { from: user1 });
           await distributor.stake(stakingToken, balance, { from: user1 });
           await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
         });
@@ -2731,7 +2742,7 @@ describe('MultiDistributor', () => {
       await assertUserRewards(user1, { rate: 0, paid: 45000, earned: 45000 });
 
       await stakingToken.mint(user1, fp(1));
-      await stakingToken.approve(distributor, fp(1), { from: user1 });
+      await stakingToken.approve(vault, fp(1), { from: user1 });
       await distributor.stake(stakingToken, fp(1), { from: user1 });
       await advanceTime(PERIOD_DURATION / 2);
 
@@ -2874,7 +2885,7 @@ describe('MultiDistributor', () => {
       await assertUserRewards(user1, { rate: 52500, paid: 0, earned: 52500 });
       await assertUserRewards(user2, { rate: 30000, paid: 22500, earned: 0 });
 
-      await stakingToken.approve(distributor, fp(2), { from: user2 });
+      await stakingToken.approve(vault, fp(2), { from: user2 });
       await distributor.stake(stakingToken, fp(2), { from: user2 });
 
       expect(await distributor.globalTokensPerStake(distribution)).to.be.almostEqualFp(52500);
