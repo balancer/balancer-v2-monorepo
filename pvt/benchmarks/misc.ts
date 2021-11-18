@@ -5,6 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { StablePoolEncoder, toNormalizedWeights, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { MAX_UINT256, ZERO_ADDRESS, MAX_WEIGHTED_TOKENS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
@@ -18,17 +19,13 @@ for (let i = 0; i < MAX_WEIGHTED_TOKENS; i++) {
 }
 
 export async function setupEnvironment(): Promise<{
-  vault: Contract;
+  vault: Vault;
   tokens: TokenList;
   trader: SignerWithAddress;
 }> {
   const { admin, creator, trader } = await getSigners();
 
-  const weth = await deploy('v2-standalone-utils/TestWETH', { args: [admin.address] });
-
-  const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
-
-  const vault = await deploy('v2-vault/Vault', { args: [authorizer.address, weth.address, 0, 0] });
+  const vault = await Vault.create({ admin });
 
   const tokens = await deploySortedTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
 
@@ -57,12 +54,12 @@ export async function setupEnvironment(): Promise<{
     });
   }
 
-  await vault.connect(trader).manageUserBalance(transfers);
+  await vault.instance.connect(trader).manageUserBalance(transfers);
 
   return { vault, tokens, trader };
 }
 
-export async function deployPool(vault: Contract, tokens: TokenList, poolName: PoolName): Promise<string> {
+export async function deployPool(vault: Vault, tokens: TokenList, poolName: PoolName): Promise<string> {
   const { creator } = await getSigners();
 
   const symbols = Object.keys(tokens);
@@ -120,7 +117,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
   const poolId = await pool.getPoolId();
 
-  await vault.connect(creator).joinPool(poolId, creator.address, creator.address, {
+  await vault.instance.connect(creator).joinPool(poolId, creator.address, creator.address, {
     assets: tokenAddresses,
     maxAmountsIn: tokenAddresses.map(() => initialPoolBalance), // These end up being the actual join amounts
     fromInternalBalance: false,
@@ -133,12 +130,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   return poolId;
 }
 
-export async function getWeightedPool(
-  vault: Contract,
-  tokens: TokenList,
-  size: number,
-  offset?: number
-): Promise<string> {
+export async function getWeightedPool(vault: Vault, tokens: TokenList, size: number, offset?: number): Promise<string> {
   return size === 2
     ? deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool2Tokens')
     : size > 20
@@ -146,12 +138,7 @@ export async function getWeightedPool(
     : deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool');
 }
 
-export async function getStablePool(
-  vault: Contract,
-  tokens: TokenList,
-  size: number,
-  offset?: number
-): Promise<string> {
+export async function getStablePool(vault: Vault, tokens: TokenList, size: number, offset?: number): Promise<string> {
   return deployPool(vault, pickTokens(tokens, size, offset), 'StablePool');
 }
 
@@ -176,7 +163,7 @@ export async function getSigners(): Promise<{
 type PoolName = 'WeightedPool' | 'WeightedPool2Tokens' | 'StablePool' | 'ManagedPool';
 
 async function deployPoolFromFactory(
-  vault: Contract,
+  vault: Vault,
   poolName: PoolName,
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {

@@ -4,6 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { bn, printGas } from '@balancer-labs/v2-helpers/src/numbers';
 import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { setupEnvironment, getWeightedPool, getStablePool, pickTokenAddresses } from './misc';
 import { WeightedPoolEncoder, StablePoolEncoder } from '@balancer-labs/balancer-js';
@@ -16,7 +17,7 @@ const managedPoolMin = 40;
 const managedPoolMax = 50;
 const maxManagedTokens = 50;
 
-let vault: Contract;
+let vault: Vault;
 let tokens: TokenList;
 
 let trader: SignerWithAddress;

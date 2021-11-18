@@ -1,15 +1,15 @@
-import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { fp, printGas } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { getTokensSwaps } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
 import { getWeightedPool, getStablePool, setupEnvironment, tokenSymbols } from './misc';
 import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 
-let vault: Contract;
+let vault: Vault;
 let tokens: TokenList;
 
 let trader: SignerWithAddress;
@@ -74,7 +74,7 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
   for (let poolAmount = 1; poolAmount <= MAX_POOLS; ++poolAmount) {
     if (poolAmount == 1) {
       const swap = () =>
-        vault.connect(trader).swap(
+        vault.instance.connect(trader).swap(
           {
             kind: 0,
             poolId: poolIds[0],
@@ -111,7 +111,7 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
     );
 
     const batchSwap = () =>
-      vault
+      vault.instance
         .connect(trader)
         .batchSwap(
           SwapKind.GivenIn,
