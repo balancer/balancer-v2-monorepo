@@ -1,22 +1,17 @@
-import { pick } from 'lodash';
 import { ethers } from 'hardhat';
 import { Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { StablePoolEncoder, toNormalizedWeights, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { MAX_UINT256, ZERO_ADDRESS, MAX_WEIGHTED_TOKENS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { deploySortedTokens, mintTokens, TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { advanceTime, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { range } from 'lodash';
-
-export const tokenSymbols = Array(MAX_WEIGHTED_TOKENS);
-for (let i = 0; i < MAX_WEIGHTED_TOKENS; i++) {
-  tokenSymbols[i] = `TKN${i}`;
-}
+import { parseFixed } from '@ethersproject/bignumber';
 
 export async function setupEnvironment(): Promise<{
   vault: Vault;
@@ -27,32 +22,28 @@ export async function setupEnvironment(): Promise<{
 
   const vault = await Vault.create({ admin });
 
-  const tokens = await deploySortedTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
+  const tokens = await TokenList.create(
+    Array.from({ length: MAX_WEIGHTED_TOKENS }).map((_, i) => `TKN${i}`),
+    { sorted: true }
+  );
 
-  const symbols = Object.keys(tokens);
-  const tokenAddresses = symbols.map((symbol) => tokens[symbol].address);
-
-  for (const symbol in tokens) {
+  await tokens.asyncEach(async (token) => {
     // creator tokens are used to initialize pools, but tokens are only minted when required
-    await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
+    await token.approve(vault, MAX_UINT256, { from: creator });
 
     // trader tokens are used to trade and not have non-zero balances
-    await mintTokens(tokens, symbol, trader, 200e18);
-    await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
-  }
+    await token.mint(trader, parseFixed('200', 18));
+    await token.approve(vault, MAX_UINT256, { from: trader });
+  });
 
   // deposit internal balance for trader to make it non-zero
-  const transfers = [];
-
-  for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-    transfers.push({
-      kind: 0, // deposit
-      asset: tokenAddresses[idx],
-      amount: bn(100e18),
-      sender: trader.address,
-      recipient: trader.address,
-    });
-  }
+  const transfers = tokens.map((token) => ({
+    kind: 0, // deposit
+    asset: token.address,
+    amount: parseFixed('100', 18),
+    sender: trader.address,
+    recipient: trader.address,
+  }));
 
   await vault.instance.connect(trader).manageUserBalance(transfers);
 
@@ -62,21 +53,18 @@ export async function setupEnvironment(): Promise<{
 export async function deployPool(vault: Vault, tokens: TokenList, poolName: PoolName): Promise<string> {
   const { creator } = await getSigners();
 
-  const symbols = Object.keys(tokens);
-
   const initialPoolBalance = bn(100e18);
-  for (const symbol of symbols) {
-    await mintTokens(tokens, symbol, creator, initialPoolBalance);
-  }
+  await tokens.asyncEach(async (token) => {
+    await token.mint(creator, initialPoolBalance);
+  });
 
-  const tokenAddresses = symbols.map((symbol) => tokens[symbol].address);
   const swapFeePercentage = fp(0.02); // 2%
 
   let pool: Contract;
   let joinUserData: string;
 
   if (poolName == 'WeightedPool' || poolName == 'WeightedPool2Tokens' || poolName == 'ManagedPool') {
-    const WEIGHTS = range(10000, 10000 + symbols.length);
+    const WEIGHTS = range(10000, 10000 + tokens.length);
     const weights = toNormalizedWeights(WEIGHTS.map(bn)); // Equal weights for all tokens
     const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
 
@@ -84,15 +72,15 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 
     switch (poolName) {
       case 'ManagedPool': {
-        params = [tokenAddresses, weights, assetManagers, swapFeePercentage];
+        params = [tokens.addresses, weights, assetManagers, swapFeePercentage];
         break;
       }
       case 'WeightedPool2Tokens': {
-        params = [tokenAddresses, weights, swapFeePercentage, true];
+        params = [tokens.addresses, weights, swapFeePercentage, true];
         break;
       }
       default: {
-        params = [tokenAddresses, weights, assetManagers, swapFeePercentage];
+        params = [tokens.addresses, weights, assetManagers, swapFeePercentage];
       }
     }
 
@@ -101,16 +89,16 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
       parameters: params,
     });
 
-    joinUserData = WeightedPoolEncoder.joinInit(tokenAddresses.map(() => initialPoolBalance));
+    joinUserData = WeightedPoolEncoder.joinInit(tokens.map(() => initialPoolBalance));
   } else if (poolName == 'StablePool') {
     const amplificationParameter = bn(50);
 
     pool = await deployPoolFromFactory(vault, poolName, {
       from: creator,
-      parameters: [tokenAddresses, amplificationParameter, swapFeePercentage],
+      parameters: [tokens.addresses, amplificationParameter, swapFeePercentage],
     });
 
-    joinUserData = StablePoolEncoder.joinInit(tokenAddresses.map(() => initialPoolBalance));
+    joinUserData = StablePoolEncoder.joinInit(tokens.map(() => initialPoolBalance));
   } else {
     throw new Error(`Unhandled pool: ${poolName}`);
   }
@@ -118,8 +106,8 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
   const poolId = await pool.getPoolId();
 
   await vault.instance.connect(creator).joinPool(poolId, creator.address, creator.address, {
-    assets: tokenAddresses,
-    maxAmountsIn: tokenAddresses.map(() => initialPoolBalance), // These end up being the actual join amounts
+    assets: tokens.addresses,
+    maxAmountsIn: tokens.map(() => initialPoolBalance), // These end up being the actual join amounts
     fromInternalBalance: false,
     userData: joinUserData,
   });
@@ -130,24 +118,20 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
   return poolId;
 }
 
-export async function getWeightedPool(vault: Vault, tokens: TokenList, size: number, offset?: number): Promise<string> {
+export async function getWeightedPool(vault: Vault, tokens: TokenList, size: number, offset = 0): Promise<string> {
   return size === 2
-    ? deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool2Tokens')
+    ? deployPool(vault, tokens.subset(size, offset), 'WeightedPool2Tokens')
     : size > 20
-    ? deployPool(vault, pickTokens(tokens, size, offset), 'ManagedPool')
-    : deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool');
+    ? deployPool(vault, tokens.subset(size, offset), 'ManagedPool')
+    : deployPool(vault, tokens.subset(size, offset), 'WeightedPool');
 }
 
 export async function getStablePool(vault: Vault, tokens: TokenList, size: number, offset?: number): Promise<string> {
-  return deployPool(vault, pickTokens(tokens, size, offset), 'StablePool');
-}
-
-function pickTokens(tokens: TokenList, size: number, offset?: number): TokenList {
-  return pick(tokens, tokenSymbols.slice(offset ?? 0, size + (offset ?? 0)));
+  return deployPool(vault, tokens.subset(size, offset), 'StablePool');
 }
 
 export function pickTokenAddresses(tokens: TokenList, size: number, offset?: number): string[] {
-  return tokenSymbols.slice(offset ?? 0, size + (offset ?? 0)).map((symbol) => tokens[symbol].address);
+  return tokens.subset(size, offset).addresses;
 }
 
 export async function getSigners(): Promise<{

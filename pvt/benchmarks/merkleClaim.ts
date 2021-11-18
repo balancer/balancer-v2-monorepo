@@ -1,11 +1,11 @@
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { setupEnvironment } from './misc';
 import { printGas } from '@balancer-labs/v2-helpers/src/numbers';
 import { BytesLike, solidityKeccak256 } from 'ethers/lib/utils';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 interface Claim {
