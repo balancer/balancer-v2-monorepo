@@ -281,96 +281,106 @@ describe('MultiDistributor', () => {
         });
       };
 
-      context('when the given distribution was not rewarded yet', () => {
-        itCreatesANewRewardDistributionPeriod();
+      context('when called by the distribution owner', () => {
+        context('when the given distribution was not rewarded yet', () => {
+          itCreatesANewRewardDistributionPeriod();
 
-        it('starts giving rewards to already subscribed users', async () => {
-          const previousUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
-          expect(previousUser1Tokens).to.be.zero;
+          it('starts giving rewards to already subscribed users', async () => {
+            const previousUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
+            expect(previousUser1Tokens).to.be.zero;
 
-          const previousUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
-          expect(previousUser2Tokens).to.be.zero;
+            const previousUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
+            expect(previousUser2Tokens).to.be.zero;
 
-          await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
-          await advanceTime(PERIOD_DURATION);
+            await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
+            await advanceTime(PERIOD_DURATION);
 
-          const currentUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
-          expect(currentUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE));
+            const currentUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
+            expect(currentUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE));
 
-          const currentUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
-          expect(currentUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE));
+            const currentUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
+            expect(currentUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE));
+          });
+        });
+
+        context('when the given distribution was already rewarded', () => {
+          sharedBeforeEach('reward distribution', async () => {
+            await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
+          });
+
+          context('at the beginning of the reward period', () => {
+            itExtendsTheCurrentDistributionPeriod();
+          });
+
+          context('at the middle of the reward period', () => {
+            sharedBeforeEach('move at the middle of the reward period', async () => {
+              await advanceTime(PERIOD_DURATION / 2);
+            });
+
+            itExtendsTheCurrentDistributionPeriod();
+          });
+
+          context('at the end of the reward period', () => {
+            sharedBeforeEach('move at the end of the reward period', async () => {
+              await advanceTime(PERIOD_DURATION);
+            });
+
+            itCreatesANewRewardDistributionPeriod();
+
+            it('accrues already given rewards', async () => {
+              const previousUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
+              expect(previousUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE));
+
+              const previousUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
+              expect(previousUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE));
+
+              // Add new funding, double the size of the original, and fully process them
+              await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE.mul(2), { from: distributionOwner });
+              await advanceTime(PERIOD_DURATION);
+
+              // Each user should now get their share out of the two batches of tokens (three times the original amount)
+              const currentUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
+              expect(currentUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE.mul(3)));
+
+              const currentUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
+              expect(currentUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE.mul(3)));
+            });
+          });
+
+          context('after the reward period has ended', () => {
+            sharedBeforeEach('move after the reward period', async () => {
+              await advanceTime(PERIOD_DURATION + 1);
+            });
+
+            itCreatesANewRewardDistributionPeriod();
+
+            it('accrues already given rewards', async () => {
+              const previousUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
+              expect(previousUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE));
+
+              const previousUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
+              expect(previousUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE));
+
+              // Add new rewards, double the size of the original ones, and fully process them
+              await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE.mul(2), { from: distributionOwner });
+              await advanceTime(PERIOD_DURATION);
+
+              // Each user should now get their share out of the two batches of rewards (three times the original amount)
+              const currentUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
+              expect(currentUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE.mul(3)));
+
+              const currentUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
+              expect(currentUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE.mul(3)));
+            });
+          });
         });
       });
 
-      context('when the given distribution was already rewarded', () => {
-        sharedBeforeEach('reward distribution', async () => {
-          await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
-        });
-
-        context('at the beginning of the reward period', () => {
-          itExtendsTheCurrentDistributionPeriod();
-        });
-
-        context('at the middle of the reward period', () => {
-          sharedBeforeEach('move at the middle of the reward period', async () => {
-            await advanceTime(PERIOD_DURATION / 2);
-          });
-
-          itExtendsTheCurrentDistributionPeriod();
-        });
-
-        context('at the end of the reward period', () => {
-          sharedBeforeEach('move at the end of the reward period', async () => {
-            await advanceTime(PERIOD_DURATION);
-          });
-
-          itCreatesANewRewardDistributionPeriod();
-
-          it('accrues already given rewards', async () => {
-            const previousUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
-            expect(previousUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE));
-
-            const previousUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
-            expect(previousUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE));
-
-            // Add new funding, double the size of the original, and fully process them
-            await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE.mul(2), { from: distributionOwner });
-            await advanceTime(PERIOD_DURATION);
-
-            // Each user should now get their share out of the two batches of tokens (three times the original amount)
-            const currentUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
-            expect(currentUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE.mul(3)));
-
-            const currentUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
-            expect(currentUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE.mul(3)));
-          });
-        });
-
-        context('after the reward period has ended', () => {
-          sharedBeforeEach('move after the reward period', async () => {
-            await advanceTime(PERIOD_DURATION + 1);
-          });
-
-          itCreatesANewRewardDistributionPeriod();
-
-          it('accrues already given rewards', async () => {
-            const previousUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
-            expect(previousUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE));
-
-            const previousUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
-            expect(previousUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE));
-
-            // Add new rewards, double the size of the original ones, and fully process them
-            await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE.mul(2), { from: distributionOwner });
-            await advanceTime(PERIOD_DURATION);
-
-            // Each user should now get their share out of the two batches of rewards (three times the original amount)
-            const currentUser1Tokens = await distributor.getClaimableTokens(distribution, user1);
-            expect(currentUser1Tokens).to.be.almostEqual(toUser1Share(DISTRIBUTION_SIZE.mul(3)));
-
-            const currentUser2Tokens = await distributor.getClaimableTokens(distribution, user2);
-            expect(currentUser2Tokens).to.be.almostEqual(toUser2Share(DISTRIBUTION_SIZE.mul(3)));
-          });
+      context('when called by another address', () => {
+        it('reverts', async () => {
+          await expect(
+            distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: other })
+          ).to.be.revertedWith('SENDER_NOT_OWNER');
         });
       });
     });
@@ -393,81 +403,91 @@ describe('MultiDistributor', () => {
         distribution = await distributor.getDistributionId(stakingToken, distributionToken, distributionOwner);
       });
 
-      context('when the new duration is not zero', () => {
-        const newDuration = 1;
+      context('when called by the distribution owner', () => {
+        context('when the new duration is not zero', () => {
+          const newDuration = 1;
 
-        const itCannotSetThePeriodDuration = () => {
+          const itCannotSetThePeriodDuration = () => {
+            it('reverts', async () => {
+              await expect(
+                distributor.setDuration(distribution, newDuration, { from: distributionOwner })
+              ).to.be.revertedWith('DISTRIBUTION_STILL_ACTIVE');
+            });
+          };
+
+          const itSetsTheDistributionPeriodDuration = () => {
+            it('sets the distribution period duration', async () => {
+              await distributor.setDuration(distribution, newDuration, { from: distributionOwner });
+
+              const { duration } = await distributor.getDistribution(distribution);
+              expect(duration).to.be.equal(newDuration);
+            });
+
+            it('emits a DistributionDurationSet event', async () => {
+              const tx = await distributor.setDuration(distribution, newDuration, { from: distributionOwner });
+
+              expectEvent.inReceipt(await tx.wait(), 'DistributionDurationSet', {
+                distribution: distribution,
+                duration: newDuration,
+              });
+            });
+          };
+
+          context('when there is an on going distribution period', () => {
+            sharedBeforeEach('reward distribution', async () => {
+              await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
+            });
+
+            context('at the beginning of the reward period', () => {
+              itCannotSetThePeriodDuration();
+            });
+
+            context('at the middle of the reward period', () => {
+              sharedBeforeEach('move at the middle of the reward period', async () => {
+                await advanceTime(PERIOD_DURATION / 2);
+              });
+
+              itCannotSetThePeriodDuration();
+            });
+
+            context('at the end of the reward period', () => {
+              sharedBeforeEach('move at the end of the reward period', async () => {
+                await advanceTime(PERIOD_DURATION);
+              });
+
+              itSetsTheDistributionPeriodDuration();
+            });
+
+            context('after the reward period has ended', () => {
+              sharedBeforeEach('move after the reward period', async () => {
+                await advanceTime(PERIOD_DURATION + 1);
+              });
+
+              itSetsTheDistributionPeriodDuration();
+            });
+          });
+
+          context('when there is no on going distribution period', () => {
+            itSetsTheDistributionPeriodDuration();
+          });
+        });
+
+        context('when the new duration is not zero', () => {
+          const newDuration = 0;
+
           it('reverts', async () => {
             await expect(
               distributor.setDuration(distribution, newDuration, { from: distributionOwner })
-            ).to.be.revertedWith('DISTRIBUTION_STILL_ACTIVE');
+            ).to.be.revertedWith('DISTRIBUTION_DURATION_ZERO');
           });
-        };
-
-        const itSetsTheDistributionPeriodDuration = () => {
-          it('sets the distribution period duration', async () => {
-            await distributor.setDuration(distribution, newDuration, { from: distributionOwner });
-
-            const { duration } = await distributor.getDistribution(distribution);
-            expect(duration).to.be.equal(newDuration);
-          });
-
-          it('emits a DistributionDurationSet event', async () => {
-            const tx = await distributor.setDuration(distribution, newDuration, { from: distributionOwner });
-
-            expectEvent.inReceipt(await tx.wait(), 'DistributionDurationSet', {
-              distribution: distribution,
-              duration: newDuration,
-            });
-          });
-        };
-
-        context('when there is an on going distribution period', () => {
-          sharedBeforeEach('reward distribution', async () => {
-            await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
-          });
-
-          context('at the beginning of the reward period', () => {
-            itCannotSetThePeriodDuration();
-          });
-
-          context('at the middle of the reward period', () => {
-            sharedBeforeEach('move at the middle of the reward period', async () => {
-              await advanceTime(PERIOD_DURATION / 2);
-            });
-
-            itCannotSetThePeriodDuration();
-          });
-
-          context('at the end of the reward period', () => {
-            sharedBeforeEach('move at the end of the reward period', async () => {
-              await advanceTime(PERIOD_DURATION);
-            });
-
-            itSetsTheDistributionPeriodDuration();
-          });
-
-          context('after the reward period has ended', () => {
-            sharedBeforeEach('move after the reward period', async () => {
-              await advanceTime(PERIOD_DURATION + 1);
-            });
-
-            itSetsTheDistributionPeriodDuration();
-          });
-        });
-
-        context('when there is no on going distribution period', () => {
-          itSetsTheDistributionPeriodDuration();
         });
       });
 
-      context('when the new duration is not zero', () => {
-        const newDuration = 0;
-
+      context('when called by another address', () => {
         it('reverts', async () => {
           await expect(
-            distributor.setDuration(distribution, newDuration, { from: distributionOwner })
-          ).to.be.revertedWith('DISTRIBUTION_DURATION_ZERO');
+            distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: other })
+          ).to.be.revertedWith('SENDER_NOT_OWNER');
         });
       });
     });
