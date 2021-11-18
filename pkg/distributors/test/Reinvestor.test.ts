@@ -115,7 +115,7 @@ describe('Reinvestor', () => {
         ).wait();
 
         const deltas = [bn(0), bn(0)];
-        deltas[assets.indexOf(rewardToken.address)] = bn('999999999999999498');
+        deltas[assets.indexOf(rewardToken.address)] = bn('999999999999999898');
 
         expectEvent.inIndirectReceipt(receipt, vault.interface, 'PoolBalanceChanged', {
           poolId: destinationPoolId,
@@ -133,7 +133,7 @@ describe('Reinvestor', () => {
 
         await stakingContract.connect(lp).claimWithCallback([id], callbackContract.address, calldata);
         const bptBalanceAfter = await destinationPool.balanceOf(lp.address);
-        expect(bptBalanceAfter.sub(bptBalanceBefore)).to.equal(bn('998703239790478024'));
+        expect(bptBalanceAfter.sub(bptBalanceBefore)).to.equal(bn('998703239790478424'));
       });
 
       describe('create', () => {

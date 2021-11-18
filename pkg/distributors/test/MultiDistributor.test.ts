@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { BigNumber, ContractTransaction } from 'ethers';
+import { WeiPerEther as ONE } from '@ethersproject/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -195,7 +196,7 @@ describe('MultiDistributor', () => {
           await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
 
           const { paymentRate: currentPaymentRate } = await distributor.getDistribution(distribution);
-          expect(currentPaymentRate).to.be.equal(DISTRIBUTION_SIZE.div(PERIOD_DURATION));
+          expect(currentPaymentRate).to.be.equal(fp(DISTRIBUTION_SIZE).div(PERIOD_DURATION));
         });
 
         it('emits a DistributionFunded event', async () => {
@@ -238,8 +239,8 @@ describe('MultiDistributor', () => {
           const { paymentRate: currentPaymentRate } = await distributor.getDistribution(distribution);
           expect(currentPaymentRate).to.be.gt(previousPaymentRate);
 
-          const leftOverRewards = periodFinish.sub(currentTime).mul(previousPaymentRate);
-          const expectedNewPaymentRate = DISTRIBUTION_SIZE.add(leftOverRewards).div(PERIOD_DURATION);
+          const leftOverRewards = periodFinish.sub(currentTime).mul(previousPaymentRate).div(ONE);
+          const expectedNewPaymentRate = fp(DISTRIBUTION_SIZE.add(leftOverRewards)).div(PERIOD_DURATION);
           expect(currentPaymentRate).to.be.almostEqual(expectedNewPaymentRate);
         });
 
