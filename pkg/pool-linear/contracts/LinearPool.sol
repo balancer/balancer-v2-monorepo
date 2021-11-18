@@ -461,13 +461,13 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
         // Exits typically revert, except for the proportional exit when the emergency pause mechanism has been
         // triggered. This allows for a simple and safe way to exit the Pool.
-        if (kind == LinearPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        if (kind == LinearPoolUserData.ExitKind.EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT) {
             _ensurePaused();
             // Note that this will cause the user's BPT to be burned, which is not something that happens during
             // regular operation of this Pool, and may lead to accounting errors. Because of this, it is highly
             // advisable to stop using a Pool after it is paused and the pause window expires.
 
-            (bptAmountIn, amountsOut) = _proportionalExit(balances, userData);
+            (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
             // For simplicity, due protocol fees are set to zero.
             dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
         } else {
@@ -475,7 +475,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         }
     }
 
-    function _proportionalExit(uint256[] memory balances, bytes memory userData)
+    function _emergencyProportionalExit(uint256[] memory balances, bytes memory userData)
         private
         view
         returns (uint256, uint256[] memory)

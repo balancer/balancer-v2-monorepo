@@ -535,7 +535,7 @@ describe('LinearPool', function () {
     });
   });
 
-  describe('proportional exit', () => {
+  describe('emergency proportional exit', () => {
     let lowerTarget: BigNumber, upperTarget: BigNumber;
 
     sharedBeforeEach('deploy and initialize pool', async () => {
@@ -571,7 +571,7 @@ describe('LinearPool', function () {
     context('when not paused', () => {
       it('cannot exit proportionally', async () => {
         const bptIn = fp(10);
-        await expect(pool.proportionalExit({ from: lp, bptIn })).to.be.revertedWith('NOT_PAUSED');
+        await expect(pool.emergencyProportionalExit({ from: lp, bptIn })).to.be.revertedWith('NOT_PAUSED');
       });
     });
 
@@ -593,7 +593,7 @@ describe('LinearPool', function () {
             i == pool.bptIndex ? bn(0) : bn(balance).div(4)
           );
 
-          const result = await pool.proportionalExit({ from: lp, bptIn });
+          const result = await pool.emergencyProportionalExit({ from: lp, bptIn });
 
           // Protocol fees should be zero
           expect(result.dueProtocolFeeAmounts).to.be.zeros;
@@ -633,7 +633,7 @@ describe('LinearPool', function () {
 
         sharedBeforeEach('first lp exits', async () => {
           const bptIn = await pool.balanceOf(lp);
-          await pool.proportionalExit({ from: lp, bptIn });
+          await pool.emergencyProportionalExit({ from: lp, bptIn });
         });
 
         it('can fully exit proportionally', async () => {
@@ -646,7 +646,7 @@ describe('LinearPool', function () {
           );
 
           //Exit with all BPT balance
-          const result = await pool.proportionalExit({ from: other, bptIn: previousOtherBptBalance });
+          const result = await pool.emergencyProportionalExit({ from: other, bptIn: previousOtherBptBalance });
 
           // Protocol fees should be zero
           expect(result.dueProtocolFeeAmounts).to.be.zeros;
