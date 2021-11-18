@@ -18,11 +18,17 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 
 /**
- * Price rate caches are used to avoid querying the price rate for a token every time we need to work with it.
- * Data is stored with the following structure:
+ * Price rate caches are used to avoid querying the price rate for a token every time we need to work with it. It is
+ * useful for slow changing rates, such as those that arise from interest-bearing tokens (e.g. waDAI into DAI).
  *
+ * The cache data is packed into a single bytes32 value with the following structure:
  * [   expires   | duration | price rate value ]
  * [   uint64    |  uint64  |      uint128     ]
+ * [ MSB                                   LSB ]
+ *
+ *
+ * 'rate' is an 18 decimal fixed point number, supporting rates of up to ~3e20. 'expires' is a Unix timestamp, and
+ * 'duration' is expressed in seconds.
  */
 library PriceRateCache {
     using WordCodec for bytes32;
@@ -32,21 +38,21 @@ library PriceRateCache {
     uint256 private constant _PRICE_RATE_CACHE_EXPIRES_OFFSET = 128 + 64;
 
     /**
-     * @dev Decodes the rate value for a price rate cache
+     * @dev Returns the rate of a price rate cache.
      */
-    function getValue(bytes32 cache) internal pure returns (uint256) {
+    function getRate(bytes32 cache) internal pure returns (uint256) {
         return cache.decodeUint128(_PRICE_RATE_CACHE_VALUE_OFFSET);
     }
 
     /**
-     * @dev Decodes the duration for a price rate cache
+     * @dev Returns the duration of a price rate cache.
      */
     function getDuration(bytes32 cache) internal pure returns (uint256) {
         return cache.decodeUint64(_PRICE_RATE_CACHE_DURATION_OFFSET);
     }
 
     /**
-     * @dev Decodes the duration and expiration timestamp for a price rate cache
+     * @dev Returns the duration and expiration time of a price rate cache.
      */
     function getTimestamps(bytes32 cache) internal pure returns (uint256 duration, uint256 expires) {
         duration = getDuration(cache);
@@ -54,7 +60,8 @@ library PriceRateCache {
     }
 
     /**
-     * @dev Fetches the current price rate from a provider and builds a new price rate cache
+     * @dev Encodes rate and duration into a price rate cache. The expiration time is computed automatically, counting
+     * from the current time.
      */
     function encode(uint256 rate, uint256 duration) internal view returns (bytes32) {
         _require(rate < 2**128, Errors.PRICE_RATE_OVERFLOW);
@@ -67,7 +74,7 @@ library PriceRateCache {
     }
 
     /**
-     * @dev Decodes a price rate cache into rate value, duration and expiration time
+     * @dev Returns rate, duration and expiration time of a price rate cache.
      */
     function decode(bytes32 cache)
         internal
@@ -78,7 +85,7 @@ library PriceRateCache {
             uint256 expires
         )
     {
-        rate = getValue(cache);
+        rate = getRate(cache);
         (duration, expires) = getTimestamps(cache);
     }
 }
