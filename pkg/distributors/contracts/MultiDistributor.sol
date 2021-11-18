@@ -573,9 +573,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         for (uint256 i; i < distributionIds.length; i++) {
             bytes32 distributionId = distributionIds[i];
             Distribution storage distribution = _getDistribution(distributionId);
-
-            IERC20 stakingToken = distribution.stakingToken;
-            UserStaking storage userStaking = _userStakings[stakingToken][sender];
+            UserStaking storage userStaking = _userStakings[distribution.stakingToken][sender];
 
             // Note that the user may have unsubscribed from the distribution but still be due tokens. We therefore only
             // update the distribution if the user is subscribed to it (otherwise, it is already up to date).
