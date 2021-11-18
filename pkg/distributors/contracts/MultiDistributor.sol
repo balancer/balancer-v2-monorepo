@@ -658,11 +658,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         }
 
         uint256 userTokensPerStake = userStaking.distributions[distributionId].userTokensPerStake;
-        // Note `unaccountedPaymentPerToken is a fixed point value
-        uint256 unaccountedPaymentPerToken = _globalTokensPerStake(_getDistribution(distributionId)).sub(
+        // Note `unaccountedRatePerStake` is a fixed point value
+        uint256 unaccountedRatePerStake = _globalTokensPerStake(_getDistribution(distributionId)).sub(
             userTokensPerStake
         );
-        return FixedPoint.mulDown(userStaking.balance, unaccountedPaymentPerToken);
+        return FixedPoint.mulDown(userStaking.balance, unaccountedRatePerStake);
     }
 
     function _getDistribution(
