@@ -119,8 +119,11 @@ contract StablePhantomPool is StablePool {
 
         for (uint256 i = 0; i < params.tokens.length; i++) {
             _rateProviders[params.tokens[i]] = params.rateProviders[i];
-            _updateTokenRateCache(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
-            emit TokenRateProviderSet(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
+
+            if (params.rateProviders[i] != IRateProvider(0)) {
+                _updateTokenRateCache(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
+                emit TokenRateProviderSet(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
+            }
         }
 
         // The Vault keeps track of all Pool tokens in a specific order: we need to know what the index of BPT is in
