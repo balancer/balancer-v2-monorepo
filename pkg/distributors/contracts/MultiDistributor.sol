@@ -125,14 +125,6 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Returns the timestamp up to which a distribution has been distributing tokens
-     * @param distributionId ID of the distribution being queried
-     */
-    function lastTimePaymentApplicable(bytes32 distributionId) public view override returns (uint256) {
-        return _lastTimePaymentApplicable(_getDistribution(distributionId));
-    }
-
-    /**
      * @dev Returns if a user is subscribed to a distribution or not
      * @param distributionId ID of the distribution being queried
      * @param user The address of the user being queried
@@ -609,6 +601,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         return distribution.globalTokensPerStake.add(unpaidAmountPerToken);
     }
 
+    /**
+     * @dev Returns the timestamp up to which a distribution has been distributing tokens
+     * @param distribution The distribution being queried
+     */
     function _lastTimePaymentApplicable(Distribution storage distribution) internal view returns (uint256) {
         return Math.min(block.timestamp, distribution.periodFinish);
     }
