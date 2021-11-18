@@ -188,12 +188,13 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     }
 
     /**
-     * @dev Finishes initialization of the Linear Pool: it is unusable before calling this function.
+     * @dev Finishes initialization of the Linear Pool: it is unusable before calling this function as no BPT will have
+     * been minted.
      *
-     * Since Linear Pools have preminted BPT stored in the Vault, they require an initial join to deposit that BPT.
-     * Unfortunately, this cannot be performed during construction, as a join involves a callback function on the
-     * Pool, and the Pool will not have any code until construction finishes. Therefore, this must happen in a
-     * separate call.
+     * Since Linear Pools have preminted BPT stored in the Vault, they require an initial join to deposit said BPT as
+     * their balance. Unfortunately, this cannot be performed during construction, as a join involves calling the
+     * `onJoinPool` function on the Pool, and the Pool will not have any code until construction finishes. Therefore,
+     * this must happen in a separate call.
      *
      * It is highly recommended to create Linear pools using the LinearPoolFactory, which calls `initialize`
      * automatically.
@@ -202,10 +203,13 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         bytes32 poolId = getPoolId();
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
 
-        // During initialization, the Pool will mint the entire BPT supply for itself, and then join with it.
+        // Joins typically involve the Pool receiving tokens in exchange for newly-minted BPT. In this case however, the
+        // Pool will mint the entire BPT supply to itself, and join itself with it.
         uint256[] memory maxAmountsIn = new uint256[](_TOTAL_TOKENS);
-        maxAmountsIn[tokens[0] == IERC20(this) ? 0 : tokens[1] == IERC20(this) ? 1 : 2] = _INITIAL_BPT_SUPPLY;
+        maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
 
+        // The first time this executes, it will call `_onInitializePool` (as the BPT supply will be zero). Future calls
+        // will be routed to `_onJoinPool`, which always reverts, meaning `initialize` will only execute once.
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
             assets: _asIAsset(tokens),
             maxAmountsIn: maxAmountsIn,
@@ -229,10 +233,12 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
 
         // The full BPT supply will be minted and deposited in the Pool. Note that there is no need to approve the Vault
         // as it already has infinite BPT allowance.
+        uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
+
         uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
         amountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
 
-        return (_INITIAL_BPT_SUPPLY, amountsIn);
+        return (bptAmountOut, amountsIn);
     }
 
     function _onJoinPool(
@@ -257,9 +263,6 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
     }
 
-    /**
-     * @dev Proportional exit is only enabled when pool is paused.
-     */
     function _onExitPool(
         bytes32,
         address,
@@ -279,21 +282,22 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        LinearPoolUserData.ExitKind kind = userData.exitKind();
-
         // Exits typically revert, except for the proportional exit when the emergency pause mechanism has been
         // triggered. This allows for a simple and safe way to exit the Pool.
-        if (kind == LinearPoolUserData.ExitKind.EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT) {
+
+        LinearPoolUserData.ExitKind kind = userData.exitKind();
+        if (kind != LinearPoolUserData.ExitKind.EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT) {
+            _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
+        } else {
             _ensurePaused();
             // Note that this will cause the user's BPT to be burned, which is not something that happens during
             // regular operation of this Pool, and may lead to accounting errors. Because of this, it is highly
             // advisable to stop using a Pool after it is paused and the pause window expires.
 
             (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
-            // For simplicity, due protocol fees are set to zero.
+
+            // Due protocol fees are set to zero as this Pool accrues no fees and pays no protocol fees.
             dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
-        } else {
-            _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
         }
     }
 
@@ -306,7 +310,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         // retrieve their tokens in case of an emergency.
         //
         // This particular exit function is the only one available because it is the simplest, and therefore least
-        // likely to revert and lock funds.
+        // likely to be incorrect, or revert and lock funds.
 
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
