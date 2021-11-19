@@ -169,6 +169,7 @@ export class MultiDistributor {
 
   async claim(
     distributions: NAry<string>,
+    toInternalBalance: boolean,
     sender: Account,
     recipient: Account,
     params?: TxParams
@@ -176,7 +177,7 @@ export class MultiDistributor {
     if (!Array.isArray(distributions)) distributions = [distributions];
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
     const [senderAddress, recipientAddress] = TypesConverter.toAddresses([sender, recipient]);
-    return instance.claim(distributions, senderAddress, recipientAddress);
+    return instance.claim(distributions, toInternalBalance, senderAddress, recipientAddress);
   }
 
   async exit(stakingTokens: NAry<Token>, distributions: NAry<string>, params?: TxParams): Promise<ContractTransaction> {

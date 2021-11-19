@@ -2262,7 +2262,7 @@ describe('MultiDistributor', () => {
           to = user1;
         });
 
-        itHandlesClaiming((distribution: string) => distributor.claim(distribution, from, from, { from }));
+        itHandlesClaiming((distribution: string) => distributor.claim(distribution, false, from, from, { from }));
       });
 
       context('when sender and recipient are different', () => {
@@ -2271,7 +2271,7 @@ describe('MultiDistributor', () => {
           to = user1;
         });
 
-        itHandlesClaiming((distribution: string) => distributor.claim(distribution, from, to, { from }));
+        itHandlesClaiming((distribution: string) => distributor.claim(distribution, false, from, to, { from }));
       });
     });
   });

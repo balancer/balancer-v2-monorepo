@@ -141,12 +141,7 @@ interface IMultiDistributor {
 
     function claim(
         bytes32[] memory distributionIds,
-        address sender,
-        address recipient
-    ) external;
-
-    function claimAsInternalBalance(
-        bytes32[] memory distributionIds,
+        bool toInternalBalance,
         address sender,
         address recipient
     ) external;

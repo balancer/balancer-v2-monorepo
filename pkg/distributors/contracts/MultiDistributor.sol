@@ -432,31 +432,23 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     /**
      * @dev Claims earned distribution tokens for a list of distributions
      * @param distributionIds List of distributions to claim
+     * @param toInternalBalance Whether to send the claimed tokens to the recipient's internal balance
      * @param sender The address which earned the tokens being claimed
      * @param recipient The address which receives the claimed tokens
      */
     function claim(
         bytes32[] memory distributionIds,
+        bool toInternalBalance,
         address sender,
         address recipient
     ) external override nonReentrant {
         require(sender == msg.sender, "INVALID_SENDER");
-        _claim(distributionIds, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL, sender, recipient);
-    }
-
-    /**
-     * @dev Claims earned tokens for a list of distributions to internal balance
-     * @param distributionIds List of distributions to claim
-     * @param sender The address which earned the tokens being claimed
-     * @param recipient The address which receives the claimed tokens
-     */
-    function claimAsInternalBalance(
-        bytes32[] memory distributionIds,
-        address sender,
-        address recipient
-    ) external override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER");
-        _claim(distributionIds, IVault.UserBalanceOpKind.TRANSFER_INTERNAL, sender, recipient);
+        _claim(
+            distributionIds,
+            toInternalBalance ? IVault.UserBalanceOpKind.TRANSFER_INTERNAL : IVault.UserBalanceOpKind.WITHDRAW_INTERNAL,
+            sender,
+            recipient
+        );
     }
 
     /**
