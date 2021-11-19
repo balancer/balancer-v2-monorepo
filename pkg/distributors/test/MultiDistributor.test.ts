@@ -839,24 +839,36 @@ describe('MultiDistributor', () => {
     };
 
     describe('stake', () => {
-      context('when sender and recipient are the same', () => {
-        sharedBeforeEach('define sender and recipient', async () => {
-          from = user1;
-          to = user1;
+      context("when caller is not authorised to act on sender's behalf", () => {
+        it('reverts', async () => {
+          await expect(distributor.stake(stakingToken, 0, user2, user2, { from: user1 })).to.be.revertedWith(
+            'INVALID_SENDER'
+          );
         });
-
-        itHandlesStaking((token: Token, amount: BigNumberish) =>
-          distributor.stake(token, amount, from, from, { from })
-        );
       });
 
-      context('when sender and recipient are different', () => {
-        sharedBeforeEach('define sender and recipient', async () => {
-          from = other;
-          to = user1;
+      context("when caller is authorised to act on sender's behalf", () => {
+        context('when sender and recipient are the same', () => {
+          sharedBeforeEach('define sender and recipient', async () => {
+            from = user1;
+            to = user1;
+          });
+
+          itHandlesStaking((token: Token, amount: BigNumberish) =>
+            distributor.stake(token, amount, from, from, { from })
+          );
         });
 
-        itHandlesStaking((token: Token, amount: BigNumberish) => distributor.stake(token, amount, from, to, { from }));
+        context('when sender and recipient are different', () => {
+          sharedBeforeEach('define sender and recipient', async () => {
+            from = other;
+            to = user1;
+          });
+
+          itHandlesStaking((token: Token, amount: BigNumberish) =>
+            distributor.stake(token, amount, from, to, { from })
+          );
+        });
       });
     });
 
@@ -1246,26 +1258,36 @@ describe('MultiDistributor', () => {
     };
 
     describe('unstake', () => {
-      context('when sender and recipient are the same', () => {
-        sharedBeforeEach('define sender and recipient', async () => {
-          from = user1;
-          to = user1;
+      context("when caller is not authorised to act on sender's behalf", () => {
+        it('reverts', async () => {
+          await expect(distributor.unstake(stakingToken, 0, user2, user2, { from: user1 })).to.be.revertedWith(
+            'INVALID_SENDER'
+          );
         });
-
-        itHandlesUnstaking((token: Token, amount: BigNumberish) =>
-          distributor.unstake(token, amount, from, from, { from })
-        );
       });
 
-      context('when sender and recipient are different', () => {
-        sharedBeforeEach('define sender and recipient', async () => {
-          from = other;
-          to = user1;
+      context("when caller is authorised to act on sender's behalf", () => {
+        context('when sender and recipient are the same', () => {
+          sharedBeforeEach('define sender and recipient', async () => {
+            from = user1;
+            to = user1;
+          });
+
+          itHandlesUnstaking((token: Token, amount: BigNumberish) =>
+            distributor.unstake(token, amount, from, from, { from })
+          );
         });
 
-        itHandlesUnstaking((token: Token, amount: BigNumberish) =>
-          distributor.unstake(token, amount, from, to, { from })
-        );
+        context('when sender and recipient are different', () => {
+          sharedBeforeEach('define sender and recipient', async () => {
+            from = other;
+            to = user1;
+          });
+
+          itHandlesUnstaking((token: Token, amount: BigNumberish) =>
+            distributor.unstake(token, amount, from, to, { from })
+          );
+        });
       });
     });
   });
@@ -2256,22 +2278,32 @@ describe('MultiDistributor', () => {
     };
 
     describe('claim', () => {
-      context('when sender and recipient are the same', () => {
-        sharedBeforeEach('define sender and recipient', async () => {
-          from = user1;
-          to = user1;
+      context("when caller is not authorised to act on sender's behalf", () => {
+        it('reverts', async () => {
+          await expect(distributor.claim(distribution, false, user2, user2, { from: user1 })).to.be.revertedWith(
+            'INVALID_SENDER'
+          );
         });
-
-        itHandlesClaiming((distribution: string) => distributor.claim(distribution, false, from, from, { from }));
       });
 
-      context('when sender and recipient are different', () => {
-        sharedBeforeEach('define sender and recipient', async () => {
-          from = other;
-          to = user1;
+      context("when caller is authorised to act on sender's behalf", () => {
+        context('when sender and recipient are the same', () => {
+          sharedBeforeEach('define sender and recipient', async () => {
+            from = user1;
+            to = user1;
+          });
+
+          itHandlesClaiming((distribution: string) => distributor.claim(distribution, false, from, from, { from }));
         });
 
-        itHandlesClaiming((distribution: string) => distributor.claim(distribution, false, from, to, { from }));
+        context('when sender and recipient are different', () => {
+          sharedBeforeEach('define sender and recipient', async () => {
+            from = other;
+            to = user1;
+          });
+
+          itHandlesClaiming((distribution: string) => distributor.claim(distribution, false, from, to, { from }));
+        });
       });
     });
   });
