@@ -61,6 +61,8 @@ contract LinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
 
         LinearPool pool = LinearPool(_create(abi.encode(params)));
 
+        // LinearPools have a separate post-construction initialization step: we perform it here to 
+        // ensure deployment and initialization are atomic.
         pool.initialize();
 
         return pool;
