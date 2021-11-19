@@ -207,7 +207,7 @@ describe('BasePoolController', function () {
         await deployControllerAndPool(false);
       });
 
-      it('sets the permission to fals', async () => {
+      it('sets the permission to false', async () => {
         expect(await poolController.canTransferOwnership()).to.be.false;
       });
 
@@ -271,7 +271,7 @@ describe('BasePoolController', function () {
         await poolController.initialize(pool.address);
       });
 
-      it('sets the permission to fals', async () => {
+      it('sets the permission to false', async () => {
         expect(await poolController.canChangeSwapFee()).to.be.false;
       });
 
@@ -292,7 +292,7 @@ describe('BasePoolController', function () {
         await poolController.initialize(pool.address);
       });
 
-      it('sets the permission to fals', async () => {
+      it('sets the permission to false', async () => {
         expect(await poolController.canUpdateMetadata()).to.be.false;
       });
 
