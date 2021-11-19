@@ -640,7 +640,7 @@ contract StablePhantomPool is StablePool {
      */
     function getTokenRate(IERC20 token) public view virtual returns (uint256) {
         bytes32 tokenRateCache = _tokenRateCaches[token];
-        return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getValue();
+        return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getRate();
     }
 
     /**
@@ -657,7 +657,7 @@ contract StablePhantomPool is StablePool {
             uint256 expires
         )
     {
-        rate = _tokenRateCaches[token].getValue();
+        rate = _tokenRateCaches[token].getRate();
         (duration, expires) = _tokenRateCaches[token].getTimestamps();
     }
 
