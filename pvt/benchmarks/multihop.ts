@@ -1,14 +1,14 @@
-import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
-import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { getTokensSwaps } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
-import { getWeightedPool, getStablePool, setupEnvironment, tokenSymbols } from './misc';
+import { getWeightedPool, getStablePool, setupEnvironment } from './misc';
 import { fp, printGas } from '@balancer-labs/v2-helpers/src/numbers';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
-let vault: Contract;
+let vault: Vault;
 let tokens: TokenList;
 let trader: SignerWithAddress;
 
@@ -68,8 +68,8 @@ async function multihop(getPool: (index: number) => Promise<string>, useInternal
 
   for (let numHops = 1; numHops <= MAX_HOPS; ++numHops) {
     const trades = pools.slice(0, numHops).map((poolId, index) => {
-      const tokenIn = tokenSymbols[index];
-      const tokenOut = tokenSymbols[index + 1];
+      const tokenIn = tokens.get(index);
+      const tokenOut = tokens.get(index + 1);
 
       const trade = { poolId, tokenIn, tokenOut };
 
@@ -83,7 +83,7 @@ async function multihop(getPool: (index: number) => Promise<string>, useInternal
     const [tokenAddresses, swaps] = getTokensSwaps(tokens, trades);
 
     const receipt = await (
-      await vault
+      await vault.instance
         .connect(trader)
         .batchSwap(
           SwapKind.GivenIn,

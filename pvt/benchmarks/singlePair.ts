@@ -1,15 +1,15 @@
-import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { fp, printGas } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { getTokensSwaps } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
-import { getWeightedPool, getStablePool, setupEnvironment, tokenSymbols } from './misc';
+import { getWeightedPool, getStablePool, setupEnvironment } from './misc';
 import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 
-let vault: Contract;
+let vault: Vault;
 let tokens: TokenList;
 
 let trader: SignerWithAddress;
@@ -68,18 +68,18 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
   }
 
   // Trade token 0 for token 1, putting 0.1e18 of 0 into each pool
-  const tokenIn = tokenSymbols[0];
-  const tokenOut = tokenSymbols[1];
+  const tokenIn = tokens.first;
+  const tokenOut = tokens.second;
 
   for (let poolAmount = 1; poolAmount <= MAX_POOLS; ++poolAmount) {
     if (poolAmount == 1) {
       const swap = () =>
-        vault.connect(trader).swap(
+        vault.instance.connect(trader).swap(
           {
             kind: 0,
             poolId: poolIds[0],
-            assetIn: tokens[tokenIn].address,
-            assetOut: tokens[tokenOut].address,
+            assetIn: tokenIn.address,
+            assetOut: tokenOut.address,
             amount: fp(0.1),
             userData: '0x',
           },
@@ -111,7 +111,7 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
     );
 
     const batchSwap = () =>
-      vault
+      vault.instance
         .connect(trader)
         .batchSwap(
           SwapKind.GivenIn,
