@@ -341,13 +341,13 @@ describe('LinearPool', function () {
         expectEvent.inReceipt(receipt, 'SwapFeePercentageChanged', { swapFeePercentage });
       });
 
-      it('sets the swap fee when main balance is between the targets', async () => {
+      it('sets the swap fee when main balance equals the upper target', async () => {
         await setBalances(pool, { mainBalance: upperTarget });
         const receipt = await (await pool.setSwapFeePercentage(swapFeePercentage)).wait();
         expectEvent.inReceipt(receipt, 'SwapFeePercentageChanged', { swapFeePercentage });
       });
 
-      it('sets the swap fee when main balance equals the upper target', async () => {
+      it('sets the swap fee when main balance is between the targets', async () => {
         await setBalances(pool, { mainBalance: upperTarget.add(lowerTarget).div(2) });
         const receipt = await (await pool.setSwapFeePercentage(swapFeePercentage)).wait();
         expectEvent.inReceipt(receipt, 'SwapFeePercentageChanged', { swapFeePercentage });
