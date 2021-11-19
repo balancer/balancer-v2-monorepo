@@ -75,10 +75,10 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
     uint256 private immutable _wrappedIndex;
 
     // Both BPT and the main token have a regular, constant scaling factor (equal to FixedPoint.ONE for BPT, and
-    // dependent on the number of decimals for the main token). However, the wrapped token's scaling factor has two components:
-    // the usual token decimal scaling factor, and an externally provided rate used to
-    // convert wrapped tokens to an equivalent main token amount. This external rate is expected to be ever increasing,
-    // reflecting the fact that the wrapped token appreciates in value over time (e.g. because it is accruing interest).
+    // dependent on the number of decimals for the main token). However, the wrapped token's scaling factor has two
+    // components: the usual token decimal scaling factor, and an externally provided rate used to convert wrapped
+    // tokens to an equivalent main token amount. This external rate is expected to be ever increasing, reflecting the
+    // fact that the wrapped token appreciates in value over time (e.g. because it is accruing interest).
     uint256 private immutable _scalingFactorMainToken;
     uint256 private immutable _scalingFactorWrappedToken;
 
