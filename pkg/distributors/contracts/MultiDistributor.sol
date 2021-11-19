@@ -185,7 +185,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     function createDistribution(
         IERC20 stakingToken,
         IERC20 distributionToken,
-        uint256 duration
+        uint64 duration
     ) external override returns (bytes32 distributionId) {
         require(address(stakingToken) != address(0), "STAKING_TOKEN_ZERO_ADDRESS");
         require(address(distributionToken) != address(0), "DISTRIBUTION_TOKEN_ZERO_ADDRESS");
@@ -206,7 +206,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionId The ID of the distribution being modified
      * @param duration Duration over which each distribution is spread
      */
-    function setDistributionDuration(bytes32 distributionId, uint256 duration) external override {
+    function setDistributionDuration(bytes32 distributionId, uint64 duration) external override {
         Distribution storage distribution = _getDistribution(distributionId);
         // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
         // sentinel value that marks non-existent distributions.
@@ -226,7 +226,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     function _setDistributionDuration(
         bytes32 distributionId,
         Distribution storage distribution,
-        uint256 duration
+        uint64 duration
     ) internal {
         require(duration > 0, "DISTRIBUTION_DURATION_ZERO");
         distribution.duration = duration;
@@ -273,11 +273,12 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
         // The new payment rate will depend on whether or not there's already an ongoing period, in which case the two
         // will be merged. In both scenarios we round down to avoid paying more tokens than were received.
+        uint256 paymentRate;
         if (block.timestamp >= periodFinish) {
             // Current distribution period has ended so new period consists only of amount provided.
 
             // By performing fixed point (FP) division of two non-FP values we get a FP result.
-            distribution.paymentRate = FixedPoint.divDown(amount, duration);
+            paymentRate = uint192(FixedPoint.divDown(amount, duration));
         } else {
             // Current distribution period is still in progress.
             // Calculate number of tokens that haven't been distributed yet and apply to the new distribution period.
@@ -290,11 +291,19 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             // Fixed point (FP) multiplication between a non-FP (time) and FP (rate) returns a non-FP result.
             uint256 leftoverTokens = FixedPoint.mulDown(remainingTime, distribution.paymentRate);
             // Fixed point (FP) division of two non-FP values we get a FP result.
-            distribution.paymentRate = FixedPoint.divDown(amount.add(leftoverTokens), duration);
+            paymentRate = uint192(FixedPoint.divDown(amount.add(leftoverTokens), duration));
         }
 
-        distribution.lastUpdateTime = block.timestamp;
-        distribution.periodFinish = block.timestamp.add(duration);
+        require(paymentRate < type(uint192).max, "PAYMENT_RATE_OVERFLOW");
+        distribution.paymentRate = uint192(paymentRate);
+
+        // The overflow protection on uint256 won't trigger on durations
+        // which cause a uint64 to overflow so we check this explicitly
+        uint256 newPeriodFinish = block.timestamp.add(duration);
+        require(newPeriodFinish < type(uint64).max, "TIMESTAMP_OVERFLOW");
+
+        distribution.lastUpdateTime = uint64(block.timestamp);
+        distribution.periodFinish = uint64(newPeriodFinish);
         emit DistributionFunded(distributionId, amount);
     }
 
@@ -701,14 +710,14 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         returns (uint256 updatedGlobalTokensPerStake)
     {
         updatedGlobalTokensPerStake = _globalTokensPerStake(distribution);
-        distribution.globalTokensPerStake = updatedGlobalTokensPerStake;
-        distribution.lastUpdateTime = _lastTimePaymentApplicable(distribution);
+        distribution.globalTokensPerStake = uint192(updatedGlobalTokensPerStake);
+        distribution.lastUpdateTime = uint64(_lastTimePaymentApplicable(distribution));
     }
 
     function _globalTokensPerStake(Distribution storage distribution) internal view returns (uint256) {
         uint256 supply = distribution.totalSupply;
         if (supply == 0) {
-            return distribution.globalTokensPerStake;
+            return uint256(distribution.globalTokensPerStake);
         }
 
         // Underflow is impossible here because _lastTimePaymentApplicable(...) is always greater than last update time
@@ -716,7 +725,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
         // Note `paymentRate` and `distribution.globalTokensPerStake` are both fixed point values
         uint256 unpaidTokensPerStake = unpaidDuration.mul(distribution.paymentRate).divDown(supply);
-        return distribution.globalTokensPerStake.add(unpaidTokensPerStake);
+        return uint256(distribution.globalTokensPerStake).add(unpaidTokensPerStake);
     }
 
     /**
@@ -724,7 +733,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distribution The distribution being queried
      */
     function _lastTimePaymentApplicable(Distribution storage distribution) internal view returns (uint256) {
-        return Math.min(block.timestamp, distribution.periodFinish);
+        return Math.min(block.timestamp, uint256(distribution.periodFinish));
     }
 
     /**

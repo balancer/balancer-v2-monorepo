@@ -21,17 +21,38 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.so
 import "./IDistributorCallback.sol";
 
 interface IMultiDistributor {
-    // paymentRate and globalTokensPerStake are stored as 18 decimal fixed point values
+    /**
+     * @dev The Distribution struct has its fields packed to minimise the number of storage reads/writes.
+     * Timestamps are stored in 64 bits which ensures that the Sun will explode before they overflow.
+     * `globalTokensPerStake` and `paymentRate` are stored as 18 decimal fixed point numbers,
+     * leaving 128 bits for the integer component allowing us to store values of up to ~10^38
+     *
+     * Slot 1
+     *  - IERC20 stakingToken;
+     * Slot 2
+     *  - IERC20 distributionToken;
+     * Slot 3
+     *  - address owner;
+     *  - uint64 duration;
+     * Slot 4
+     *  - uint256 totalSupply;
+     * Slot 5 (fields always written to together)
+     *  - uint192 paymentRate;
+     *  - uint64 periodFinish;
+     * Slot 6 (fields always written to together)
+     *  - uint192 globalTokensPerStake;
+     *  - uint64 lastUpdateTime;
+     */
     struct Distribution {
         IERC20 stakingToken;
         IERC20 distributionToken;
         address owner;
+        uint64 duration;
         uint256 totalSupply;
-        uint256 duration;
-        uint256 periodFinish;
-        uint256 paymentRate;
-        uint256 lastUpdateTime;
-        uint256 globalTokensPerStake;
+        uint192 paymentRate;
+        uint64 periodFinish;
+        uint192 globalTokensPerStake;
+        uint64 lastUpdateTime;
     }
 
     // userTokensPerStake is stored as an 18 decimal fixed point value
@@ -85,12 +106,12 @@ interface IMultiDistributor {
     function createDistribution(
         IERC20 stakingToken,
         IERC20 distributionToken,
-        uint256 duration
+        uint64 duration
     ) external returns (bytes32 distributionId);
 
     function fundDistribution(bytes32 distributionId, uint256 amount) external;
 
-    function setDistributionDuration(bytes32 distributionId, uint256 duration) external;
+    function setDistributionDuration(bytes32 distributionId, uint64 duration) external;
 
     // Staking
 
