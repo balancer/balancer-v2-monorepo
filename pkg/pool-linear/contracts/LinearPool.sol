@@ -31,7 +31,7 @@ import "./LinearPoolUserData.sol";
 /**
  * @dev Linear Pools are designed to hold two assets: "main" and "wrapped" tokens that have an equal value underlying
  * token (e.g., DAI and waDAI). There must be an external feed available to provide an exact, non-manipulable exchange
- * rate between the tokens. In particular, any reversible manipulation (e.g. cause for the rate to increase and then
+ * rate between the tokens. In particular, any reversible manipulation (e.g. causing the rate to increase and then
  * decrease) can lead to severe issues and loss of funds.
  *
  * The Pool will register three tokens in the Vault however: the two assets and the BPT itself,
@@ -43,8 +43,8 @@ import "./LinearPoolUserData.sol";
  * Unlike most other Pools, this one does not attempt to create revenue by charging fees: value is derived by holding
  * the wrapped, yield-bearing asset. However, the 'swap fee percentage' value is still used, albeit with a different
  * meaning. This Pool attempts to hold a certain amount of "main" tokens, between a lower and upper target value.
- * Moving the balance outside of that range causes proportional fees to be charged to the sender, which are then used to
- * incentivize other parties to bring back the balance to the desired region by paying them using these collected fees.
+ * The pool charges fees on trades that move the balance outside that range, which are then paid back
+ * as incentives to traders whose swaps return the balance to the desired region.
  * The net revenue via fees is expected to be zero: all collected fees are used to pay for this 'rebalancing'.
  */
 contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
@@ -59,11 +59,11 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     // and equal to _INITIAL_BPT_SUPPLY, but most of it remains in the Pool, waiting to be exchanged for tokens. The
     // actual amount of BPT in circulation is the total supply minus the amount held by the Pool, and is known as the
     // 'virtual supply'.
-    // The only instance in which the total supply might change is if the emergency pause is turned on, enabling an
-    // alternative way to exit the Pool which involves burning BPT. As this is expected to not happen, we optimize for
+    // The total supply can only change if the emergency pause is activated by governance, enabling an
+    // alternative proportional exit that burns BPT. As this is not expected to happen, we optimize for
     // success by using _INITIAL_BPT_SUPPLY instead of totalSupply(), saving a storage read. This optimization is only
-    // valid if the Pool is never paused: in the case of an emergency that leads to burned tokens, the Pool should not
-    // be unpaused and continue to be used via regular means.
+    // valid if the Pool is never paused: in case of an emergency that leads to burned tokens, the Pool should not
+    // be used after the buffer period expires and it automatically 'unpauses'.
     uint256 private constant _INITIAL_BPT_SUPPLY = 2**(112) - 1;
 
     IERC20 private immutable _mainToken;
@@ -75,10 +75,10 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     uint256 private immutable _wrappedIndex;
 
     // Both BPT and the main token have a regular, constant scaling factor (equal to FixedPoint.ONE for BPT, and
-    // dependent on the number of decimals for the main token). The wrapped token's scaling factor however is two-fold:
-    // it is composed of both the decimal scaling factor, as well as an externally provided rate that is used to
+    // dependent on the number of decimals for the main token). However, the wrapped token's scaling factor has two components:
+    // the usual token decimal scaling factor, and an externally provided rate used to
     // convert wrapped tokens to an equivalent main token amount. This external rate is expected to be ever increasing,
-    // reflecting the fact that the wrapped token appreciates in value over time (because e.g. it is accruing interest).
+    // reflecting the fact that the wrapped token appreciates in value over time (e.g. because it is accruing interest).
     uint256 private immutable _scalingFactorMainToken;
     uint256 private immutable _scalingFactorWrappedToken;
 
