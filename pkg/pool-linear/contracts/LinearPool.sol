@@ -47,7 +47,7 @@ import "./LinearPoolUserData.sol";
  * as incentives to traders whose swaps return the balance to the desired region.
  * The net revenue via fees is expected to be zero: all collected fees are used to pay for this 'rebalancing'.
  */
-contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
+contract LinearPool is BasePool, IGeneralPool, IRateProvider {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
@@ -252,7 +252,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         _upscaleArray(balances, scalingFactors);
 
         (uint256 lowerTarget, uint256 upperTarget) = getTargets();
-        LinearMathParams memory params = LinearMathParams({
+        LinearMath.Params memory params = LinearMath.Params({
             fee: getSwapFeePercentage(),
             rate: FixedPoint.ONE,
             lowerTarget: lowerTarget,
@@ -279,7 +279,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function _onSwapGivenIn(
         SwapRequest memory request,
         uint256[] memory balances,
-        LinearMathParams memory params
+        LinearMath.Params memory params
     ) internal view returns (uint256) {
         if (request.tokenIn == this) {
             return _swapGivenBptIn(request, balances, params);
@@ -295,11 +295,11 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenBptIn(
         SwapRequest memory request,
         uint256[] memory balances,
-        LinearMathParams memory params
+        LinearMath.Params memory params
     ) internal view returns (uint256) {
         _require(request.tokenOut == _mainToken || request.tokenOut == _wrappedToken, Errors.INVALID_TOKEN);
         return
-            (request.tokenOut == _mainToken ? _calcMainOutPerBptIn : _calcWrappedOutPerBptIn)(
+            (request.tokenOut == _mainToken ? LinearMath._calcMainOutPerBptIn : LinearMath._calcWrappedOutPerBptIn)(
                 request.amount,
                 balances[_mainIndex],
                 balances[_wrappedIndex],
@@ -311,43 +311,43 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenMainIn(
         SwapRequest memory request,
         uint256[] memory balances,
-        LinearMathParams memory params
+        LinearMath.Params memory params
     ) internal view returns (uint256) {
         _require(request.tokenOut == _wrappedToken || request.tokenOut == this, Errors.INVALID_TOKEN);
         return
             request.tokenOut == this
-                ? _calcBptOutPerMainIn(
+                ? LinearMath._calcBptOutPerMainIn(
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
                     _getApproximateVirtualSupply(balances[_bptIndex]),
                     params
                 )
-                : _calcWrappedOutPerMainIn(request.amount, balances[_mainIndex], params);
+                : LinearMath._calcWrappedOutPerMainIn(request.amount, balances[_mainIndex], params);
     }
 
     function _swapGivenWrappedIn(
         SwapRequest memory request,
         uint256[] memory balances,
-        LinearMathParams memory params
+        LinearMath.Params memory params
     ) internal view returns (uint256) {
         _require(request.tokenOut == _mainToken || request.tokenOut == this, Errors.INVALID_TOKEN);
         return
             request.tokenOut == this
-                ? _calcBptOutPerWrappedIn(
+                ? LinearMath._calcBptOutPerWrappedIn(
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
                     _getApproximateVirtualSupply(balances[_bptIndex]),
                     params
                 )
-                : _calcMainOutPerWrappedIn(request.amount, balances[_mainIndex], params);
+                : LinearMath._calcMainOutPerWrappedIn(request.amount, balances[_mainIndex], params);
     }
 
     function _onSwapGivenOut(
         SwapRequest memory request,
         uint256[] memory balances,
-        LinearMathParams memory params
+        LinearMath.Params memory params
     ) internal view returns (uint256) {
         if (request.tokenOut == this) {
             return _swapGivenBptOut(request, balances, params);
@@ -363,11 +363,11 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenBptOut(
         SwapRequest memory request,
         uint256[] memory balances,
-        LinearMathParams memory params
+        LinearMath.Params memory params
     ) internal view returns (uint256) {
         _require(request.tokenIn == _mainToken || request.tokenIn == _wrappedToken, Errors.INVALID_TOKEN);
         return
-            (request.tokenIn == _mainToken ? _calcMainInPerBptOut : _calcWrappedInPerBptOut)(
+            (request.tokenIn == _mainToken ? LinearMath._calcMainInPerBptOut : LinearMath._calcWrappedInPerBptOut)(
                 request.amount,
                 balances[_mainIndex],
                 balances[_wrappedIndex],
@@ -379,37 +379,37 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
     function _swapGivenMainOut(
         SwapRequest memory request,
         uint256[] memory balances,
-        LinearMathParams memory params
+        LinearMath.Params memory params
     ) internal view returns (uint256) {
         _require(request.tokenIn == _wrappedToken || request.tokenIn == this, Errors.INVALID_TOKEN);
         return
             request.tokenIn == this
-                ? _calcBptInPerMainOut(
+                ? LinearMath._calcBptInPerMainOut(
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
                     _getApproximateVirtualSupply(balances[_bptIndex]),
                     params
                 )
-                : _calcWrappedInPerMainOut(request.amount, balances[_mainIndex], params);
+                : LinearMath._calcWrappedInPerMainOut(request.amount, balances[_mainIndex], params);
     }
 
     function _swapGivenWrappedOut(
         SwapRequest memory request,
         uint256[] memory balances,
-        LinearMathParams memory params
+        LinearMath.Params memory params
     ) internal view returns (uint256) {
         _require(request.tokenIn == _mainToken || request.tokenIn == this, Errors.INVALID_TOKEN);
         return
             request.tokenIn == this
-                ? _calcBptInPerWrappedOut(
+                ? LinearMath._calcBptInPerWrappedOut(
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
                     _getApproximateVirtualSupply(balances[_bptIndex]),
                     params
                 )
-                : _calcMainInPerWrappedOut(request.amount, balances[_mainIndex], params);
+                : LinearMath._calcMainInPerWrappedOut(request.amount, balances[_mainIndex], params);
     }
 
     function _onInitializePool(
@@ -513,7 +513,7 @@ contract LinearPool is BasePool, IGeneralPool, LinearMath, IRateProvider {
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
         // This process burns BPT, rendering `_getApproximateVirtualSupply` inaccurate, so we use the real method here
-        uint256[] memory amountsOut = _calcTokensOutGivenExactBptIn(
+        uint256[] memory amountsOut = LinearMath._calcTokensOutGivenExactBptIn(
             balances,
             bptAmountIn,
             _getVirtualSupply(balances[_bptIndex]),
