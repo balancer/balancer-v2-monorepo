@@ -11,7 +11,6 @@ import { MAX_UINT256, ZERO_ADDRESS, MAX_WEIGHTED_TOKENS } from '@balancer-labs/v
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { range } from 'lodash';
-import { parseFixed } from '@ethersproject/bignumber';
 
 export async function setupEnvironment(): Promise<{
   vault: Vault;
@@ -32,7 +31,7 @@ export async function setupEnvironment(): Promise<{
     await token.approve(vault, MAX_UINT256, { from: creator });
 
     // trader tokens are used to trade and not have non-zero balances
-    await token.mint(trader, parseFixed('200', 18));
+    await token.mint(trader, fp(200));
     await token.approve(vault, MAX_UINT256, { from: trader });
   });
 
@@ -40,7 +39,7 @@ export async function setupEnvironment(): Promise<{
   const transfers = tokens.map((token) => ({
     kind: 0, // deposit
     asset: token.address,
-    amount: parseFixed('100', 18),
+    amount: fp(100),
     sender: trader.address,
     recipient: trader.address,
   }));
