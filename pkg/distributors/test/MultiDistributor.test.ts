@@ -859,7 +859,7 @@ describe('MultiDistributor', () => {
       context("when caller is not authorised to act on sender's behalf", () => {
         it('reverts', async () => {
           await expect(distributor.stake(stakingToken, 0, user2, user2, { from: user1 })).to.be.revertedWith(
-            'INVALID_SENDER'
+            'SENDER_NOT_ALLOWED'
           );
         });
       });
@@ -893,7 +893,7 @@ describe('MultiDistributor', () => {
       context("when caller is not authorised to act on sender's behalf", () => {
         it('reverts', async () => {
           await expect(distributor.stakeUsingVault(stakingToken, 0, user2, user2, { from: user1 })).to.be.revertedWith(
-            'INVALID_SENDER'
+            'SENDER_NOT_ALLOWED'
           );
         });
       });
@@ -958,7 +958,7 @@ describe('MultiDistributor', () => {
       context("when caller is not authorised to act on sender's behalf", () => {
         it('reverts', async () => {
           await expect(distributor.unstake(stakingToken, 0, user2, user2, { from: user1 })).to.be.revertedWith(
-            'INVALID_SENDER'
+            'SENDER_NOT_ALLOWED'
           );
         });
       });
@@ -2332,7 +2332,7 @@ describe('MultiDistributor', () => {
       context("when caller is not authorised to act on sender's behalf", () => {
         it('reverts', async () => {
           await expect(distributor.claim(distribution, false, user2, user2, { from: user1 })).to.be.revertedWith(
-            'INVALID_SENDER'
+            'SENDER_NOT_ALLOWED'
           );
         });
       });
