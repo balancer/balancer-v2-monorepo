@@ -159,7 +159,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         UserStaking storage userStaking = _userStakings[distribution.stakingToken][user];
         UserDistribution storage userDistribution = userStaking.distributions[distributionId];
 
-        // If the user is not subscribed to the queried distribution, doesn't have any unaccounted for tokens.
+        // If the user is not subscribed to the queried distribution, they don't have any unaccounted for tokens.
         // Then we can just return the stored number of tokens which the user can claim.
         if (!userStaking.subscribedDistributions.contains(distributionId)) {
             return userDistribution.unclaimedTokens;
