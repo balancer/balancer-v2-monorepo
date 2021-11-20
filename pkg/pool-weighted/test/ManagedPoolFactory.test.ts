@@ -174,13 +174,13 @@ describe('ManagedPoolFactory', function () {
     it('creates it with allowlist enabled', async () => {
       const pool = await createPool(true, true);
 
-      expect(await pool.mustAllowlistLPs()).to.be.true;
+      expect(await pool.getMustAllowlistLPs()).to.be.true;
     });
 
     it('creates it with allowlist disabled', async () => {
       const pool = await createPool(true);
 
-      expect(await pool.mustAllowlistLPs()).to.be.false;
+      expect(await pool.getMustAllowlistLPs()).to.be.false;
     });
   });
 });
