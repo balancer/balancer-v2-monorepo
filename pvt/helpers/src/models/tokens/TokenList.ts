@@ -86,8 +86,8 @@ export default class TokenList {
     return [this.indexOf(token), this.indexOf(anotherToken)];
   }
 
-  subset(length: number): TokenList {
-    return new TokenList(this.tokens.slice(0, length));
+  subset(length: number, offset = 0): TokenList {
+    return new TokenList(this.tokens.slice(offset, offset + length));
   }
 
   async mint(rawParams: RawTokenMint): Promise<void> {
