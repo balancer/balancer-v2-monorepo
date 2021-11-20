@@ -144,7 +144,7 @@ describe('ManagedPool', function () {
     });
 
     it('shows mustAllowlistLPs on and active', async () => {
-      expect(await pool.mustAllowlistLPs()).to.be.true;
+      expect(await pool.getMustAllowlistLPs()).to.be.true;
       expect(await pool.isAllowedAddress(owner.address)).to.be.false;
       expect(await pool.isAllowedAddress(other.address)).to.be.false;
     });
@@ -202,6 +202,40 @@ describe('ManagedPool', function () {
         it('reverts when removing an address not on the list', async () => {
           await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('ADDRESS_NOT_ALLOWLISTED');
         });
+      });
+    });
+
+    context('when mustAllowlistLPs is toggled', () => {
+      sharedBeforeEach('initialize pool', async () => {
+        await pool.init({ from: owner, initialBalances });
+      });
+
+      it('allowlist is initially on', async () => {
+        const startingBpt = await pool.balanceOf(owner);
+
+        expect(await pool.getMustAllowlistLPs()).to.be.true;
+        await expect(pool.joinAllGivenOut({ from: owner, bptOut: startingBpt })).to.be.revertedWith(
+          'ADDRESS_NOT_ALLOWLISTED'
+        );
+      });
+
+      it('allows owner to turn it off (open to public LPs)', async () => {
+        const startingBpt = await pool.balanceOf(owner);
+
+        const receipt = await pool.setMustAllowlistLPs(owner, false);
+        expectEvent.inReceipt(await receipt.wait(), 'MustAllowlistLPsSet', {
+          mustAllowlistLPs: false,
+        });
+
+        // Should be turned off
+        expect(await pool.getMustAllowlistLPs()).to.be.false;
+
+        // And allow joins from anywhere
+        await expect(pool.joinAllGivenOut({ from: other, bptOut: startingBpt })).to.not.be.reverted;
+      });
+
+      it('reverts if non-owner tries to enable public LPs', async () => {
+        await expect(pool.setMustAllowlistLPs(other, false)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
   });

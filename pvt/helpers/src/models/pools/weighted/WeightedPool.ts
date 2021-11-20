@@ -634,8 +634,13 @@ export default class WeightedPool {
     return pool.removeAllowedAddress(member);
   }
 
-  async mustAllowlistLPs(): Promise<boolean> {
-    return this.instance.mustAllowlistLPs();
+  async getMustAllowlistLPs(): Promise<boolean> {
+    return this.instance.getMustAllowlistLPs();
+  }
+
+  async setMustAllowlistLPs(from: SignerWithAddress, mustAllowlistLPs: boolean): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.setMustAllowlistLPs(mustAllowlistLPs);
   }
 
   async isAllowedAddress(member: string): Promise<boolean> {

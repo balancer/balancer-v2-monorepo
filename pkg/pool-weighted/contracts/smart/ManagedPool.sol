@@ -108,6 +108,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] endWeights
     );
     event SwapEnabledSet(bool swapEnabled);
+    event MustAllowlistLPsSet(bool mustAllowlistLPs);
     event ManagementFeePercentageChanged(uint256 managementFeePercentage);
     event ManagementFeesCollected(IERC20[] tokens, uint256[] amounts);
     event AllowlistAddressAdded(address indexed member);
@@ -145,15 +146,16 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256 totalTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
 
-        _setMiscData(
-            _getMiscData().insertUint7(totalTokens, _TOTAL_TOKENS_OFFSET).insertBool(
-                params.mustAllowlistLPs,
-                _MUST_ALLOWLIST_LPS_OFFSET
-            )
-        );
+        _setMiscData(_getMiscData().insertUint7(totalTokens, _TOTAL_TOKENS_OFFSET));
 
         // Double check it fits in 7 bits
         _require(_getTotalTokens() == totalTokens, Errors.MAX_TOKENS);
+
+        // This must be inlined in the constructor as we're setting an immutable variable.
+        _require(
+            params.managementSwapFeePercentage <= _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+            Errors.MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE
+        );
 
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(
@@ -169,14 +171,12 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             _tokenCollectedManagementFees.set(params.tokens[i], 0);
         }
 
-        // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction)
+        // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction).
         _setSwapEnabled(params.swapEnabledOnStart);
 
-        // This must be inlined in the constructor as we're setting an immutable variable.
-        _require(
-            params.managementSwapFeePercentage <= _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE,
-            Errors.MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE
-        );
+        // If true, only addresses on the manager-controlled allowlist may join the pool.
+        _setMustAllowlistLPs(params.mustAllowlistLPs);
+
         _managementSwapFeePercentage = params.managementSwapFeePercentage;
 
         emit ManagementFeePercentageChanged(params.managementSwapFeePercentage);
@@ -192,7 +192,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     /**
      * @dev Returns true if the allowlist for LPs is enabled.
      */
-    function mustAllowlistLPs() public view returns (bool) {
+    function getMustAllowlistLPs() public view returns (bool) {
         return _getMiscData().decodeBool(_MUST_ALLOWLIST_LPS_OFFSET);
     }
 
@@ -200,7 +200,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
      * @dev Verifies that a given address is allowed to hold tokens.
      */
     function isAllowedAddress(address member) public view returns (bool) {
-        return !mustAllowlistLPs() || _allowedAddresses[member];
+        return !getMustAllowlistLPs() || _allowedAddresses[member];
     }
 
     /**
@@ -309,7 +309,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
      * @dev Adds an address to the allowlist.
      */
     function addAllowedAddress(address member) external authenticate whenNotPaused {
-        _require(mustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
+        _require(getMustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
         _require(!isAllowedAddress(member), Errors.ADDRESS_ALREADY_ALLOWLISTED);
 
         _allowedAddresses[member] = true;
@@ -327,10 +327,23 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         emit AllowlistAddressRemoved(member);
     }
 
-    /*
+    /**
+     * @dev Can enable/disable the LP allowlist
+     */
+    function setMustAllowlistLPs(bool mustAllowlistLPs) external authenticate whenNotPaused {
+        _setMustAllowlistLPs(mustAllowlistLPs);
+    }
+
+    function _setMustAllowlistLPs(bool mustAllowlistLPs) private {
+        _setMiscData(_getMiscData().insertBool(mustAllowlistLPs, _MUST_ALLOWLIST_LPS_OFFSET));
+
+        emit MustAllowlistLPsSet(mustAllowlistLPs);
+    }
+
+    /**
      * @dev Can enable/disable trading
      */
-    function setSwapEnabled(bool swapEnabled) external authenticate whenNotPaused nonReentrant {
+    function setSwapEnabled(bool swapEnabled) external authenticate whenNotPaused {
         _setSwapEnabled(swapEnabled);
     }
 
@@ -465,7 +478,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
         // Check allowlist for LPs, if applicable
-        _require(!mustAllowlistLPs() || isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
+        _require(!getMustAllowlistLPs() || isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
         _subtractCollectedFees(balances);
 
@@ -656,6 +669,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             (actionId == getActionId(ManagedPool.withdrawCollectedManagementFees.selector)) ||
             (actionId == getActionId(ManagedPool.addAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPool.removeAllowedAddress.selector)) ||
+            (actionId == getActionId(ManagedPool.setMustAllowlistLPs.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
 
