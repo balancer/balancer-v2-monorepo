@@ -24,7 +24,7 @@ import "./interfaces/IMultiDistributor.sol";
 /**
  * Scheduler for MultiDistributor contract
  */
-contract RewardsScheduler {
+contract DistributionScheduler {
     using SafeERC20 for IERC20;
 
     IMultiDistributor private immutable _multiDistributor;

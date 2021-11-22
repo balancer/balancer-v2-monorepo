@@ -15,7 +15,7 @@ import { advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/tim
 import { ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { MultiDistributor } from './helpers/MultiDistributor';
 
-describe('Rewards Scheduler', () => {
+describe('Distribution Scheduler', () => {
   let vault: Contract;
   let distributor: MultiDistributor;
   let scheduler: Contract;
@@ -31,7 +31,7 @@ describe('Rewards Scheduler', () => {
 
   sharedBeforeEach('deploy distributor', async () => {
     distributor = await MultiDistributor.create();
-    scheduler = await deploy('RewardsScheduler', { args: [distributor.address] });
+    scheduler = await deploy('DistributionScheduler', { args: [distributor.address] });
     vault = distributor.vault;
   });
 
