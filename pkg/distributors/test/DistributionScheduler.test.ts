@@ -62,12 +62,12 @@ describe('Distribution Scheduler', () => {
 
   it('emits DistributionScheduled', async () => {
     const time = (await currentTimestamp()).add(3600 * 24);
-    const rewardAmount = fp(1);
+    const amount = fp(1);
 
     const receipt = await (
       await scheduler
         .connect(distributionOwner)
-        .scheduleDistribution(ZERO_BYTES32, stakingToken.address, distributionToken.address, rewardAmount, time)
+        .scheduleDistribution(ZERO_BYTES32, stakingToken.address, distributionToken.address, amount, time)
     ).wait();
 
     const scheduleId = await scheduler.getScheduleId(
@@ -82,12 +82,12 @@ describe('Distribution Scheduler', () => {
       owner: distributionOwner.address,
       distributionToken: distributionToken.address,
       startTime: time,
-      amount: rewardAmount,
+      amount: amount,
     });
   });
 
   describe('with a scheduled reward', () => {
-    const rewardAmount = fp(1);
+    const amount = fp(1);
     let scheduleId: string;
     let time: BigNumber;
 
@@ -96,7 +96,7 @@ describe('Distribution Scheduler', () => {
       time = (await currentTimestamp()).add(3600 * 24);
       await scheduler
         .connect(distributionOwner)
-        .scheduleDistribution(ZERO_BYTES32, stakingToken.address, distributionToken.address, rewardAmount, time);
+        .scheduleDistribution(ZERO_BYTES32, stakingToken.address, distributionToken.address, amount, time);
 
       scheduleId = await scheduler.getScheduleId(
         stakingToken.address,
@@ -119,7 +119,7 @@ describe('Distribution Scheduler', () => {
       expect(response.distributionToken).to.equal(distributionToken.address);
       expect(response.startTime).to.equal(time);
       expect(response.owner).to.equal(distributionOwner.address);
-      expect(response.amount).to.equal(rewardAmount);
+      expect(response.amount).to.equal(amount);
       expect(response.status).to.equal(1);
     });
 
@@ -130,12 +130,10 @@ describe('Distribution Scheduler', () => {
       });
 
       it('allows anyone to poke the contract to notify the staking contract and transfer rewards', async () => {
-        const expectedReward = fp(1);
-
         await expectBalanceChange(
           () => scheduler.connect(poker).startDistribution([scheduleId]),
           distributionTokens,
-          [{ account: distributor.address, changes: { DAI: ['very-near', expectedReward] } }],
+          [{ account: distributor.address, changes: { DAI: ['very-near', amount] } }],
           vault
         );
       });
@@ -149,7 +147,7 @@ describe('Distribution Scheduler', () => {
           stakingToken: stakingToken.address,
           distributionToken: distributionToken.address,
           startTime: time,
-          amount: rewardAmount,
+          amount: amount,
         });
       });
 
@@ -158,7 +156,7 @@ describe('Distribution Scheduler', () => {
 
         expectEvent.inIndirectReceipt(receipt, distributor.instance.interface, 'RewardAdded', {
           distributionToken: distributionToken.address,
-          amount: rewardAmount,
+          amount: amount,
         });
       });
 
