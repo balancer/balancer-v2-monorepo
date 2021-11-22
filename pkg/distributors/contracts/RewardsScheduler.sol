@@ -40,22 +40,22 @@ contract RewardsScheduler {
         IERC20 stakingToken;
         IERC20 distributionToken;
         uint256 startTime;
-        address rewarder;
+        address owner;
         uint256 amount;
         RewardStatus status;
     }
 
-    event RewardScheduled(
+    event DistributionScheduled(
         bytes32 rewardId,
-        address indexed rewarder,
+        address indexed owner,
         IERC20 indexed stakingToken,
         IERC20 indexed distributionToken,
         uint256 startTime,
         uint256 amount
     );
-    event RewardStarted(
+    event DistributionStarted(
         bytes32 rewardId,
-        address indexed rewarder,
+        address indexed owner,
         IERC20 indexed stakingToken,
         IERC20 indexed distributionToken,
         uint256 startTime,
@@ -64,7 +64,7 @@ contract RewardsScheduler {
 
     mapping(bytes32 => ScheduledReward) private _rewards;
 
-    function getScheduledRewardInfo(bytes32 rewardId) external view returns (ScheduledReward memory reward) {
+    function getScheduledDistributionInfo(bytes32 rewardId) external view returns (ScheduledReward memory reward) {
         return _rewards[rewardId];
     }
 
@@ -83,9 +83,9 @@ contract RewardsScheduler {
                 scheduledReward.distributionToken.approve(address(_multiDistributor), type(uint256).max);
             }
             _multiDistributor.fundDistribution(scheduledReward.distributionId, scheduledReward.amount);
-            emit RewardStarted(
+            emit DistributionStarted(
                 rewardId,
-                scheduledReward.rewarder,
+                scheduledReward.owner,
                 scheduledReward.stakingToken,
                 scheduledReward.distributionToken,
                 scheduledReward.startTime,
@@ -103,7 +103,7 @@ contract RewardsScheduler {
         return keccak256(abi.encodePacked(stakingToken, distributionToken, rewarder, startTime));
     }
 
-    function scheduleReward(
+    function scheduleDistribution(
         bytes32 distributionId,
         IERC20 stakingToken,
         IERC20 distributionToken,
@@ -119,7 +119,7 @@ contract RewardsScheduler {
             distributionId: distributionId,
             stakingToken: stakingToken,
             distributionToken: distributionToken,
-            rewarder: msg.sender,
+            owner: msg.sender,
             amount: amount,
             startTime: startTime,
             status: RewardStatus.PENDING
@@ -127,6 +127,6 @@ contract RewardsScheduler {
 
         distributionToken.safeTransferFrom(msg.sender, address(this), amount);
 
-        emit RewardScheduled(rewardId, msg.sender, stakingToken, distributionToken, startTime, amount);
+        emit DistributionScheduled(rewardId, msg.sender, stakingToken, distributionToken, startTime, amount);
     }
 }
