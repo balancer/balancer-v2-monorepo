@@ -70,7 +70,7 @@ describe('Distribution Scheduler', () => {
         .scheduleDistribution(ZERO_BYTES32, stakingToken.address, distributionToken.address, rewardAmount, time)
     ).wait();
 
-    const rewardId = await scheduler.claimId(
+    const scheduleId = await scheduler.getScheduleId(
       stakingToken.address,
       distributionToken.address,
       distributionOwner.address,
@@ -78,7 +78,7 @@ describe('Distribution Scheduler', () => {
     );
 
     expectEvent.inReceipt(receipt, 'DistributionScheduled', {
-      rewardId,
+      scheduleId,
       owner: distributionOwner.address,
       distributionToken: distributionToken.address,
       startTime: time,
@@ -88,7 +88,7 @@ describe('Distribution Scheduler', () => {
 
   describe('with a scheduled reward', () => {
     const rewardAmount = fp(1);
-    let rewardId: string;
+    let scheduleId: string;
     let time: BigNumber;
 
     sharedBeforeEach(async () => {
@@ -98,7 +98,7 @@ describe('Distribution Scheduler', () => {
         .connect(distributionOwner)
         .scheduleDistribution(ZERO_BYTES32, stakingToken.address, distributionToken.address, rewardAmount, time);
 
-      rewardId = await scheduler.claimId(
+      scheduleId = await scheduler.getScheduleId(
         stakingToken.address,
         distributionToken.address,
         distributionOwner.address,
@@ -106,14 +106,14 @@ describe('Distribution Scheduler', () => {
       );
     });
 
-    it('doesnt reward before time has passed', async () => {
-      await expect(scheduler.connect(poker).startRewards([rewardId])).to.be.revertedWith(
-        'Reward start time is in the future'
+    it("doesn't start distribution before time has passed", async () => {
+      await expect(scheduler.connect(poker).startDistributions([scheduleId])).to.be.revertedWith(
+        'Distribution start time is in the future'
       );
     });
 
     it('responds to getScheduledDistributionInfo', async () => {
-      const response = await scheduler.getScheduledDistributionInfo(rewardId);
+      const response = await scheduler.getScheduledDistributionInfo(scheduleId);
 
       expect(response.stakingToken).to.equal(stakingToken.address);
       expect(response.distributionToken).to.equal(distributionToken.address);
@@ -133,7 +133,7 @@ describe('Distribution Scheduler', () => {
         const expectedReward = fp(1);
 
         await expectBalanceChange(
-          () => scheduler.connect(poker).startDistribution([rewardId]),
+          () => scheduler.connect(poker).startDistribution([scheduleId]),
           distributionTokens,
           [{ account: distributor.address, changes: { DAI: ['very-near', expectedReward] } }],
           vault
@@ -141,10 +141,10 @@ describe('Distribution Scheduler', () => {
       });
 
       it('emits DistributionStarted', async () => {
-        const receipt = await (await scheduler.connect(poker).startRewards([rewardId])).wait();
+        const receipt = await (await scheduler.connect(poker).startDistributions([scheduleId])).wait();
 
         expectEvent.inReceipt(receipt, 'DistributionStarted', {
-          rewardId,
+          scheduleId,
           owner: distributionOwner.address,
           stakingToken: stakingToken.address,
           distributionToken: distributionToken.address,
@@ -154,7 +154,7 @@ describe('Distribution Scheduler', () => {
       });
 
       it('emits RewardAdded in MultiDistributor', async () => {
-        const receipt = await (await scheduler.connect(poker).startDistribution([rewardId])).wait();
+        const receipt = await (await scheduler.connect(poker).startDistribution([scheduleId])).wait();
 
         expectEvent.inIndirectReceipt(receipt, distributor.instance.interface, 'RewardAdded', {
           distributionToken: distributionToken.address,
@@ -164,17 +164,17 @@ describe('Distribution Scheduler', () => {
 
       describe('and a reward has been started', async () => {
         sharedBeforeEach(async () => {
-          await scheduler.connect(poker).startDistribution([rewardId]);
+          await scheduler.connect(poker).startDistribution([scheduleId]);
         });
 
         it('cannot be started again', async () => {
-          await expect(scheduler.connect(poker).startDistribution([rewardId])).to.be.revertedWith(
+          await expect(scheduler.connect(poker).startDistribution([scheduleId])).to.be.revertedWith(
             'Reward cannot be started'
           );
         });
 
         it('has reward status set to STARTED', async () => {
-          const response = await scheduler.getScheduledDistributionInfo(rewardId);
+          const response = await scheduler.getScheduledDistributionInfo(scheduleId);
           expect(response.status).to.equal(2);
         });
       });

@@ -33,20 +33,20 @@ contract DistributionScheduler {
         _multiDistributor = multiDistributor;
     }
 
-    enum RewardStatus { UNINITIALIZED, PENDING, STARTED }
+    enum DistributionStatus { UNINITIALIZED, PENDING, STARTED }
 
-    struct ScheduledReward {
+    struct ScheduledDistribution {
         bytes32 distributionId;
         IERC20 stakingToken;
         IERC20 distributionToken;
         uint256 startTime;
         address owner;
         uint256 amount;
-        RewardStatus status;
+        DistributionStatus status;
     }
 
     event DistributionScheduled(
-        bytes32 rewardId,
+        bytes32 scheduleId,
         address indexed owner,
         IERC20 indexed stakingToken,
         IERC20 indexed distributionToken,
@@ -54,7 +54,7 @@ contract DistributionScheduler {
         uint256 amount
     );
     event DistributionStarted(
-        bytes32 rewardId,
+        bytes32 scheduleId,
         address indexed owner,
         IERC20 indexed stakingToken,
         IERC20 indexed distributionToken,
@@ -62,45 +62,52 @@ contract DistributionScheduler {
         uint256 amount
     );
 
-    mapping(bytes32 => ScheduledReward) private _rewards;
+    mapping(bytes32 => ScheduledDistribution) private _scheduledDistributions;
 
-    function getScheduledDistributionInfo(bytes32 rewardId) external view returns (ScheduledReward memory reward) {
-        return _rewards[rewardId];
+    function getScheduledDistributionInfo(bytes32 scheduleId)
+        external
+        view
+        returns (ScheduledDistribution memory reward)
+    {
+        return _scheduledDistributions[scheduleId];
     }
 
-    function startRewards(bytes32[] calldata rewardIds) external {
-        for (uint256 r; r < rewardIds.length; r++) {
-            bytes32 rewardId = rewardIds[r];
-            ScheduledReward memory scheduledReward = _rewards[rewardId];
+    function startDistributions(bytes32[] calldata scheduleIds) external {
+        for (uint256 i; i < scheduleIds.length; i++) {
+            bytes32 scheduleId = scheduleIds[i];
+            ScheduledDistribution memory scheduledDistribution = _scheduledDistributions[scheduleId];
 
-            require(scheduledReward.status == RewardStatus.PENDING, "Reward cannot be started");
-            require(scheduledReward.startTime <= block.timestamp, "Reward start time is in the future");
+            require(scheduledDistribution.status == DistributionStatus.PENDING, "Distribution cannot be started");
+            require(scheduledDistribution.startTime <= block.timestamp, "Distribution start time is in the future");
 
-            _rewards[rewardId].status = RewardStatus.STARTED;
+            _scheduledDistributions[scheduleId].status = DistributionStatus.STARTED;
 
-            uint256 allowance = scheduledReward.distributionToken.allowance(address(this), address(_multiDistributor));
-            if (allowance < scheduledReward.amount) {
-                scheduledReward.distributionToken.approve(address(_multiDistributor), type(uint256).max);
+            uint256 allowance = scheduledDistribution.distributionToken.allowance(
+                address(this),
+                address(_multiDistributor)
+            );
+            if (allowance < scheduledDistribution.amount) {
+                scheduledDistribution.distributionToken.approve(address(_multiDistributor), type(uint256).max);
             }
-            _multiDistributor.fundDistribution(scheduledReward.distributionId, scheduledReward.amount);
+            _multiDistributor.fundDistribution(scheduledDistribution.distributionId, scheduledDistribution.amount);
             emit DistributionStarted(
-                rewardId,
-                scheduledReward.owner,
-                scheduledReward.stakingToken,
-                scheduledReward.distributionToken,
-                scheduledReward.startTime,
-                scheduledReward.amount
+                scheduleId,
+                scheduledDistribution.owner,
+                scheduledDistribution.stakingToken,
+                scheduledDistribution.distributionToken,
+                scheduledDistribution.startTime,
+                scheduledDistribution.amount
             );
         }
     }
 
-    function claimId(
+    function getScheduleId(
         IERC20 stakingToken,
         IERC20 distributionToken,
-        address rewarder,
+        address owner,
         uint256 startTime
     ) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(stakingToken, distributionToken, rewarder, startTime));
+        return keccak256(abi.encodePacked(stakingToken, distributionToken, owner, startTime));
     }
 
     function scheduleDistribution(
@@ -109,24 +116,27 @@ contract DistributionScheduler {
         IERC20 distributionToken,
         uint256 amount,
         uint256 startTime
-    ) public returns (bytes32 rewardId) {
-        rewardId = claimId(stakingToken, distributionToken, msg.sender, startTime);
-        require(startTime > block.timestamp, "Reward can only be scheduled for the future");
+    ) public returns (bytes32 scheduleId) {
+        scheduleId = getScheduleId(stakingToken, distributionToken, msg.sender, startTime);
+        require(startTime > block.timestamp, "Distribution can only be scheduled for the future");
 
-        require(_rewards[rewardId].status == RewardStatus.UNINITIALIZED, "Reward has already been scheduled");
+        require(
+            _scheduledDistributions[scheduleId].status == DistributionStatus.UNINITIALIZED,
+            "Distribution has already been scheduled"
+        );
 
-        _rewards[rewardId] = ScheduledReward({
+        _scheduledDistributions[scheduleId] = ScheduledDistribution({
             distributionId: distributionId,
             stakingToken: stakingToken,
             distributionToken: distributionToken,
             owner: msg.sender,
             amount: amount,
             startTime: startTime,
-            status: RewardStatus.PENDING
+            status: DistributionStatus.PENDING
         });
 
         distributionToken.safeTransferFrom(msg.sender, address(this), amount);
 
-        emit DistributionScheduled(rewardId, msg.sender, stakingToken, distributionToken, startTime, amount);
+        emit DistributionScheduled(scheduleId, msg.sender, stakingToken, distributionToken, startTime, amount);
     }
 }
