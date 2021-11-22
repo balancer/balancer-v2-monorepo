@@ -38,7 +38,7 @@ contract RewardsScheduler {
     struct ScheduledReward {
         bytes32 distributionId;
         IERC20 stakingToken;
-        IERC20 rewardsToken;
+        IERC20 distributionToken;
         uint256 startTime;
         address rewarder;
         uint256 amount;
@@ -49,7 +49,7 @@ contract RewardsScheduler {
         bytes32 rewardId,
         address indexed rewarder,
         IERC20 indexed stakingToken,
-        IERC20 indexed rewardsToken,
+        IERC20 indexed distributionToken,
         uint256 startTime,
         uint256 amount
     );
@@ -57,7 +57,7 @@ contract RewardsScheduler {
         bytes32 rewardId,
         address indexed rewarder,
         IERC20 indexed stakingToken,
-        IERC20 indexed rewardsToken,
+        IERC20 indexed distributionToken,
         uint256 startTime,
         uint256 amount
     );
@@ -78,16 +78,16 @@ contract RewardsScheduler {
 
             _rewards[rewardId].status = RewardStatus.STARTED;
 
-            uint256 allowance = scheduledReward.rewardsToken.allowance(address(this), address(_multiDistributor));
+            uint256 allowance = scheduledReward.distributionToken.allowance(address(this), address(_multiDistributor));
             if (allowance < scheduledReward.amount) {
-                scheduledReward.rewardsToken.approve(address(_multiDistributor), type(uint256).max);
+                scheduledReward.distributionToken.approve(address(_multiDistributor), type(uint256).max);
             }
             _multiDistributor.fundDistribution(scheduledReward.distributionId, scheduledReward.amount);
             emit RewardStarted(
                 rewardId,
                 scheduledReward.rewarder,
                 scheduledReward.stakingToken,
-                scheduledReward.rewardsToken,
+                scheduledReward.distributionToken,
                 scheduledReward.startTime,
                 scheduledReward.amount
             );
@@ -96,21 +96,21 @@ contract RewardsScheduler {
 
     function claimId(
         IERC20 stakingToken,
-        IERC20 rewardsToken,
+        IERC20 distributionToken,
         address rewarder,
         uint256 startTime
     ) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(stakingToken, rewardsToken, rewarder, startTime));
+        return keccak256(abi.encodePacked(stakingToken, distributionToken, rewarder, startTime));
     }
 
     function scheduleReward(
         bytes32 distributionId,
         IERC20 stakingToken,
-        IERC20 rewardsToken,
+        IERC20 distributionToken,
         uint256 amount,
         uint256 startTime
     ) public returns (bytes32 rewardId) {
-        rewardId = claimId(stakingToken, rewardsToken, msg.sender, startTime);
+        rewardId = claimId(stakingToken, distributionToken, msg.sender, startTime);
         require(startTime > block.timestamp, "Reward can only be scheduled for the future");
 
         require(_rewards[rewardId].status == RewardStatus.UNINITIALIZED, "Reward has already been scheduled");
@@ -118,15 +118,15 @@ contract RewardsScheduler {
         _rewards[rewardId] = ScheduledReward({
             distributionId: distributionId,
             stakingToken: stakingToken,
-            rewardsToken: rewardsToken,
+            distributionToken: distributionToken,
             rewarder: msg.sender,
             amount: amount,
             startTime: startTime,
             status: RewardStatus.PENDING
         });
 
-        rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
+        distributionToken.safeTransferFrom(msg.sender, address(this), amount);
 
-        emit RewardScheduled(rewardId, msg.sender, stakingToken, rewardsToken, startTime, amount);
+        emit RewardScheduled(rewardId, msg.sender, stakingToken, distributionToken, startTime, amount);
     }
 }
