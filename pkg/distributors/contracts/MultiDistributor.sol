@@ -211,8 +211,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
         // sentinel value that marks non-existent distributions.
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
-        require(distribution.owner == msg.sender, "SENDER_NOT_OWNER");
         require(distribution.periodFinish < block.timestamp, "DISTRIBUTION_STILL_ACTIVE");
+
+        // Check if msg.sender is authorised to fund this distribution
+        // This is required to allow distribution owners have contracts manage their distributions
+        _authenticateFor(distribution.owner);
 
         _setDistributionDuration(distributionId, distribution, duration);
     }
@@ -245,7 +248,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
         // sentinel value that marks non-existent distributions.
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
-        require(distribution.owner == msg.sender, "SENDER_NOT_OWNER");
+
+        // Check if msg.sender is authorised to fund this distribution
+        // This is required to allow distribution owners have contracts manage their distributions
+        _authenticateFor(distribution.owner);
 
         // Before receiving the tokens, we must sync the distribution up to the present as we are about to change
         // its payment rate, which would otherwise affect the accounting of tokens distributed since the last update
