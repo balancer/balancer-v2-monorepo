@@ -1343,6 +1343,55 @@ describe('MultiDistributor', () => {
     }
   });
 
+  describe('transferStakedTokens', () => {
+    sharedBeforeEach('create distributions', async () => {
+      await distributor.newDistribution(stakingToken, distributionToken, PERIOD_DURATION, { from: distributionOwner });
+      distribution = await distributor.getDistributionId(stakingToken, distributionToken, distributionOwner);
+      await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
+
+      await distributor.newDistribution(stakingToken, anotherDistributionToken, PERIOD_DURATION, {
+        from: distributionOwner,
+      });
+      anotherDistribution = await distributor.getDistributionId(
+        stakingToken,
+        anotherDistributionToken,
+        distributionOwner
+      );
+      await distributor.fundDistribution(anotherDistribution, DISTRIBUTION_SIZE, { from: distributionOwner });
+    });
+
+    context('when the user did specify some amount', () => {
+      const amount = fp(1);
+
+      context('when the user has previously staked the requested balance', () => {
+        sharedBeforeEach('stake amount', async () => {
+          await stakingTokens.mint({ to: user1, amount });
+          await stakingTokens.approve({ to: distributor, amount, from: user1 });
+
+          await distributor.stake(stakingToken, amount, { from: user1 });
+        });
+
+        it('decreases the staking balance of the sender', async () => {
+          const previousStakedBalance = await distributor.balanceOf(stakingToken, user1);
+
+          await distributor.transferStakedTokens(stakingToken, amount, user2, { from: user1 });
+
+          const currentStakedBalance = await distributor.balanceOf(stakingToken, user1);
+          expect(currentStakedBalance).be.equal(previousStakedBalance.sub(amount));
+        });
+
+        it('increases the staking balance of the recipient', async () => {
+          const previousStakedBalance = await distributor.balanceOf(stakingToken, user2);
+
+          await distributor.transferStakedTokens(stakingToken, amount, user2, { from: user1 });
+
+          const currentStakedBalance = await distributor.balanceOf(stakingToken, user2);
+          expect(currentStakedBalance).be.equal(previousStakedBalance.add(amount));
+        });
+      });
+    });
+  });
+
   describe('subscribe', () => {
     context('when the distribution exists', () => {
       sharedBeforeEach('create distributions', async () => {
