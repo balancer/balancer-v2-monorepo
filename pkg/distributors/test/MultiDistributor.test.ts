@@ -1368,7 +1368,7 @@ describe('MultiDistributor', () => {
           await stakingTokens.mint({ to: user1, amount });
           await stakingTokens.approve({ to: distributor, amount, from: user1 });
 
-          await distributor.stake(stakingToken, amount, { from: user1 });
+          await distributor.stake(stakingToken, amount, user1, user1, { from: user1 });
         });
 
         it('decreases the staking balance of the sender', async () => {
