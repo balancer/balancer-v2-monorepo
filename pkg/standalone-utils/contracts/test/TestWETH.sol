@@ -17,7 +17,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/misc/IWETH.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/AccessControl.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/AccessControl.sol";
 
 contract TestWETH is AccessControl, IWETH {
     bytes32 public constant MINTER_PERMISSION = keccak256("MINTER_PERMISSION");

@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "./interfaces/IAuthorizer.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/AccessControl.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/AccessControl.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 /**
