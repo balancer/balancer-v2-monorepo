@@ -29,7 +29,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
  */
 contract Authorizer is AccessControl, IAuthorizer {
     constructor(address admin) {
-        _setupPermission(DEFAULT_ADMIN_PERMISSION, admin);
+        _setupAdmin(GLOBAL_PERMISSION_ADMIN, admin);
     }
 
     function canPerform(

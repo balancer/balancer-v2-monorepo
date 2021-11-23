@@ -29,7 +29,7 @@ contract TestToken is AccessControl, ERC20, ERC20Burnable, ERC20Permit {
         uint8 decimals
     ) ERC20(name, symbol) ERC20Permit(name) {
         _setupDecimals(decimals);
-        _setupPermission(DEFAULT_ADMIN_PERMISSION, admin);
+        _setupAdmin(GLOBAL_PERMISSION_ADMIN, admin);
         _setupPermission(MINTER_PERMISSION, admin);
     }
 

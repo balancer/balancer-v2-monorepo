@@ -33,7 +33,7 @@ contract TestWETH is AccessControl, IWETH {
     mapping(address => mapping(address => uint256)) public override allowance;
 
     constructor(address minter) {
-        _setupPermission(DEFAULT_ADMIN_PERMISSION, minter);
+        _setupAdmin(GLOBAL_PERMISSION_ADMIN, minter);
         _setupPermission(MINTER_PERMISSION, minter);
     }
 

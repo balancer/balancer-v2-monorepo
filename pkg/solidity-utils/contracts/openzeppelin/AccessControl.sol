@@ -47,33 +47,32 @@ abstract contract AccessControl {
     struct PermissionData {
         EnumerableSet.AddressSet globalMembers;
         mapping(address => EnumerableSet.AddressSet) membersByContract;
-        bytes32 adminPermission;
+        EnumerableSet.AddressSet admins;
     }
 
     mapping(bytes32 => PermissionData) private _permissions;
 
-    bytes32 public constant DEFAULT_ADMIN_PERMISSION = 0x00;
-    address public constant GLOBAL_PERMISSION_ADMIN = address(0);
+    bytes32 public constant GLOBAL_PERMISSION_ADMIN = bytes32(0);
 
     /**
-     * @dev Emitted when `newAdminPermission` is set as ``permission``'s admin permission,
-     *      replacing `previousAdminPermission`
+     * @dev Emitted when `account` is granted admin rights over `permission`.
      *
-     * `DEFAULT_ADMIN_PERMISSION` is the starting admin for all Permissions, despite
-     * {PermissionAdminChanged} not being emitted signaling this.
-     *
-     * _Available since v3.1._
+     * `sender` is the account that originated the contract call, an admin rights
+     * bearer except when using {_setupPermission}.
      */
-    event PermissionAdminChanged(
-        bytes32 indexed permission,
-        bytes32 indexed previousAdminPermission,
-        bytes32 indexed newAdminPermission
-    );
+    event AdminRightsGranted(bytes32 indexed permission, address indexed account, address indexed sender);
+
+    /**
+     * @dev Emitted when `account` is revoked admin rights over `permission`.
+     *
+     * `sender` is the account holding admin rights that originated the contract call.
+     */
+    event AdminRightsRevoked(bytes32 indexed permission, address indexed account, address indexed sender);
 
     /**
      * @dev Emitted when `account` is granted `permission` in an specific contract `where`.
      *
-     * `sender` is the account that originated the contract call, an admin permission
+     * `sender` is the account that originated the contract call, an admin rights
      * bearer except when using {_setupPermission}.
      */
     event PermissionGranted(bytes32 indexed permission, address indexed account, address indexed sender, address where);
@@ -81,7 +80,7 @@ abstract contract AccessControl {
     /**
      * @dev Emitted when `account` is granted `permission` across all contracts.
      *
-     * `sender` is the account that originated the contract call, an admin permission
+     * `sender` is the account that originated the contract call, an admin rights
      * bearer except when using {_setupPermission}.
      */
     event PermissionGrantedGlobally(bytes32 indexed permission, address indexed account, address indexed sender);
@@ -90,7 +89,7 @@ abstract contract AccessControl {
      * @dev Emitted when `account` is revoked `permission` in an specific contract `where`.
      *
      * `sender` is the account that originated the contract call:
-     *   - if using `revokePermission`, it is the admin permission bearer
+     *   - if using `revokePermission`, it is the admin rights bearer
      *   - if using `renouncePermission`, it is the permission bearer (i.e. `account`)
      */
     event PermissionRevoked(bytes32 indexed permission, address indexed account, address indexed sender, address where);
@@ -99,10 +98,45 @@ abstract contract AccessControl {
      * @dev Emitted when `account` is revoked `permission` across all contracts.
      *
      * `sender` is the account that originated the contract call:
-     *   - if using `revokePermission`, it is the admin permission bearer
+     *   - if using `revokePermission`, it is the admin rights bearer
      *   - if using `renouncePermission`, it is the permission bearer (i.e. `account`)
      */
     event PermissionRevokedGlobally(bytes32 indexed permission, address indexed account, address indexed sender);
+
+    /**
+     * @dev Returns `true` if `account` has admin role over `permission`
+     */
+    function isAdminFor(bytes32 permission, address account) public view virtual returns (bool) {
+        return
+            _permissions[permission].admins.contains(account) ||
+            _permissions[GLOBAL_PERMISSION_ADMIN].admins.contains(account);
+    }
+
+    /**
+     * @dev Returns the number of accounts that are admins for `permission`. Can be used
+     * together with {getPermissionAdmin} to enumerate all admins of a permission.
+     */
+    function getPermissionAdminCount(bytes32 permission) public view returns (uint256) {
+        return _permissions[permission].admins.length();
+    }
+
+    // solhint-disable max-line-length
+    /**
+     * @dev Returns one of the accounts that are an admin for `permission`. `index` must be a
+     * value between 0 and {getPermissionAdminCount}, non-inclusive.
+     *
+     * Permission admins are not sorted in any particular way, and their ordering may
+     * change at any point.
+     *
+     * WARNING: When using {getPermissionAdmin} and {getPermissionAdminCount}, make sure
+     * you perform all queries on the same block. See the following
+     * https://forum.openzeppelin.com/t/iterating-over-elements-on-enumerableset-in-openzeppelin-contracts/2296[forum post]
+     * for more information.
+     */
+    // solhint-enable max-line-length
+    function getPermissionAdmin(bytes32 permission, uint256 index) public view returns (address) {
+        return _permissions[permission].admins.at(index);
+    }
 
     /**
      * @dev Returns `true` if `account` has been granted `permission` either globally
@@ -175,13 +209,51 @@ abstract contract AccessControl {
     }
 
     /**
-     * @dev Returns the admin permission that controls `permission`. See {grantPermission} and
-     * {revokePermission}.
+     * @dev Grants admin rights over `permission` to `account`.
      *
-     * To change a permission's admin, use {_setPermissionAdmin}.
+     * If `account` had not been already granted admin rights over `permission`, emits an {AdminRightsGranted}
+     * event.
+     *
+     * Requirements:
+     *
+     * - the caller must have admin rights over ``permission``.
      */
-    function getPermissionAdmin(bytes32 permission) public view returns (bytes32) {
-        return _permissions[permission].adminPermission;
+    function grantAdminRights(bytes32 permission, address account) public virtual {
+        _require(isAdminFor(permission, msg.sender), Errors.GRANT_SENDER_NOT_ADMIN);
+        _grantAdminRights(permission, account);
+    }
+
+    /**
+     * @dev Revokes admin rights over `permission` from `account`.
+     *
+     * If `account` had already been granted admin rights over `permission`, emits an {AdminRightsRevoked} event.
+     *
+     * Requirements:
+     *
+     * - the caller must have admin rights over ``permission``.
+     */
+    function revokeAdminRights(bytes32 permission, address account) public virtual {
+        _require(isAdminFor(permission, msg.sender), Errors.REVOKE_SENDER_NOT_ADMIN);
+        _revokeAdminRights(permission, account);
+    }
+
+    /**
+     * @dev Revokes admin rights for `permission` from the calling account.
+     *
+     * Permissions are often managed via {grantAdminRights} and {revokeAdminRights}: this function's
+     * purpose is to provide a mechanism for accounts to lose their privileges
+     * if they are compromised (such as when a trusted device is misplaced).
+     *
+     * If the calling account had been granted admin rights over `permission`, emits an {AdminRightsRevoked}
+     * event.
+     *
+     * Requirements:
+     *
+     * - the caller must be `account`.
+     */
+    function renounceAdminRights(bytes32 permission, address account) public virtual {
+        _require(account == msg.sender, Errors.RENOUNCE_SENDER_NOT_ALLOWED);
+        _revokeAdminRights(permission, account);
     }
 
     /**
@@ -201,10 +273,7 @@ abstract contract AccessControl {
         address[] calldata where
     ) public virtual {
         _require(where.length > 0, Errors.INPUT_LENGTH_MISMATCH);
-        _require(
-            hasPermission(_permissions[permission].adminPermission, msg.sender, GLOBAL_PERMISSION_ADMIN),
-            Errors.GRANT_SENDER_NOT_ADMIN
-        );
+        _require(isAdminFor(permission, msg.sender), Errors.GRANT_SENDER_NOT_ADMIN);
         for (uint256 i = 0; i < where.length; i++) {
             _grantPermission(permission, account, where[i]);
         }
@@ -221,10 +290,7 @@ abstract contract AccessControl {
      * - the caller must have ``permission``'s admin permission.
      */
     function grantPermissionGlobally(bytes32 permission, address account) public virtual {
-        _require(
-            hasPermission(_permissions[permission].adminPermission, msg.sender, GLOBAL_PERMISSION_ADMIN),
-            Errors.GRANT_SENDER_NOT_ADMIN
-        );
+        _require(isAdminFor(permission, msg.sender), Errors.GRANT_SENDER_NOT_ADMIN);
         _grantPermissionGlobally(permission, account);
     }
 
@@ -243,10 +309,7 @@ abstract contract AccessControl {
         address account,
         address[] calldata where
     ) public virtual {
-        _require(
-            hasPermission(_permissions[permission].adminPermission, msg.sender, GLOBAL_PERMISSION_ADMIN),
-            Errors.REVOKE_SENDER_NOT_ADMIN
-        );
+        _require(isAdminFor(permission, msg.sender), Errors.REVOKE_SENDER_NOT_ADMIN);
         _require(where.length > 0, Errors.INPUT_LENGTH_MISMATCH);
         _revokePermission(permission, account, where);
     }
@@ -261,10 +324,7 @@ abstract contract AccessControl {
      * - the caller must have ``permission``'s admin permission.
      */
     function revokePermissionGlobally(bytes32 permission, address account) public virtual {
-        _require(
-            hasPermission(_permissions[permission].adminPermission, msg.sender, GLOBAL_PERMISSION_ADMIN),
-            Errors.REVOKE_SENDER_NOT_ADMIN
-        );
+        _require(isAdminFor(permission, msg.sender), Errors.REVOKE_SENDER_NOT_ADMIN);
         _revokePermissionGlobally(permission, account);
     }
 
@@ -332,13 +392,35 @@ abstract contract AccessControl {
     }
 
     /**
-     * @dev Sets `adminPermission` as ``permission``'s admin permission.
+     * @dev Grants admin rights over `permission` to `account`.
      *
-     * Emits a {PermissionAdminChanged} event.
+     * If `account` had not been already granted admin rights over `permission`,
+     * emits an {AdminRightsGranted} event. Note that unlike {grantPermission},
+     * this function doesn't perform any checks on the calling account.
+     *
+     * [WARNING]
+     * ====
+     * This function should only be called from the constructor when setting
+     * up the initial admins for the system.
+     *
+     * Using this function in any other way is effectively circumventing the admin
+     * system imposed by {AccessControl}.
+     * ====
      */
-    function _setPermissionAdmin(bytes32 permission, bytes32 adminPermission) internal virtual {
-        emit PermissionAdminChanged(permission, _permissions[permission].adminPermission, adminPermission);
-        _permissions[permission].adminPermission = adminPermission;
+    function _setupAdmin(bytes32 permission, address account) internal virtual {
+        _grantAdminRights(permission, account);
+    }
+
+    function _grantAdminRights(bytes32 permission, address account) private {
+        if (_permissions[permission].admins.add(account)) {
+            emit AdminRightsGranted(permission, account, msg.sender);
+        }
+    }
+
+    function _revokeAdminRights(bytes32 permission, address account) private {
+        if (_permissions[permission].admins.remove(account)) {
+            emit AdminRightsRevoked(permission, account, msg.sender);
+        }
     }
 
     function _grantPermission(
@@ -346,7 +428,6 @@ abstract contract AccessControl {
         address account,
         address where
     ) private {
-        require(where != address(0), "Where can't be GLOBAL_PERMISSION_ADMIN");
         if (_permissions[permission].membersByContract[where].add(account)) {
             emit PermissionGranted(permission, account, msg.sender, where);
         }
