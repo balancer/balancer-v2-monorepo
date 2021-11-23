@@ -208,7 +208,7 @@ contract StablePhantomPool is StablePool {
             // corresponds to protocol fees.
 
             // Since the original StablePool._onSwapGivenIn implementation already computes the invariant, we fully
-            // replace it and reimplement it here to take advtange of that.
+            // replace it and reimplement it here to take advantage of that.
 
             (uint256 currentAmp, ) = _getAmplificationParameter();
             uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, true);
@@ -379,7 +379,7 @@ contract StablePhantomPool is StablePool {
     ) private {
         // To convert the protocol swap fees to a BPT amount, we compute the invariant growth (which is due exclusively
         // to swap fees), extract the portion that corresponds to protocol swap fees, and then compute the equivalent
-        // amout of BPT that would cause such an increase.
+        // amount of BPT that would cause such an increase.
         //
         // Invariant growth is related to new BPT and supply by:
         // invariant ratio = (bpt amount + supply) / supply
@@ -421,12 +421,12 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * Since this Pool has preminted BPT which is stored in the Vault, it cannot be simply minted at construction.
+     * Since this Pool has preminted BPT which is stored in the Vault, it cannot simply be minted at construction.
      *
      * We take advantage of the fact that StablePools have an initialization step where BPT is minted to the first
      * account joining them, and perform both actions at once. By minting the entire BPT supply for the initial joiner
-     * and then pulling all tokens except the joiner's due, we arrive at the desired state of the Pool holding all BPT
-     * except the joiner's.
+     * and then pulling all tokens except those due the joiner, we arrive at the desired state of the Pool holding all
+     * BPT except the joiner's.
      */
     function _onInitializePool(
         bytes32,
@@ -444,6 +444,7 @@ contract StablePhantomPool is StablePool {
 
         (uint256 amp, ) = _getAmplificationParameter();
         (, uint256[] memory amountsIn) = _dropBptItem(amountsInIncludingBpt);
+        // The true argument in the _calculateInvariant call instructs it to round up
         uint256 invariantAfterJoin = StableMath._calculateInvariant(amp, amountsIn, true);
 
         // Set the initial BPT to the value of the invariant
@@ -504,7 +505,7 @@ contract StablePhantomPool is StablePool {
     {
         uint256 totalTokens = _getTotalTokens();
 
-        // This Join grants no BPT nor takes any tokens from the sender.
+        // This join neither grants BPT nor takes any tokens from the sender.
         bptOut = 0;
         amountsIn = new uint256[](totalTokens);
 
@@ -543,10 +544,9 @@ contract StablePhantomPool is StablePool {
         if (kind == ExitKindPhantom.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             _ensurePaused();
 
-            // Note that this will cause for the user's BPT to be burned, which is not something that happens during
+            // Note that this will cause the user's BPT to be burned, which is not something that happens during
             // regular operation of this Pool, and may lead to accounting errors. Because of this, it is highly
-            // advisable to not continue using a Pool on which the pause has been turned on and BPT burned once the
-            // pause window expires.
+            // advisable to stop using a Pool after it is paused and the pause window expires.
 
             (bptAmountIn, amountsOut) = _proportionalExit(balances, userData);
             // For simplicity, due protocol fees are set to zero.
@@ -561,10 +561,11 @@ contract StablePhantomPool is StablePool {
         view
         returns (uint256, uint256[] memory)
     {
-        // This proportional exit function is only enabled if the contract is paused in an attempt to provide users
-        // with a mechanism to retrieve their tokens in case of an emergency.
-        // This particular exit function is the only one available because it is the simplest one, and therefore the
-        // one with the lowest likelihood of errors.
+        // This proportional exit function is only enabled if the contract is paused, to provide users a way to
+        // retrieve their tokens in case of an emergency.
+        //
+        // This particular exit function is the only one available because it is the simplest, and therefore least
+        // likely to be incorrect, or revert and lock funds.
         (, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
 
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
@@ -573,8 +574,8 @@ contract StablePhantomPool is StablePool {
         uint256[] memory amountsOut = StableMath._calcTokensOutGivenExactBptIn(
             balancesWithoutBpt,
             bptAmountIn,
-            // We need the actual virtual supply here instead of the approximation returnd by _dropBPTItem, as this
-            // process burns BPT, rendering it inaccurate.
+            // This process burns BPT, rendering the approximation returned by `_dropBPTItem` inaccurate,
+            // so we use the real method here
             _getVirtualSupply(balances[_bptIndex])
         );
 
@@ -664,7 +665,7 @@ contract StablePhantomPool is StablePool {
     /**
      * @dev Sets a new duration for a token rate cache. It reverts if there was no rate provider set initially.
      * Note this function also updates the current cached value.
-     * @param duration Number of seconds until the current rate of token rate is fetched again.
+     * @param duration Number of seconds until the current token rate is fetched again.
      */
     function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
         IRateProvider provider = _rateProviders[token];
@@ -675,7 +676,7 @@ contract StablePhantomPool is StablePool {
 
     /**
      * @dev Forces a rate cache hit for a token.
-     * It will revert if the requested token does not have a rate provider associated.
+     * It will revert if the requested token does not have an associated rate provider.
      */
     function updateTokenRateCache(IERC20 token) external {
         IRateProvider provider = _rateProviders[token];
@@ -685,8 +686,8 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * @dev Internal function to updates a token rate cache for a known provider and duration.
-     * It trusts the given values, it does not perform any checks.
+     * @dev Internal function to update a token rate cache for a known provider and duration.
+     * It trusts the given values, and does not perform any checks.
      */
     function _updateTokenRateCache(
         IERC20 token,
@@ -715,7 +716,7 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * @dev Caches the rate for a token if necessary. It ignores the call if theres is no provider set.
+     * @dev Caches the rate for a token if necessary. It ignores the call if there is no provider set.
      */
     function _cacheTokenRateIfNecessary(IERC20 token) internal {
         IRateProvider provider = _rateProviders[token];
