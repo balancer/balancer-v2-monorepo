@@ -593,9 +593,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
                 kind: kind
             });
 
-            if (amounts[i] > 0) {
-                emit TokensClaimed(msg.sender, address(tokens[i]), amounts[i]);
-            }
+            emit TokensClaimed(msg.sender, address(tokens[i]), amounts[i]);
         }
 
         getVault().manageUserBalance(ops);
