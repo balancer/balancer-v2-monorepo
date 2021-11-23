@@ -53,7 +53,7 @@ describe('VaultAuthorization', function () {
 
       sharedBeforeEach('grant permission', async () => {
         action = await actionId(vault, 'setAuthorizer');
-        await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+        await authorizer.connect(admin).grantPermissionGlobally(action, admin.address);
       });
 
       it('can change the authorizer to another address', async () => {
@@ -74,7 +74,7 @@ describe('VaultAuthorization', function () {
       });
 
       it('can not change the authorizer if the permission was revoked', async () => {
-        await authorizer.connect(admin).revokeRoleGlobally(action, admin.address);
+        await authorizer.connect(admin).revokePermissionGlobally(action, admin.address);
 
         expect(await authorizer.canPerform(action, admin.address, WHERE)).to.be.false;
 
@@ -112,7 +112,7 @@ describe('VaultAuthorization', function () {
       context('when the sender is allowed by the authorizer', () => {
         sharedBeforeEach('grant permission to sender', async () => {
           const action = await actionId(vault, 'setRelayerApproval');
-          await authorizer.connect(admin).grantRoleGlobally(action, sender.address);
+          await authorizer.connect(admin).grantPermissionGlobally(action, sender.address);
         });
 
         context('when the sender is approved by the user', () => {
@@ -146,7 +146,7 @@ describe('VaultAuthorization', function () {
       context('when the sender is not allowed by the authorizer', () => {
         sharedBeforeEach('revoke permission for sender', async () => {
           const action = await actionId(vault, 'setRelayerApproval');
-          await authorizer.connect(admin).revokeRoleGlobally(action, sender.address);
+          await authorizer.connect(admin).revokePermissionGlobally(action, sender.address);
         });
 
         context('when the sender is approved by the user', () => {
@@ -254,7 +254,7 @@ describe('VaultAuthorization', function () {
 
       sharedBeforeEach('grant permission', async () => {
         action = await actionId(vault, 'setPaused');
-        await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+        await authorizer.connect(admin).grantPermissionGlobally(action, admin.address);
       });
 
       it('can pause', async () => {
@@ -273,7 +273,7 @@ describe('VaultAuthorization', function () {
       });
 
       it('cannot pause if the permission is revoked', async () => {
-        await authorizer.connect(admin).revokeRoleGlobally(action, admin.address);
+        await authorizer.connect(admin).revokePermissionGlobally(action, admin.address);
         expect(await authorizer.canPerform(action, admin.address, WHERE)).to.be.false;
         await expect(vault.connect(admin).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });

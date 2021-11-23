@@ -365,7 +365,7 @@ describe('MetaStablePool', function () {
 
       sharedBeforeEach('grant role to admin', async () => {
         const action = await actionId(pool.instance, 'enableOracle');
-        await pool.vault.grantRoleGlobally(action, admin);
+        await pool.vault.grantPermissionGlobally(action, admin);
       });
 
       context('when it starts enabled', () => {
@@ -596,7 +596,7 @@ describe('MetaStablePool', function () {
 
         sharedBeforeEach('grant role to admin', async () => {
           const action = await actionId(pool.instance, 'setPriceRateCacheDuration');
-          await pool.vault.grantRoleGlobally(action, admin);
+          await pool.vault.grantPermissionGlobally(action, admin);
         });
 
         const setNewPriceRateCache = () => {
@@ -676,7 +676,7 @@ describe('MetaStablePool', function () {
 
       it('cannot update the price rate cache duration', async () => {
         const action = await actionId(pool.instance, 'setPriceRateCacheDuration');
-        await pool.vault.grantRoleGlobally(action, admin);
+        await pool.vault.grantPermissionGlobally(action, admin);
 
         await expect(pool.setPriceRateCacheDuration(tokens.first, MINUTE * 10, { from: admin })).to.be.revertedWith(
           'INVALID_TOKEN'

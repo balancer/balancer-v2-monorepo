@@ -313,7 +313,7 @@ describe('Asset Management', function () {
             context('when paused', () => {
               sharedBeforeEach('pause', async () => {
                 const action = await actionId(vault, 'setPaused');
-                await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+                await authorizer.connect(admin).grantPermissionGlobally(action, admin.address);
                 await vault.connect(admin).setPaused(true);
               });
 
@@ -438,7 +438,7 @@ describe('Asset Management', function () {
               context('when paused', () => {
                 sharedBeforeEach('pause', async () => {
                   const action = await actionId(vault, 'setPaused');
-                  await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+                  await authorizer.connect(admin).grantPermissionGlobally(action, admin.address);
                   await vault.connect(admin).setPaused(true);
                 });
 
@@ -598,7 +598,7 @@ describe('Asset Management', function () {
               context('when paused', () => {
                 sharedBeforeEach('pause', async () => {
                   const action = await actionId(vault, 'setPaused');
-                  await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+                  await authorizer.connect(admin).grantPermissionGlobally(action, admin.address);
                   await vault.connect(admin).setPaused(true);
                 });
 

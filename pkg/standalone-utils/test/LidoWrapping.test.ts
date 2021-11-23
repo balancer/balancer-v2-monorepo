@@ -60,7 +60,7 @@ describe('LidoWrapping', function () {
       )
     );
     const authorizer = await deployedAt('v2-vault/Authorizer', await vault.instance.getAuthorizer());
-    await authorizer.connect(admin).grantRolesGlobally(relayerActionIds, relayer.address);
+    await authorizer.connect(admin).grantPermissionsGlobally(relayerActionIds, relayer.address);
 
     // Approve relayer by sender
     await vault.instance.connect(senderUser).setRelayerApproval(senderUser.address, relayer.address, true);

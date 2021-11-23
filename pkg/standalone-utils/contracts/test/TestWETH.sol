@@ -20,7 +20,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/misc/IWETH.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/AccessControl.sol";
 
 contract TestWETH is AccessControl, IWETH {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant MINTER_PERMISSION = keccak256("MINTER_PERMISSION");
 
     string public name = "Wrapped Ether";
     string public symbol = "WETH";
@@ -33,8 +33,8 @@ contract TestWETH is AccessControl, IWETH {
     mapping(address => mapping(address => uint256)) public override allowance;
 
     constructor(address minter) {
-        _setupRole(DEFAULT_ADMIN_ROLE, minter);
-        _setupRole(MINTER_ROLE, minter);
+        _setupPermission(DEFAULT_ADMIN_PERMISSION, minter);
+        _setupPermission(MINTER_PERMISSION, minter);
     }
 
     receive() external payable {
@@ -55,7 +55,7 @@ contract TestWETH is AccessControl, IWETH {
 
     // For testing purposes - this creates WETH that cannot be redeemed for ETH via 'withdraw'
     function mint(address destinatary, uint256 amount) external {
-        require(hasRole(MINTER_ROLE, msg.sender, address(this)), "NOT_MINTER");
+        require(hasPermission(MINTER_PERMISSION, msg.sender, address(this)), "NOT_MINTER");
         balanceOf[destinatary] += amount;
         emit Deposit(destinatary, amount);
     }

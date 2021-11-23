@@ -55,7 +55,7 @@ describe('MultiDistributor', () => {
     it('tracks authorizer changes in the vault', async () => {
       const { vault, authorizer, admin } = distributor;
       const action = await actionId(vault, 'setAuthorizer');
-      await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+      await authorizer.connect(admin).grantPermissionGlobally(action, admin.address);
 
       await vault.connect(admin).setAuthorizer(user1.address);
 

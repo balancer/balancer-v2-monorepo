@@ -87,7 +87,7 @@ describe('RebalancingRelayer', function () {
       context('when the relayer is allowed to join', () => {
         sharedBeforeEach('allow relayer', async () => {
           const action = await actionId(vault, 'joinPool');
-          await authorizer.connect(admin).grantRoleGlobally(action, relayer.address);
+          await authorizer.connect(admin).grantPermissionGlobally(action, relayer.address);
         });
 
         context('when the user did allow the relayer', () => {
@@ -187,7 +187,7 @@ describe('RebalancingRelayer', function () {
         context('when the relayer is not allowed to join', () => {
           sharedBeforeEach('revoke relayer', async () => {
             const action = await actionId(vault, 'joinPool');
-            await authorizer.connect(admin).revokeRoleGlobally(action, relayer.address);
+            await authorizer.connect(admin).revokePermissionGlobally(action, relayer.address);
           });
 
           it('reverts', async () => {
@@ -232,7 +232,7 @@ describe('RebalancingRelayer', function () {
       context('when the relayer is allowed to exit', () => {
         sharedBeforeEach('allow relayer', async () => {
           const action = await actionId(vault, 'exitPool');
-          await authorizer.connect(admin).grantRoleGlobally(action, relayer.address);
+          await authorizer.connect(admin).grantPermissionGlobally(action, relayer.address);
         });
 
         context('when the user did allow the relayer', () => {
@@ -242,7 +242,7 @@ describe('RebalancingRelayer', function () {
 
           sharedBeforeEach('join pool', async () => {
             const action = await actionId(vault, 'joinPool');
-            await authorizer.connect(admin).grantRoleGlobally(action, relayer.address);
+            await authorizer.connect(admin).grantPermissionGlobally(action, relayer.address);
             // We join twice here so that exiting doesn't return the pool to a zero-balance state
             await relayer.connect(sender).joinPool(poolId, sender.address, joinRequest);
             await relayer.connect(sender).joinPool(poolId, sender.address, joinRequest);
@@ -352,7 +352,7 @@ describe('RebalancingRelayer', function () {
         context('when the relayer is not allowed to exit', () => {
           sharedBeforeEach('revoke relayer', async () => {
             const action = await actionId(vault, 'exitPool');
-            await authorizer.connect(admin).revokeRoleGlobally(action, relayer.address);
+            await authorizer.connect(admin).revokePermissionGlobally(action, relayer.address);
           });
 
           it('reverts', async () => {
