@@ -2,9 +2,9 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/BalancerErrors.sol";
+import "../openzeppelin/EnumerableSet.sol";
 
-import "./EnumerableSet.sol";
+import "./BalancerErrors.sol";
 
 /**
  * @dev Contract module that allows children to implement permission-based access
