@@ -232,6 +232,10 @@ describe('ManagedPool', function () {
 
         // And allow joins from anywhere
         await expect(pool.joinAllGivenOut({ from: other, bptOut: startingBpt })).to.not.be.reverted;
+
+        // Does not allow adding addresses now
+        await expect(pool.addAllowedAddress(owner, other.address)).to.be.revertedWith('UNAUTHORIZED_OPERATION');
+        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('ADDRESS_NOT_ALLOWLISTED');
       });
 
       it('reverts if non-owner tries to enable public LPs', async () => {

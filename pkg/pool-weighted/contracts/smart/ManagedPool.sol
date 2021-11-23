@@ -310,7 +310,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
      */
     function addAllowedAddress(address member) external authenticate whenNotPaused {
         _require(getMustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
-        _require(!isAllowedAddress(member), Errors.ADDRESS_ALREADY_ALLOWLISTED);
+        _require(!_allowedAddresses[member], Errors.ADDRESS_ALREADY_ALLOWLISTED);
 
         _allowedAddresses[member] = true;
         emit AllowlistAddressAdded(member);
@@ -320,8 +320,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
      * @dev Removes an address from the allowlist.
      */
     function removeAllowedAddress(address member) external authenticate whenNotPaused {
-        // Don't need to check permission - otherwise could not have been added
-        _require(isAllowedAddress(member), Errors.ADDRESS_NOT_ALLOWLISTED);
+        _require(_allowedAddresses[member], Errors.ADDRESS_NOT_ALLOWLISTED);
 
         delete _allowedAddresses[member];
         emit AllowlistAddressRemoved(member);
@@ -478,7 +477,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
         // Check allowlist for LPs, if applicable
-        _require(!getMustAllowlistLPs() || isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
+        _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
         _subtractCollectedFees(balances);
 
