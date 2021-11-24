@@ -41,94 +41,94 @@ contract Authorizer is AccessControl, IAuthorizer {
     }
 
     /**
-     * @dev Grants multiple roles to a single account for a set of contracts.
+     * @dev Grants multiple permissions to a single account for a set of contracts.
      */
     function grantPermissions(
-        bytes32[] memory roles,
+        bytes32[] memory permissions,
         address account,
         address[] calldata where
     ) external {
-        for (uint256 i = 0; i < roles.length; i++) {
-            grantPermission(roles[i], account, where);
+        for (uint256 i = 0; i < permissions.length; i++) {
+            grantPermission(permissions[i], account, where);
         }
     }
 
     /**
-     * @dev Grants multiple roles to a single account for all contracts.
+     * @dev Grants multiple permissions to a single account for all contracts.
      */
-    function grantPermissionsGlobally(bytes32[] memory roles, address account) external {
-        for (uint256 i = 0; i < roles.length; i++) {
-            grantPermissionGlobally(roles[i], account);
+    function grantPermissionsGlobally(bytes32[] memory permissions, address account) external {
+        for (uint256 i = 0; i < permissions.length; i++) {
+            grantPermissionGlobally(permissions[i], account);
         }
     }
 
     /**
-     * @dev Grants roles to a list of accounts for a set of contracts.
+     * @dev Grants permissions to a list of accounts for a set of contracts.
      */
     function grantPermissionsToMany(
-        bytes32[] memory roles,
+        bytes32[] memory permissions,
         address[] memory accounts,
         address[] calldata where
     ) external {
-        InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
-        for (uint256 i = 0; i < roles.length; i++) {
-            grantPermission(roles[i], accounts[i], where);
+        InputHelpers.ensureInputLengthMatch(permissions.length, accounts.length);
+        for (uint256 i = 0; i < permissions.length; i++) {
+            grantPermission(permissions[i], accounts[i], where);
         }
     }
 
     /**
-     * @dev Grants roles to a list of accounts for all contracts.
+     * @dev Grants permissions to a list of accounts for all contracts.
      */
-    function grantPermissionsGloballyToMany(bytes32[] memory roles, address[] memory accounts) external {
-        InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
-        for (uint256 i = 0; i < roles.length; i++) {
-            grantPermissionGlobally(roles[i], accounts[i]);
+    function grantPermissionsGloballyToMany(bytes32[] memory permissions, address[] memory accounts) external {
+        InputHelpers.ensureInputLengthMatch(permissions.length, accounts.length);
+        for (uint256 i = 0; i < permissions.length; i++) {
+            grantPermissionGlobally(permissions[i], accounts[i]);
         }
     }
 
     /**
-     * @dev Revokes multiple roles from a single account for a set of contracts.
+     * @dev Revokes multiple permissions from a single account for a set of contracts.
      */
     function revokePermissions(
-        bytes32[] memory roles,
+        bytes32[] memory permissions,
         address account,
         address[] calldata where
     ) external {
-        for (uint256 i = 0; i < roles.length; i++) {
-            revokePermission(roles[i], account, where);
+        for (uint256 i = 0; i < permissions.length; i++) {
+            revokePermission(permissions[i], account, where);
         }
     }
 
     /**
-     * @dev Revokes multiple roles from a single account for all contracts.
+     * @dev Revokes multiple permissions from a single account for all contracts.
      */
-    function revokePermissionsGlobally(bytes32[] memory roles, address account) external {
-        for (uint256 i = 0; i < roles.length; i++) {
-            revokePermissionGlobally(roles[i], account);
+    function revokePermissionsGlobally(bytes32[] memory permissions, address account) external {
+        for (uint256 i = 0; i < permissions.length; i++) {
+            revokePermissionGlobally(permissions[i], account);
         }
     }
 
     /**
-     * @dev Revokes roles from a list of accounts across a set of contracts
+     * @dev Revokes permissions from a list of accounts across a set of contracts
      */
     function revokePermissionsFromMany(
-        bytes32[] memory roles,
+        bytes32[] memory permissions,
         address[] memory accounts,
         address[] calldata where
     ) external {
-        InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
-        for (uint256 i = 0; i < roles.length; i++) {
-            revokePermission(roles[i], accounts[i], where);
+        InputHelpers.ensureInputLengthMatch(permissions.length, accounts.length);
+        for (uint256 i = 0; i < permissions.length; i++) {
+            revokePermission(permissions[i], accounts[i], where);
         }
     }
 
     /**
-     * @dev Revokes roles from a list of accounts.
+     * @dev Revokes permissions from a list of accounts.
      */
-    function revokePermissionsGloballyFromMany(bytes32[] memory roles, address[] memory accounts) external {
-        InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
-        for (uint256 i = 0; i < roles.length; i++) {
-            revokePermissionGlobally(roles[i], accounts[i]);
+    function revokePermissionsGloballyFromMany(bytes32[] memory permissions, address[] memory accounts) external {
+        InputHelpers.ensureInputLengthMatch(permissions.length, accounts.length);
+        for (uint256 i = 0; i < permissions.length; i++) {
+            revokePermissionGlobally(permissions[i], accounts[i]);
         }
     }
 }
