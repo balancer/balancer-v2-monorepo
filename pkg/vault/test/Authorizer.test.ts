@@ -33,22 +33,22 @@ describe('Authorizer', () => {
         authorizer = authorizer.connect(admin);
       });
 
-      it('grants a list of roles globally', async () => {
+      it('grants a list of permissions globally', async () => {
         await authorizer.grantPermissionsGlobally(PERMISSIONS, grantee.address);
 
-        for (const role of PERMISSIONS) {
-          expect(await authorizer.canPerform(role, grantee.address, ANYWHERE)).to.be.true;
-          expect(await authorizer.canPerform(role, grantee.address, NOT_WHERE)).to.be.true;
+        for (const permission of PERMISSIONS) {
+          expect(await authorizer.canPerform(permission, grantee.address, ANYWHERE)).to.be.true;
+          expect(await authorizer.canPerform(permission, grantee.address, NOT_WHERE)).to.be.true;
         }
       });
 
-      it('grants a list of roles for a list of contracts', async () => {
+      it('grants a list of permissions for a list of contracts', async () => {
         await authorizer.grantPermissions(PERMISSIONS, grantee.address, WHERE);
 
-        for (const role of PERMISSIONS) {
+        for (const permission of PERMISSIONS) {
           for (const where of WHERE) {
-            expect(await authorizer.canPerform(role, grantee.address, where)).to.be.true;
-            expect(await authorizer.canPerform(role, grantee.address, NOT_WHERE)).to.be.false;
+            expect(await authorizer.canPerform(permission, grantee.address, where)).to.be.true;
+            expect(await authorizer.canPerform(permission, grantee.address, NOT_WHERE)).to.be.false;
           }
         }
       });
@@ -64,7 +64,7 @@ describe('Authorizer', () => {
           'GRANT_SENDER_NOT_ADMIN'
         );
       });
-      it('reverts for specific roles', async () => {
+      it('reverts for specific permissions', async () => {
         await expect(authorizer.grantPermissions(PERMISSIONS, grantee.address, WHERE)).to.be.revertedWith(
           'GRANT_SENDER_NOT_ADMIN'
         );
@@ -80,7 +80,7 @@ describe('Authorizer', () => {
         randomAddress = ethers.Wallet.createRandom().address;
       });
 
-      it('grants a list of roles globally', async () => {
+      it('grants a list of permissions globally', async () => {
         await authorizer.grantPermissionsGloballyToMany(PERMISSIONS, [grantee.address, other.address]);
 
         expect(await authorizer.canPerform(PERMISSION_1, grantee.address, ANYWHERE)).to.be.true;
@@ -93,7 +93,7 @@ describe('Authorizer', () => {
         expect(await authorizer.canPerform(PERMISSION_1, other.address, ANYWHERE)).to.be.false;
       });
 
-      it('grants a list of roles to a specific set of contracts', async () => {
+      it('grants a list of permissions to a specific set of contracts', async () => {
         await authorizer.grantPermissionsToMany(PERMISSIONS, [grantee.address, other.address], WHERE);
         for (const where of WHERE) {
           expect(await authorizer.canPerform(PERMISSION_1, grantee.address, where)).to.be.true;
@@ -133,62 +133,62 @@ describe('Authorizer', () => {
         authorizer = authorizer.connect(admin);
       });
 
-      context('when the roles ANYWHERE granted to a set of contracts', () => {
+      context('when the permissions ANYWHERE granted to a set of contracts', () => {
         sharedBeforeEach('grant permissions', async () => {
           await authorizer.grantPermissions(PERMISSIONS, grantee.address, WHERE);
         });
 
-        it('revokes a list of roles', async () => {
+        it('revokes a list of permissions', async () => {
           await authorizer.revokePermissions(PERMISSIONS, grantee.address, WHERE);
 
-          for (const role of PERMISSIONS) {
+          for (const permission of PERMISSIONS) {
             for (const where of WHERE) {
-              expect(await authorizer.canPerform(role, grantee.address, where)).to.be.false;
+              expect(await authorizer.canPerform(permission, grantee.address, where)).to.be.false;
             }
           }
         });
       });
 
-      context('when the roles granted globally', () => {
+      context('when the permissions granted globally', () => {
         sharedBeforeEach('grant permissions', async () => {
           await authorizer.grantPermissionsGlobally(PERMISSIONS, grantee.address);
         });
 
-        it('revokes a list of roles', async () => {
+        it('revokes a list of permissions', async () => {
           await authorizer.revokePermissionsGlobally(PERMISSIONS, grantee.address);
 
-          for (const role of PERMISSIONS) {
-            expect(await authorizer.canPerform(role, grantee.address, ANYWHERE)).to.be.false;
+          for (const permission of PERMISSIONS) {
+            expect(await authorizer.canPerform(permission, grantee.address, ANYWHERE)).to.be.false;
           }
         });
       });
 
-      context('when one of the roles was not granted for a set of contracts', () => {
-        sharedBeforeEach('grant one role', async () => {
+      context('when one of the permissions was not granted for a set of contracts', () => {
+        sharedBeforeEach('grant one permission', async () => {
           await authorizer.grantPermission(PERMISSION_1, grantee.address, WHERE);
         });
 
         it('ignores the request', async () => {
           await authorizer.revokePermissions(PERMISSIONS, grantee.address, WHERE);
 
-          for (const role of PERMISSIONS) {
+          for (const permission of PERMISSIONS) {
             for (const where of WHERE) {
-              expect(await authorizer.canPerform(role, grantee.address, where)).to.be.false;
+              expect(await authorizer.canPerform(permission, grantee.address, where)).to.be.false;
             }
           }
         });
       });
 
-      context('when one of the roles was not granted globally', () => {
-        sharedBeforeEach('grant one role', async () => {
+      context('when one of the permissions was not granted globally', () => {
+        sharedBeforeEach('grant one permission', async () => {
           await authorizer.grantPermissionGlobally(PERMISSION_1, grantee.address);
         });
 
         it('ignores the request', async () => {
           await authorizer.revokePermissionsGlobally(PERMISSIONS, grantee.address);
 
-          for (const role of PERMISSIONS) {
-            expect(await authorizer.canPerform(role, grantee.address, ANYWHERE)).to.be.false;
+          for (const permission of PERMISSIONS) {
+            expect(await authorizer.canPerform(permission, grantee.address, ANYWHERE)).to.be.false;
           }
         });
       });
@@ -219,65 +219,65 @@ describe('Authorizer', () => {
         authorizer = authorizer.connect(admin);
       });
 
-      context('when the roles ANYWHERE granted globally', () => {
+      context('when the permissions ANYWHERE granted globally', () => {
         sharedBeforeEach('grant permissions', async () => {
           await authorizer.grantPermissionsGloballyToMany(PERMISSIONS, [grantee.address, other.address]);
         });
 
-        it('revokes a list of roles', async () => {
+        it('revokes a list of permissions', async () => {
           await authorizer.revokePermissionsGloballyFromMany(PERMISSIONS, [grantee.address, other.address]);
 
-          for (const role of PERMISSIONS) {
-            expect(await authorizer.canPerform(role, grantee.address, ANYWHERE)).to.be.false;
-            expect(await authorizer.canPerform(role, other.address, ANYWHERE)).to.be.false;
+          for (const permission of PERMISSIONS) {
+            expect(await authorizer.canPerform(permission, grantee.address, ANYWHERE)).to.be.false;
+            expect(await authorizer.canPerform(permission, other.address, ANYWHERE)).to.be.false;
           }
         });
       });
 
-      context('when the roles ANYWHERE granted to a set of contracts', () => {
+      context('when the permissions ANYWHERE granted to a set of contracts', () => {
         sharedBeforeEach('grant permissions', async () => {
           await authorizer.grantPermissionsToMany(PERMISSIONS, [grantee.address, other.address], WHERE);
         });
 
-        it('revokes a list of roles', async () => {
+        it('revokes a list of permissions', async () => {
           await authorizer.revokePermissionsFromMany(PERMISSIONS, [grantee.address, other.address], WHERE);
 
-          for (const role of PERMISSIONS) {
+          for (const permission of PERMISSIONS) {
             for (const where of WHERE) {
-              expect(await authorizer.canPerform(role, grantee.address, where)).to.be.false;
-              expect(await authorizer.canPerform(role, other.address, where)).to.be.false;
+              expect(await authorizer.canPerform(permission, grantee.address, where)).to.be.false;
+              expect(await authorizer.canPerform(permission, other.address, where)).to.be.false;
             }
           }
         });
       });
 
-      context('when one of the roles was not granted globally', () => {
-        sharedBeforeEach('grant one role', async () => {
+      context('when one of the permissions was not granted globally', () => {
+        sharedBeforeEach('grant one permission', async () => {
           await authorizer.grantPermissionsGlobally([PERMISSION_1], grantee.address);
         });
 
         it('ignores the request', async () => {
           await authorizer.revokePermissionsGloballyFromMany(PERMISSIONS, [grantee.address, other.address]);
 
-          for (const role of PERMISSIONS) {
-            expect(await authorizer.canPerform(role, grantee.address, ANYWHERE)).to.be.false;
-            expect(await authorizer.canPerform(role, other.address, ANYWHERE)).to.be.false;
+          for (const permission of PERMISSIONS) {
+            expect(await authorizer.canPerform(permission, grantee.address, ANYWHERE)).to.be.false;
+            expect(await authorizer.canPerform(permission, other.address, ANYWHERE)).to.be.false;
           }
         });
       });
 
-      context('when one of the roles was not granted for a set of contracts', () => {
-        sharedBeforeEach('grant one role', async () => {
+      context('when one of the permissions was not granted for a set of contracts', () => {
+        sharedBeforeEach('grant one permission', async () => {
           await authorizer.grantPermissions([PERMISSION_1], grantee.address, WHERE);
         });
 
         it('ignores the request', async () => {
           await authorizer.revokePermissionsFromMany(PERMISSIONS, [grantee.address, other.address], WHERE);
 
-          for (const role of PERMISSIONS) {
+          for (const permission of PERMISSIONS) {
             for (const where of WHERE) {
-              expect(await authorizer.canPerform(role, grantee.address, where)).to.be.false;
-              expect(await authorizer.canPerform(role, other.address, where)).to.be.false;
+              expect(await authorizer.canPerform(permission, grantee.address, where)).to.be.false;
+              expect(await authorizer.canPerform(permission, other.address, where)).to.be.false;
             }
           }
         });
