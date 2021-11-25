@@ -17,10 +17,9 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/misc/IWETH.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/AccessControl.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
 
-contract TestWETH is AccessControl, IWETH {
-    bytes32 public constant MINTER_PERMISSION = keccak256("MINTER_PERMISSION");
+contract TestWETH is Ownable, IWETH {
 
     string public name = "Wrapped Ether";
     string public symbol = "WETH";
@@ -33,8 +32,7 @@ contract TestWETH is AccessControl, IWETH {
     mapping(address => mapping(address => uint256)) public override allowance;
 
     constructor(address minter) {
-        _setupAdmin(GLOBAL_PERMISSION_ADMIN, minter);
-        _setupPermission(MINTER_PERMISSION, minter);
+        transferOwnership(minter);
     }
 
     receive() external payable {
@@ -54,8 +52,7 @@ contract TestWETH is AccessControl, IWETH {
     }
 
     // For testing purposes - this creates WETH that cannot be redeemed for ETH via 'withdraw'
-    function mint(address destinatary, uint256 amount) external {
-        require(hasPermission(MINTER_PERMISSION, msg.sender, address(this)), "NOT_MINTER");
+    function mint(address destinatary, uint256 amount) onlyOwner external {
         balanceOf[destinatary] += amount;
         emit Deposit(destinatary, amount);
     }

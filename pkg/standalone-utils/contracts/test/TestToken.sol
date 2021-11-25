@@ -17,9 +17,9 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20Burnable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20Permit.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/AccessControl.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
 
-contract TestToken is AccessControl, ERC20, ERC20Burnable, ERC20Permit {
+contract TestToken is Ownable, ERC20, ERC20Burnable, ERC20Permit {
     bytes32 public constant MINTER_PERMISSION = keccak256("MINTER_PERMISSION");
 
     constructor(
@@ -29,12 +29,10 @@ contract TestToken is AccessControl, ERC20, ERC20Burnable, ERC20Permit {
         uint8 decimals
     ) ERC20(name, symbol) ERC20Permit(name) {
         _setupDecimals(decimals);
-        _setupAdmin(GLOBAL_PERMISSION_ADMIN, admin);
-        _setupPermission(MINTER_PERMISSION, admin);
+        transferOwnership(admin);
     }
 
-    function mint(address recipient, uint256 amount) external {
-        require(hasPermission(MINTER_PERMISSION, msg.sender, address(this)), "NOT_MINTER");
+    function mint(address recipient, uint256 amount) onlyOwner external {
         _mint(recipient, amount);
     }
 }
