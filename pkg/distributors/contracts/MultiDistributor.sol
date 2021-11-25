@@ -493,7 +493,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     ) internal {
         require(amount > 0, "STAKE_AMOUNT_ZERO");
 
-        // Before we increase the user's staked balance we need to update all of their subscriptions
+        // Before we increase the recipient's staked balance we need to update all of their subscriptions
         _updateSubscribedDistributions(stakingToken, recipient);
 
         UserStaking storage userStaking = _userStakings[stakingToken][recipient];
@@ -502,7 +502,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
         uint256 distributionsLength = distributions.length();
 
-        // We also need to update all distributions the user was subscribed to,
+        // We also need to update all distributions the recipient is subscribed to,
         // adding the staked tokens to their totals.
         for (uint256 i; i < distributionsLength; i++) {
             bytes32 distributionId = distributions.unchecked_at(i);
