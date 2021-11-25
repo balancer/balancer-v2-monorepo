@@ -452,7 +452,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param stakingTokens The staking tokens to withdraw tokens from
      * @param distributionIds The distributions to claim for
      */
-    function exit(IERC20[] memory stakingTokens, bytes32[] memory distributionIds) external override {
+    function exit(IERC20[] memory stakingTokens, bytes32[] memory distributionIds) external override nonReentrant {
         for (uint256 i; i < stakingTokens.length; i++) {
             IERC20 stakingToken = stakingTokens[i];
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
@@ -474,7 +474,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         bytes32[] memory distributionIds,
         IDistributorCallback callbackContract,
         bytes memory callbackData
-    ) external override {
+    ) external override nonReentrant {
         for (uint256 i; i < stakingTokens.length; i++) {
             IERC20 stakingToken = stakingTokens[i];
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
