@@ -903,6 +903,40 @@ describe('MultiDistributor', () => {
       await distributor.fundDistribution(anotherDistribution, DISTRIBUTION_SIZE, { from: distributionOwner });
     });
 
+    describe('unstake', () => {
+      context("when caller is not authorised to act on sender's behalf", () => {
+        it('reverts', async () => {
+          await expect(distributor.unstake(stakingToken, 0, user2, user2, { from: user1 })).to.be.revertedWith(
+            'INVALID_SENDER'
+          );
+        });
+      });
+
+      context("when caller is authorised to act on sender's behalf", () => {
+        context('when sender and recipient are the same', () => {
+          sharedBeforeEach('define sender and recipient', async () => {
+            from = user1;
+            to = user1;
+          });
+
+          itHandlesUnstaking((token: Token, amount: BigNumberish) =>
+            distributor.unstake(token, amount, from, from, { from })
+          );
+        });
+
+        context('when sender and recipient are different', () => {
+          sharedBeforeEach('define sender and recipient', async () => {
+            from = other;
+            to = user1;
+          });
+
+          itHandlesUnstaking((token: Token, amount: BigNumberish) =>
+            distributor.unstake(token, amount, from, to, { from })
+          );
+        });
+      });
+    });
+
     const itHandlesUnstaking = (unstake: (token: Token, amount: BigNumberish) => Promise<ContractTransaction>) => {
       context('when the user did specify some amount', () => {
         const amount = fp(1);
@@ -1256,40 +1290,6 @@ describe('MultiDistributor', () => {
         });
       });
     };
-
-    describe('unstake', () => {
-      context("when caller is not authorised to act on sender's behalf", () => {
-        it('reverts', async () => {
-          await expect(distributor.unstake(stakingToken, 0, user2, user2, { from: user1 })).to.be.revertedWith(
-            'INVALID_SENDER'
-          );
-        });
-      });
-
-      context("when caller is authorised to act on sender's behalf", () => {
-        context('when sender and recipient are the same', () => {
-          sharedBeforeEach('define sender and recipient', async () => {
-            from = user1;
-            to = user1;
-          });
-
-          itHandlesUnstaking((token: Token, amount: BigNumberish) =>
-            distributor.unstake(token, amount, from, from, { from })
-          );
-        });
-
-        context('when sender and recipient are different', () => {
-          sharedBeforeEach('define sender and recipient', async () => {
-            from = other;
-            to = user1;
-          });
-
-          itHandlesUnstaking((token: Token, amount: BigNumberish) =>
-            distributor.unstake(token, amount, from, to, { from })
-          );
-        });
-      });
-    });
   });
 
   describe('subscribe', () => {
