@@ -363,7 +363,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         address sender,
         address recipient
     ) external override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER");
+        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
         _stake(stakingToken, amount, sender, recipient);
     }
 
@@ -403,7 +403,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         address sender,
         address recipient
     ) public override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER");
+        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
         require(amount > 0, "UNSTAKE_AMOUNT_ZERO");
 
         // Before we reduce the user's staked balance we need to update all of their subscriptions
@@ -442,7 +442,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         address sender,
         address recipient
     ) external override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER");
+        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
         _claim(
             distributionIds,
             toInternalBalance ? IVault.UserBalanceOpKind.TRANSFER_INTERNAL : IVault.UserBalanceOpKind.WITHDRAW_INTERNAL,
@@ -464,7 +464,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         IDistributorCallback callbackContract,
         bytes memory callbackData
     ) external override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER");
+        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
         _claim(distributionIds, IVault.UserBalanceOpKind.TRANSFER_INTERNAL, sender, address(callbackContract));
         callbackContract.distributorCallback(callbackData);
     }
