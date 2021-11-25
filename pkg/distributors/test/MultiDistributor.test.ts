@@ -920,7 +920,7 @@ describe('MultiDistributor', () => {
           });
 
           itHandlesUnstaking((token: Token, amount: BigNumberish) =>
-            distributor.unstake(token, amount, from, from, { from })
+            distributor.unstake(token, amount, from, to, { from })
           );
         });
 
@@ -944,7 +944,7 @@ describe('MultiDistributor', () => {
         context('when the user has previously staked the requested balance', () => {
           sharedBeforeEach('stake amount', async () => {
             await stakingTokens.mint({ to: from, amount });
-            await stakingTokens.approve({ to: distributor, amount, from: from });
+            await stakingTokens.approve({ to: distributor, amount, from });
 
             await distributor.stake(stakingToken, amount, from, from, { from });
           });
@@ -2293,7 +2293,7 @@ describe('MultiDistributor', () => {
             to = user1;
           });
 
-          itHandlesClaiming((distribution: string) => distributor.claim(distribution, false, from, from, { from }));
+          itHandlesClaiming((distribution: string) => distributor.claim(distribution, false, from, to, { from }));
         });
 
         context('when sender and recipient are different', () => {
