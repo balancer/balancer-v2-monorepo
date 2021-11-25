@@ -937,7 +937,7 @@ describe('MultiDistributor', () => {
       });
     });
 
-    const itHandlesUnstaking = (unstake: (token: Token, amount: BigNumberish) => Promise<ContractTransaction>) => {
+    function itHandlesUnstaking(unstake: (token: Token, amount: BigNumberish) => Promise<ContractTransaction>) {
       context('when the user did specify some amount', () => {
         const amount = fp(1);
 
@@ -1289,7 +1289,7 @@ describe('MultiDistributor', () => {
           await expect(unstake(stakingToken, amount)).to.be.revertedWith('UNSTAKE_AMOUNT_ZERO');
         });
       });
-    };
+    }
   });
 
   describe('subscribe', () => {
