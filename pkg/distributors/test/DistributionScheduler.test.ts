@@ -17,9 +17,10 @@ import { MultiDistributor } from './helpers/MultiDistributor';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { solidityKeccak256 } from 'ethers/lib/utils';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('Distribution Scheduler', () => {
-  let vault: Contract;
+  let vault: Vault;
   let distributor: MultiDistributor;
   let scheduler: Contract;
 
@@ -33,9 +34,9 @@ describe('Distribution Scheduler', () => {
   });
 
   sharedBeforeEach('deploy distributor', async () => {
-    distributor = await MultiDistributor.create();
+    vault = await Vault.create();
+    distributor = await MultiDistributor.create(vault);
     scheduler = await deploy('DistributionScheduler', { args: [distributor.address] });
-    vault = distributor.vault;
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -139,7 +140,7 @@ describe('Distribution Scheduler', () => {
             () => scheduler.connect(poker).startDistributions([scheduleId]),
             distributionTokens,
             [{ account: distributor.address, changes: { DAI: ['very-near', amount] } }],
-            vault
+            vault.instance
           );
         });
 

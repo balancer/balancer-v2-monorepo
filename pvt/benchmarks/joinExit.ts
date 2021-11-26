@@ -14,8 +14,8 @@ import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 const BPTAmount = bn(1e18);
 const numberJoinsExits = 3;
 const managedPoolMin = 40;
-const managedPoolMax = 50;
-const maxManagedTokens = 50;
+const managedPoolMax = 48;
+const maxManagedTokens = 48;
 
 let vault: Vault;
 let tokens: TokenList;
