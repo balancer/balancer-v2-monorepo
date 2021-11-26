@@ -514,7 +514,13 @@ describe('MultiDistributor', () => {
         context('when the user has the requested balance', () => {
           sharedBeforeEach('mint stake amount', async () => {
             await stakingToken.mint(from, amount);
+
+            // Give direct approval for `stake`
             await stakingToken.approve(distributor, amount, { from });
+
+            // Give relayer approval for `stakeUsingVault`
+            await stakingToken.approve(vault, amount, { from });
+            await vault.setRelayerApproval(from, distributor, true);
           });
 
           const itTransfersTheStakingTokensToTheDistributor = () => {
@@ -830,6 +836,10 @@ describe('MultiDistributor', () => {
         context('when the user does not have the requested balance', () => {
           const amount = fp(1001);
 
+          sharedBeforeEach('approve distributor as relayer', async () => {
+            await vault.setRelayerApproval(from, distributor, true);
+          });
+
           it('reverts', async () => {
             await expect(stake(stakingToken, amount)).to.be.revertedWith('ERC20_TRANSFER_EXCEEDS_BALANCE');
           });
@@ -874,6 +884,40 @@ describe('MultiDistributor', () => {
 
           itHandlesStaking((token: Token, amount: BigNumberish) =>
             distributor.stake(token, amount, from, to, { from })
+          );
+        });
+      });
+    });
+
+    describe('stakeUsingVault', () => {
+      context("when caller is not authorised to act on sender's behalf", () => {
+        it('reverts', async () => {
+          await expect(distributor.stakeUsingVault(stakingToken, 0, user2, user2, { from: user1 })).to.be.revertedWith(
+            'INVALID_SENDER'
+          );
+        });
+      });
+
+      context("when caller is authorised to act on sender's behalf", () => {
+        context('when sender and recipient are the same', () => {
+          sharedBeforeEach('define sender and recipient', async () => {
+            from = user1;
+            to = user1;
+          });
+
+          itHandlesStaking((token: Token, amount: BigNumberish) =>
+            distributor.stakeUsingVault(token, amount, from, from, { from })
+          );
+        });
+
+        context('when sender and recipient are different', () => {
+          sharedBeforeEach('define sender and recipient', async () => {
+            from = other;
+            to = user1;
+          });
+
+          itHandlesStaking((token: Token, amount: BigNumberish) =>
+            distributor.stakeUsingVault(token, amount, from, to, { from })
           );
         });
       });
