@@ -514,7 +514,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
         // We hold stakingTokens in an external balance as BPT needs to be external anyway
         // in the case where a user is exiting the pool after unstaking.
-        if (useVaultApproval){
+        if (useVaultApproval) {
             IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
             ops[0] = IVault.UserBalanceOp({
                 asset: IAsset(address(stakingToken)),
