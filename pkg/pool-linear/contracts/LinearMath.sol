@@ -17,12 +17,12 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-contract LinearMath {
+library LinearMath {
     using FixedPoint for uint256;
 
     // solhint-disable private-vars-leading-underscore
 
-    struct LinearMathParams {
+    struct Params {
         uint256 fee;
         uint256 rate;
         uint256 lowerTarget;
@@ -34,7 +34,7 @@ contract LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        LinearMathParams memory params
+        Params memory params
     ) internal pure returns (uint256) {
         // Amount out, so we round down overall.
 
@@ -54,7 +54,7 @@ contract LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        LinearMathParams memory params
+        Params memory params
     ) internal pure returns (uint256) {
         // Amount in, so we round up overall.
 
@@ -68,7 +68,7 @@ contract LinearMath {
     function _calcWrappedOutPerMainIn(
         uint256 mainIn,
         uint256 mainBalance,
-        LinearMathParams memory params
+        Params memory params
     ) internal pure returns (uint256) {
         // Amount out, so we round down overall.
 
@@ -81,7 +81,7 @@ contract LinearMath {
     function _calcWrappedInPerMainOut(
         uint256 mainOut,
         uint256 mainBalance,
-        LinearMathParams memory params
+        Params memory params
     ) internal pure returns (uint256) {
         // Amount in, so we round up overall.
 
@@ -96,7 +96,7 @@ contract LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        LinearMathParams memory params
+        Params memory params
     ) internal pure returns (uint256) {
         // Amount in, so we round up overall.
 
@@ -117,7 +117,7 @@ contract LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        LinearMathParams memory params
+        Params memory params
     ) internal pure returns (uint256) {
         // Amount out, so we round down overall.
 
@@ -132,7 +132,7 @@ contract LinearMath {
     function _calcMainOutPerWrappedIn(
         uint256 wrappedIn,
         uint256 mainBalance,
-        LinearMathParams memory params
+        Params memory params
     ) internal pure returns (uint256) {
         // Amount out, so we round down overall.
 
@@ -146,7 +146,7 @@ contract LinearMath {
     function _calcMainInPerWrappedOut(
         uint256 wrappedOut,
         uint256 mainBalance,
-        LinearMathParams memory params
+        Params memory params
     ) internal pure returns (uint256) {
         // Amount in, so we round up overall.
 
@@ -162,7 +162,7 @@ contract LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        LinearMathParams memory params
+        Params memory params
     ) internal pure returns (uint256) {
         // Amount out, so we round down overall.
 
@@ -187,7 +187,7 @@ contract LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        LinearMathParams memory params
+        Params memory params
     ) internal pure returns (uint256) {
         // Amount in, so we round up overall.
 
@@ -207,7 +207,7 @@ contract LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        LinearMathParams memory params
+        Params memory params
     ) internal pure returns (uint256) {
         // Amount in, so we round up overall.
 
@@ -232,7 +232,7 @@ contract LinearMath {
         uint256 mainBalance,
         uint256 wrappedBalance,
         uint256 bptSupply,
-        LinearMathParams memory params
+        Params memory params
     ) internal pure returns (uint256) {
         // Amount out, so we round down overall.
 
@@ -250,7 +250,7 @@ contract LinearMath {
     function _calcInvariantUp(
         uint256 nominalMainBalance,
         uint256 wrappedBalance,
-        LinearMathParams memory params
+        Params memory params
     ) internal pure returns (uint256) {
         return nominalMainBalance.add(wrappedBalance.mulUp(params.rate));
     }
@@ -258,12 +258,12 @@ contract LinearMath {
     function _calcInvariantDown(
         uint256 nominalMainBalance,
         uint256 wrappedBalance,
-        LinearMathParams memory params
+        Params memory params
     ) internal pure returns (uint256) {
         return nominalMainBalance.add(wrappedBalance.mulDown(params.rate));
     }
 
-    function _toNominal(uint256 amount, LinearMathParams memory params) internal pure returns (uint256) {
+    function _toNominal(uint256 amount, Params memory params) internal pure returns (uint256) {
         if (amount < (FixedPoint.ONE - params.fee).mulUp(params.lowerTarget)) {
             return amount.divUp(FixedPoint.ONE - params.fee);
         } else if (amount < (params.upperTarget - (params.fee.mulUp(params.lowerTarget)))) {
@@ -276,7 +276,7 @@ contract LinearMath {
         }
     }
 
-    function _fromNominal(uint256 nominal, LinearMathParams memory params) internal pure returns (uint256) {
+    function _fromNominal(uint256 nominal, Params memory params) internal pure returns (uint256) {
         if (nominal < params.lowerTarget) {
             return nominal.mulUp(FixedPoint.ONE - params.fee);
         } else if (nominal < params.upperTarget) {

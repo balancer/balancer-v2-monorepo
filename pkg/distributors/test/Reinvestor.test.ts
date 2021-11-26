@@ -60,7 +60,7 @@ describe('Reinvestor', () => {
 
       id = await stakingContract.getDistributionId(bpt, rewardToken, mockAssetManager);
       await stakingContract.subscribe(id, { from: lp });
-      await stakingContract.stake(bpt, bptBalance, { from: lp });
+      await stakingContract.stake(bpt, bptBalance, lp, lp, { from: lp });
 
       await rewardToken.approve(stakingContract, bptBalance, { from: mockAssetManager });
       await stakingContract.fundDistribution(id, rewardAmount, { from: mockAssetManager });
@@ -115,7 +115,7 @@ describe('Reinvestor', () => {
         const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
 
         const receipt = await (
-          await stakingContract.claimWithCallback(id, callbackContract, calldata, { from: lp })
+          await stakingContract.claimWithCallback(id, lp, callbackContract, calldata, { from: lp })
         ).wait();
 
         const deltas = [bn(0), bn(0)];
@@ -135,7 +135,7 @@ describe('Reinvestor', () => {
         const args = [lp.address, destinationPoolId, [rewardToken.address]];
         const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
 
-        await stakingContract.claimWithCallback(id, callbackContract, calldata, { from: lp });
+        await stakingContract.claimWithCallback(id, lp, callbackContract, calldata, { from: lp });
         const bptBalanceAfter = await destinationPool.balanceOf(lp.address);
         expect(bptBalanceAfter.sub(bptBalanceBefore)).to.equal(bn('998703239790478024'));
       });
@@ -169,7 +169,7 @@ describe('Reinvestor', () => {
           const calldata = utils.defaultAbiCoder.encode(['(address,bytes32,address[])'], [args]);
 
           await expectBalanceChange(
-            () => stakingContract.claimWithCallback([id, anotherId], callbackContract, calldata, { from: lp }),
+            () => stakingContract.claimWithCallback([id, anotherId], lp, callbackContract, calldata, { from: lp }),
             otherRewardTokens,
             [{ account: lp, changes: { GRT: ['very-near', fp(3)] } }]
           );
