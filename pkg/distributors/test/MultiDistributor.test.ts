@@ -872,7 +872,7 @@ describe('MultiDistributor', () => {
           });
 
           itHandlesStaking((token: Token, amount: BigNumberish) =>
-            distributor.stake(token, amount, from, from, { from })
+            distributor.stake(token, amount, from, to, { from })
           );
         });
 
@@ -906,7 +906,7 @@ describe('MultiDistributor', () => {
           });
 
           itHandlesStaking((token: Token, amount: BigNumberish) =>
-            distributor.stakeUsingVault(token, amount, from, from, { from })
+            distributor.stakeUsingVault(token, amount, from, to, { from })
           );
         });
 
