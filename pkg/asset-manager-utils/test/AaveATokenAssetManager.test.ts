@@ -121,11 +121,11 @@ describe('Aave Asset manager', function () {
       id = await distributor.getDistributionId(pool.address, stkAave.address, assetManager.address);
 
       await distributor.connect(lp).subscribeDistributions([id]);
-      await distributor.connect(lp).stake(pool.address, bptBalance.mul(3).div(4));
+      await distributor.connect(lp).stake(pool.address, bptBalance.mul(3).div(4), lp.address, lp.address);
 
       // Stake half of the BPT to another address
       await distributor.connect(other).subscribeDistributions([id]);
-      await distributor.connect(lp).stakeFor(pool.address, bptBalance.div(4), other.address);
+      await distributor.connect(lp).stake(pool.address, bptBalance.div(4), lp.address, other.address);
     });
 
     it('sends expected amount of stkAave to the rewards contract', async () => {

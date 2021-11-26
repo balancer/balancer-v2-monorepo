@@ -54,7 +54,7 @@ describe('Staking contract - callbacks', () => {
 
       id = await stakingContract.getDistributionId(pool.address, rewardToken.address, mockAssetManager.address);
       await stakingContract.connect(lp).subscribeDistributions([id]);
-      await stakingContract.connect(lp).stake(pool.address, bptBalance);
+      await stakingContract.connect(lp).stake(pool.address, bptBalance, lp.address, lp.address);
 
       await stakingContract.connect(mockAssetManager).fundDistribution(id, rewardAmount);
       await advanceTime(rewardsVestingTime);
@@ -65,7 +65,7 @@ describe('Staking contract - callbacks', () => {
       const calldata = utils.defaultAbiCoder.encode([], []);
 
       await expectBalanceChange(
-        () => stakingContract.connect(lp).claimWithCallback([id], callbackContract.address, calldata),
+        () => stakingContract.connect(lp).claimWithCallback([id], lp.address, callbackContract.address, calldata),
         rewardTokens,
         [{ account: callbackContract.address, changes: { DAI: ['very-near', expectedReward] } }],
         vault
@@ -76,7 +76,7 @@ describe('Staking contract - callbacks', () => {
       const calldata = utils.defaultAbiCoder.encode([], []);
 
       const receipt = await (
-        await stakingContract.connect(lp).claimWithCallback([id], callbackContract.address, calldata)
+        await stakingContract.connect(lp).claimWithCallback([id], lp.address, callbackContract.address, calldata)
       ).wait();
 
       expectEvent.inIndirectReceipt(receipt, callbackContract.interface, 'CallbackReceived', {});
