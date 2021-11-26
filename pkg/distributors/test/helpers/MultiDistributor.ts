@@ -148,7 +148,7 @@ export class MultiDistributor {
     params?: TxParams
   ): Promise<ContractTransaction> {
     const sender = params?.from ?? (await getSigner());
-    const { v, r, s } = await signPermit(stakingToken.instance, to, this.vault, amount);
+    const { v, r, s } = await signPermit(stakingToken.instance, to, this.address, amount);
     return this.instance
       .connect(sender)
       .stakeWithPermit(stakingToken.address, amount, to.address, MAX_UINT256, v, r, s);

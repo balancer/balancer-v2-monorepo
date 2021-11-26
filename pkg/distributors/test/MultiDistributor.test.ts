@@ -494,6 +494,7 @@ describe('MultiDistributor', () => {
 
   describe('stake', () => {
     let from: SignerWithAddress, to: SignerWithAddress;
+    let useVaultApproval: boolean;
 
     sharedBeforeEach('create distributions', async () => {
       await distributor.newDistribution(stakingToken, distributionToken, PERIOD_DURATION, { from: distributionOwner });
@@ -518,7 +519,7 @@ describe('MultiDistributor', () => {
         context('when the user has the requested balance', () => {
           sharedBeforeEach('mint stake amount', async () => {
             await stakingToken.mint(from, amount);
-            await stakingToken.approve(vault, amount, { from });
+            await stakingToken.approve(useVaultApproval ? vault : distributor, amount, { from });
           });
 
           const itTransfersTheStakingTokensToTheDistributor = () => {
@@ -863,6 +864,7 @@ describe('MultiDistributor', () => {
           sharedBeforeEach('define sender and recipient', async () => {
             from = user1;
             to = user1;
+            useVaultApproval = true;
           });
 
           itHandlesStaking((token: Token, amount: BigNumberish) =>
@@ -874,6 +876,7 @@ describe('MultiDistributor', () => {
           sharedBeforeEach('define sender and recipient', async () => {
             from = other;
             to = user1;
+            useVaultApproval = true;
           });
 
           itHandlesStaking((token: Token, amount: BigNumberish) =>
@@ -887,6 +890,7 @@ describe('MultiDistributor', () => {
       sharedBeforeEach('define sender and recipient', async () => {
         from = user1;
         to = user1;
+        useVaultApproval = false;
       });
 
       itHandlesStaking((token: Token, amount: BigNumberish) =>
