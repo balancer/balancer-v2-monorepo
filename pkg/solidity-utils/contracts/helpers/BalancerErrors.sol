@@ -159,6 +159,7 @@ library Errors {
     uint256 internal constant INVALID_INITIALIZATION = 342;
     uint256 internal constant OUT_OF_NEW_TARGET_RANGE = 343;
     uint256 internal constant UNAUTHORIZED_OPERATION = 344;
+    uint256 internal constant UNINITIALIZED_POOL_CONTROLLER = 345;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
