@@ -26,6 +26,7 @@ export default {
       swapFeePercentage,
       poolType,
       swapEnabledOnStart,
+      mustAllowlistLPs,
       managementSwapFeePercentage,
     } = deployment;
 
@@ -40,6 +41,7 @@ export default {
       swapFeePercentage,
       poolType,
       swapEnabledOnStart,
+      mustAllowlistLPs,
       managementSwapFeePercentage
     );
   },
@@ -55,6 +57,7 @@ export default {
       oracleEnabled,
       poolType,
       swapEnabledOnStart,
+      mustAllowlistLPs,
       managementSwapFeePercentage,
       owner,
       from,
@@ -119,6 +122,7 @@ export default {
               bufferPeriodDuration: bufferPeriodDuration,
               owner: owner,
               swapEnabledOnStart: swapEnabledOnStart,
+              mustAllowlistLPs: mustAllowlistLPs,
               managementSwapFeePercentage: managementSwapFeePercentage,
             },
           ],
@@ -156,6 +160,7 @@ export default {
       swapFeePercentage,
       oracleEnabled,
       swapEnabledOnStart,
+      mustAllowlistLPs,
       managementSwapFeePercentage,
       poolType,
       owner,
@@ -218,6 +223,7 @@ export default {
           swapFeePercentage,
           owner,
           swapEnabledOnStart,
+          mustAllowlistLPs,
           managementSwapFeePercentage
         );
         const receipt = await tx.wait();
