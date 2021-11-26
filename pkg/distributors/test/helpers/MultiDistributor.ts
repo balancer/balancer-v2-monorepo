@@ -141,6 +141,18 @@ export class MultiDistributor {
     return instance.stake(stakingToken.address, amount, senderAddress, recipientAddress);
   }
 
+  async stakeUsingVault(
+    stakingToken: Token,
+    amount: BigNumberish,
+    sender: Account,
+    recipient: Account,
+    params?: TxParams
+  ): Promise<ContractTransaction> {
+    const instance = params?.from ? this.instance.connect(params.from) : this.instance;
+    const [senderAddress, recipientAddress] = TypesConverter.toAddresses([sender, recipient]);
+    return instance.stakeUsingVault(stakingToken.address, amount, senderAddress, recipientAddress);
+  }
+
   async stakeWithPermit(
     stakingToken: Token,
     amount: BigNumberish,
@@ -157,7 +169,7 @@ export class MultiDistributor {
   async subscribeAndStake(id: string, stakingToken: Token, amount: BigNumberish, params?: TxParams): Promise<void> {
     const sender = params?.from ?? (await getSigner());
     await stakingToken.mint(sender, amount);
-    await stakingToken.approve(this.vault, amount, params);
+    await stakingToken.approve(this.address, amount, params);
     await this.subscribe([id], params);
     await this.stake(stakingToken, amount, sender, sender, params);
   }

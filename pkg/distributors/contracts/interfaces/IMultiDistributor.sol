@@ -103,6 +103,13 @@ interface IMultiDistributor {
         address recipient
     ) external;
 
+    function stakeUsingVault(
+        IERC20 stakingToken,
+        uint256 amount,
+        address sender,
+        address recipient
+    ) external;
+
     function stakeWithPermit(
         IERC20 stakingToken,
         uint256 amount,

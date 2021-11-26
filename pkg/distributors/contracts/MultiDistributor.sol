@@ -354,10 +354,25 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Stakes tokens
      * @param stakingToken The token to be staked to be eligible for distributions
      * @param amount Amount of tokens to be staked
+     */
+    function stake(
+        IERC20 stakingToken,
+        uint256 amount,
+        address sender,
+        address recipient
+    ) external override nonReentrant {
+        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+        _stake(stakingToken, amount, sender, recipient, false);
+    }
+
+    /**
+     * @dev Stakes tokens using the user's token approval on the vault
+     * @param stakingToken The token to be staked to be eligible for distributions
+     * @param amount Amount of tokens to be staked
      * @param sender The address which provides tokens to stake
      * @param recipient The address which receives the staked tokens
      */
-    function stake(
+    function stakeUsingVault(
         IERC20 stakingToken,
         uint256 amount,
         address sender,
