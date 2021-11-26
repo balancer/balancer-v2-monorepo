@@ -158,6 +158,7 @@ library Errors {
     uint256 internal constant TOKEN_DOES_NOT_HAVE_RATE_PROVIDER = 341;
     uint256 internal constant INVALID_INITIALIZATION = 342;
     uint256 internal constant OUT_OF_NEW_TARGET_RANGE = 343;
+    uint256 internal constant UNAUTHORIZED_OPERATION = 344;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
@@ -192,6 +193,8 @@ library Errors {
     uint256 internal constant CALL_TO_NON_CONTRACT = 429;
     uint256 internal constant LOW_LEVEL_CALL_FAILED = 430;
     uint256 internal constant NOT_PAUSED = 431;
+    uint256 internal constant ADDRESS_ALREADY_ALLOWLISTED = 432;
+    uint256 internal constant ADDRESS_NOT_ALLOWLISTED = 433;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;
