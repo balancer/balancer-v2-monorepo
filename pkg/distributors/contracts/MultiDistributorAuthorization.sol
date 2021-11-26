@@ -94,6 +94,7 @@ abstract contract MultiDistributorAuthorization is Authentication, SignaturesVal
         }
     }
 
+    // TODO: ensure that this switch statement contains the final function selectors
     function _typeHash() internal pure override returns (bytes32 hash) {
         // This is a simple switch-case statement, trivially written in Solidity by chaining else-if statements, but the
         // assembly implementation results in much denser bytecode.
