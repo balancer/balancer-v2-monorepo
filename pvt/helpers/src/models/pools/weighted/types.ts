@@ -210,4 +210,4 @@ export type ManagedPoolRights = {
   canSetMustAllowlistLPs: boolean;
   canSetCircuitBreakers: boolean;
   canChangeTokens: boolean;
-}
+};
