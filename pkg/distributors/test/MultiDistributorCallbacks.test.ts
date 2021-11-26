@@ -12,13 +12,15 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { setup, rewardsDuration, rewardsVestingTime } from './MultiDistributorSharedSetup';
+import { MultiDistributor } from './helpers/MultiDistributor';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('Staking contract - callbacks', () => {
   let lp: SignerWithAddress, mockAssetManager: SignerWithAddress;
 
   let rewardTokens: TokenList;
-  let vault: Contract;
-  let stakingContract: Contract;
+  let vault: Vault;
+  let stakingContract: MultiDistributor;
   let callbackContract: Contract;
   let rewardToken: Token;
   let pool: Contract;
@@ -44,19 +46,21 @@ describe('Staking contract - callbacks', () => {
     const rewardAmount = fp(1);
 
     sharedBeforeEach(async () => {
-      await stakingContract
-        .connect(mockAssetManager)
-        .createDistribution(pool.address, rewardToken.address, rewardsDuration);
+      await stakingContract.newDistribution(pool, rewardToken, rewardsDuration, {
+        from: mockAssetManager,
+      });
 
-      const bptBalance = await pool.balanceOf(lp.address);
+      const bpt = await Token.deployedAt(pool.address);
 
-      await pool.connect(lp).approve(stakingContract.address, bptBalance);
+      const bptBalance = await bpt.balanceOf(lp.address);
+      await bpt.approve(stakingContract, bptBalance, { from: lp });
 
-      id = await stakingContract.getDistributionId(pool.address, rewardToken.address, mockAssetManager.address);
-      await stakingContract.connect(lp).subscribeDistributions([id]);
-      await stakingContract.connect(lp).stake(pool.address, bptBalance, lp.address, lp.address);
+      id = await stakingContract.getDistributionId(bpt, rewardToken, mockAssetManager);
+      await stakingContract.subscribe(id, { from: lp });
+      await stakingContract.stake(bpt, bptBalance, lp, lp, { from: lp });
 
-      await stakingContract.connect(mockAssetManager).fundDistribution(id, rewardAmount);
+      await rewardToken.approve(stakingContract, bptBalance, { from: mockAssetManager });
+      await stakingContract.fundDistribution(id, rewardAmount, { from: mockAssetManager });
       await advanceTime(rewardsVestingTime);
     });
 
@@ -65,10 +69,10 @@ describe('Staking contract - callbacks', () => {
       const calldata = utils.defaultAbiCoder.encode([], []);
 
       await expectBalanceChange(
-        () => stakingContract.connect(lp).claimWithCallback([id], lp.address, callbackContract.address, calldata),
+        () => stakingContract.claimWithCallback(id, lp, callbackContract, calldata, { from: lp }),
         rewardTokens,
-        [{ account: callbackContract.address, changes: { DAI: ['very-near', expectedReward] } }],
-        vault
+        [{ account: callbackContract, changes: { DAI: ['very-near', expectedReward] } }],
+        vault.instance
       );
     });
 
@@ -76,7 +80,7 @@ describe('Staking contract - callbacks', () => {
       const calldata = utils.defaultAbiCoder.encode([], []);
 
       const receipt = await (
-        await stakingContract.connect(lp).claimWithCallback([id], lp.address, callbackContract.address, calldata)
+        await stakingContract.claimWithCallback(id, lp, callbackContract, calldata, { from: lp })
       ).wait();
 
       expectEvent.inIndirectReceipt(receipt, callbackContract.interface, 'CallbackReceived', {});

@@ -354,8 +354,6 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Stakes tokens
      * @param stakingToken The token to be staked to be eligible for distributions
      * @param amount Amount of tokens to be staked
-     * @param sender The address which provides tokens to stake
-     * @param recipient The address which receives the staked tokens
      */
     function stake(
         IERC20 stakingToken,
@@ -364,7 +362,24 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         address recipient
     ) external override nonReentrant {
         require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
-        _stake(stakingToken, amount, sender, recipient);
+        _stake(stakingToken, amount, sender, recipient, false);
+    }
+
+    /**
+     * @dev Stakes tokens using the user's token approval on the vault
+     * @param stakingToken The token to be staked to be eligible for distributions
+     * @param amount Amount of tokens to be staked
+     * @param sender The address which provides tokens to stake
+     * @param recipient The address which receives the staked tokens
+     */
+    function stakeUsingVault(
+        IERC20 stakingToken,
+        uint256 amount,
+        address sender,
+        address recipient
+    ) external override nonReentrant {
+        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+        _stake(stakingToken, amount, sender, recipient, true);
     }
 
     /**
@@ -387,7 +402,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         bytes32 s
     ) external override nonReentrant {
         IERC20Permit(address(stakingToken)).permit(user, address(this), amount, deadline, v, r, s);
-        _stake(stakingToken, amount, user, user);
+        _stake(stakingToken, amount, user, user, false);
     }
 
     /**
@@ -489,7 +504,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         IERC20 stakingToken,
         uint256 amount,
         address sender,
-        address recipient
+        address recipient,
+        bool useVaultApproval
     ) internal {
         require(amount > 0, "STAKE_AMOUNT_ZERO");
 
@@ -513,7 +529,19 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
         // We hold stakingTokens in an external balance as BPT needs to be external anyway
         // in the case where a user is exiting the pool after unstaking.
-        stakingToken.safeTransferFrom(sender, address(this), amount);
+        if (useVaultApproval) {
+            IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
+            ops[0] = IVault.UserBalanceOp({
+                asset: IAsset(address(stakingToken)),
+                amount: amount,
+                sender: sender,
+                recipient: payable(address(this)),
+                kind: IVault.UserBalanceOpKind.TRANSFER_EXTERNAL
+            });
+            getVault().manageUserBalance(ops);
+        } else {
+            stakingToken.safeTransferFrom(sender, address(this), amount);
+        }
     }
 
     function _unstake(

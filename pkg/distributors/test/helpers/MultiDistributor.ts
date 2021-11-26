@@ -1,16 +1,17 @@
-import { ethers } from 'hardhat';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
+import { Interface } from 'ethers/lib/utils';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { signPermit } from '@balancer-labs/balancer-js';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { Account, NAry, TxParams } from '@balancer-labs/v2-helpers/src/models/types/types';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { getSigner } from '@balancer-labs/v2-deployments/dist/src/signers';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 export class MultiDistributor {
   instance: Contract;
@@ -18,12 +19,14 @@ export class MultiDistributor {
   admin: SignerWithAddress;
   authorizer: Contract;
 
-  static async create(): Promise<MultiDistributor> {
-    const [admin] = await ethers.getSigners();
-    const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
-    const vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
-    const instance = await deploy('MultiDistributor', { args: [vault.address] });
-    return new this(instance, authorizer, vault, admin);
+  get interface(): Interface {
+    return this.instance.interface;
+  }
+
+  static async create(vault: Vault): Promise<MultiDistributor> {
+    if (!vault.authorizer || !vault.admin) throw 'Invalid Vault deployment';
+    const instance = await deploy('v2-distributors/MultiDistributor', { args: [vault.address] });
+    return new this(instance, vault.authorizer, vault.instance, vault.admin);
   }
 
   constructor(instance: Contract, authorizer: Contract, vault: Contract, admin: SignerWithAddress) {
@@ -61,8 +64,12 @@ export class MultiDistributor {
     return this.instance.balanceOf(stakingToken.address, user.address);
   }
 
-  async getDistributionId(stakingToken: Token, distributionToken: Token, owner: SignerWithAddress): Promise<string> {
-    return this.instance.getDistributionId(stakingToken.address, distributionToken.address, owner.address);
+  async getDistributionId(stakingToken: Token, distributionToken: Token, owner: Account): Promise<string> {
+    return this.instance.getDistributionId(
+      TypesConverter.toAddress(stakingToken),
+      TypesConverter.toAddress(distributionToken),
+      TypesConverter.toAddress(owner)
+    );
   }
 
   async getDistribution(
@@ -134,6 +141,18 @@ export class MultiDistributor {
     return instance.stake(stakingToken.address, amount, senderAddress, recipientAddress);
   }
 
+  async stakeUsingVault(
+    stakingToken: Token,
+    amount: BigNumberish,
+    sender: Account,
+    recipient: Account,
+    params?: TxParams
+  ): Promise<ContractTransaction> {
+    const instance = params?.from ? this.instance.connect(params.from) : this.instance;
+    const [senderAddress, recipientAddress] = TypesConverter.toAddresses([sender, recipient]);
+    return instance.stakeUsingVault(stakingToken.address, amount, senderAddress, recipientAddress);
+  }
+
   async stakeWithPermit(
     stakingToken: Token,
     amount: BigNumberish,
@@ -141,7 +160,7 @@ export class MultiDistributor {
     params?: TxParams
   ): Promise<ContractTransaction> {
     const sender = params?.from ?? (await getSigner());
-    const { v, r, s } = await signPermit(stakingToken.instance, to, this.instance, amount);
+    const { v, r, s } = await signPermit(stakingToken.instance, to, this.address, amount);
     return this.instance
       .connect(sender)
       .stakeWithPermit(stakingToken.address, amount, to.address, MAX_UINT256, v, r, s);
@@ -150,7 +169,7 @@ export class MultiDistributor {
   async subscribeAndStake(id: string, stakingToken: Token, amount: BigNumberish, params?: TxParams): Promise<void> {
     const sender = params?.from ?? (await getSigner());
     await stakingToken.mint(sender, amount);
-    await stakingToken.approve(this, amount, params);
+    await stakingToken.approve(this.address, amount, params);
     await this.subscribe([id], params);
     await this.stake(stakingToken, amount, sender, sender, params);
   }
@@ -178,6 +197,23 @@ export class MultiDistributor {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
     const [senderAddress, recipientAddress] = TypesConverter.toAddresses([sender, recipient]);
     return instance.claim(distributions, toInternalBalance, senderAddress, recipientAddress);
+  }
+
+  async claimWithCallback(
+    distributions: NAry<string>,
+    sender: Account,
+    callbackContract: Account,
+    callbackData: string,
+    params?: TxParams
+  ): Promise<ContractTransaction> {
+    if (!Array.isArray(distributions)) distributions = [distributions];
+    const instance = params?.from ? this.instance.connect(params.from) : this.instance;
+    return instance.claimWithCallback(
+      distributions,
+      TypesConverter.toAddress(sender),
+      TypesConverter.toAddress(callbackContract),
+      callbackData
+    );
   }
 
   async exit(stakingTokens: NAry<Token>, distributions: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
