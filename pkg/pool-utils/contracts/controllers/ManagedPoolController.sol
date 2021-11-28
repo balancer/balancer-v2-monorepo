@@ -163,7 +163,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
     /**
      * @dev Pass a call to ManagedPool's setMustAllowlistLPs through to the underlying pool. This could
      * be restricted in various ways. For instance, we could allow it to change state only once, or only
-     * in one direction, but there seems no compelling reason to do so in the reference controller.
+     * in one direction, but there seems to be no compelling reason to do so in the reference controller.
      *
      * Deploying a Managed Pool with an empty allowlist could function like an LBP, or a smart treasury.
      * Adding a set of addresses to the allowlist enables multiple seed funding sources. Disabling the
