@@ -308,6 +308,19 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
     /**
      * @dev Subscribes a user to a list of distributions
+     * @param user address of staker to be subscribed
+     * @param distributionIds List of distributions to subscribe
+     */
+    function subscribeUserDistributions(address user, bytes32[] memory distributionIds)
+        external
+        override
+        authenticateFor(user)
+    {
+        _subscribeDistributions(user, distributionIds);
+    }
+
+    /**
+     * @dev Subscribes a user to a list of distributions
      * @param distributionIds List of distributions to subscribe
      */
     function _subscribeDistributions(address user, bytes32[] memory distributionIds) internal {
@@ -347,6 +360,19 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      */
     function unsubscribeDistributions(bytes32[] calldata distributionIds) external override {
         _unsubscribeDistributions(msg.sender, distributionIds);
+    }
+
+    /**
+     * @dev Unsubscribes a user to a list of distributions
+     * @param user address of staker to be unsubscribed
+     * @param distributionIds List of distributions to unsubscribe
+     */
+    function unsubscribeUserDistributions(address user, bytes32[] memory distributionIds)
+        external
+        override
+        authenticateFor(user)
+    {
+        _unsubscribeDistributions(user, distributionIds);
     }
 
     /**
