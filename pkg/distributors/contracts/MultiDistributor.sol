@@ -589,7 +589,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         stakingToken.safeTransfer(recipient, amount);
     }
 
-    function _unstakeFromDistributions(address user, UserStaking storage userStaking, uint256 amount) internal {
+    function _unstakeFromDistributions(
+        address user,
+        UserStaking storage userStaking,
+        uint256 amount
+    ) internal {
         uint256 currentBalance = userStaking.balance;
         require(currentBalance >= amount, "UNSTAKE_AMOUNT_UNAVAILABLE");
         userStaking.balance = userStaking.balance.sub(amount);
