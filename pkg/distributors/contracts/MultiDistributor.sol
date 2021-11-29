@@ -303,6 +303,14 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionIds List of distributions to subscribe
      */
     function subscribeDistributions(bytes32[] calldata distributionIds) external override {
+        _subscribeDistributions(msg.sender, distributionIds);
+    }
+
+    /**
+     * @dev Subscribes a user to a list of distributions
+     * @param distributionIds List of distributions to subscribe
+     */
+    function _subscribeDistributions(address user, bytes32[] memory distributionIds) internal {
         bytes32 distributionId;
         Distribution storage distribution;
         for (uint256 i; i < distributionIds.length; i++) {
@@ -328,7 +336,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
                     distribution
                 );
                 distribution.totalSupply = distribution.totalSupply.add(amount);
-                emit Staked(distributionId, msg.sender, amount);
+                emit Staked(distributionId, user, amount);
             }
         }
     }
@@ -338,6 +346,14 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionIds List of distributions to unsubscribe
      */
     function unsubscribeDistributions(bytes32[] calldata distributionIds) external override {
+        _unsubscribeDistributions(msg.sender, distributionIds);
+    }
+
+    /**
+     * @dev Unsubscribes a user to a list of distributions
+     * @param distributionIds List of distributions to unsubscribe
+     */
+    function _unsubscribeDistributions(address user, bytes32[] memory distributionIds) internal {
         bytes32 distributionId;
         Distribution storage distribution;
         for (uint256 i; i < distributionIds.length; i++) {
@@ -356,7 +372,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
                 _updateUserTokensPerStake(distribution, userStaking, userStaking.distributions[distributionId]);
                 // Safe to perform unchecked maths as `totalSupply` would be increased by `amount` when staking.
                 distribution.totalSupply -= amount;
-                emit Unstaked(distributionId, msg.sender, amount);
+                emit Unstaked(distributionId, user, amount);
             }
 
             require(userStaking.subscribedDistributions.remove(distributionId), "DISTRIBUTION_NOT_SUBSCRIBED");
