@@ -77,18 +77,15 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
         pure
         returns (bytes32)
     {
-        bytes32 permissions = super
-            .encodePermissions(baseRights)
-            .insertBool(managedRights.canChangeWeights, _CHANGE_WEIGHTS_OFFSET)
-            .insertBool(managedRights.canDisableSwaps, _DISABLE_SWAPS_OFFSET)
-            .insertBool(managedRights.canSetMustAllowlistLPs, _MUST_ALLOWLIST_LPS_OFFSET);
+        bytes32 permissions = super.encodePermissions(baseRights);
 
-        // Last two separated to avoid "stack too deep"
         return
-            permissions.insertBool(managedRights.canChangeTokens, _CHANGE_TOKENS_OFFSET).insertBool(
-                managedRights.canSetCircuitBreakers,
-                _CIRCUIT_BREAKERS_OFFSET
-            );
+            permissions
+                .insertBool(managedRights.canChangeWeights, _CHANGE_WEIGHTS_OFFSET)
+                .insertBool(managedRights.canDisableSwaps, _DISABLE_SWAPS_OFFSET)
+                .insertBool(managedRights.canSetMustAllowlistLPs, _MUST_ALLOWLIST_LPS_OFFSET)
+                .insertBool(managedRights.canChangeTokens, _CHANGE_TOKENS_OFFSET)
+                .insertBool(managedRights.canSetCircuitBreakers, _CIRCUIT_BREAKERS_OFFSET);
     }
 
     /**
@@ -140,7 +137,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
     function updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
-        uint256[] memory endWeights
+        uint256[] calldata endWeights
     ) external virtual override onlyManager withBoundPool {
         _require(canChangeWeights(), Errors.UNAUTHORIZED_OPERATION);
         _require(
