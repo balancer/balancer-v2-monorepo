@@ -20,7 +20,7 @@ interface IControlledManagedPool is IControlledPool {
     function updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
-        uint256[] memory endWeights
+        uint256[] calldata endWeights
     ) external;
 
     function setSwapEnabled(bool swapEnabled) external;
