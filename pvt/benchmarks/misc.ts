@@ -11,7 +11,11 @@ import { MAX_UINT256, ZERO_ADDRESS, MAX_WEIGHTED_TOKENS } from '@balancer-labs/v
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
 import { range } from 'lodash';
-import { BasePoolRights, ManagedPoolParams, ManagedPoolRights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import {
+  BasePoolRights,
+  ManagedPoolParams,
+  ManagedPoolRights,
+} from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
 const name = 'Balancer Pool Token';
 const symbol = 'BPT';
@@ -90,13 +94,13 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           mustAllowlistLPs: false,
           managementSwapFeePercentage: managementFee,
         };
-    
+
         const basePoolRights: BasePoolRights = {
           canTransferOwnership: true,
           canChangeSwapFee: true,
-          canUpdateMetadata: true
+          canUpdateMetadata: true,
         };
-    
+
         const managedPoolRights: ManagedPoolRights = {
           canChangeWeights: true,
           canDisableSwaps: true,
@@ -194,9 +198,7 @@ async function deployPoolFromFactory(
   let receipt: ContractReceipt;
 
   if (poolName == 'ManagedPool') {
-    receipt = await (
-      await factory.connect(args.from).create(...args.parameters)
-    ).wait();
+    receipt = await (await factory.connect(args.from).create(...args.parameters)).wait();
   } else {
     receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, ZERO_ADDRESS)).wait();
   }
