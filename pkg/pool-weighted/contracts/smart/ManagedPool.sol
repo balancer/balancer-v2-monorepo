@@ -327,7 +327,8 @@ contract ManagedPool is LegacyBaseWeightedPool, ReentrancyGuard {
     }
 
     /**
-     * @dev Can enable/disable the LP allowlist
+     * @dev Can enable/disable the LP allowlist. Note that any addresses added to the allowlist
+     * will be retained if the allowlist is toggled off and back on again.
      */
     function setMustAllowlistLPs(bool mustAllowlistLPs) external authenticate whenNotPaused {
         _setMustAllowlistLPs(mustAllowlistLPs);
