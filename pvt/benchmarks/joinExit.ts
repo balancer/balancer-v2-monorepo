@@ -13,9 +13,10 @@ import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 // setup environment
 const BPTAmount = bn(1e18);
 const numberJoinsExits = 3;
-const managedPoolMin = 40;
-const managedPoolMax = 48;
-const maxManagedTokens = 48;
+const managedPoolMin = 15;
+const managedPoolMax = 35;
+const maxManagedTokens = 40;
+const managedPoolStep = 5;
 
 let vault: Vault;
 let tokens: TokenList;
@@ -52,7 +53,7 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += 10) {
+  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += managedPoolStep) {
     printTokens('Managed pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
@@ -103,7 +104,7 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += 10) {
+  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += managedPoolStep) {
     printTokens('Managed pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
@@ -156,7 +157,7 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += 10) {
+  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += managedPoolStep) {
     printTokens('Managed pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),
@@ -208,7 +209,7 @@ async function main() {
   }
   console.log('\n');
 
-  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += 10) {
+  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += managedPoolStep) {
     printTokens('Managed pool', numTokens);
     await joinAndExitPool(
       () => getWeightedPool(vault, tokens, numTokens),

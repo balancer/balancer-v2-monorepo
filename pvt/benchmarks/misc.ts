@@ -9,8 +9,12 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { StablePoolEncoder, toNormalizedWeights, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { MAX_UINT256, ZERO_ADDRESS, MAX_WEIGHTED_TOKENS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { advanceTime, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
 import { range } from 'lodash';
+import { BasePoolRights, ManagedPoolParams, ManagedPoolRights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+
+const name = 'Balancer Pool Token';
+const symbol = 'BPT';
 
 export async function setupEnvironment(): Promise<{
   vault: Vault;
@@ -58,6 +62,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
   });
 
   const swapFeePercentage = fp(0.02); // 2%
+  const managementFee = fp(0.5); // 50%
 
   let pool: Contract;
   let joinUserData: string;
@@ -66,12 +71,40 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
     const WEIGHTS = range(10000, 10000 + tokens.length);
     const weights = toNormalizedWeights(WEIGHTS.map(bn)); // Equal weights for all tokens
     const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
-
     let params;
 
     switch (poolName) {
       case 'ManagedPool': {
-        params = [tokens.addresses, weights, assetManagers, swapFeePercentage];
+        const newPoolParams: ManagedPoolParams = {
+          vault: vault.address,
+          name: name,
+          symbol: symbol,
+          tokens: tokens.addresses,
+          normalizedWeights: weights,
+          assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
+          swapFeePercentage: swapFeePercentage,
+          pauseWindowDuration: MONTH * 3,
+          bufferPeriodDuration: MONTH,
+          owner: creator.address,
+          swapEnabledOnStart: true,
+          mustAllowlistLPs: false,
+          managementSwapFeePercentage: managementFee,
+        };
+    
+        const basePoolRights: BasePoolRights = {
+          canTransferOwnership: true,
+          canChangeSwapFee: true,
+          canUpdateMetadata: true
+        };
+    
+        const managedPoolRights: ManagedPoolRights = {
+          canChangeWeights: true,
+          canDisableSwaps: true,
+          canSetMustAllowlistLPs: true,
+          canSetCircuitBreakers: true,
+          canChangeTokens: true,
+        };
+        params = [newPoolParams, basePoolRights, managedPoolRights, DAY];
         break;
       }
       case 'WeightedPool2Tokens': {
@@ -158,31 +191,14 @@ async function deployPoolFromFactory(
   const factory = await deploy(`${fullName}Factory`, { args: [vault.address], libraries });
   // We could reuse this factory if we saved it across pool deployments
 
-  const name = 'Balancer Pool Token';
-  const symbol = 'BPT';
-  const owner = ZERO_ADDRESS;
   let receipt: ContractReceipt;
 
   if (poolName == 'ManagedPool') {
-    const swapEnabledOnStart = true;
-    const mustAllowlistLPs = false;
-    const managementSwapFeePercentage = 0;
-
     receipt = await (
-      await factory
-        .connect(args.from)
-        .create(
-          name,
-          symbol,
-          ...args.parameters,
-          owner,
-          swapEnabledOnStart,
-          mustAllowlistLPs,
-          managementSwapFeePercentage
-        )
+      await factory.connect(args.from).create(...args.parameters)
     ).wait();
   } else {
-    receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)).wait();
+    receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, ZERO_ADDRESS)).wait();
   }
 
   const event = receipt.events?.find((e) => e.event == 'PoolCreated');
