@@ -25,7 +25,7 @@ import "../interfaces/IStaticATokenLM.sol";
 /**
  * @title AaveWrapping
  * @notice Allows users to wrap and unwrap Aave's aTokens into their StaticAToken wrappers
- * @dev All functions must be payable so that it can be called as part of a multicall involving ETH
+ * @dev All functions must be payable so they can be called from a multicall involving ETH
  */
 abstract contract AaveWrapping is IBaseRelayerLibrary {
     using Address for address payable;
@@ -47,13 +47,14 @@ abstract contract AaveWrapping is IBaseRelayerLibrary {
         IERC20 dynamicToken = fromUnderlying ? staticToken.ASSET() : staticToken.ATOKEN();
 
         // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
-        // to be sourced from outside the relayer, we must first them pull them here.
+        // to be sourced from outside the relayer, we must first pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
             _pullToken(sender, dynamicToken, amount);
         }
 
         dynamicToken.approve(address(staticToken), amount);
+        // Use 0 for the referral code
         uint256 result = staticToken.deposit(recipient, amount, 0, fromUnderlying);
 
         if (_isChainedReference(outputReference)) {
@@ -74,13 +75,13 @@ abstract contract AaveWrapping is IBaseRelayerLibrary {
         }
 
         // The unwrap caller is the implicit sender of tokens, so if the goal is for the tokens
-        // to be sourced from outside the relayer, we must first them pull them here.
+        // to be sourced from outside the relayer, we must first pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
             _pullToken(sender, staticToken, amount);
         }
 
-        // No approval is needed here as the Static Tokens are burned directly from the relayer's account
+        // No approval is needed here, as the Static Tokens are burned directly from the relayer's account
         (, uint256 result) = staticToken.withdraw(recipient, amount, toUnderlying);
 
         if (_isChainedReference(outputReference)) {

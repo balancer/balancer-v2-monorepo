@@ -30,12 +30,12 @@ import "./IstETH.sol";
  * support rebasable tokens.
  *
  * The contract is also a trustless wrapper that accepts stETH tokens and mints
- * wstETH in return. Then the user unwraps, the contract burns user's wstETH
- * and sends user locked stETH in return.
+ * wstETH in return. When the user unwraps, the contract burns the user's wstETH
+ * and sends the user locked stETH in return.
  *
- * The contract provides the staking shortcut: user can send ETH with regular
- * transfer and get wstETH in return. The contract will send ETH to Lido submit
- * method, staking it and wrapping the received stETH.
+ * The contract provides a staking shortcut: the user can send ETH through a regular
+ * transfer, and get wstETH in return. The contract will send ETH to the Lido submit
+ * method, staking it and wrapping the returned stETH.
  *
  */
 interface IwstETH is IERC20 {
@@ -79,14 +79,14 @@ interface IwstETH is IERC20 {
     function getStETHByWstETH(uint256 _wstETHAmount) external view returns (uint256);
 
     /**
-     * @notice Get amount of wstETH for a one stETH
-     * @return Amount of stETH for 1 wstETH
+     * @notice Get amount of stETH for one wstETH
+     * @return Amount of stETH worth one wstETH
      */
     function stEthPerToken() external view returns (uint256);
 
     /**
-     * @notice Get amount of stETH for a one wstETH
-     * @return Amount of wstETH for a 1 stETH
+     * @notice Get amount of wstETH for one stETH
+     * @return Amount of wstETH worth one stETH
      */
     function tokensPerStEth() external view returns (uint256);
 }

@@ -22,8 +22,8 @@ interface IStaticATokenLM is IERC20 {
      *   0 if the action is executed directly by the user, without any middle-man
      * @param fromUnderlying bool
      * - `true` if the msg.sender comes with underlying tokens (e.g. USDC)
-     * - `false` if the msg.sender comes already with aTokens (e.g. aUSDC)
-     * @return uint256 The amount of StaticAToken minted, static balance
+     * - `false` if the msg.sender already has aTokens (e.g. aUSDC)
+     * @return uint256 The amount of StaticAToken minted from the static balance
      **/
     function deposit(
         address recipient,
@@ -33,14 +33,14 @@ interface IStaticATokenLM is IERC20 {
     ) external returns (uint256);
 
     /**
-     * @notice Burns `amount` of static aToken, with recipient receiving the corresponding amount of `ASSET`
+     * @notice Burns `amount` of static aToken, with the recipient receiving a corresponding amount of `ASSET`
      * @param recipient The address that will receive the amount of `ASSET` withdrawn from the Aave protocol
      * @param amount The amount to withdraw, in static balance of StaticAToken
      * @param toUnderlying bool
      * - `true` for the recipient to get underlying tokens (e.g. USDC)
      * - `false` for the recipient to get aTokens (e.g. aUSDC)
      * @return amountToBurn: StaticATokens burnt, static balance
-     * @return amountToWithdraw: underlying/aToken send to `recipient`, dynamic balance
+     * @return amountToWithdraw: underlying/aToken sent to `recipient`'s dynamic balance
      **/
     function withdraw(
         address recipient,
@@ -49,14 +49,14 @@ interface IStaticATokenLM is IERC20 {
     ) external returns (uint256, uint256);
 
     /**
-     * @notice Burns `amount` of static aToken, with recipient receiving the corresponding amount of `ASSET`
+     * @notice Burns `amount` of static aToken, with the recipient receiving a corresponding amount of `ASSET`
      * @param recipient The address that will receive the amount of `ASSET` withdrawn from the Aave protocol
-     * @param amount The amount to withdraw, in dynamic balance of aToken/underlying asset
+     * @param amount The amount to withdraw from the dynamic balance of the aToken/underlying asset
      * @param toUnderlying bool
      * - `true` for the recipient to get underlying tokens (e.g. USDC)
      * - `false` for the recipient to get aTokens (e.g. aUSDC)
      * @return amountToBurn: StaticATokens burnt, static balance
-     * @return amountToWithdraw: underlying/aToken send to `recipient`, dynamic balance
+     * @return amountToWithdraw: underlying/aToken sent to `recipient`'s dynamic balance
      **/
     function withdrawDynamicAmount(
         address recipient,
@@ -65,7 +65,7 @@ interface IStaticATokenLM is IERC20 {
     ) external returns (uint256, uint256);
 
     /**
-     * @notice Implements the permit function as for
+     * @notice Implements the permit function per
      * https://github.com/ethereum/EIPs/blob/8a34d644aacf0f9f8f00815307fd7dd5da07655f/EIPS/eip-2612.md
      * @param owner The owner of the funds
      * @param spender The spender
@@ -86,19 +86,19 @@ interface IStaticATokenLM is IERC20 {
     ) external;
 
     /**
-     * @notice Allows to deposit on Aave via meta-transaction
+     * @notice Allows depositing on Aave via a meta-transaction
      * https://github.com/ethereum/EIPs/blob/8a34d644aacf0f9f8f00815307fd7dd5da07655f/EIPS/eip-2612.md
-     * @param depositor Address from which the funds to deposit are going to be pulled
-     * @param recipient Address that will receive the staticATokens, in the average case, same as the `depositor`
+     * @param depositor Source of the funds to deposit
+     * @param recipient Address that will receive the staticATokens, usually same as `depositor`
      * @param value The amount to deposit
      * @param referralCode Code used to register the integrator originating the operation, for potential rewards.
      *   0 if the action is executed directly by the user, without any middle-man
      * @param fromUnderlying bool
      * - `true` if the msg.sender comes with underlying tokens (e.g. USDC)
-     * - `false` if the msg.sender comes already with aTokens (e.g. aUSDC)
+     * - `false` if the msg.sender already has aTokens (e.g. aUSDC)
      * @param deadline The deadline timestamp, type(uint256).max for max deadline
      * @param sigParams Signature params: v,r,s
-     * @return uint256 The amount of StaticAToken minted, static balance
+     * @return uint256 The amount of StaticAToken minted from the static balance
      */
     function metaDeposit(
         address depositor,
@@ -111,7 +111,7 @@ interface IStaticATokenLM is IERC20 {
     ) external returns (uint256);
 
     /**
-     * @notice Allows to withdraw from Aave via meta-transaction
+     * @notice Allows withdrawing from Aave via a meta-transaction
      * https://github.com/ethereum/EIPs/blob/8a34d644aacf0f9f8f00815307fd7dd5da07655f/EIPS/eip-2612.md
      * @param owner Address owning the staticATokens
      * @param recipient Address that will receive the underlying withdrawn from Aave
@@ -123,7 +123,7 @@ interface IStaticATokenLM is IERC20 {
      * @param deadline The deadline timestamp, type(uint256).max for max deadline
      * @param sigParams Signature params: v,r,s
      * @return amountToBurn: StaticATokens burnt, static balance
-     * @return amountToWithdraw: underlying/aToken send to `recipient`, dynamic balance
+     * @return amountToWithdraw: underlying/aToken sent to `recipient`'s dynamic balance
      */
     function metaWithdraw(
         address owner,
@@ -136,14 +136,14 @@ interface IStaticATokenLM is IERC20 {
     ) external returns (uint256, uint256);
 
     /**
-     * @notice Utility method to get the current aToken balance of an user, from his staticAToken balance
+     * @notice Utility method to get the current aToken balance of an user, from their staticAToken balance
      * @param account The address of the user
      * @return uint256 The aToken balance
      **/
     function dynamicBalanceOf(address account) external view returns (uint256);
 
     /**
-     * @notice Converts a static amount (scaled balance on aToken) to the aToken/underlying value,
+     * @notice Converts a static amount (scaled balance of an aToken) to the aToken/underlying value,
      * using the current liquidity index on Aave
      * @param amount The amount to convert from
      * @return uint256 The dynamic amount
@@ -151,34 +151,35 @@ interface IStaticATokenLM is IERC20 {
     function staticToDynamicAmount(uint256 amount) external view returns (uint256);
 
     /**
-     * @notice Converts an aToken or underlying amount to the what it is denominated on the aToken as
-     * scaled balance, function of the principal and the liquidity index
+     * @notice Converts an aToken or underlying amount to its aToken denomination as a
+     * scaled balance: a function of the principal and liquidity index
      * @param amount The amount to convert from
      * @return uint256 The static (scaled) amount
      **/
     function dynamicToStaticAmount(uint256 amount) external view returns (uint256);
 
     /**
-     * @notice Returns the Aave liquidity index of the underlying aToken, denominated rate here
-     * as it can be considered as an ever-increasing exchange rate
+     * @notice Returns the Aave liquidity index of the underlying aToken, here called `rate`, as it is
+     * an ever-increasing exchange rate
      * @return The liquidity index
      **/
     function rate() external view returns (uint256);
 
     /**
-     * @notice Function to return a dynamic domain separator, in order to be compatible with forks changing chainId
+     * @notice Function to return a dynamic domain separator, in order to be compatible with forks
+     * that have different chainId values
      * @return bytes32 The domain separator
      **/
     function getDomainSeparator() external view returns (bytes32);
 
     /**
-     * @notice Claims rewards from `INCENTIVES_CONTROLLER` and updates internal accounting of rewards.
+     * @notice Claims rewards from `INCENTIVES_CONTROLLER`, and updates internal accounting.
      */
     function collectAndUpdateRewards() external;
 
     /**
-     * @notice Claim rewards on behalf of a user and send them to a receiver
-     * @dev Only callable by if sender is onBehalfOf or sender is approved claimer
+     * @notice Claim rewards on behalf of a user, and send them to a receiver
+     * @dev Only callable if sender is an approved claimer or acting onBehalfOf one
      * @param onBehalfOf The address to claim on behalf of
      * @param receiver The address to receive the rewards
      * @param forceUpdate Flag to retrieve latest rewards from `INCENTIVES_CONTROLLER`

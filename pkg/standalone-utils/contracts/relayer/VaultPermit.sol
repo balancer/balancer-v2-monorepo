@@ -23,8 +23,8 @@ import "../interfaces/IBaseRelayerLibrary.sol";
 
 /**
  * @title VaultPermit
- * @notice Allows users to approve the Balancer Vault to use their tokens using permit (where supported)
- * @dev All functions must be payable so that it can be called as part of a multicall involving ETH
+ * @notice Allows users to use permit (where supported) to approve the Balancer Vault to use their tokens
+ * @dev All functions must be payable so they can be called from a multicall involving ETH
  */
 abstract contract VaultPermit is IBaseRelayerLibrary {
     function vaultPermit(

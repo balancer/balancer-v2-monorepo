@@ -23,15 +23,17 @@ import "../interfaces/IBaseRelayerLibrary.sol";
 
 /**
  * @title Base Relayer Library
- * @notice Core functionality of a relayer allowing users to approve it to take further actions using a signature
+ * @notice Core functionality of a relayer. Allow users to use a signature to approve this contract
+ * to take further actions on their behalf.
  * @dev
- * Relayers are formed out of a system of two contracts:
- *  - A `BalancerRelayer` contract which acts as a single point of entry into the system through a multicall function
- *  - A library contract such as this which defines the allowed behaviour of the relayer
+ * Relayers are composed of two contracts:
+ *  - A `BalancerRelayer` contract, which acts as a single point of entry into the system through a multicall function
+ *  - A library contract such as this one, which defines the allowed behaviour of the relayer
+
+ * NOTE: Only the entrypoint contract should be allowlisted by Balancer governance as a relayer, so that the Vault
+ * will reject calls from outside the entrypoint context.
  *
- * NOTE: Only the entrypoint contract should be whitelisted by Balancer governance as a relayer and so the Vault
- * will reject calls made if they are not being run from within the context of the entrypoint.
- * This contract should neither be whitelisted as a relayer or called directly by any user.
+ * This contract should neither be allowlisted as a relayer, nor called directly by the user.
  * No guarantees can be made about fund safety when calling this contract in an improper manner.
  */
 contract BaseRelayerLibrary is IBaseRelayerLibrary {
@@ -71,8 +73,8 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     }
 
     /**
-     * @notice Approves the Vault to use tokens held on the relayer
-     * @dev This is needed for avoiding having to send any intermediate tokens back to the user
+     * @notice Approves the Vault to use tokens held in the relayer
+     * @dev This is needed to avoid having to send intermediate tokens back to the user
      */
     function approveVault(IERC20 token, uint256 amount) public override {
         // TODO: gas golf this a bit
@@ -156,8 +158,8 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
 
     function _getTempStorageSlot(uint256 ref) private view returns (bytes32) {
         // This replicates the mechanism Solidity uses to allocate storage slots for mappings, but using a hash as the
-        // mapping's storage slot, and subtracting 1 at the end. This should be more enough to prevent collisions with
-        // other state variables this or derived contracts might use.
+        // mapping's storage slot, and subtracting 1 at the end. This should be more than enough to prevent collisions
+        // with other state variables this or derived contracts might use.
         // See https://docs.soliditylang.org/en/v0.8.9/internals/layout_in_storage.html
 
         return bytes32(uint256(keccak256(abi.encodePacked(ref, _TEMP_STORAGE_SUFFIX))) - 1);
