@@ -77,7 +77,10 @@ contract DistributionScheduler {
             bytes32 scheduleId = scheduleIds[i];
             ScheduledDistribution memory scheduledDistribution = _scheduledDistributions[scheduleId];
 
-            require(scheduledDistribution.status == DistributionStatus.PENDING, "Distribution cannot be started");
+            if (scheduledDistribution.status != DistributionStatus.PENDING) {
+                continue;
+            }
+
             require(scheduledDistribution.startTime <= block.timestamp, "Distribution start time is in the future");
 
             _scheduledDistributions[scheduleId].status = DistributionStatus.STARTED;
