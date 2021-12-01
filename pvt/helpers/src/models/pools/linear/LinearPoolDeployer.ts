@@ -58,7 +58,7 @@ export default {
 
     const owner = TypesConverter.toAddress(params.owner);
 
-    return deploy('v2-pool-linear/MockLinearPool', {
+    return deploy('v2-pool-linear/AaveLinearPool', {
       args: [
         vault.address,
         NAME,
