@@ -85,14 +85,9 @@ contract DistributionScheduler {
 
             _scheduledDistributions[scheduleId].status = DistributionStatus.STARTED;
 
-            uint256 allowance = scheduledDistribution.distributionToken.allowance(
-                address(this),
-                address(_multiDistributor)
-            );
-            if (allowance < scheduledDistribution.amount) {
-                scheduledDistribution.distributionToken.approve(address(_multiDistributor), type(uint256).max);
-            }
+            scheduledDistribution.distributionToken.approve(address(_multiDistributor), scheduledDistribution.amount);
             _multiDistributor.fundDistribution(scheduledDistribution.distributionId, scheduledDistribution.amount);
+
             emit DistributionStarted(
                 scheduleId,
                 scheduledDistribution.owner,
