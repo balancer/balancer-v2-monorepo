@@ -12,7 +12,6 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime, DAY, fromNow, HOUR } from '@balancer-labs/v2-helpers/src/time';
-import { ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { MultiDistributor } from './helpers/MultiDistributor';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
@@ -25,6 +24,7 @@ describe('Distribution Scheduler', () => {
   let distributionToken: Token, distributionTokens: TokenList;
 
   let distributionOwner: SignerWithAddress, other: SignerWithAddress;
+  let distributionId: string;
 
   before('setup signers', async () => {
     [, distributionOwner, other] = await ethers.getSigners();
@@ -45,6 +45,8 @@ describe('Distribution Scheduler', () => {
 
     await distributionTokens.mint({ to: distributionOwner });
     await distributionTokens.approve({ to: scheduler, from: distributionOwner });
+
+    distributionId = await distributor.getDistributionId(stakingToken, distributionToken, distributionOwner);
   });
 
   describe('scheduleDistribution', () => {
@@ -55,7 +57,7 @@ describe('Distribution Scheduler', () => {
       const tx = await scheduler
         .connect(distributionOwner)
         .scheduleDistribution(
-          ZERO_BYTES32,
+          distributionId,
           stakingToken.address,
           distributionToken.address,
           amount,
@@ -82,7 +84,7 @@ describe('Distribution Scheduler', () => {
           scheduler
             .connect(distributionOwner)
             .scheduleDistribution(
-              ZERO_BYTES32,
+              distributionId,
               stakingToken.address,
               distributionToken.address,
               amount,
@@ -103,7 +105,7 @@ describe('Distribution Scheduler', () => {
         await scheduler
           .connect(distributionOwner)
           .scheduleDistribution(
-            ZERO_BYTES32,
+            distributionId,
             stakingToken.address,
             distributionToken.address,
             amount,
@@ -119,9 +121,8 @@ describe('Distribution Scheduler', () => {
       );
 
       expectEvent.inReceipt(receipt, 'DistributionScheduled', {
+        distributionId,
         scheduleId,
-        owner: distributionOwner.address,
-        distributionToken: distributionToken.address,
         startTime: distributionStartTime,
         amount: amount,
       });
@@ -139,7 +140,7 @@ describe('Distribution Scheduler', () => {
         await scheduler
           .connect(distributionOwner)
           .scheduleDistribution(
-            ZERO_BYTES32,
+            distributionId,
             stakingToken.address,
             distributionToken.address,
             amount,
@@ -173,10 +174,8 @@ describe('Distribution Scheduler', () => {
           const receipt = await (await scheduler.connect(other).startDistributions([scheduleId])).wait();
 
           expectEvent.inReceipt(receipt, 'DistributionStarted', {
+            distributionId,
             scheduleId,
-            owner: distributionOwner.address,
-            stakingToken: stakingToken.address,
-            distributionToken: distributionToken.address,
             startTime: distributionStartTime,
             amount: amount,
           });
@@ -216,7 +215,7 @@ describe('Distribution Scheduler', () => {
         await scheduler
           .connect(distributionOwner)
           .scheduleDistribution(
-            ZERO_BYTES32,
+            distributionId,
             stakingToken.address,
             distributionToken.address,
             amount,

@@ -46,18 +46,14 @@ contract DistributionScheduler {
     }
 
     event DistributionScheduled(
+        bytes32 indexed distributionId,
         bytes32 scheduleId,
-        address indexed owner,
-        IERC20 indexed stakingToken,
-        IERC20 indexed distributionToken,
         uint256 startTime,
         uint256 amount
     );
     event DistributionStarted(
+        bytes32 indexed distributionId,
         bytes32 scheduleId,
-        address indexed owner,
-        IERC20 indexed stakingToken,
-        IERC20 indexed distributionToken,
         uint256 startTime,
         uint256 amount
     );
@@ -108,7 +104,7 @@ contract DistributionScheduler {
 
         distributionToken.safeTransferFrom(msg.sender, address(this), amount);
 
-        emit DistributionScheduled(scheduleId, msg.sender, stakingToken, distributionToken, startTime, amount);
+        emit DistributionScheduled(distributionId, scheduleId, startTime, amount);
     }
 
     function startDistributions(bytes32[] calldata scheduleIds) external {
@@ -128,10 +124,8 @@ contract DistributionScheduler {
             _multiDistributor.fundDistribution(scheduledDistribution.distributionId, scheduledDistribution.amount);
 
             emit DistributionStarted(
+                scheduledDistribution.distributionId,
                 scheduleId,
-                scheduledDistribution.owner,
-                scheduledDistribution.stakingToken,
-                scheduledDistribution.distributionToken,
                 scheduledDistribution.startTime,
                 scheduledDistribution.amount
             );
