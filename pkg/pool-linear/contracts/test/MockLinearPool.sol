@@ -19,7 +19,33 @@ import "./MockLinearMath.sol";
 import "../LinearPool.sol";
 
 contract MockLinearPool is LinearPool, MockLinearMath {
-    constructor(NewPoolParams memory params) LinearPool(params) {
+    constructor(
+        IVault vault,
+        string memory name,
+        string memory symbol,
+        IERC20 mainToken,
+        IERC20 wrappedToken,
+        uint256 lowerTarget,
+        uint256 upperTarget,
+        uint256 swapFeePercentage,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration,
+        address owner
+    )
+        LinearPool(
+            vault,
+            name,
+            symbol,
+            mainToken,
+            wrappedToken,
+            lowerTarget,
+            upperTarget,
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner
+        )
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 

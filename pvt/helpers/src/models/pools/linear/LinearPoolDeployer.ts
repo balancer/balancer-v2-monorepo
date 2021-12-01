@@ -60,19 +60,17 @@ export default {
 
     return deploy('v2-pool-linear/MockLinearPool', {
       args: [
-        {
-          vault: vault.address,
-          name: NAME,
-          symbol: SYMBOL,
-          mainToken: mainToken.address,
-          wrappedToken: wrappedToken.address,
-          lowerTarget,
-          upperTarget,
-          swapFeePercentage,
-          pauseWindowDuration,
-          bufferPeriodDuration,
-          owner,
-        },
+        vault.address,
+        NAME,
+        SYMBOL,
+        mainToken.address,
+        wrappedToken.address,
+        lowerTarget,
+        upperTarget,
+        swapFeePercentage,
+        pauseWindowDuration,
+        bufferPeriodDuration,
+        owner,
       ],
       from,
     });

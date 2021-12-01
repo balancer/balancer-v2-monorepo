@@ -41,21 +41,23 @@ contract MockLinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWind
     ) external returns (LinearPool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        LinearPool.NewPoolParams memory params = LinearPool.NewPoolParams({
-            vault: getVault(),
-            name: name,
-            symbol: symbol,
-            mainToken: mainToken,
-            wrappedToken: wrappedToken,
-            lowerTarget: lowerTarget,
-            upperTarget: upperTarget,
-            swapFeePercentage: swapFeePercentage,
-            pauseWindowDuration: pauseWindowDuration,
-            bufferPeriodDuration: bufferPeriodDuration,
-            owner: owner
-        });
-
-        LinearPool pool = MockLinearPool(_create(abi.encode(params)));
+        LinearPool pool = MockLinearPool(
+            _create(
+                abi.encode(
+                    getVault(),
+                    name,
+                    symbol,
+                    mainToken,
+                    wrappedToken,
+                    lowerTarget,
+                    upperTarget,
+                    swapFeePercentage,
+                    pauseWindowDuration,
+                    bufferPeriodDuration,
+                    owner
+                )
+            )
+        );
 
         // LinearPools have a separate post-construction initialization step: we perform it here to
         // ensure deployment and initialization are atomic.

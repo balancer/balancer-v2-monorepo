@@ -95,43 +95,40 @@ abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
 
     event TargetsSet(IERC20 indexed token, uint256 lowerTarget, uint256 upperTarget);
 
-    // The constructor arguments are received in a struct to work around stack-too-deep issues
-    struct NewPoolParams {
-        IVault vault;
-        string name;
-        string symbol;
-        IERC20 mainToken;
-        IERC20 wrappedToken;
-        uint256 lowerTarget;
-        uint256 upperTarget;
-        uint256 swapFeePercentage;
-        uint256 pauseWindowDuration;
-        uint256 bufferPeriodDuration;
-        address owner;
-    }
-
-    constructor(NewPoolParams memory params)
+    constructor(
+        IVault vault,
+        string memory name,
+        string memory symbol,
+        IERC20 mainToken,
+        IERC20 wrappedToken,
+        uint256 lowerTarget,
+        uint256 upperTarget,
+        uint256 swapFeePercentage,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration,
+        address owner
+    )
         BasePool(
-            params.vault,
+            vault,
             IVault.PoolSpecialization.GENERAL,
-            params.name,
-            params.symbol,
-            _sortTokens(params.mainToken, params.wrappedToken, this),
+            name,
+            symbol,
+            _sortTokens(mainToken, wrappedToken, this),
             new address[](_TOTAL_TOKENS),
-            params.swapFeePercentage,
-            params.pauseWindowDuration,
-            params.bufferPeriodDuration,
-            params.owner
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner
         )
     {
         // Set tokens
-        _mainToken = params.mainToken;
-        _wrappedToken = params.wrappedToken;
+        _mainToken = mainToken;
+        _wrappedToken = wrappedToken;
 
         // Set token indexes
         (uint256 mainIndex, uint256 wrappedIndex, uint256 bptIndex) = _getSortedTokenIndexes(
-            params.mainToken,
-            params.wrappedToken,
+            mainToken,
+            wrappedToken,
             this
         );
         _bptIndex = bptIndex;
@@ -139,11 +136,11 @@ abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         _wrappedIndex = wrappedIndex;
 
         // Set scaling factors
-        _scalingFactorMainToken = _computeScalingFactor(params.mainToken);
-        _scalingFactorWrappedToken = _computeScalingFactor(params.wrappedToken);
+        _scalingFactorMainToken = _computeScalingFactor(mainToken);
+        _scalingFactorWrappedToken = _computeScalingFactor(wrappedToken);
 
         // Set initial targets
-        _setTargets(params.mainToken, params.lowerTarget, params.upperTarget);
+        _setTargets(mainToken, lowerTarget, upperTarget);
     }
 
     function getMainToken() external view returns (address) {
