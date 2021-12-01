@@ -14,9 +14,6 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime, DAY, fromNow, HOUR } from '@balancer-labs/v2-helpers/src/time';
 import { ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { MultiDistributor } from './helpers/MultiDistributor';
-import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
-import { solidityKeccak256 } from 'ethers/lib/utils';
-import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('Distribution Scheduler', () => {
@@ -50,17 +47,12 @@ describe('Distribution Scheduler', () => {
     await distributionTokens.approve({ to: scheduler, from: distributionOwner });
   });
 
-  const calcScheduleId = (stakingToken: Token, distributionToken: Token, owner: Account, time: BigNumberish) => {
-    const addresses = TypesConverter.toAddresses([stakingToken, distributionToken, owner]);
-    return solidityKeccak256(['address', 'address', 'address', 'uint256'], [...addresses, time]);
-  };
-
   describe('scheduleDistribution', () => {
     const amount = fp(1);
 
     it('creates a scheduled distribution', async () => {
       const distributionStartTime = await fromNow(DAY);
-      await scheduler
+      const tx = await scheduler
         .connect(distributionOwner)
         .scheduleDistribution(
           ZERO_BYTES32,
@@ -70,9 +62,9 @@ describe('Distribution Scheduler', () => {
           distributionStartTime
         );
 
-      const scheduleId = calcScheduleId(stakingToken, distributionToken, distributionOwner, distributionStartTime);
+      const event = expectEvent.inReceipt(await tx.wait(), 'DistributionScheduled');
 
-      const response = await scheduler.getScheduledDistributionInfo(scheduleId);
+      const response = await scheduler.getScheduledDistributionInfo(event.args.scheduleId);
 
       expect(response.stakingToken).to.equal(stakingToken.address);
       expect(response.distributionToken).to.equal(distributionToken.address);
@@ -119,7 +111,12 @@ describe('Distribution Scheduler', () => {
           )
       ).wait();
 
-      const scheduleId = calcScheduleId(stakingToken, distributionToken, distributionOwner, distributionStartTime);
+      const scheduleId = await scheduler.getScheduleId(
+        stakingToken.address,
+        distributionToken.address,
+        distributionOwner.address,
+        distributionStartTime
+      );
 
       expectEvent.inReceipt(receipt, 'DistributionScheduled', {
         scheduleId,
@@ -149,7 +146,12 @@ describe('Distribution Scheduler', () => {
             distributionStartTime
           );
 
-        scheduleId = calcScheduleId(stakingToken, distributionToken, distributionOwner, distributionStartTime);
+        scheduleId = await scheduler.getScheduleId(
+          stakingToken.address,
+          distributionToken.address,
+          distributionOwner.address,
+          distributionStartTime
+        );
       });
 
       // Skip tests pending support for paying into a distribution owned by another address
@@ -221,7 +223,12 @@ describe('Distribution Scheduler', () => {
             distributionStartTime
           );
 
-        scheduleId = calcScheduleId(stakingToken, distributionToken, distributionOwner, distributionStartTime);
+        scheduleId = await scheduler.getScheduleId(
+          stakingToken.address,
+          distributionToken.address,
+          distributionOwner.address,
+          distributionStartTime
+        );
         await advanceTime(3600 * 25);
         await scheduler.connect(other).startDistributions([scheduleId]);
       });
