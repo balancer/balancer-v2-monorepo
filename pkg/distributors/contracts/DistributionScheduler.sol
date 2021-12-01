@@ -67,7 +67,7 @@ contract DistributionScheduler {
     function getScheduledDistributionInfo(bytes32 scheduleId)
         external
         view
-        returns (ScheduledDistribution memory reward)
+        returns (ScheduledDistribution memory)
     {
         return _scheduledDistributions[scheduleId];
     }
