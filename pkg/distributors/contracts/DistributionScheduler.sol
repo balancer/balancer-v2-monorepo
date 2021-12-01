@@ -45,26 +45,12 @@ contract DistributionScheduler {
         DistributionStatus status;
     }
 
-    event DistributionScheduled(
-        bytes32 indexed distributionId,
-        bytes32 scheduleId,
-        uint256 startTime,
-        uint256 amount
-    );
-    event DistributionStarted(
-        bytes32 indexed distributionId,
-        bytes32 scheduleId,
-        uint256 startTime,
-        uint256 amount
-    );
+    event DistributionScheduled(bytes32 indexed distributionId, bytes32 scheduleId, uint256 startTime, uint256 amount);
+    event DistributionStarted(bytes32 indexed distributionId, bytes32 scheduleId, uint256 startTime, uint256 amount);
 
     mapping(bytes32 => ScheduledDistribution) private _scheduledDistributions;
 
-    function getScheduledDistributionInfo(bytes32 scheduleId)
-        external
-        view
-        returns (ScheduledDistribution memory)
-    {
+    function getScheduledDistributionInfo(bytes32 scheduleId) external view returns (ScheduledDistribution memory) {
         return _scheduledDistributions[scheduleId];
     }
 
