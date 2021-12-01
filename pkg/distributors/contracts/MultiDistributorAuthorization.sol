@@ -67,7 +67,7 @@ abstract contract MultiDistributorAuthorization is Authentication {
             // In this context, 'permission to call a function' means 'being a relayer for a function'.
             _authenticateCaller();
 
-            // Being a relayer is not sufficient: `user` must have also approved the caller via 
+            // Being a relayer is not sufficient: `user` must have also approved the caller via
             // calling `setRelayerApproval` on the Vault
             _require(getVault().hasApprovedRelayer(user, msg.sender), Errors.USER_DOESNT_ALLOW_RELAYER);
         }
