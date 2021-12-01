@@ -72,33 +72,6 @@ contract DistributionScheduler {
         return _scheduledDistributions[scheduleId];
     }
 
-    function startDistributions(bytes32[] calldata scheduleIds) external {
-        for (uint256 i; i < scheduleIds.length; i++) {
-            bytes32 scheduleId = scheduleIds[i];
-            ScheduledDistribution memory scheduledDistribution = _scheduledDistributions[scheduleId];
-
-            if (scheduledDistribution.status != DistributionStatus.PENDING) {
-                continue;
-            }
-
-            require(block.timestamp >= scheduledDistribution.startTime, "Distribution start time is in the future");
-
-            _scheduledDistributions[scheduleId].status = DistributionStatus.STARTED;
-
-            scheduledDistribution.distributionToken.approve(address(_multiDistributor), scheduledDistribution.amount);
-            _multiDistributor.fundDistribution(scheduledDistribution.distributionId, scheduledDistribution.amount);
-
-            emit DistributionStarted(
-                scheduleId,
-                scheduledDistribution.owner,
-                scheduledDistribution.stakingToken,
-                scheduledDistribution.distributionToken,
-                scheduledDistribution.startTime,
-                scheduledDistribution.amount
-            );
-        }
-    }
-
     function getScheduleId(
         IERC20 stakingToken,
         IERC20 distributionToken,
@@ -136,5 +109,32 @@ contract DistributionScheduler {
         distributionToken.safeTransferFrom(msg.sender, address(this), amount);
 
         emit DistributionScheduled(scheduleId, msg.sender, stakingToken, distributionToken, startTime, amount);
+    }
+
+    function startDistributions(bytes32[] calldata scheduleIds) external {
+        for (uint256 i; i < scheduleIds.length; i++) {
+            bytes32 scheduleId = scheduleIds[i];
+            ScheduledDistribution memory scheduledDistribution = _scheduledDistributions[scheduleId];
+
+            if (scheduledDistribution.status != DistributionStatus.PENDING) {
+                continue;
+            }
+
+            require(block.timestamp >= scheduledDistribution.startTime, "Distribution start time is in the future");
+
+            _scheduledDistributions[scheduleId].status = DistributionStatus.STARTED;
+
+            scheduledDistribution.distributionToken.approve(address(_multiDistributor), scheduledDistribution.amount);
+            _multiDistributor.fundDistribution(scheduledDistribution.distributionId, scheduledDistribution.amount);
+
+            emit DistributionStarted(
+                scheduleId,
+                scheduledDistribution.owner,
+                scheduledDistribution.stakingToken,
+                scheduledDistribution.distributionToken,
+                scheduledDistribution.startTime,
+                scheduledDistribution.amount
+            );
+        }
     }
 }
