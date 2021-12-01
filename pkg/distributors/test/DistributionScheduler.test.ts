@@ -27,10 +27,10 @@ describe('Distribution Scheduler', () => {
   let stakingToken: Token, stakingTokens: TokenList;
   let distributionToken: Token, distributionTokens: TokenList;
 
-  let distributionOwner: SignerWithAddress, poker: SignerWithAddress;
+  let distributionOwner: SignerWithAddress, other: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, distributionOwner, poker] = await ethers.getSigners();
+    [, distributionOwner, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy distributor', async () => {
@@ -137,7 +137,7 @@ describe('Distribution Scheduler', () => {
 
         it('allows anyone to poke the contract to notify the staking contract and transfer rewards', async () => {
           await expectBalanceChange(
-            () => scheduler.connect(poker).startDistributions([scheduleId]),
+            () => scheduler.connect(other).startDistributions([scheduleId]),
             distributionTokens,
             [{ account: distributor.address, changes: { DAI: ['very-near', amount] } }],
             vault.instance
@@ -145,7 +145,7 @@ describe('Distribution Scheduler', () => {
         });
 
         it('emits DistributionStarted', async () => {
-          const receipt = await (await scheduler.connect(poker).startDistributions([scheduleId])).wait();
+          const receipt = await (await scheduler.connect(other).startDistributions([scheduleId])).wait();
 
           expectEvent.inReceipt(receipt, 'DistributionStarted', {
             scheduleId,
@@ -158,7 +158,7 @@ describe('Distribution Scheduler', () => {
         });
 
         it('emits RewardAdded in MultiDistributor', async () => {
-          const receipt = await (await scheduler.connect(poker).startDistributions([scheduleId])).wait();
+          const receipt = await (await scheduler.connect(other).startDistributions([scheduleId])).wait();
 
           expectEvent.inIndirectReceipt(receipt, distributor.instance.interface, 'RewardAdded', {
             distributionToken: distributionToken.address,
@@ -167,7 +167,7 @@ describe('Distribution Scheduler', () => {
         });
 
         it('marks scheduled distribution as STARTED', async () => {
-          await scheduler.connect(poker).startDistributions([scheduleId]);
+          await scheduler.connect(other).startDistributions([scheduleId]);
 
           const response = await scheduler.getScheduledDistributionInfo(scheduleId);
           expect(response.status).to.equal(2);
@@ -176,7 +176,7 @@ describe('Distribution Scheduler', () => {
 
       context('when start time has not passed', () => {
         it('reverts', async () => {
-          await expect(scheduler.connect(poker).startDistributions([scheduleId])).to.be.revertedWith(
+          await expect(scheduler.connect(other).startDistributions([scheduleId])).to.be.revertedWith(
             'Distribution start time is in the future'
           );
         });
@@ -196,11 +196,11 @@ describe('Distribution Scheduler', () => {
 
         scheduleId = calcScheduleId(stakingToken, distributionToken, distributionOwner, time);
         await advanceTime(3600 * 25);
-        await scheduler.connect(poker).startDistributions([scheduleId]);
+        await scheduler.connect(other).startDistributions([scheduleId]);
       });
 
       it('reverts', async () => {
-        await expect(scheduler.connect(poker).startDistributions([scheduleId])).to.be.revertedWith(
+        await expect(scheduler.connect(other).startDistributions([scheduleId])).to.be.revertedWith(
           'Reward cannot be started'
         );
       });
