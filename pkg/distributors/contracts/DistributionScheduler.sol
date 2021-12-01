@@ -81,7 +81,7 @@ contract DistributionScheduler {
                 continue;
             }
 
-            require(scheduledDistribution.startTime <= block.timestamp, "Distribution start time is in the future");
+            require(block.timestamp >= scheduledDistribution.startTime, "Distribution start time is in the future");
 
             _scheduledDistributions[scheduleId].status = DistributionStatus.STARTED;
 
