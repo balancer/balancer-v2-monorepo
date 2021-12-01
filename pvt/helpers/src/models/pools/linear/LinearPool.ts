@@ -27,8 +27,6 @@ export default class LinearPool {
   lowerTarget: BigNumberish;
   upperTarget: BigNumberish;
   swapFeePercentage: BigNumberish;
-  wrappedTokenRateProvider: string;
-  wrappedTokenRateCacheDuration: BigNumberish;
   vault: Vault;
   owner?: SignerWithAddress;
 
@@ -46,8 +44,6 @@ export default class LinearPool {
     lowerTarget: BigNumberish,
     upperTarget: BigNumberish,
     swapFeePercentage: BigNumberish,
-    wrappedTokenRateProvider: string,
-    wrappedTokenRateCacheDuration: BigNumberish,
     owner?: SignerWithAddress
   ) {
     this.instance = instance;
@@ -59,8 +55,6 @@ export default class LinearPool {
     this.lowerTarget = lowerTarget;
     this.upperTarget = upperTarget;
     this.swapFeePercentage = swapFeePercentage;
-    this.wrappedTokenRateProvider = wrappedTokenRateProvider;
-    this.wrappedTokenRateCacheDuration = wrappedTokenRateCacheDuration;
     this.owner = owner;
   }
 
@@ -140,12 +134,8 @@ export default class LinearPool {
     return this.instance.getScalingFactor(token.address);
   }
 
-  async getWrappedTokenRateProvider(): Promise<string> {
-    return this.instance.getWrappedTokenRateProvider();
-  }
-
-  async getWrappedTokenRateCache(): Promise<{ rate: BigNumber; duration: BigNumber; expires: BigNumber }> {
-    return this.instance.getWrappedTokenRateCache();
+  async getWrappedTokenRate(): Promise<string> {
+    return this.instance.getWrappedTokenRate();
   }
 
   async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
@@ -187,15 +177,6 @@ export default class LinearPool {
 
   async initialize(): Promise<void> {
     return this.instance.initialize();
-  }
-
-  async setWrappedTokenRateCacheDuration(duration: number, { from }: TxParams = {}): Promise<ContractTransaction> {
-    const pool = from ? this.instance.connect(from) : this.instance;
-    return pool.setWrappedTokenRateCacheDuration(duration);
-  }
-
-  async updateWrappedTokenRateCache(): Promise<ContractTransaction> {
-    return this.instance.updateWrappedTokenRateCache();
   }
 
   async swapGivenIn(params: SwapLinearPool): Promise<BigNumber> {

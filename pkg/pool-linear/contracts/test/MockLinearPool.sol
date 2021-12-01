@@ -27,7 +27,7 @@ contract MockLinearPool is LinearPool, MockLinearMath {
         return _scalingFactor(token);
     }
 
-    function mockCacheWrappedTokenRateIfNecessary() external {
-        _cacheWrappedTokenRateIfNecessary();
+    function _getWrappedTokenRate() internal pure override returns (uint256) {
+        return 1e18;
     }
 }
