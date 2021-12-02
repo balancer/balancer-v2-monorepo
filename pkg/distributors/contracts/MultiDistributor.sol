@@ -112,7 +112,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Calculates the payment per token for a distribution
      * @param distributionId ID of the distribution being queried
      */
-    function globalTokensPerStake(bytes32 distributionId) public view override returns (uint256) {
+    function globalTokensPerStake(bytes32 distributionId) external view override returns (uint256) {
         return _globalTokensPerStake(_getDistribution(distributionId));
     }
 
