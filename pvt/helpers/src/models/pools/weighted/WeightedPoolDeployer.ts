@@ -68,21 +68,26 @@ export default {
           from,
         })
       : params.lbp
-      ? deploy('v2-pool-weighted/LiquidityBootstrappingPool', {
-          args: [
-            vault.address,
-            NAME,
-            SYMBOL,
-            tokens.addresses,
-            weights,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            TypesConverter.toAddress(owner),
-            swapEnabledOnStart,
-          ],
-          from,
-        })
+      ? deploy(
+          params.noProtocolFee
+            ? 'v2-pool-weighted/NoProtocolFeeLiquidityBootstrappingPool'
+            : 'v2-pool-weighted/LiquidityBootstrappingPool',
+          {
+            args: [
+              vault.address,
+              NAME,
+              SYMBOL,
+              tokens.addresses,
+              weights,
+              swapFeePercentage,
+              pauseWindowDuration,
+              bufferPeriodDuration,
+              TypesConverter.toAddress(owner),
+              swapEnabledOnStart,
+            ],
+            from,
+          }
+        )
       : deploy('v2-pool-weighted/WeightedPool', {
           args: [
             vault.address,
@@ -127,10 +132,15 @@ export default {
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
       return deployedAt('v2-pool-weighted/WeightedPool2Tokens', event.args.pool);
     } else if (params.lbp) {
-      const factory = await deploy('v2-pool-weighted/LiquidityBootstrappingPoolFactory', {
-        args: [vault.address],
-        from,
-      });
+      const factory = await deploy(
+        params.noProtocolFee
+          ? 'v2-pool-weighted/NoProtocolFeeLiquidityBootstrappingPoolFactory'
+          : 'v2-pool-weighted/LiquidityBootstrappingPoolFactory',
+        {
+          args: [vault.address],
+          from,
+        }
+      );
       const tx = await factory.create(
         NAME,
         SYMBOL,

@@ -25,6 +25,7 @@ const balancerErrorCodes: Record<string, string> = {
   '208': 'BPT_OUT_MIN_AMOUNT',
   '209': 'EXPIRED_PERMIT',
   '210': 'NOT_TWO_TOKENS',
+  '211': 'DISABLED',
   '300': 'MIN_AMP',
   '301': 'MAX_AMP',
   '302': 'MIN_WEIGHT',

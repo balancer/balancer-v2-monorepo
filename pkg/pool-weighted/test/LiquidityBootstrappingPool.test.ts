@@ -9,6 +9,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { range } from 'lodash';
+import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 
 describe('LiquidityBootstrappingPool', function () {
   let owner: SignerWithAddress, other: SignerWithAddress;
@@ -63,13 +64,16 @@ describe('LiquidityBootstrappingPool', function () {
           pool = await WeightedPool.create({
             tokens,
             weights: weights.slice(0, numTokens),
+            lbp: true,
           });
         });
 
         it('sets token weights', async () => {
           const normalizedWeights = await pool.getNormalizedWeights();
 
-          expect(normalizedWeights).to.deep.equal(pool.normalizedWeights);
+          normalizedWeights.forEach((weight, i) => {
+            expectEqualWithError(weight, pool.normalizedWeights[i]);
+          });
         });
 
         it('sets scaling factors', async () => {

@@ -22,6 +22,7 @@ export type RawWeightedPoolDeployment = {
   fromFactory?: boolean;
   twoTokens?: boolean;
   lbp?: boolean;
+  noProtocolFee?: boolean;
 };
 
 export type WeightedPoolDeployment = {
@@ -33,6 +34,7 @@ export type WeightedPoolDeployment = {
   bufferPeriodDuration: BigNumberish;
   twoTokens: boolean;
   lbp: boolean;
+  noProtocolFee: boolean;
   oracleEnabled: boolean;
   swapEnabledOnStart: boolean;
   owner?: SignerWithAddress;
