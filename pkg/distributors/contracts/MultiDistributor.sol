@@ -316,7 +316,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
                 // This means we need to update the distribution rate, as we are about to change its total
                 // staked tokens and decrease the global per token rate.
                 // The unclaimed tokens remain unchanged as the user was not subscribed to the distribution
-                // and therefore is due no unaccounted-for tokens.
+                // and therefore not eligible to receive any unaccounted-for tokens.
                 userStaking.distributions[distributionId].userTokensPerStake = _updateDistributionRate(distributionId);
                 distribution.totalSupply = distribution.totalSupply.add(amount);
                 emit Staked(distributionId, msg.sender, amount);
