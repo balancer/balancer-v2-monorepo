@@ -43,8 +43,8 @@ import "./LinearPoolUserData.sol";
  * Unlike most other Pools, this one does not attempt to create revenue by charging fees: value is derived by holding
  * the wrapped, yield-bearing asset. However, the 'swap fee percentage' value is still used, albeit with a different
  * meaning. This Pool attempts to hold a certain amount of "main" tokens, between a lower and upper target value.
- * The pool charges fees on trades that move the balance outside that range, which are then paid back
- * as incentives to traders whose swaps return the balance to the desired region.
+ * The pool charges fees on trades that move the balance outside that range, which are then paid back as incentives to
+ * traders whose swaps return the balance to the desired region.
  * The net revenue via fees is expected to be zero: all collected fees are used to pay for this 'rebalancing'.
  */
 contract LinearPool is BasePool, IGeneralPool, IRateProvider {
