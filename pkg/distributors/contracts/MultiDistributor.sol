@@ -240,7 +240,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionId ID of the distribution to be funded
      * @param amount The amount of tokens to deposit
      */
-    function fundDistribution(bytes32 distributionId, uint256 amount) external override {
+    function fundDistribution(bytes32 distributionId, uint256 amount) external override nonReentrant {
         Distribution storage distribution = _getDistribution(distributionId);
         // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
         // sentinel value that marks non-existent distributions.
