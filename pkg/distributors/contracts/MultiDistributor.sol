@@ -355,22 +355,31 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param stakingToken The token to be staked to be eligible for distributions
      * @param amount Amount of tokens to be staked
      */
-    function stake(IERC20 stakingToken, uint256 amount) external override nonReentrant {
-        _stakeFor(stakingToken, amount, msg.sender, msg.sender);
+    function stake(
+        IERC20 stakingToken,
+        uint256 amount,
+        address sender,
+        address recipient
+    ) external override nonReentrant {
+        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+        _stake(stakingToken, amount, sender, recipient, false);
     }
 
     /**
-     * @notice Stakes tokens on behalf of other user
+     * @dev Stakes tokens using the user's token approval on the vault
      * @param stakingToken The token to be staked to be eligible for distributions
      * @param amount Amount of tokens to be staked
-     * @param user The user staking on behalf of
+     * @param sender The address which provides tokens to stake
+     * @param recipient The address which receives the staked tokens
      */
-    function stakeFor(
+    function stakeUsingVault(
         IERC20 stakingToken,
         uint256 amount,
-        address user
+        address sender,
+        address recipient
     ) external override nonReentrant {
-        _stakeFor(stakingToken, amount, user, msg.sender);
+        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+        _stake(stakingToken, amount, sender, recipient, true);
     }
 
     /**
@@ -393,73 +402,63 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         bytes32 s
     ) external override nonReentrant {
         IERC20Permit(address(stakingToken)).permit(user, address(this), amount, deadline, v, r, s);
-        _stakeFor(stakingToken, amount, user, user);
+        _stake(stakingToken, amount, user, user, false);
     }
 
     /**
      * @dev Unstake tokens
      * @param stakingToken The token to be unstaked
      * @param amount Amount of tokens to be unstaked
-     * @param receiver The recipient of the staked tokens
+     * @param sender The address which is unstaking its tokens
+     * @param recipient The address which receives the unstaked tokens
      */
     function unstake(
         IERC20 stakingToken,
         uint256 amount,
-        address receiver
-    ) public override nonReentrant {
-        require(amount > 0, "UNSTAKE_AMOUNT_ZERO");
-
-        // Before we reduce the user's staked balance we need to update all of their subscriptions
-        _updateSubscribedDistributions(stakingToken, msg.sender);
-
-        UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
-        uint256 currentBalance = userStaking.balance;
-        require(currentBalance >= amount, "UNSTAKE_AMOUNT_UNAVAILABLE");
-        userStaking.balance = userStaking.balance.sub(amount);
-
-        EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
-        uint256 distributionsLength = distributions.length();
-
-        // We also need to update all distributions the user was subscribed to,
-        // deducting the unstaked tokens from their totals.
-        for (uint256 i; i < distributionsLength; i++) {
-            bytes32 distributionId = distributions.unchecked_at(i);
-            Distribution storage distribution = _getDistribution(distributionId);
-            distribution.totalSupply = distribution.totalSupply.sub(amount);
-            emit Unstaked(distributionId, msg.sender, amount);
-        }
-
-        stakingToken.safeTransfer(receiver, amount);
+        address sender,
+        address recipient
+    ) external override nonReentrant {
+        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+        _unstake(stakingToken, amount, sender, recipient);
     }
 
     /**
      * @dev Claims earned distribution tokens for a list of distributions
      * @param distributionIds List of distributions to claim
+     * @param toInternalBalance Whether to send the claimed tokens to the recipient's internal balance
+     * @param sender The address which earned the tokens being claimed
+     * @param recipient The address which receives the claimed tokens
      */
-    function claim(bytes32[] memory distributionIds) external override nonReentrant {
-        _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
-    }
-
-    /**
-     * @dev Claims earned tokens for a list of distributions to internal balance
-     * @param distributionIds List of distributions to claim
-     */
-    function claimAsInternalBalance(bytes32[] memory distributionIds) external override nonReentrant {
-        _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
+    function claim(
+        bytes32[] memory distributionIds,
+        bool toInternalBalance,
+        address sender,
+        address recipient
+    ) external override nonReentrant {
+        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+        _claim(
+            distributionIds,
+            toInternalBalance ? IVault.UserBalanceOpKind.TRANSFER_INTERNAL : IVault.UserBalanceOpKind.WITHDRAW_INTERNAL,
+            sender,
+            recipient
+        );
     }
 
     /**
      * @dev Claims earned tokens for a list of distributions to a callback contract
      * @param distributionIds List of distributions to claim
+     * @param sender The address which earned the tokens being claimed
      * @param callbackContract The contract where tokens will be transferred
      * @param callbackData The data that is used to call the callback contract's 'callback' method
      */
     function claimWithCallback(
         bytes32[] memory distributionIds,
+        address sender,
         IDistributorCallback callbackContract,
         bytes memory callbackData
     ) external override nonReentrant {
-        _claim(distributionIds, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
+        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+        _claim(distributionIds, IVault.UserBalanceOpKind.TRANSFER_INTERNAL, sender, address(callbackContract));
         callbackContract.distributorCallback(callbackData);
     }
 
@@ -468,14 +467,14 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param stakingTokens The staking tokens to withdraw tokens from
      * @param distributionIds The distributions to claim for
      */
-    function exit(IERC20[] memory stakingTokens, bytes32[] memory distributionIds) external override {
+    function exit(IERC20[] memory stakingTokens, bytes32[] memory distributionIds) external override nonReentrant {
         for (uint256 i; i < stakingTokens.length; i++) {
             IERC20 stakingToken = stakingTokens[i];
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
-            unstake(stakingToken, userStaking.balance, msg.sender);
+            _unstake(stakingToken, userStaking.balance, msg.sender, msg.sender);
         }
 
-        _claim(distributionIds, msg.sender, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL);
+        _claim(distributionIds, IVault.UserBalanceOpKind.WITHDRAW_INTERNAL, msg.sender, msg.sender);
     }
 
     /**
@@ -490,52 +489,97 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         bytes32[] memory distributionIds,
         IDistributorCallback callbackContract,
         bytes memory callbackData
-    ) external override {
+    ) external override nonReentrant {
         for (uint256 i; i < stakingTokens.length; i++) {
             IERC20 stakingToken = stakingTokens[i];
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
-            unstake(stakingToken, userStaking.balance, msg.sender);
+            _unstake(stakingToken, userStaking.balance, msg.sender, msg.sender);
         }
 
-        _claim(distributionIds, address(callbackContract), IVault.UserBalanceOpKind.TRANSFER_INTERNAL);
+        _claim(distributionIds, IVault.UserBalanceOpKind.TRANSFER_INTERNAL, msg.sender, address(callbackContract));
         callbackContract.distributorCallback(callbackData);
     }
 
-    function _stakeFor(
+    function _stake(
         IERC20 stakingToken,
         uint256 amount,
-        address user,
-        address from
+        address sender,
+        address recipient,
+        bool useVaultApproval
     ) internal {
         require(amount > 0, "STAKE_AMOUNT_ZERO");
 
-        // Before we increase the user's staked balance we need to update all of their subscriptions
-        _updateSubscribedDistributions(stakingToken, user);
+        // Before we increase the recipient's staked balance we need to update all of their subscriptions
+        _updateSubscribedDistributions(stakingToken, recipient);
 
-        UserStaking storage userStaking = _userStakings[stakingToken][user];
+        UserStaking storage userStaking = _userStakings[stakingToken][recipient];
         userStaking.balance = userStaking.balance.add(amount);
 
         EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
         uint256 distributionsLength = distributions.length();
 
-        // We also need to update all distributions the user was subscribed to,
+        // We also need to update all distributions the recipient is subscribed to,
         // adding the staked tokens to their totals.
         for (uint256 i; i < distributionsLength; i++) {
             bytes32 distributionId = distributions.unchecked_at(i);
             Distribution storage distribution = _getDistribution(distributionId);
             distribution.totalSupply = distribution.totalSupply.add(amount);
-            emit Staked(distributionId, user, amount);
+            emit Staked(distributionId, recipient, amount);
         }
 
         // We hold stakingTokens in an external balance as BPT needs to be external anyway
         // in the case where a user is exiting the pool after unstaking.
-        stakingToken.safeTransferFrom(from, address(this), amount);
+        if (useVaultApproval) {
+            IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
+            ops[0] = IVault.UserBalanceOp({
+                asset: IAsset(address(stakingToken)),
+                amount: amount,
+                sender: sender,
+                recipient: payable(address(this)),
+                kind: IVault.UserBalanceOpKind.TRANSFER_EXTERNAL
+            });
+            getVault().manageUserBalance(ops);
+        } else {
+            stakingToken.safeTransferFrom(sender, address(this), amount);
+        }
+    }
+
+    function _unstake(
+        IERC20 stakingToken,
+        uint256 amount,
+        address sender,
+        address recipient
+    ) internal {
+        require(amount > 0, "UNSTAKE_AMOUNT_ZERO");
+
+        // Before we reduce the sender's staked balance we need to update all of their subscriptions
+        _updateSubscribedDistributions(stakingToken, sender);
+
+        UserStaking storage userStaking = _userStakings[stakingToken][sender];
+        uint256 currentBalance = userStaking.balance;
+        require(currentBalance >= amount, "UNSTAKE_AMOUNT_UNAVAILABLE");
+        userStaking.balance = userStaking.balance.sub(amount);
+
+        EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
+        uint256 distributionsLength = distributions.length();
+
+        // We also need to update all distributions the sender was subscribed to,
+        // deducting the unstaked tokens from their totals.
+        for (uint256 i; i < distributionsLength; i++) {
+            bytes32 distributionId = distributions.unchecked_at(i);
+            Distribution storage distribution = _getDistribution(distributionId);
+            distribution.totalSupply = distribution.totalSupply.sub(amount);
+            emit Unstaked(distributionId, sender, amount);
+        }
+
+        stakingToken.safeTransfer(recipient, amount);
     }
 
     function _claim(
         bytes32[] memory distributionIds,
-        address recipient,
-        IVault.UserBalanceOpKind kind
+        IVault.UserBalanceOpKind kind,
+        address sender,
+        address recipient
     ) internal {
         // It is expected that there will be multiple transfers of the same token
         // so that the actual number of transfers needed is less than distributionIds.length
@@ -549,7 +593,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             Distribution storage distribution = _getDistribution(distributionId);
 
             IERC20 stakingToken = distribution.stakingToken;
-            UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
+            UserStaking storage userStaking = _userStakings[stakingToken][sender];
 
             // Note that the user may have unsubscribed from the distribution but still be due tokens. We therefore only
             // update the distribution if the user is subscribed to it (otherwise, it is already up to date).

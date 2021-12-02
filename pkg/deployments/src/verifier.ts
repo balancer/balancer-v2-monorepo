@@ -28,6 +28,8 @@ import EtherscanResponse, {
   getVerificationStatus,
 } from '@nomiclabs/hardhat-etherscan/dist/src/etherscan/EtherscanService';
 
+import * as parser from '@solidity-parser/parser';
+
 import Task from './task';
 import logger from './logger';
 
@@ -76,6 +78,8 @@ export default class Verifier {
     const deployedBytecode = new Bytecode(deployedBytecodeHex);
     const buildInfos = await task.buildInfos();
     const buildInfo = this.findBuildInfoWithContract(buildInfos, name);
+    buildInfo.input = this.trimmedBuildInfoInput(name, buildInfo.input);
+
     const sourceName = this.findContractSourceName(buildInfo, name);
     const contractInformation = await extractMatchingContractInformation(sourceName, name, buildInfo, deployedBytecode);
     if (!contractInformation) throw Error('Could not find a bytecode matching the requested contract');
@@ -97,24 +101,12 @@ export default class Verifier {
     const solcFullVersion = await getLongVersion(contractInformation.solcVersion);
     const etherscanAPIEndpoints = await getEtherscanEndpoints(this.network.provider, this.network.name);
 
-    const minimumBuildVerificationStatus = await this.attemptVerification(
-      etherscanAPIEndpoints,
-      contractInformation,
-      address,
-      this.apiKey,
-      buildInfo.input,
-      solcFullVersion,
-      deployArgumentsEncoded
-    );
-
-    if (minimumBuildVerificationStatus.isVerificationSuccess()) return minimumBuildVerificationStatus;
-
     const verificationStatus = await this.attemptVerification(
       etherscanAPIEndpoints,
       contractInformation,
       address,
       this.apiKey,
-      contractInformation.compilerInput,
+      buildInfo.input,
       solcFullVersion,
       deployArgumentsEncoded
     );
@@ -192,8 +184,9 @@ export default class Verifier {
   private findContractSourceName(buildInfo: BuildInfo, contractName: string): string {
     const names = this.getAllFullyQualifiedNames(buildInfo);
     const contractMatches = names.filter((name) => name.contractName === contractName);
-    if (contractMatches.length === 0) throw Error('Could not find a bytecode matching the requested contract');
-    if (contractMatches.length > 1) throw Error('More than one contract was found to match the deployed bytecode');
+    if (contractMatches.length === 0)
+      throw Error(`Could not find a source file for the requested contract ${contractName}`);
+    if (contractMatches.length > 1) throw Error(`More than one source file was found to match ${contractName}`);
     return contractMatches[0].sourceName;
   }
 
@@ -204,5 +197,72 @@ export default class Verifier {
       const qualifiedNames = contractsNames.map((contractName) => ({ sourceName, contractName }));
       return names.concat(qualifiedNames);
     }, []);
+  }
+
+  // Trims the inputs of the build info to only keep imported files, avoiding submitting unnecessary source files for
+  // verification (e.g. mocks). This is required because Hardhat compiles entire projects at once, resulting in a single
+  // huge build info.
+  private trimmedBuildInfoInput(contractName: string, input: CompilerInput): CompilerInput {
+    // First we find all sources imported from our contract
+    const sourceName = this.getContractSourceName(contractName, input);
+    const importedSourceNames = this.getContractImportedSourceNames(
+      sourceName,
+      input,
+      new Set<string>().add(sourceName)
+    );
+
+    // Then, we keep only those inputs. This method also preserves the order of the files, which may be important in
+    // some versions of solc.
+    return {
+      ...input,
+      sources: Object.keys(input.sources)
+        .filter((source) => importedSourceNames.has(source))
+        .map((source) => ({ [source]: input.sources[source] }))
+        .reduce((previous, current) => Object.assign(previous, current), {}),
+    };
+  }
+
+  private getAbsoluteSourcePath(relativeSourcePath: string, input: CompilerInput): string {
+    // We're not actually converting from relative to absolute but rather guessing: we'll extract the filename from the
+    // relative path, and then look for a source name in the inputs that matches it.
+    const contractName = (relativeSourcePath.match(/.*\/(\w*)\.sol/) as RegExpMatchArray)[1];
+    return this.getContractSourceName(contractName, input);
+  }
+
+  private getContractSourceName(contractName: string, input: CompilerInput): string {
+    const absoluteSourcePath = Object.keys(input.sources).find((absoluteSourcePath) =>
+      absoluteSourcePath.includes(`/${contractName}.sol`)
+    );
+
+    if (absoluteSourcePath === undefined) {
+      throw new Error(`Could not find source name for ${contractName}`);
+    }
+
+    return absoluteSourcePath;
+  }
+
+  private getContractImportedSourceNames(
+    sourceName: string,
+    input: CompilerInput,
+    previousSourceNames: Set<string>
+  ): Set<string> {
+    const ast = parser.parse(input.sources[sourceName].content);
+    parser.visit(ast, {
+      ImportDirective: (node) => {
+        // Imported paths might be relative, so we convert them to absolute
+        const importedSourceName = this.getAbsoluteSourcePath(node.path, input);
+
+        if (!previousSourceNames.has(importedSourceName)) {
+          // New source!
+          previousSourceNames = this.getContractImportedSourceNames(
+            importedSourceName,
+            input,
+            new Set(previousSourceNames).add(importedSourceName)
+          );
+        }
+      },
+    });
+
+    return previousSourceNames;
   }
 }
