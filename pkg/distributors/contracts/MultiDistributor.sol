@@ -112,7 +112,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Calculates the payment per token for a distribution
      * @param distributionId ID of the distribution being queried
      */
-    function globalTokensPerStake(bytes32 distributionId) public view override returns (uint256) {
+    function globalTokensPerStake(bytes32 distributionId) external view override returns (uint256) {
         return _globalTokensPerStake(_getDistribution(distributionId));
     }
 
@@ -122,14 +122,6 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      */
     function totalSupply(bytes32 distributionId) external view override returns (uint256) {
         return _getDistribution(distributionId).totalSupply;
-    }
-
-    /**
-     * @dev Returns the timestamp up to which a distribution has been distributing tokens
-     * @param distributionId ID of the distribution being queried
-     */
-    function lastTimePaymentApplicable(bytes32 distributionId) public view override returns (uint256) {
-        return _lastTimePaymentApplicable(_getDistribution(distributionId));
     }
 
     /**
@@ -155,17 +147,6 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     {
         IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
         return _userStakings[stakingToken][user].distributions[distributionId];
-    }
-
-    /**
-     * @dev Returns the unaccounted earned payment for a user until now for a particular distribution
-     * @param distributionId ID of the distribution being queried
-     * @param user Address of the user being queried
-     */
-    function unaccountedUnclaimedTokens(bytes32 distributionId, address user) external view override returns (uint256) {
-        IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
-        UserStaking storage userStaking = _userStakings[stakingToken][user];
-        return _unaccountedUnclaimedTokens(userStaking, distributionId);
     }
 
     /**
@@ -664,6 +645,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         return distribution.globalTokensPerStake.add(unpaidAmountPerToken);
     }
 
+    /**
+     * @dev Returns the timestamp up to which a distribution has been distributing tokens
+     * @param distribution The distribution being queried
+     */
     function _lastTimePaymentApplicable(Distribution storage distribution) internal view returns (uint256) {
         return Math.min(block.timestamp, distribution.periodFinish);
     }

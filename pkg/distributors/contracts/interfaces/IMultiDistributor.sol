@@ -70,13 +70,9 @@ interface IMultiDistributor {
 
     function totalSupply(bytes32 distributionId) external view returns (uint256);
 
-    function lastTimePaymentApplicable(bytes32 distributionId) external view returns (uint256);
-
     function isSubscribed(bytes32 distributionId, address user) external view returns (bool);
 
     function getUserDistribution(bytes32 distributionId, address user) external view returns (UserDistribution memory);
-
-    function unaccountedUnclaimedTokens(bytes32 distributionId, address user) external view returns (uint256);
 
     function getClaimableTokens(bytes32 distributionId, address user) external view returns (uint256);
 
