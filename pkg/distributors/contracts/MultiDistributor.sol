@@ -674,7 +674,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
     /**
      * @notice Returns the total unclaimed tokens for a user for a particular distribution
-     * @dev Only returns correct results when called on a distribution which the user is subscribed to
+     * @dev Only returns correct results when the user is subscribed to the distribution
      * @param userStaking Storage pointer to user's staked position information
      * @param userDistribution Storage pointer to user specific information on distribution
      * @param updatedGlobalTokensPerStake The updated number of distribution tokens paid per staked token
@@ -694,7 +694,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     /**
      * @notice Returns the tokens earned for a particular distribution between
      *         the last time the user updated their position and now
-     * @dev Only returns correct results when called on a distribution which the user is subscribed to
+     * @dev Only returns correct results when the user is subscribed to the distribution
      * @param userStaking Storage pointer to user's staked position information
      * @param userDistribution Storage pointer to user specific information on distribution
      * @param updatedGlobalTokensPerStake The updated number of distribution tokens paid per staked token
