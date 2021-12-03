@@ -10,7 +10,8 @@
     "measure-multihop": "hardhat run multihop.ts",
     "measure-join-exit": "hardhat run joinExit.ts",
     "measure-merkle-claim": "hardhat run merkleClaim.ts",
-    "benchmark": "yarn measure-deployment && yarn measure-single-pair && yarn measure-multihop && yarn measure-join-exit  && yarn measure-merkle-claim",
+    "measure-staking": "hardhat run multiDistributor.ts",
+    "benchmark": "yarn measure-deployment && yarn measure-single-pair && yarn measure-multihop && yarn measure-join-exit && yarn measure-merkle-claim && yarn measure-staking",
     "lint": "yarn lint:typescript",
     "lint:typescript": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
