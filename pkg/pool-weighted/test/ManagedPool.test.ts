@@ -116,6 +116,7 @@ describe('ManagedPool', function () {
         tokens: poolTokens,
         weights: poolWeights,
         poolType: WeightedPoolType.MANAGED_POOL,
+        from: owner,
         fromFactory: true,
       };
       pool = await WeightedPool.create(params);
@@ -125,6 +126,138 @@ describe('ManagedPool', function () {
       await poolTokens.asyncEach(async (token) => {
         const info = await pool.getTokenInfo(token);
         expect(info.assetManager).to.eq(ZERO_ADDRESS);
+      });
+    });
+  });
+
+  describe('when initialized with an LP allowlist', () => {
+    sharedBeforeEach('deploy pool', async () => {
+      const params = {
+        tokens: poolTokens,
+        weights: poolWeights,
+        poolType: WeightedPoolType.MANAGED_POOL,
+        swapEnabledOnStart: true,
+        mustAllowlistLPs: true,
+        owner: owner.address,
+      };
+      pool = await WeightedPool.create(params);
+    });
+
+    it('shows mustAllowlistLPs on and active', async () => {
+      expect(await pool.getMustAllowlistLPs()).to.be.true;
+      expect(await pool.isAllowedAddress(owner.address)).to.be.false;
+      expect(await pool.isAllowedAddress(other.address)).to.be.false;
+    });
+
+    context('when an address is added to the allowlist', () => {
+      sharedBeforeEach('add address to allowlist', async () => {
+        const receipt = await pool.addAllowedAddress(owner, other.address);
+
+        expectEvent.inReceipt(await receipt.wait(), 'AllowlistAddressAdded', {
+          member: other.address,
+        });
+
+        await pool.init({ from: other, initialBalances });
+      });
+
+      it('the LP address is on the list', async () => {
+        expect(await pool.isAllowedAddress(other.address)).to.be.true;
+        expect(await pool.isAllowedAddress(owner.address)).to.be.false;
+      });
+
+      it('an address cannot be added twice', async () => {
+        await expect(pool.addAllowedAddress(owner, other.address)).to.be.revertedWith('ADDRESS_ALREADY_ALLOWLISTED');
+      });
+
+      it('the listed LP can join', async () => {
+        const startingBpt = await pool.balanceOf(other);
+
+        const { amountsIn } = await pool.joinAllGivenOut({ from: other, bptOut: startingBpt });
+
+        expect(amountsIn).to.deep.equal(initialBalances);
+      });
+
+      it('addresses not on the list cannot join', async () => {
+        const startingBpt = await pool.balanceOf(owner);
+
+        await expect(pool.joinAllGivenOut({ from: owner, bptOut: startingBpt })).to.be.revertedWith(
+          'ADDRESS_NOT_ALLOWLISTED'
+        );
+      });
+
+      it('retains the allowlist when turned off and back on', async () => {
+        // Initial state: allowlist is on, and the owner is not on it
+        expect(await pool.isAllowedAddress(owner.address)).to.be.false;
+
+        // Open up for public LPs
+        await pool.setMustAllowlistLPs(owner, false);
+        // Owner is now allowed
+        expect(await pool.isAllowedAddress(owner.address)).to.be.true;
+
+        // Turn the allowlist back on
+        await pool.setMustAllowlistLPs(owner, true);
+
+        // Owner is not allowed again
+        expect(await pool.isAllowedAddress(owner.address)).to.be.false;
+        // Other is still on the allowlist from before
+        expect(await pool.isAllowedAddress(other.address)).to.be.true;
+      });
+
+      context('when an address is removed', () => {
+        sharedBeforeEach('remove address from allowlist', async () => {
+          const receipt = await pool.removeAllowedAddress(owner, other.address);
+
+          expectEvent.inReceipt(await receipt.wait(), 'AllowlistAddressRemoved', {
+            member: other.address,
+          });
+        });
+
+        it('the LP address is no longer on the list', async () => {
+          expect(await pool.isAllowedAddress(other.address)).to.be.false;
+          expect(await pool.isAllowedAddress(owner.address)).to.be.false;
+        });
+
+        it('reverts when removing an address not on the list', async () => {
+          await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('ADDRESS_NOT_ALLOWLISTED');
+        });
+      });
+    });
+
+    context('when mustAllowlistLPs is toggled', () => {
+      sharedBeforeEach('initialize pool', async () => {
+        await pool.init({ from: owner, initialBalances });
+      });
+
+      it('allowlist is initially on', async () => {
+        const startingBpt = await pool.balanceOf(owner);
+
+        expect(await pool.getMustAllowlistLPs()).to.be.true;
+        await expect(pool.joinAllGivenOut({ from: owner, bptOut: startingBpt })).to.be.revertedWith(
+          'ADDRESS_NOT_ALLOWLISTED'
+        );
+      });
+
+      it('allows owner to turn it off (open to public LPs)', async () => {
+        const startingBpt = await pool.balanceOf(owner);
+
+        const receipt = await pool.setMustAllowlistLPs(owner, false);
+        expectEvent.inReceipt(await receipt.wait(), 'MustAllowlistLPsSet', {
+          mustAllowlistLPs: false,
+        });
+
+        // Should be turned off
+        expect(await pool.getMustAllowlistLPs()).to.be.false;
+
+        // And allow joins from anywhere
+        await expect(pool.joinAllGivenOut({ from: other, bptOut: startingBpt })).to.not.be.reverted;
+
+        // Does not allow adding addresses now
+        await expect(pool.addAllowedAddress(owner, other.address)).to.be.revertedWith('UNAUTHORIZED_OPERATION');
+        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('ADDRESS_NOT_ALLOWLISTED');
+      });
+
+      it('reverts if non-owner tries to enable public LPs', async () => {
+        await expect(pool.setMustAllowlistLPs(other, false)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
   });
@@ -238,6 +371,10 @@ describe('ManagedPool', function () {
 
         sharedBeforeEach('initialize pool', async () => {
           await pool.init({ from: sender, initialBalances });
+        });
+
+        it('cannot add to the allowlist when it is not enabled', async () => {
+          await expect(pool.addAllowedAddress(sender, other.address)).to.be.revertedWith('UNAUTHORIZED_OPERATION');
         });
 
         it('swaps can be enabled and disabled', async () => {

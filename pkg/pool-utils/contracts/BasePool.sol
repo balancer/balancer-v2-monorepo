@@ -52,7 +52,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     uint256 private constant _MIN_TOKENS = 2;
 
-    uint256 private constant _MINIMUM_BPT = 1e6;
+    uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
 
     // 1e18 corresponds to 1.0, or a 100% fee
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
@@ -121,8 +121,15 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     function _getMaxTokens() internal pure virtual returns (uint256);
 
+    /**
+     * @dev Returns the minimum BPT supply. This amount is minted to the zero address during initialization, effectively
+     * locking it.
+     *
+     * This is useful to make sure Pool initialization happens only once, but derived Pools can change this value (even
+     * to zero) by overriding this function.
+     */
     function _getMinimumBpt() internal pure virtual returns (uint256) {
-        return _MINIMUM_BPT;
+        return _DEFAULT_MINIMUM_BPT;
     }
 
     function getSwapFeePercentage() public view returns (uint256) {

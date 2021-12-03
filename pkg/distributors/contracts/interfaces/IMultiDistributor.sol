@@ -96,12 +96,18 @@ interface IMultiDistributor {
 
     // Staking
 
-    function stake(IERC20 stakingToken, uint256 amount) external;
-
-    function stakeFor(
+    function stake(
         IERC20 stakingToken,
         uint256 amount,
-        address user
+        address sender,
+        address recipient
+    ) external;
+
+    function stakeUsingVault(
+        IERC20 stakingToken,
+        uint256 amount,
+        address sender,
+        address recipient
     ) external;
 
     function stakeWithPermit(
@@ -125,7 +131,8 @@ interface IMultiDistributor {
     function unstake(
         IERC20 stakingToken,
         uint256 amount,
-        address receiver
+        address sender,
+        address recipient
     ) external;
 
     function exit(IERC20[] memory stakingTokens, bytes32[] memory distributionIds) external;
@@ -139,12 +146,16 @@ interface IMultiDistributor {
 
     // Claiming
 
-    function claim(bytes32[] memory distributionIds) external;
-
-    function claimAsInternalBalance(bytes32[] memory distributionIds) external;
+    function claim(
+        bytes32[] memory distributionIds,
+        bool toInternalBalance,
+        address sender,
+        address recipient
+    ) external;
 
     function claimWithCallback(
         bytes32[] memory distributionIds,
+        address sender,
         IDistributorCallback callbackContract,
         bytes memory callbackData
     ) external;
