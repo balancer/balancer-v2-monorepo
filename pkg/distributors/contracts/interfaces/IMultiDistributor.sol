@@ -44,16 +44,16 @@ interface IMultiDistributor {
         mapping(bytes32 => UserDistributionInfo) distributionInfo;
     }
 
-    event Staked(bytes32 indexed distribution, address indexed user, uint256 amount);
-    event Unstaked(bytes32 indexed distribution, address indexed user, uint256 amount);
+    event Staked(bytes32 indexed distributionChannel, address indexed user, uint256 amount);
+    event Unstaked(bytes32 indexed distributionChannel, address indexed user, uint256 amount);
     event DistributionChannelCreated(
-        bytes32 indexed distribution,
+        bytes32 indexed distributionChannel,
         IERC20 stakingToken,
         IERC20 distributionToken,
         address owner
     );
-    event DistributionDurationSet(bytes32 indexed distribution, uint256 duration);
-    event DistributionFunded(bytes32 indexed distribution, uint256 amount);
+    event DistributionDurationSet(bytes32 indexed distributionChannel, uint256 duration);
+    event DistributionFunded(bytes32 indexed distributionChannel, uint256 amount);
     event TokensClaimed(address indexed user, address indexed rewardToken, uint256 amount);
 
     // Getters

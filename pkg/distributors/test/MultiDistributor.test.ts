@@ -98,7 +98,7 @@ describe('MultiDistributor', () => {
 
           const id = await distributor.getDistributionId(stakingToken, distributionToken, distributionOwner);
           expectEvent.inReceipt(await tx.wait(), 'DistributionChannelCreated', {
-            distribution: id,
+            distributionChannel: id,
             stakingToken: stakingToken.address,
             distributionToken: distributionToken.address,
             owner: distributionOwner.address,
@@ -209,7 +209,7 @@ describe('MultiDistributor', () => {
           const tx = await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
 
           expectEvent.inReceipt(await tx.wait(), 'DistributionFunded', {
-            distribution: distribution,
+            distributionChannel: distribution,
             amount: DISTRIBUTION_SIZE,
           });
         });
@@ -254,7 +254,7 @@ describe('MultiDistributor', () => {
           const tx = await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
 
           expectEvent.inReceipt(await tx.wait(), 'DistributionFunded', {
-            distribution: distribution,
+            distributionChannel: distribution,
             amount: DISTRIBUTION_SIZE,
           });
         });
@@ -434,7 +434,7 @@ describe('MultiDistributor', () => {
               const tx = await distributor.setDuration(distribution, newDuration, { from: distributionOwner });
 
               expectEvent.inReceipt(await tx.wait(), 'DistributionDurationSet', {
-                distribution: distribution,
+                distributionChannel: distribution,
                 duration: newDuration,
               });
             });
@@ -683,7 +683,7 @@ describe('MultiDistributor', () => {
                 const tx = await stake(stakingToken, amount);
 
                 expectEvent.inReceipt(await tx.wait(), 'Staked', {
-                  distribution,
+                  distributionChannel: distribution,
                   user: user1.address,
                   amount,
                 });
@@ -781,7 +781,7 @@ describe('MultiDistributor', () => {
                 const tx = await stake(stakingToken, amount);
 
                 expectEvent.inReceipt(await tx.wait(), 'Staked', {
-                  distribution,
+                  distributionChannel: distribution,
                   user: to.address,
                   amount,
                 });
@@ -1169,7 +1169,7 @@ describe('MultiDistributor', () => {
                 const tx = await unstake(stakingToken, amount);
 
                 expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
-                  distribution,
+                  distributionChannel: distribution,
                   user: from.address,
                   amount,
                 });
@@ -1271,7 +1271,7 @@ describe('MultiDistributor', () => {
                 const tx = await unstake(stakingToken, amount);
 
                 expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
-                  distribution,
+                  distributionChannel: distribution,
                   user: from.address,
                   amount,
                 });
@@ -1541,7 +1541,7 @@ describe('MultiDistributor', () => {
               const tx = await distributor.subscribe(distribution, { from: user1 });
 
               expectEvent.inReceipt(await tx.wait(), 'Staked', {
-                distribution,
+                distributionChannel: distribution,
                 amount: balance,
                 user: user1.address,
               });
@@ -1712,7 +1712,7 @@ describe('MultiDistributor', () => {
               const tx = await distributor.subscribe(distribution, { from: user1 });
 
               expectEvent.inReceipt(await tx.wait(), 'Staked', {
-                distribution,
+                distributionChannel: distribution,
                 amount: balance,
                 user: user1.address,
               });
@@ -1937,7 +1937,7 @@ describe('MultiDistributor', () => {
               const tx = await distributor.unsubscribe(distribution, { from: user1 });
 
               expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
-                distribution,
+                distributionChannel: distribution,
                 amount: balance,
                 user: user1.address,
               });
@@ -2123,7 +2123,7 @@ describe('MultiDistributor', () => {
               const tx = await distributor.unsubscribe(distribution, { from: user1 });
 
               expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
-                distribution,
+                distributionChannel: distribution,
                 amount: balance,
                 user: user1.address,
               });
@@ -2440,7 +2440,7 @@ describe('MultiDistributor', () => {
         const tx = await distributor.exit(stakingToken, distribution, { from: user1 });
 
         expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
-          distribution,
+          distributionChannel: distribution,
           user: user1.address,
           amount: balance,
         });
