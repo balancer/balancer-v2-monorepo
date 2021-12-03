@@ -128,7 +128,7 @@ describe('Aave Asset manager', function () {
 
       await pool.connect(lp).approve(distributor.address, bptBalance);
 
-      id = await distributor.getDistributionId(bpt, stkAave, assetManager.address);
+      id = await distributor.getDistributionChannelId(bpt, stkAave, assetManager.address);
 
       await distributor.subscribe(id, { from: lp });
       await distributor.stake(bpt, bptBalance.mul(3).div(4), lp, lp, { from: lp });

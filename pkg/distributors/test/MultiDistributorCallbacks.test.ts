@@ -55,7 +55,7 @@ describe('Staking contract - callbacks', () => {
       const bptBalance = await bpt.balanceOf(lp.address);
       await bpt.approve(stakingContract, bptBalance, { from: lp });
 
-      id = await stakingContract.getDistributionId(bpt, rewardToken, mockAssetManager);
+      id = await stakingContract.getDistributionChannelId(bpt, rewardToken, mockAssetManager);
       await stakingContract.subscribe(id, { from: lp });
       await stakingContract.stake(bpt, bptBalance, lp, lp, { from: lp });
 

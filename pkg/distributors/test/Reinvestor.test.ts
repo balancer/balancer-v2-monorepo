@@ -58,7 +58,7 @@ describe('Reinvestor', () => {
       const bptBalance = await bpt.balanceOf(lp.address);
       await bpt.approve(stakingContract, bptBalance, { from: lp });
 
-      id = await stakingContract.getDistributionId(bpt, rewardToken, mockAssetManager);
+      id = await stakingContract.getDistributionChannelId(bpt, rewardToken, mockAssetManager);
       await stakingContract.subscribe(id, { from: lp });
       await stakingContract.stake(bpt, bptBalance, lp, lp, { from: lp });
 
@@ -156,7 +156,7 @@ describe('Reinvestor', () => {
 
           await stakingContract.newDistribution(bpt, otherRewardToken, rewardsDuration, { from: mockAssetManager });
 
-          anotherId = await stakingContract.getDistributionId(bpt, otherRewardToken, mockAssetManager);
+          anotherId = await stakingContract.getDistributionChannelId(bpt, otherRewardToken, mockAssetManager);
           await stakingContract.subscribe(anotherId, { from: lp });
 
           await stakingContract.fundDistribution(anotherId, fp(3), { from: mockAssetManager });

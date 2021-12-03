@@ -64,7 +64,7 @@ export class MultiDistributor {
     return this.instance.balanceOf(stakingToken.address, user.address);
   }
 
-  async getDistributionId(stakingToken: Token, distributionToken: Token, owner: Account): Promise<string> {
+  async getDistributionChannelId(stakingToken: Token, distributionToken: Token, owner: Account): Promise<string> {
     return this.instance.getDistributionChannelId(
       TypesConverter.toAddress(stakingToken),
       TypesConverter.toAddress(distributionToken),
@@ -72,8 +72,8 @@ export class MultiDistributor {
     );
   }
 
-  async getDistribution(
-    distributionId: string
+  async getDistributionChannel(
+    distributionChannelId: string
   ): Promise<{
     stakingToken: string;
     distributionToken: string;
@@ -85,14 +85,14 @@ export class MultiDistributor {
     lastUpdateTime: BigNumber;
     globalTokensPerStake: BigNumber;
   }> {
-    return this.instance.getDistributionChannel(distributionId);
+    return this.instance.getDistributionChannel(distributionChannelId);
   }
 
-  async getUserDistribution(
-    distributionId: string,
+  async getUserDistributionInfo(
+    distributionChannelId: string,
     user: SignerWithAddress
   ): Promise<{ unclaimedTokens: BigNumber; userTokensPerStake: BigNumber }> {
-    return this.instance.getUserDistributionInfo(distributionId, user.address);
+    return this.instance.getUserDistributionInfo(distributionChannelId, user.address);
   }
 
   async newDistribution(
