@@ -64,20 +64,20 @@ interface IMultiDistributor {
         address owner
     ) external pure returns (bytes32);
 
-    function getDistributionChannel(bytes32 distributionId) external view returns (DistributionChannel memory);
+    function getDistributionChannel(bytes32 distributionChannelId) external view returns (DistributionChannel memory);
 
-    function globalTokensPerStake(bytes32 distributionId) external view returns (uint256);
+    function globalTokensPerStake(bytes32 distributionChannelId) external view returns (uint256);
 
-    function totalSupply(bytes32 distributionId) external view returns (uint256);
+    function totalSupply(bytes32 distributionChannelId) external view returns (uint256);
 
-    function isSubscribed(bytes32 distributionId, address user) external view returns (bool);
+    function isSubscribed(bytes32 distributionChannelId, address user) external view returns (bool);
 
-    function getUserDistributionInfo(bytes32 distributionId, address user)
+    function getUserDistributionInfo(bytes32 distributionChannelId, address user)
         external
         view
         returns (UserDistributionInfo memory);
 
-    function getClaimableTokens(bytes32 distributionId, address user) external view returns (uint256);
+    function getClaimableTokens(bytes32 distributionChannelId, address user) external view returns (uint256);
 
     function balanceOf(IERC20 stakingToken, address user) external view returns (uint256);
 
@@ -87,11 +87,11 @@ interface IMultiDistributor {
         IERC20 stakingToken,
         IERC20 distributionToken,
         uint256 duration
-    ) external returns (bytes32 distributionId);
+    ) external returns (bytes32 distributionChannelId);
 
-    function fundDistribution(bytes32 distributionId, uint256 amount) external;
+    function fundDistribution(bytes32 distributionChannelId, uint256 amount) external;
 
-    function setDistributionDuration(bytes32 distributionId, uint256 duration) external;
+    function setDistributionDuration(bytes32 distributionChannelId, uint256 duration) external;
 
     // Staking
 
@@ -121,9 +121,9 @@ interface IMultiDistributor {
 
     // Subscription
 
-    function subscribeDistributions(bytes32[] memory distributionIds) external;
+    function subscribeDistributions(bytes32[] memory distributionChannelIds) external;
 
-    function unsubscribeDistributions(bytes32[] memory distributionIds) external;
+    function unsubscribeDistributions(bytes32[] memory distributionChannelIds) external;
 
     // Unstaking
 
@@ -138,7 +138,7 @@ interface IMultiDistributor {
 
     function exitWithCallback(
         IERC20[] memory stakingTokens,
-        bytes32[] memory distributionIds,
+        bytes32[] memory distributionChannelIds,
         IDistributorCallback callbackContract,
         bytes memory callbackData
     ) external;
@@ -146,14 +146,14 @@ interface IMultiDistributor {
     // Claiming
 
     function claim(
-        bytes32[] memory distributionIds,
+        bytes32[] memory distributionChannelIds,
         bool toInternalBalance,
         address sender,
         address recipient
     ) external;
 
     function claimWithCallback(
-        bytes32[] memory distributionIds,
+        bytes32[] memory distributionChannelIds,
         address sender,
         IDistributorCallback callbackContract,
         bytes memory callbackData
