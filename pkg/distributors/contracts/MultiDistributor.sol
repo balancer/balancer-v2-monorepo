@@ -706,9 +706,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         UserDistribution storage userDistribution,
         uint256 updatedGlobalTokensPerStake
     ) internal view returns (uint256) {
-        // Note `unaccountedRatePerStake` is a fixed point value
-        uint256 unaccountedRatePerStake = updatedGlobalTokensPerStake.sub(userDistribution.userTokensPerStake);
-        return FixedPoint.mulDown(userStaking.balance, unaccountedRatePerStake);
+        // Note `unaccountedTokensPerStake` is a fixed point value
+        uint256 unaccountedTokensPerStake = updatedGlobalTokensPerStake.sub(userDistribution.userTokensPerStake);
+        return FixedPoint.mulDown(userStaking.balance, unaccountedTokensPerStake);
     }
 
     function _getDistribution(
