@@ -33,7 +33,7 @@ async function claimDistributions(numberOfDistributions: number, useInternalBala
   const amount = BigNumber.from(100);
 
   const DISTRIBUTION_DURATION = 100;
-  const distributionIds = [];
+  const distributionChannelIds = [];
   for (let i = 0; i < numberOfDistributions; i++) {
     const distributionOwner = others[i];
 
@@ -41,16 +41,20 @@ async function claimDistributions(numberOfDistributions: number, useInternalBala
     await distributor.newDistribution(stakingToken, distributionToken, DISTRIBUTION_DURATION, {
       from: distributionOwner,
     });
-    const distributionId = await distributor.getDistributionId(stakingToken, distributionToken, distributionOwner);
+    const distributionChannelId = await distributor.getDistributionChannelId(
+      stakingToken,
+      distributionToken,
+      distributionOwner
+    );
 
     // Fund distribution
     await distributionToken.mint(distributionOwner, amount);
     await distributionToken.approve(distributor, amount, { from: distributionOwner });
-    await distributor.fundDistribution(distributionId, amount, { from: distributionOwner });
+    await distributor.fundDistribution(distributionChannelId, amount, { from: distributionOwner });
 
     // Subscribe
-    await distributor.subscribe(distributionId, { from: trader });
-    distributionIds.push(distributionId);
+    await distributor.subscribe(distributionChannelId, { from: trader });
+    distributionChannelIds.push(distributionChannelId);
   }
 
   // stake tokens
@@ -60,7 +64,7 @@ async function claimDistributions(numberOfDistributions: number, useInternalBala
   await advanceTime(DISTRIBUTION_DURATION / 2);
 
   const receipt = await (
-    await distributor.claim(distributionIds, useInternalBalance, trader, trader, { from: trader })
+    await distributor.claim(distributionChannelIds, useInternalBalance, trader, trader, { from: trader })
   ).wait();
 
   console.log(
