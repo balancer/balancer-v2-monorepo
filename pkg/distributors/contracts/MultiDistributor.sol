@@ -151,7 +151,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         returns (UserDistributionInfo memory)
     {
         IERC20 stakingToken = _getDistributionChannel(distributionId).stakingToken;
-        return _userStakings[stakingToken][user].distributions[distributionId];
+        return _userStakings[stakingToken][user].distributionInfo[distributionId];
     }
 
     /**
@@ -162,7 +162,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     function getClaimableTokens(bytes32 distributionId, address user) external view override returns (uint256) {
         DistributionChannel storage distributionChannel = _getDistributionChannel(distributionId);
         UserStaking storage userStaking = _userStakings[distributionChannel.stakingToken][user];
-        UserDistributionInfo storage userDistributionInfo = userStaking.distributions[distributionId];
+        UserDistributionInfo storage userDistributionInfo = userStaking.distributionInfo[distributionId];
 
         // If the user isn't subscribed to the queried distribution channel, they don't have any unaccounted for tokens.
         // Then we can just return the stored number of tokens which the user can claim.
@@ -311,7 +311,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
                 // staked tokens and decrease the global per token rate.
                 // The unclaimed tokens remain unchanged as the user was not subscribed to the channel
                 // and therefore not eligible to receive any unaccounted-for tokens.
-                userStaking.distributions[distributionChannelId].userTokensPerStake = _updateDistributionRate(
+                userStaking.distributionInfo[distributionChannelId].userTokensPerStake = _updateDistributionRate(
                     distributionChannel
                 );
                 distributionChannel.totalSupply = distributionChannel.totalSupply.add(amount);
@@ -340,7 +340,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
                 _updateUserTokensPerStake(
                     distributionChannel,
                     userStaking,
-                    userStaking.distributions[distributionChannelId]
+                    userStaking.distributionInfo[distributionChannelId]
                 );
                 distributionChannel.totalSupply = distributionChannel.totalSupply.sub(amount);
                 emit Unstaked(distributionChannelId, msg.sender, amount);
@@ -598,7 +598,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             bytes32 distributionChannelId = distributionIds[i];
             DistributionChannel storage distributionChannel = _getDistributionChannel(distributionChannelId);
             UserStaking storage userStaking = _userStakings[distributionChannel.stakingToken][sender];
-            UserDistributionInfo storage userDistributionInfo = userStaking.distributions[distributionChannelId];
+            UserDistributionInfo storage userDistributionInfo = userStaking.distributionInfo[distributionChannelId];
 
             // Note that the user may have unsubscribed from the distribution but still be due tokens. We therefore only
             // update the distribution if the user is subscribed to it (otherwise, it is already up to date).
@@ -638,7 +638,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             _updateUserTokensPerStake(
                 _getDistributionChannel(distributionChannelId),
                 userStaking,
-                userStaking.distributions[distributionChannelId]
+                userStaking.distributionInfo[distributionChannelId]
             );
         }
     }

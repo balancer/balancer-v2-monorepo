@@ -41,7 +41,7 @@ interface IMultiDistributor {
     struct UserStaking {
         uint256 balance;
         EnumerableSet.Bytes32Set subscribedDistributions;
-        mapping(bytes32 => UserDistributionInfo) distributions;
+        mapping(bytes32 => UserDistributionInfo) distributionInfo;
     }
 
     event Staked(bytes32 indexed distribution, address indexed user, uint256 amount);
