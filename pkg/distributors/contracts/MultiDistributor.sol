@@ -344,7 +344,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             uint256 amount = userStaking.balance;
             if (amount > 0) {
                 _updateUserTokensPerStake(distribution, userStaking, userStaking.distributions[distributionId]);
-                distribution.totalSupply = distribution.totalSupply.sub(amount);
+                // Safe to perform unchecked maths as `totalSupply` would be increased by `amount` when staking.
+                distribution.totalSupply -= amount;
                 emit Unstaked(distributionId, msg.sender, amount);
             }
 
@@ -572,7 +573,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         for (uint256 i; i < distributionsLength; i++) {
             bytes32 distributionId = distributions.unchecked_at(i);
             Distribution storage distribution = _getDistribution(distributionId);
-            distribution.totalSupply = distribution.totalSupply.sub(amount);
+            // Safe to perform unchecked maths as `totalSupply` would be increased by `amount` when staking.
+            distribution.totalSupply -= amount;
             emit Unstaked(distributionId, sender, amount);
         }
 
@@ -744,7 +746,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         UserDistribution storage userDistribution,
         uint256 updatedGlobalTokensPerStake
     ) internal view returns (uint256) {
-        uint256 unaccountedTokensPerStake = updatedGlobalTokensPerStake.sub(userDistribution.userTokensPerStake);
+        // `userDistribution.userTokensPerStake` cannot exceed `updatedGlobalTokensPerStake`
+        uint256 unaccountedTokensPerStake = updatedGlobalTokensPerStake - userDistribution.userTokensPerStake;
         return userStaking.balance.mulDown(unaccountedTokensPerStake);
     }
 
