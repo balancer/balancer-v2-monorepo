@@ -66,6 +66,7 @@ export default class WeightedPool {
   vault: Vault;
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
+  allowlistLPs: boolean;
   managementSwapFeePercentage: BigNumberish;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
@@ -82,6 +83,7 @@ export default class WeightedPool {
     swapFeePercentage: BigNumberish,
     poolType: WeightedPoolType,
     swapEnabledOnStart: boolean,
+    allowlistLPs: boolean,
     managementSwapFeePercentage: BigNumberish
   ) {
     this.instance = instance;
@@ -93,6 +95,7 @@ export default class WeightedPool {
     this.swapFeePercentage = swapFeePercentage;
     this.poolType = poolType;
     this.swapEnabledOnStart = swapEnabledOnStart;
+    this.allowlistLPs = allowlistLPs;
     this.managementSwapFeePercentage = managementSwapFeePercentage;
   }
 
@@ -619,6 +622,29 @@ export default class WeightedPool {
   async setSwapEnabled(from: SignerWithAddress, swapEnabled: boolean): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
     return pool.setSwapEnabled(swapEnabled);
+  }
+
+  async addAllowedAddress(from: SignerWithAddress, member: string): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.addAllowedAddress(member);
+  }
+
+  async removeAllowedAddress(from: SignerWithAddress, member: string): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.removeAllowedAddress(member);
+  }
+
+  async getMustAllowlistLPs(): Promise<boolean> {
+    return this.instance.getMustAllowlistLPs();
+  }
+
+  async setMustAllowlistLPs(from: SignerWithAddress, mustAllowlistLPs: boolean): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.setMustAllowlistLPs(mustAllowlistLPs);
+  }
+
+  async isAllowedAddress(member: string): Promise<boolean> {
+    return this.instance.isAllowedAddress(member);
   }
 
   async withdrawCollectedManagementFees(
