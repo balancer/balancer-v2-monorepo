@@ -13,7 +13,7 @@ import { fromNow, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('BatchRelayerLibrary', function () {
-  const task = Task.forTest('????-batch-relayer-library', getForkedNetwork(hre));
+  const task = Task.forTest('20211203-batch-relayer', getForkedNetwork(hre));
 
   let relayer: Contract, library: Contract;
   let sender: SignerWithAddress, admin: SignerWithAddress;
