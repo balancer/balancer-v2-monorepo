@@ -55,9 +55,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * `globalTokensPerStake` can be calculated by:
      * 1. Calculating the amount of tokens distributed by multiplying `paymentRate` by the time since `lastUpdateTime`
      * 2. Dividing this by the supply of staked tokens to get payment per staked token
-     * The existing `globalTokensPerStake` then incremented by this amount.
+     * The existing `globalTokensPerStake` is then incremented by this amount.
      *
-     * Updating these two values locks in the number of tokens which the current stakers can claim.
+     * Updating these two values locks in the number of tokens that the current stakers can claim.
      * This MUST be done whenever the total supply of staked tokens changes otherwise new stakers
      * will gain a portion of rewards distributed before they staked.
      *
@@ -259,7 +259,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             distribution.paymentRate = Math.divDown(amount, duration);
         } else {
             // Current distribution period is still in progress.
-            // Calculate number of tokens which haven't been distributed yet and apply to the new distribution period.
+            // Calculate number of tokens that haven't been distributed yet and apply to the new distribution period.
             // This means that any previously pending tokens will be re-distributed over the extended duration, so if a
             // constant rate is desired new funding should be applied close to the end date of a distribution.
 
@@ -294,10 +294,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
                 // If subscribing to a distribution that uses a staking token for which the user has already staked,
                 // those tokens then immediately become part of the distribution's staked tokens
                 // (i.e. the user is staking for the new distribution).
-                // This means we need to update the distribution rate, as we are about to change it's total
+                // This means we need to update the distribution rate, as we are about to change its total
                 // staked tokens and decrease the global per token rate.
                 // The unclaimed tokens remain unchanged as the user was not subscribed to the distribution
-                // and therefore is due no unaccounted-for tokens.
+                // and therefore not eligible to receive any unaccounted-for tokens.
                 userStaking.distributions[distributionId].userTokensPerStake = _updateDistributionRate(distributionId);
                 distribution.totalSupply = distribution.totalSupply.add(amount);
                 emit Staked(distributionId, msg.sender, amount);
@@ -461,7 +461,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     /**
      * @dev Withdraws staking tokens and claims for a list of distributions to a callback contract
      * @param stakingTokens The staking tokens to withdraw tokens from
-     * @param distributionIds The distributions to claim  for
+     * @param distributionIds The distributions to claim for
      * @param callbackContract The contract where tokens will be transferred
      * @param callbackData The data that is used to call the callback contract's 'callback' method
      */
