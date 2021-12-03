@@ -231,9 +231,9 @@ export default class LinearPool {
     };
   }
 
-  async proportionalExit(params: MultiExitGivenInLinearPool): Promise<ExitResult> {
+  async emergencyProportionalExit(params: MultiExitGivenInLinearPool): Promise<ExitResult> {
     const { tokens: allTokens } = await this.getTokens();
-    const data = this._encodeExitExactBPTInForTokensOut(params.bptIn);
+    const data = this._encodeExitEmergencyExactBPTInForTokensOut(params.bptIn);
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
 
@@ -254,9 +254,9 @@ export default class LinearPool {
     return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFeeAmounts };
   }
 
-  private _encodeExitExactBPTInForTokensOut(bptAmountIn: BigNumberish): string {
-    const EXACT_BPT_IN_FOR_TOKENS_OUT = 0;
-    return defaultAbiCoder.encode(['uint256', 'uint256'], [EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn]);
+  private _encodeExitEmergencyExactBPTInForTokensOut(bptAmountIn: BigNumberish): string {
+    const EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT = 0;
+    return defaultAbiCoder.encode(['uint256', 'uint256'], [EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn]);
   }
 
   async pause(): Promise<void> {
