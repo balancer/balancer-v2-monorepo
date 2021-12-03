@@ -12,7 +12,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime, DAY, fromNow, HOUR } from '@balancer-labs/v2-helpers/src/time';
-import { MultiDistributor } from './helpers/MultiDistributor';
+import { MultiDistributor } from '@balancer-labs/v2-helpers/src/models/distributor/MultiDistributor';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('Distribution Scheduler', () => {
