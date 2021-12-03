@@ -78,7 +78,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * `unclaimedTokens` and releasing that amount of tokens to them.
      */
 
-    mapping(bytes32 => Distribution) internal _distributions;
+    mapping(bytes32 => DistributionChannel) internal _distributions;
     mapping(IERC20 => mapping(address => UserStaking)) internal _userStakings;
 
     constructor(IVault vault) Authentication(bytes32(uint256(address(this)))) MultiDistributorAuthorization(vault) {
@@ -104,7 +104,12 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Returns the information of a distribution channel
      * @param distributionId ID of the distribution channel being queried
      */
-    function getDistributionChannel(bytes32 distributionId) external view override returns (Distribution memory) {
+    function getDistributionChannel(bytes32 distributionId)
+        external
+        view
+        override
+        returns (DistributionChannel memory)
+    {
         return _getDistributionChannel(distributionId);
     }
 
@@ -139,11 +144,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionId ID of the distribution channel being queried
      * @param user Address of the user being queried
      */
-    function getUserDistributionChannel(bytes32 distributionId, address user)
+    function getUserDistributionInfo(bytes32 distributionId, address user)
         external
         view
         override
-        returns (UserDistribution memory)
+        returns (UserDistributionInfo memory)
     {
         IERC20 stakingToken = _getDistributionChannel(distributionId).stakingToken;
         return _userStakings[stakingToken][user].distributions[distributionId];
@@ -155,9 +160,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param user Address of the user being queried
      */
     function getClaimableTokens(bytes32 distributionId, address user) external view override returns (uint256) {
-        Distribution storage distribution = _getDistributionChannel(distributionId);
+        DistributionChannel storage distribution = _getDistributionChannel(distributionId);
         UserStaking storage userStaking = _userStakings[distribution.stakingToken][user];
-        UserDistribution storage userDistribution = userStaking.distributions[distributionId];
+        UserDistributionInfo storage userDistribution = userStaking.distributions[distributionId];
 
         // If the user isn't subscribed to the queried distribution channel, they don't have any unaccounted for tokens.
         // Then we can just return the stored number of tokens which the user can claim.
@@ -192,7 +197,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         require(address(distributionToken) != address(0), "DISTRIBUTION_TOKEN_ZERO_ADDRESS");
 
         distributionId = getDistributionChannelId(stakingToken, distributionToken, msg.sender);
-        Distribution storage distribution = _getDistributionChannel(distributionId);
+        DistributionChannel storage distribution = _getDistributionChannel(distributionId);
         require(distribution.duration == 0, "DISTRIBUTION_ALREADY_CREATED");
         distribution.duration = duration;
         distribution.owner = msg.sender;
@@ -210,7 +215,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     function setDistributionDuration(bytes32 distributionId, uint256 duration) external override {
         require(duration > 0, "DISTRIBUTION_DURATION_ZERO");
 
-        Distribution storage distribution = _getDistributionChannel(distributionId);
+        DistributionChannel storage distribution = _getDistributionChannel(distributionId);
         // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
         // sentinel value that marks non-existent distributions.
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
@@ -229,7 +234,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param amount The amount of tokens to deposit
      */
     function fundDistribution(bytes32 distributionId, uint256 amount) external override nonReentrant {
-        Distribution storage distribution = _getDistributionChannel(distributionId);
+        DistributionChannel storage distribution = _getDistributionChannel(distributionId);
         // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
         // sentinel value that marks non-existent distributions.
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
@@ -288,7 +293,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     function subscribeDistributions(bytes32[] memory distributionIds) external override {
         for (uint256 i; i < distributionIds.length; i++) {
             bytes32 distributionId = distributionIds[i];
-            Distribution storage distribution = _getDistributionChannel(distributionId);
+            DistributionChannel storage distribution = _getDistributionChannel(distributionId);
             require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
 
             IERC20 stakingToken = distribution.stakingToken;
@@ -319,7 +324,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     function unsubscribeDistributions(bytes32[] memory distributionIds) external override {
         for (uint256 i; i < distributionIds.length; i++) {
             bytes32 distributionId = distributionIds[i];
-            Distribution storage distribution = _getDistributionChannel(distributionId);
+            DistributionChannel storage distribution = _getDistributionChannel(distributionId);
             require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
 
             UserStaking storage userStaking = _userStakings[distribution.stakingToken][msg.sender];
@@ -511,7 +516,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         // adding the staked tokens to their totals.
         for (uint256 i; i < distributionsLength; i++) {
             bytes32 distributionId = distributions.unchecked_at(i);
-            Distribution storage distribution = _getDistributionChannel(distributionId);
+            DistributionChannel storage distribution = _getDistributionChannel(distributionId);
             distribution.totalSupply = distribution.totalSupply.add(amount);
             emit Staked(distributionId, recipient, amount);
         }
@@ -557,7 +562,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         // deducting the unstaked tokens from their totals.
         for (uint256 i; i < distributionsLength; i++) {
             bytes32 distributionId = distributions.unchecked_at(i);
-            Distribution storage distribution = _getDistributionChannel(distributionId);
+            DistributionChannel storage distribution = _getDistributionChannel(distributionId);
             distribution.totalSupply = distribution.totalSupply.sub(amount);
             emit Unstaked(distributionId, sender, amount);
         }
@@ -575,9 +580,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
         for (uint256 i; i < distributionIds.length; i++) {
             bytes32 distributionId = distributionIds[i];
-            Distribution storage distribution = _getDistributionChannel(distributionId);
+            DistributionChannel storage distribution = _getDistributionChannel(distributionId);
             UserStaking storage userStaking = _userStakings[distribution.stakingToken][sender];
-            UserDistribution storage userDistribution = userStaking.distributions[distributionId];
+            UserDistributionInfo storage userDistribution = userStaking.distributions[distributionId];
 
             // Note that the user may have unsubscribed from the distribution but still be due tokens. We therefore only
             // update the distribution if the user is subscribed to it (otherwise, it is already up to date).
@@ -623,9 +628,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     function _updateUserTokensPerStake(
-        Distribution storage distribution,
+        DistributionChannel storage distribution,
         UserStaking storage userStaking,
-        UserDistribution storage userDistribution
+        UserDistributionInfo storage userDistribution
     ) internal {
         uint256 updatedGlobalTokensPerStake = _updateDistributionRate(distribution);
         userDistribution.unclaimedTokens = _getUnclaimedTokens(
@@ -643,7 +648,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distribution The distribution channel being updated
      * @return updatedGlobalTokensPerStake The updated number of distribution tokens paid per staked token
      */
-    function _updateDistributionRate(Distribution storage distribution)
+    function _updateDistributionRate(DistributionChannel storage distribution)
         internal
         returns (uint256 updatedGlobalTokensPerStake)
     {
@@ -652,7 +657,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         distribution.lastUpdateTime = _lastTimePaymentApplicable(distribution);
     }
 
-    function _globalTokensPerStake(Distribution storage distribution) internal view returns (uint256) {
+    function _globalTokensPerStake(DistributionChannel storage distribution) internal view returns (uint256) {
         uint256 supply = distribution.totalSupply;
         if (supply == 0) {
             return distribution.globalTokensPerStake;
@@ -668,7 +673,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Returns the timestamp up to which a distribution channel has been distributing tokens
      * @param distribution The distribution channel being queried
      */
-    function _lastTimePaymentApplicable(Distribution storage distribution) internal view returns (uint256) {
+    function _lastTimePaymentApplicable(DistributionChannel storage distribution) internal view returns (uint256) {
         return Math.min(block.timestamp, distribution.periodFinish);
     }
 
@@ -681,7 +686,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      */
     function _getUnclaimedTokens(
         UserStaking storage userStaking,
-        UserDistribution storage userDistribution,
+        UserDistributionInfo storage userDistribution,
         uint256 updatedGlobalTokensPerStake
     ) internal view returns (uint256) {
         uint256 unclaimedTokens = userDistribution.unclaimedTokens;
@@ -701,7 +706,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      */
     function _unaccountedUnclaimedTokens(
         UserStaking storage userStaking,
-        UserDistribution storage userDistribution,
+        UserDistributionInfo storage userDistribution,
         uint256 updatedGlobalTokensPerStake
     ) internal view returns (uint256) {
         uint256 unaccountedTokensPerStake = updatedGlobalTokensPerStake.sub(userDistribution.userTokensPerStake);
@@ -712,11 +717,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         IERC20 stakingToken,
         IERC20 distributionToken,
         address owner
-    ) internal view returns (Distribution storage) {
+    ) internal view returns (DistributionChannel storage) {
         return _getDistributionChannel(getDistributionChannelId(stakingToken, distributionToken, owner));
     }
 
-    function _getDistributionChannel(bytes32 id) internal view returns (Distribution storage) {
+    function _getDistributionChannel(bytes32 id) internal view returns (DistributionChannel storage) {
         return _distributions[id];
     }
 }

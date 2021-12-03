@@ -92,7 +92,7 @@ export class MultiDistributor {
     distributionId: string,
     user: SignerWithAddress
   ): Promise<{ unclaimedTokens: BigNumber; userTokensPerStake: BigNumber }> {
-    return this.instance.getUserDistributionChannel(distributionId, user.address);
+    return this.instance.getUserDistributionInfo(distributionId, user.address);
   }
 
   async newDistribution(

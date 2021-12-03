@@ -21,7 +21,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.so
 import "./IDistributorCallback.sol";
 
 interface IMultiDistributor {
-    struct Distribution {
+    struct DistributionChannel {
         IERC20 stakingToken;
         IERC20 distributionToken;
         address owner;
@@ -33,7 +33,7 @@ interface IMultiDistributor {
         uint256 globalTokensPerStake;
     }
 
-    struct UserDistribution {
+    struct UserDistributionInfo {
         uint256 unclaimedTokens;
         uint256 userTokensPerStake;
     }
@@ -41,7 +41,7 @@ interface IMultiDistributor {
     struct UserStaking {
         uint256 balance;
         EnumerableSet.Bytes32Set subscribedDistributions;
-        mapping(bytes32 => UserDistribution) distributions;
+        mapping(bytes32 => UserDistributionInfo) distributions;
     }
 
     event Staked(bytes32 indexed distribution, address indexed user, uint256 amount);
@@ -64,7 +64,7 @@ interface IMultiDistributor {
         address owner
     ) external pure returns (bytes32);
 
-    function getDistributionChannel(bytes32 distributionId) external view returns (Distribution memory);
+    function getDistributionChannel(bytes32 distributionId) external view returns (DistributionChannel memory);
 
     function globalTokensPerStake(bytes32 distributionId) external view returns (uint256);
 
@@ -72,7 +72,10 @@ interface IMultiDistributor {
 
     function isSubscribed(bytes32 distributionId, address user) external view returns (bool);
 
-    function getUserDistributionChannel(bytes32 distributionId, address user) external view returns (UserDistribution memory);
+    function getUserDistributionInfo(bytes32 distributionId, address user)
+        external
+        view
+        returns (UserDistributionInfo memory);
 
     function getClaimableTokens(bytes32 distributionId, address user) external view returns (uint256);
 
