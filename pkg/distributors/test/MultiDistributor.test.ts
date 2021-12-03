@@ -91,13 +91,13 @@ describe('MultiDistributor', () => {
           expect(data.globalTokensPerStake).to.be.zero;
         });
 
-        it('emits a DistributionCreated event', async () => {
+        it('emits a DistributionChannelCreated event', async () => {
           const tx = await distributor.newDistribution(stakingToken, distributionToken, PERIOD_DURATION, {
             from: distributionOwner,
           });
 
           const id = await distributor.getDistributionId(stakingToken, distributionToken, distributionOwner);
-          expectEvent.inReceipt(await tx.wait(), 'DistributionCreated', {
+          expectEvent.inReceipt(await tx.wait(), 'DistributionChannelCreated', {
             distribution: id,
             stakingToken: stakingToken.address,
             distributionToken: distributionToken.address,
