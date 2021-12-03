@@ -65,7 +65,7 @@ export class MultiDistributor {
   }
 
   async getDistributionId(stakingToken: Token, distributionToken: Token, owner: Account): Promise<string> {
-    return this.instance.getDistributionId(
+    return this.instance.getDistributionChannelId(
       TypesConverter.toAddress(stakingToken),
       TypesConverter.toAddress(distributionToken),
       TypesConverter.toAddress(owner)
@@ -85,14 +85,14 @@ export class MultiDistributor {
     lastUpdateTime: BigNumber;
     globalTokensPerStake: BigNumber;
   }> {
-    return this.instance.getDistribution(distributionId);
+    return this.instance.getDistributionChannel(distributionId);
   }
 
   async getUserDistribution(
     distributionId: string,
     user: SignerWithAddress
   ): Promise<{ unclaimedTokens: BigNumber; userTokensPerStake: BigNumber }> {
-    return this.instance.getUserDistribution(distributionId, user.address);
+    return this.instance.getUserDistributionChannel(distributionId, user.address);
   }
 
   async newDistribution(

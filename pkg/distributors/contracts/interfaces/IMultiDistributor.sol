@@ -58,13 +58,13 @@ interface IMultiDistributor {
 
     // Getters
 
-    function getDistributionId(
+    function getDistributionChannelId(
         IERC20 stakingToken,
         IERC20 distributionToken,
         address owner
     ) external pure returns (bytes32);
 
-    function getDistribution(bytes32 distributionId) external view returns (Distribution memory);
+    function getDistributionChannel(bytes32 distributionId) external view returns (Distribution memory);
 
     function globalTokensPerStake(bytes32 distributionId) external view returns (uint256);
 
@@ -72,7 +72,7 @@ interface IMultiDistributor {
 
     function isSubscribed(bytes32 distributionId, address user) external view returns (bool);
 
-    function getUserDistribution(bytes32 distributionId, address user) external view returns (UserDistribution memory);
+    function getUserDistributionChannel(bytes32 distributionId, address user) external view returns (UserDistribution memory);
 
     function getClaimableTokens(bytes32 distributionId, address user) external view returns (uint256);
 
