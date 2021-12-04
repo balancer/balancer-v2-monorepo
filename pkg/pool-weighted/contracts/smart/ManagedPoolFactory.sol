@@ -17,17 +17,15 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
-import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 import "@balancer-labs/v2-pool-utils/contracts/controllers/ManagedPoolController.sol";
 
-import "./ManagedPool.sol";
+import "./BaseManagedPoolFactory.sol";
 
 /**
- * @dev Deploys a new `ManagedPool`. Supports asset managers, and deploys a ManagedPoolController as the owner.
+ * @dev Deploys a new `ManagedPool` owned by a ManagedPoolController with the specified rights.
  */
-contract ManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(ManagedPool).creationCode) {
+contract ManagedPoolFactory is BaseManagedPoolFactory {
+    constructor(IVault vault) BaseManagedPoolFactory(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -35,13 +33,11 @@ contract ManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow 
      * @dev Deploys a new `ManagedPool`.
      */
     function create(
-        ManagedPool.NewPoolParams calldata poolParams,
+        ManagedPool.NewPoolParams memory poolParams,
         BasePoolController.BasePoolRights calldata basePoolRights,
         ManagedPoolController.ManagedPoolRights calldata managedPoolRights,
         uint256 minWeightChangeDuration
     ) external returns (address pool) {
-        (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
-
         ManagedPoolController poolController = new ManagedPoolController(
             basePoolRights,
             managedPoolRights,
@@ -49,26 +45,13 @@ contract ManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow 
             msg.sender
         );
 
-        pool = _create(
-            abi.encode(
-                ManagedPool.NewPoolParams({
-                    vault: getVault(),
-                    name: poolParams.name,
-                    symbol: poolParams.symbol,
-                    tokens: poolParams.tokens,
-                    normalizedWeights: poolParams.normalizedWeights,
-                    assetManagers: poolParams.assetManagers,
-                    swapFeePercentage: poolParams.swapFeePercentage,
-                    pauseWindowDuration: pauseWindowDuration,
-                    bufferPeriodDuration: bufferPeriodDuration,
-                    owner: address(poolController),
-                    swapEnabledOnStart: poolParams.swapEnabledOnStart,
-                    mustAllowlistLPs: poolParams.mustAllowlistLPs,
-                    managementSwapFeePercentage: poolParams.managementSwapFeePercentage
-                })
-            )
-        );
+        // Set the owner of the pool to the controller
+        poolParams.owner = address(poolController);
 
+        // Let the base factory deploy the pool
+        pool = super._deployPool(poolParams);
+
+        // Finally, initialize the controller
         poolController.initialize(pool);
     }
 }
