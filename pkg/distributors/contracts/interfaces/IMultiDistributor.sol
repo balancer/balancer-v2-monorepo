@@ -44,8 +44,11 @@ interface IMultiDistributor {
         mapping(bytes32 => UserDistribution) distributions;
     }
 
-    event Staked(bytes32 indexed distribution, address indexed user, uint256 amount);
-    event Unstaked(bytes32 indexed distribution, address indexed user, uint256 amount);
+    event Staked(address indexed user, IERC20 indexed stakingToken, uint256 amount);
+    event Unstaked(address indexed user, IERC20 indexed stakingToken, uint256 amount);
+    event DistributionSubscribed(bytes32 indexed distribution, address indexed user);
+    event DistributionUnsubscribed(bytes32 indexed distribution, address indexed user);
+
     event DistributionCreated(
         bytes32 indexed distribution,
         IERC20 stakingToken,

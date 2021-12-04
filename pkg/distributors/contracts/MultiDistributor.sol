@@ -323,8 +323,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
                     distribution
                 );
                 distribution.totalSupply = distribution.totalSupply.add(amount);
-                emit Staked(distributionId, msg.sender, amount);
             }
+
+            emit DistributionSubscribed(distributionId, msg.sender);
         }
     }
 
@@ -351,10 +352,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
                 _updateUserTokensPerStake(distribution, userStaking, userStaking.distributions[distributionId]);
                 // Safe to perform unchecked maths as `totalSupply` would be increased by `amount` when staking.
                 distribution.totalSupply -= amount;
-                emit Unstaked(distributionId, msg.sender, amount);
             }
 
             require(userStaking.subscribedDistributions.remove(distributionId), "DISTRIBUTION_NOT_SUBSCRIBED");
+
+            emit DistributionUnsubscribed(distributionId, msg.sender);
         }
     }
 
@@ -535,7 +537,6 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             distributionId = distributions.unchecked_at(i);
             distribution = _getDistribution(distributionId);
             distribution.totalSupply = distribution.totalSupply.add(amount);
-            emit Staked(distributionId, recipient, amount);
         }
 
         // We hold stakingTokens in an external balance as BPT needs to be external anyway
@@ -553,6 +554,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         } else {
             stakingToken.safeTransferFrom(sender, address(this), amount);
         }
+
+        emit Staked(recipient, stakingToken, amount);
     }
 
     function _unstake(
@@ -584,10 +587,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             distribution = _getDistribution(distributionId);
             // Safe to perform unchecked maths as `totalSupply` would be increased by `amount` when staking.
             distribution.totalSupply -= amount;
-            emit Unstaked(distributionId, sender, amount);
         }
 
         stakingToken.safeTransfer(recipient, amount);
+
+        emit Unstaked(sender, stakingToken, amount);
     }
 
     function _claim(
