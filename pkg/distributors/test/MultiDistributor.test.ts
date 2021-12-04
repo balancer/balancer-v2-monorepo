@@ -572,14 +572,19 @@ describe('MultiDistributor', () => {
               const currentStakedBalance = await distributor.balanceOf(stakingToken, to);
               expect(currentStakedBalance).be.equal(previousStakedBalance.add(amount));
             });
+
+            it('emits a Staked event', async () => {
+              const tx = await stake(stakingToken, amount);
+
+              expectEvent.inReceipt(await tx.wait(), 'Staked', {
+                user: to.address,
+                stakingToken: stakingToken.address,
+                amount,
+              });
+            });
           };
 
           const itDoesNotAffectAnyDistribution = () => {
-            it('does not emit a Staked event', async () => {
-              const tx = await stake(stakingToken, amount);
-              expectEvent.notEmitted(await tx.wait(), 'Staked');
-            });
-
             it('does not increase the supply of the distribution', async () => {
               const previousSupply = await distributor.totalSupply(distribution);
 
@@ -692,16 +697,6 @@ describe('MultiDistributor', () => {
               itTransfersTheStakingTokensToTheDistributor();
               itDoesNotAffectOtherDistributions();
 
-              it('emits a Staked event', async () => {
-                const tx = await stake(stakingToken, amount);
-
-                expectEvent.inReceipt(await tx.wait(), 'Staked', {
-                  distribution,
-                  user: user1.address,
-                  amount,
-                });
-              });
-
               it('increases the supply of the staking contract for the subscribed distribution', async () => {
                 const previousSupply = await distributor.totalSupply(distribution);
 
@@ -789,16 +784,6 @@ describe('MultiDistributor', () => {
 
               itTransfersTheStakingTokensToTheDistributor();
               itDoesNotAffectOtherDistributions();
-
-              it('emits a Staked event', async () => {
-                const tx = await stake(stakingToken, amount);
-
-                expectEvent.inReceipt(await tx.wait(), 'Staked', {
-                  distribution,
-                  user: to.address,
-                  amount,
-                });
-              });
 
               it('increases the supply of the staking contract for the subscribed distribution', async () => {
                 const previousSupply = await distributor.totalSupply(distribution);
@@ -1049,14 +1034,19 @@ describe('MultiDistributor', () => {
               const currentStakedBalance = await distributor.balanceOf(stakingToken, from);
               expect(currentStakedBalance).be.equal(previousStakedBalance.sub(amount));
             });
+
+            it('emits a Unstaked event', async () => {
+              const tx = await unstake(stakingToken, amount);
+
+              expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
+                user: from.address,
+                stakingToken: stakingToken.address,
+                amount,
+              });
+            });
           };
 
           const itDoesNotAffectAnyDistribution = () => {
-            it('does not emit a Unstaked event', async () => {
-              const tx = await unstake(stakingToken, amount);
-              expectEvent.notEmitted(await tx.wait(), 'Unstaked');
-            });
-
             it('does not decrease the supply of the distribution', async () => {
               const previousSupply = await distributor.totalSupply(distribution);
 
@@ -1178,16 +1168,6 @@ describe('MultiDistributor', () => {
               itTransfersTheStakingTokensToTheUser();
               itDoesNotAffectOtherDistributions();
 
-              it('emits a Unstaked event', async () => {
-                const tx = await unstake(stakingToken, amount);
-
-                expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
-                  distribution,
-                  user: from.address,
-                  amount,
-                });
-              });
-
               it('decreases the supply of the staking contract for the subscribed distribution', async () => {
                 const previousSupply = await distributor.totalSupply(distribution);
 
@@ -1279,16 +1259,6 @@ describe('MultiDistributor', () => {
               });
 
               itTransfersTheStakingTokensToTheUser();
-
-              it('emits a Unstaked event', async () => {
-                const tx = await unstake(stakingToken, amount);
-
-                expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
-                  distribution,
-                  user: from.address,
-                  amount,
-                });
-              });
 
               it('decreases the supply of the staking contract for the subscribed distribution', async () => {
                 const previousSupply = await distributor.totalSupply(distribution);
@@ -1466,9 +1436,12 @@ describe('MultiDistributor', () => {
               expect(currentData.userTokensPerStake).to.be.zero;
             });
 
-            it('does not emit a Staked event', async () => {
+            it('emits a DistributionSubscribed event', async () => {
               const tx = await distributor.subscribe(distribution, { from: user1 });
-              expectEvent.notEmitted(await tx.wait(), 'Staked');
+              expectEvent.inReceipt(await tx.wait(), 'DistributionSubscribed', {
+                distribution,
+                user: user1.address,
+              });
             });
           });
 
@@ -1550,12 +1523,10 @@ describe('MultiDistributor', () => {
               expect(currentData.userTokensPerStake).to.be.zero;
             });
 
-            it('emits a Staked event', async () => {
+            it('emits a DistributionSubscribed event', async () => {
               const tx = await distributor.subscribe(distribution, { from: user1 });
-
-              expectEvent.inReceipt(await tx.wait(), 'Staked', {
+              expectEvent.inReceipt(await tx.wait(), 'DistributionSubscribed', {
                 distribution,
-                amount: balance,
                 user: user1.address,
               });
             });
@@ -1635,9 +1606,12 @@ describe('MultiDistributor', () => {
               expect(currentData.userTokensPerStake).to.be.zero;
             });
 
-            it('does not emit a Staked event', async () => {
+            it('emits a DistributionSubscribed event', async () => {
               const tx = await distributor.subscribe(distribution, { from: user1 });
-              expectEvent.notEmitted(await tx.wait(), 'Staked');
+              expectEvent.inReceipt(await tx.wait(), 'DistributionSubscribed', {
+                distribution,
+                user: user1.address,
+              });
             });
           });
 
@@ -1721,12 +1695,10 @@ describe('MultiDistributor', () => {
               expect(currentData.userTokensPerStake).to.be.almostEqualFp(45e3);
             });
 
-            it('emits a Staked event', async () => {
+            it('emits a DistributionSubscribed event', async () => {
               const tx = await distributor.subscribe(distribution, { from: user1 });
-
-              expectEvent.inReceipt(await tx.wait(), 'Staked', {
+              expectEvent.inReceipt(await tx.wait(), 'DistributionSubscribed', {
                 distribution,
-                amount: balance,
                 user: user1.address,
               });
             });
@@ -1856,9 +1828,12 @@ describe('MultiDistributor', () => {
               expect(await distributor.getClaimableTokens(distribution, user1)).to.be.zero;
             });
 
-            it('does not emit a Unstaked event', async () => {
+            it('emits a DistributionUnsubscribed event', async () => {
               const tx = await distributor.unsubscribe(distribution, { from: user1 });
-              expectEvent.notEmitted(await tx.wait(), 'Unstaked');
+              expectEvent.inReceipt(await tx.wait(), 'DistributionUnsubscribed', {
+                distribution,
+                user: user1.address,
+              });
             });
           });
 
@@ -1946,12 +1921,10 @@ describe('MultiDistributor', () => {
               expect(await distributor.getClaimableTokens(distribution, user1)).almostEqualFp(45e3);
             });
 
-            it('emits a Unstaked event', async () => {
+            it('emits a DistributionUnsubscribed event', async () => {
               const tx = await distributor.unsubscribe(distribution, { from: user1 });
-
-              expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
+              expectEvent.inReceipt(await tx.wait(), 'DistributionUnsubscribed', {
                 distribution,
-                amount: balance,
                 user: user1.address,
               });
             });
@@ -2038,9 +2011,12 @@ describe('MultiDistributor', () => {
               expect(await distributor.getClaimableTokens(distribution, user1)).to.be.zero;
             });
 
-            it('does not emit a Unstaked event', async () => {
+            it('emits a DistributionUnsubscribed event', async () => {
               const tx = await distributor.unsubscribe(distribution, { from: user1 });
-              expectEvent.notEmitted(await tx.wait(), 'Unstaked');
+              expectEvent.inReceipt(await tx.wait(), 'DistributionUnsubscribed', {
+                distribution,
+                user: user1.address,
+              });
             });
           });
 
@@ -2132,12 +2108,10 @@ describe('MultiDistributor', () => {
               expect(await distributor.getClaimableTokens(distribution, user1)).to.be.almostEqualFp(30e3);
             });
 
-            it('emits a Unstaked event', async () => {
+            it('emits a DistributionUnsubscribed event', async () => {
               const tx = await distributor.unsubscribe(distribution, { from: user1 });
-
-              expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
+              expectEvent.inReceipt(await tx.wait(), 'DistributionUnsubscribed', {
                 distribution,
-                amount: balance,
                 user: user1.address,
               });
             });
@@ -2538,8 +2512,8 @@ describe('MultiDistributor', () => {
         const tx = await distributor.exit(stakingToken, distribution, { from: user1 });
 
         expectEvent.inReceipt(await tx.wait(), 'Unstaked', {
-          distribution,
           user: user1.address,
+          stakingToken: stakingToken.address,
           amount: balance,
         });
       });
@@ -2605,9 +2579,9 @@ describe('MultiDistributor', () => {
         expect(currentBalance).to.be.equal(previousBalance);
       });
 
-      it('does not emit a Unstaked event', async () => {
+      it('does not emit a DistributionUnsubscribed event', async () => {
         const tx = await distributor.exit(stakingToken, distribution, { from: user1 });
-        expectEvent.notEmitted(await tx.wait(), 'Unstaked');
+        expectEvent.notEmitted(await tx.wait(), 'DistributionUnsubscribed');
       });
 
       it('does not emit a DistributionClaimed event', async () => {
