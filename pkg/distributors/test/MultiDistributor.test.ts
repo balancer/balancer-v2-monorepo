@@ -104,6 +104,18 @@ describe('MultiDistributor', () => {
             owner: distributionOwner.address,
           });
         });
+
+        it('emits a DistributionDurationSet event', async () => {
+          const tx = await distributor.newDistribution(stakingToken, distributionToken, PERIOD_DURATION, {
+            from: distributionOwner,
+          });
+
+          const id = await distributor.getDistributionId(stakingToken, distributionToken, distributionOwner);
+          expectEvent.inReceipt(await tx.wait(), 'DistributionDurationSet', {
+            distribution: id,
+            duration: PERIOD_DURATION,
+          });
+        });
       });
 
       context('when the given params are not correct', () => {
