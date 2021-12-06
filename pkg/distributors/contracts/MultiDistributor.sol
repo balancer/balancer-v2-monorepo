@@ -200,12 +200,12 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         DistributionChannel storage distributionChannel = _getDistributionChannel(distributionChannelId);
         require(distributionChannel.duration == 0, "DISTRIBUTION_ALREADY_CREATED");
 
-        distributionChannel.duration = duration;
         distributionChannel.owner = msg.sender;
         distributionChannel.distributionToken = distributionToken;
         distributionChannel.stakingToken = stakingToken;
 
         emit DistributionChannelCreated(distributionChannelId, stakingToken, distributionToken, msg.sender);
+        _setDistributionDuration(distributionChannelId, distributionChannel, duration);
     }
 
     /**
@@ -223,6 +223,21 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         require(distributionChannel.owner == msg.sender, "SENDER_NOT_OWNER");
         require(distributionChannel.periodFinish < block.timestamp, "DISTRIBUTION_STILL_ACTIVE");
 
+        _setDistributionDuration(distributionChannelId, distributionChannel, duration);
+    }
+
+    /**
+     * @dev Sets the duration for a distribution
+     * @param distributionChannelId The ID of the distribution channel being modified
+     * @param distributionChannel The distribution channel being modified
+     * @param duration Duration over which each distribution is spread
+     */
+    function _setDistributionDuration(
+        bytes32 distributionChannelId,
+        DistributionChannel storage distributionChannel,
+        uint256 duration
+    ) internal {
+        require(duration > 0, "DISTRIBUTION_DURATION_ZERO");
         distributionChannel.duration = duration;
         emit DistributionDurationSet(distributionChannelId, duration);
     }
