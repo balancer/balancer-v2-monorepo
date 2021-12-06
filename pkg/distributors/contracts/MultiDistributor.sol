@@ -331,9 +331,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionIds List of distributions to unsubscribe
      */
     function unsubscribeDistributions(bytes32[] calldata distributionIds) external override {
+        bytes32 distributionId;
+        Distribution storage distribution;
         for (uint256 i; i < distributionIds.length; i++) {
-            bytes32 distributionId = distributionIds[i];
-            Distribution storage distribution = _getDistribution(distributionId);
+            distributionId = distributionIds[i];
+            distribution = _getDistribution(distributionId);
             require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
 
             UserStaking storage userStaking = _userStakings[distribution.stakingToken][msg.sender];
