@@ -339,7 +339,6 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
 
             UserStaking storage userStaking = _userStakings[distribution.stakingToken][msg.sender];
-            EnumerableSet.Bytes32Set storage subscribedDistributions = userStaking.subscribedDistributions;
 
             // If the user had tokens staked that applied to this distribution, we need to update their standing before
             // unsubscribing, which is effectively an unstake.
@@ -351,7 +350,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
                 emit Unstaked(distributionId, msg.sender, amount);
             }
 
-            require(subscribedDistributions.remove(distributionId), "DISTRIBUTION_NOT_SUBSCRIBED");
+            require(userStaking.subscribedDistributions.remove(distributionId), "DISTRIBUTION_NOT_SUBSCRIBED");
         }
     }
 
