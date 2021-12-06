@@ -203,3 +203,11 @@ export type BasePoolRights = {
   canChangeSwapFee: boolean;
   canUpdateMetadata: boolean;
 };
+
+export type ManagedPoolRights = {
+  canChangeWeights: boolean;
+  canDisableSwaps: boolean;
+  canSetMustAllowlistLPs: boolean;
+  canSetCircuitBreakers: boolean;
+  canChangeTokens: boolean;
+};
