@@ -235,8 +235,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
         require(distribution.owner == msg.sender, "SENDER_NOT_OWNER");
 
-        // Before receiving the tokens, we must update the distribution's rate
-        // as we are about to change its payment rate, which affects all other rates.
+        // Before receiving the tokens, we must sync the distribution up to the present as we are about to change
+        // its payment rate, which would otherwise affect the distribution of tokens distributed since the last update
         _updateGlobalTokensPerStake(distribution);
 
         // Get the tokens and deposit them in the Vault as this contract's internal balance, making claims to internal
