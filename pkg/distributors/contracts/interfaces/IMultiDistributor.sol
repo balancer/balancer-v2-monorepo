@@ -21,6 +21,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.so
 import "./IDistributorCallback.sol";
 
 interface IMultiDistributor {
+    // paymentRate and globalTokensPerStake are stored as 18 decimal fixed point values
     struct Distribution {
         IERC20 stakingToken;
         IERC20 distributionToken;
