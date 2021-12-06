@@ -11,7 +11,6 @@ describe('LinearMath', function () {
 
   const params = {
     fee: fp(0.01),
-    rate: fp(1),
     lowerTarget: fp(1000),
     upperTarget: fp(2000),
   };
@@ -22,7 +21,6 @@ describe('LinearMath', function () {
 
   describe('init', () => {
     it('given main in', async () => {
-      params.rate = fp(1);
       const mainIn = fp(1);
       const mainBalance = fp(0);
       const wrappedBalance = fp(0);
@@ -33,7 +31,6 @@ describe('LinearMath', function () {
     });
 
     it('given BPT out', async () => {
-      params.rate = fp(1);
       const bptOut = fp(1.010101010101010102);
       const mainBalance = fp(0);
       const wrappedBalance = fp(0);
@@ -46,7 +43,6 @@ describe('LinearMath', function () {
 
   describe('swap bpt & main', () => {
     it('given main in', async () => {
-      params.rate = fp(1);
       const mainIn = fp(100);
       const mainBalance = fp(1);
       const wrappedBalance = fp(0);
@@ -57,10 +53,9 @@ describe('LinearMath', function () {
     });
 
     it('given BPT out', async () => {
-      params.rate = fp(1.3);
       const bptOut = fp(100);
       const mainBalance = fp(455.990803937038319103);
-      const wrappedBalance = fp(138.463846384639);
+      const wrappedBalance = fp(180.0030003000307);
       const bptSupply = fp(704.587755444953);
 
       const mainIn = await math.calcMainInPerBptOut(bptOut, mainBalance, wrappedBalance, bptSupply, params);
@@ -68,10 +63,9 @@ describe('LinearMath', function () {
     });
 
     it('given BPT in', async () => {
-      params.rate = fp(1.3);
       const bptIn = fp(100);
       const mainBalance = fp(546);
-      const wrappedBalance = fp(138.463846384639);
+      const wrappedBalance = fp(180.0030003000307);
       const bptSupply = fp(804.587755444953);
 
       const mainOut = await math.calcMainOutPerBptIn(bptIn, mainBalance, wrappedBalance, bptSupply, params);
@@ -79,7 +73,6 @@ describe('LinearMath', function () {
     });
 
     it('given main out', async () => {
-      params.rate = fp(1);
       const mainOut = fp(50);
       const mainBalance = fp(101);
       const wrappedBalance = fp(0);
@@ -92,7 +85,6 @@ describe('LinearMath', function () {
 
   describe('swap main & wrapped', () => {
     it('given main out', async () => {
-      params.rate = fp(1);
       const mainOut = fp(10);
       const mainBalance = fp(51);
       const wrappedBalance = fp(0);
@@ -102,7 +94,6 @@ describe('LinearMath', function () {
     });
 
     it('given main in', async () => {
-      params.rate = fp(1);
       const mainIn = fp(5);
       const mainBalance = fp(41);
       const wrappedBalance = fp(10.10101010101010101);
@@ -112,8 +103,7 @@ describe('LinearMath', function () {
     });
 
     it('given wrapped out', async () => {
-      params.rate = fp(1.3);
-      const wrappedOut = fp(900);
+      const wrappedOut = fp(1170);
       const mainBalance = fp(931.695980314809);
 
       const mainIn = await math.calcMainInPerWrappedOut(wrappedOut, mainBalance, params);
@@ -121,8 +111,7 @@ describe('LinearMath', function () {
     });
 
     it('given wrapped in', async () => {
-      params.rate = fp(1.3);
-      const wrappedIn = fp(50);
+      const wrappedIn = fp(65);
       const mainBalance = fp(996.10705082304);
 
       const mainOut = await math.calcMainOutPerWrappedIn(wrappedIn, mainBalance, params);
@@ -132,7 +121,6 @@ describe('LinearMath', function () {
 
   describe('swap bpt & wrapped', () => {
     it('given wrapped in', async () => {
-      params.rate = fp(1);
       const wrappedIn = fp(50);
       const wrappedBalance = fp(0);
       const mainBalance = fp(101);
@@ -143,18 +131,16 @@ describe('LinearMath', function () {
     });
 
     it('given BPT out', async () => {
-      params.rate = fp(1.2);
       const bptOut = fp(10);
       const mainBalance = fp(101);
-      const wrappedBalance = fp(131);
+      const wrappedBalance = fp(157.2);
       const bptSupply = fp(242.692607692922);
 
       const wrappedIn = await math.calcWrappedInPerBptOut(bptOut, mainBalance, wrappedBalance, bptSupply, params);
-      expect(wrappedBalance.add(wrappedIn)).to.be.equalWithError(fp(139.900841153356), EXPECTED_RELATIVE_ERROR);
+      expect(wrappedBalance.add(wrappedIn)).to.be.equalWithError(fp(167.88100938402718), EXPECTED_RELATIVE_ERROR);
     });
 
     it('given BPT in', async () => {
-      params.rate = fp(1);
       const bptIn = fp(10);
       const mainBalance = fp(101);
       const wrappedBalance = fp(131);
@@ -165,9 +151,8 @@ describe('LinearMath', function () {
     });
 
     it('given wrapped out', async () => {
-      params.rate = fp(1.3);
-      const wrappedOut = fp(10);
-      const wrappedBalance = fp(70);
+      const wrappedOut = fp(13);
+      const wrappedBalance = fp(91);
       const mainBalance = fp(101);
       const bptSupply = fp(172.020202020202020202);
 

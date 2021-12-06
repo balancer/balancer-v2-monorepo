@@ -185,6 +185,24 @@ describe('ManagedPool', function () {
         );
       });
 
+      it('retains the allowlist when turned off and back on', async () => {
+        // Initial state: allowlist is on, and the owner is not on it
+        expect(await pool.isAllowedAddress(owner.address)).to.be.false;
+
+        // Open up for public LPs
+        await pool.setMustAllowlistLPs(owner, false);
+        // Owner is now allowed
+        expect(await pool.isAllowedAddress(owner.address)).to.be.true;
+
+        // Turn the allowlist back on
+        await pool.setMustAllowlistLPs(owner, true);
+
+        // Owner is not allowed again
+        expect(await pool.isAllowedAddress(owner.address)).to.be.false;
+        // Other is still on the allowlist from before
+        expect(await pool.isAllowedAddress(other.address)).to.be.true;
+      });
+
       context('when an address is removed', () => {
         sharedBeforeEach('remove address from allowlist', async () => {
           const receipt = await pool.removeAllowedAddress(owner, other.address);

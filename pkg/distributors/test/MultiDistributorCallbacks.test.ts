@@ -12,7 +12,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { setup, rewardsDuration, rewardsVestingTime } from './MultiDistributorSharedSetup';
-import { MultiDistributor } from './helpers/MultiDistributor';
+import { MultiDistributor } from '@balancer-labs/v2-helpers/src/models/distributor/MultiDistributor';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('Staking contract - callbacks', () => {
