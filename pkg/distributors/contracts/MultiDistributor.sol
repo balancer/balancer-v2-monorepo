@@ -303,8 +303,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             Distribution storage distribution = _getDistribution(distributionId);
             require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
 
-            IERC20 stakingToken = distribution.stakingToken;
-            UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
+            UserStaking storage userStaking = _userStakings[distribution.stakingToken][msg.sender];
             EnumerableSet.Bytes32Set storage subscribedDistributions = userStaking.subscribedDistributions;
             require(subscribedDistributions.add(distributionId), "ALREADY_SUBSCRIBED_DISTRIBUTION");
 
