@@ -24,8 +24,9 @@ export async function setupEnvironment(): Promise<{
   vault: Vault;
   tokens: TokenList;
   trader: SignerWithAddress;
+  others: SignerWithAddress[];
 }> {
-  const { admin, creator, trader } = await getSigners();
+  const { admin, creator, trader, others } = await getSigners();
 
   const vault = await Vault.create({ admin });
 
@@ -54,7 +55,7 @@ export async function setupEnvironment(): Promise<{
 
   await vault.instance.connect(trader).manageUserBalance(transfers);
 
-  return { vault, tokens, trader };
+  return { vault, tokens, trader, others };
 }
 
 export async function deployPool(vault: Vault, tokens: TokenList, poolName: PoolName): Promise<string> {
@@ -174,10 +175,11 @@ export async function getSigners(): Promise<{
   admin: SignerWithAddress;
   creator: SignerWithAddress;
   trader: SignerWithAddress;
+  others: SignerWithAddress[];
 }> {
-  const [, admin, creator, trader] = await ethers.getSigners();
+  const [, admin, creator, trader, ...others] = await ethers.getSigners();
 
-  return { admin, creator, trader };
+  return { admin, creator, trader, others };
 }
 
 type PoolName = 'WeightedPool' | 'WeightedPool2Tokens' | 'StablePool' | 'ManagedPool';

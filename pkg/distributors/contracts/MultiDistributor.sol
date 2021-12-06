@@ -55,9 +55,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * `globalTokensPerStake` can be calculated by:
      * 1. Calculating the amount of tokens distributed by multiplying `paymentRate` by the time since `lastUpdateTime`
      * 2. Dividing this by the supply of staked tokens to get payment per staked token
-     * The existing `globalTokensPerStake` then incremented by this amount.
+     * The existing `globalTokensPerStake` is then incremented by this amount.
      *
-     * Updating these two values locks in the number of tokens which the current stakers can claim.
+     * Updating these two values locks in the number of tokens that the current stakers can claim.
      * This MUST be done whenever the total supply of staked tokens changes otherwise new stakers
      * will gain a portion of rewards distributed before they staked.
      *
@@ -112,7 +112,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Calculates the payment per token for a distribution
      * @param distributionId ID of the distribution being queried
      */
-    function globalTokensPerStake(bytes32 distributionId) public view override returns (uint256) {
+    function globalTokensPerStake(bytes32 distributionId) external view override returns (uint256) {
         return _globalTokensPerStake(_getDistribution(distributionId));
     }
 
@@ -122,14 +122,6 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      */
     function totalSupply(bytes32 distributionId) external view override returns (uint256) {
         return _getDistribution(distributionId).totalSupply;
-    }
-
-    /**
-     * @dev Returns the timestamp up to which a distribution has been distributing tokens
-     * @param distributionId ID of the distribution being queried
-     */
-    function lastTimePaymentApplicable(bytes32 distributionId) public view override returns (uint256) {
-        return _lastTimePaymentApplicable(_getDistribution(distributionId));
     }
 
     /**
@@ -158,25 +150,21 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Returns the unaccounted earned payment for a user until now for a particular distribution
-     * @param distributionId ID of the distribution being queried
-     * @param user Address of the user being queried
-     */
-    function unaccountedUnclaimedTokens(bytes32 distributionId, address user) external view override returns (uint256) {
-        IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
-        UserStaking storage userStaking = _userStakings[stakingToken][user];
-        return _unaccountedUnclaimedTokens(userStaking, distributionId);
-    }
-
-    /**
      * @dev Returns the total unclaimed payment for a user for a particular distribution
      * @param distributionId ID of the distribution being queried
      * @param user Address of the user being queried
      */
     function getClaimableTokens(bytes32 distributionId, address user) external view override returns (uint256) {
-        IERC20 stakingToken = _getDistribution(distributionId).stakingToken;
-        UserStaking storage userStaking = _userStakings[stakingToken][user];
-        return _getUnclaimedTokens(userStaking, distributionId);
+        Distribution storage distribution = _getDistribution(distributionId);
+        UserStaking storage userStaking = _userStakings[distribution.stakingToken][user];
+        UserDistribution storage userDistribution = userStaking.distributions[distributionId];
+
+        // If the user is not subscribed to the queried distribution, they don't have any unaccounted for tokens.
+        // Then we can just return the stored number of tokens which the user can claim.
+        if (!userStaking.subscribedDistributions.contains(distributionId)) {
+            return userDistribution.unclaimedTokens;
+        }
+        return _getUnclaimedTokens(userStaking, userDistribution, _globalTokensPerStake(distribution));
     }
 
     /**
@@ -240,7 +228,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionId ID of the distribution to be funded
      * @param amount The amount of tokens to deposit
      */
-    function fundDistribution(bytes32 distributionId, uint256 amount) external override {
+    function fundDistribution(bytes32 distributionId, uint256 amount) external override nonReentrant {
         Distribution storage distribution = _getDistribution(distributionId);
         // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
         // sentinel value that marks non-existent distributions.
@@ -249,7 +237,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
         // Before receiving the tokens, we must update the distribution's rate
         // as we are about to change its payment rate, which affects all other rates.
-        _updateDistributionRate(distributionId);
+        _updateDistributionRate(distribution);
 
         // Get the tokens and deposit them in the Vault as this contract's internal balance, making claims to internal
         // balance, joining pools, etc., use less gas.
@@ -278,7 +266,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             distribution.paymentRate = Math.divDown(amount, duration);
         } else {
             // Current distribution period is still in progress.
-            // Calculate number of tokens which haven't been distributed yet and apply to the new distribution period.
+            // Calculate number of tokens that haven't been distributed yet and apply to the new distribution period.
             // This means that any previously pending tokens will be re-distributed over the extended duration, so if a
             // constant rate is desired new funding should be applied close to the end date of a distribution.
 
@@ -313,11 +301,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
                 // If subscribing to a distribution that uses a staking token for which the user has already staked,
                 // those tokens then immediately become part of the distribution's staked tokens
                 // (i.e. the user is staking for the new distribution).
-                // This means we need to update the distribution rate, as we are about to change it's total
+                // This means we need to update the distribution rate, as we are about to change its total
                 // staked tokens and decrease the global per token rate.
                 // The unclaimed tokens remain unchanged as the user was not subscribed to the distribution
-                // and therefore is due no unaccounted-for tokens.
-                userStaking.distributions[distributionId].userTokensPerStake = _updateDistributionRate(distributionId);
+                // and therefore not eligible to receive any unaccounted-for tokens.
+                userStaking.distributions[distributionId].userTokensPerStake = _updateDistributionRate(distribution);
                 distribution.totalSupply = distribution.totalSupply.add(amount);
                 emit Staked(distributionId, msg.sender, amount);
             }
@@ -341,7 +329,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             // unsubscribing, which is effectively an unstake.
             uint256 amount = userStaking.balance;
             if (amount > 0) {
-                _updateUserTokensPerStake(userStaking, distributionId);
+                _updateUserTokensPerStake(distribution, userStaking, userStaking.distributions[distributionId]);
                 distribution.totalSupply = distribution.totalSupply.sub(amount);
                 emit Unstaked(distributionId, msg.sender, amount);
             }
@@ -480,7 +468,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     /**
      * @dev Withdraws staking tokens and claims for a list of distributions to a callback contract
      * @param stakingTokens The staking tokens to withdraw tokens from
-     * @param distributionIds The distributions to claim  for
+     * @param distributionIds The distributions to claim for
      * @param callbackContract The contract where tokens will be transferred
      * @param callbackData The data that is used to call the callback contract's 'callback' method
      */
@@ -509,10 +497,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     ) internal {
         require(amount > 0, "STAKE_AMOUNT_ZERO");
 
-        // Before we increase the recipient's staked balance we need to update all of their subscriptions
-        _updateSubscribedDistributions(stakingToken, recipient);
-
         UserStaking storage userStaking = _userStakings[stakingToken][recipient];
+
+        // Before we increase the recipient's staked balance we need to update all of their subscriptions
+        _updateSubscribedDistributions(userStaking);
+
         userStaking.balance = userStaking.balance.add(amount);
 
         EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
@@ -552,13 +541,14 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     ) internal {
         require(amount > 0, "UNSTAKE_AMOUNT_ZERO");
 
-        // Before we reduce the sender's staked balance we need to update all of their subscriptions
-        _updateSubscribedDistributions(stakingToken, sender);
-
         UserStaking storage userStaking = _userStakings[stakingToken][sender];
+
+        // Before we reduce the sender's staked balance we need to update all of their subscriptions
+        _updateSubscribedDistributions(userStaking);
+
         uint256 currentBalance = userStaking.balance;
         require(currentBalance >= amount, "UNSTAKE_AMOUNT_UNAVAILABLE");
-        userStaking.balance = userStaking.balance.sub(amount);
+        userStaking.balance = currentBalance - amount;
 
         EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
         uint256 distributionsLength = distributions.length();
@@ -586,17 +576,15 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         for (uint256 i; i < distributionIds.length; i++) {
             bytes32 distributionId = distributionIds[i];
             Distribution storage distribution = _getDistribution(distributionId);
-
-            IERC20 stakingToken = distribution.stakingToken;
-            UserStaking storage userStaking = _userStakings[stakingToken][sender];
+            UserStaking storage userStaking = _userStakings[distribution.stakingToken][sender];
+            UserDistribution storage userDistribution = userStaking.distributions[distributionId];
 
             // Note that the user may have unsubscribed from the distribution but still be due tokens. We therefore only
             // update the distribution if the user is subscribed to it (otherwise, it is already up to date).
             if (userStaking.subscribedDistributions.contains(distributionId)) {
-                _updateUserTokensPerStake(userStaking, distributionId);
+                _updateUserTokensPerStake(distribution, userStaking, userDistribution);
             }
 
-            UserDistribution storage userDistribution = userStaking.distributions[distributionId];
             uint256 unclaimedTokens = userDistribution.unclaimedTokens;
             address distributionToken = address(distribution.distributionToken);
 
@@ -620,21 +608,31 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     /**
      * @dev Updates the payment rate for all the distributions that a user has signed up for a staking token
      */
-    function _updateSubscribedDistributions(IERC20 stakingToken, address user) internal {
-        UserStaking storage userStaking = _userStakings[stakingToken][user];
+    function _updateSubscribedDistributions(UserStaking storage userStaking) internal {
         EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
         uint256 distributionsLength = distributions.length();
 
         for (uint256 i; i < distributionsLength; i++) {
             bytes32 distributionId = distributions.unchecked_at(i);
-            _updateUserTokensPerStake(userStaking, distributionId);
+            _updateUserTokensPerStake(
+                _getDistribution(distributionId),
+                userStaking,
+                userStaking.distributions[distributionId]
+            );
         }
     }
 
-    function _updateUserTokensPerStake(UserStaking storage userStaking, bytes32 distributionId) internal {
-        uint256 updatedGlobalTokensPerStake = _updateDistributionRate(distributionId);
-        UserDistribution storage userDistribution = userStaking.distributions[distributionId];
-        userDistribution.unclaimedTokens = _getUnclaimedTokens(userStaking, distributionId);
+    function _updateUserTokensPerStake(
+        Distribution storage distribution,
+        UserStaking storage userStaking,
+        UserDistribution storage userDistribution
+    ) internal {
+        uint256 updatedGlobalTokensPerStake = _updateDistributionRate(distribution);
+        userDistribution.unclaimedTokens = _getUnclaimedTokens(
+            userStaking,
+            userDistribution,
+            updatedGlobalTokensPerStake
+        );
         userDistribution.userTokensPerStake = updatedGlobalTokensPerStake;
     }
 
@@ -642,11 +640,13 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @notice Updates the amount of distribution tokens paid per token staked for a distribution
      * @dev This is expected to be called whenever a user's applicable staked balance changes,
      *      either through adding/removing tokens or subscribing/unsubscribing from the distribution.
-     * @param distributionId ID of the distribution being updated
+     * @param distribution The distribution being updated
      * @return updatedGlobalTokensPerStake The updated number of distribution tokens paid per staked token
      */
-    function _updateDistributionRate(bytes32 distributionId) internal returns (uint256 updatedGlobalTokensPerStake) {
-        Distribution storage distribution = _getDistribution(distributionId);
+    function _updateDistributionRate(Distribution storage distribution)
+        internal
+        returns (uint256 updatedGlobalTokensPerStake)
+    {
         updatedGlobalTokensPerStake = _globalTokensPerStake(distribution);
         distribution.globalTokensPerStake = updatedGlobalTokensPerStake;
         distribution.lastUpdateTime = _lastTimePaymentApplicable(distribution);
@@ -664,46 +664,48 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         return distribution.globalTokensPerStake.add(unpaidAmountPerToken);
     }
 
+    /**
+     * @dev Returns the timestamp up to which a distribution has been distributing tokens
+     * @param distribution The distribution being queried
+     */
     function _lastTimePaymentApplicable(Distribution storage distribution) internal view returns (uint256) {
         return Math.min(block.timestamp, distribution.periodFinish);
     }
 
     /**
-     * @dev Returns the total unclaimed tokens for a user for a particular distribution
+     * @notice Returns the total unclaimed tokens for a user for a particular distribution
+     * @dev Only returns correct results when the user is subscribed to the distribution
      * @param userStaking Storage pointer to user's staked position information
-     * @param distributionId ID of the distribution being queried
+     * @param userDistribution Storage pointer to user specific information on distribution
+     * @param updatedGlobalTokensPerStake The updated number of distribution tokens paid per staked token
      */
-    function _getUnclaimedTokens(UserStaking storage userStaking, bytes32 distributionId)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 unclaimedTokens = userStaking.distributions[distributionId].unclaimedTokens;
-        return _unaccountedUnclaimedTokens(userStaking, distributionId).add(unclaimedTokens);
+    function _getUnclaimedTokens(
+        UserStaking storage userStaking,
+        UserDistribution storage userDistribution,
+        uint256 updatedGlobalTokensPerStake
+    ) internal view returns (uint256) {
+        uint256 unclaimedTokens = userDistribution.unclaimedTokens;
+        return
+            _unaccountedUnclaimedTokens(userStaking, userDistribution, updatedGlobalTokensPerStake).add(
+                unclaimedTokens
+            );
     }
 
     /**
-     * @dev Returns the tokens earned for a particular distribution between
-     *      the last time the user updated their position and now
+     * @notice Returns the tokens earned for a particular distribution between
+     *         the last time the user updated their position and now
+     * @dev Only returns correct results when the user is subscribed to the distribution
      * @param userStaking Storage pointer to user's staked position information
-     * @param distributionId ID of the distribution being queried
+     * @param userDistribution Storage pointer to user specific information on distribution
+     * @param updatedGlobalTokensPerStake The updated number of distribution tokens paid per staked token
      */
-    function _unaccountedUnclaimedTokens(UserStaking storage userStaking, bytes32 distributionId)
-        internal
-        view
-        returns (uint256)
-    {
-        // If the user is not subscribed to the queried distribution, it should be handled as if the user has no stake.
-        // Then, it can be short cut to zero.
-        if (!userStaking.subscribedDistributions.contains(distributionId)) {
-            return 0;
-        }
-
-        uint256 userTokensPerStake = userStaking.distributions[distributionId].userTokensPerStake;
-        uint256 unaccountedPaymentPerToken = _globalTokensPerStake(_getDistribution(distributionId)).sub(
-            userTokensPerStake
-        );
-        return userStaking.balance.mulDown(unaccountedPaymentPerToken);
+    function _unaccountedUnclaimedTokens(
+        UserStaking storage userStaking,
+        UserDistribution storage userDistribution,
+        uint256 updatedGlobalTokensPerStake
+    ) internal view returns (uint256) {
+        uint256 unaccountedTokensPerStake = updatedGlobalTokensPerStake.sub(userDistribution.userTokensPerStake);
+        return userStaking.balance.mulDown(unaccountedTokensPerStake);
     }
 
     function _getDistribution(
