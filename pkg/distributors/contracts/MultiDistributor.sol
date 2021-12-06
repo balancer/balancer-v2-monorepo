@@ -187,30 +187,26 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         IERC20 distributionToken,
         uint256 duration
     ) external override returns (bytes32 distributionId) {
-        require(duration > 0, "DISTRIBUTION_DURATION_ZERO");
         require(address(stakingToken) != address(0), "STAKING_TOKEN_ZERO_ADDRESS");
         require(address(distributionToken) != address(0), "DISTRIBUTION_TOKEN_ZERO_ADDRESS");
 
         distributionId = getDistributionId(stakingToken, distributionToken, msg.sender);
         Distribution storage distribution = _getDistribution(distributionId);
         require(distribution.duration == 0, "DISTRIBUTION_ALREADY_CREATED");
-        distribution.duration = duration;
         distribution.owner = msg.sender;
         distribution.distributionToken = distributionToken;
         distribution.stakingToken = stakingToken;
 
         emit DistributionCreated(distributionId, stakingToken, distributionToken, msg.sender);
-        emit DistributionDurationSet(distributionId, duration);
+        _setDistributionDuration(distributionId, distribution, duration);
     }
 
     /**
      * @dev Sets the duration for a distribution
-     * @param distributionId ID of the distribution to be set
+     * @param distributionId The ID of the distribution being modified
      * @param duration Duration over which each distribution is spread
      */
     function setDistributionDuration(bytes32 distributionId, uint256 duration) external override {
-        require(duration > 0, "DISTRIBUTION_DURATION_ZERO");
-
         Distribution storage distribution = _getDistribution(distributionId);
         // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
         // sentinel value that marks non-existent distributions.
@@ -218,6 +214,21 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         require(distribution.owner == msg.sender, "SENDER_NOT_OWNER");
         require(distribution.periodFinish < block.timestamp, "DISTRIBUTION_STILL_ACTIVE");
 
+        _setDistributionDuration(distributionId, distribution, duration);
+    }
+
+    /**
+     * @dev Sets the duration for a distribution
+     * @param distributionId The ID of the distribution being modified
+     * @param distribution The distribution being modified
+     * @param duration Duration over which each distribution is spread
+     */
+    function _setDistributionDuration(
+        bytes32 distributionId,
+        Distribution storage distribution,
+        uint256 duration
+    ) internal {
+        require(duration > 0, "DISTRIBUTION_DURATION_ZERO");
         distribution.duration = duration;
         emit DistributionDurationSet(distributionId, duration);
     }
