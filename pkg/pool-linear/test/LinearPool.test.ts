@@ -334,6 +334,57 @@ describe('LinearPool', function () {
     });
   });
 
+  describe('scaling factors', () => {
+    const scaleRate = (rate: BigNumber) => rate.mul(bn(10).pow(18 - wrappedToken.decimals));
+
+    sharedBeforeEach('deploy pool', async () => {
+      await deployPool({ mainToken, wrappedToken });
+    });
+
+    const itAdaptsTheScalingFactorsCorrectly = () => {
+      const expectedBptScalingFactor = fp(1);
+      const expectedMainTokenScalingFactor = fp(1);
+
+      it('adapt the scaling factors with the price rate', async () => {
+        const scalingFactors = await pool.getScalingFactors();
+
+        const expectedWrappedTokenScalingFactor = scaleRate(await pool.getWrappedTokenRate());
+        expect(scalingFactors[pool.wrappedIndex]).to.be.equal(expectedWrappedTokenScalingFactor);
+        expect(await pool.getScalingFactor(wrappedToken)).to.be.equal(expectedWrappedTokenScalingFactor);
+
+        expect(scalingFactors[pool.mainIndex]).to.be.equal(expectedMainTokenScalingFactor);
+        expect(await pool.getScalingFactor(mainToken)).to.be.equal(expectedMainTokenScalingFactor);
+
+        expect(scalingFactors[pool.bptIndex]).to.be.equal(expectedBptScalingFactor);
+        expect(await pool.getScalingFactor(pool.bptToken)).to.be.equal(expectedBptScalingFactor);
+      });
+    };
+
+    context('with a price rate above 1', () => {
+      sharedBeforeEach('mock rate', async () => {
+        await pool.instance.setWrappedTokenRate(fp(1.1));
+      });
+
+      itAdaptsTheScalingFactorsCorrectly();
+    });
+
+    context('with a price rate equal to 1', () => {
+      sharedBeforeEach('mock rate', async () => {
+        await pool.instance.setWrappedTokenRate(fp(1));
+      });
+
+      itAdaptsTheScalingFactorsCorrectly();
+    });
+
+    context('with a price rate below 1', () => {
+      sharedBeforeEach('mock rate', async () => {
+        await pool.instance.setWrappedTokenRate(fp(0.99));
+      });
+
+      itAdaptsTheScalingFactorsCorrectly();
+    });
+  });
+
   describe('swaps', () => {
     let currentBalances: BigNumber[];
     let lowerTarget: BigNumber, upperTarget: BigNumber;

@@ -19,6 +19,8 @@ import "./MockLinearMath.sol";
 import "../LinearPool.sol";
 
 contract MockLinearPool is LinearPool, MockLinearMath {
+    uint256 internal _wrappedTokenRate = 1e18;
+
     constructor(
         IVault vault,
         string memory name,
@@ -53,7 +55,11 @@ contract MockLinearPool is LinearPool, MockLinearMath {
         return _scalingFactor(token);
     }
 
-    function _getWrappedTokenRate() internal pure override returns (uint256) {
-        return 1e18;
+    function _getWrappedTokenRate() internal view override returns (uint256) {
+        return _wrappedTokenRate;
+    }
+
+    function setWrappedTokenRate(uint256 newWrappedTokenRate) external returns (uint256) {
+        _wrappedTokenRate = newWrappedTokenRate;
     }
 }
