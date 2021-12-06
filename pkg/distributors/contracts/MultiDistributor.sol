@@ -247,9 +247,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
         require(distribution.owner == msg.sender, "SENDER_NOT_OWNER");
 
-        // Before receiving the tokens, we must update the distribution's rate
-        // as we are about to change its payment rate, which affects all other rates.
-        _updateDistributionRate(distribution);
+        // Before receiving the tokens, we must sync the distribution up to the present as we are about to change
+        // its payment rate, which would otherwise affect the accounting of tokens distributed since the last update
+        _updateGlobalTokensPerStake(distribution);
 
         // Get the tokens and deposit them in the Vault as this contract's internal balance, making claims to internal
         // balance, joining pools, etc., use less gas.
@@ -317,7 +317,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
                 // staked tokens and decrease the global per token rate.
                 // The unclaimed tokens remain unchanged as the user was not subscribed to the distribution
                 // and therefore not eligible to receive any unaccounted-for tokens.
-                userStaking.distributions[distributionId].userTokensPerStake = _updateDistributionRate(distribution);
+                userStaking.distributions[distributionId].userTokensPerStake = _updateGlobalTokensPerStake(
+                    distribution
+                );
                 distribution.totalSupply = distribution.totalSupply.add(amount);
                 emit Staked(distributionId, msg.sender, amount);
             }
@@ -639,7 +641,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         UserStaking storage userStaking,
         UserDistribution storage userDistribution
     ) internal {
-        uint256 updatedGlobalTokensPerStake = _updateDistributionRate(distribution);
+        uint256 updatedGlobalTokensPerStake = _updateGlobalTokensPerStake(distribution);
         userDistribution.unclaimedTokens = _getUnclaimedTokens(
             userStaking,
             userDistribution,
@@ -655,7 +657,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distribution The distribution being updated
      * @return updatedGlobalTokensPerStake The updated number of distribution tokens paid per staked token
      */
-    function _updateDistributionRate(Distribution storage distribution)
+    function _updateGlobalTokensPerStake(Distribution storage distribution)
         internal
         returns (uint256 updatedGlobalTokensPerStake)
     {
