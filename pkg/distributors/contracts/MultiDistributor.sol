@@ -603,9 +603,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         IAsset[] memory tokens = new IAsset[](distributionIds.length);
         uint256[] memory amounts = new uint256[](distributionIds.length);
 
+        bytes32 distributionId;
+        Distribution storage distribution;
         for (uint256 i; i < distributionIds.length; i++) {
-            bytes32 distributionId = distributionIds[i];
-            Distribution storage distribution = _getDistribution(distributionId);
+            distributionId = distributionIds[i];
+            distribution = _getDistribution(distributionId);
             UserStaking storage userStaking = _userStakings[distribution.stakingToken][sender];
             UserDistribution storage userDistribution = userStaking.distributions[distributionId];
 
