@@ -726,10 +726,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         UserDistribution storage userDistribution,
         uint256 updatedGlobalTokensPerStake
     ) internal view returns (uint256) {
-        uint256 unclaimedTokens = userDistribution.unclaimedTokens;
         return
             _unaccountedUnclaimedTokens(userStaking, userDistribution, updatedGlobalTokensPerStake).add(
-                unclaimedTokens
+                userDistribution.unclaimedTokens
             );
     }
 
