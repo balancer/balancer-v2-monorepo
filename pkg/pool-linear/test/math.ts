@@ -5,8 +5,8 @@ import { decimal, fromFp, toFp } from '@balancer-labs/v2-helpers/src/numbers';
 
 export type Params = {
   fee: BigNumber;
-  target1: BigNumber;
-  target2: BigNumber;
+  lowerTarget: BigNumber;
+  upperTarget: BigNumber;
 };
 
 export function calcBptOutPerMainIn(
@@ -245,30 +245,32 @@ export function calcInvariant(mainNomimalBalance: Decimal, wrappedBalance: Decim
   return mainNomimalBalance.add(wrappedBalance);
 }
 
-export function toNominal(amount: Decimal, params: Params): Decimal {
+export function toNominal(real: Decimal, params: Params): Decimal {
   const fee = fromFp(params.fee);
-  const target1 = fromFp(params.target1);
-  const target2 = fromFp(params.target2);
+  const lowerTarget = fromFp(params.lowerTarget);
+  const upperTarget = fromFp(params.upperTarget);
 
-  if (amount.lt(decimal(1).sub(fee).mul(target1))) {
-    return amount.div(decimal(1).sub(fee));
-  } else if (amount.lt(target2.sub(fee.mul(target1)))) {
-    return amount.add(fee.mul(target1));
+  if (real.lt(lowerTarget)) {
+    const fees = lowerTarget.sub(real).mul(fee);
+    return real.sub(fees);
+  } else if (real.lte(upperTarget)) {
+    return real;
   } else {
-    return amount.add(target1.add(target2).mul(fee)).div(decimal(1).add(fee));
+    const fees = real.sub(upperTarget).mul(fee);
+    return real.sub(fees);
   }
 }
 
 export function fromNominal(nominal: Decimal, params: Params): Decimal {
   const fee = fromFp(params.fee);
-  const target1 = fromFp(params.target1);
-  const target2 = fromFp(params.target2);
+  const lowerTarget = fromFp(params.lowerTarget);
+  const upperTarget = fromFp(params.upperTarget);
 
-  if (nominal.lt(target1)) {
-    return nominal.mul(decimal(1).sub(fee));
-  } else if (nominal.lt(target2)) {
-    return nominal.sub(fee.mul(target1));
+  if (nominal.lt(lowerTarget)) {
+    return nominal.add(fee.mul(lowerTarget)).div(decimal(1).add(fee));
+  } else if (nominal.lte(upperTarget)) {
+    return nominal;
   } else {
-    return nominal.mul(decimal(1).add(fee)).sub(fee.mul(target1.add(target2)));
+    return nominal.sub(fee.mul(upperTarget)).div(decimal(1).sub(fee));
   }
 }

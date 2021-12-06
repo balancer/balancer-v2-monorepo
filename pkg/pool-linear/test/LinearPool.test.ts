@@ -377,8 +377,8 @@ describe('LinearPool', function () {
     before('initialize params', () => {
       params = {
         fee: POOL_SWAP_FEE_PERCENTAGE,
-        target1: lowerTarget,
-        target2: upperTarget,
+        lowerTarget,
+        upperTarget,
       };
     });
 
@@ -548,8 +548,8 @@ describe('LinearPool', function () {
 
       params = {
         fee: POOL_SWAP_FEE_PERCENTAGE,
-        target1: lowerTarget,
-        target2: upperTarget,
+        lowerTarget,
+        upperTarget,
       };
     });
 

@@ -276,11 +276,10 @@ library LinearMath {
         return nominalMainBalance.add(wrappedBalance);
     }
 
-
     function _toNominal(uint256 real, Params memory params) internal pure returns (uint256) {
-        // Fees are always rounded down: either direction would work but we need to be consistent, and rounding down 
+        // Fees are always rounded down: either direction would work but we need to be consistent, and rounding down
         // uses less gas.
-        
+
         if (real < params.lowerTarget) {
             uint256 fees = (params.lowerTarget - real).mulDown(params.fee);
             return real.sub(fees);
@@ -292,10 +291,9 @@ library LinearMath {
         }
     }
 
-
     function _fromNominal(uint256 nominal, Params memory params) internal pure returns (uint256) {
         // Since real = nominal + fees, rounding down fees is equivalent to rounding down real.
-        
+
         if (nominal < params.lowerTarget) {
             return (nominal.add(params.fee.mulDown(params.lowerTarget))).divDown(FixedPoint.ONE.add(params.fee));
         } else if (nominal <= params.upperTarget) {
