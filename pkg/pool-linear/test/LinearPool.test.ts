@@ -4,7 +4,7 @@ import { Decimal } from 'decimal.js';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn, decimal, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_UINT112 } from '@balancer-labs/v2-helpers/src/constants';
@@ -20,7 +20,7 @@ import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/Linear
 
 import * as math from './math';
 
-describe.only('LinearPool', function () {
+describe('LinearPool', function () {
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
   let trader: SignerWithAddress,
     lp: SignerWithAddress,
@@ -294,7 +294,7 @@ describe.only('LinearPool', function () {
     });
   });
 
-  describe.only('get rate', () => {
+  describe('get rate', () => {
     const lowerTarget = fp(40);
     const upperTarget = fp(60);
     const balances: BigNumber[] = new Array<BigNumber>(3);
@@ -331,97 +331,143 @@ describe.only('LinearPool', function () {
     context('with balances', () => {
       const mainBalance = fromFp(lowerTarget.add(upperTarget).div(2));
       const wrappedBalance = fromFp(upperTarget.mul(3));
-      const bptBalance = fromFp(mainBalance.add(wrappedBalance));
+      const bptBalance = mainBalance.add(wrappedBalance);
 
       let expectedRate: Decimal;
 
       beforeEach('set initial balances', async () => {
-        // balances[pool.mainIndex] = fp(mainBalance);
-        // balances[pool.wrappedIndex] = fp(wrappedBalance);
-        // balances[pool.bptIndex] = MAX_UINT112.sub(fp(bptBalance));
-      });
-
-      sharedBeforeEach('update balances', async () => {
         balances[pool.mainIndex] = fp(mainBalance);
         balances[pool.wrappedIndex] = fp(wrappedBalance);
         balances[pool.bptIndex] = MAX_UINT112.sub(fp(bptBalance));
-        await pool.vault.updateBalances(poolId, balances);
       });
 
-      sharedBeforeEach('calculate expected rate', async () => {
+      before('calculate expected rate', async () => {
         const nominalMainBalance = math.toNominal(mainBalance, params);
         const invariant = math.calcInvariant(nominalMainBalance, wrappedBalance, params);
         expectedRate = invariant.div(bptBalance);
       });
 
       it('equals expected rate', async () => {
+        await pool.vault.updateBalances(poolId, balances);
         const currentRate = await pool.getRate();
         expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
       });
 
       context('with main above upper', () => {
-        sharedBeforeEach('swap main per wrapped', async () => {
-          const amountMainIn = upperTarget;
+        context('with main to wrapped swap', () => {
+          sharedBeforeEach('do swap', async () => {
+            const amountMainIn = upperTarget;
 
-          const result = await pool.swapGivenIn({
-            in: pool.mainIndex,
-            out: pool.wrappedIndex,
-            amount: amountMainIn,
-            balances,
+            const result = await pool.swapGivenIn({
+              in: pool.mainIndex,
+              out: pool.wrappedIndex,
+              amount: amountMainIn,
+              balances,
+            });
+
+            balances[pool.mainIndex] = balances[pool.mainIndex].add(amountMainIn);
+            balances[pool.wrappedIndex] = balances[pool.wrappedIndex].sub(result);
           });
 
-          balances[pool.mainIndex] = balances[pool.mainIndex].add(amountMainIn);
-          balances[pool.wrappedIndex] = balances[pool.wrappedIndex].sub(result);
-          await pool.vault.updateBalances(poolId, balances);
+          it('rate remains the same', async () => {
+            await pool.vault.updateBalances(poolId, balances);
+            const currentRate = await pool.getRate();
+            expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
+          });
         });
 
-        it('rate remains the same', async () => {
-          const currentRate = await pool.getRate();
-          expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
+        context('with main to bpt swap', () => {
+          sharedBeforeEach('do swap', async () => {
+            const amountInMain = upperTarget;
+
+            const result = await pool.swapGivenIn({
+              in: pool.mainIndex,
+              out: pool.bptIndex,
+              amount: amountInMain,
+              balances,
+            });
+
+            balances[pool.mainIndex] = balances[pool.mainIndex].add(amountInMain);
+            balances[pool.bptIndex] = balances[pool.bptIndex].sub(result);
+          });
+
+          it('rate remains the same', async () => {
+            await pool.vault.updateBalances(poolId, balances);
+            const currentRate = await pool.getRate();
+            expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
+          });
         });
       });
 
-      context('once bpt swapped', () => {
-        sharedBeforeEach('swap main per bpt', async () => {
-          const amount = fp(20);
+      context('with main below upper', () => {
+        context('with wrapped to main swap', () => {
+          sharedBeforeEach('do swap', async () => {
+            const amountMainOut = balances[pool.mainIndex].sub(1);
 
-          const result = await pool.swapGivenIn({
-            in: pool.mainIndex,
-            out: pool.bptIndex,
-            amount: amount,
-            balances,
+            const result = await pool.swapGivenOut({
+              in: pool.wrappedIndex,
+              out: pool.mainIndex,
+              amount: amountMainOut,
+              balances,
+            });
+
+            balances[pool.mainIndex] = balances[pool.mainIndex].sub(amountMainOut);
+            balances[pool.wrappedIndex] = balances[pool.wrappedIndex].add(result);
           });
 
-          balances[pool.mainIndex] = balances[pool.mainIndex].add(amount);
-          balances[pool.bptIndex] = balances[pool.bptIndex].sub(result);
-          await pool.vault.updateBalances(poolId, balances);
+          it('rate remains the same', async () => {
+            await pool.vault.updateBalances(poolId, balances);
+            const currentRate = await pool.getRate();
+            expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
+          });
         });
 
-        it('rate remains the same', async () => {
-          const currentRate = await pool.getRate();
-          expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
+        context('with bpt to main swap', () => {
+          sharedBeforeEach('do swap', async () => {
+            const amountOutMain = balances[pool.mainIndex].sub(1);
+
+            const result = await pool.swapGivenOut({
+              in: pool.bptIndex,
+              out: pool.mainIndex,
+              amount: amountOutMain,
+              balances,
+            });
+
+            balances[pool.mainIndex] = balances[pool.mainIndex].sub(amountOutMain);
+            balances[pool.bptIndex] = balances[pool.bptIndex].add(result);
+          });
+
+          it('rate remains the same', async () => {
+            await pool.vault.updateBalances(poolId, balances);
+            const currentRate = await pool.getRate();
+            expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
+          });
         });
       });
 
-      context.skip('once targets updated', () => {
+      context.skip('with targets updated', () => {
         sharedBeforeEach('owner update targets', async () => {
-          const newLowerTarget = fp(10);
-          const newUpperTarget = fp(200);
+          const newLowerTarget = lowerTarget.div(2);
+          const newUpperTarget = upperTarget.mul(2);
+
+          await pool.vault.updateBalances(poolId, balances);
           await pool.setTargets(newLowerTarget, newUpperTarget);
         });
 
         it('rate remains the same', async () => {
+          await pool.vault.updateBalances(poolId, balances);
           const currentRate = await pool.getRate();
           expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
         });
       });
 
-      context.skip('once swap fee updated', () => {
+      context.skip('with swap fee updated', () => {
         sharedBeforeEach('update swap fee', async () => {
           await pool.instance.connect(owner).setSwapFeePercentage(POOL_SWAP_FEE_PERCENTAGE.mul(2));
         });
 
         it('rate remains the same', async () => {
+          await pool.vault.updateBalances(poolId, balances);
           const currentRate = await pool.getRate();
           expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
         });

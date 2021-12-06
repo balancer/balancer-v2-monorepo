@@ -582,7 +582,12 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
             upperTarget: upperTarget
         });
 
-        uint256 totalBalance = LinearMath._toNominal(balances[_mainIndex], params).add(balances[_wrappedIndex]);
+        uint256 totalBalance = LinearMath._calcInvariantUp(
+            LinearMath._toNominal(balances[_mainIndex], params),
+            balances[_wrappedIndex],
+            params
+        );
+
         // Note that we're dividing by the virtual supply, which may be zero (causing this call to revert). However, the
         // only way for that to happen would be for all LPs to exit the Pool, and nothing prevents new LPs from
         // joining it later on.
