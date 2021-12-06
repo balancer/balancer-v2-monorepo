@@ -49,8 +49,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * from this a `paymentRate` may be easily calculated.
      *
      * Two pieces of global information are stored for the amount of tokens paid out:
-     * `globalTokensPerStake` is a fixed point value representing the number of tokens claimable 
-     * from a single staking token staked from the start.
+     * `globalTokensPerStake` is a fixed point value of the number of tokens claimable from a single staking token
+     * staked from the start.
      * `lastUpdateTime` represents the timestamp of the last time `globalTokensPerStake` was updated.
      *
      * `globalTokensPerStake` can be calculated by:
@@ -288,9 +288,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             // Checked arithmetic is not required due to the if
             uint256 remainingTime = periodFinish - block.timestamp;
 
-            // By performing fixed point (FP) multiplication between a non-FP (time) and FP (rate) value we get a non-FP result.
+            // Fixed point (FP) multiplication between a non-FP (time) and FP (rate) returns a non-FP result.
             uint256 leftoverTokens = FixedPoint.mulDown(remainingTime, distribution.paymentRate);
-            // By performing fixed point (FP) division of two non-FP values we get a FP result.
+            // Fixed point (FP) division of two non-FP values we get a FP result.
             distribution.paymentRate = FixedPoint.divDown(amount.add(leftoverTokens), duration);
         }
 
@@ -767,7 +767,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         // `userDistribution.userTokensPerStake` cannot exceed `updatedGlobalTokensPerStake`
         // Both `updatedGlobalTokensPerStake` and `userDistribution.userTokensPerStake` are fixed point values
         uint256 unaccountedTokensPerStake = updatedGlobalTokensPerStake - userDistribution.userTokensPerStake;
-        // By performing fixed point (FP) multiplication between a FP and non-FP value we get a non-FP result.
+        // Fixed point (FP) multiplication between a non-FP (balance) and FP (tokensPerStake) returns a non-FP result.
         return FixedPoint.mulDown(userStaking.balance, unaccountedTokensPerStake);
     }
 
