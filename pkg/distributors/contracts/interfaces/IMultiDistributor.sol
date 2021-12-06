@@ -34,6 +34,7 @@ interface IMultiDistributor {
         uint256 globalTokensPerStake;
     }
 
+    // userTokensPerStake is stored as an 18 decimal fixed point value
     struct UserDistribution {
         uint256 unclaimedTokens;
         uint256 userTokensPerStake;
