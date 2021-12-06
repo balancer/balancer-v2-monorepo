@@ -303,7 +303,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         for (uint256 i; i < distributionIds.length; i++) {
             distributionId = distributionIds[i];
             distribution = _getDistribution(distributionId);
-            require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
+            require(distribution.stakingToken != IERC20(0), "DISTRIBUTION_DOES_NOT_EXIST");
 
             UserStaking storage userStaking = _userStakings[distribution.stakingToken][msg.sender];
             require(userStaking.subscribedDistributions.add(distributionId), "ALREADY_SUBSCRIBED_DISTRIBUTION");
@@ -336,7 +336,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         for (uint256 i; i < distributionIds.length; i++) {
             distributionId = distributionIds[i];
             distribution = _getDistribution(distributionId);
-            require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
+            require(distribution.stakingToken != IERC20(0), "DISTRIBUTION_DOES_NOT_EXIST");
 
             UserStaking storage userStaking = _userStakings[distribution.stakingToken][msg.sender];
 
