@@ -303,9 +303,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         for (uint256 i; i < distributionIds.length; i++) {
             distributionId = distributionIds[i];
             distribution = _getDistribution(distributionId);
-            require(distribution.stakingToken != IERC20(0), "DISTRIBUTION_DOES_NOT_EXIST");
 
-            UserStaking storage userStaking = _userStakings[distribution.stakingToken][msg.sender];
+            IERC20 stakingToken = distribution.stakingToken;
+            require(stakingToken != IERC20(0), "DISTRIBUTION_DOES_NOT_EXIST");
+
+            UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
             require(userStaking.subscribedDistributions.add(distributionId), "ALREADY_SUBSCRIBED_DISTRIBUTION");
 
             uint256 amount = userStaking.balance;
@@ -336,9 +338,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         for (uint256 i; i < distributionIds.length; i++) {
             distributionId = distributionIds[i];
             distribution = _getDistribution(distributionId);
-            require(distribution.stakingToken != IERC20(0), "DISTRIBUTION_DOES_NOT_EXIST");
 
-            UserStaking storage userStaking = _userStakings[distribution.stakingToken][msg.sender];
+            IERC20 stakingToken = distribution.stakingToken;
+            require(stakingToken != IERC20(0), "DISTRIBUTION_DOES_NOT_EXIST");
+
+            UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
 
             // If the user had tokens staked that applied to this distribution, we need to update their standing before
             // unsubscribing, which is effectively an unstake.
