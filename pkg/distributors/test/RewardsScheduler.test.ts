@@ -13,13 +13,15 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { setup, rewardsDuration } from './MultiDistributorSharedSetup';
 import { ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { MultiDistributor } from '@balancer-labs/v2-helpers/src/models/distributor/MultiDistributor';
 
 describe('Rewards Scheduler', () => {
   let lp: SignerWithAddress, rewarder: SignerWithAddress;
 
   let rewardTokens: TokenList;
-  let vault: Contract;
-  let stakingContract: Contract;
+  let vault: Vault;
+  let stakingContract: MultiDistributor;
   let rewardsScheduler: Contract;
   let rewardsToken: Token;
   let pool: Contract;
@@ -40,7 +42,7 @@ describe('Rewards Scheduler', () => {
 
     await rewardTokens.approve({ to: rewardsScheduler.address, from: [rewarder] });
 
-    await stakingContract.connect(rewarder).createDistribution(pool.address, rewardsToken.address, rewardsDuration);
+    await stakingContract.newDistribution(pool, rewardsToken, rewardsDuration, { from: rewarder });
   });
 
   it('allows anyone to schedule a reward', async () => {
@@ -123,7 +125,7 @@ describe('Rewards Scheduler', () => {
           () => rewardsScheduler.connect(lp).startRewards([rewardId]),
           rewardTokens,
           [{ account: stakingContract.address, changes: { DAI: ['very-near', expectedReward] } }],
-          vault
+          vault.instance
         );
       });
 

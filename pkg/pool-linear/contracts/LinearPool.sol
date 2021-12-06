@@ -574,7 +574,20 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
         _upscaleArray(balances, _scalingFactors());
 
-        uint256 totalBalance = balances[_mainIndex].add(balances[_wrappedIndex]);
+        (uint256 lowerTarget, uint256 upperTarget) = getTargets();
+        LinearMath.Params memory params = LinearMath.Params({
+            fee: getSwapFeePercentage(),
+            rate: FixedPoint.ONE,
+            lowerTarget: lowerTarget,
+            upperTarget: upperTarget
+        });
+
+        uint256 totalBalance = LinearMath._calcInvariantUp(
+            LinearMath._toNominal(balances[_mainIndex], params),
+            balances[_wrappedIndex],
+            params
+        );
+
         // Note that we're dividing by the virtual supply, which may be zero (causing this call to revert). However, the
         // only way for that to happen would be for all LPs to exit the Pool, and nothing prevents new LPs from
         // joining it later on.
@@ -656,10 +669,6 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
     }
 
     function setTargets(uint256 newLowerTarget, uint256 newUpperTarget) external authenticate {
-        bytes32 poolId = getPoolId();
-        (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
-        _upscaleArray(balances, _scalingFactors());
-
         // For a new target range to be valid:
         //  - the pool must currently be between the current targets (meaning no fees are currently pending)
         //  - the pool must currently be between the new targets (meaning setting them does not cause for fees to be
@@ -669,17 +678,32 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         // but being stricter makes analysis easier at little expense.
 
         (uint256 currentLowerTarget, uint256 currentUpperTarget) = getTargets();
-        _require(
-            balances[_mainIndex] >= currentLowerTarget && balances[_mainIndex] <= currentUpperTarget,
-            Errors.OUT_OF_TARGET_RANGE
-        );
-
-        _require(
-            balances[_mainIndex] >= newLowerTarget && balances[_mainIndex] <= newUpperTarget,
-            Errors.OUT_OF_NEW_TARGET_RANGE
-        );
+        _require(_isMainBalanceWithinTargets(currentLowerTarget, currentUpperTarget), Errors.OUT_OF_TARGET_RANGE);
+        _require(_isMainBalanceWithinTargets(newLowerTarget, newUpperTarget), Errors.OUT_OF_NEW_TARGET_RANGE);
 
         _setTargets(_mainToken, newLowerTarget, newUpperTarget);
+    }
+
+    function setSwapFeePercentage(uint256 swapFeePercentage) public override {
+        // For the swap fee percentage to be changeable:
+        //  - the pool must currently be between the current targets (meaning no fees are currently pending)
+        //
+        // As the amount of accrued fees is not explicitly stored but rather derived from the main token balance and the
+        // current swap fee percentage, requiring for no fees to be pending prevents the fee setter from changing the
+        // amount of pending fees, which they could use to e.g. drain Pool funds in the form of inflated fees.
+
+        (uint256 lowerTarget, uint256 upperTarget) = getTargets();
+        _require(_isMainBalanceWithinTargets(lowerTarget, upperTarget), Errors.OUT_OF_TARGET_RANGE);
+
+        super.setSwapFeePercentage(swapFeePercentage);
+    }
+
+    function _isMainBalanceWithinTargets(uint256 lowerTarget, uint256 upperTarget) private view returns (bool) {
+        bytes32 poolId = getPoolId();
+        (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
+        uint256 mainTokenBalance = _upscale(balances[_mainIndex], _scalingFactor(_mainToken));
+
+        return mainTokenBalance >= lowerTarget && mainTokenBalance <= upperTarget;
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
