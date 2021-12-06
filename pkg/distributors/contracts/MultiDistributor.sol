@@ -585,7 +585,12 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         address sender,
         address recipient
     ) internal {
-        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](distributionIds.length);
+        // It is expected that there will be multiple transfers of the same token
+        // so that the actual number of transfers needed is less than distributionIds.length
+        // We keep track of this number in numTokens to save gas later
+        uint256 numTokens;
+        IAsset[] memory tokens = new IAsset[](distributionIds.length);
+        uint256[] memory amounts = new uint256[](distributionIds.length);
 
         for (uint256 i; i < distributionIds.length; i++) {
             bytes32 distributionId = distributionIds[i];
@@ -600,16 +605,37 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             }
 
             uint256 unclaimedTokens = userDistribution.unclaimedTokens;
-            address distributionToken = address(distribution.distributionToken);
 
             if (unclaimedTokens > 0) {
                 userDistribution.unclaimedTokens = 0;
+
+                IAsset distributionToken = IAsset(address(distribution.distributionToken));
+                // Iterate through all the tokens we've seen so far.
+                for (uint256 j; j < tokens.length; j++) {
+                    // Check if we're already sending some of this token
+                    // If so we just want to add to the existing transfer
+                    if (tokens[j] == distributionToken) {
+                        amounts[j] += unclaimedTokens;
+                        break;
+                    } else if (tokens[j] == IAsset(0)) {
+                        // If it's the first time we've seen this token
+                        // record both its address and amount to transfer
+                        tokens[j] = distributionToken;
+                        amounts[j] = unclaimedTokens;
+                        numTokens += 1;
+                        break;
+                    }
+                }
+
                 emit DistributionClaimed(distributionId, sender, unclaimedTokens);
             }
+        }
 
+        IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](numTokens);
+        for (uint256 i; i < numTokens; i++) {
             ops[i] = IVault.UserBalanceOp({
-                asset: IAsset(distributionToken),
-                amount: unclaimedTokens,
+                asset: tokens[i],
+                amount: amounts[i],
                 sender: address(this),
                 recipient: payable(recipient),
                 kind: kind
