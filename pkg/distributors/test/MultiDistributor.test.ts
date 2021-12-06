@@ -16,6 +16,7 @@ import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/sr
 import { MultiDistributor } from '@balancer-labs/v2-helpers/src/models/distributor/MultiDistributor';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { Account, NAry } from '@balancer-labs/v2-helpers/src/models/types/types';
 
 describe('MultiDistributor', () => {
   let vault: Vault;
@@ -50,7 +51,7 @@ describe('MultiDistributor', () => {
     distributionToken = distributionTokens.first;
     anotherDistributionToken = distributionTokens.second;
 
-    await distributionTokens.mint({ to: distributionOwner });
+    await distributionTokens.mint({ to: distributionOwner, amount: DISTRIBUTION_SIZE.mul(1000) });
     await distributionTokens.approve({ to: distributor, from: distributionOwner });
   });
 
@@ -102,6 +103,18 @@ describe('MultiDistributor', () => {
             stakingToken: stakingToken.address,
             distributionToken: distributionToken.address,
             owner: distributionOwner.address,
+          });
+        });
+
+        it('emits a DistributionDurationSet event', async () => {
+          const tx = await distributor.newDistribution(stakingToken, distributionToken, PERIOD_DURATION, {
+            from: distributionOwner,
+          });
+
+          const id = await distributor.getDistributionId(stakingToken, distributionToken, distributionOwner);
+          expectEvent.inReceipt(await tx.wait(), 'DistributionDurationSet', {
+            distribution: id,
+            duration: PERIOD_DURATION,
           });
         });
       });
@@ -2153,7 +2166,7 @@ describe('MultiDistributor', () => {
   describe('claim', () => {
     let from: SignerWithAddress, to: SignerWithAddress;
 
-    sharedBeforeEach('create distributions', async () => {
+    sharedBeforeEach('create distribution', async () => {
       await distributor.newDistribution(stakingToken, distributionToken, PERIOD_DURATION, { from: distributionOwner });
       distribution = await distributor.getDistributionId(stakingToken, distributionToken, distributionOwner);
       await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
@@ -2198,14 +2211,14 @@ describe('MultiDistributor', () => {
         expect(userTokensPerStake).to.be.almostEqual(previousRewardPerToken);
       });
 
-      it('emits a TokensClaimed event', async () => {
+      it('emits a DistributionClaimed event', async () => {
         const expectedAmount = await distributor.getClaimableTokens(distribution, from);
 
         const tx = await claim(distribution);
 
-        expectEvent.inReceipt(await tx.wait(), 'TokensClaimed', {
+        expectEvent.inReceipt(await tx.wait(), 'DistributionClaimed', {
+          distribution,
           user: from.address,
-          rewardToken: distributionToken.address,
           amount: expectedAmount,
         });
       });
@@ -2241,14 +2254,14 @@ describe('MultiDistributor', () => {
         expect(userTokensPerStake).to.be.equal(updatesUserPaidRate ? rewardPerToken : 0);
       });
 
-      it('does not emit a TokensClaimed event', async () => {
+      it('does not emit a DistributionClaimed event', async () => {
         const tx = await claim(distribution);
 
-        expectEvent.notEmitted(await tx.wait(), 'TokensClaimed');
+        expectEvent.notEmitted(await tx.wait(), 'DistributionClaimed');
       });
     };
 
-    const itHandlesClaiming = (claim: (distribution: string) => Promise<ContractTransaction>) => {
+    const itHandlesClaiming = (claim: (distributions: NAry<string>) => Promise<ContractTransaction>) => {
       context('when there was no other stake from other users', () => {
         context('when the user had some stake', () => {
           sharedBeforeEach('stake some amount', async () => {
@@ -2264,6 +2277,91 @@ describe('MultiDistributor', () => {
             });
 
             itReceivesTheRewards(claim);
+
+            context('when the user is subscribed to another distribution for the same token', () => {
+              sharedBeforeEach('create another distribution', async () => {
+                await distributor.newDistribution(stakingToken, distributionToken, PERIOD_DURATION, {
+                  from: other,
+                });
+                anotherDistribution = await distributor.getDistributionId(stakingToken, distributionToken, other);
+
+                await distributionToken.mint(other, DISTRIBUTION_SIZE);
+                await distributionToken.approve(distributor, DISTRIBUTION_SIZE, { from: other });
+                await distributor.fundDistribution(anotherDistribution, DISTRIBUTION_SIZE, { from: other });
+
+                await distributor.subscribe(anotherDistribution, { from });
+                await advanceTime(PERIOD_DURATION);
+
+                // Ensure that both distributions have some rewards to be claimed
+                expect(await distributor.getClaimableTokens(distribution, from)).to.be.gt(0);
+                expect(await distributor.getClaimableTokens(anotherDistribution, from)).to.be.gt(0);
+              });
+
+              const getAllDueRewards = async (user: Account) => {
+                const claimableTokens = await distributor.getClaimableTokens(distribution, user);
+                const anotherClaimableTokens = await distributor.getClaimableTokens(anotherDistribution, user);
+                return claimableTokens.add(anotherClaimableTokens);
+              };
+
+              // Check that token transfer consolidation works as expected
+
+              it('performs a single transfer of the distribution token', async () => {
+                const rewards = await getAllDueRewards(from);
+                const tx = await claim([distribution, anotherDistribution]);
+
+                await expectEvent.inIndirectReceipt(await tx.wait(), distributionToken.instance.interface, 'Transfer', {
+                  from: distributor.vault.address,
+                  to: to.address,
+                  value: rewards,
+                });
+              });
+
+              it('emits a DistributionClaimed event for each distribution', async () => {
+                const expectedClaimAmount = await distributor.getClaimableTokens(distribution, from);
+                const expectedAnotherClaimAmount = await distributor.getClaimableTokens(anotherDistribution, from);
+
+                const tx = await claim([distribution, anotherDistribution]);
+
+                expectEvent.inReceipt(await tx.wait(), 'DistributionClaimed', {
+                  distribution,
+                  user: from.address,
+                  amount: expectedClaimAmount,
+                });
+                expectEvent.inReceipt(await tx.wait(), 'DistributionClaimed', {
+                  distribution: anotherDistribution,
+                  user: from.address,
+                  amount: expectedAnotherClaimAmount,
+                });
+              });
+
+              // Ensure that distribution accounting is still properly handled
+
+              it('does not update the reward per token', async () => {
+                const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
+                const anotherPreviousRewardPerToken = await distributor.globalTokensPerStake(anotherDistribution);
+
+                await claim([distribution, anotherDistribution]);
+
+                const currentRewardPerToken = await distributor.globalTokensPerStake(distribution);
+                expect(currentRewardPerToken).to.be.almostEqual(previousRewardPerToken);
+                const anotherCurrentRewardPerToken = await distributor.globalTokensPerStake(anotherDistribution);
+                expect(anotherCurrentRewardPerToken).to.be.almostEqual(anotherPreviousRewardPerToken);
+              });
+
+              it('updates the reward per token rates of the user', async () => {
+                const previousRewardPerToken = await distributor.globalTokensPerStake(distribution);
+                const anotherPreviousRewardPerToken = await distributor.globalTokensPerStake(anotherDistribution);
+
+                await claim([distribution, anotherDistribution]);
+
+                const distributionInfo = await distributor.getUserDistribution(distribution, from);
+                expect(distributionInfo.unclaimedTokens).to.be.eq(0);
+                expect(distributionInfo.userTokensPerStake).to.be.almostEqual(previousRewardPerToken);
+                const anotherDistributionInfo = await distributor.getUserDistribution(anotherDistribution, from);
+                expect(anotherDistributionInfo.unclaimedTokens).to.be.eq(0);
+                expect(anotherDistributionInfo.userTokensPerStake).to.be.almostEqual(anotherPreviousRewardPerToken);
+              });
+            });
           });
 
           context('when the user was not subscribed to a distribution', () => {
@@ -2364,7 +2462,7 @@ describe('MultiDistributor', () => {
             to = user1;
           });
 
-          itHandlesClaiming((distribution: string) => distributor.claim(distribution, false, from, to, { from }));
+          itHandlesClaiming((distribution: NAry<string>) => distributor.claim(distribution, false, from, to, { from }));
         });
 
         context('when sender and recipient are different', () => {
@@ -2373,7 +2471,7 @@ describe('MultiDistributor', () => {
             to = user1;
           });
 
-          itHandlesClaiming((distribution: string) => distributor.claim(distribution, false, from, to, { from }));
+          itHandlesClaiming((distribution: NAry<string>) => distributor.claim(distribution, false, from, to, { from }));
         });
       });
     });
@@ -2446,14 +2544,14 @@ describe('MultiDistributor', () => {
         });
       });
 
-      it('emits a TokensClaimed event', async () => {
+      it('emits a DistributionClaimed event', async () => {
         const expectedClaimAmount = await distributor.getClaimableTokens(distribution, user1);
 
         const tx = await distributor.exit(stakingToken, distribution, { from: user1 });
 
-        expectEvent.inReceipt(await tx.wait(), 'TokensClaimed', {
+        expectEvent.inReceipt(await tx.wait(), 'DistributionClaimed', {
+          distribution,
           user: user1.address,
-          rewardToken: distributionToken.address,
           amount: expectedClaimAmount,
         });
       });
@@ -2512,9 +2610,9 @@ describe('MultiDistributor', () => {
         expectEvent.notEmitted(await tx.wait(), 'Unstaked');
       });
 
-      it('does not emit a TokensClaimed event', async () => {
+      it('does not emit a DistributionClaimed event', async () => {
         const tx = await distributor.exit(stakingToken, distribution, { from: user1 });
-        expectEvent.notEmitted(await tx.wait(), 'TokensClaimed');
+        expectEvent.notEmitted(await tx.wait(), 'DistributionClaimed');
       });
     };
 
