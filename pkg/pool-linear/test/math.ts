@@ -5,7 +5,6 @@ import { decimal, fromFp, toFp } from '@balancer-labs/v2-helpers/src/numbers';
 
 export type Params = {
   fee: BigNumber;
-  rate: BigNumber;
   target1: BigNumber;
   target2: BigNumber;
 };
@@ -29,7 +28,7 @@ export function calcBptOutPerMainIn(
   const previousNominalMain = toNominal(mainBalance, params);
   const afterNominalMain = toNominal(mainBalance.add(mainIn), params);
   const deltaNominalMain = afterNominalMain.sub(previousNominalMain);
-  const invariant = calcInvariant(previousNominalMain, wrappedBalance, params);
+  const invariant = calcInvariant(previousNominalMain, wrappedBalance);
   const bptOut = bptSupply.mul(deltaNominalMain).div(invariant);
   return toFp(bptOut);
 }
@@ -49,7 +48,7 @@ export function calcBptInPerMainOut(
   const previousNominalMain = toNominal(mainBalance, params);
   const afterNominalMain = toNominal(mainBalance.sub(mainOut), params);
   const deltaNominalMain = previousNominalMain.sub(afterNominalMain);
-  const invariant = calcInvariant(previousNominalMain, wrappedBalance, params);
+  const invariant = calcInvariant(previousNominalMain, wrappedBalance);
   const bptIn = bptSupply.mul(deltaNominalMain).div(invariant);
   return toFp(bptIn);
 }
@@ -57,24 +56,22 @@ export function calcBptInPerMainOut(
 export function calcWrappedOutPerMainIn(fpMainIn: BigNumber, fpMainBalance: BigNumber, params: Params): Decimal {
   const mainIn = fromFp(fpMainIn);
   const mainBalance = fromFp(fpMainBalance);
-  const rate = fromFp(params.rate);
 
   const previousNominalMain = toNominal(mainBalance, params);
   const afterNominalMain = toNominal(mainBalance.add(mainIn), params);
   const deltaNominalMain = afterNominalMain.sub(previousNominalMain);
-  const wrappedOut = deltaNominalMain.div(rate);
+  const wrappedOut = deltaNominalMain;
   return toFp(wrappedOut);
 }
 
 export function calcWrappedInPerMainOut(fpMainOut: BigNumber, fpMainBalance: BigNumber, params: Params): Decimal {
   const mainOut = fromFp(fpMainOut);
   const mainBalance = fromFp(fpMainBalance);
-  const rate = fromFp(params.rate);
 
   const previousNominalMain = toNominal(mainBalance, params);
   const afterNominalMain = toNominal(mainBalance.sub(mainOut), params);
   const deltaNominalMain = previousNominalMain.sub(afterNominalMain);
-  const wrappedIn = deltaNominalMain.div(rate);
+  const wrappedIn = deltaNominalMain;
   return toFp(wrappedIn);
 }
 
@@ -95,7 +92,7 @@ export function calcMainInPerBptOut(
   }
 
   const previousNominalMain = toNominal(mainBalance, params);
-  const invariant = calcInvariant(previousNominalMain, wrappedBalance, params);
+  const invariant = calcInvariant(previousNominalMain, wrappedBalance);
   const deltaNominalMain = invariant.mul(bptOut).div(bptSupply);
   const afterNominalMain = previousNominalMain.add(deltaNominalMain);
   const newMainBalance = fromNominal(afterNominalMain, params);
@@ -116,7 +113,7 @@ export function calcMainOutPerBptIn(
   const bptSupply = fromFp(fpBptSupply);
 
   const previousNominalMain = toNominal(mainBalance, params);
-  const invariant = calcInvariant(previousNominalMain, wrappedBalance, params);
+  const invariant = calcInvariant(previousNominalMain, wrappedBalance);
   const deltaNominalMain = invariant.mul(bptIn).div(bptSupply);
   const afterNominalMain = previousNominalMain.sub(deltaNominalMain);
   const newMainBalance = fromNominal(afterNominalMain, params);
@@ -125,12 +122,11 @@ export function calcMainOutPerBptIn(
 }
 
 export function calcMainOutPerWrappedIn(fpWrappedIn: BigNumber, fpMainBalance: BigNumber, params: Params): Decimal {
-  const rate = fromFp(params.rate);
   const wrappedIn = fromFp(fpWrappedIn);
   const mainBalance = fromFp(fpMainBalance);
 
   const previousNominalMain = toNominal(mainBalance, params);
-  const deltaNominalMain = wrappedIn.mul(rate);
+  const deltaNominalMain = wrappedIn;
   const afterNominalMain = previousNominalMain.sub(deltaNominalMain);
   const newMainBalance = fromNominal(afterNominalMain, params);
   const minOut = mainBalance.sub(newMainBalance);
@@ -138,12 +134,11 @@ export function calcMainOutPerWrappedIn(fpWrappedIn: BigNumber, fpMainBalance: B
 }
 
 export function calcMainInPerWrappedOut(fpWrappedOut: BigNumber, fpMainBalance: BigNumber, params: Params): Decimal {
-  const rate = fromFp(params.rate);
   const wrappedOut = fromFp(fpWrappedOut);
   const mainBalance = fromFp(fpMainBalance);
 
   const previousNominalMain = toNominal(mainBalance, params);
-  const deltaNominalMain = wrappedOut.mul(rate);
+  const deltaNominalMain = wrappedOut;
   const afterNominalMain = previousNominalMain.add(deltaNominalMain);
   const newMainBalance = fromNominal(afterNominalMain, params);
   const mainIn = newMainBalance.sub(mainBalance);
@@ -161,17 +156,16 @@ export function calcBptOutPerWrappedIn(
   const mainBalance = fromFp(fpMainBalance);
   const wrappedBalance = fromFp(fpWrappedBalance);
   const bptSupply = fromFp(fpBptSupply);
-  const rate = fromFp(params.rate);
 
   if (bptSupply.eq(0)) {
-    return toFp(wrappedIn.mul(rate));
+    return toFp(wrappedIn);
   }
 
   const nominalMain = toNominal(mainBalance, params);
-  const previousInvariant = calcInvariant(nominalMain, wrappedBalance, params);
+  const previousInvariant = calcInvariant(nominalMain, wrappedBalance);
 
   const newWrappedBalance = wrappedBalance.add(wrappedIn);
-  const newInvariant = calcInvariant(nominalMain, newWrappedBalance, params);
+  const newInvariant = calcInvariant(nominalMain, newWrappedBalance);
 
   const newBptBalance = bptSupply.mul(newInvariant).div(previousInvariant);
   const bptOut = newBptBalance.sub(bptSupply);
@@ -191,10 +185,10 @@ export function calcBptInPerWrappedOut(
   const bptSupply = fromFp(fpBptSupply);
 
   const nominalMain = toNominal(mainBalance, params);
-  const previousInvariant = calcInvariant(nominalMain, wrappedBalance, params);
+  const previousInvariant = calcInvariant(nominalMain, wrappedBalance);
 
   const newWrappedBalance = wrappedBalance.sub(wrappedOut);
-  const newInvariant = calcInvariant(nominalMain, newWrappedBalance, params);
+  const newInvariant = calcInvariant(nominalMain, newWrappedBalance);
 
   const newBptBalance = bptSupply.mul(newInvariant).div(previousInvariant);
   const bptIn = bptSupply.sub(newBptBalance);
@@ -212,17 +206,16 @@ export function calcWrappedInPerBptOut(
   const bptSupply = fromFp(fpBptSupply);
   const mainBalance = fromFp(fpMainBalance);
   const wrappedBalance = fromFp(fpWrappedBalance);
-  const rate = fromFp(params.rate);
 
   if (bptSupply.eq(0)) {
-    return toFp(bptOut.div(rate));
+    return toFp(bptOut);
   }
 
   const nominalMain = toNominal(mainBalance, params);
-  const previousInvariant = calcInvariant(nominalMain, wrappedBalance, params);
+  const previousInvariant = calcInvariant(nominalMain, wrappedBalance);
 
   const newBptBalance = bptSupply.add(bptOut);
-  const newWrappedBalance = newBptBalance.div(bptSupply).mul(previousInvariant).sub(nominalMain).div(rate);
+  const newWrappedBalance = newBptBalance.div(bptSupply).mul(previousInvariant).sub(nominalMain);
   const wrappedIn = newWrappedBalance.sub(wrappedBalance);
   return toFp(wrappedIn);
 }
@@ -238,20 +231,18 @@ export function calcWrappedOutPerBptIn(
   const mainBalance = fromFp(fpMainBalance);
   const wrappedBalance = fromFp(fpWrappedBalance);
   const bptSupply = fromFp(fpBptSupply);
-  const rate = fromFp(params.rate);
 
   const nominalMain = toNominal(mainBalance, params);
-  const previousInvariant = calcInvariant(nominalMain, wrappedBalance, params);
+  const previousInvariant = calcInvariant(nominalMain, wrappedBalance);
 
   const newBptBalance = bptSupply.sub(bptIn);
-  const newWrappedBalance = newBptBalance.div(bptSupply).mul(previousInvariant).sub(nominalMain).div(rate);
+  const newWrappedBalance = newBptBalance.div(bptSupply).mul(previousInvariant).sub(nominalMain);
   const wrappedOut = wrappedBalance.sub(newWrappedBalance);
   return toFp(wrappedOut);
 }
 
-export function calcInvariant(mainNomimalBalance: Decimal, wrappedBalance: Decimal, params: Params): Decimal {
-  const rate = fromFp(params.rate);
-  return mainNomimalBalance.add(wrappedBalance.mul(rate));
+export function calcInvariant(mainNomimalBalance: Decimal, wrappedBalance: Decimal): Decimal {
+  return mainNomimalBalance.add(wrappedBalance);
 }
 
 export function toNominal(amount: Decimal, params: Params): Decimal {

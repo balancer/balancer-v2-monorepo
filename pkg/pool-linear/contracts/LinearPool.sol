@@ -254,7 +254,6 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         (uint256 lowerTarget, uint256 upperTarget) = getTargets();
         LinearMath.Params memory params = LinearMath.Params({
             fee: getSwapFeePercentage(),
-            rate: FixedPoint.ONE,
             lowerTarget: lowerTarget,
             upperTarget: upperTarget
         });
@@ -577,15 +576,13 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         (uint256 lowerTarget, uint256 upperTarget) = getTargets();
         LinearMath.Params memory params = LinearMath.Params({
             fee: getSwapFeePercentage(),
-            rate: FixedPoint.ONE,
             lowerTarget: lowerTarget,
             upperTarget: upperTarget
         });
 
-        uint256 totalBalance = LinearMath._calcInvariantUp(
+        uint256 totalBalance = LinearMath._calcInvariant(
             LinearMath._toNominal(balances[_mainIndex], params),
-            balances[_wrappedIndex],
-            params
+            balances[_wrappedIndex]
         );
 
         // Note that we're dividing by the virtual supply, which may be zero (causing this call to revert). However, the

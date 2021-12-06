@@ -374,11 +374,9 @@ describe('LinearPool', function () {
       );
     });
 
-    sharedBeforeEach('initialize params', async () => {
-      const currentCache = await pool.getWrappedTokenRateCache();
+    before('initialize params', () => {
       params = {
         fee: POOL_SWAP_FEE_PERCENTAGE,
-        rate: currentCache.rate,
         target1: lowerTarget,
         target2: upperTarget,
       };
@@ -405,7 +403,7 @@ describe('LinearPool', function () {
 
       before('calculate expected rate', async () => {
         const nominalMainBalance = math.toNominal(mainBalance, params);
-        const invariant = math.calcInvariant(nominalMainBalance, wrappedBalance, params);
+        const invariant = math.calcInvariant(nominalMainBalance, wrappedBalance);
         expectedRate = invariant.div(bptBalance);
       });
 
@@ -548,10 +546,8 @@ describe('LinearPool', function () {
       await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget }, true);
       currentBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)));
 
-      const currentCache = await pool.getWrappedTokenRateCache();
       params = {
         fee: POOL_SWAP_FEE_PERCENTAGE,
-        rate: currentCache.rate,
         target1: lowerTarget,
         target2: upperTarget,
       };

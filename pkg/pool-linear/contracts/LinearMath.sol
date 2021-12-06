@@ -17,6 +17,10 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
+// These functions start with an underscore, as if they were part of a contract and not a library. At some point this
+// should be fixed.
+// solhint-disable private-vars-leading-underscore
+
 library LinearMath {
     using FixedPoint for uint256;
 
@@ -44,7 +48,6 @@ library LinearMath {
 
     struct Params {
         uint256 fee;
-        uint256 rate;
         uint256 lowerTarget;
         uint256 upperTarget;
     }
@@ -68,7 +71,7 @@ library LinearMath {
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 afterNominalMain = _toNominal(mainBalance.add(mainIn), params);
         uint256 deltaNominalMain = afterNominalMain.sub(previousNominalMain);
-        uint256 invariant = _calcInvariantUp(previousNominalMain, wrappedBalance, params);
+        uint256 invariant = _calcInvariant(previousNominalMain, wrappedBalance);
         return bptSupply.mulDown(deltaNominalMain).divDown(invariant);
     }
 
@@ -84,7 +87,7 @@ library LinearMath {
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 afterNominalMain = _toNominal(mainBalance.sub(mainOut), params);
         uint256 deltaNominalMain = previousNominalMain.sub(afterNominalMain);
-        uint256 invariant = _calcInvariantDown(previousNominalMain, wrappedBalance, params);
+        uint256 invariant = _calcInvariant(previousNominalMain, wrappedBalance);
         return bptSupply.mulUp(deltaNominalMain).divUp(invariant);
     }
 
@@ -97,8 +100,7 @@ library LinearMath {
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 afterNominalMain = _toNominal(mainBalance.add(mainIn), params);
-        uint256 deltaNominalMain = afterNominalMain.sub(previousNominalMain);
-        return deltaNominalMain.divDown(params.rate);
+        return afterNominalMain.sub(previousNominalMain);
     }
 
     function _calcWrappedInPerMainOut(
@@ -110,8 +112,7 @@ library LinearMath {
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 afterNominalMain = _toNominal(mainBalance.sub(mainOut), params);
-        uint256 deltaNominalMain = previousNominalMain.sub(afterNominalMain);
-        return deltaNominalMain.divUp(params.rate);
+        return previousNominalMain.sub(afterNominalMain);
     }
 
     function _calcMainInPerBptOut(
@@ -131,7 +132,7 @@ library LinearMath {
         }
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
-        uint256 invariant = _calcInvariantUp(previousNominalMain, wrappedBalance, params);
+        uint256 invariant = _calcInvariant(previousNominalMain, wrappedBalance);
         uint256 deltaNominalMain = invariant.mulUp(bptOut).divUp(bptSupply);
         uint256 afterNominalMain = previousNominalMain.add(deltaNominalMain);
         uint256 newMainBalance = _fromNominal(afterNominalMain, params);
@@ -148,7 +149,7 @@ library LinearMath {
         // Amount out, so we round down overall.
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
-        uint256 invariant = _calcInvariantDown(previousNominalMain, wrappedBalance, params);
+        uint256 invariant = _calcInvariant(previousNominalMain, wrappedBalance);
         uint256 deltaNominalMain = invariant.mulDown(bptIn).divDown(bptSupply);
         uint256 afterNominalMain = previousNominalMain.sub(deltaNominalMain);
         uint256 newMainBalance = _fromNominal(afterNominalMain, params);
@@ -163,8 +164,7 @@ library LinearMath {
         // Amount out, so we round down overall.
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
-        uint256 deltaNominalMain = wrappedIn.mulDown(params.rate);
-        uint256 afterNominalMain = previousNominalMain.sub(deltaNominalMain);
+        uint256 afterNominalMain = previousNominalMain.sub(wrappedIn);
         uint256 newMainBalance = _fromNominal(afterNominalMain, params);
         return mainBalance.sub(newMainBalance);
     }
@@ -177,8 +177,7 @@ library LinearMath {
         // Amount in, so we round up overall.
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
-        uint256 deltaNominalMain = wrappedOut.mulUp(params.rate);
-        uint256 afterNominalMain = previousNominalMain.add(deltaNominalMain);
+        uint256 afterNominalMain = previousNominalMain.add(wrappedOut);
         uint256 newMainBalance = _fromNominal(afterNominalMain, params);
         return newMainBalance.sub(mainBalance);
     }
@@ -196,14 +195,14 @@ library LinearMath {
             // BPT typically grows in the same ratio the invariant does. The first time liquidity is added however, the
             // BPT supply is initialized to equal the invariant (which in this case is just the wrapped balance as
             // there is no main balance).
-            return wrappedIn.mulDown(params.rate);
+            return wrappedIn;
         }
 
         uint256 nominalMain = _toNominal(mainBalance, params);
-        uint256 previousInvariant = _calcInvariantUp(nominalMain, wrappedBalance, params);
+        uint256 previousInvariant = _calcInvariant(nominalMain, wrappedBalance);
 
         uint256 newWrappedBalance = wrappedBalance.add(wrappedIn);
-        uint256 newInvariant = _calcInvariantDown(nominalMain, newWrappedBalance, params);
+        uint256 newInvariant = _calcInvariant(nominalMain, newWrappedBalance);
 
         uint256 newBptBalance = bptSupply.mulDown(newInvariant).divDown(previousInvariant);
 
@@ -220,10 +219,10 @@ library LinearMath {
         // Amount in, so we round up overall.
 
         uint256 nominalMain = _toNominal(mainBalance, params);
-        uint256 previousInvariant = _calcInvariantUp(nominalMain, wrappedBalance, params);
+        uint256 previousInvariant = _calcInvariant(nominalMain, wrappedBalance);
 
         uint256 newWrappedBalance = wrappedBalance.sub(wrappedOut);
-        uint256 newInvariant = _calcInvariantDown(nominalMain, newWrappedBalance, params);
+        uint256 newInvariant = _calcInvariant(nominalMain, newWrappedBalance);
 
         uint256 newBptBalance = bptSupply.mulDown(newInvariant).divDown(previousInvariant);
 
@@ -243,16 +242,14 @@ library LinearMath {
             // BPT typically grows in the same ratio the invariant does. The first time liquidity is added however, the
             // BPT supply is initialized to equal the invariant (which in this case is just the wrapped balance as
             // there is no main balance).
-            return bptOut.divUp(params.rate);
+            return bptOut;
         }
 
         uint256 nominalMain = _toNominal(mainBalance, params);
-        uint256 previousInvariant = _calcInvariantUp(nominalMain, wrappedBalance, params);
+        uint256 previousInvariant = _calcInvariant(nominalMain, wrappedBalance);
 
         uint256 newBptBalance = bptSupply.add(bptOut);
-        uint256 newWrappedBalance = newBptBalance.divUp(bptSupply).mulUp(previousInvariant).sub(nominalMain).divUp(
-            params.rate
-        );
+        uint256 newWrappedBalance = newBptBalance.divUp(bptSupply).mulUp(previousInvariant).sub(nominalMain);
 
         return newWrappedBalance.sub(wrappedBalance);
     }
@@ -267,30 +264,16 @@ library LinearMath {
         // Amount out, so we round down overall.
 
         uint256 nominalMain = _toNominal(mainBalance, params);
-        uint256 previousInvariant = _calcInvariantUp(nominalMain, wrappedBalance, params);
+        uint256 previousInvariant = _calcInvariant(nominalMain, wrappedBalance);
 
         uint256 newBptBalance = bptSupply.sub(bptIn);
-        uint256 newWrappedBalance = newBptBalance.divUp(bptSupply).mulUp(previousInvariant).sub(nominalMain).divUp(
-            params.rate
-        );
+        uint256 newWrappedBalance = newBptBalance.divUp(bptSupply).mulUp(previousInvariant).sub(nominalMain);
 
         return wrappedBalance.sub(newWrappedBalance);
     }
 
-    function _calcInvariantUp(
-        uint256 nominalMainBalance,
-        uint256 wrappedBalance,
-        Params memory params
-    ) internal pure returns (uint256) {
-        return nominalMainBalance.add(wrappedBalance.mulUp(params.rate));
-    }
-
-    function _calcInvariantDown(
-        uint256 nominalMainBalance,
-        uint256 wrappedBalance,
-        Params memory params
-    ) internal pure returns (uint256) {
-        return nominalMainBalance.add(wrappedBalance.mulDown(params.rate));
+    function _calcInvariant(uint256 nominalMainBalance, uint256 wrappedBalance) internal pure returns (uint256) {
+        return nominalMainBalance.add(wrappedBalance);
     }
 
     function _toNominal(uint256 amount, Params memory params) internal pure returns (uint256) {
