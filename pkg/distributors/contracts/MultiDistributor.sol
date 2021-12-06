@@ -590,7 +590,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
             if (unclaimedTokens > 0) {
                 userDistribution.unclaimedTokens = 0;
-                emit TokensClaimed(sender, distributionToken, unclaimedTokens);
+                emit DistributionClaimed(distributionId, sender, unclaimedTokens);
             }
 
             ops[i] = IVault.UserBalanceOp({

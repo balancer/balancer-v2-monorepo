@@ -54,7 +54,7 @@ interface IMultiDistributor {
     );
     event DistributionDurationSet(bytes32 indexed distribution, uint256 duration);
     event DistributionFunded(bytes32 indexed distribution, uint256 amount);
-    event TokensClaimed(address indexed user, address indexed rewardToken, uint256 amount);
+    event DistributionClaimed(bytes32 indexed distribution, address indexed user, uint256 amount);
 
     // Getters
 
