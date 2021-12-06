@@ -134,7 +134,7 @@ export default class LinearPool {
     return this.instance.getScalingFactor(token.address);
   }
 
-  async getWrappedTokenRate(): Promise<string> {
+  async getWrappedTokenRate(): Promise<BigNumber> {
     return this.instance.getWrappedTokenRate();
   }
 
