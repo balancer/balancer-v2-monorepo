@@ -4,7 +4,7 @@ import { Decimal } from 'decimal.js';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn, decimal, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, decimal, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_UINT112 } from '@balancer-labs/v2-helpers/src/constants';
@@ -20,7 +20,7 @@ import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/Linear
 
 import * as math from './math';
 
-describe('LinearPool', function () {
+describe.only('LinearPool', function () {
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
   let trader: SignerWithAddress,
     lp: SignerWithAddress,
@@ -294,21 +294,22 @@ describe('LinearPool', function () {
     });
   });
 
-  describe('get rate', () => {
-    let lowerTarget: BigNumber, upperTarget: BigNumber;
+  describe.only('get rate', () => {
+    const lowerTarget = fp(40);
+    const upperTarget = fp(60);
+    const balances: BigNumber[] = new Array<BigNumber>(3);
+
     let params: math.Params;
     let poolId: string;
-    let balances: BigNumber[];
 
     sharedBeforeEach('deploy pool and initialize pool', async () => {
-      lowerTarget = fp(40);
-      upperTarget = fp(60);
       await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget, owner }, true);
 
       poolId = await pool.getPoolId();
-      balances = Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)));
-
-      await (await pool.vault).updateBalances(poolId, balances);
+      await pool.vault.updateBalances(
+        poolId,
+        Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)))
+      );
     });
 
     sharedBeforeEach('initialize params', async () => {
@@ -322,25 +323,29 @@ describe('LinearPool', function () {
     });
 
     context('without balances', () => {
-      it('rate is zero', async () => {
+      it('reverts', async () => {
         await expect(pool.getRate()).to.be.revertedWith('ZERO_DIVISION');
       });
     });
 
     context('with balances', () => {
-      let mainBalance: Decimal, wrappedBalance: Decimal, bptBalance: Decimal;
+      const mainBalance = fromFp(lowerTarget.add(upperTarget).div(2));
+      const wrappedBalance = fromFp(upperTarget.mul(3));
+      const bptBalance = fromFp(mainBalance.add(wrappedBalance));
+
       let expectedRate: Decimal;
 
-      sharedBeforeEach('update balances', async () => {
-        mainBalance = decimal(50);
-        wrappedBalance = decimal(50);
-        bptBalance = decimal(100);
+      beforeEach('set initial balances', async () => {
+        // balances[pool.mainIndex] = fp(mainBalance);
+        // balances[pool.wrappedIndex] = fp(wrappedBalance);
+        // balances[pool.bptIndex] = MAX_UINT112.sub(fp(bptBalance));
+      });
 
+      sharedBeforeEach('update balances', async () => {
         balances[pool.mainIndex] = fp(mainBalance);
         balances[pool.wrappedIndex] = fp(wrappedBalance);
         balances[pool.bptIndex] = MAX_UINT112.sub(fp(bptBalance));
-
-        await (await pool.vault).updateBalances(poolId, balances);
+        await pool.vault.updateBalances(poolId, balances);
       });
 
       sharedBeforeEach('calculate expected rate', async () => {
@@ -354,20 +359,20 @@ describe('LinearPool', function () {
         expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
       });
 
-      context('once wrapped swapped', () => {
+      context('with main above upper', () => {
         sharedBeforeEach('swap main per wrapped', async () => {
-          const amount = fp(20);
+          const amountMainIn = upperTarget;
 
           const result = await pool.swapGivenIn({
             in: pool.mainIndex,
             out: pool.wrappedIndex,
-            amount: amount,
+            amount: amountMainIn,
             balances,
           });
 
-          balances[pool.mainIndex] = balances[pool.mainIndex].add(amount);
+          balances[pool.mainIndex] = balances[pool.mainIndex].add(amountMainIn);
           balances[pool.wrappedIndex] = balances[pool.wrappedIndex].sub(result);
-          await (await pool.vault).updateBalances(poolId, balances);
+          await pool.vault.updateBalances(poolId, balances);
         });
 
         it('rate remains the same', async () => {
@@ -389,7 +394,7 @@ describe('LinearPool', function () {
 
           balances[pool.mainIndex] = balances[pool.mainIndex].add(amount);
           balances[pool.bptIndex] = balances[pool.bptIndex].sub(result);
-          await (await pool.vault).updateBalances(poolId, balances);
+          await pool.vault.updateBalances(poolId, balances);
         });
 
         it('rate remains the same', async () => {
