@@ -524,9 +524,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
         // We also need to update all distributions the recipient is subscribed to,
         // adding the staked tokens to their totals.
+        bytes32 distributionId;
+        Distribution storage distribution;
         for (uint256 i; i < distributionsLength; i++) {
-            bytes32 distributionId = distributions.unchecked_at(i);
-            Distribution storage distribution = _getDistribution(distributionId);
+            distributionId = distributions.unchecked_at(i);
+            distribution = _getDistribution(distributionId);
             distribution.totalSupply = distribution.totalSupply.add(amount);
             emit Staked(distributionId, recipient, amount);
         }
@@ -570,9 +572,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
         // We also need to update all distributions the sender was subscribed to,
         // deducting the unstaked tokens from their totals.
+        bytes32 distributionId;
+        Distribution storage distribution;
         for (uint256 i; i < distributionsLength; i++) {
-            bytes32 distributionId = distributions.unchecked_at(i);
-            Distribution storage distribution = _getDistribution(distributionId);
+            distributionId = distributions.unchecked_at(i);
+            distribution = _getDistribution(distributionId);
             // Safe to perform unchecked maths as `totalSupply` would be increased by `amount` when staking.
             distribution.totalSupply -= amount;
             emit Unstaked(distributionId, sender, amount);
