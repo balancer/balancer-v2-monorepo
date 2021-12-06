@@ -2198,14 +2198,14 @@ describe('MultiDistributor', () => {
         expect(userTokensPerStake).to.be.almostEqual(previousRewardPerToken);
       });
 
-      it('emits a TokensClaimed event', async () => {
+      it('emits a DistributionClaimed event', async () => {
         const expectedAmount = await distributor.getClaimableTokens(distribution, from);
 
         const tx = await claim(distribution);
 
-        expectEvent.inReceipt(await tx.wait(), 'TokensClaimed', {
+        expectEvent.inReceipt(await tx.wait(), 'DistributionClaimed', {
+          distribution,
           user: from.address,
-          rewardToken: distributionToken.address,
           amount: expectedAmount,
         });
       });
@@ -2241,10 +2241,10 @@ describe('MultiDistributor', () => {
         expect(userTokensPerStake).to.be.equal(updatesUserPaidRate ? rewardPerToken : 0);
       });
 
-      it('does not emit a TokensClaimed event', async () => {
+      it('does not emit a DistributionClaimed event', async () => {
         const tx = await claim(distribution);
 
-        expectEvent.notEmitted(await tx.wait(), 'TokensClaimed');
+        expectEvent.notEmitted(await tx.wait(), 'DistributionClaimed');
       });
     };
 
@@ -2446,14 +2446,14 @@ describe('MultiDistributor', () => {
         });
       });
 
-      it('emits a TokensClaimed event', async () => {
+      it('emits a DistributionClaimed event', async () => {
         const expectedClaimAmount = await distributor.getClaimableTokens(distribution, user1);
 
         const tx = await distributor.exit(stakingToken, distribution, { from: user1 });
 
-        expectEvent.inReceipt(await tx.wait(), 'TokensClaimed', {
+        expectEvent.inReceipt(await tx.wait(), 'DistributionClaimed', {
+          distribution,
           user: user1.address,
-          rewardToken: distributionToken.address,
           amount: expectedClaimAmount,
         });
       });
@@ -2512,9 +2512,9 @@ describe('MultiDistributor', () => {
         expectEvent.notEmitted(await tx.wait(), 'Unstaked');
       });
 
-      it('does not emit a TokensClaimed event', async () => {
+      it('does not emit a DistributionClaimed event', async () => {
         const tx = await distributor.exit(stakingToken, distribution, { from: user1 });
-        expectEvent.notEmitted(await tx.wait(), 'TokensClaimed');
+        expectEvent.notEmitted(await tx.wait(), 'DistributionClaimed');
       });
     };
 
