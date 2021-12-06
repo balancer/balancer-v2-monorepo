@@ -276,29 +276,32 @@ library LinearMath {
         return nominalMainBalance.add(wrappedBalance);
     }
 
-    function _toNominal(uint256 amount, Params memory params) internal pure returns (uint256) {
-        if (amount < (FixedPoint.ONE - params.fee).mulUp(params.lowerTarget)) {
-            return amount.divUp(FixedPoint.ONE - params.fee);
-        } else if (amount < (params.upperTarget - (params.fee.mulUp(params.lowerTarget)))) {
-            return amount.add(params.fee.mulUp(params.lowerTarget));
+
+    function _toNominal(uint256 real, Params memory params) internal pure returns (uint256) {
+        // Fees are always rounded down: either direction would work but we need to be consistent, and rounding down 
+        // uses less gas.
+        
+        if (real < params.lowerTarget) {
+            uint256 fees = (params.lowerTarget - real).mulDown(params.fee);
+            return real.sub(fees);
+        } else if (real <= params.upperTarget) {
+            return real;
         } else {
-            return
-                amount.add((params.lowerTarget + params.upperTarget).mulUp(params.fee)).divUp(
-                    FixedPoint.ONE + params.fee
-                );
+            uint256 fees = (real - params.upperTarget).mulDown(params.fee);
+            return real.sub(fees);
         }
     }
 
+
     function _fromNominal(uint256 nominal, Params memory params) internal pure returns (uint256) {
+        // Since real = nominal + fees, rounding down fees is equivalent to rounding down real.
+        
         if (nominal < params.lowerTarget) {
-            return nominal.mulUp(FixedPoint.ONE - params.fee);
-        } else if (nominal < params.upperTarget) {
-            return nominal.sub(params.fee.mulUp(params.lowerTarget));
+            return (nominal.add(params.fee.mulDown(params.lowerTarget))).divDown(FixedPoint.ONE.add(params.fee));
+        } else if (nominal <= params.upperTarget) {
+            return nominal;
         } else {
-            return
-                nominal.mulUp(FixedPoint.ONE + params.fee).sub(
-                    params.fee.mulUp(params.lowerTarget + params.upperTarget)
-                );
+            return (nominal.sub(params.fee.mulDown(params.upperTarget)).divDown(FixedPoint.ONE.sub(params.fee)));
         }
     }
 
