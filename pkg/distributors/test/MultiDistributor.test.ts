@@ -2316,7 +2316,7 @@ describe('MultiDistributor', () => {
                 });
               });
 
-              it('emits a DistributionClaimed event for each distributions', async () => {
+              it('emits a DistributionClaimed event for each distribution', async () => {
                 const expectedClaimAmount = await distributor.getClaimableTokens(distribution, from);
                 const expectedAnotherClaimAmount = await distributor.getClaimableTokens(anotherDistribution, from);
 
