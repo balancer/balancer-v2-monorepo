@@ -249,12 +249,12 @@ export function calcWrappedOutPerBptIn(
   return toFp(wrappedOut);
 }
 
-function calcInvariant(mainBalance: Decimal, wrappedBalance: Decimal, params: Params): Decimal {
+export function calcInvariant(mainNomimalBalance: Decimal, wrappedBalance: Decimal, params: Params): Decimal {
   const rate = fromFp(params.rate);
-  return mainBalance.add(wrappedBalance.mul(rate));
+  return mainNomimalBalance.add(wrappedBalance.mul(rate));
 }
 
-function toNominal(amount: Decimal, params: Params): Decimal {
+export function toNominal(amount: Decimal, params: Params): Decimal {
   const fee = fromFp(params.fee);
   const target1 = fromFp(params.target1);
   const target2 = fromFp(params.target2);
@@ -268,7 +268,7 @@ function toNominal(amount: Decimal, params: Params): Decimal {
   }
 }
 
-function fromNominal(nominal: Decimal, params: Params): Decimal {
+export function fromNominal(nominal: Decimal, params: Params): Decimal {
   const fee = fromFp(params.fee);
   const target1 = fromFp(params.target1);
   const target2 = fromFp(params.target2);
