@@ -11,7 +11,7 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { getSigner } from '@balancer-labs/v2-deployments/dist/src/signers';
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import Vault from '../vault/Vault';
 
 export class MultiDistributor {
   instance: Contract;

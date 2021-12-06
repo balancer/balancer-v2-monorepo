@@ -54,7 +54,7 @@ interface IMultiDistributor {
     );
     event DistributionDurationSet(bytes32 indexed distribution, uint256 duration);
     event DistributionFunded(bytes32 indexed distribution, uint256 amount);
-    event TokensClaimed(address indexed user, address indexed rewardToken, uint256 amount);
+    event DistributionClaimed(bytes32 indexed distribution, address indexed user, uint256 amount);
 
     // Getters
 
@@ -70,13 +70,9 @@ interface IMultiDistributor {
 
     function totalSupply(bytes32 distributionId) external view returns (uint256);
 
-    function lastTimePaymentApplicable(bytes32 distributionId) external view returns (uint256);
-
     function isSubscribed(bytes32 distributionId, address user) external view returns (bool);
 
     function getUserDistribution(bytes32 distributionId, address user) external view returns (UserDistribution memory);
-
-    function unaccountedUnclaimedTokens(bytes32 distributionId, address user) external view returns (uint256);
 
     function getClaimableTokens(bytes32 distributionId, address user) external view returns (uint256);
 
