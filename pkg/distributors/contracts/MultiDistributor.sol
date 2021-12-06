@@ -297,7 +297,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Subscribes a user to a list of distributions
      * @param distributionIds List of distributions to subscribe
      */
-    function subscribeDistributions(bytes32[] memory distributionIds) external override {
+    function subscribeDistributions(bytes32[] calldata distributionIds) external override {
         for (uint256 i; i < distributionIds.length; i++) {
             bytes32 distributionId = distributionIds[i];
             Distribution storage distribution = _getDistribution(distributionId);
@@ -330,7 +330,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Unsubscribes a user to a list of distributions
      * @param distributionIds List of distributions to unsubscribe
      */
-    function unsubscribeDistributions(bytes32[] memory distributionIds) external override {
+    function unsubscribeDistributions(bytes32[] calldata distributionIds) external override {
         for (uint256 i; i < distributionIds.length; i++) {
             bytes32 distributionId = distributionIds[i];
             Distribution storage distribution = _getDistribution(distributionId);
@@ -433,7 +433,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param recipient The address which receives the claimed tokens
      */
     function claim(
-        bytes32[] memory distributionIds,
+        bytes32[] calldata distributionIds,
         bool toInternalBalance,
         address sender,
         address recipient
@@ -455,10 +455,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param callbackData The data that is used to call the callback contract's 'callback' method
      */
     function claimWithCallback(
-        bytes32[] memory distributionIds,
+        bytes32[] calldata distributionIds,
         address sender,
         IDistributorCallback callbackContract,
-        bytes memory callbackData
+        bytes calldata callbackData
     ) external override nonReentrant {
         require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
         _claim(distributionIds, IVault.UserBalanceOpKind.TRANSFER_INTERNAL, sender, address(callbackContract));
@@ -470,7 +470,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param stakingTokens The staking tokens to withdraw tokens from
      * @param distributionIds The distributions to claim for
      */
-    function exit(IERC20[] memory stakingTokens, bytes32[] memory distributionIds) external override nonReentrant {
+    function exit(IERC20[] memory stakingTokens, bytes32[] calldata distributionIds) external override nonReentrant {
         for (uint256 i; i < stakingTokens.length; i++) {
             IERC20 stakingToken = stakingTokens[i];
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
@@ -488,10 +488,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param callbackData The data that is used to call the callback contract's 'callback' method
      */
     function exitWithCallback(
-        IERC20[] memory stakingTokens,
-        bytes32[] memory distributionIds,
+        IERC20[] calldata stakingTokens,
+        bytes32[] calldata distributionIds,
         IDistributorCallback callbackContract,
-        bytes memory callbackData
+        bytes calldata callbackData
     ) external override nonReentrant {
         for (uint256 i; i < stakingTokens.length; i++) {
             IERC20 stakingToken = stakingTokens[i];
@@ -582,7 +582,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     function _claim(
-        bytes32[] memory distributionIds,
+        bytes32[] calldata distributionIds,
         IVault.UserBalanceOpKind kind,
         address sender,
         address recipient
