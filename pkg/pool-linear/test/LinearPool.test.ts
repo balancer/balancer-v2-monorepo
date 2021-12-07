@@ -49,13 +49,11 @@ describe('LinearPool', function () {
 
   describe('creation', () => {
     context('when the creation succeeds', () => {
-      let lowerTarget: BigNumber;
       let upperTarget: BigNumber;
 
       sharedBeforeEach('deploy pool', async () => {
-        lowerTarget = fp(1000);
         upperTarget = fp(2000);
-        await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget }, false);
+        await deployPool({ mainToken, wrappedToken, upperTarget }, false);
       });
 
       it('sets the vault', async () => {
@@ -100,7 +98,7 @@ describe('LinearPool', function () {
 
       it('sets the targets', async () => {
         const targets = await pool.getTargets();
-        expect(targets.lowerTarget).to.be.equal(lowerTarget);
+        expect(targets.lowerTarget).to.be.equal(0);
         expect(targets.upperTarget).to.be.equal(upperTarget);
       });
     });
@@ -110,16 +108,10 @@ describe('LinearPool', function () {
         await expect(deployPool({ mainToken, wrappedToken: mainToken }, false)).to.be.revertedWith('UNSORTED_ARRAY');
       });
 
-      it('reverts if lowerTarget is greater than upperTarget', async () => {
-        await expect(
-          deployPool({ mainToken, wrappedToken, lowerTarget: fp(3000), upperTarget: fp(2000) }, false)
-        ).to.be.revertedWith('LOWER_GREATER_THAN_UPPER_TARGET');
-      });
-
       it('reverts if upperTarget is greater than the maximum', async () => {
-        await expect(
-          deployPool({ mainToken, wrappedToken, lowerTarget: fp(3000), upperTarget: MAX_UINT96.add(1) }, false)
-        ).to.be.revertedWith('UPPER_TARGET_TOO_HIGH');
+        await expect(deployPool({ mainToken, wrappedToken, upperTarget: MAX_UINT96.add(1) }, false)).to.be.revertedWith(
+          'UPPER_TARGET_TOO_HIGH'
+        );
       });
     });
   });
@@ -162,11 +154,10 @@ describe('LinearPool', function () {
     const originalLowerTarget = fp(1000);
     const originalUpperTarget = fp(2000);
 
-    sharedBeforeEach('deploy pool', async () => {
-      await deployPool(
-        { mainToken, wrappedToken, lowerTarget: originalLowerTarget, upperTarget: originalUpperTarget },
-        true
-      );
+    sharedBeforeEach('deploy pool and set initial targets', async () => {
+      await deployPool({ mainToken, wrappedToken, upperTarget: originalUpperTarget }, true);
+      await setBalances(pool, { mainBalance: originalLowerTarget.add(originalUpperTarget).div(2) });
+      await pool.setTargets(originalLowerTarget, originalUpperTarget);
     });
 
     const setBalances = async (
@@ -308,8 +299,10 @@ describe('LinearPool', function () {
 
     const swapFeePercentage = fp(0.1);
 
-    sharedBeforeEach('deploy pool', async () => {
-      await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget }, true);
+    sharedBeforeEach('deploy pool and set initial targets', async () => {
+      await deployPool({ mainToken, wrappedToken, upperTarget: upperTarget }, true);
+      await setBalances(pool, { mainBalance: lowerTarget.add(upperTarget).div(2) });
+      await pool.setTargets(lowerTarget, upperTarget);
     });
 
     const setBalances = async (
@@ -365,7 +358,7 @@ describe('LinearPool', function () {
   });
 
   describe('get rate', () => {
-    let lowerTarget: BigNumber;
+    const lowerTarget = fp(30);
     const upperTarget = fp(60);
     const balances: BigNumber[] = new Array<BigNumber>(3);
 
@@ -373,8 +366,7 @@ describe('LinearPool', function () {
     let poolId: string;
 
     sharedBeforeEach('deploy pool and initialize pool', async () => {
-      lowerTarget = fp(0);
-      await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget, owner }, true);
+      await deployPool({ mainToken, wrappedToken, upperTarget, owner }, true);
 
       poolId = await pool.getPoolId();
       await pool.vault.updateBalances(
@@ -390,7 +382,6 @@ describe('LinearPool', function () {
     });
 
     before('initialize params', () => {
-      lowerTarget = fp(30);
       params = {
         fee: POOL_SWAP_FEE_PERCENTAGE,
         lowerTarget,
@@ -418,8 +409,12 @@ describe('LinearPool', function () {
         expectedRate = invariant.div(bptBalance);
       });
 
-      it('equals expected rate', async () => {
+      sharedBeforeEach('update balances and rate', async () => {
         await pool.vault.updateBalances(poolId, balances);
+        await pool.setTargets(lowerTarget, upperTarget);
+      });
+
+      it('equals expected rate', async () => {
         const currentRate = await pool.getRate();
         expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
       });
@@ -442,6 +437,7 @@ describe('LinearPool', function () {
 
           it('rate remains the same', async () => {
             await pool.vault.updateBalances(poolId, balances);
+
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
           });
@@ -464,6 +460,7 @@ describe('LinearPool', function () {
 
           it('rate remains the same', async () => {
             await pool.vault.updateBalances(poolId, balances);
+
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
           });
@@ -488,6 +485,7 @@ describe('LinearPool', function () {
 
           it('rate remains the same', async () => {
             await pool.vault.updateBalances(poolId, balances);
+
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
           });
@@ -510,6 +508,7 @@ describe('LinearPool', function () {
 
           it('rate remains the same', async () => {
             await pool.vault.updateBalances(poolId, balances);
+
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
           });
@@ -604,9 +603,9 @@ describe('LinearPool', function () {
     let params: math.Params;
 
     sharedBeforeEach('deploy and initialize pool', async () => {
-      lowerTarget = fp(1000);
+      lowerTarget = fp(0);
       upperTarget = fp(2000);
-      await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget }, true);
+      await deployPool({ mainToken, wrappedToken, upperTarget }, true);
       currentBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)));
 
       params = {
@@ -616,143 +615,141 @@ describe('LinearPool', function () {
       };
     });
 
-    context('below target 1', () => {
-      context('given DAI in', () => {
-        let amount: BigNumber;
-        let bptSupply: BigNumber;
+    context('given DAI in', () => {
+      let amount: BigNumber;
+      let bptSupply: BigNumber;
 
-        sharedBeforeEach('initialize values ', async () => {
-          amount = fp(100);
-          bptSupply = MAX_UINT112.sub(currentBalances[pool.bptIndex]);
-        });
-
-        it('calculate bpt out', async () => {
-          const result = await pool.swapGivenIn({
-            in: pool.mainIndex,
-            out: pool.bptIndex,
-            amount: amount,
-            balances: currentBalances,
-          });
-
-          const expected = math.calcBptOutPerMainIn(
-            amount,
-            currentBalances[pool.mainIndex],
-            currentBalances[pool.wrappedIndex],
-            bptSupply,
-            params
-          );
-
-          expect(result).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
-
-          currentBalances[pool.mainIndex] = currentBalances[pool.mainIndex].add(amount);
-          currentBalances[pool.bptIndex] = currentBalances[pool.bptIndex].sub(result);
-        });
-
-        context('when paused', () => {
-          sharedBeforeEach('pause pool', async () => {
-            await pool.pause();
-          });
-
-          it('reverts', async () => {
-            await expect(
-              pool.swapGivenIn({
-                in: pool.mainIndex,
-                out: pool.bptIndex,
-                amount: amount,
-                balances: currentBalances,
-              })
-            ).to.be.revertedWith('PAUSED');
-          });
-        });
+      sharedBeforeEach('initialize values ', async () => {
+        amount = fp(100);
+        bptSupply = MAX_UINT112.sub(currentBalances[pool.bptIndex]);
       });
 
-      context('given DAI out', () => {
-        let amount: BigNumber;
-
-        sharedBeforeEach('initialize values ', async () => {
-          amount = fp(50);
+      it('calculate bpt out', async () => {
+        const result = await pool.swapGivenIn({
+          in: pool.mainIndex,
+          out: pool.bptIndex,
+          amount: amount,
+          balances: currentBalances,
         });
 
-        it('calculate wrapped in', async () => {
-          const result = await pool.swapGivenOut({
-            in: pool.wrappedIndex,
-            out: pool.mainIndex,
-            amount: amount,
-            balances: currentBalances,
-          });
+        const expected = math.calcBptOutPerMainIn(
+          amount,
+          currentBalances[pool.mainIndex],
+          currentBalances[pool.wrappedIndex],
+          bptSupply,
+          params
+        );
 
-          const expected = math.calcWrappedInPerMainOut(amount, currentBalances[pool.mainIndex], params);
+        expect(result).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
 
-          expect(result).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
-
-          currentBalances[pool.wrappedIndex] = currentBalances[pool.wrappedIndex].add(amount);
-          currentBalances[pool.mainIndex] = currentBalances[pool.mainIndex].sub(result);
-        });
-
-        context('when paused', () => {
-          sharedBeforeEach('pause pool', async () => {
-            await pool.pause();
-          });
-
-          it('reverts', async () => {
-            await expect(
-              pool.swapGivenOut({
-                in: pool.wrappedIndex,
-                out: pool.mainIndex,
-                amount: amount,
-                balances: currentBalances,
-              })
-            ).to.be.revertedWith('PAUSED');
-          });
-        });
+        currentBalances[pool.mainIndex] = currentBalances[pool.mainIndex].add(amount);
+        currentBalances[pool.bptIndex] = currentBalances[pool.bptIndex].sub(result);
       });
 
-      context('given bpt in', () => {
-        let amount: BigNumber;
-        let bptSupply: BigNumber;
-
-        sharedBeforeEach('initialize values ', async () => {
-          amount = fp(10);
-          bptSupply = MAX_UINT112.sub(currentBalances[pool.bptIndex]);
+      context('when paused', () => {
+        sharedBeforeEach('pause pool', async () => {
+          await pool.pause();
         });
 
-        it('calculate wrapped out', async () => {
-          const result = await pool.swapGivenIn({
-            in: pool.bptIndex,
-            out: pool.wrappedIndex,
-            amount: amount,
-            balances: currentBalances,
-          });
+        it('reverts', async () => {
+          await expect(
+            pool.swapGivenIn({
+              in: pool.mainIndex,
+              out: pool.bptIndex,
+              amount: amount,
+              balances: currentBalances,
+            })
+          ).to.be.revertedWith('PAUSED');
+        });
+      });
+    });
 
-          const expected = math.calcWrappedOutPerBptIn(
-            amount,
-            currentBalances[pool.mainIndex],
-            currentBalances[pool.wrappedIndex],
-            bptSupply,
-            params
-          );
+    context('given DAI out', () => {
+      let amount: BigNumber;
 
-          expect(result).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
+      sharedBeforeEach('initialize values ', async () => {
+        amount = fp(50);
+      });
 
-          currentBalances[pool.wrappedIndex] = currentBalances[pool.wrappedIndex].add(amount);
-          currentBalances[pool.mainIndex] = currentBalances[pool.mainIndex].sub(result);
+      it('calculate wrapped in', async () => {
+        const result = await pool.swapGivenOut({
+          in: pool.wrappedIndex,
+          out: pool.mainIndex,
+          amount: amount,
+          balances: currentBalances,
         });
 
-        context('when paused', () => {
-          sharedBeforeEach('pause pool', async () => {
-            await pool.pause();
-          });
+        const expected = math.calcWrappedInPerMainOut(amount, currentBalances[pool.mainIndex], params);
 
-          it('reverts', async () => {
-            await expect(
-              pool.swapGivenIn({
-                in: pool.bptIndex,
-                out: pool.wrappedIndex,
-                amount: amount,
-                balances: currentBalances,
-              })
-            ).to.be.revertedWith('PAUSED');
-          });
+        expect(result).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
+
+        currentBalances[pool.wrappedIndex] = currentBalances[pool.wrappedIndex].add(amount);
+        currentBalances[pool.mainIndex] = currentBalances[pool.mainIndex].sub(result);
+      });
+
+      context('when paused', () => {
+        sharedBeforeEach('pause pool', async () => {
+          await pool.pause();
+        });
+
+        it('reverts', async () => {
+          await expect(
+            pool.swapGivenOut({
+              in: pool.wrappedIndex,
+              out: pool.mainIndex,
+              amount: amount,
+              balances: currentBalances,
+            })
+          ).to.be.revertedWith('PAUSED');
+        });
+      });
+    });
+
+    context('given bpt in', () => {
+      let amount: BigNumber;
+      let bptSupply: BigNumber;
+
+      sharedBeforeEach('initialize values ', async () => {
+        amount = fp(10);
+        bptSupply = MAX_UINT112.sub(currentBalances[pool.bptIndex]);
+      });
+
+      it('calculate wrapped out', async () => {
+        const result = await pool.swapGivenIn({
+          in: pool.bptIndex,
+          out: pool.wrappedIndex,
+          amount: amount,
+          balances: currentBalances,
+        });
+
+        const expected = math.calcWrappedOutPerBptIn(
+          amount,
+          currentBalances[pool.mainIndex],
+          currentBalances[pool.wrappedIndex],
+          bptSupply,
+          params
+        );
+
+        expect(result).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
+
+        currentBalances[pool.wrappedIndex] = currentBalances[pool.wrappedIndex].add(amount);
+        currentBalances[pool.mainIndex] = currentBalances[pool.mainIndex].sub(result);
+      });
+
+      context('when paused', () => {
+        sharedBeforeEach('pause pool', async () => {
+          await pool.pause();
+        });
+
+        it('reverts', async () => {
+          await expect(
+            pool.swapGivenIn({
+              in: pool.bptIndex,
+              out: pool.wrappedIndex,
+              amount: amount,
+              balances: currentBalances,
+            })
+          ).to.be.revertedWith('PAUSED');
         });
       });
     });
@@ -760,9 +757,8 @@ describe('LinearPool', function () {
 
   describe('virtual supply', () => {
     sharedBeforeEach('deploy and initialize pool', async () => {
-      const lowerTarget = fp(1000);
       const upperTarget = fp(2000);
-      await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget }, false);
+      await deployPool({ mainToken, wrappedToken, upperTarget }, false);
       await pool.initialize();
     });
 
@@ -795,12 +791,11 @@ describe('LinearPool', function () {
   });
 
   describe('emergency proportional exit', () => {
-    let lowerTarget: BigNumber, upperTarget: BigNumber;
+    let upperTarget: BigNumber;
 
     sharedBeforeEach('deploy and initialize pool', async () => {
-      lowerTarget = fp(1000);
       upperTarget = fp(2000);
-      await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget }, false);
+      await deployPool({ mainToken, wrappedToken, upperTarget }, false);
       await pool.initialize();
     });
 

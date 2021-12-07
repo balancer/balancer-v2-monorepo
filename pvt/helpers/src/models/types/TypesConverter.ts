@@ -136,9 +136,8 @@ export default {
   },
 
   toLinearPoolDeployment(params: RawLinearPoolDeployment): LinearPoolDeployment {
-    let { lowerTarget, upperTarget, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
+    let { upperTarget, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
 
-    if (!lowerTarget) lowerTarget = bn(0);
     if (!upperTarget) upperTarget = bn(0);
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
@@ -147,7 +146,6 @@ export default {
     return {
       mainToken: params.mainToken,
       wrappedToken: params.wrappedToken,
-      lowerTarget,
       upperTarget,
       swapFeePercentage,
       pauseWindowDuration,

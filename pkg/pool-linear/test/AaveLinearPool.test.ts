@@ -56,7 +56,6 @@ describe('AaveLinearPool', function () {
         mainToken.address,
         wrappedToken.address,
         bn(0),
-        bn(0),
         POOL_SWAP_FEE_PERCENTAGE,
         owner.address
       );
