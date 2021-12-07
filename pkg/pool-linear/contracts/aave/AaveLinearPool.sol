@@ -50,6 +50,8 @@ contract AaveLinearPool is LinearPool {
         )
     {
         _lendingPool = IStaticAToken(address(wrappedToken)).LENDING_POOL();
+        _require(address(mainToken) == IStaticAToken(address(wrappedToken)).ASSET(), Errors.TOKENS_MISMATCH);
+
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {

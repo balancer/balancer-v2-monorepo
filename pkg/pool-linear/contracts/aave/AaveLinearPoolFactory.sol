@@ -41,8 +41,6 @@ contract AaveLinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWind
     ) external returns (LinearPool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        require(address(mainToken) == IStaticAToken(address(wrappedToken)).ASSET(), "TOKENS_MISMATCH");
-
         LinearPool pool = AaveLinearPool(
             _create(
                 abi.encode(
