@@ -98,7 +98,7 @@ describe('LinearPool', function () {
 
       it('sets the targets', async () => {
         const targets = await pool.getTargets();
-        expect(targets.lowerTarget).to.be.equal(lowerTarget);
+        expect(targets.lowerTarget).to.be.equal(0);
         expect(targets.upperTarget).to.be.equal(upperTarget);
       });
     });
