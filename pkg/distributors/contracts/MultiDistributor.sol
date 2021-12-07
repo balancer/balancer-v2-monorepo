@@ -82,9 +82,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     mapping(bytes32 => Distribution) internal _distributions;
     mapping(IERC20 => mapping(address => UserStaking)) internal _userStakings;
 
-    constructor(IVault vault) Authentication(bytes32(uint256(address(this)))) MultiDistributorAuthorization(vault) {
+    constructor(IVault vault) MultiDistributorAuthorization(vault) {
         // solhint-disable-previous-line no-empty-blocks
-        // MultiDistributor is a singleton, so it simply uses its own address to disambiguate action identifiers
     }
 
     /**
@@ -374,8 +373,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         uint256 amount,
         address sender,
         address recipient
-    ) external override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+    ) external override authenticateFor(sender) nonReentrant {
         _stake(stakingToken, amount, sender, recipient, false);
     }
 
@@ -391,8 +389,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         uint256 amount,
         address sender,
         address recipient
-    ) external override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+    ) external override authenticateFor(sender) nonReentrant {
         _stake(stakingToken, amount, sender, recipient, true);
     }
 
@@ -431,8 +428,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         uint256 amount,
         address sender,
         address recipient
-    ) external override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+    ) external override authenticateFor(sender) nonReentrant {
         _unstake(stakingToken, amount, sender, recipient);
     }
 
@@ -448,8 +444,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         bool toInternalBalance,
         address sender,
         address recipient
-    ) external override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+    ) external override authenticateFor(sender) nonReentrant {
         _claim(
             distributionIds,
             toInternalBalance ? IVault.UserBalanceOpKind.TRANSFER_INTERNAL : IVault.UserBalanceOpKind.WITHDRAW_INTERNAL,
@@ -470,8 +465,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         address sender,
         IDistributorCallback callbackContract,
         bytes calldata callbackData
-    ) external override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+    ) external override authenticateFor(sender) nonReentrant {
         _claim(distributionIds, IVault.UserBalanceOpKind.TRANSFER_INTERNAL, sender, address(callbackContract));
         callbackContract.distributorCallback(callbackData);
     }
