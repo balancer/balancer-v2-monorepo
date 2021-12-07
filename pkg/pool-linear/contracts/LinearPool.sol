@@ -585,7 +585,7 @@ abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         _require(lowerTarget <= upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
         _require(upperTarget <= _MAX_UPPER_TARGET, Errors.UPPER_TARGET_TOO_HIGH);
 
-        // Pack targets as two uint96 values into a single storage slots. This results in targets being capped to 96
+        // Pack targets as two uint96 values into a single storage slot. This results in targets being capped to 96
         // bits, but that should be more than enough.
         _setMiscData(
             WordCodec.encodeUint(lowerTarget, _LOWER_TARGET_OFFSET) |
