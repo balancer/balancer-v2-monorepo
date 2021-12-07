@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "./IMultiDistributor.sol";
 
 interface IDistributionScheduler {
-    enum DistributionStatus { UNINITIALIZED, PENDING, STARTED }
+    enum DistributionStatus { UNINITIALIZED, PENDING, STARTED, CANCELLED }
 
     struct ScheduledDistribution {
         bytes32 distributionId;
@@ -29,6 +29,7 @@ interface IDistributionScheduler {
 
     event DistributionScheduled(bytes32 indexed distributionId, bytes32 scheduleId, uint256 startTime, uint256 amount);
     event DistributionStarted(bytes32 indexed distributionId, bytes32 scheduleId, uint256 startTime, uint256 amount);
+    event DistributionCancelled(bytes32 indexed distributionId, bytes32 scheduleId, uint256 startTime, uint256 amount);
 
     function getScheduledDistributionInfo(bytes32 scheduleId) external view returns (ScheduledDistribution memory);
 
@@ -41,4 +42,6 @@ interface IDistributionScheduler {
     ) external returns (bytes32 scheduleId);
 
     function startDistributions(bytes32[] calldata scheduleIds) external;
+
+    function cancelDistribution(bytes32 scheduleId) external;
 }

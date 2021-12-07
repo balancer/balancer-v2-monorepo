@@ -111,4 +111,36 @@ contract DistributionScheduler is IDistributionScheduler {
             );
         }
     }
+
+    function cancelDistribution(bytes32 scheduleId) external override {
+        ScheduledDistribution memory scheduledDistribution = _scheduledDistributions[scheduleId];
+
+        // Check that scheduled distribution is eligible for cancellation.
+
+        require(scheduledDistribution.status != DistributionStatus.UNINITIALIZED, "Distribution does not exist");
+        require(scheduledDistribution.status != DistributionStatus.STARTED, "Distribution has already started");
+        require(
+            scheduledDistribution.status != DistributionStatus.CANCELLED,
+            "Distribution has already been cancelled"
+        );
+
+        _scheduledDistributions[scheduleId].status = DistributionStatus.CANCELLED;
+
+        // Check that caller is distribution owner and refund tokens.
+
+        IMultiDistributor.Distribution memory distributionChannel = _multiDistributor.getDistribution(
+            scheduledDistribution.distributionId
+        );
+
+        require(distributionChannel.owner == msg.sender, "Only distribution owner can cancel");
+
+        distributionChannel.distributionToken.transfer(msg.sender, scheduledDistribution.amount);
+
+        emit DistributionCancelled(
+            scheduledDistribution.distributionId,
+            scheduleId,
+            scheduledDistribution.startTime,
+            scheduledDistribution.amount
+        );
+    }
 }
