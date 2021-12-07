@@ -17,41 +17,33 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
-import "./interfaces/IMultiDistributor.sol";
+import "./interfaces/IDistributionScheduler.sol";
 
 // solhint-disable not-rely-on-time
 
 /**
  * Scheduler for MultiDistributor contract
  */
-contract DistributionScheduler {
+contract DistributionScheduler is IDistributionScheduler {
     using SafeERC20 for IERC20;
 
     IMultiDistributor private immutable _multiDistributor;
+    mapping(bytes32 => ScheduledDistribution) private _scheduledDistributions;
 
     constructor(IMultiDistributor multiDistributor) {
         _multiDistributor = multiDistributor;
     }
 
-    enum DistributionStatus { UNINITIALIZED, PENDING, STARTED }
-
-    struct ScheduledDistribution {
-        bytes32 distributionId;
-        uint256 startTime;
-        uint256 amount;
-        DistributionStatus status;
-    }
-
-    event DistributionScheduled(bytes32 indexed distributionId, bytes32 scheduleId, uint256 startTime, uint256 amount);
-    event DistributionStarted(bytes32 indexed distributionId, bytes32 scheduleId, uint256 startTime, uint256 amount);
-
-    mapping(bytes32 => ScheduledDistribution) private _scheduledDistributions;
-
-    function getScheduledDistributionInfo(bytes32 scheduleId) external view returns (ScheduledDistribution memory) {
+    function getScheduledDistributionInfo(bytes32 scheduleId)
+        external
+        view
+        override
+        returns (ScheduledDistribution memory)
+    {
         return _scheduledDistributions[scheduleId];
     }
 
-    function getScheduleId(bytes32 distributionId, uint256 startTime) public pure returns (bytes32) {
+    function getScheduleId(bytes32 distributionId, uint256 startTime) public pure override returns (bytes32) {
         return keccak256(abi.encodePacked(distributionId, startTime));
     }
 
@@ -59,7 +51,7 @@ contract DistributionScheduler {
         bytes32 distributionId,
         uint256 amount,
         uint256 startTime
-    ) public returns (bytes32 scheduleId) {
+    ) external override returns (bytes32 scheduleId) {
         scheduleId = getScheduleId(distributionId, startTime);
         require(startTime > block.timestamp, "Distribution can only be scheduled for the future");
 
@@ -83,7 +75,7 @@ contract DistributionScheduler {
         emit DistributionScheduled(distributionId, scheduleId, startTime, amount);
     }
 
-    function startDistributions(bytes32[] calldata scheduleIds) external {
+    function startDistributions(bytes32[] calldata scheduleIds) external override {
         for (uint256 i; i < scheduleIds.length; i++) {
             bytes32 scheduleId = scheduleIds[i];
             ScheduledDistribution memory scheduledDistribution = _scheduledDistributions[scheduleId];
