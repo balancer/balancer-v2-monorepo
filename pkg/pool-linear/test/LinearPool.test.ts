@@ -348,7 +348,7 @@ describe('LinearPool', function () {
   });
 
   describe('get rate', () => {
-    let lowerTarget: BigNumber;
+    const lowerTarget = fp(40);
     const upperTarget = fp(60);
     const balances: BigNumber[] = new Array<BigNumber>(3);
 
@@ -366,7 +366,6 @@ describe('LinearPool', function () {
     });
 
     before('initialize params', () => {
-      lowerTarget = fp(40);
       params = {
         fee: POOL_SWAP_FEE_PERCENTAGE,
         target1: lowerTarget,
@@ -380,9 +379,7 @@ describe('LinearPool', function () {
       });
     });
 
-    context('with balances', async () => {
-      await pool.setTargets(lowerTarget, upperTarget);
-
+    context('with balances', () => {
       const mainBalance = fromFp(lowerTarget.add(upperTarget).div(2));
       const wrappedBalance = fromFp(upperTarget.mul(3));
       const bptBalance = mainBalance.add(wrappedBalance);
@@ -401,8 +398,12 @@ describe('LinearPool', function () {
         expectedRate = invariant.div(bptBalance);
       });
 
-      it('equals expected rate', async () => {
+      sharedBeforeEach('update balances and rate', async () => {
         await pool.vault.updateBalances(poolId, balances);
+        await pool.setTargets(lowerTarget, upperTarget);
+      });
+
+      it('equals expected rate', async () => {
         const currentRate = await pool.getRate();
         expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
       });
@@ -425,6 +426,7 @@ describe('LinearPool', function () {
 
           it('rate remains the same', async () => {
             await pool.vault.updateBalances(poolId, balances);
+
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
           });
@@ -447,6 +449,7 @@ describe('LinearPool', function () {
 
           it('rate remains the same', async () => {
             await pool.vault.updateBalances(poolId, balances);
+
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
           });
@@ -471,6 +474,7 @@ describe('LinearPool', function () {
 
           it('rate remains the same', async () => {
             await pool.vault.updateBalances(poolId, balances);
+
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
           });
@@ -493,6 +497,7 @@ describe('LinearPool', function () {
 
           it('rate remains the same', async () => {
             await pool.vault.updateBalances(poolId, balances);
+
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
           });
