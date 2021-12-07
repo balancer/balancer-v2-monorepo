@@ -108,6 +108,12 @@ describe('LinearPool', function () {
       it('reverts if there are repeated tokens', async () => {
         await expect(deployPool({ mainToken, wrappedToken: mainToken }, false)).to.be.revertedWith('UNSORTED_ARRAY');
       });
+
+      it('reverts if upperTarget is greater than max token balance', async () => {
+        await expect(
+          deployPool({ mainToken, wrappedToken, upperTarget: MAX_UINT112.add(1) }, false)
+        ).to.be.revertedWith('UPPER_TARGET_TOO_HIGH');
+      });
     });
   });
 
