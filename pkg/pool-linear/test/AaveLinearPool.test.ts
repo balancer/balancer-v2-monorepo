@@ -11,7 +11,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/LinearPool';
 
-import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('AaveLinearPool', function () {
@@ -63,20 +63,8 @@ describe('AaveLinearPool', function () {
 
       const receipt = await tx.wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-      const poolContract = await deployedAt('AaveLinearPool', event.args.pool);
 
-      pool = new LinearPool(
-        poolContract,
-        await poolContract.getPoolId(),
-        await poolContract.getVault(),
-        mainToken,
-        wrappedToken,
-        await Token.deployedAt(poolContract.address),
-        bn(0),
-        bn(0),
-        POOL_SWAP_FEE_PERCENTAGE,
-        owner
-      );
+      pool = await LinearPool.deployedAt(event.args.pool);
     });
 
     it('returns the expected value', async () => {
