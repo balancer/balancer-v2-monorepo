@@ -17,6 +17,7 @@ import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import LinearPoolDeployer from './LinearPoolDeployer';
+import { deployedAt } from '../../../contract';
 
 export default class LinearPool {
   instance: Contract;
@@ -32,6 +33,31 @@ export default class LinearPool {
 
   static async create(params: RawLinearPoolDeployment, mockedVault: boolean): Promise<LinearPool> {
     return LinearPoolDeployer.deploy(params, mockedVault);
+  }
+
+  static async deployedAt(address: Account): Promise<LinearPool> {
+    const instance = await deployedAt('v2-pool-linear/LinearPool', TypesConverter.toAddress(address));
+    const [poolId, vault, mainToken, wrappedToken, [lowerTarget, upperTarget], swapFee, owner] = await Promise.all([
+      instance.getPoolId(),
+      instance.getVault(),
+      instance.getMainToken(),
+      instance.getWrappedToken(),
+      instance.getTargets(),
+      instance.getSwapFeePercentage(),
+      instance.getOwner(),
+    ]);
+    return new LinearPool(
+      instance,
+      poolId,
+      vault,
+      await Token.deployedAt(mainToken),
+      await Token.deployedAt(wrappedToken),
+      await Token.deployedAt(instance.address),
+      lowerTarget,
+      upperTarget,
+      swapFee,
+      owner
+    );
   }
 
   constructor(

@@ -19,15 +19,15 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
-import "./MockLinearPool.sol";
+import "./AaveLinearPool.sol";
 
-contract MockLinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(MockLinearPool).creationCode) {
+contract AaveLinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(AaveLinearPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
-     * @dev Deploys a new `MockLinearPool`.
+     * @dev Deploys a new `AaveLinearPool`.
      */
     function create(
         string memory name,
@@ -41,7 +41,7 @@ contract MockLinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWind
     ) external returns (LinearPool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        LinearPool pool = MockLinearPool(
+        LinearPool pool = AaveLinearPool(
             _create(
                 abi.encode(
                     getVault(),

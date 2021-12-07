@@ -143,7 +143,7 @@ abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         _setTargets(mainToken, lowerTarget, upperTarget);
     }
 
-    function getMainToken() external view returns (address) {
+    function getMainToken() public view returns (address) {
         return address(_mainToken);
     }
 
