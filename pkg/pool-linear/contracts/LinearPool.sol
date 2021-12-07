@@ -82,16 +82,19 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
     uint256 private immutable _scalingFactorMainToken;
     uint256 private immutable _scalingFactorWrappedToken;
 
-    // The lower and upper target are stored in the same storage slot, already scaled by the main token's scaling
-    // factor. This means that the maximum upper target is ~5 quadrillion (5e15) in the main token units, if the token
-    // were to have 0 decimals (2^128 / 10^18), which is more than enough.
-    // [   128 bits   |    128 bits   ]
-    // [ upper target |  lower target ]
-    // [ MSB                      LSB ]
-    bytes32 private _packedTargets;
+    // The lower and upper target are in BasePool's misc data field, which has 192 bits available (as it shares the same
+    // storage slot as the swap fee percentage, which is 64 bits). These are already scaled by the main token's scaling
+    // factor, which means that the maximum upper target is ~80 billion in the main token units if the token were to
+    // have 18 decimals (2^(192/2) / 10^18), which is more than enough.
+    // [        64 bits       |    96 bits   |    96 bits    ]
+    // [       reserved       | upper target |  lower target ]
+    // [  base pool swap fee  |         misc data            ]
+    // [ MSB                                             LSB ]
 
     uint256 private constant _LOWER_TARGET_OFFSET = 0;
-    uint256 private constant _UPPER_TARGET_OFFSET = 128;
+    uint256 private constant _UPPER_TARGET_OFFSET = 96;
+
+    uint256 private constant _MAX_UPPER_TARGET = 2**(96) - 1;
 
     // Since the wrapped token rate is not expected to change very rapidly, it is internally cached to avoid performing
     // external calls and save gas. The cache is updated automatically after a configurable expiration time, and a
@@ -645,8 +648,9 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
     }
 
     function getTargets() public view returns (uint256 lowerTarget, uint256 upperTarget) {
-        lowerTarget = _packedTargets.decodeUint128(_LOWER_TARGET_OFFSET);
-        upperTarget = _packedTargets.decodeUint128(_UPPER_TARGET_OFFSET);
+        bytes32 miscData = _getMiscData();
+        lowerTarget = miscData.decodeUint96(_LOWER_TARGET_OFFSET);
+        upperTarget = miscData.decodeUint96(_UPPER_TARGET_OFFSET);
     }
 
     function _setTargets(
@@ -655,13 +659,15 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         uint256 upperTarget
     ) private {
         _require(lowerTarget <= upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
-        _require(upperTarget <= _INITIAL_BPT_SUPPLY, Errors.UPPER_TARGET_TOO_HIGH);
+        _require(upperTarget <= _MAX_UPPER_TARGET, Errors.UPPER_TARGET_TOO_HIGH);
 
-        // Pack targets as two uint128 values into a single storage. This results in targets being capped to 128 bits,
-        // but that's fine because they are guaranteed to be lower than the 112-bit _INITIAL_BPT_SUPPLY.
-        _packedTargets =
+        // Pack targets as two uint96 values into a single storage slots. This results in targets being capped to 96
+        // bits, but that should be more than enough.
+        _setMiscData(
             WordCodec.encodeUint(lowerTarget, _LOWER_TARGET_OFFSET) |
-            WordCodec.encodeUint(upperTarget, _UPPER_TARGET_OFFSET);
+                WordCodec.encodeUint(upperTarget, _UPPER_TARGET_OFFSET)
+        );
+
         emit TargetsSet(mainToken, lowerTarget, upperTarget);
     }
 

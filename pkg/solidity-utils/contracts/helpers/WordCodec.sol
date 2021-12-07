@@ -42,6 +42,7 @@ library WordCodec {
     uint256 private constant _MASK_32 = 2**(32) - 1;
     uint256 private constant _MASK_53 = 2**(53) - 1;
     uint256 private constant _MASK_64 = 2**(64) - 1;
+    uint256 private constant _MASK_96 = 2**(96) - 1;
     uint256 private constant _MASK_128 = 2**(128) - 1;
     uint256 private constant _MASK_192 = 2**(192) - 1;
 
@@ -299,6 +300,13 @@ library WordCodec {
      */
     function decodeUint64(bytes32 word, uint256 offset) internal pure returns (uint256) {
         return uint256(word >> offset) & _MASK_64;
+    }
+
+    /**
+     * @dev Decodes and returns a 96 bit unsigned integer shifted by an offset from a 256 bit word.
+     */
+    function decodeUint96(bytes32 word, uint256 offset) internal pure returns (uint256) {
+        return uint256(word >> offset) & _MASK_96;
     }
 
     /**
