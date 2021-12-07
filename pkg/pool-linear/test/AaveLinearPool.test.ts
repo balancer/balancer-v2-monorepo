@@ -5,16 +5,18 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
-import { RawLinearPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/linear/types';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/LinearPool';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
-describe.only('AaveLinearPool', function () {
+describe('AaveLinearPool', function () {
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
+  let poolFactory: Contract;
   let mockLendingPool: Contract;
   let trader: SignerWithAddress, lp: SignerWithAddress, admin: SignerWithAddress, owner: SignerWithAddress;
 
@@ -28,7 +30,9 @@ describe.only('AaveLinearPool', function () {
     const [deployer] = await ethers.getSigners();
 
     mainToken = await Token.create('DAI');
-    const wrappedTokenInstance = await deploy('MockStaticAToken', { args: [deployer.address, 'cDAI', 'cDAI', 18] });
+    const wrappedTokenInstance = await deploy('MockStaticAToken', {
+      args: [deployer.address, 'cDAI', 'cDAI', 18, mainToken.address],
+    });
     wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
 
     tokens = new TokenList([mainToken, wrappedToken]).sort();
@@ -37,14 +41,42 @@ describe.only('AaveLinearPool', function () {
     await tokens.mint({ to: [lp, trader], amount: fp(100) });
   });
 
-  async function deployPool(params: RawLinearPoolDeployment, mockedVault = true): Promise<void> {
-    params = Object.assign({}, { swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, owner, admin }, params);
-    pool = await LinearPool.create(params, mockedVault);
-  }
+  sharedBeforeEach('deploy pool factory', async () => {
+    const vault = await Vault.create();
+    poolFactory = await deploy('AaveLinearPoolFactory', {
+      args: [vault.address],
+    });
+  });
 
   describe('getWrappedTokenRate', () => {
     sharedBeforeEach('deploy and initialize pool', async () => {
-      await deployPool({ mainToken, wrappedToken }, true);
+      const tx = await poolFactory.create(
+        'Balancer Pool Token',
+        'BPT',
+        mainToken.address,
+        wrappedToken.address,
+        bn(0),
+        bn(0),
+        POOL_SWAP_FEE_PERCENTAGE,
+        owner.address
+      );
+
+      const receipt = await tx.wait();
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      const poolContract = await deployedAt('AaveLinearPool', event.args.pool);
+
+      pool = new LinearPool(
+        poolContract,
+        await poolContract.getPoolId(),
+        await poolContract.getVault(),
+        mainToken,
+        wrappedToken,
+        await Token.deployedAt(poolContract.address),
+        bn(0),
+        bn(0),
+        POOL_SWAP_FEE_PERCENTAGE,
+        owner
+      );
     });
 
     it('returns the expected value', async () => {
