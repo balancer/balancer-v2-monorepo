@@ -465,7 +465,7 @@ describe('LinearPool', function () {
       context('with main below upper', () => {
         context('with wrapped to main swap', () => {
           sharedBeforeEach('do swap', async () => {
-            const amountMainOut = balances[pool.mainIndex].sub(lowerTarget.div(2));
+            const amountMainOut = balances[pool.mainIndex].sub(upperTarget.div(2));
 
             const result = await pool.swapGivenOut({
               in: pool.wrappedIndex,
