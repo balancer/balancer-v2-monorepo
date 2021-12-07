@@ -494,7 +494,7 @@ describe('LinearMath', function () {
         expect(bptOut).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
       });
 
-      it.skip('given BPT out', async () => {
+      it('given BPT out', async () => {
         const bptOut = fp(5);
 
         const expected = math.calcWrappedInPerBptOut(bptOut, mainBalance, wrappedBalance, bptSupply, params);
