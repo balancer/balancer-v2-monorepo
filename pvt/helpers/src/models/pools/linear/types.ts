@@ -10,7 +10,6 @@ import Token from '../../tokens/Token';
 export type RawLinearPoolDeployment = {
   mainToken: Token;
   wrappedToken: Token;
-  lowerTarget?: BigNumber;
   upperTarget?: BigNumber;
   swapFeePercentage?: BigNumberish;
   pauseWindowDuration?: BigNumberish;
@@ -24,7 +23,6 @@ export type RawLinearPoolDeployment = {
 export type LinearPoolDeployment = {
   mainToken: Token;
   wrappedToken: Token;
-  lowerTarget: BigNumber;
   upperTarget: BigNumber;
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;

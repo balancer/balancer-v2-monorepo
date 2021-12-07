@@ -101,7 +101,6 @@ abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         string memory symbol,
         IERC20 mainToken,
         IERC20 wrappedToken,
-        uint256 lowerTarget,
         uint256 upperTarget,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
@@ -139,7 +138,9 @@ abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         _scalingFactorMainToken = _computeScalingFactor(mainToken);
         _scalingFactorWrappedToken = _computeScalingFactor(wrappedToken);
 
-        // Set initial targets
+        // Set initial targets. Lower target must be set to zero because initially there are no fees accumulated.
+        // Otherwise the pool will owe fees at start which results in a manipulable rate.
+        uint256 lowerTarget = 0;
         _setTargets(mainToken, lowerTarget, upperTarget);
     }
 

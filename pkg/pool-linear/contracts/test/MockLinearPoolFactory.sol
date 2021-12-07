@@ -34,7 +34,6 @@ contract MockLinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWind
         string memory symbol,
         IERC20 mainToken,
         IERC20 wrappedToken,
-        uint256 lowerTarget,
         uint256 upperTarget,
         uint256 swapFeePercentage,
         address owner
@@ -49,7 +48,6 @@ contract MockLinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWind
                     symbol,
                     mainToken,
                     wrappedToken,
-                    lowerTarget,
                     upperTarget,
                     swapFeePercentage,
                     pauseWindowDuration,

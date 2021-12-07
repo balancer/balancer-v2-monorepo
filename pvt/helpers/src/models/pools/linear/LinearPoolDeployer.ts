@@ -1,5 +1,6 @@
 import { Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
 import { RawLinearPoolDeployment, LinearPoolDeployment } from './types';
 
@@ -22,13 +23,14 @@ export default {
 
     const pool = await this._deployStandalone(deployment, vault);
 
-    const { owner, mainToken, wrappedToken, lowerTarget, upperTarget, swapFeePercentage } = deployment;
+    const { owner, mainToken, wrappedToken, upperTarget, swapFeePercentage } = deployment;
 
     const poolId = await pool.getPoolId();
     const name = await pool.name();
     const symbol = await pool.symbol();
     const decimals = await pool.decimals();
     const bptToken = new Token(name, symbol, decimals, pool);
+    const lowerTarget = fp(0);
 
     return new LinearPool(
       pool,
@@ -48,7 +50,6 @@ export default {
     const {
       mainToken,
       wrappedToken,
-      lowerTarget,
       upperTarget,
       swapFeePercentage,
       pauseWindowDuration,
@@ -65,7 +66,6 @@ export default {
         SYMBOL,
         mainToken.address,
         wrappedToken.address,
-        lowerTarget,
         upperTarget,
         swapFeePercentage,
         pauseWindowDuration,
