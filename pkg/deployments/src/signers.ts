@@ -24,13 +24,8 @@ export async function getSigner(indexOrAddress: number | string = 0): Promise<Si
 }
 
 export async function impersonate(address: string, balance?: BigNumber): Promise<SignerWithAddress> {
-  const hre = await import('hardhat');
-  await hre.network.provider.request({ method: 'hardhat_impersonateAccount', params: [address] });
-
   if (balance) {
-    const rawHexBalance = hre.ethers.utils.hexlify(balance);
-    const hexBalance = rawHexBalance.replace('0x0', '0x');
-    await hre.network.provider.request({ method: 'hardhat_setBalance', params: [address, hexBalance] });
+    await setBalance(address, balance);
   }
 
   return getSigner(address);
@@ -42,4 +37,13 @@ export async function impersonateWhale(balance?: BigNumber): Promise<SignerWithA
   const address = WHALES[network];
   if (!address) throw Error(`Could not find whale address for network ${network}`);
   return impersonate(address, balance);
+}
+
+export async function setBalance(address: string, balance: BigNumber): Promise<void> {
+  const hre = await import('hardhat');
+  await hre.network.provider.request({ method: 'hardhat_impersonateAccount', params: [address] });
+
+  const rawHexBalance = hre.ethers.utils.hexlify(balance);
+  const hexBalance = rawHexBalance.replace('0x0', '0x');
+  await hre.network.provider.request({ method: 'hardhat_setBalance', params: [address, hexBalance] });
 }

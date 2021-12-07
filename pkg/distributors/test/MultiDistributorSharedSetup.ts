@@ -7,7 +7,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { MultiDistributor } from './helpers/MultiDistributor';
+import { MultiDistributor } from '@balancer-labs/v2-helpers/src/models/distributor/MultiDistributor';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 

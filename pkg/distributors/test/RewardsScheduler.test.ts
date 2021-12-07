@@ -14,7 +14,7 @@ import { advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/tim
 import { setup, rewardsDuration } from './MultiDistributorSharedSetup';
 import { ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { MultiDistributor } from './helpers/MultiDistributor';
+import { MultiDistributor } from '@balancer-labs/v2-helpers/src/models/distributor/MultiDistributor';
 
 describe('Rewards Scheduler', () => {
   let lp: SignerWithAddress, rewarder: SignerWithAddress;

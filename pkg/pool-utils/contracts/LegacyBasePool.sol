@@ -129,7 +129,7 @@ abstract contract LegacyBasePool is IBasePool, BasePoolAuthorization, BalancerPo
         return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
     }
 
-    function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
+    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
 
