@@ -4,7 +4,7 @@ import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT112 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT112, MAX_UINT96 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
@@ -116,9 +116,9 @@ describe('LinearPool', function () {
         ).to.be.revertedWith('LOWER_GREATER_THAN_UPPER_TARGET');
       });
 
-      it('reverts if upperTarget is greater than max token balance', async () => {
+      it('reverts if upperTarget is greater than the maximum', async () => {
         await expect(
-          deployPool({ mainToken, wrappedToken, lowerTarget: fp(3000), upperTarget: MAX_UINT112.add(1) }, false)
+          deployPool({ mainToken, wrappedToken, lowerTarget: fp(3000), upperTarget: MAX_UINT96.add(1) }, false)
         ).to.be.revertedWith('UPPER_TARGET_TOO_HIGH');
       });
     });
@@ -231,6 +231,17 @@ describe('LinearPool', function () {
           const newUpperTarget = originalUpperTarget.mul(2);
 
           await pool.setTargets(newLowerTarget, newUpperTarget);
+          const { lowerTarget, upperTarget } = await pool.getTargets();
+          expect(lowerTarget).to.equal(newLowerTarget);
+          expect(upperTarget).to.equal(newUpperTarget);
+        });
+
+        it('can set an extreme upper target', async () => {
+          const newLowerTarget = originalLowerTarget.div(2);
+          const newUpperTarget = MAX_UINT96;
+
+          await pool.setTargets(newLowerTarget, newUpperTarget);
+
           const { lowerTarget, upperTarget } = await pool.getTargets();
           expect(lowerTarget).to.equal(newLowerTarget);
           expect(upperTarget).to.equal(newUpperTarget);
