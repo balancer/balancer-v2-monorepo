@@ -60,6 +60,9 @@ contract DistributionScheduler is IDistributionScheduler {
             "Distribution has already been scheduled"
         );
 
+
+        // As funding pushes out the end timestamp of the distribution channel
+        // we only allow the distribution owner to schedule distributions
         IMultiDistributor.Distribution memory distributionChannel = _multiDistributor.getDistribution(distributionId);
         require(distributionChannel.owner == msg.sender, "Only distribution owner can schedule");
 
@@ -80,19 +83,24 @@ contract DistributionScheduler is IDistributionScheduler {
             bytes32 scheduleId = scheduleIds[i];
             ScheduledDistribution memory scheduledDistribution = _scheduledDistributions[scheduleId];
 
+            // Silently skip any non-pending distributions as two users may be triggering two sets of
+            // scheduleIds with some overlap. This ensures that all distributions are started properly.
             if (scheduledDistribution.status != DistributionStatus.PENDING) {
                 continue;
             }
 
-            require(block.timestamp >= scheduledDistribution.startTime, "Distribution start time is in the future");
+            // Check that scheduled distribution is ready to be started.
 
+            require(block.timestamp >= scheduledDistribution.startTime, "Distribution start time is in the future");
             _scheduledDistributions[scheduleId].status = DistributionStatus.STARTED;
 
-            IMultiDistributor.Distribution memory distributionChannel = _multiDistributor.getDistribution(
-                scheduledDistribution.distributionId
-            );
+            // Send tokens to MultiDistributor and start distribution.
 
-            distributionChannel.distributionToken.approve(address(_multiDistributor), scheduledDistribution.amount);
+            IERC20 distributionToken = _multiDistributor
+                .getDistribution(scheduledDistribution.distributionId)
+                .distributionToken;
+
+            distributionToken.approve(address(_multiDistributor), scheduledDistribution.amount);
             _multiDistributor.fundDistribution(scheduledDistribution.distributionId, scheduledDistribution.amount);
 
             emit DistributionStarted(
