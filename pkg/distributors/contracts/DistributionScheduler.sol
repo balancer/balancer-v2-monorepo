@@ -37,10 +37,7 @@ contract DistributionScheduler {
 
     struct ScheduledDistribution {
         bytes32 distributionId;
-        IERC20 stakingToken;
-        IERC20 distributionToken;
         uint256 startTime;
-        address owner;
         uint256 amount;
         DistributionStatus status;
     }
@@ -54,23 +51,16 @@ contract DistributionScheduler {
         return _scheduledDistributions[scheduleId];
     }
 
-    function getScheduleId(
-        IERC20 stakingToken,
-        IERC20 distributionToken,
-        address owner,
-        uint256 startTime
-    ) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(stakingToken, distributionToken, owner, startTime));
+    function getScheduleId(bytes32 distributionId, uint256 startTime) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(distributionId, startTime));
     }
 
     function scheduleDistribution(
         bytes32 distributionId,
-        IERC20 stakingToken,
-        IERC20 distributionToken,
         uint256 amount,
         uint256 startTime
     ) public returns (bytes32 scheduleId) {
-        scheduleId = getScheduleId(stakingToken, distributionToken, msg.sender, startTime);
+        scheduleId = getScheduleId(distributionId, startTime);
         require(startTime > block.timestamp, "Distribution can only be scheduled for the future");
 
         require(
@@ -78,17 +68,17 @@ contract DistributionScheduler {
             "Distribution has already been scheduled"
         );
 
+        IMultiDistributor.Distribution memory distributionChannel = _multiDistributor.getDistribution(distributionId);
+        require(distributionChannel.owner == msg.sender, "Only distribution owner can schedule");
+
+        distributionChannel.distributionToken.safeTransferFrom(msg.sender, address(this), amount);
+
         _scheduledDistributions[scheduleId] = ScheduledDistribution({
             distributionId: distributionId,
-            stakingToken: stakingToken,
-            distributionToken: distributionToken,
-            owner: msg.sender,
             amount: amount,
             startTime: startTime,
             status: DistributionStatus.PENDING
         });
-
-        distributionToken.safeTransferFrom(msg.sender, address(this), amount);
 
         emit DistributionScheduled(distributionId, scheduleId, startTime, amount);
     }
@@ -106,7 +96,11 @@ contract DistributionScheduler {
 
             _scheduledDistributions[scheduleId].status = DistributionStatus.STARTED;
 
-            scheduledDistribution.distributionToken.approve(address(_multiDistributor), scheduledDistribution.amount);
+            IMultiDistributor.Distribution memory distributionChannel = _multiDistributor.getDistribution(
+                scheduledDistribution.distributionId
+            );
+
+            distributionChannel.distributionToken.approve(address(_multiDistributor), scheduledDistribution.amount);
             _multiDistributor.fundDistribution(scheduledDistribution.distributionId, scheduledDistribution.amount);
 
             emit DistributionStarted(
