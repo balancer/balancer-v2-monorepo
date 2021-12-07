@@ -136,21 +136,13 @@ export default {
   },
 
   toLinearPoolDeployment(params: RawLinearPoolDeployment): LinearPoolDeployment {
-    let {
-      lowerTarget,
-      upperTarget,
-      swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-      wrappedTokenRateCacheDuration,
-    } = params;
+    let { lowerTarget, upperTarget, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
 
     if (!lowerTarget) lowerTarget = bn(0);
     if (!upperTarget) upperTarget = bn(0);
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    if (!wrappedTokenRateCacheDuration) wrappedTokenRateCacheDuration = MONTH;
 
     return {
       mainToken: params.mainToken,
@@ -160,8 +152,6 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      wrappedTokenRateProvider: params.wrappedTokenRateProvider?.address || ZERO_ADDRESS,
-      wrappedTokenRateCacheDuration,
       owner: params.owner,
     };
   },

@@ -1,4 +1,4 @@
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { Account } from '../../types/types';
@@ -15,8 +15,6 @@ export type RawLinearPoolDeployment = {
   swapFeePercentage?: BigNumberish;
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
-  wrappedTokenRateProvider?: Contract;
-  wrappedTokenRateCacheDuration?: BigNumberish;
   owner?: SignerWithAddress;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -31,8 +29,6 @@ export type LinearPoolDeployment = {
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
-  wrappedTokenRateProvider: string;
-  wrappedTokenRateCacheDuration: BigNumberish;
   owner?: SignerWithAddress;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
