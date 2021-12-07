@@ -4,7 +4,7 @@ import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT112 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT112, MAX_UINT96 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
@@ -109,10 +109,10 @@ describe('LinearPool', function () {
         await expect(deployPool({ mainToken, wrappedToken: mainToken }, false)).to.be.revertedWith('UNSORTED_ARRAY');
       });
 
-      it('reverts if upperTarget is greater than max token balance', async () => {
-        await expect(
-          deployPool({ mainToken, wrappedToken, upperTarget: MAX_UINT112.add(1) }, false)
-        ).to.be.revertedWith('UPPER_TARGET_TOO_HIGH');
+      it('reverts if upperTarget is greater than the maximum', async () => {
+        await expect(deployPool({ mainToken, wrappedToken, upperTarget: MAX_UINT96.add(1) }, false)).to.be.revertedWith(
+          'UPPER_TARGET_TOO_HIGH'
+        );
       });
     });
   });
@@ -223,6 +223,17 @@ describe('LinearPool', function () {
           const newUpperTarget = originalUpperTarget.mul(2);
 
           await pool.setTargets(newLowerTarget, newUpperTarget);
+          const { lowerTarget, upperTarget } = await pool.getTargets();
+          expect(lowerTarget).to.equal(newLowerTarget);
+          expect(upperTarget).to.equal(newUpperTarget);
+        });
+
+        it('can set an extreme upper target', async () => {
+          const newLowerTarget = originalLowerTarget.div(2);
+          const newUpperTarget = MAX_UINT96;
+
+          await pool.setTargets(newLowerTarget, newUpperTarget);
+
           const { lowerTarget, upperTarget } = await pool.getTargets();
           expect(lowerTarget).to.equal(newLowerTarget);
           expect(upperTarget).to.equal(newUpperTarget);
@@ -348,7 +359,7 @@ describe('LinearPool', function () {
   });
 
   describe('get rate', () => {
-    const lowerTarget = fp(40);
+    const lowerTarget = fp(30);
     const upperTarget = fp(60);
     const balances: BigNumber[] = new Array<BigNumber>(3);
 
@@ -365,21 +376,22 @@ describe('LinearPool', function () {
       );
     });
 
-    before('initialize params', () => {
-      params = {
-        fee: POOL_SWAP_FEE_PERCENTAGE,
-        target1: lowerTarget,
-        target2: upperTarget,
-      };
-    });
-
     context('without balances', () => {
       it('reverts', async () => {
         await expect(pool.getRate()).to.be.revertedWith('ZERO_DIVISION');
       });
     });
 
-    context('with balances', () => {
+    before('initialize params', () => {
+      params = {
+        fee: POOL_SWAP_FEE_PERCENTAGE,
+        lowerTarget,
+        upperTarget,
+      };
+    });
+
+    context('with balances', async () => {
+      await pool.setTargets(lowerTarget, upperTarget);
       const mainBalance = fromFp(lowerTarget.add(upperTarget).div(2));
       const wrappedBalance = fromFp(upperTarget.mul(3));
       const bptBalance = mainBalance.add(wrappedBalance);
@@ -459,7 +471,7 @@ describe('LinearPool', function () {
       context('with main below upper', () => {
         context('with wrapped to main swap', () => {
           sharedBeforeEach('do swap', async () => {
-            const amountMainOut = balances[pool.mainIndex].sub(1);
+            const amountMainOut = balances[pool.mainIndex].sub(upperTarget.div(2));
 
             const result = await pool.swapGivenOut({
               in: pool.wrappedIndex,
@@ -482,16 +494,16 @@ describe('LinearPool', function () {
 
         context('with bpt to main swap', () => {
           sharedBeforeEach('do swap', async () => {
-            const amountOutMain = balances[pool.mainIndex].sub(1);
+            const amountMainOut = balances[pool.mainIndex].sub(upperTarget.div(2));
 
             const result = await pool.swapGivenOut({
               in: pool.bptIndex,
               out: pool.mainIndex,
-              amount: amountOutMain,
+              amount: amountMainOut,
               balances,
             });
 
-            balances[pool.mainIndex] = balances[pool.mainIndex].sub(amountOutMain);
+            balances[pool.mainIndex] = balances[pool.mainIndex].sub(amountMainOut);
             balances[pool.bptIndex] = balances[pool.bptIndex].add(result);
           });
 
@@ -504,7 +516,7 @@ describe('LinearPool', function () {
         });
       });
 
-      context.skip('with targets updated', () => {
+      context('with targets updated', () => {
         sharedBeforeEach('owner update targets', async () => {
           const newLowerTarget = lowerTarget.div(2);
           const newUpperTarget = upperTarget.mul(2);
@@ -520,8 +532,9 @@ describe('LinearPool', function () {
         });
       });
 
-      context.skip('with swap fee updated', () => {
+      context('with swap fee updated', () => {
         sharedBeforeEach('update swap fee', async () => {
+          await pool.vault.updateBalances(poolId, balances);
           await pool.instance.connect(owner).setSwapFeePercentage(POOL_SWAP_FEE_PERCENTAGE.mul(2));
         });
 
@@ -598,8 +611,8 @@ describe('LinearPool', function () {
 
       params = {
         fee: POOL_SWAP_FEE_PERCENTAGE,
-        target1: lowerTarget,
-        target2: upperTarget,
+        lowerTarget,
+        upperTarget,
       };
     });
 
