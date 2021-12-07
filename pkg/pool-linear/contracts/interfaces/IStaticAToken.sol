@@ -20,11 +20,13 @@ interface IStaticAToken {
     /**
      * @dev returns the address of the staticAToken's underlying asset
      */
+    // solhint-disable-next-line func-name-mixedcase
     function ASSET() external view returns (address);
 
     /**
      * @dev returns the address of the staticAToken's lending pool
      */
+    // solhint-disable-next-line func-name-mixedcase
     function LENDING_POOL() external view returns (ILendingPool);
 
     /**

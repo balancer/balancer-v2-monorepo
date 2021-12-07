@@ -32,10 +32,12 @@ contract MockStaticAToken is TestToken, IStaticAToken, ILendingPool {
         _ASSET = underlyingAsset;
     }
 
+    // solhint-disable-next-line func-name-mixedcase
     function ASSET() external view override returns (address) {
         return _ASSET;
     }
 
+    // solhint-disable-next-line func-name-mixedcase
     function LENDING_POOL() external view override returns (ILendingPool) {
         return ILendingPool(this);
     }

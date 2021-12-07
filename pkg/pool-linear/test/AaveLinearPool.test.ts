@@ -18,12 +18,12 @@ describe('AaveLinearPool', function () {
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
   let poolFactory: Contract;
   let mockLendingPool: Contract;
-  let trader: SignerWithAddress, lp: SignerWithAddress, admin: SignerWithAddress, owner: SignerWithAddress;
+  let trader: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
 
   before('setup', async () => {
-    [, lp, trader, admin, owner] = await ethers.getSigners();
+    [, lp, trader, owner] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy tokens', async () => {
