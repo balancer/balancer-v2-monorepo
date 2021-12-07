@@ -116,7 +116,7 @@ describe('LinearPool', function () {
         ).to.be.revertedWith('LOWER_GREATER_THAN_UPPER_TARGET');
       });
 
-      it('reverts if upperTarget is greater than max token balance', async () => {
+      it('reverts if upperTarget is greater than the maximum', async () => {
         await expect(
           deployPool({ mainToken, wrappedToken, lowerTarget: fp(3000), upperTarget: MAX_UINT96.add(1) }, false)
         ).to.be.revertedWith('UPPER_TARGET_TOO_HIGH');
