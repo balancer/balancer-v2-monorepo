@@ -47,7 +47,7 @@ import "./LinearPoolUserData.sol";
  * traders whose swaps return the balance to the desired region.
  * The net revenue via fees is expected to be zero: all collected fees are used to pay for this 'rebalancing'.
  */
-contract LinearPool is BasePool, IGeneralPool, IRateProvider {
+abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
@@ -93,55 +93,42 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
     uint256 private constant _LOWER_TARGET_OFFSET = 0;
     uint256 private constant _UPPER_TARGET_OFFSET = 128;
 
-    // Since the wrapped token rate is not expected to change very rapidly, it is internally cached to avoid performing
-    // external calls and save gas. The cache is updated automatically after a configurable expiration time, and a
-    // forced update can also be permissionlessly triggered at any time.
-    bytes32 private _wrappedTokenRateCache;
-    IRateProvider private immutable _wrappedTokenRateProvider;
-
     event TargetsSet(IERC20 indexed token, uint256 lowerTarget, uint256 upperTarget);
-    event PriceRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
-    event PriceRateCacheUpdated(IERC20 indexed token, uint256 rate);
 
-    // The constructor arguments are received in a struct to work around stack-too-deep issues
-    struct NewPoolParams {
-        IVault vault;
-        string name;
-        string symbol;
-        IERC20 mainToken;
-        IERC20 wrappedToken;
-        uint256 lowerTarget;
-        uint256 upperTarget;
-        uint256 swapFeePercentage;
-        uint256 pauseWindowDuration;
-        uint256 bufferPeriodDuration;
-        IRateProvider wrappedTokenRateProvider;
-        uint256 wrappedTokenRateCacheDuration;
-        address owner;
-    }
-
-    constructor(NewPoolParams memory params)
+    constructor(
+        IVault vault,
+        string memory name,
+        string memory symbol,
+        IERC20 mainToken,
+        IERC20 wrappedToken,
+        uint256 lowerTarget,
+        uint256 upperTarget,
+        uint256 swapFeePercentage,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration,
+        address owner
+    )
         BasePool(
-            params.vault,
+            vault,
             IVault.PoolSpecialization.GENERAL,
-            params.name,
-            params.symbol,
-            _sortTokens(params.mainToken, params.wrappedToken, this),
+            name,
+            symbol,
+            _sortTokens(mainToken, wrappedToken, this),
             new address[](_TOTAL_TOKENS),
-            params.swapFeePercentage,
-            params.pauseWindowDuration,
-            params.bufferPeriodDuration,
-            params.owner
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner
         )
     {
         // Set tokens
-        _mainToken = params.mainToken;
-        _wrappedToken = params.wrappedToken;
+        _mainToken = mainToken;
+        _wrappedToken = wrappedToken;
 
         // Set token indexes
         (uint256 mainIndex, uint256 wrappedIndex, uint256 bptIndex) = _getSortedTokenIndexes(
-            params.mainToken,
-            params.wrappedToken,
+            mainToken,
+            wrappedToken,
             this
         );
         _bptIndex = bptIndex;
@@ -149,25 +136,11 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         _wrappedIndex = wrappedIndex;
 
         // Set scaling factors
-        _scalingFactorMainToken = _computeScalingFactor(params.mainToken);
-        _scalingFactorWrappedToken = _computeScalingFactor(params.wrappedToken);
+        _scalingFactorMainToken = _computeScalingFactor(mainToken);
+        _scalingFactorWrappedToken = _computeScalingFactor(wrappedToken);
 
         // Set initial targets
-        _setTargets(params.mainToken, params.lowerTarget, params.upperTarget);
-
-        // Set wrapped token rate cache
-        _wrappedTokenRateProvider = params.wrappedTokenRateProvider;
-        emit PriceRateProviderSet(
-            params.wrappedToken,
-            params.wrappedTokenRateProvider,
-            params.wrappedTokenRateCacheDuration
-        );
-        (bytes32 cache, uint256 rate) = _getNewWrappedTokenRateCache(
-            params.wrappedTokenRateProvider,
-            params.wrappedTokenRateCacheDuration
-        );
-        _wrappedTokenRateCache = cache;
-        emit PriceRateCacheUpdated(params.wrappedToken, rate);
+        _setTargets(mainToken, lowerTarget, upperTarget);
     }
 
     function getMainToken() external view returns (address) {
@@ -231,7 +204,7 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public override onlyVault(request.poolId) whenNotPaused returns (uint256) {
+    ) public view override onlyVault(request.poolId) whenNotPaused returns (uint256) {
         // In most Pools, swaps involve exchanging one token held by the Pool for another. In this case however, since
         // one of the three tokens is the BPT itself, a swap might also be a join (main/wrapped for BPT) or an exit
         // (BPT for main/wrapped).
@@ -245,9 +218,7 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         // Note that we already know the indices of the main token, wrapped token and BPT, so there is no need to pass
         // these indices to the inner functions.
 
-        // Update the cache before computing the scaling factors, potentially updating the wrapped token's factor if the
-        // cache expired.
-        _cacheWrappedTokenRateIfNecessary();
+        // Upscale balances by the scaling factors (taking into account the wrapped token rate)
         uint256[] memory scalingFactors = _scalingFactors();
         _upscaleArray(balances, scalingFactors);
 
@@ -542,7 +513,7 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         } else if (token == _wrappedToken) {
             // The wrapped token's scaling factor is not constant, but increases over time as the wrapped token
             // increases in value.
-            return _scalingFactorWrappedToken.mulDown(_getWrappedTokenCachedRate());
+            return _scalingFactorWrappedToken.mulDown(_getWrappedTokenRate());
         } else if (token == this) {
             return FixedPoint.ONE;
         } else {
@@ -556,7 +527,7 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         // The wrapped token's scaling factor is not constant, but increases over time as the wrapped token increases in
         // value.
         scalingFactors[_mainIndex] = _scalingFactorMainToken;
-        scalingFactors[_wrappedIndex] = _scalingFactorWrappedToken.mulDown(_getWrappedTokenCachedRate());
+        scalingFactors[_wrappedIndex] = _scalingFactorWrappedToken.mulDown(_getWrappedTokenRate());
         scalingFactors[_bptIndex] = FixedPoint.ONE;
 
         return scalingFactors;
@@ -591,58 +562,11 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         return totalBalance.divUp(_getApproximateVirtualSupply(balances[_bptIndex]));
     }
 
-    function getWrappedTokenRateProvider() public view returns (IRateProvider) {
-        return _wrappedTokenRateProvider;
+    function getWrappedTokenRate() external view returns (uint256) {
+        return _getWrappedTokenRate();
     }
 
-    function getWrappedTokenRateCache()
-        external
-        view
-        returns (
-            uint256 rate,
-            uint256 duration,
-            uint256 expires
-        )
-    {
-        rate = _wrappedTokenRateCache.getRate();
-        (duration, expires) = _wrappedTokenRateCache.getTimestamps();
-    }
-
-    function setWrappedTokenRateCacheDuration(uint256 duration) external authenticate {
-        _updateWrappedTokenRateCache(duration);
-        emit PriceRateProviderSet(_wrappedToken, getWrappedTokenRateProvider(), duration);
-    }
-
-    function updateWrappedTokenRateCache() external {
-        _updateWrappedTokenRateCache(_wrappedTokenRateCache.getDuration());
-    }
-
-    function _cacheWrappedTokenRateIfNecessary() internal {
-        (uint256 duration, uint256 expires) = _wrappedTokenRateCache.getTimestamps();
-        // solhint-disable-next-line not-rely-on-time
-        if (block.timestamp > expires) {
-            _updateWrappedTokenRateCache(duration);
-        }
-    }
-
-    function _updateWrappedTokenRateCache(uint256 duration) private {
-        (bytes32 cache, uint256 rate) = _getNewWrappedTokenRateCache(_wrappedTokenRateProvider, duration);
-        _wrappedTokenRateCache = cache;
-        emit PriceRateCacheUpdated(_wrappedToken, rate);
-    }
-
-    function _getNewWrappedTokenRateCache(IRateProvider provider, uint256 duration)
-        private
-        view
-        returns (bytes32 cache, uint256 rate)
-    {
-        rate = provider.getRate();
-        cache = PriceRateCache.encode(rate, duration);
-    }
-
-    function _getWrappedTokenCachedRate() internal view virtual returns (uint256) {
-        return _wrappedTokenRateCache.getRate();
-    }
+    function _getWrappedTokenRate() internal view virtual returns (uint256);
 
     function getTargets() public view returns (uint256 lowerTarget, uint256 upperTarget) {
         lowerTarget = _packedTargets.decodeUint128(_LOWER_TARGET_OFFSET);
@@ -704,10 +628,7 @@ contract LinearPool is BasePool, IGeneralPool, IRateProvider {
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
-        return
-            (actionId == getActionId(this.setTargets.selector)) ||
-            (actionId == getActionId(this.setWrappedTokenRateCacheDuration.selector)) ||
-            super._isOwnerOnlyAction(actionId);
+        return actionId == getActionId(this.setTargets.selector) || super._isOwnerOnlyAction(actionId);
     }
 
     /**

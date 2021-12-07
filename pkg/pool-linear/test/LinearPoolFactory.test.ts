@@ -13,7 +13,7 @@ import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/
 
 describe('LinearPoolFactory', function () {
   let vault: Vault, tokens: TokenList, factory: Contract;
-  let creationTime: BigNumber, wrappedTokenRateProvider: string, owner: SignerWithAddress;
+  let creationTime: BigNumber, owner: SignerWithAddress;
 
   const NAME = 'Balancer Linear Pool Token';
   const SYMBOL = 'LPT';
@@ -22,7 +22,6 @@ describe('LinearPoolFactory', function () {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
   const BASE_BUFFER_PERIOD_DURATION = MONTH;
-  const WRAPPED_TOKEN_RATE_CACHE_DURATION = MONTH;
 
   before('setup signers', async () => {
     [, owner] = await ethers.getSigners();
@@ -30,11 +29,10 @@ describe('LinearPoolFactory', function () {
 
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
-    factory = await deploy('LinearPoolFactory', { args: [vault.address] });
+    factory = await deploy('MockLinearPoolFactory', { args: [vault.address] });
     creationTime = await currentTimestamp();
 
     tokens = await TokenList.create(['DAI', 'CDAI'], { sorted: true });
-    wrappedTokenRateProvider = (await deploy('v2-pool-utils/MockRateProvider')).address;
   });
 
   async function createPool(): Promise<Contract> {
@@ -46,8 +44,6 @@ describe('LinearPoolFactory', function () {
       LOWER_TARGET,
       UPPER_TARGET,
       POOL_SWAP_FEE_PERCENTAGE,
-      wrappedTokenRateProvider,
-      WRAPPED_TOKEN_RATE_CACHE_DURATION,
       owner.address
     );
 
@@ -124,18 +120,6 @@ describe('LinearPoolFactory', function () {
       const targets = await pool.getTargets();
       expect(targets.lowerTarget).to.be.equal(LOWER_TARGET);
       expect(targets.upperTarget).to.be.equal(UPPER_TARGET);
-    });
-
-    it('sets the wrapped token rate provider', async () => {
-      const provider = await pool.getWrappedTokenRateProvider();
-      expect(provider).to.be.equal(wrappedTokenRateProvider);
-    });
-
-    it('initializes the wrapped token rate cache', async () => {
-      const { expires, duration, rate } = await pool.getWrappedTokenRateCache();
-      expect(rate).to.equal(fp(1));
-      expect(duration).to.equal(WRAPPED_TOKEN_RATE_CACHE_DURATION);
-      expect(expires).to.be.at.least(creationTime.add(WRAPPED_TOKEN_RATE_CACHE_DURATION));
     });
   });
 

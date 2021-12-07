@@ -19,7 +19,35 @@ import "./MockLinearMath.sol";
 import "../LinearPool.sol";
 
 contract MockLinearPool is LinearPool, MockLinearMath {
-    constructor(NewPoolParams memory params) LinearPool(params) {
+    uint256 internal _wrappedTokenRate = 1e18;
+
+    constructor(
+        IVault vault,
+        string memory name,
+        string memory symbol,
+        IERC20 mainToken,
+        IERC20 wrappedToken,
+        uint256 lowerTarget,
+        uint256 upperTarget,
+        uint256 swapFeePercentage,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration,
+        address owner
+    )
+        LinearPool(
+            vault,
+            name,
+            symbol,
+            mainToken,
+            wrappedToken,
+            lowerTarget,
+            upperTarget,
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner
+        )
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -27,7 +55,11 @@ contract MockLinearPool is LinearPool, MockLinearMath {
         return _scalingFactor(token);
     }
 
-    function mockCacheWrappedTokenRateIfNecessary() external {
-        _cacheWrappedTokenRateIfNecessary();
+    function _getWrappedTokenRate() internal view override returns (uint256) {
+        return _wrappedTokenRate;
+    }
+
+    function setWrappedTokenRate(uint256 newWrappedTokenRate) external returns (uint256) {
+        _wrappedTokenRate = newWrappedTokenRate;
     }
 }

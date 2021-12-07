@@ -1,24 +1,21 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Decimal } from 'decimal.js';
-import { BigNumber, Contract, ContractTransaction } from 'ethers';
+import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_UINT112 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { RawLinearPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/linear/types';
-import { advanceTime, currentTimestamp, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/LinearPool';
 
 import * as math from './math';
+import Decimal from 'decimal.js';
 
 describe('LinearPool', function () {
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
@@ -535,6 +532,57 @@ describe('LinearPool', function () {
     });
   });
 
+  describe('scaling factors', () => {
+    const scaleRate = (rate: BigNumber) => rate.mul(bn(10).pow(18 - wrappedToken.decimals));
+
+    sharedBeforeEach('deploy pool', async () => {
+      await deployPool({ mainToken, wrappedToken });
+    });
+
+    const itAdaptsTheScalingFactorsCorrectly = () => {
+      const expectedBptScalingFactor = fp(1);
+      const expectedMainTokenScalingFactor = fp(1);
+
+      it('adapt the scaling factors with the price rate', async () => {
+        const scalingFactors = await pool.getScalingFactors();
+
+        const expectedWrappedTokenScalingFactor = scaleRate(await pool.getWrappedTokenRate());
+        expect(scalingFactors[pool.wrappedIndex]).to.be.equal(expectedWrappedTokenScalingFactor);
+        expect(await pool.getScalingFactor(wrappedToken)).to.be.equal(expectedWrappedTokenScalingFactor);
+
+        expect(scalingFactors[pool.mainIndex]).to.be.equal(expectedMainTokenScalingFactor);
+        expect(await pool.getScalingFactor(mainToken)).to.be.equal(expectedMainTokenScalingFactor);
+
+        expect(scalingFactors[pool.bptIndex]).to.be.equal(expectedBptScalingFactor);
+        expect(await pool.getScalingFactor(pool.bptToken)).to.be.equal(expectedBptScalingFactor);
+      });
+    };
+
+    context('with a price rate above 1', () => {
+      sharedBeforeEach('mock rate', async () => {
+        await pool.instance.setWrappedTokenRate(fp(1.1));
+      });
+
+      itAdaptsTheScalingFactorsCorrectly();
+    });
+
+    context('with a price rate equal to 1', () => {
+      sharedBeforeEach('mock rate', async () => {
+        await pool.instance.setWrappedTokenRate(fp(1));
+      });
+
+      itAdaptsTheScalingFactorsCorrectly();
+    });
+
+    context('with a price rate below 1', () => {
+      sharedBeforeEach('mock rate', async () => {
+        await pool.instance.setWrappedTokenRate(fp(0.99));
+      });
+
+      itAdaptsTheScalingFactorsCorrectly();
+    });
+  });
+
   describe('swaps', () => {
     let currentBalances: BigNumber[];
     let lowerTarget: BigNumber, upperTarget: BigNumber;
@@ -854,224 +902,6 @@ describe('LinearPool', function () {
           // Current virtual supply after full exit is cero
           const currentVirtualSupply = await pool.getVirtualSupply();
           expect(currentVirtualSupply).to.be.equalWithError(bn(0), 0.00001);
-        });
-      });
-    });
-  });
-
-  describe('wrapped token rate cache', () => {
-    let timestamp: BigNumber;
-    let wrappedTokenRateProvider: Contract;
-    const wrappedTokenRateCacheDuration = MINUTE * 20;
-
-    const scaleRate = (rate: BigNumber) => rate.mul(bn(10).pow(18 - wrappedToken.decimals));
-
-    sharedBeforeEach('deploy pool', async () => {
-      wrappedTokenRateProvider = await deploy('v2-pool-utils/MockRateProvider');
-      timestamp = await currentTimestamp();
-      await deployPool({ mainToken, wrappedToken, wrappedTokenRateProvider, wrappedTokenRateCacheDuration });
-    });
-
-    it('initializes correctly', async () => {
-      const provider = await pool.getWrappedTokenRateProvider();
-      expect(provider).to.be.equal(wrappedTokenRateProvider.address);
-
-      const { rate, duration, expires } = await pool.getWrappedTokenRateCache();
-      expect(rate).to.be.equal(fp(1));
-      expect(duration).to.be.equal(wrappedTokenRateCacheDuration);
-      expect(expires).to.be.at.least(timestamp.add(wrappedTokenRateCacheDuration));
-    });
-
-    describe('scaling factors', () => {
-      const itAdaptsTheScalingFactorsCorrectly = () => {
-        const expectedBptScalingFactor = fp(1);
-        const expectedMainTokenScalingFactor = fp(1);
-
-        it('adapt the scaling factors with the price rate', async () => {
-          const scalingFactors = await pool.getScalingFactors();
-
-          const expectedWrappedTokenScalingFactor = scaleRate(await wrappedTokenRateProvider.getRate());
-          expect(scalingFactors[pool.wrappedIndex]).to.be.equal(expectedWrappedTokenScalingFactor);
-          expect(await pool.getScalingFactor(wrappedToken)).to.be.equal(expectedWrappedTokenScalingFactor);
-
-          expect(scalingFactors[pool.mainIndex]).to.be.equal(expectedMainTokenScalingFactor);
-          expect(await pool.getScalingFactor(mainToken)).to.be.equal(expectedMainTokenScalingFactor);
-
-          expect(scalingFactors[pool.bptIndex]).to.be.equal(expectedBptScalingFactor);
-          expect(await pool.getScalingFactor(pool.bptToken)).to.be.equal(expectedBptScalingFactor);
-        });
-      };
-
-      context('with a price rate above 1', () => {
-        sharedBeforeEach('mock rate', async () => {
-          await wrappedTokenRateProvider.mockRate(fp(1.1));
-          await pool.updateWrappedTokenRateCache();
-        });
-
-        itAdaptsTheScalingFactorsCorrectly();
-      });
-
-      context('with a price rate equal to 1', () => {
-        sharedBeforeEach('mock rate', async () => {
-          await wrappedTokenRateProvider.mockRate(fp(1));
-          await pool.updateWrappedTokenRateCache();
-        });
-
-        itAdaptsTheScalingFactorsCorrectly();
-      });
-
-      context('with a price rate below 1', () => {
-        sharedBeforeEach('mock rate', async () => {
-          await wrappedTokenRateProvider.mockRate(fp(0.99));
-          await pool.updateWrappedTokenRateCache();
-        });
-
-        itAdaptsTheScalingFactorsCorrectly();
-      });
-    });
-
-    describe('update', () => {
-      const itUpdatesTheRateCache = (action: () => Promise<ContractTransaction>) => {
-        const newRate = fp(1.5);
-
-        it('updates the cache', async () => {
-          const previousCache = await pool.getWrappedTokenRateCache();
-
-          await wrappedTokenRateProvider.mockRate(newRate);
-          const updatedAt = await currentTimestamp();
-          await action();
-
-          const currentCache = await pool.getWrappedTokenRateCache();
-          expect(currentCache.rate).to.be.equal(newRate);
-          expect(previousCache.rate).not.to.be.equal(newRate);
-
-          expect(currentCache.duration).to.be.equal(wrappedTokenRateCacheDuration);
-          expect(currentCache.expires).to.be.at.least(updatedAt.add(wrappedTokenRateCacheDuration));
-        });
-
-        it('emits an event', async () => {
-          await wrappedTokenRateProvider.mockRate(newRate);
-          const receipt = await action();
-
-          expectEvent.inReceipt(await receipt.wait(), 'PriceRateCacheUpdated', {
-            token: wrappedToken.address,
-            rate: newRate,
-          });
-        });
-      };
-
-      context('before the cache expires', () => {
-        sharedBeforeEach('advance time', async () => {
-          await advanceTime(wrappedTokenRateCacheDuration / 2);
-        });
-
-        context('when not forced', () => {
-          const action = async () => pool.instance.mockCacheWrappedTokenRateIfNecessary();
-
-          it('does not update the cache', async () => {
-            const previousCache = await pool.getWrappedTokenRateCache();
-
-            await action();
-
-            const currentCache = await pool.getWrappedTokenRateCache();
-            expect(currentCache.rate).to.be.equal(previousCache.rate);
-            expect(currentCache.expires).to.be.equal(previousCache.expires);
-            expect(currentCache.duration).to.be.equal(previousCache.duration);
-          });
-        });
-
-        context('when forced', () => {
-          const action = async () => pool.updateWrappedTokenRateCache();
-
-          itUpdatesTheRateCache(action);
-        });
-      });
-
-      context('after the cache expires', () => {
-        sharedBeforeEach('advance time', async () => {
-          await advanceTime(wrappedTokenRateCacheDuration + MINUTE);
-        });
-
-        context('when not forced', () => {
-          const action = async () => pool.instance.mockCacheWrappedTokenRateIfNecessary();
-
-          itUpdatesTheRateCache(action);
-        });
-
-        context('when forced', () => {
-          const action = async () => pool.updateWrappedTokenRateCache();
-
-          itUpdatesTheRateCache(action);
-        });
-      });
-    });
-
-    describe('set cache duration', () => {
-      const newDuration = MINUTE * 10;
-
-      sharedBeforeEach('grant role to admin', async () => {
-        const action = await actionId(pool.instance, 'setWrappedTokenRateCacheDuration');
-        await pool.vault.grantRoleGlobally(action, admin);
-      });
-
-      const itUpdatesTheCacheDuration = () => {
-        it('updates the cache duration', async () => {
-          const previousCache = await pool.getWrappedTokenRateCache();
-
-          const newRate = fp(1.5);
-          await wrappedTokenRateProvider.mockRate(newRate);
-          const forceUpdateAt = await currentTimestamp();
-          await pool.setWrappedTokenRateCacheDuration(newDuration, { from: owner });
-
-          const currentCache = await pool.getWrappedTokenRateCache();
-          expect(currentCache.rate).to.be.equal(newRate);
-          expect(previousCache.rate).not.to.be.equal(newRate);
-          expect(currentCache.duration).to.be.equal(newDuration);
-          expect(currentCache.expires).to.be.at.least(forceUpdateAt.add(newDuration));
-        });
-
-        it('emits an event', async () => {
-          const receipt = await pool.setWrappedTokenRateCacheDuration(newDuration, { from: owner });
-
-          expectEvent.inReceipt(await receipt.wait(), 'PriceRateProviderSet', {
-            token: wrappedToken.address,
-            provider: wrappedTokenRateProvider.address,
-            cacheDuration: newDuration,
-          });
-        });
-      };
-
-      context('when it is requested by the owner', () => {
-        context('before the cache expires', () => {
-          sharedBeforeEach('advance time', async () => {
-            await advanceTime(wrappedTokenRateCacheDuration / 2);
-          });
-
-          itUpdatesTheCacheDuration();
-        });
-
-        context('after the cache has expired', () => {
-          sharedBeforeEach('advance time', async () => {
-            await advanceTime(wrappedTokenRateCacheDuration + MINUTE);
-          });
-
-          itUpdatesTheCacheDuration();
-        });
-      });
-
-      context('when it is requested by the admin', () => {
-        it('reverts', async () => {
-          await expect(pool.setWrappedTokenRateCacheDuration(10, { from: admin })).to.be.revertedWith(
-            'SENDER_NOT_ALLOWED'
-          );
-        });
-      });
-
-      context('when it is requested by another one', () => {
-        it('reverts', async () => {
-          await expect(pool.setWrappedTokenRateCacheDuration(10, { from: lp })).to.be.revertedWith(
-            'SENDER_NOT_ALLOWED'
-          );
         });
       });
     });
