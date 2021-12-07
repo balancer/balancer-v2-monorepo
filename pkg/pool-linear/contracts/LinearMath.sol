@@ -249,7 +249,7 @@ library LinearMath {
         uint256 previousInvariant = _calcInvariant(nominalMain, wrappedBalance);
 
         uint256 newBptBalance = bptSupply.add(bptOut);
-        uint256 newWrappedBalance = newBptBalance.divUp(bptSupply).mulUp(previousInvariant).sub(nominalMain);
+        uint256 newWrappedBalance = newBptBalance.mulUp(previousInvariant).divUp(bptSupply).sub(nominalMain);
 
         return newWrappedBalance.sub(wrappedBalance);
     }
@@ -267,7 +267,7 @@ library LinearMath {
         uint256 previousInvariant = _calcInvariant(nominalMain, wrappedBalance);
 
         uint256 newBptBalance = bptSupply.sub(bptIn);
-        uint256 newWrappedBalance = newBptBalance.divUp(bptSupply).mulUp(previousInvariant).sub(nominalMain);
+        uint256 newWrappedBalance = newBptBalance.mulUp(previousInvariant).divUp(bptSupply).sub(nominalMain);
 
         return wrappedBalance.sub(newWrappedBalance);
     }

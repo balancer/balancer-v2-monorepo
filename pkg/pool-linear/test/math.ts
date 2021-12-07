@@ -236,7 +236,7 @@ export function calcWrappedOutPerBptIn(
   const previousInvariant = calcInvariant(nominalMain, wrappedBalance);
 
   const newBptBalance = bptSupply.sub(bptIn);
-  const newWrappedBalance = newBptBalance.div(bptSupply).mul(previousInvariant).sub(nominalMain);
+  const newWrappedBalance = newBptBalance.mul(previousInvariant).div(bptSupply).sub(nominalMain);
   const wrappedOut = wrappedBalance.sub(newWrappedBalance);
   return toFp(wrappedOut);
 }
