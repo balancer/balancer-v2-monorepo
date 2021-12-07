@@ -10,8 +10,9 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 
-describe('LinearPoolFactory', function () {
+describe('AaveLinearPoolFactory', function () {
   let vault: Vault, tokens: TokenList, factory: Contract;
   let creationTime: BigNumber, owner: SignerWithAddress;
 
@@ -28,11 +29,19 @@ describe('LinearPoolFactory', function () {
   });
 
   sharedBeforeEach('deploy factory & tokens', async () => {
+    const [deployer] = await ethers.getSigners();
+
     vault = await Vault.create();
-    factory = await deploy('MockLinearPoolFactory', { args: [vault.address] });
+    factory = await deploy('AaveLinearPoolFactory', { args: [vault.address] });
     creationTime = await currentTimestamp();
 
-    tokens = await TokenList.create(['DAI', 'CDAI'], { sorted: true });
+    const mainToken = await Token.create('DAI');
+    const wrappedTokenInstance = await deploy('MockStaticAToken', {
+      args: [deployer.address, 'cDAI', 'cDAI', 18, mainToken.address],
+    });
+    const wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
+
+    tokens = new TokenList([mainToken, wrappedToken]).sort();
   });
 
   async function createPool(): Promise<Contract> {
