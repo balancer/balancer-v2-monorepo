@@ -52,7 +52,7 @@ describe('LinearMath', function () {
     upperTarget: fp(200),
   };
 
-  context('with main below upper', () => {
+  context('with main below lower', () => {
     const mainBalance = fp(35);
     const wrappedBalance = fp(15.15);
     const bptSupply = fp(49.5);
