@@ -49,7 +49,6 @@ describe('LinearPool', function () {
 
   describe('creation', () => {
     context('when the creation succeeds', () => {
-      const lowerTarget = fp(0);
       let upperTarget: BigNumber;
 
       sharedBeforeEach('deploy pool', async () => {
