@@ -169,7 +169,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
     /**
      * @dev Update cached total supply and invariant using the results after the join that will be used for
      * future oracle updates.
-     * Note this function does not perform any safety checks about joins, it relies on upper implementations for that.
+     * Note that this function relies on the base class to perform any safety checks on joins.
      */
     function onJoinPool(
         bytes32 poolId,
@@ -237,7 +237,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
     /**
      * @dev Update cached total supply and invariant using the results after the exit that will be used for
      * future oracle updates.
-     * Note this function does not perform any safety checks about exits, it relies on upper implementations for that.
+     * Note that this function relies on the base class to perform any safety checks on exits.
      */
     function onExitPool(
         bytes32 poolId,

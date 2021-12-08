@@ -1,11 +1,12 @@
-import { TokenList } from '../../tokens';
 import { BigNumberish } from '../../numbers';
 import { BatchSwapStep } from '@balancer-labs/balancer-js';
+import TokenList from '../tokens/TokenList';
+import Token from '../tokens/Token';
 
 export type Trade = {
   poolId: string;
-  tokenIn: string;
-  tokenOut: string;
+  tokenIn: Token;
+  tokenOut: Token;
   amount?: number | string;
 };
 
@@ -18,20 +19,12 @@ export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<
   const swaps: Array<BatchSwapStep> = [];
 
   const tokenAddresses = Array.from(
-    new Set(
-      trades.reduce(
-        (acc: string[], trade) => acc.concat([tokens[trade.tokenIn].address, tokens[trade.tokenOut].address]),
-        []
-      )
-    )
+    new Set(trades.reduce((acc: string[], trade) => acc.concat([trade.tokenIn.address, trade.tokenOut.address]), []))
   );
 
   for (const trade of trades) {
-    const tokenInAddress = tokens[trade.tokenIn].address;
-    const assetInIndex = tokenAddresses.indexOf(tokenInAddress);
-
-    const tokenOutAddress = tokens[trade.tokenOut].address;
-    const assetOutIndex = tokenAddresses.indexOf(tokenOutAddress);
+    const assetInIndex = tokens.indexOf(trade.tokenIn);
+    const assetOutIndex = tokens.indexOf(trade.tokenOut);
 
     swaps.push({
       poolId: trade.poolId,

@@ -77,6 +77,7 @@ contract StablePhantomPool is StablePool {
     event DueProtocolFeeIncreased(uint256 bptAmount);
 
     enum JoinKindPhantom { INIT, COLLECT_PROTOCOL_FEES }
+    enum ExitKindPhantom { EXACT_BPT_IN_FOR_TOKENS_OUT }
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -183,7 +184,7 @@ contract StablePhantomPool is StablePool {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override returns (uint256 amountOut) {
+    ) internal virtual override whenNotPaused returns (uint256 amountOut) {
         _cacheTokenRatesIfNecessary();
 
         uint256 protocolSwapFeePercentage = _cachedProtocolSwapFeePercentage;
@@ -210,7 +211,7 @@ contract StablePhantomPool is StablePool {
             // corresponds to protocol fees.
 
             // Since the original StablePool._onSwapGivenIn implementation already computes the invariant, we fully
-            // replace it and reimplement it here to take advtange of that.
+            // replace it and reimplement it here to take advantage of that.
 
             (uint256 currentAmp, ) = _getAmplificationParameter();
             uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, true);
@@ -249,7 +250,7 @@ contract StablePhantomPool is StablePool {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override returns (uint256 amountIn) {
+    ) internal virtual override whenNotPaused returns (uint256 amountIn) {
         _cacheTokenRatesIfNecessary();
 
         uint256 protocolSwapFeePercentage = _cachedProtocolSwapFeePercentage;
@@ -381,7 +382,7 @@ contract StablePhantomPool is StablePool {
     ) private {
         // To convert the protocol swap fees to a BPT amount, we compute the invariant growth (which is due exclusively
         // to swap fees), extract the portion that corresponds to protocol swap fees, and then compute the equivalent
-        // amout of BPT that would cause such an increase.
+        // amount of BPT that would cause such an increase.
         //
         // Invariant growth is related to new BPT and supply by:
         // invariant ratio = (bpt amount + supply) / supply
@@ -423,12 +424,12 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * Since this Pool has preminted BPT which is stored in the Vault, it cannot be simply minted at construction.
+     * Since this Pool has preminted BPT which is stored in the Vault, it cannot simply be minted at construction.
      *
      * We take advantage of the fact that StablePools have an initialization step where BPT is minted to the first
      * account joining them, and perform both actions at once. By minting the entire BPT supply for the initial joiner
-     * and then pulling all tokens except the joiner's due, we arrive at the desired state of the Pool holding all BPT
-     * except the joiner's.
+     * and then pulling all tokens except those due the joiner, we arrive at the desired state of the Pool holding all
+     * BPT except the joiner's.
      */
     function _onInitializePool(
         bytes32,
@@ -446,6 +447,7 @@ contract StablePhantomPool is StablePool {
 
         (uint256 amp, ) = _getAmplificationParameter();
         (, uint256[] memory amountsIn) = _dropBptItem(amountsInIncludingBpt);
+        // The true argument in the _calculateInvariant call instructs it to round up
         uint256 invariantAfterJoin = StableMath._calculateInvariant(amp, amountsIn, true);
 
         // Set the initial BPT to the value of the invariant
@@ -506,7 +508,7 @@ contract StablePhantomPool is StablePool {
     {
         uint256 totalTokens = _getTotalTokens();
 
-        // This Join grants no BPT nor takes any tokens from the sender.
+        // This join neither grants BPT nor takes any tokens from the sender.
         bptOut = 0;
         amountsIn = new uint256[](totalTokens);
 
@@ -523,22 +525,64 @@ contract StablePhantomPool is StablePool {
         bytes32,
         address,
         address,
-        uint256[] memory,
+        uint256[] memory balances,
         uint256,
         uint256,
         uint256[] memory,
-        bytes memory
+        bytes memory userData
     )
         internal
-        pure
+        view
         override
         returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            uint256[] memory dueProtocolFeeAmounts
         )
     {
-        _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
+        ExitKindPhantom kind = userData.exitKind();
+
+        // Exits typically revert, except for the proportional exit when the emergency pause mechanism has been
+        // triggered. This allows for a simple and safe way to exit the Pool.
+        if (kind == ExitKindPhantom.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+            _ensurePaused();
+
+            // Note that this will cause the user's BPT to be burned, which is not something that happens during
+            // regular operation of this Pool, and may lead to accounting errors. Because of this, it is highly
+            // advisable to stop using a Pool after it is paused and the pause window expires.
+
+            (bptAmountIn, amountsOut) = _proportionalExit(balances, userData);
+            // For simplicity, due protocol fees are set to zero.
+            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
+        } else {
+            _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
+        }
+    }
+
+    function _proportionalExit(uint256[] memory balances, bytes memory userData)
+        private
+        view
+        returns (uint256, uint256[] memory)
+    {
+        // This proportional exit function is only enabled if the contract is paused, to provide users a way to
+        // retrieve their tokens in case of an emergency.
+        //
+        // This particular exit function is the only one available because it is the simplest, and therefore least
+        // likely to be incorrect, or revert and lock funds.
+        (, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
+
+        uint256 bptAmountIn = userData.exactBptInForTokensOut();
+        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
+
+        uint256[] memory amountsOut = StableMath._calcTokensOutGivenExactBptIn(
+            balancesWithoutBpt,
+            bptAmountIn,
+            // This process burns BPT, rendering the approximation returned by `_dropBPTItem` inaccurate,
+            // so we use the real method here
+            _getVirtualSupply(balances[_bptIndex])
+        );
+
+        return (bptAmountIn, _addBptItem(amountsOut, 0));
     }
 
     // Scaling factors
@@ -600,7 +644,7 @@ contract StablePhantomPool is StablePool {
      */
     function getTokenRate(IERC20 token) public view virtual returns (uint256) {
         bytes32 tokenRateCache = _tokenRateCaches[token];
-        return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getValue();
+        return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getRate();
     }
 
     /**
@@ -619,14 +663,14 @@ contract StablePhantomPool is StablePool {
     {
         _require(_rateProviders[token] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
 
-        rate = _tokenRateCaches[token].getValue();
+        rate = _tokenRateCaches[token].getRate();
         (duration, expires) = _tokenRateCaches[token].getTimestamps();
     }
 
     /**
      * @dev Sets a new duration for a token rate cache. It reverts if there was no rate provider set initially.
      * Note this function also updates the current cached value.
-     * @param duration Number of seconds until the current rate of token rate is fetched again.
+     * @param duration Number of seconds until the current token rate is fetched again.
      */
     function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
         IRateProvider provider = _rateProviders[token];
@@ -637,7 +681,7 @@ contract StablePhantomPool is StablePool {
 
     /**
      * @dev Forces a rate cache hit for a token.
-     * It will revert if the requested token does not have a rate provider associated.
+     * It will revert if the requested token does not have an associated rate provider.
      */
     function updateTokenRateCache(IERC20 token) external {
         IRateProvider provider = _rateProviders[token];
@@ -647,8 +691,8 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * @dev Internal function to updates a token rate cache for a known provider and duration.
-     * It trusts the given values, it does not perform any checks.
+     * @dev Internal function to update a token rate cache for a known provider and duration.
+     * It trusts the given values, and does not perform any checks.
      */
     function _updateTokenRateCache(
         IERC20 token,
@@ -677,7 +721,7 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * @dev Caches the rate for a token if necessary. It ignores the call if theres is no provider set.
+     * @dev Caches the rate for a token if necessary. It ignores the call if there is no provider set.
      */
     function _cacheTokenRateIfNecessary(IERC20 token) internal {
         IRateProvider provider = _rateProviders[token];
@@ -716,19 +760,34 @@ contract StablePhantomPool is StablePool {
         return index < _bptIndex ? index : index.sub(1);
     }
 
-    function _dropBptItem(uint256[] memory _balances)
+    function _dropBptItem(uint256[] memory amounts)
         internal
         view
-        returns (uint256 virtualSupply, uint256[] memory balances)
+        returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt)
     {
         // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
         // vault. So the virtualSupply (the actual supply in circulation) is defined as:
-        // virtualSupply = _MAX_TOKEN_BALANCE - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
-        virtualSupply = _MAX_TOKEN_BALANCE - _balances[_bptIndex] + _dueProtocolFeeBptAmount;
+        // virtualSupply = totalSupply() - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
+        //
+        // However, since this Pool never mints or burns BPT outside of the initial supply (except in the event of an
+        // emergency pause), we can simply use `_MAX_TOKEN_BALANCE` instead of `totalSupply()` and save
+        // gas.
+        virtualSupply = _MAX_TOKEN_BALANCE - amounts[_bptIndex] + _dueProtocolFeeBptAmount;
 
-        balances = new uint256[](_balances.length - 1);
-        for (uint256 i = 0; i < balances.length; i++) {
-            balances[i] = _balances[i < _bptIndex ? i : i + 1];
+        amountsWithoutBpt = new uint256[](amounts.length - 1);
+        for (uint256 i = 0; i < amountsWithoutBpt.length; i++) {
+            amountsWithoutBpt[i] = amounts[i < _bptIndex ? i : i + 1];
+        }
+    }
+
+    function _addBptItem(uint256[] memory amounts, uint256 bptAmount)
+        internal
+        view
+        returns (uint256[] memory amountsWithBpt)
+    {
+        amountsWithBpt = new uint256[](amounts.length + 1);
+        for (uint256 i = 0; i < amountsWithBpt.length; i++) {
+            amountsWithBpt[i] = i == _bptIndex ? bptAmount : amounts[i < _bptIndex ? i : i - 1];
         }
     }
 
@@ -736,29 +795,32 @@ contract StablePhantomPool is StablePool {
      * @dev Returns the number of tokens in circulation.
      *
      * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints all BPT, `totalSupply`
-     * remains constant, whereas `virtualSupply` increases as users join the pool and decreases as they exit it.
+     * remains constant, whereas `getVirtualSupply` increases as users join the pool and decreases as they exit it.
      */
-    function virtualSupply() external view returns (uint256) {
+    function getVirtualSupply() external view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
-        //There is no need to upscale balances because only bpt is used.
+        // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
+        // one.
+        return _getVirtualSupply(balances[_bptIndex]);
+    }
 
-        (uint256 _virtualSupply, ) = _dropBptItem(balances);
-        return _virtualSupply;
+    function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
+        return totalSupply().sub(bptBalance).add(_dueProtocolFeeBptAmount);
     }
 
     /**
      * @dev This function returns the appreciation of one BPT relative to the
      * underlying tokens. This starts at 1 when the pool is created and grows over time.
-     * Because of preminted BPT, it uses virtualSupply instead of totalSupply.
+     * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
      */
     function getRate() public view override returns (uint256) {
         (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
         _upscaleArray(balancesIncludingBpt, _scalingFactors());
 
-        (uint256 _virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        return StableMath._getRate(balances, currentAmp, _virtualSupply);
+        return StableMath._getRate(balances, currentAmp, virtualSupply);
     }
 }

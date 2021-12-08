@@ -1,23 +1,21 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract, ContractTransaction } from 'ethers';
+import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { MAX_UINT112 } from '@balancer-labs/v2-helpers/src/constants';
+import { bn, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
+import { MAX_UINT112, MAX_UINT96 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { RawLinearPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/linear/types';
-import { advanceTime, currentTimestamp, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/LinearPool';
 
 import * as math from './math';
+import Decimal from 'decimal.js';
 
 describe('LinearPool', function () {
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
@@ -51,13 +49,11 @@ describe('LinearPool', function () {
 
   describe('creation', () => {
     context('when the creation succeeds', () => {
-      let lowerTarget: BigNumber;
       let upperTarget: BigNumber;
 
       sharedBeforeEach('deploy pool', async () => {
-        lowerTarget = fp(1000);
         upperTarget = fp(2000);
-        await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget }, false);
+        await deployPool({ mainToken, wrappedToken, upperTarget }, false);
       });
 
       it('sets the vault', async () => {
@@ -102,7 +98,7 @@ describe('LinearPool', function () {
 
       it('sets the targets', async () => {
         const targets = await pool.getTargets();
-        expect(targets.lowerTarget).to.be.equal(lowerTarget);
+        expect(targets.lowerTarget).to.be.equal(0);
         expect(targets.upperTarget).to.be.equal(upperTarget);
       });
     });
@@ -112,16 +108,10 @@ describe('LinearPool', function () {
         await expect(deployPool({ mainToken, wrappedToken: mainToken }, false)).to.be.revertedWith('UNSORTED_ARRAY');
       });
 
-      it('reverts if lowerTarget is greater than upperTarget', async () => {
-        await expect(
-          deployPool({ mainToken, wrappedToken, lowerTarget: fp(3000), upperTarget: fp(2000) }, false)
-        ).to.be.revertedWith('LOWER_GREATER_THAN_UPPER_TARGET');
-      });
-
-      it('reverts if upperTarget is greater than max token balance', async () => {
-        await expect(
-          deployPool({ mainToken, wrappedToken, lowerTarget: fp(3000), upperTarget: MAX_UINT112.add(1) }, false)
-        ).to.be.revertedWith('UPPER_TARGET_TOO_HIGH');
+      it('reverts if upperTarget is greater than the maximum', async () => {
+        await expect(deployPool({ mainToken, wrappedToken, upperTarget: MAX_UINT96.add(1) }, false)).to.be.revertedWith(
+          'UPPER_TARGET_TOO_HIGH'
+        );
       });
     });
   });
@@ -164,11 +154,10 @@ describe('LinearPool', function () {
     const originalLowerTarget = fp(1000);
     const originalUpperTarget = fp(2000);
 
-    sharedBeforeEach('deploy pool', async () => {
-      await deployPool(
-        { mainToken, wrappedToken, lowerTarget: originalLowerTarget, upperTarget: originalUpperTarget },
-        true
-      );
+    sharedBeforeEach('deploy pool and set initial targets', async () => {
+      await deployPool({ mainToken, wrappedToken, upperTarget: originalUpperTarget }, true);
+      await setBalances(pool, { mainBalance: originalLowerTarget.add(originalUpperTarget).div(2) });
+      await pool.setTargets(originalLowerTarget, originalUpperTarget);
     });
 
     const setBalances = async (
@@ -238,6 +227,17 @@ describe('LinearPool', function () {
           expect(upperTarget).to.equal(newUpperTarget);
         });
 
+        it('can set an extreme upper target', async () => {
+          const newLowerTarget = originalLowerTarget.div(2);
+          const newUpperTarget = MAX_UINT96;
+
+          await pool.setTargets(newLowerTarget, newUpperTarget);
+
+          const { lowerTarget, upperTarget } = await pool.getTargets();
+          expect(lowerTarget).to.equal(newLowerTarget);
+          expect(upperTarget).to.equal(newUpperTarget);
+        });
+
         it('can decrease the upper target', async () => {
           const newLowerTarget = originalLowerTarget;
           const newUpperTarget = originalUpperTarget.mul(3).div(4);
@@ -293,47 +293,307 @@ describe('LinearPool', function () {
     });
   });
 
-  describe('get rate', () => {
-    let poolId: string;
-    let balances: BigNumber[];
+  describe('set swap fee percentage', () => {
+    const lowerTarget = fp(1000);
+    const upperTarget = fp(2000);
 
-    sharedBeforeEach('deploy pool and initialize pool', async () => {
-      await deployPool({ mainToken, wrappedToken }, true);
+    const swapFeePercentage = fp(0.1);
 
-      poolId = await pool.getPoolId();
-      balances = Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)));
-
-      await (await pool.vault).updateBalances(poolId, balances);
+    sharedBeforeEach('deploy pool and set initial targets', async () => {
+      await deployPool({ mainToken, wrappedToken, upperTarget: upperTarget }, true);
+      await setBalances(pool, { mainBalance: lowerTarget.add(upperTarget).div(2) });
+      await pool.setTargets(lowerTarget, upperTarget);
     });
 
-    context('before swaps', () => {
-      it('rate is zero', async () => {
+    const setBalances = async (
+      pool: LinearPool,
+      balances: { mainBalance?: BigNumber; wrappedBalance?: BigNumber; bptBalance?: BigNumber }
+    ) => {
+      const poolId = await pool.getPoolId();
+
+      const updateBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
+        i == pool.mainIndex
+          ? balances.mainBalance ?? bn(0)
+          : i == pool.wrappedIndex
+          ? balances.wrappedBalance ?? bn(0)
+          : i == pool.bptIndex
+          ? balances.bptBalance ?? bn(0)
+          : bn(0)
+      );
+
+      await pool.vault.updateBalances(poolId, updateBalances);
+    };
+
+    context('when outside the targets', () => {
+      it('reverts when main balance is below lower target', async () => {
+        await setBalances(pool, { mainBalance: lowerTarget.sub(1) });
+        await expect(pool.setSwapFeePercentage(swapFeePercentage)).to.be.revertedWith('OUT_OF_TARGET_RANGE');
+      });
+
+      it('reverts when main balance is above upper target', async () => {
+        await setBalances(pool, { mainBalance: upperTarget.add(1) });
+        await expect(pool.setSwapFeePercentage(swapFeePercentage)).to.be.revertedWith('OUT_OF_TARGET_RANGE');
+      });
+    });
+
+    context('when inside the targets', () => {
+      it('sets the swap fee when main balance equals the lower target', async () => {
+        await setBalances(pool, { mainBalance: lowerTarget });
+        const receipt = await (await pool.setSwapFeePercentage(swapFeePercentage)).wait();
+        expectEvent.inReceipt(receipt, 'SwapFeePercentageChanged', { swapFeePercentage });
+      });
+
+      it('sets the swap fee when main balance equals the upper target', async () => {
+        await setBalances(pool, { mainBalance: upperTarget });
+        const receipt = await (await pool.setSwapFeePercentage(swapFeePercentage)).wait();
+        expectEvent.inReceipt(receipt, 'SwapFeePercentageChanged', { swapFeePercentage });
+      });
+
+      it('sets the swap fee when main balance is between the targets', async () => {
+        await setBalances(pool, { mainBalance: upperTarget.add(lowerTarget).div(2) });
+        const receipt = await (await pool.setSwapFeePercentage(swapFeePercentage)).wait();
+        expectEvent.inReceipt(receipt, 'SwapFeePercentageChanged', { swapFeePercentage });
+      });
+    });
+  });
+
+  describe('get rate', () => {
+    const lowerTarget = fp(30);
+    const upperTarget = fp(60);
+    const balances: BigNumber[] = new Array<BigNumber>(3);
+
+    let params: math.Params;
+    let poolId: string;
+
+    sharedBeforeEach('deploy pool and initialize pool', async () => {
+      await deployPool({ mainToken, wrappedToken, upperTarget, owner }, true);
+
+      poolId = await pool.getPoolId();
+      await pool.vault.updateBalances(
+        poolId,
+        Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)))
+      );
+    });
+
+    context('without balances', () => {
+      it('reverts', async () => {
         await expect(pool.getRate()).to.be.revertedWith('ZERO_DIVISION');
       });
     });
 
-    context('once swapped', () => {
-      it('rate lower than one', async () => {
-        balances[pool.mainIndex] = fp(50);
-        balances[pool.wrappedIndex] = fp(50.50505051);
-        balances[pool.bptIndex] = MAX_UINT112.sub(fp(101.010101));
+    before('initialize params', () => {
+      params = {
+        fee: POOL_SWAP_FEE_PERCENTAGE,
+        lowerTarget,
+        upperTarget,
+      };
+    });
 
-        await (await pool.vault).updateBalances(poolId, balances);
+    context('with balances', async () => {
+      await pool.setTargets(lowerTarget, upperTarget);
+      const mainBalance = fromFp(lowerTarget.add(upperTarget).div(2));
+      const wrappedBalance = fromFp(upperTarget.mul(3));
+      const bptBalance = mainBalance.add(wrappedBalance);
 
-        const result = await pool.getRate();
-        expect(result.lte(fp(1))).to.be.true;
+      let expectedRate: Decimal;
+
+      beforeEach('set initial balances', async () => {
+        balances[pool.mainIndex] = fp(mainBalance);
+        balances[pool.wrappedIndex] = fp(wrappedBalance);
+        balances[pool.bptIndex] = MAX_UINT112.sub(fp(bptBalance));
       });
 
-      it('rate higher than one', async () => {
-        balances[pool.mainIndex] = fp(6342.983516);
-        balances[pool.wrappedIndex] = fp(6309.88467);
-        balances[pool.bptIndex] = MAX_UINT112.sub(fp(6687.166002));
-
-        await (await pool.vault).updateBalances(poolId, balances);
-
-        const result = await pool.getRate();
-        expect(result.gte(fp(1))).to.be.true;
+      before('calculate expected rate', async () => {
+        const nominalMainBalance = math.toNominal(mainBalance, params);
+        const invariant = math.calcInvariant(nominalMainBalance, wrappedBalance);
+        expectedRate = invariant.div(bptBalance);
       });
+
+      sharedBeforeEach('update balances and rate', async () => {
+        await pool.vault.updateBalances(poolId, balances);
+        await pool.setTargets(lowerTarget, upperTarget);
+      });
+
+      it('equals expected rate', async () => {
+        const currentRate = await pool.getRate();
+        expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
+      });
+
+      context('with main above upper', () => {
+        context('with main to wrapped swap', () => {
+          sharedBeforeEach('do swap', async () => {
+            const amountMainIn = upperTarget;
+
+            const result = await pool.swapGivenIn({
+              in: pool.mainIndex,
+              out: pool.wrappedIndex,
+              amount: amountMainIn,
+              balances,
+            });
+
+            balances[pool.mainIndex] = balances[pool.mainIndex].add(amountMainIn);
+            balances[pool.wrappedIndex] = balances[pool.wrappedIndex].sub(result);
+          });
+
+          it('rate remains the same', async () => {
+            await pool.vault.updateBalances(poolId, balances);
+
+            const currentRate = await pool.getRate();
+            expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
+          });
+        });
+
+        context('with main to bpt swap', () => {
+          sharedBeforeEach('do swap', async () => {
+            const amountInMain = upperTarget;
+
+            const result = await pool.swapGivenIn({
+              in: pool.mainIndex,
+              out: pool.bptIndex,
+              amount: amountInMain,
+              balances,
+            });
+
+            balances[pool.mainIndex] = balances[pool.mainIndex].add(amountInMain);
+            balances[pool.bptIndex] = balances[pool.bptIndex].sub(result);
+          });
+
+          it('rate remains the same', async () => {
+            await pool.vault.updateBalances(poolId, balances);
+
+            const currentRate = await pool.getRate();
+            expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
+          });
+        });
+      });
+
+      context('with main below upper', () => {
+        context('with wrapped to main swap', () => {
+          sharedBeforeEach('do swap', async () => {
+            const amountMainOut = balances[pool.mainIndex].sub(upperTarget.div(2));
+
+            const result = await pool.swapGivenOut({
+              in: pool.wrappedIndex,
+              out: pool.mainIndex,
+              amount: amountMainOut,
+              balances,
+            });
+
+            balances[pool.mainIndex] = balances[pool.mainIndex].sub(amountMainOut);
+            balances[pool.wrappedIndex] = balances[pool.wrappedIndex].add(result);
+          });
+
+          it('rate remains the same', async () => {
+            await pool.vault.updateBalances(poolId, balances);
+
+            const currentRate = await pool.getRate();
+            expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
+          });
+        });
+
+        context('with bpt to main swap', () => {
+          sharedBeforeEach('do swap', async () => {
+            const amountMainOut = balances[pool.mainIndex].sub(upperTarget.div(2));
+
+            const result = await pool.swapGivenOut({
+              in: pool.bptIndex,
+              out: pool.mainIndex,
+              amount: amountMainOut,
+              balances,
+            });
+
+            balances[pool.mainIndex] = balances[pool.mainIndex].sub(amountMainOut);
+            balances[pool.bptIndex] = balances[pool.bptIndex].add(result);
+          });
+
+          it('rate remains the same', async () => {
+            await pool.vault.updateBalances(poolId, balances);
+
+            const currentRate = await pool.getRate();
+            expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
+          });
+        });
+      });
+
+      context('with targets updated', () => {
+        sharedBeforeEach('owner update targets', async () => {
+          const newLowerTarget = lowerTarget.div(2);
+          const newUpperTarget = upperTarget.mul(2);
+
+          await pool.vault.updateBalances(poolId, balances);
+          await pool.setTargets(newLowerTarget, newUpperTarget);
+        });
+
+        it('rate remains the same', async () => {
+          await pool.vault.updateBalances(poolId, balances);
+          const currentRate = await pool.getRate();
+          expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
+        });
+      });
+
+      context('with swap fee updated', () => {
+        sharedBeforeEach('update swap fee', async () => {
+          await pool.vault.updateBalances(poolId, balances);
+          await pool.instance.connect(owner).setSwapFeePercentage(POOL_SWAP_FEE_PERCENTAGE.mul(2));
+        });
+
+        it('rate remains the same', async () => {
+          await pool.vault.updateBalances(poolId, balances);
+          const currentRate = await pool.getRate();
+          expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
+        });
+      });
+    });
+  });
+
+  describe('scaling factors', () => {
+    const scaleRate = (rate: BigNumber) => rate.mul(bn(10).pow(18 - wrappedToken.decimals));
+
+    sharedBeforeEach('deploy pool', async () => {
+      await deployPool({ mainToken, wrappedToken });
+    });
+
+    const itAdaptsTheScalingFactorsCorrectly = () => {
+      const expectedBptScalingFactor = fp(1);
+      const expectedMainTokenScalingFactor = fp(1);
+
+      it('adapt the scaling factors with the price rate', async () => {
+        const scalingFactors = await pool.getScalingFactors();
+
+        const expectedWrappedTokenScalingFactor = scaleRate(await pool.getWrappedTokenRate());
+        expect(scalingFactors[pool.wrappedIndex]).to.be.equal(expectedWrappedTokenScalingFactor);
+        expect(await pool.getScalingFactor(wrappedToken)).to.be.equal(expectedWrappedTokenScalingFactor);
+
+        expect(scalingFactors[pool.mainIndex]).to.be.equal(expectedMainTokenScalingFactor);
+        expect(await pool.getScalingFactor(mainToken)).to.be.equal(expectedMainTokenScalingFactor);
+
+        expect(scalingFactors[pool.bptIndex]).to.be.equal(expectedBptScalingFactor);
+        expect(await pool.getScalingFactor(pool.bptToken)).to.be.equal(expectedBptScalingFactor);
+      });
+    };
+
+    context('with a price rate above 1', () => {
+      sharedBeforeEach('mock rate', async () => {
+        await pool.instance.setWrappedTokenRate(fp(1.1));
+      });
+
+      itAdaptsTheScalingFactorsCorrectly();
+    });
+
+    context('with a price rate equal to 1', () => {
+      sharedBeforeEach('mock rate', async () => {
+        await pool.instance.setWrappedTokenRate(fp(1));
+      });
+
+      itAdaptsTheScalingFactorsCorrectly();
+    });
+
+    context('with a price rate below 1', () => {
+      sharedBeforeEach('mock rate', async () => {
+        await pool.instance.setWrappedTokenRate(fp(0.99));
+      });
+
+      itAdaptsTheScalingFactorsCorrectly();
     });
   });
 
@@ -343,157 +603,153 @@ describe('LinearPool', function () {
     let params: math.Params;
 
     sharedBeforeEach('deploy and initialize pool', async () => {
-      lowerTarget = fp(1000);
+      lowerTarget = fp(0);
       upperTarget = fp(2000);
-      await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget }, true);
+      await deployPool({ mainToken, wrappedToken, upperTarget }, true);
       currentBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)));
 
-      const currentCache = await pool.getWrappedTokenRateCache();
       params = {
         fee: POOL_SWAP_FEE_PERCENTAGE,
-        rate: currentCache.rate,
-        target1: lowerTarget,
-        target2: upperTarget,
+        lowerTarget,
+        upperTarget,
       };
     });
 
-    context('below target 1', () => {
-      context('given DAI in', () => {
-        let amount: BigNumber;
-        let bptSupply: BigNumber;
+    context('given DAI in', () => {
+      let amount: BigNumber;
+      let bptSupply: BigNumber;
 
-        sharedBeforeEach('initialize values ', async () => {
-          amount = fp(100);
-          bptSupply = MAX_UINT112.sub(currentBalances[pool.bptIndex]);
-        });
-
-        it('calculate bpt out', async () => {
-          const result = await pool.swapGivenIn({
-            in: pool.mainIndex,
-            out: pool.bptIndex,
-            amount: amount,
-            balances: currentBalances,
-          });
-
-          const expected = math.calcBptOutPerMainIn(
-            amount,
-            currentBalances[pool.mainIndex],
-            currentBalances[pool.wrappedIndex],
-            bptSupply,
-            params
-          );
-
-          expect(result).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
-
-          currentBalances[pool.mainIndex] = currentBalances[pool.mainIndex].add(amount);
-          currentBalances[pool.bptIndex] = currentBalances[pool.bptIndex].sub(result);
-        });
-
-        context('when paused', () => {
-          sharedBeforeEach('pause pool', async () => {
-            await pool.pause();
-          });
-
-          it('reverts', async () => {
-            await expect(
-              pool.swapGivenIn({
-                in: pool.mainIndex,
-                out: pool.bptIndex,
-                amount: amount,
-                balances: currentBalances,
-              })
-            ).to.be.revertedWith('PAUSED');
-          });
-        });
+      sharedBeforeEach('initialize values ', async () => {
+        amount = fp(100);
+        bptSupply = MAX_UINT112.sub(currentBalances[pool.bptIndex]);
       });
 
-      context('given DAI out', () => {
-        let amount: BigNumber;
-
-        sharedBeforeEach('initialize values ', async () => {
-          amount = fp(50);
+      it('calculate bpt out', async () => {
+        const result = await pool.swapGivenIn({
+          in: pool.mainIndex,
+          out: pool.bptIndex,
+          amount: amount,
+          balances: currentBalances,
         });
 
-        it('calculate wrapped in', async () => {
-          const result = await pool.swapGivenOut({
-            in: pool.wrappedIndex,
-            out: pool.mainIndex,
-            amount: amount,
-            balances: currentBalances,
-          });
+        const expected = math.calcBptOutPerMainIn(
+          amount,
+          currentBalances[pool.mainIndex],
+          currentBalances[pool.wrappedIndex],
+          bptSupply,
+          params
+        );
 
-          const expected = math.calcWrappedInPerMainOut(amount, currentBalances[pool.mainIndex], params);
+        expect(result).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
 
-          expect(result).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
-
-          currentBalances[pool.wrappedIndex] = currentBalances[pool.wrappedIndex].add(amount);
-          currentBalances[pool.mainIndex] = currentBalances[pool.mainIndex].sub(result);
-        });
-
-        context('when paused', () => {
-          sharedBeforeEach('pause pool', async () => {
-            await pool.pause();
-          });
-
-          it('reverts', async () => {
-            await expect(
-              pool.swapGivenOut({
-                in: pool.wrappedIndex,
-                out: pool.mainIndex,
-                amount: amount,
-                balances: currentBalances,
-              })
-            ).to.be.revertedWith('PAUSED');
-          });
-        });
+        currentBalances[pool.mainIndex] = currentBalances[pool.mainIndex].add(amount);
+        currentBalances[pool.bptIndex] = currentBalances[pool.bptIndex].sub(result);
       });
 
-      context('given bpt in', () => {
-        let amount: BigNumber;
-        let bptSupply: BigNumber;
-
-        sharedBeforeEach('initialize values ', async () => {
-          amount = fp(10);
-          bptSupply = MAX_UINT112.sub(currentBalances[pool.bptIndex]);
+      context('when paused', () => {
+        sharedBeforeEach('pause pool', async () => {
+          await pool.pause();
         });
 
-        it('calculate wrapped out', async () => {
-          const result = await pool.swapGivenIn({
-            in: pool.bptIndex,
-            out: pool.wrappedIndex,
-            amount: amount,
-            balances: currentBalances,
-          });
+        it('reverts', async () => {
+          await expect(
+            pool.swapGivenIn({
+              in: pool.mainIndex,
+              out: pool.bptIndex,
+              amount: amount,
+              balances: currentBalances,
+            })
+          ).to.be.revertedWith('PAUSED');
+        });
+      });
+    });
 
-          const expected = math.calcWrappedOutPerBptIn(
-            amount,
-            currentBalances[pool.mainIndex],
-            currentBalances[pool.wrappedIndex],
-            bptSupply,
-            params
-          );
+    context('given DAI out', () => {
+      let amount: BigNumber;
 
-          expect(result).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
+      sharedBeforeEach('initialize values ', async () => {
+        amount = fp(50);
+      });
 
-          currentBalances[pool.wrappedIndex] = currentBalances[pool.wrappedIndex].add(amount);
-          currentBalances[pool.mainIndex] = currentBalances[pool.mainIndex].sub(result);
+      it('calculate wrapped in', async () => {
+        const result = await pool.swapGivenOut({
+          in: pool.wrappedIndex,
+          out: pool.mainIndex,
+          amount: amount,
+          balances: currentBalances,
         });
 
-        context('when paused', () => {
-          sharedBeforeEach('pause pool', async () => {
-            await pool.pause();
-          });
+        const expected = math.calcWrappedInPerMainOut(amount, currentBalances[pool.mainIndex], params);
 
-          it('reverts', async () => {
-            await expect(
-              pool.swapGivenIn({
-                in: pool.bptIndex,
-                out: pool.wrappedIndex,
-                amount: amount,
-                balances: currentBalances,
-              })
-            ).to.be.revertedWith('PAUSED');
-          });
+        expect(result).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
+
+        currentBalances[pool.wrappedIndex] = currentBalances[pool.wrappedIndex].add(amount);
+        currentBalances[pool.mainIndex] = currentBalances[pool.mainIndex].sub(result);
+      });
+
+      context('when paused', () => {
+        sharedBeforeEach('pause pool', async () => {
+          await pool.pause();
+        });
+
+        it('reverts', async () => {
+          await expect(
+            pool.swapGivenOut({
+              in: pool.wrappedIndex,
+              out: pool.mainIndex,
+              amount: amount,
+              balances: currentBalances,
+            })
+          ).to.be.revertedWith('PAUSED');
+        });
+      });
+    });
+
+    context('given bpt in', () => {
+      let amount: BigNumber;
+      let bptSupply: BigNumber;
+
+      sharedBeforeEach('initialize values ', async () => {
+        amount = fp(10);
+        bptSupply = MAX_UINT112.sub(currentBalances[pool.bptIndex]);
+      });
+
+      it('calculate wrapped out', async () => {
+        const result = await pool.swapGivenIn({
+          in: pool.bptIndex,
+          out: pool.wrappedIndex,
+          amount: amount,
+          balances: currentBalances,
+        });
+
+        const expected = math.calcWrappedOutPerBptIn(
+          amount,
+          currentBalances[pool.mainIndex],
+          currentBalances[pool.wrappedIndex],
+          bptSupply,
+          params
+        );
+
+        expect(result).to.be.equalWithError(bn(expected), EXPECTED_RELATIVE_ERROR);
+
+        currentBalances[pool.wrappedIndex] = currentBalances[pool.wrappedIndex].add(amount);
+        currentBalances[pool.mainIndex] = currentBalances[pool.mainIndex].sub(result);
+      });
+
+      context('when paused', () => {
+        sharedBeforeEach('pause pool', async () => {
+          await pool.pause();
+        });
+
+        it('reverts', async () => {
+          await expect(
+            pool.swapGivenIn({
+              in: pool.bptIndex,
+              out: pool.wrappedIndex,
+              amount: amount,
+              balances: currentBalances,
+            })
+          ).to.be.revertedWith('PAUSED');
         });
       });
     });
@@ -501,9 +757,8 @@ describe('LinearPool', function () {
 
   describe('virtual supply', () => {
     sharedBeforeEach('deploy and initialize pool', async () => {
-      const lowerTarget = fp(1000);
       const upperTarget = fp(2000);
-      await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget }, false);
+      await deployPool({ mainToken, wrappedToken, upperTarget }, false);
       await pool.initialize();
     });
 
@@ -535,13 +790,12 @@ describe('LinearPool', function () {
     });
   });
 
-  describe('proportional exit', () => {
-    let lowerTarget: BigNumber, upperTarget: BigNumber;
+  describe('emergency proportional exit', () => {
+    let upperTarget: BigNumber;
 
     sharedBeforeEach('deploy and initialize pool', async () => {
-      lowerTarget = fp(1000);
       upperTarget = fp(2000);
-      await deployPool({ mainToken, wrappedToken, lowerTarget, upperTarget }, false);
+      await deployPool({ mainToken, wrappedToken, upperTarget }, false);
       await pool.initialize();
     });
 
@@ -571,7 +825,7 @@ describe('LinearPool', function () {
     context('when not paused', () => {
       it('cannot exit proportionally', async () => {
         const bptIn = fp(10);
-        await expect(pool.proportionalExit({ from: lp, bptIn })).to.be.revertedWith('NOT_PAUSED');
+        await expect(pool.emergencyProportionalExit({ from: lp, bptIn })).to.be.revertedWith('NOT_PAUSED');
       });
     });
 
@@ -593,7 +847,7 @@ describe('LinearPool', function () {
             i == pool.bptIndex ? bn(0) : bn(balance).div(4)
           );
 
-          const result = await pool.proportionalExit({ from: lp, bptIn });
+          const result = await pool.emergencyProportionalExit({ from: lp, bptIn });
 
           // Protocol fees should be zero
           expect(result.dueProtocolFeeAmounts).to.be.zeros;
@@ -633,7 +887,7 @@ describe('LinearPool', function () {
 
         sharedBeforeEach('first lp exits', async () => {
           const bptIn = await pool.balanceOf(lp);
-          await pool.proportionalExit({ from: lp, bptIn });
+          await pool.emergencyProportionalExit({ from: lp, bptIn });
         });
 
         it('can fully exit proportionally', async () => {
@@ -646,7 +900,7 @@ describe('LinearPool', function () {
           );
 
           //Exit with all BPT balance
-          const result = await pool.proportionalExit({ from: other, bptIn: previousOtherBptBalance });
+          const result = await pool.emergencyProportionalExit({ from: other, bptIn: previousOtherBptBalance });
 
           // Protocol fees should be zero
           expect(result.dueProtocolFeeAmounts).to.be.zeros;
@@ -658,224 +912,6 @@ describe('LinearPool', function () {
           // Current virtual supply after full exit is cero
           const currentVirtualSupply = await pool.getVirtualSupply();
           expect(currentVirtualSupply).to.be.equalWithError(bn(0), 0.00001);
-        });
-      });
-    });
-  });
-
-  describe('wrapped token rate cache', () => {
-    let timestamp: BigNumber;
-    let wrappedTokenRateProvider: Contract;
-    const wrappedTokenRateCacheDuration = MINUTE * 20;
-
-    const scaleRate = (rate: BigNumber) => rate.mul(bn(10).pow(18 - wrappedToken.decimals));
-
-    sharedBeforeEach('deploy pool', async () => {
-      wrappedTokenRateProvider = await deploy('v2-pool-utils/MockRateProvider');
-      timestamp = await currentTimestamp();
-      await deployPool({ mainToken, wrappedToken, wrappedTokenRateProvider, wrappedTokenRateCacheDuration });
-    });
-
-    it('initializes correctly', async () => {
-      const provider = await pool.getWrappedTokenRateProvider();
-      expect(provider).to.be.equal(wrappedTokenRateProvider.address);
-
-      const { rate, duration, expires } = await pool.getWrappedTokenRateCache();
-      expect(rate).to.be.equal(fp(1));
-      expect(duration).to.be.equal(wrappedTokenRateCacheDuration);
-      expect(expires).to.be.at.least(timestamp.add(wrappedTokenRateCacheDuration));
-    });
-
-    describe('scaling factors', () => {
-      const itAdaptsTheScalingFactorsCorrectly = () => {
-        const expectedBptScalingFactor = fp(1);
-        const expectedMainTokenScalingFactor = fp(1);
-
-        it('adapt the scaling factors with the price rate', async () => {
-          const scalingFactors = await pool.getScalingFactors();
-
-          const expectedWrappedTokenScalingFactor = scaleRate(await wrappedTokenRateProvider.getRate());
-          expect(scalingFactors[pool.wrappedIndex]).to.be.equal(expectedWrappedTokenScalingFactor);
-          expect(await pool.getScalingFactor(wrappedToken)).to.be.equal(expectedWrappedTokenScalingFactor);
-
-          expect(scalingFactors[pool.mainIndex]).to.be.equal(expectedMainTokenScalingFactor);
-          expect(await pool.getScalingFactor(mainToken)).to.be.equal(expectedMainTokenScalingFactor);
-
-          expect(scalingFactors[pool.bptIndex]).to.be.equal(expectedBptScalingFactor);
-          expect(await pool.getScalingFactor(pool.bptToken)).to.be.equal(expectedBptScalingFactor);
-        });
-      };
-
-      context('with a price rate above 1', () => {
-        sharedBeforeEach('mock rate', async () => {
-          await wrappedTokenRateProvider.mockRate(fp(1.1));
-          await pool.updateWrappedTokenRateCache();
-        });
-
-        itAdaptsTheScalingFactorsCorrectly();
-      });
-
-      context('with a price rate equal to 1', () => {
-        sharedBeforeEach('mock rate', async () => {
-          await wrappedTokenRateProvider.mockRate(fp(1));
-          await pool.updateWrappedTokenRateCache();
-        });
-
-        itAdaptsTheScalingFactorsCorrectly();
-      });
-
-      context('with a price rate below 1', () => {
-        sharedBeforeEach('mock rate', async () => {
-          await wrappedTokenRateProvider.mockRate(fp(0.99));
-          await pool.updateWrappedTokenRateCache();
-        });
-
-        itAdaptsTheScalingFactorsCorrectly();
-      });
-    });
-
-    describe('update', () => {
-      const itUpdatesTheRateCache = (action: () => Promise<ContractTransaction>) => {
-        const newRate = fp(1.5);
-
-        it('updates the cache', async () => {
-          const previousCache = await pool.getWrappedTokenRateCache();
-
-          await wrappedTokenRateProvider.mockRate(newRate);
-          const updatedAt = await currentTimestamp();
-          await action();
-
-          const currentCache = await pool.getWrappedTokenRateCache();
-          expect(currentCache.rate).to.be.equal(newRate);
-          expect(previousCache.rate).not.to.be.equal(newRate);
-
-          expect(currentCache.duration).to.be.equal(wrappedTokenRateCacheDuration);
-          expect(currentCache.expires).to.be.at.least(updatedAt.add(wrappedTokenRateCacheDuration));
-        });
-
-        it('emits an event', async () => {
-          await wrappedTokenRateProvider.mockRate(newRate);
-          const receipt = await action();
-
-          expectEvent.inReceipt(await receipt.wait(), 'PriceRateCacheUpdated', {
-            token: wrappedToken.address,
-            rate: newRate,
-          });
-        });
-      };
-
-      context('before the cache expires', () => {
-        sharedBeforeEach('advance time', async () => {
-          await advanceTime(wrappedTokenRateCacheDuration / 2);
-        });
-
-        context('when not forced', () => {
-          const action = async () => pool.instance.mockCacheWrappedTokenRateIfNecessary();
-
-          it('does not update the cache', async () => {
-            const previousCache = await pool.getWrappedTokenRateCache();
-
-            await action();
-
-            const currentCache = await pool.getWrappedTokenRateCache();
-            expect(currentCache.rate).to.be.equal(previousCache.rate);
-            expect(currentCache.expires).to.be.equal(previousCache.expires);
-            expect(currentCache.duration).to.be.equal(previousCache.duration);
-          });
-        });
-
-        context('when forced', () => {
-          const action = async () => pool.updateWrappedTokenRateCache();
-
-          itUpdatesTheRateCache(action);
-        });
-      });
-
-      context('after the cache expires', () => {
-        sharedBeforeEach('advance time', async () => {
-          await advanceTime(wrappedTokenRateCacheDuration + MINUTE);
-        });
-
-        context('when not forced', () => {
-          const action = async () => pool.instance.mockCacheWrappedTokenRateIfNecessary();
-
-          itUpdatesTheRateCache(action);
-        });
-
-        context('when forced', () => {
-          const action = async () => pool.updateWrappedTokenRateCache();
-
-          itUpdatesTheRateCache(action);
-        });
-      });
-    });
-
-    describe('set cache duration', () => {
-      const newDuration = MINUTE * 10;
-
-      sharedBeforeEach('grant role to admin', async () => {
-        const action = await actionId(pool.instance, 'setWrappedTokenRateCacheDuration');
-        await pool.vault.grantRoleGlobally(action, admin);
-      });
-
-      const itUpdatesTheCacheDuration = () => {
-        it('updates the cache duration', async () => {
-          const previousCache = await pool.getWrappedTokenRateCache();
-
-          const newRate = fp(1.5);
-          await wrappedTokenRateProvider.mockRate(newRate);
-          const forceUpdateAt = await currentTimestamp();
-          await pool.setWrappedTokenRateCacheDuration(newDuration, { from: owner });
-
-          const currentCache = await pool.getWrappedTokenRateCache();
-          expect(currentCache.rate).to.be.equal(newRate);
-          expect(previousCache.rate).not.to.be.equal(newRate);
-          expect(currentCache.duration).to.be.equal(newDuration);
-          expect(currentCache.expires).to.be.at.least(forceUpdateAt.add(newDuration));
-        });
-
-        it('emits an event', async () => {
-          const receipt = await pool.setWrappedTokenRateCacheDuration(newDuration, { from: owner });
-
-          expectEvent.inReceipt(await receipt.wait(), 'PriceRateProviderSet', {
-            token: wrappedToken.address,
-            provider: wrappedTokenRateProvider.address,
-            cacheDuration: newDuration,
-          });
-        });
-      };
-
-      context('when it is requested by the owner', () => {
-        context('before the cache expires', () => {
-          sharedBeforeEach('advance time', async () => {
-            await advanceTime(wrappedTokenRateCacheDuration / 2);
-          });
-
-          itUpdatesTheCacheDuration();
-        });
-
-        context('after the cache has expired', () => {
-          sharedBeforeEach('advance time', async () => {
-            await advanceTime(wrappedTokenRateCacheDuration + MINUTE);
-          });
-
-          itUpdatesTheCacheDuration();
-        });
-      });
-
-      context('when it is requested by the admin', () => {
-        it('reverts', async () => {
-          await expect(pool.setWrappedTokenRateCacheDuration(10, { from: admin })).to.be.revertedWith(
-            'SENDER_NOT_ALLOWED'
-          );
-        });
-      });
-
-      context('when it is requested by another one', () => {
-        it('reverts', async () => {
-          await expect(pool.setWrappedTokenRateCacheDuration(10, { from: lp })).to.be.revertedWith(
-            'SENDER_NOT_ALLOWED'
-          );
         });
       });
     });

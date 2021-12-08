@@ -17,6 +17,7 @@ import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import LinearPoolDeployer from './LinearPoolDeployer';
+import { deployedAt } from '../../../contract';
 
 export default class LinearPool {
   instance: Contract;
@@ -27,13 +28,36 @@ export default class LinearPool {
   lowerTarget: BigNumberish;
   upperTarget: BigNumberish;
   swapFeePercentage: BigNumberish;
-  wrappedTokenRateProvider: string;
-  wrappedTokenRateCacheDuration: BigNumberish;
   vault: Vault;
   owner?: SignerWithAddress;
 
   static async create(params: RawLinearPoolDeployment, mockedVault: boolean): Promise<LinearPool> {
     return LinearPoolDeployer.deploy(params, mockedVault);
+  }
+
+  static async deployedAt(address: Account): Promise<LinearPool> {
+    const instance = await deployedAt('v2-pool-linear/LinearPool', TypesConverter.toAddress(address));
+    const [poolId, vault, mainToken, wrappedToken, [lowerTarget, upperTarget], swapFee, owner] = await Promise.all([
+      instance.getPoolId(),
+      instance.getVault(),
+      instance.getMainToken(),
+      instance.getWrappedToken(),
+      instance.getTargets(),
+      instance.getSwapFeePercentage(),
+      instance.getOwner(),
+    ]);
+    return new LinearPool(
+      instance,
+      poolId,
+      vault,
+      await Token.deployedAt(mainToken),
+      await Token.deployedAt(wrappedToken),
+      await Token.deployedAt(instance.address),
+      lowerTarget,
+      upperTarget,
+      swapFee,
+      owner
+    );
   }
 
   constructor(
@@ -46,8 +70,6 @@ export default class LinearPool {
     lowerTarget: BigNumberish,
     upperTarget: BigNumberish,
     swapFeePercentage: BigNumberish,
-    wrappedTokenRateProvider: string,
-    wrappedTokenRateCacheDuration: BigNumberish,
     owner?: SignerWithAddress
   ) {
     this.instance = instance;
@@ -59,8 +81,6 @@ export default class LinearPool {
     this.lowerTarget = lowerTarget;
     this.upperTarget = upperTarget;
     this.swapFeePercentage = swapFeePercentage;
-    this.wrappedTokenRateProvider = wrappedTokenRateProvider;
-    this.wrappedTokenRateCacheDuration = wrappedTokenRateCacheDuration;
     this.owner = owner;
   }
 
@@ -140,12 +160,8 @@ export default class LinearPool {
     return this.instance.getScalingFactor(token.address);
   }
 
-  async getWrappedTokenRateProvider(): Promise<string> {
-    return this.instance.getWrappedTokenRateProvider();
-  }
-
-  async getWrappedTokenRateCache(): Promise<{ rate: BigNumber; duration: BigNumber; expires: BigNumber }> {
-    return this.instance.getWrappedTokenRateCache();
+  async getWrappedTokenRate(): Promise<BigNumber> {
+    return this.instance.getWrappedTokenRate();
   }
 
   async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
@@ -168,7 +184,7 @@ export default class LinearPool {
   }
 
   async getVirtualSupply(): Promise<BigNumber> {
-    return this.instance.virtualSupply();
+    return this.instance.getVirtualSupply();
   }
 
   async getTargets(): Promise<{ lowerTarget: BigNumber; upperTarget: BigNumber }> {
@@ -185,17 +201,14 @@ export default class LinearPool {
     return pool.setTargets(lowerTarget, upperTarget);
   }
 
+  async setSwapFeePercentage(swapFeePercentage: BigNumber, txParams: TxParams = {}): Promise<ContractTransaction> {
+    const sender = txParams.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    return pool.setSwapFeePercentage(swapFeePercentage);
+  }
+
   async initialize(): Promise<void> {
     return this.instance.initialize();
-  }
-
-  async setWrappedTokenRateCacheDuration(duration: number, { from }: TxParams = {}): Promise<ContractTransaction> {
-    const pool = from ? this.instance.connect(from) : this.instance;
-    return pool.setWrappedTokenRateCacheDuration(duration);
-  }
-
-  async updateWrappedTokenRateCache(): Promise<ContractTransaction> {
-    return this.instance.updateWrappedTokenRateCache();
   }
 
   async swapGivenIn(params: SwapLinearPool): Promise<BigNumber> {
@@ -231,9 +244,9 @@ export default class LinearPool {
     };
   }
 
-  async proportionalExit(params: MultiExitGivenInLinearPool): Promise<ExitResult> {
+  async emergencyProportionalExit(params: MultiExitGivenInLinearPool): Promise<ExitResult> {
     const { tokens: allTokens } = await this.getTokens();
-    const data = this._encodeExitExactBPTInForTokensOut(params.bptIn);
+    const data = this._encodeExitEmergencyExactBPTInForTokensOut(params.bptIn);
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
 
@@ -254,9 +267,9 @@ export default class LinearPool {
     return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFeeAmounts };
   }
 
-  private _encodeExitExactBPTInForTokensOut(bptAmountIn: BigNumberish): string {
-    const EXACT_BPT_IN_FOR_TOKENS_OUT = 0;
-    return defaultAbiCoder.encode(['uint256', 'uint256'], [EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn]);
+  private _encodeExitEmergencyExactBPTInForTokensOut(bptAmountIn: BigNumberish): string {
+    const EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT = 0;
+    return defaultAbiCoder.encode(['uint256', 'uint256'], [EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn]);
   }
 
   async pause(): Promise<void> {

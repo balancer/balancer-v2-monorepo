@@ -3,7 +3,8 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn, printGas } from '@balancer-labs/v2-helpers/src/numbers';
-import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { setupEnvironment, getWeightedPool, getStablePool, pickTokenAddresses } from './misc';
 import { WeightedPoolEncoder, StablePoolEncoder } from '@balancer-labs/balancer-js';
@@ -13,10 +14,10 @@ import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 const BPTAmount = bn(1e18);
 const numberJoinsExits = 3;
 const managedPoolMin = 40;
-const managedPoolMax = 50;
-const maxManagedTokens = 50;
+const managedPoolMax = 48;
+const maxManagedTokens = 48;
 
-let vault: Contract;
+let vault: Vault;
 let tokens: TokenList;
 
 let trader: SignerWithAddress;
@@ -253,7 +254,7 @@ async function joinAndExitPool(
   stageIdx = 1
 ) {
   const poolId: string = await getPoolId();
-  const [poolAddress] = await vault.getPool(poolId);
+  const { address: poolAddress } = await vault.getPool(poolId);
   const pool: Contract = await deployedAt('v2-pool-weighted/WeightedPool', poolAddress);
   const joinRequest = {
     assets: pickTokenAddresses(tokens, numTokens),
@@ -272,7 +273,9 @@ async function joinAndExitPool(
   let bpt;
 
   for (let idx = 1; idx <= stageIdx; idx++) {
-    receipt = await (await vault.connect(trader).joinPool(poolId, trader.address, trader.address, joinRequest)).wait();
+    receipt = await (
+      await vault.instance.connect(trader).joinPool(poolId, trader.address, trader.address, joinRequest)
+    ).wait();
     console.log(`${printGas(receipt.gasUsed)} gas for join ${idx}`);
 
     bpt = await pool.balanceOf(trader.address);
@@ -283,7 +286,9 @@ async function joinAndExitPool(
 
   // Now exit the pool
   for (let idx = 1; idx <= stageIdx; idx++) {
-    receipt = await (await vault.connect(trader).exitPool(poolId, trader.address, trader.address, exitRequest)).wait();
+    receipt = await (
+      await vault.instance.connect(trader).exitPool(poolId, trader.address, trader.address, exitRequest)
+    ).wait();
     console.log(`${printGas(receipt.gasUsed)} gas for exit ${idx}`);
 
     bpt = await pool.balanceOf(trader.address);

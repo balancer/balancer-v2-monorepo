@@ -13,6 +13,7 @@ import { BigNumberish } from '../../numbers';
 import { Account, NAry, TxParams } from '../types/types';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
 import { ExitPool, JoinPool, RawVaultDeployment, MinimalSwap, GeneralSwap } from './types';
+import { Interface } from '@ethersproject/abi';
 
 export default class Vault {
   mocked: boolean;
@@ -20,6 +21,10 @@ export default class Vault {
   authorizer?: Contract;
   admin?: SignerWithAddress;
   feesCollector?: Contract;
+
+  get interface(): Interface {
+    return this.instance.interface;
+  }
 
   static async create(deployment: RawVaultDeployment = {}): Promise<Vault> {
     return VaultDeployer.deploy(deployment);
@@ -248,6 +253,10 @@ export default class Vault {
     if (!to) to = await this._defaultSender();
     const whereAddresses = where.map((x) => TypesConverter.toAddress(x));
     return this.authorizer.connect(this.admin).grantRole(actionId, TypesConverter.toAddress(to), whereAddresses);
+  }
+
+  async setRelayerApproval(user: SignerWithAddress, relayer: Account, approval: boolean): Promise<ContractTransaction> {
+    return this.instance.connect(user).setRelayerApproval(user.address, TypesConverter.toAddress(relayer), approval);
   }
 
   async _defaultSender(): Promise<SignerWithAddress> {
