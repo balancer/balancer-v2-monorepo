@@ -15,7 +15,7 @@ const BPTAmount = bn(1e18);
 const numberJoinsExits = 3;
 const managedPoolMin = 15;
 const managedPoolMax = 35;
-const maxManagedTokens = 40;
+const maxManagedTokens = 38;
 const managedPoolStep = 5;
 
 let vault: Vault;

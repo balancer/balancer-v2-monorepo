@@ -194,18 +194,27 @@ async function deployPoolFromFactory(
     poolName == 'WeightedPool2Tokens'
       ? { QueryProcessor: await (await deploy('v2-pool-utils/QueryProcessor')).address }
       : undefined;
-  const factory = await deploy(`${fullName}Factory`, { args: [vault.address], libraries });
+  let factory: Contract;
+  if (poolName == 'ManagedPool') {
+    const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', { args: [vault.address] });
+    factory = await deploy(`${fullName}Factory`, { args: [baseFactory.address] });
+  } else {
+    factory = await deploy(`${fullName}Factory`, { args: [vault.address], libraries });
+  }
+
   // We could reuse this factory if we saved it across pool deployments
 
   let receipt: ContractReceipt;
+  let event;
 
   if (poolName == 'ManagedPool') {
     receipt = await (await factory.connect(args.from).create(...args.parameters)).wait();
+    event = receipt.events?.find((e) => e.event == 'ManagedPoolCreated');
   } else {
     receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, ZERO_ADDRESS)).wait();
+    event = receipt.events?.find((e) => e.event == 'PoolCreated');
   }
 
-  const event = receipt.events?.find((e) => e.event == 'PoolCreated');
   if (event == undefined) {
     throw new Error('Could not find PoolCreated event');
   }
