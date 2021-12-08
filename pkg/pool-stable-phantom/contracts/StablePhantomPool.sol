@@ -617,6 +617,8 @@ contract StablePhantomPool is StablePool {
             uint256 expires
         )
     {
+        _require(_rateProviders[token] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+
         rate = _tokenRateCaches[token].getValue();
         (duration, expires) = _tokenRateCaches[token].getTimestamps();
     }

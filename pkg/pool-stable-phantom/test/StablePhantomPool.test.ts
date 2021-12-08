@@ -159,12 +159,20 @@ describe('StablePhantomPool', () => {
           });
         });
 
-        it('sets no rate cache duration for BPT', async () => {
-          const { duration, expires, rate } = await pool.getTokenRateCache(pool.address);
+        it('reverts when querying rate cache for BPT', async () => {
+          await expect(pool.getTokenRateCache(pool.address)).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
+        });
 
-          expect(rate).to.be.zero;
-          expect(duration).to.be.zero;
-          expect(expires).to.be.zero;
+        it('reverts when updating the cache for BPT', async () => {
+          await expect(pool.instance.updateTokenRateCache(pool.address)).to.be.revertedWith(
+            'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'
+          );
+        });
+
+        it('reverts when setting the cache duration for BPT', async () => {
+          await expect(pool.instance.connect(owner).setTokenRateCacheDuration(pool.address, 0)).to.be.revertedWith(
+            'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'
+          );
         });
 
         it('sets the scaling factors', async () => {
@@ -483,6 +491,7 @@ describe('StablePhantomPool', () => {
             tokens,
             rateProviders: new Array(tokens.length).fill(ZERO_ADDRESS),
             tokenRateCacheDurations: new Array(tokens.length).fill(0),
+            owner,
           });
         });
 
@@ -505,6 +514,20 @@ describe('StablePhantomPool', () => {
         it('updating the cache reverts', async () => {
           await tokens.asyncEach(async (token) => {
             await expect(pool.updateTokenRateCache(token)).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
+          });
+        });
+
+        it('updating the cache duration reverts', async () => {
+          await tokens.asyncEach(async (token) => {
+            await expect(pool.setTokenRateCacheDuration(token, bn(0), { from: owner })).to.be.revertedWith(
+              'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'
+            );
+          });
+        });
+
+        it('querying the cache reverts', async () => {
+          await tokens.asyncEach(async (token) => {
+            await expect(pool.getTokenRateCache(token)).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
           });
         });
       });
