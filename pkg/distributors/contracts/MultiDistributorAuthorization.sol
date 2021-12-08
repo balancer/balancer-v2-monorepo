@@ -24,7 +24,20 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 abstract contract MultiDistributorAuthorization is Authentication {
     IVault private immutable _vault;
 
-    constructor(IVault vault) {
+    /**
+     * @dev Reverts unless `user` is the caller, or the caller is approved by the Authorizer to call the entry point
+     * function (that is, it is a relayer for that function) and `user` approved the caller as a relayer
+     * (via calling `setRelayerApproval` on the Vault)
+     *
+     * Should only be applied to external functions.
+     */
+    modifier authenticateFor(address user) {
+        _authenticateFor(user);
+        _;
+    }
+
+    constructor(IVault vault) Authentication(bytes32(uint256(address(this)))) {
+        // MultiDistributor is a singleton, so it simply uses its own address to disambiguate action identifiers
         _vault = vault;
     }
 
@@ -42,5 +55,21 @@ abstract contract MultiDistributorAuthorization is Authentication {
 
     function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
         return _getAuthorizer().canPerform(actionId, account, address(this));
+    }
+
+    /**
+     * @dev Reverts unless `user` is the caller, or the caller is approved by the Authorizer to call the entry point
+     * function (that is, it is a relayer for that function) and `user` approved the caller as a relayer
+     * (via calling `setRelayerApproval` on the Vault)
+     */
+    function _authenticateFor(address user) internal view {
+        if (msg.sender != user) {
+            // In this context, 'permission to call a function' means 'being a relayer for a function'.
+            _authenticateCaller();
+
+            // Being a relayer is not sufficient: `user` must have also approved the caller via
+            // calling `setRelayerApproval` on the Vault
+            _require(getVault().hasApprovedRelayer(user, msg.sender), Errors.USER_DOESNT_ALLOW_RELAYER);
+        }
     }
 }

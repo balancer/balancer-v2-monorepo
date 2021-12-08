@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { BigNumber, ContractTransaction } from 'ethers';
+import { WeiPerEther as ONE } from '@ethersproject/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -26,12 +27,13 @@ describe('MultiDistributor', () => {
   let distributionToken: Token, anotherDistributionToken: Token, distributionTokens: TokenList;
   let user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress;
   let other: SignerWithAddress, distributionOwner: SignerWithAddress;
+  let relayer: SignerWithAddress;
 
   const DISTRIBUTION_SIZE = fp(90e3);
   const PERIOD_DURATION = 30 * DAY;
 
   before('setup signers', async () => {
-    [, user1, user2, user3, other, distributionOwner] = await ethers.getSigners();
+    [, user1, user2, user3, other, distributionOwner, relayer] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy distributor', async () => {
@@ -39,8 +41,16 @@ describe('MultiDistributor', () => {
     distributor = await MultiDistributor.create(vault);
 
     // Authorise distributor to use users' vault token approvals
-    const action = await actionId(vault.instance, 'manageUserBalance');
-    await vault.grantRoleGlobally(action, distributor);
+    const manageUserRole = await actionId(vault.instance, 'manageUserBalance');
+    await vault.grantRoleGlobally(manageUserRole, distributor);
+
+    const stakeRole = await actionId(distributor.instance, 'stake');
+    const stakeUsingVaultRole = await actionId(distributor.instance, 'stakeUsingVault');
+    const unstakeRole = await actionId(distributor.instance, 'unstake');
+
+    await vault.grantRoleGlobally(stakeRole, relayer);
+    await vault.grantRoleGlobally(stakeUsingVaultRole, relayer);
+    await vault.grantRoleGlobally(unstakeRole, relayer);
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -215,7 +225,7 @@ describe('MultiDistributor', () => {
           await distributor.fundDistribution(distribution, DISTRIBUTION_SIZE, { from: distributionOwner });
 
           const { paymentRate: currentPaymentRate } = await distributor.getDistribution(distribution);
-          expect(currentPaymentRate).to.be.equal(DISTRIBUTION_SIZE.div(PERIOD_DURATION));
+          expect(currentPaymentRate).to.be.equal(fp(DISTRIBUTION_SIZE).div(PERIOD_DURATION));
         });
 
         it('emits a DistributionFunded event', async () => {
@@ -258,8 +268,8 @@ describe('MultiDistributor', () => {
           const { paymentRate: currentPaymentRate } = await distributor.getDistribution(distribution);
           expect(currentPaymentRate).to.be.gt(previousPaymentRate);
 
-          const leftOverRewards = periodFinish.sub(currentTime).mul(previousPaymentRate);
-          const expectedNewPaymentRate = DISTRIBUTION_SIZE.add(leftOverRewards).div(PERIOD_DURATION);
+          const leftOverRewards = periodFinish.sub(currentTime).mul(previousPaymentRate).div(ONE);
+          const expectedNewPaymentRate = fp(DISTRIBUTION_SIZE.add(leftOverRewards)).div(PERIOD_DURATION);
           expect(currentPaymentRate).to.be.almostEqual(expectedNewPaymentRate);
         });
 
@@ -889,15 +899,7 @@ describe('MultiDistributor', () => {
     };
 
     describe('stake', () => {
-      context("when caller is not authorised to act on sender's behalf", () => {
-        it('reverts', async () => {
-          await expect(distributor.stake(stakingToken, 0, user2, user2, { from: user1 })).to.be.revertedWith(
-            'INVALID_SENDER'
-          );
-        });
-      });
-
-      context("when caller is authorised to act on sender's behalf", () => {
+      context('when called by the sender', () => {
         context('when sender and recipient are the same', () => {
           sharedBeforeEach('define sender and recipient', async () => {
             from = user1;
@@ -918,20 +920,37 @@ describe('MultiDistributor', () => {
           itHandlesStaking((token: Token, amount: BigNumberish) =>
             distributor.stake(token, amount, from, to, { from })
           );
+        });
+      });
+
+      context('when called by a relayer', () => {
+        context('when relayer is authorised by sender', () => {
+          sharedBeforeEach('authoriser relayer', async () => {
+            await vault.setRelayerApproval(user1, relayer, true);
+          });
+
+          sharedBeforeEach('define sender and recipient', async () => {
+            from = user1;
+            to = user1;
+          });
+
+          itHandlesStaking((token: Token, amount: BigNumberish) =>
+            distributor.stake(token, amount, from, to, { from: relayer })
+          );
+        });
+
+        context('when relayer is not authorised by sender', () => {
+          it('reverts', async () => {
+            await expect(distributor.stake(stakingToken, 0, user1, user1, { from: relayer })).to.be.revertedWith(
+              'USER_DOESNT_ALLOW_RELAYER'
+            );
+          });
         });
       });
     });
 
     describe('stakeUsingVault', () => {
-      context("when caller is not authorised to act on sender's behalf", () => {
-        it('reverts', async () => {
-          await expect(distributor.stakeUsingVault(stakingToken, 0, user2, user2, { from: user1 })).to.be.revertedWith(
-            'INVALID_SENDER'
-          );
-        });
-      });
-
-      context("when caller is authorised to act on sender's behalf", () => {
+      context('when called by the sender', () => {
         context('when sender and recipient are the same', () => {
           sharedBeforeEach('define sender and recipient', async () => {
             from = user1;
@@ -952,6 +971,31 @@ describe('MultiDistributor', () => {
           itHandlesStaking((token: Token, amount: BigNumberish) =>
             distributor.stakeUsingVault(token, amount, from, to, { from })
           );
+        });
+      });
+
+      context('when called by a relayer', () => {
+        context('when relayer is authorised by sender', () => {
+          sharedBeforeEach('authoriser relayer', async () => {
+            await vault.setRelayerApproval(user1, relayer, true);
+          });
+
+          sharedBeforeEach('define sender and recipient', async () => {
+            from = user1;
+            to = user1;
+          });
+
+          itHandlesStaking((token: Token, amount: BigNumberish) =>
+            distributor.stakeUsingVault(token, amount, from, to, { from: relayer })
+          );
+        });
+
+        context('when relayer is not authorised by sender', () => {
+          it('reverts', async () => {
+            await expect(
+              distributor.stakeUsingVault(stakingToken, 0, user1, user1, { from: relayer })
+            ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
+          });
         });
       });
     });
@@ -988,15 +1032,7 @@ describe('MultiDistributor', () => {
     });
 
     describe('unstake', () => {
-      context("when caller is not authorised to act on sender's behalf", () => {
-        it('reverts', async () => {
-          await expect(distributor.unstake(stakingToken, 0, user2, user2, { from: user1 })).to.be.revertedWith(
-            'INVALID_SENDER'
-          );
-        });
-      });
-
-      context("when caller is authorised to act on sender's behalf", () => {
+      context('when called by the sender', () => {
         context('when sender and recipient are the same', () => {
           sharedBeforeEach('define sender and recipient', async () => {
             from = user1;
@@ -1017,6 +1053,31 @@ describe('MultiDistributor', () => {
           itHandlesUnstaking((token: Token, amount: BigNumberish) =>
             distributor.unstake(token, amount, from, to, { from })
           );
+        });
+      });
+
+      context('when called by a relayer', () => {
+        context('when relayer is authorised by sender', () => {
+          sharedBeforeEach('authoriser relayer', async () => {
+            await vault.setRelayerApproval(user1, relayer, true);
+          });
+
+          sharedBeforeEach('define sender and recipient', async () => {
+            from = user1;
+            to = user1;
+          });
+
+          itHandlesUnstaking((token: Token, amount: BigNumberish) =>
+            distributor.unstake(token, amount, from, to, { from: relayer })
+          );
+        });
+
+        context('when relayer is not authorised by sender', () => {
+          it('reverts', async () => {
+            await expect(distributor.unstake(stakingToken, 0, user1, user1, { from: relayer })).to.be.revertedWith(
+              'USER_DOESNT_ALLOW_RELAYER'
+            );
+          });
         });
       });
     });
@@ -2450,7 +2511,7 @@ describe('MultiDistributor', () => {
       context("when caller is not authorised to act on sender's behalf", () => {
         it('reverts', async () => {
           await expect(distributor.claim(distribution, false, user2, user2, { from: user1 })).to.be.revertedWith(
-            'INVALID_SENDER'
+            'SENDER_NOT_ALLOWED'
           );
         });
       });

@@ -1,6 +1,6 @@
 import { Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
 import { RawLinearPoolDeployment, LinearPoolDeployment } from './types';
 
@@ -20,27 +20,17 @@ export default {
     const vault = params.vault ?? (await VaultDeployer.deploy(vaultParams));
 
     const deployment = TypesConverter.toLinearPoolDeployment(params);
-    if (deployment.wrappedTokenRateProvider === ZERO_ADDRESS) {
-      deployment.wrappedTokenRateProvider = (await deploy('v2-pool-utils/MockRateProvider')).address;
-    }
 
     const pool = await this._deployStandalone(deployment, vault);
 
-    const {
-      owner,
-      mainToken,
-      wrappedToken,
-      lowerTarget,
-      upperTarget,
-      swapFeePercentage,
-      wrappedTokenRateCacheDuration,
-    } = deployment;
+    const { owner, mainToken, wrappedToken, upperTarget, swapFeePercentage } = deployment;
 
     const poolId = await pool.getPoolId();
     const name = await pool.name();
     const symbol = await pool.symbol();
     const decimals = await pool.decimals();
     const bptToken = new Token(name, symbol, decimals, pool);
+    const lowerTarget = fp(0);
 
     return new LinearPool(
       pool,
@@ -52,8 +42,6 @@ export default {
       lowerTarget,
       upperTarget,
       swapFeePercentage,
-      deployment.wrappedTokenRateProvider,
-      wrappedTokenRateCacheDuration,
       owner
     );
   },
@@ -62,13 +50,10 @@ export default {
     const {
       mainToken,
       wrappedToken,
-      lowerTarget,
       upperTarget,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      wrappedTokenRateProvider,
-      wrappedTokenRateCacheDuration,
       from,
     } = params;
 
@@ -76,21 +61,16 @@ export default {
 
     return deploy('v2-pool-linear/MockLinearPool', {
       args: [
-        {
-          vault: vault.address,
-          name: NAME,
-          symbol: SYMBOL,
-          mainToken: mainToken.address,
-          wrappedToken: wrappedToken.address,
-          lowerTarget,
-          upperTarget,
-          swapFeePercentage,
-          pauseWindowDuration,
-          bufferPeriodDuration,
-          wrappedTokenRateProvider,
-          wrappedTokenRateCacheDuration,
-          owner,
-        },
+        vault.address,
+        NAME,
+        SYMBOL,
+        mainToken.address,
+        wrappedToken.address,
+        upperTarget,
+        swapFeePercentage,
+        pauseWindowDuration,
+        bufferPeriodDuration,
+        owner,
       ],
       from,
     });

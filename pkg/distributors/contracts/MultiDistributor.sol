@@ -38,7 +38,7 @@ import "./interfaces/IDistributorCallback.sol";
  * https://github.com/curvefi/multi-rewards/blob/master/contracts/MultiRewards.sol commit #9947623
  */
 contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributorAuthorization {
-    using FixedPoint for uint256;
+    using Math for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
@@ -49,7 +49,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * from this a `paymentRate` may be easily calculated.
      *
      * Two pieces of global information are stored for the amount of tokens paid out:
-     * `globalTokensPerStake` is the number of tokens claimable from a single staking token staked from the start.
+     * `globalTokensPerStake` is a fixed point value of the number of tokens claimable from a single staking token
+     * staked from the start.
      * `lastUpdateTime` represents the timestamp of the last time `globalTokensPerStake` was updated.
      *
      * `globalTokensPerStake` can be calculated by:
@@ -81,9 +82,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     mapping(bytes32 => Distribution) internal _distributions;
     mapping(IERC20 => mapping(address => UserStaking)) internal _userStakings;
 
-    constructor(IVault vault) Authentication(bytes32(uint256(address(this)))) MultiDistributorAuthorization(vault) {
+    constructor(IVault vault) MultiDistributorAuthorization(vault) {
         // solhint-disable-previous-line no-empty-blocks
-        // MultiDistributor is a singleton, so it simply uses its own address to disambiguate action identifiers
     }
 
     /**
@@ -275,7 +275,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         // will be merged. In both scenarios we round down to avoid paying more tokens than were received.
         if (block.timestamp >= periodFinish) {
             // Current distribution period has ended so new period consists only of amount provided.
-            distribution.paymentRate = Math.divDown(amount, duration);
+
+            // By performing fixed point (FP) division of two non-FP values we get a FP result.
+            distribution.paymentRate = FixedPoint.divDown(amount, duration);
         } else {
             // Current distribution period is still in progress.
             // Calculate number of tokens that haven't been distributed yet and apply to the new distribution period.
@@ -284,8 +286,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
             // Checked arithmetic is not required due to the if
             uint256 remainingTime = periodFinish - block.timestamp;
-            uint256 leftoverTokens = Math.mul(remainingTime, distribution.paymentRate);
-            distribution.paymentRate = Math.divDown(amount.add(leftoverTokens), duration);
+
+            // Fixed point (FP) multiplication between a non-FP (time) and FP (rate) returns a non-FP result.
+            uint256 leftoverTokens = FixedPoint.mulDown(remainingTime, distribution.paymentRate);
+            // Fixed point (FP) division of two non-FP values we get a FP result.
+            distribution.paymentRate = FixedPoint.divDown(amount.add(leftoverTokens), duration);
         }
 
         distribution.lastUpdateTime = block.timestamp;
@@ -368,8 +373,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         uint256 amount,
         address sender,
         address recipient
-    ) external override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+    ) external override authenticateFor(sender) nonReentrant {
         _stake(stakingToken, amount, sender, recipient, false);
     }
 
@@ -385,8 +389,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         uint256 amount,
         address sender,
         address recipient
-    ) external override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+    ) external override authenticateFor(sender) nonReentrant {
         _stake(stakingToken, amount, sender, recipient, true);
     }
 
@@ -425,8 +428,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         uint256 amount,
         address sender,
         address recipient
-    ) external override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+    ) external override authenticateFor(sender) nonReentrant {
         _unstake(stakingToken, amount, sender, recipient);
     }
 
@@ -442,8 +444,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         bool toInternalBalance,
         address sender,
         address recipient
-    ) external override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+    ) external override authenticateFor(sender) nonReentrant {
         _claim(
             distributionIds,
             toInternalBalance ? IVault.UserBalanceOpKind.TRANSFER_INTERNAL : IVault.UserBalanceOpKind.WITHDRAW_INTERNAL,
@@ -464,8 +465,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         address sender,
         IDistributorCallback callbackContract,
         bytes calldata callbackData
-    ) external override nonReentrant {
-        require(sender == msg.sender, "INVALID_SENDER"); // TODO: let relayers pass an alternative sender
+    ) external override authenticateFor(sender) nonReentrant {
         _claim(distributionIds, IVault.UserBalanceOpKind.TRANSFER_INTERNAL, sender, address(callbackContract));
         callbackContract.distributorCallback(callbackData);
     }
@@ -713,8 +713,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
         // Underflow is impossible here because _lastTimePaymentApplicable(...) is always greater than last update time
         uint256 unpaidDuration = _lastTimePaymentApplicable(distribution) - distribution.lastUpdateTime;
-        uint256 unpaidAmountPerToken = Math.mul(unpaidDuration, distribution.paymentRate).divDown(supply);
-        return distribution.globalTokensPerStake.add(unpaidAmountPerToken);
+
+        // Note `paymentRate` and `distribution.globalTokensPerStake` are both fixed point values
+        uint256 unpaidTokensPerStake = unpaidDuration.mul(distribution.paymentRate).divDown(supply);
+        return distribution.globalTokensPerStake.add(unpaidTokensPerStake);
     }
 
     /**
@@ -757,8 +759,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         uint256 updatedGlobalTokensPerStake
     ) internal view returns (uint256) {
         // `userDistribution.userTokensPerStake` cannot exceed `updatedGlobalTokensPerStake`
+        // Both `updatedGlobalTokensPerStake` and `userDistribution.userTokensPerStake` are fixed point values
         uint256 unaccountedTokensPerStake = updatedGlobalTokensPerStake - userDistribution.userTokensPerStake;
-        return userStaking.balance.mulDown(unaccountedTokensPerStake);
+        // Fixed point (FP) multiplication between a non-FP (balance) and FP (tokensPerStake) returns a non-FP result.
+        return FixedPoint.mulDown(userStaking.balance, unaccountedTokensPerStake);
     }
 
     function _getDistribution(
