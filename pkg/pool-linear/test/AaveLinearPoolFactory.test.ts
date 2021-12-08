@@ -10,31 +10,37 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 
-describe('LinearPoolFactory', function () {
+describe('AaveLinearPoolFactory', function () {
   let vault: Vault, tokens: TokenList, factory: Contract;
-  let creationTime: BigNumber, wrappedTokenRateProvider: string, owner: SignerWithAddress;
+  let creationTime: BigNumber, owner: SignerWithAddress;
 
   const NAME = 'Balancer Linear Pool Token';
   const SYMBOL = 'LPT';
-  const LOWER_TARGET = fp(1000);
   const UPPER_TARGET = fp(2000);
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
   const BASE_BUFFER_PERIOD_DURATION = MONTH;
-  const WRAPPED_TOKEN_RATE_CACHE_DURATION = MONTH;
 
   before('setup signers', async () => {
     [, owner] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy factory & tokens', async () => {
+    const [deployer] = await ethers.getSigners();
+
     vault = await Vault.create();
-    factory = await deploy('LinearPoolFactory', { args: [vault.address] });
+    factory = await deploy('AaveLinearPoolFactory', { args: [vault.address] });
     creationTime = await currentTimestamp();
 
-    tokens = await TokenList.create(['DAI', 'CDAI'], { sorted: true });
-    wrappedTokenRateProvider = (await deploy('v2-pool-utils/MockRateProvider')).address;
+    const mainToken = await Token.create('DAI');
+    const wrappedTokenInstance = await deploy('MockStaticAToken', {
+      args: [deployer.address, 'cDAI', 'cDAI', 18, mainToken.address],
+    });
+    const wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
+
+    tokens = new TokenList([mainToken, wrappedToken]).sort();
   });
 
   async function createPool(): Promise<Contract> {
@@ -43,11 +49,8 @@ describe('LinearPoolFactory', function () {
       SYMBOL,
       tokens.DAI.address,
       tokens.CDAI.address,
-      LOWER_TARGET,
       UPPER_TARGET,
       POOL_SWAP_FEE_PERCENTAGE,
-      wrappedTokenRateProvider,
-      WRAPPED_TOKEN_RATE_CACHE_DURATION,
       owner.address
     );
 
@@ -122,20 +125,8 @@ describe('LinearPoolFactory', function () {
 
     it('sets the targets', async () => {
       const targets = await pool.getTargets();
-      expect(targets.lowerTarget).to.be.equal(LOWER_TARGET);
+      expect(targets.lowerTarget).to.be.equal(fp(0));
       expect(targets.upperTarget).to.be.equal(UPPER_TARGET);
-    });
-
-    it('sets the wrapped token rate provider', async () => {
-      const provider = await pool.getWrappedTokenRateProvider();
-      expect(provider).to.be.equal(wrappedTokenRateProvider);
-    });
-
-    it('initializes the wrapped token rate cache', async () => {
-      const { expires, duration, rate } = await pool.getWrappedTokenRateCache();
-      expect(rate).to.equal(fp(1));
-      expect(duration).to.equal(WRAPPED_TOKEN_RATE_CACHE_DURATION);
-      expect(expires).to.be.at.least(creationTime.add(WRAPPED_TOKEN_RATE_CACHE_DURATION));
     });
   });
 

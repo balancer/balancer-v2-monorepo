@@ -15,11 +15,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./MockLinearMath.sol";
+import "../interfaces/IStaticAToken.sol";
+
 import "../LinearPool.sol";
 
-contract MockLinearPool is LinearPool, MockLinearMath {
-    uint256 internal _wrappedTokenRate = 1e18;
+contract AaveLinearPool is LinearPool {
+    ILendingPool private immutable _lendingPool;
 
     constructor(
         IVault vault,
@@ -46,18 +47,19 @@ contract MockLinearPool is LinearPool, MockLinearMath {
             owner
         )
     {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    function getScalingFactor(IERC20 token) external view returns (uint256) {
-        return _scalingFactor(token);
+        _lendingPool = IStaticAToken(address(wrappedToken)).LENDING_POOL();
+        _require(address(mainToken) == IStaticAToken(address(wrappedToken)).ASSET(), Errors.TOKENS_MISMATCH);
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        return _wrappedTokenRate;
-    }
+        // This pulls in the implementation of `rate` used in the StaticAToken contract
+        // except avoiding storing relevant variables in storage for gas reasons.
+        // solhint-disable-next-line max-line-length
+        // see: https://github.com/aave/protocol-v2/blob/ac58fea62bb8afee23f66197e8bce6d79ecda292/contracts/protocol/tokenization/StaticATokenLM.sol#L255-L257
+        uint256 rate = _lendingPool.getReserveNormalizedIncome(getMainToken());
 
-    function setWrappedTokenRate(uint256 newWrappedTokenRate) external returns (uint256) {
-        _wrappedTokenRate = newWrappedTokenRate;
+        // This function returns a 18 decimal fixed point number, but `rate` has 27 decimals (i.e. a 'ray' value)
+        // so we need to convert it.
+        return rate / 10**9;
     }
 }

@@ -19,47 +19,43 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
-import "./LinearPool.sol";
+import "./AaveLinearPool.sol";
 
-contract LinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(LinearPool).creationCode) {
+contract AaveLinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(AaveLinearPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
-     * @dev Deploys a new `LinearPool`.
+     * @dev Deploys a new `AaveLinearPool`.
      */
     function create(
         string memory name,
         string memory symbol,
         IERC20 mainToken,
         IERC20 wrappedToken,
-        uint256 lowerTarget,
         uint256 upperTarget,
         uint256 swapFeePercentage,
-        IRateProvider wrappedTokenRateProvider,
-        uint256 wrappedTokenRateCacheDuration,
         address owner
     ) external returns (LinearPool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        LinearPool.NewPoolParams memory params = LinearPool.NewPoolParams({
-            vault: getVault(),
-            name: name,
-            symbol: symbol,
-            mainToken: mainToken,
-            wrappedToken: wrappedToken,
-            lowerTarget: lowerTarget,
-            upperTarget: upperTarget,
-            swapFeePercentage: swapFeePercentage,
-            pauseWindowDuration: pauseWindowDuration,
-            bufferPeriodDuration: bufferPeriodDuration,
-            wrappedTokenRateProvider: wrappedTokenRateProvider,
-            wrappedTokenRateCacheDuration: wrappedTokenRateCacheDuration,
-            owner: owner
-        });
-
-        LinearPool pool = LinearPool(_create(abi.encode(params)));
+        LinearPool pool = AaveLinearPool(
+            _create(
+                abi.encode(
+                    getVault(),
+                    name,
+                    symbol,
+                    mainToken,
+                    wrappedToken,
+                    upperTarget,
+                    swapFeePercentage,
+                    pauseWindowDuration,
+                    bufferPeriodDuration,
+                    owner
+                )
+            )
+        );
 
         // LinearPools have a separate post-construction initialization step: we perform it here to
         // ensure deployment and initialization are atomic.
