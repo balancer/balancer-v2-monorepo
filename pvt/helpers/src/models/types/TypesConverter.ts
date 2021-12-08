@@ -94,6 +94,7 @@ export default {
       mustAllowlistLPs,
       managementSwapFeePercentage,
       owner: params.owner,
+      from: params.from,
       poolType,
     };
   },
