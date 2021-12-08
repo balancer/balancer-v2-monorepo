@@ -28,8 +28,8 @@ interface IDistributionScheduler {
     }
 
     event DistributionScheduled(bytes32 indexed distributionId, bytes32 scheduleId, uint256 startTime, uint256 amount);
-    event DistributionStarted(bytes32 indexed distributionId, bytes32 scheduleId, uint256 startTime, uint256 amount);
-    event DistributionCancelled(bytes32 indexed distributionId, bytes32 scheduleId, uint256 startTime, uint256 amount);
+    event DistributionStarted(bytes32 indexed distributionId, bytes32 scheduleId);
+    event DistributionCancelled(bytes32 indexed distributionId, bytes32 scheduleId);
 
     function getScheduledDistributionInfo(bytes32 scheduleId) external view returns (ScheduledDistribution memory);
 

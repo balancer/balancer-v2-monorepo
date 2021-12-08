@@ -60,7 +60,6 @@ contract DistributionScheduler is IDistributionScheduler {
             "Distribution has already been scheduled"
         );
 
-
         // As funding pushes out the end timestamp of the distribution channel
         // we only allow the distribution owner to schedule distributions
         IMultiDistributor.Distribution memory distributionChannel = _multiDistributor.getDistribution(distributionId);
@@ -103,12 +102,7 @@ contract DistributionScheduler is IDistributionScheduler {
             distributionToken.approve(address(_multiDistributor), scheduledDistribution.amount);
             _multiDistributor.fundDistribution(scheduledDistribution.distributionId, scheduledDistribution.amount);
 
-            emit DistributionStarted(
-                scheduledDistribution.distributionId,
-                scheduleId,
-                scheduledDistribution.startTime,
-                scheduledDistribution.amount
-            );
+            emit DistributionStarted(scheduledDistribution.distributionId, scheduleId);
         }
     }
 
@@ -136,11 +130,6 @@ contract DistributionScheduler is IDistributionScheduler {
 
         distributionChannel.distributionToken.transfer(msg.sender, scheduledDistribution.amount);
 
-        emit DistributionCancelled(
-            scheduledDistribution.distributionId,
-            scheduleId,
-            scheduledDistribution.startTime,
-            scheduledDistribution.amount
-        );
+        emit DistributionCancelled(scheduledDistribution.distributionId, scheduleId);
     }
 }

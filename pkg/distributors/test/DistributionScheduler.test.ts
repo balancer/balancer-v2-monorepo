@@ -200,8 +200,6 @@ describe('Distribution Scheduler', () => {
           expectEvent.inReceipt(receipt, 'DistributionStarted', {
             distributionId,
             scheduleId,
-            startTime: distributionStartTime,
-            amount: DISTRIBUTION_AMOUNT,
           });
         });
 
@@ -275,8 +273,6 @@ describe('Distribution Scheduler', () => {
             expectEvent.inReceipt(receipt, 'DistributionCancelled', {
               distributionId,
               scheduleId,
-              startTime: distributionStartTime,
-              amount: DISTRIBUTION_AMOUNT,
             });
           });
 
