@@ -17,6 +17,13 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
+enum DistributionStatus {
+  UNINITIALIZED,
+  PENDING,
+  STARTED,
+  CANCELLED,
+}
+
 describe('Distribution Scheduler', () => {
   let vault: Vault;
   let distributor: MultiDistributor;
@@ -75,7 +82,7 @@ describe('Distribution Scheduler', () => {
       expect(response.distributionId).to.equal(distributionId);
       expect(response.startTime).to.equal(distributionStartTime);
       expect(response.amount).to.equal(amount);
-      expect(response.status).to.equal(1);
+      expect(response.status).to.equal(DistributionStatus.PENDING);
     });
 
     it('transfers distributionTokens to the scheduler', async () => {
@@ -160,7 +167,7 @@ describe('Distribution Scheduler', () => {
           await scheduler.connect(other).startDistributions([scheduleId]);
 
           const response = await scheduler.getScheduledDistributionInfo(scheduleId);
-          expect(response.status).to.equal(2);
+          expect(response.status).to.equal(DistributionStatus.STARTED);
         });
       });
 
