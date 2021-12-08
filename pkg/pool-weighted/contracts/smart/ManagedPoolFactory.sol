@@ -23,10 +23,18 @@ import "./BaseManagedPoolFactory.sol";
 
 /**
  * @dev Deploys a new `ManagedPool` owned by a ManagedPoolController with the specified rights.
+ * It uses the BaseManagedPoolFactory to deploy the pool.
  */
-contract ManagedPoolFactory is BaseManagedPoolFactory {
-    constructor(IVault vault) BaseManagedPoolFactory(vault) {
-        // solhint-disable-previous-line no-empty-blocks
+contract ManagedPoolFactory {
+    // The address of the BaseManagedPoolFactory used to deploy the ManagedPool
+    address public immutable baseManagedPoolFactory;
+
+    mapping(address => bool) private _isPoolFromFactory;
+
+    event ManagedPoolCreated(address indexed pool, address indexed poolController);
+
+    constructor(address baseFactory) {
+        baseManagedPoolFactory = baseFactory;
     }
 
     /**
@@ -49,9 +57,19 @@ contract ManagedPoolFactory is BaseManagedPoolFactory {
         poolParams.owner = address(poolController);
 
         // Let the base factory deploy the pool
-        pool = super._deployPool(poolParams);
+        pool = BaseManagedPoolFactory(baseManagedPoolFactory).create(poolParams);
 
         // Finally, initialize the controller
         poolController.initialize(pool);
+
+        _isPoolFromFactory[pool] = true;
+        emit ManagedPoolCreated(pool, address(poolController));
+    }
+
+    /**
+     * @dev Returns true if `pool` was created by this factory.
+     */
+    function isPoolFromFactory(address pool) external view returns (bool) {
+        return _isPoolFromFactory[pool];
     }
 }

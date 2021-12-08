@@ -218,8 +218,13 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
-        const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
+        const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
           args: [vault.address],
+          from,
+        });
+
+        const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
+          args: [baseFactory.address],
           from,
         });
 
@@ -257,7 +262,7 @@ export default {
           .connect(from || ZERO_ADDRESS)
           .create(newPoolParams, basePoolRights, managedPoolRights, DAY);
         const receipt = await tx.wait();
-        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+        const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
         result = deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
         break;
       }

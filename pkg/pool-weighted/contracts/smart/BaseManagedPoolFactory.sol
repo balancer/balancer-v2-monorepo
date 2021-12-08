@@ -19,26 +19,28 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
-import "@balancer-labs/v2-pool-utils/contracts/controllers/ManagedPoolController.sol";
 
 import "./ManagedPool.sol";
 
 /**
  * @dev This is a base factory designed to be called from other factories to deploy a ManagedPool
- * with a particular controller/owner.
+ * with a particular controller/owner. It should NOT be used directly to deploy ManagedPools without
+ * controllers. ManagedPools controlled by EOAs would be very dangerous for LPs. There are no restrictions
+ * on what the managers can do, so a malicious manager could easily manipulate prices and drain the pool.
  *
- * This way, all managed pools will be deployed from the same factory, even if they have different
- * controller contracts.
+ * In this design, other controller-specific factories will deploy a pool controller, then call this factory to
+ * deploy the pool, passing in the controller as the owner.
  */
-abstract contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
     constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(ManagedPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
-     * @dev Deploys a new `ManagedPool`.
+     * @dev Deploys a new `ManagedPool`. The owner should be a managed pool controller, deployed by
+     * another factory.
      */
-    function _deployPool(ManagedPool.NewPoolParams memory poolParams) internal returns (address pool) {
+    function create(ManagedPool.NewPoolParams memory poolParams) external returns (address pool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
         return
