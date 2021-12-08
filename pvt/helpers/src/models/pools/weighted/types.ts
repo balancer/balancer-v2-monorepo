@@ -211,3 +211,19 @@ export type ManagedPoolRights = {
   canSetCircuitBreakers: boolean;
   canChangeTokens: boolean;
 };
+
+export type ManagedPoolParams = {
+  vault: string;
+  name: string;
+  symbol: string;
+  tokens: string[];
+  normalizedWeights: BigNumberish[];
+  assetManagers: string[];
+  swapFeePercentage: BigNumberish;
+  pauseWindowDuration: number;
+  bufferPeriodDuration: number;
+  owner: string;
+  swapEnabledOnStart: boolean;
+  mustAllowlistLPs: boolean;
+  managementSwapFeePercentage: BigNumberish;
+};
