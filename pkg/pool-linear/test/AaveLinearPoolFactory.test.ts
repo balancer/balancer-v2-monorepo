@@ -18,7 +18,6 @@ describe('AaveLinearPoolFactory', function () {
 
   const NAME = 'Balancer Linear Pool Token';
   const SYMBOL = 'LPT';
-  const LOWER_TARGET = fp(1000);
   const UPPER_TARGET = fp(2000);
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -50,7 +49,6 @@ describe('AaveLinearPoolFactory', function () {
       SYMBOL,
       tokens.DAI.address,
       tokens.CDAI.address,
-      LOWER_TARGET,
       UPPER_TARGET,
       POOL_SWAP_FEE_PERCENTAGE,
       owner.address
@@ -127,7 +125,7 @@ describe('AaveLinearPoolFactory', function () {
 
     it('sets the targets', async () => {
       const targets = await pool.getTargets();
-      expect(targets.lowerTarget).to.be.equal(LOWER_TARGET);
+      expect(targets.lowerTarget).to.be.equal(fp(0));
       expect(targets.upperTarget).to.be.equal(UPPER_TARGET);
     });
   });

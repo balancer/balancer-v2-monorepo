@@ -72,7 +72,7 @@ library LinearMath {
         uint256 afterNominalMain = _toNominal(mainBalance.add(mainIn), params);
         uint256 deltaNominalMain = afterNominalMain.sub(previousNominalMain);
         uint256 invariant = _calcInvariant(previousNominalMain, wrappedBalance);
-        return bptSupply.mulDown(deltaNominalMain).divDown(invariant);
+        return Math.divDown(Math.mul(bptSupply, deltaNominalMain), invariant);
     }
 
     function _calcBptInPerMainOut(
@@ -88,7 +88,7 @@ library LinearMath {
         uint256 afterNominalMain = _toNominal(mainBalance.sub(mainOut), params);
         uint256 deltaNominalMain = previousNominalMain.sub(afterNominalMain);
         uint256 invariant = _calcInvariant(previousNominalMain, wrappedBalance);
-        return bptSupply.mulUp(deltaNominalMain).divUp(invariant);
+        return Math.divUp(Math.mul(bptSupply, deltaNominalMain), invariant);
     }
 
     function _calcWrappedOutPerMainIn(
@@ -133,7 +133,7 @@ library LinearMath {
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 invariant = _calcInvariant(previousNominalMain, wrappedBalance);
-        uint256 deltaNominalMain = invariant.mulUp(bptOut).divUp(bptSupply);
+        uint256 deltaNominalMain = Math.divUp(Math.mul(invariant, bptOut), bptSupply);
         uint256 afterNominalMain = previousNominalMain.add(deltaNominalMain);
         uint256 newMainBalance = _fromNominal(afterNominalMain, params);
         return newMainBalance.sub(mainBalance);
@@ -150,7 +150,7 @@ library LinearMath {
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 invariant = _calcInvariant(previousNominalMain, wrappedBalance);
-        uint256 deltaNominalMain = invariant.mulDown(bptIn).divDown(bptSupply);
+        uint256 deltaNominalMain = Math.divDown(Math.mul(invariant, bptIn), bptSupply);
         uint256 afterNominalMain = previousNominalMain.sub(deltaNominalMain);
         uint256 newMainBalance = _fromNominal(afterNominalMain, params);
         return mainBalance.sub(newMainBalance);
@@ -204,7 +204,7 @@ library LinearMath {
         uint256 newWrappedBalance = wrappedBalance.add(wrappedIn);
         uint256 newInvariant = _calcInvariant(nominalMain, newWrappedBalance);
 
-        uint256 newBptBalance = bptSupply.mulDown(newInvariant).divDown(previousInvariant);
+        uint256 newBptBalance = Math.divDown(Math.mul(bptSupply, newInvariant), previousInvariant);
 
         return newBptBalance.sub(bptSupply);
     }
@@ -224,7 +224,7 @@ library LinearMath {
         uint256 newWrappedBalance = wrappedBalance.sub(wrappedOut);
         uint256 newInvariant = _calcInvariant(nominalMain, newWrappedBalance);
 
-        uint256 newBptBalance = bptSupply.mulDown(newInvariant).divDown(previousInvariant);
+        uint256 newBptBalance = Math.divDown(Math.mul(bptSupply, newInvariant), previousInvariant);
 
         return bptSupply.sub(newBptBalance);
     }
@@ -249,7 +249,7 @@ library LinearMath {
         uint256 previousInvariant = _calcInvariant(nominalMain, wrappedBalance);
 
         uint256 newBptBalance = bptSupply.add(bptOut);
-        uint256 newWrappedBalance = newBptBalance.divUp(bptSupply).mulUp(previousInvariant).sub(nominalMain);
+        uint256 newWrappedBalance = Math.divUp(Math.mul(newBptBalance, previousInvariant), bptSupply).sub(nominalMain);
 
         return newWrappedBalance.sub(wrappedBalance);
     }
@@ -267,7 +267,7 @@ library LinearMath {
         uint256 previousInvariant = _calcInvariant(nominalMain, wrappedBalance);
 
         uint256 newBptBalance = bptSupply.sub(bptIn);
-        uint256 newWrappedBalance = newBptBalance.divUp(bptSupply).mulUp(previousInvariant).sub(nominalMain);
+        uint256 newWrappedBalance = Math.divUp(Math.mul(newBptBalance, previousInvariant), bptSupply).sub(nominalMain);
 
         return wrappedBalance.sub(newWrappedBalance);
     }
@@ -276,29 +276,30 @@ library LinearMath {
         return nominalMainBalance.add(wrappedBalance);
     }
 
-    function _toNominal(uint256 amount, Params memory params) internal pure returns (uint256) {
-        if (amount < (FixedPoint.ONE - params.fee).mulUp(params.lowerTarget)) {
-            return amount.divUp(FixedPoint.ONE - params.fee);
-        } else if (amount < (params.upperTarget - (params.fee.mulUp(params.lowerTarget)))) {
-            return amount.add(params.fee.mulUp(params.lowerTarget));
+    function _toNominal(uint256 real, Params memory params) internal pure returns (uint256) {
+        // Fees are always rounded down: either direction would work but we need to be consistent, and rounding down
+        // uses less gas.
+
+        if (real < params.lowerTarget) {
+            uint256 fees = (params.lowerTarget - real).mulDown(params.fee);
+            return real.sub(fees);
+        } else if (real <= params.upperTarget) {
+            return real;
         } else {
-            return
-                amount.add((params.lowerTarget + params.upperTarget).mulUp(params.fee)).divUp(
-                    FixedPoint.ONE + params.fee
-                );
+            uint256 fees = (real - params.upperTarget).mulDown(params.fee);
+            return real.sub(fees);
         }
     }
 
     function _fromNominal(uint256 nominal, Params memory params) internal pure returns (uint256) {
+        // Since real = nominal + fees, rounding down fees is equivalent to rounding down real.
+
         if (nominal < params.lowerTarget) {
-            return nominal.mulUp(FixedPoint.ONE - params.fee);
-        } else if (nominal < params.upperTarget) {
-            return nominal.sub(params.fee.mulUp(params.lowerTarget));
+            return (nominal.add(params.fee.mulDown(params.lowerTarget))).divDown(FixedPoint.ONE.add(params.fee));
+        } else if (nominal <= params.upperTarget) {
+            return nominal;
         } else {
-            return
-                nominal.mulUp(FixedPoint.ONE + params.fee).sub(
-                    params.fee.mulUp(params.lowerTarget + params.upperTarget)
-                );
+            return (nominal.sub(params.fee.mulDown(params.upperTarget)).divDown(FixedPoint.ONE.sub(params.fee)));
         }
     }
 
