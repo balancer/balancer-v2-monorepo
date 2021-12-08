@@ -120,8 +120,11 @@ contract StablePhantomPool is StablePool {
 
         for (uint256 i = 0; i < params.tokens.length; i++) {
             _rateProviders[params.tokens[i]] = params.rateProviders[i];
-            _updateTokenRateCache(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
-            emit TokenRateProviderSet(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
+
+            if (params.rateProviders[i] != IRateProvider(0)) {
+                _updateTokenRateCache(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
+                emit TokenRateProviderSet(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
+            }
         }
 
         // The Vault keeps track of all Pool tokens in a specific order: we need to know what the index of BPT is in
@@ -658,6 +661,8 @@ contract StablePhantomPool is StablePool {
             uint256 expires
         )
     {
+        _require(_rateProviders[token] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+
         rate = _tokenRateCaches[token].getRate();
         (duration, expires) = _tokenRateCaches[token].getTimestamps();
     }
