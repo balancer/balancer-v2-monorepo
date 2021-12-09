@@ -79,8 +79,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * `unclaimedTokens` and releasing that amount of tokens to them.
      */
 
-    mapping(bytes32 => Distribution) internal _distributions;
-    mapping(IERC20 => mapping(address => UserStaking)) internal _userStakings;
+    mapping(bytes32 => Distribution) private _distributions;
+    mapping(IERC20 => mapping(address => UserStaking)) private _userStakings;
 
     constructor(IVault vault) MultiDistributorAuthorization(vault) {
         // solhint-disable-previous-line no-empty-blocks
@@ -227,7 +227,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         bytes32 distributionId,
         Distribution storage distribution,
         uint256 duration
-    ) internal {
+    ) private {
         require(duration > 0, "DISTRIBUTION_DURATION_ZERO");
         distribution.duration = duration;
         emit DistributionDurationSet(distributionId, duration);
@@ -514,7 +514,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         address sender,
         address recipient,
         bool useVaultApproval
-    ) internal {
+    ) private {
         require(amount > 0, "STAKE_AMOUNT_ZERO");
 
         UserStaking storage userStaking = _userStakings[stakingToken][recipient];
@@ -560,7 +560,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         uint256 amount,
         address sender,
         address recipient
-    ) internal {
+    ) private {
         require(amount > 0, "UNSTAKE_AMOUNT_ZERO");
 
         UserStaking storage userStaking = _userStakings[stakingToken][sender];
@@ -595,7 +595,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         IVault.UserBalanceOpKind kind,
         address sender,
         address recipient
-    ) internal {
+    ) private {
         // It is expected that there will be multiple transfers of the same token
         // so that the actual number of transfers needed is less than distributionIds.length
         // We keep track of this number in numTokens to save gas later
@@ -661,7 +661,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     /**
      * @dev Updates the payment rate for all the distributions that a user has signed up for a staking token
      */
-    function _updateSubscribedDistributions(UserStaking storage userStaking) internal {
+    function _updateSubscribedDistributions(UserStaking storage userStaking) private {
         EnumerableSet.Bytes32Set storage distributions = userStaking.subscribedDistributions;
         uint256 distributionsLength = distributions.length();
 
@@ -679,7 +679,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         Distribution storage distribution,
         UserStaking storage userStaking,
         UserDistribution storage userDistribution
-    ) internal {
+    ) private {
         uint256 updatedGlobalTokensPerStake = _updateGlobalTokensPerStake(distribution);
         userDistribution.unclaimedTokens = _getUnclaimedTokens(
             userStaking,
@@ -697,7 +697,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @return updatedGlobalTokensPerStake The updated number of distribution tokens paid per staked token
      */
     function _updateGlobalTokensPerStake(Distribution storage distribution)
-        internal
+        private
         returns (uint256 updatedGlobalTokensPerStake)
     {
         updatedGlobalTokensPerStake = _globalTokensPerStake(distribution);
@@ -705,7 +705,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         distribution.lastUpdateTime = _lastTimePaymentApplicable(distribution);
     }
 
-    function _globalTokensPerStake(Distribution storage distribution) internal view returns (uint256) {
+    function _globalTokensPerStake(Distribution storage distribution) private view returns (uint256) {
         uint256 supply = distribution.totalSupply;
         if (supply == 0) {
             return distribution.globalTokensPerStake;
@@ -723,7 +723,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Returns the timestamp up to which a distribution has been distributing tokens
      * @param distribution The distribution being queried
      */
-    function _lastTimePaymentApplicable(Distribution storage distribution) internal view returns (uint256) {
+    function _lastTimePaymentApplicable(Distribution storage distribution) private view returns (uint256) {
         return Math.min(block.timestamp, distribution.periodFinish);
     }
 
@@ -738,7 +738,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         UserStaking storage userStaking,
         UserDistribution storage userDistribution,
         uint256 updatedGlobalTokensPerStake
-    ) internal view returns (uint256) {
+    ) private view returns (uint256) {
         return
             _unaccountedUnclaimedTokens(userStaking, userDistribution, updatedGlobalTokensPerStake).add(
                 userDistribution.unclaimedTokens
@@ -757,7 +757,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         UserStaking storage userStaking,
         UserDistribution storage userDistribution,
         uint256 updatedGlobalTokensPerStake
-    ) internal view returns (uint256) {
+    ) private view returns (uint256) {
         // `userDistribution.userTokensPerStake` cannot exceed `updatedGlobalTokensPerStake`
         // Both `updatedGlobalTokensPerStake` and `userDistribution.userTokensPerStake` are fixed point values
         uint256 unaccountedTokensPerStake = updatedGlobalTokensPerStake - userDistribution.userTokensPerStake;
@@ -769,11 +769,11 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         IERC20 stakingToken,
         IERC20 distributionToken,
         address owner
-    ) internal view returns (Distribution storage) {
+    ) private view returns (Distribution storage) {
         return _getDistribution(getDistributionId(stakingToken, distributionToken, owner));
     }
 
-    function _getDistribution(bytes32 id) internal view returns (Distribution storage) {
+    function _getDistribution(bytes32 id) private view returns (Distribution storage) {
         return _distributions[id];
     }
 }
