@@ -74,4 +74,4 @@ Returns an object with all contracts from a deployment and their addresses.
 | Merkle Orchard Distributor                       | [`20211012-merkle-orchard`](./tasks/20211012-merkle-orchard)                             |
 | Batch Relayer                                    | [`20211203-batch-relayer`](./tasks/20211203-batch-relayer)                               |
 | Linear Pools for Aave aTokens                    | [`20211208-aave-linear-pool`](./tasks/20211208-aave-linear-pool)                         |
-| Preminted BPT Meta Stable Pools                  | [`20211208-phantom-stable-pool`](./tasks/20211208-phantom-stable-pool)                   |
+| Preminted BPT Meta Stable Pools                  | [`20211208-stable-phantom-pool`](./tasks/20211208-stable-phantom-pool)                   |
