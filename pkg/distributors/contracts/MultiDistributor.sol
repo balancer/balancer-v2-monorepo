@@ -202,7 +202,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Sets the duration for a distribution
+     * @notice Sets the duration for a distribution
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param distributionId The ID of the distribution being modified
      * @param duration Duration over which each distribution is spread
      */
@@ -221,7 +222,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Sets the duration for a distribution
+     * @notice Sets the duration for a distribution
      * @param distributionId The ID of the distribution being modified
      * @param distribution The distribution being modified
      * @param duration Duration over which each distribution is spread
@@ -240,6 +241,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @notice Deposits tokens to be distributed to stakers subscribed to distribution channel `distributionId`
      * @dev Starts a new distribution period for `duration` seconds from now.
      *      If the previous period is still active its undistributed tokens are rolled over into the new period.
+     *      
+     *      If the caller is not `sender`, it must be an authorized relayer for them.
      * @param distributionId ID of the distribution to be funded
      * @param amount The amount of tokens to deposit
      */
