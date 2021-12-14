@@ -287,7 +287,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             // Current distribution period has ended so new period consists only of amount provided.
 
             // By performing fixed point (FP) division of two non-FP values we get a FP result.
-            paymentRate = uint192(FixedPoint.divDown(amount, duration));
+            paymentRate = FixedPoint.divDown(amount, duration);
         } else {
             // Current distribution period is still in progress.
             // Calculate number of tokens that haven't been distributed yet and apply to the new distribution period.
@@ -300,7 +300,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             // Fixed point (FP) multiplication between a non-FP (time) and FP (rate) returns a non-FP result.
             uint256 leftoverTokens = FixedPoint.mulDown(remainingTime, distribution.paymentRate);
             // Fixed point (FP) division of two non-FP values we get a FP result.
-            paymentRate = uint192(FixedPoint.divDown(amount.add(leftoverTokens), duration));
+            paymentRate = FixedPoint.divDown(amount.add(leftoverTokens), duration);
         }
 
         require(paymentRate < type(uint192).max, "PAYMENT_RATE_OVERFLOW");
