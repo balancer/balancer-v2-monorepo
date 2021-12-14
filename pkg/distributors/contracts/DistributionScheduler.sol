@@ -130,7 +130,7 @@ contract DistributionScheduler is IDistributionScheduler {
 
         // Refund tokens to distribution owner.
 
-        distributionChannel.distributionToken.transfer(msg.sender, scheduledDistribution.amount);
+        distributionChannel.distributionToken.safeTransfer(msg.sender, scheduledDistribution.amount);
 
         emit DistributionCancelled(scheduledDistribution.distributionId, scheduleId);
     }
