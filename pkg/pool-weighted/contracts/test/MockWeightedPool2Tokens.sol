@@ -21,13 +21,6 @@ import "../WeightedPool2Tokens.sol";
 contract MockWeightedPool2Tokens is WeightedPool2Tokens, MockWeightedOracleMath {
     using WordCodec for bytes32;
 
-    // These must match the corresponding declarations in WeightedPool2Tokens.sol
-    uint256 private constant _LOG_INVARIANT_OFFSET = 0;
-    uint256 private constant _LOG_TOTAL_SUPPLY_OFFSET = 22;
-    uint256 private constant _ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET = 44;
-    uint256 private constant _ORACLE_INDEX_OFFSET = 75;
-    uint256 private constant _ORACLE_ENABLED_OFFSET = 85;
-
     // MiscData is now just the least significant 192 bits, and no longer contains the swapFeePercentage
     struct MiscData {
         int256 logInvariant;

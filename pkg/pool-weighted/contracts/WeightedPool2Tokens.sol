@@ -31,11 +31,11 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
     // [ reserved  | oracle enabled | oracle index | oracle sample initial timestamp | log supply | log invariant ]
     // [  uint64   |      bool      |    uint10    |              uint31             |    int22   |     int22     ]
     // |MSB                                                                                                    LSB|
-    uint256 private constant _LOG_INVARIANT_OFFSET = 0;
-    uint256 private constant _LOG_TOTAL_SUPPLY_OFFSET = 22;
-    uint256 private constant _ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET = 44;
-    uint256 private constant _ORACLE_INDEX_OFFSET = 75;
-    uint256 private constant _ORACLE_ENABLED_OFFSET = 85;
+    uint256 internal constant _LOG_INVARIANT_OFFSET = 0;
+    uint256 internal constant _LOG_TOTAL_SUPPLY_OFFSET = 22;
+    uint256 internal constant _ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET = 44;
+    uint256 internal constant _ORACLE_INDEX_OFFSET = 75;
+    uint256 internal constant _ORACLE_ENABLED_OFFSET = 85;
 
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;
