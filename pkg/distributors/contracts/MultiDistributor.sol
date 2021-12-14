@@ -373,7 +373,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Stakes tokens
+     * @notice Stakes tokens
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param stakingToken The token to be staked to be eligible for distributions
      * @param amount Amount of tokens to be staked
      */
@@ -387,7 +388,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Stakes tokens using the user's token approval on the vault
+     * @notice Stakes tokens using the user's token approval on the vault
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param stakingToken The token to be staked to be eligible for distributions
      * @param amount Amount of tokens to be staked
      * @param sender The address which provides tokens to stake
@@ -403,9 +405,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Stakes tokens using a permit signature for approval
+     * @notice Stakes tokens using a permit signature for approval
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param stakingToken The token to be staked to be eligible for distributions
-     * @param user User staking tokens for
+     * @param sender User staking tokens for
      * @param amount Amount of tokens to be staked
      * @param deadline The time at which this expires (unix time)
      * @param v V of the signature
@@ -415,18 +418,19 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     function stakeWithPermit(
         IERC20 stakingToken,
         uint256 amount,
-        address user,
+        address sender,
         uint256 deadline,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) external override nonReentrant {
-        IERC20Permit(address(stakingToken)).permit(user, address(this), amount, deadline, v, r, s);
-        _stake(stakingToken, amount, user, user, false);
+        IERC20Permit(address(stakingToken)).permit(sender, address(this), amount, deadline, v, r, s);
+        _stake(stakingToken, amount, sender, sender, false);
     }
 
     /**
-     * @dev Unstake tokens
+     * @notice Unstake tokens
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param stakingToken The token to be unstaked
      * @param amount Amount of tokens to be unstaked
      * @param sender The address which is unstaking its tokens
@@ -442,7 +446,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Claims earned distribution tokens for a list of distributions
+     * @notice Claims earned distribution tokens for a list of distributions
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param distributionIds List of distributions to claim
      * @param toInternalBalance Whether to send the claimed tokens to the recipient's internal balance
      * @param sender The address which earned the tokens being claimed
@@ -463,7 +468,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Claims earned tokens for a list of distributions to a callback contract
+     * @notice Claims earned tokens for a list of distributions to a callback contract
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param distributionIds List of distributions to claim
      * @param sender The address which earned the tokens being claimed
      * @param callbackContract The contract where tokens will be transferred
