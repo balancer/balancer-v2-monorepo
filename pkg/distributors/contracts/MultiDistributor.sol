@@ -726,7 +726,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     {
         updatedGlobalTokensPerStake = _globalTokensPerStake(distribution);
         distribution.globalTokensPerStake = uint192(updatedGlobalTokensPerStake);
-        distribution.lastUpdateTime = uint64(_lastTimePaymentApplicable(distribution));
+        distribution.lastUpdateTime = _lastTimePaymentApplicable(distribution);
     }
 
     function _globalTokensPerStake(Distribution storage distribution) private view returns (uint256) {
@@ -747,8 +747,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Returns the timestamp up to which a distribution has been distributing tokens
      * @param distribution The distribution being queried
      */
-    function _lastTimePaymentApplicable(Distribution storage distribution) private view returns (uint256) {
-        return Math.min(block.timestamp, uint256(distribution.periodFinish));
+    function _lastTimePaymentApplicable(Distribution storage distribution) private view returns (uint64) {
+        return uint64(Math.min(block.timestamp, distribution.periodFinish));
     }
 
     /**
