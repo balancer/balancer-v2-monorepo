@@ -74,7 +74,7 @@ describe('Distribution Scheduler', () => {
 
     context('when called by the distribution owner', () => {
       context('when scheduling a distribution for the future', () => {
-        context('when there is a previously scheduled conflicting distribution', () => {
+        context('when there is no conflicting distribution', () => {
           it('creates a scheduled distribution', async () => {
             const tx = await scheduler
               .connect(distributionOwner)
