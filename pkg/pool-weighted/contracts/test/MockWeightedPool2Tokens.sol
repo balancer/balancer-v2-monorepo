@@ -19,15 +19,22 @@ import "./MockWeightedOracleMath.sol";
 import "../WeightedPool2Tokens.sol";
 
 contract MockWeightedPool2Tokens is WeightedPool2Tokens, MockWeightedOracleMath {
-    using WeightedPool2TokensMiscData for bytes32;
+    using WordCodec for bytes32;
 
+    // These must match the corresponding declarations in WeightedPool2Tokens.sol
+    uint256 private constant _LOG_INVARIANT_OFFSET = 0;
+    uint256 private constant _LOG_TOTAL_SUPPLY_OFFSET = 22;
+    uint256 private constant _ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET = 44;
+    uint256 private constant _ORACLE_INDEX_OFFSET = 75;
+    uint256 private constant _ORACLE_ENABLED_OFFSET = 85;
+
+    // MiscData is now just the least significant 192 bits, and no longer contains the swapFeePercentage
     struct MiscData {
         int256 logInvariant;
         int256 logTotalSupply;
         uint256 oracleSampleCreationTimestamp;
         uint256 oracleIndex;
         bool oracleEnabled;
-        uint256 swapFeePercentage;
     }
 
     constructor(NewPoolParams memory params) WeightedPool2Tokens(params) {}
@@ -37,22 +44,21 @@ contract MockWeightedPool2Tokens is WeightedPool2Tokens, MockWeightedOracleMath 
     }
 
     function mockOracleIndex(uint256 index) external {
-        _miscData = _miscData.setOracleIndex(index);
+        _setMiscData(_getMiscData().insertUint10(index, _ORACLE_INDEX_OFFSET));
     }
 
     function mockMiscData(MiscData memory miscData) external {
-        _miscData = encode(miscData);
+        _setMiscData(_encode(miscData));
     }
 
     /**
      * @dev Encodes a misc data object into a bytes32
      */
-    function encode(MiscData memory _data) private pure returns (bytes32 data) {
-        data = data.setSwapFeePercentage(_data.swapFeePercentage);
-        data = data.setOracleEnabled(_data.oracleEnabled);
-        data = data.setOracleIndex(_data.oracleIndex);
-        data = data.setOracleSampleCreationTimestamp(_data.oracleSampleCreationTimestamp);
-        data = data.setLogTotalSupply(_data.logTotalSupply);
-        data = data.setLogInvariant(_data.logInvariant);
+    function _encode(MiscData memory _data) private pure returns (bytes32 data) {
+        data = data.insertBool(_data.oracleEnabled, _ORACLE_ENABLED_OFFSET);
+        data = data.insertUint10(_data.oracleIndex, _ORACLE_INDEX_OFFSET);
+        data = data.insertUint31(_data.oracleSampleCreationTimestamp, _ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET);
+        data = data.insertInt22(_data.logTotalSupply, _LOG_TOTAL_SUPPLY_OFFSET);
+        data = data.insertInt22(_data.logInvariant, _LOG_INVARIANT_OFFSET);
     }
 }
