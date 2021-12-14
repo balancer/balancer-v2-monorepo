@@ -84,7 +84,7 @@ interface IMultiDistributor {
     // claiming tokens on behalf of another account. These accounts are said to be 'relayers' for these
     // functions, and are expected to be smart contracts with sound authentication mechanisms.
     // For an account to be able to wield this power, two things must occur:
-    //  - The Authorizer must grant the account the permission to be a relayer for the relevant MultiDistributor 
+    //  - The Authorizer must grant the account the permission to be a relayer for the relevant MultiDistributor
     //    function. This means that Balancer governance must approve each individual contract to act as a relayer
     //    for the intended functions.
     //  - Each user must approve the relayer to act on their behalf.
