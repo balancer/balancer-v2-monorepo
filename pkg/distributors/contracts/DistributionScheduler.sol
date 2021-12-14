@@ -53,12 +53,12 @@ contract DistributionScheduler is IDistributionScheduler {
         uint256 startTime
     ) external override returns (bytes32 scheduleId) {
         scheduleId = getScheduleId(distributionId, startTime);
-        require(startTime > block.timestamp, "Distribution can only be scheduled for the future");
-
         require(
             _scheduledDistributions[scheduleId].status == DistributionStatus.UNINITIALIZED,
             "Distribution has already been scheduled"
         );
+
+        require(startTime > block.timestamp, "Distribution can only be scheduled for the future");
 
         // As funding pushes out the end timestamp of the distribution channel
         // we only allow the distribution owner to schedule distributions
@@ -120,13 +120,15 @@ contract DistributionScheduler is IDistributionScheduler {
 
         _scheduledDistributions[scheduleId].status = DistributionStatus.CANCELLED;
 
-        // Check that caller is distribution owner and refund tokens.
+        // Check that caller is distribution owner.
 
         IMultiDistributor.Distribution memory distributionChannel = _multiDistributor.getDistribution(
             scheduledDistribution.distributionId
         );
 
         require(distributionChannel.owner == msg.sender, "Only distribution owner can cancel");
+
+        // Refund tokens to distribution owner.
 
         distributionChannel.distributionToken.transfer(msg.sender, scheduledDistribution.amount);
 
