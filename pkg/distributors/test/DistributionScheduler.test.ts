@@ -239,6 +239,25 @@ describe('Distribution Scheduler', () => {
         await expectEvent.notEmitted(receipt, 'DistributionStarted');
       });
     });
+
+    context('when distribution has already been cancelled', () => {
+      let scheduleId: string;
+      sharedBeforeEach(async () => {
+        const distributionStartTime = await fromNow(DAY);
+        await scheduler
+          .connect(distributionOwner)
+          .scheduleDistribution(distributionId, DISTRIBUTION_AMOUNT, distributionStartTime);
+
+        scheduleId = await scheduler.getScheduleId(distributionId, distributionStartTime);
+        await scheduler.connect(distributionOwner).cancelDistribution(scheduleId);
+      });
+
+      it('skips the distribution', async () => {
+        const receipt = await (await scheduler.connect(other).startDistributions([scheduleId])).wait();
+
+        await expectEvent.notEmitted(receipt, 'DistributionStarted');
+      });
+    });
   });
 
   describe('cancelDistribution', () => {
