@@ -202,7 +202,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Sets the duration for a distribution
+     * @notice Sets the duration for a distribution
+     * @dev If the caller is not the owner of `distributionId`, it must be an authorized relayer for them.
      * @param distributionId The ID of the distribution being modified
      * @param duration Duration over which each distribution is spread
      */
@@ -211,14 +212,17 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
         // sentinel value that marks non-existent distributions.
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
-        require(distribution.owner == msg.sender, "SENDER_NOT_OWNER");
         require(distribution.periodFinish < block.timestamp, "DISTRIBUTION_STILL_ACTIVE");
+
+        // Check if msg.sender is authorised to fund this distribution
+        // This is required to allow distribution owners have contracts manage their distributions
+        _authenticateFor(distribution.owner);
 
         _setDistributionDuration(distributionId, distribution, duration);
     }
 
     /**
-     * @dev Sets the duration for a distribution
+     * @notice Sets the duration for a distribution
      * @param distributionId The ID of the distribution being modified
      * @param distribution The distribution being modified
      * @param duration Duration over which each distribution is spread
@@ -237,6 +241,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @notice Deposits tokens to be distributed to stakers subscribed to distribution channel `distributionId`
      * @dev Starts a new distribution period for `duration` seconds from now.
      *      If the previous period is still active its undistributed tokens are rolled over into the new period.
+     *
+     *      If the caller is not the owner of `distributionId`, it must be an authorized relayer for them.
      * @param distributionId ID of the distribution to be funded
      * @param amount The amount of tokens to deposit
      */
@@ -245,7 +251,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
         // sentinel value that marks non-existent distributions.
         require(distribution.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
-        require(distribution.owner == msg.sender, "SENDER_NOT_OWNER");
+
+        // Check if msg.sender is authorised to fund this distribution
+        // This is required to allow distribution owners have contracts manage their distributions
+        _authenticateFor(distribution.owner);
 
         // Before receiving the tokens, we must sync the distribution up to the present as we are about to change
         // its payment rate, which would otherwise affect the accounting of tokens distributed since the last update
@@ -364,7 +373,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Stakes tokens
+     * @notice Stakes tokens
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param stakingToken The token to be staked to be eligible for distributions
      * @param amount Amount of tokens to be staked
      */
@@ -378,7 +388,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Stakes tokens using the user's token approval on the vault
+     * @notice Stakes tokens using the user's token approval on the vault
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param stakingToken The token to be staked to be eligible for distributions
      * @param amount Amount of tokens to be staked
      * @param sender The address which provides tokens to stake
@@ -394,9 +405,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Stakes tokens using a permit signature for approval
+     * @notice Stakes tokens using a permit signature for approval
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param stakingToken The token to be staked to be eligible for distributions
-     * @param user User staking tokens for
+     * @param sender User staking tokens for
      * @param amount Amount of tokens to be staked
      * @param deadline The time at which this expires (unix time)
      * @param v V of the signature
@@ -406,18 +418,19 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     function stakeWithPermit(
         IERC20 stakingToken,
         uint256 amount,
-        address user,
+        address sender,
         uint256 deadline,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) external override nonReentrant {
-        IERC20Permit(address(stakingToken)).permit(user, address(this), amount, deadline, v, r, s);
-        _stake(stakingToken, amount, user, user, false);
+        IERC20Permit(address(stakingToken)).permit(sender, address(this), amount, deadline, v, r, s);
+        _stake(stakingToken, amount, sender, sender, false);
     }
 
     /**
-     * @dev Unstake tokens
+     * @notice Unstake tokens
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param stakingToken The token to be unstaked
      * @param amount Amount of tokens to be unstaked
      * @param sender The address which is unstaking its tokens
@@ -433,7 +446,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Claims earned distribution tokens for a list of distributions
+     * @notice Claims earned distribution tokens for a list of distributions
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param distributionIds List of distributions to claim
      * @param toInternalBalance Whether to send the claimed tokens to the recipient's internal balance
      * @param sender The address which earned the tokens being claimed
@@ -454,7 +468,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Claims earned tokens for a list of distributions to a callback contract
+     * @notice Claims earned tokens for a list of distributions to a callback contract
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param distributionIds List of distributions to claim
      * @param sender The address which earned the tokens being claimed
      * @param callbackContract The contract where tokens will be transferred
