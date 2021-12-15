@@ -7,8 +7,16 @@ import Vault from '../../vault/Vault';
 import WeightedPool from './WeightedPool';
 import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
-import { RawWeightedPoolDeployment, WeightedPoolDeployment, WeightedPoolType } from './types';
+import {
+  BasePoolRights,
+  ManagedPoolParams,
+  ManagedPoolRights,
+  RawWeightedPoolDeployment,
+  WeightedPoolDeployment,
+  WeightedPoolType,
+} from './types';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -210,24 +218,51 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
-        const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
+        const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
           args: [vault.address],
           from,
         });
-        const tx = await factory.create(
-          NAME,
-          SYMBOL,
-          tokens.addresses,
-          weights,
-          Array(tokens.length).fill(ZERO_ADDRESS),
-          swapFeePercentage,
-          owner,
-          swapEnabledOnStart,
-          mustAllowlistLPs,
-          managementSwapFeePercentage
-        );
+
+        const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
+          args: [baseFactory.address],
+          from,
+        });
+
+        const newPoolParams: ManagedPoolParams = {
+          vault: vault.address,
+          name: NAME,
+          symbol: SYMBOL,
+          tokens: tokens.addresses,
+          normalizedWeights: weights,
+          assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
+          swapFeePercentage: swapFeePercentage,
+          pauseWindowDuration: MONTH * 3,
+          bufferPeriodDuration: MONTH,
+          owner: from?.address || ZERO_ADDRESS,
+          swapEnabledOnStart: swapEnabledOnStart,
+          mustAllowlistLPs: mustAllowlistLPs,
+          managementSwapFeePercentage: managementSwapFeePercentage,
+        };
+
+        const basePoolRights: BasePoolRights = {
+          canTransferOwnership: true,
+          canChangeSwapFee: true,
+          canUpdateMetadata: true,
+        };
+
+        const managedPoolRights: ManagedPoolRights = {
+          canChangeWeights: true,
+          canDisableSwaps: true,
+          canSetMustAllowlistLPs: true,
+          canSetCircuitBreakers: true,
+          canChangeTokens: true,
+        };
+
+        const tx = await factory
+          .connect(from || ZERO_ADDRESS)
+          .create(newPoolParams, basePoolRights, managedPoolRights, DAY);
         const receipt = await tx.wait();
-        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+        const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
         result = deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
         break;
       }

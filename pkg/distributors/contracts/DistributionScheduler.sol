@@ -17,104 +17,121 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
-import "./interfaces/IMultiDistributor.sol";
+import "./interfaces/IDistributionScheduler.sol";
 
 // solhint-disable not-rely-on-time
 
 /**
  * Scheduler for MultiDistributor contract
  */
-contract DistributionScheduler {
+contract DistributionScheduler is IDistributionScheduler {
     using SafeERC20 for IERC20;
 
     IMultiDistributor private immutable _multiDistributor;
+    mapping(bytes32 => ScheduledDistribution) private _scheduledDistributions;
 
     constructor(IMultiDistributor multiDistributor) {
         _multiDistributor = multiDistributor;
     }
 
-    enum DistributionStatus { UNINITIALIZED, PENDING, STARTED }
-
-    struct ScheduledDistribution {
-        bytes32 distributionId;
-        IERC20 stakingToken;
-        IERC20 distributionToken;
-        uint256 startTime;
-        address owner;
-        uint256 amount;
-        DistributionStatus status;
-    }
-
-    event DistributionScheduled(bytes32 indexed distributionId, bytes32 scheduleId, uint256 startTime, uint256 amount);
-    event DistributionStarted(bytes32 indexed distributionId, bytes32 scheduleId, uint256 startTime, uint256 amount);
-
-    mapping(bytes32 => ScheduledDistribution) private _scheduledDistributions;
-
-    function getScheduledDistributionInfo(bytes32 scheduleId) external view returns (ScheduledDistribution memory) {
+    function getScheduledDistributionInfo(bytes32 scheduleId)
+        external
+        view
+        override
+        returns (ScheduledDistribution memory)
+    {
         return _scheduledDistributions[scheduleId];
     }
 
-    function getScheduleId(
-        IERC20 stakingToken,
-        IERC20 distributionToken,
-        address owner,
-        uint256 startTime
-    ) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(stakingToken, distributionToken, owner, startTime));
+    function getScheduleId(bytes32 distributionId, uint256 startTime) public pure override returns (bytes32) {
+        return keccak256(abi.encodePacked(distributionId, startTime));
     }
 
     function scheduleDistribution(
         bytes32 distributionId,
-        IERC20 stakingToken,
-        IERC20 distributionToken,
         uint256 amount,
         uint256 startTime
-    ) public returns (bytes32 scheduleId) {
-        scheduleId = getScheduleId(stakingToken, distributionToken, msg.sender, startTime);
-        require(startTime > block.timestamp, "Distribution can only be scheduled for the future");
-
+    ) external override returns (bytes32 scheduleId) {
+        scheduleId = getScheduleId(distributionId, startTime);
         require(
             _scheduledDistributions[scheduleId].status == DistributionStatus.UNINITIALIZED,
             "Distribution has already been scheduled"
         );
 
+        require(startTime > block.timestamp, "Distribution can only be scheduled for the future");
+
+        // As funding pushes out the end timestamp of the distribution channel
+        // we only allow the distribution owner to schedule distributions
+        IMultiDistributor.Distribution memory distributionChannel = _multiDistributor.getDistribution(distributionId);
+        require(distributionChannel.owner == msg.sender, "Only distribution owner can schedule");
+
+        distributionChannel.distributionToken.safeTransferFrom(msg.sender, address(this), amount);
+
         _scheduledDistributions[scheduleId] = ScheduledDistribution({
             distributionId: distributionId,
-            stakingToken: stakingToken,
-            distributionToken: distributionToken,
-            owner: msg.sender,
             amount: amount,
             startTime: startTime,
             status: DistributionStatus.PENDING
         });
 
-        distributionToken.safeTransferFrom(msg.sender, address(this), amount);
-
         emit DistributionScheduled(distributionId, scheduleId, startTime, amount);
     }
 
-    function startDistributions(bytes32[] calldata scheduleIds) external {
+    function startDistributions(bytes32[] calldata scheduleIds) external override {
         for (uint256 i; i < scheduleIds.length; i++) {
             bytes32 scheduleId = scheduleIds[i];
             ScheduledDistribution memory scheduledDistribution = _scheduledDistributions[scheduleId];
 
+            // Silently skip any non-pending distributions as two users may be triggering two sets of
+            // scheduleIds with some overlap. This ensures that all distributions are started properly.
             if (scheduledDistribution.status != DistributionStatus.PENDING) {
                 continue;
             }
 
-            require(block.timestamp >= scheduledDistribution.startTime, "Distribution start time is in the future");
+            // Check that scheduled distribution is ready to be started.
 
+            require(block.timestamp >= scheduledDistribution.startTime, "Distribution start time is in the future");
             _scheduledDistributions[scheduleId].status = DistributionStatus.STARTED;
 
-            scheduledDistribution.distributionToken.approve(address(_multiDistributor), scheduledDistribution.amount);
+            // Send tokens to MultiDistributor and start distribution.
+
+            IERC20 distributionToken = _multiDistributor
+                .getDistribution(scheduledDistribution.distributionId)
+                .distributionToken;
+
+            distributionToken.approve(address(_multiDistributor), scheduledDistribution.amount);
             _multiDistributor.fundDistribution(scheduledDistribution.distributionId, scheduledDistribution.amount);
 
-            emit DistributionStarted(
-                scheduledDistribution.distributionId,
-                scheduleId,
-                scheduledDistribution.startTime,
-                scheduledDistribution.amount
-            );
+            emit DistributionStarted(scheduledDistribution.distributionId, scheduleId);
         }
+    }
+
+    function cancelDistribution(bytes32 scheduleId) external override {
+        ScheduledDistribution memory scheduledDistribution = _scheduledDistributions[scheduleId];
+
+        // Check that scheduled distribution is eligible for cancellation.
+
+        require(scheduledDistribution.status != DistributionStatus.UNINITIALIZED, "Distribution does not exist");
+        require(scheduledDistribution.status != DistributionStatus.STARTED, "Distribution has already started");
+        require(
+            scheduledDistribution.status != DistributionStatus.CANCELLED,
+            "Distribution has already been cancelled"
+        );
+
+        _scheduledDistributions[scheduleId].status = DistributionStatus.CANCELLED;
+
+        // Check that caller is distribution owner.
+
+        IMultiDistributor.Distribution memory distributionChannel = _multiDistributor.getDistribution(
+            scheduledDistribution.distributionId
+        );
+
+        require(distributionChannel.owner == msg.sender, "Only distribution owner can cancel");
+
+        // Refund tokens to distribution owner.
+
+        distributionChannel.distributionToken.safeTransfer(msg.sender, scheduledDistribution.amount);
+
+        emit DistributionCancelled(scheduledDistribution.distributionId, scheduleId);
     }
 }

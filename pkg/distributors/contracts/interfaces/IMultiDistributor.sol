@@ -80,6 +80,18 @@ interface IMultiDistributor {
 
     function balanceOf(IERC20 stakingToken, address user) external view returns (uint256);
 
+    // Additionally, it is possible for an account to perform certain actions such as initiating a distribution or
+    // claiming tokens on behalf of another account. These accounts are said to be 'relayers' for these
+    // functions, and are expected to be smart contracts with sound authentication mechanisms.
+    // For an account to be able to wield this power, two things must occur:
+    //  - The Authorizer must grant the account the permission to be a relayer for the relevant MultiDistributor
+    //    function. This means that Balancer governance must approve each individual contract to act as a relayer
+    //    for the intended functions.
+    //  - Each user must approve the relayer to act on their behalf.
+    // This double protection means users cannot be tricked into approving malicious relayers (because they will not
+    // have been allowed by the Authorizer via governance), nor can malicious relayers approved by a compromised
+    // Authorizer or governance drain user funds, since they would also need to be approved by each individual user.
+
     // Distribution Management
 
     function createDistribution(
