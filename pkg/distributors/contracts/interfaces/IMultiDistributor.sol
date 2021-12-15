@@ -42,7 +42,7 @@ interface IMultiDistributor {
 
     struct UserStaking {
         uint256 balance;
-        EnumerableSet.Bytes32Set subscribedDistributions;
+        EnumerableSet.Bytes32Set subscribedChannels;
         mapping(bytes32 => UserDistributionInfo) distributionInfo;
     }
 
@@ -56,7 +56,7 @@ interface IMultiDistributor {
     );
     event DistributionDurationSet(bytes32 indexed distributionChannel, uint256 duration);
     event DistributionFunded(bytes32 indexed distributionChannel, uint256 amount);
-    event DistributionClaimed(bytes32 indexed distribution, address indexed user, uint256 amount);
+    event DistributionClaimed(bytes32 indexed distributionChannel, address indexed user, uint256 amount);
 
     // Getters
 
@@ -85,7 +85,7 @@ interface IMultiDistributor {
 
     // Distribution Management
 
-    function createDistribution(
+    function createDistributionChannel(
         IERC20 stakingToken,
         IERC20 distributionToken,
         uint256 duration
@@ -123,9 +123,9 @@ interface IMultiDistributor {
 
     // Subscription
 
-    function subscribeDistributions(bytes32[] memory distributionChannelIds) external;
+    function subscribeDistributionChannels(bytes32[] memory distributionChannelIds) external;
 
-    function unsubscribeDistributions(bytes32[] memory distributionChannelIds) external;
+    function unsubscribeDistributionChannels(bytes32[] memory distributionChannelIds) external;
 
     // Unstaking
 

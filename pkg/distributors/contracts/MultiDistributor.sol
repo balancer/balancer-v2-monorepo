@@ -102,71 +102,71 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
     /**
      * @dev Returns the information of a distribution channel
-     * @param distributionId ID of the distribution channel being queried
+     * @param distributionChannelId ID of the distribution channel being queried
      */
-    function getDistributionChannel(bytes32 distributionId)
+    function getDistributionChannel(bytes32 distributionChannelId)
         external
         view
         override
         returns (DistributionChannel memory)
     {
-        return _getDistributionChannel(distributionId);
+        return _getDistributionChannel(distributionChannelId);
     }
 
     /**
      * @dev Calculates the payment per token for a distribution channel
-     * @param distributionId ID of the distribution channel being queried
+     * @param distributionChannelId ID of the distribution channel being queried
      */
-    function globalTokensPerStake(bytes32 distributionId) external view override returns (uint256) {
-        return _globalTokensPerStake(_getDistributionChannel(distributionId));
+    function globalTokensPerStake(bytes32 distributionChannelId) external view override returns (uint256) {
+        return _globalTokensPerStake(_getDistributionChannel(distributionChannelId));
     }
 
     /**
      * @dev Returns the total supply of tokens subscribed to a distribution channel
-     * @param distributionId ID of the distribution channel being queried
+     * @param distributionChannelId ID of the distribution channel being queried
      */
-    function totalSupply(bytes32 distributionId) external view override returns (uint256) {
-        return _getDistributionChannel(distributionId).totalSupply;
+    function totalSupply(bytes32 distributionChannelId) external view override returns (uint256) {
+        return _getDistributionChannel(distributionChannelId).totalSupply;
     }
 
     /**
      * @dev Returns if a user is subscribed to a distribution channel or not
-     * @param distributionId ID of the distribution channel being queried
+     * @param distributionChannelId ID of the distribution channel being queried
      * @param user The address of the user being queried
      */
-    function isSubscribed(bytes32 distributionId, address user) external view override returns (bool) {
-        IERC20 stakingToken = _getDistributionChannel(distributionId).stakingToken;
-        return _userStakings[stakingToken][user].subscribedDistributions.contains(distributionId);
+    function isSubscribed(bytes32 distributionChannelId, address user) external view override returns (bool) {
+        IERC20 stakingToken = _getDistributionChannel(distributionChannelId).stakingToken;
+        return _userStakings[stakingToken][user].subscribedChannels.contains(distributionChannelId);
     }
 
     /**
      * @dev Returns the information of a distribution channel for a user
-     * @param distributionId ID of the distribution channel being queried
+     * @param distributionChannelId ID of the distribution channel being queried
      * @param user Address of the user being queried
      */
-    function getUserDistributionInfo(bytes32 distributionId, address user)
+    function getUserDistributionInfo(bytes32 distributionChannelId, address user)
         external
         view
         override
         returns (UserDistributionInfo memory)
     {
-        IERC20 stakingToken = _getDistributionChannel(distributionId).stakingToken;
-        return _userStakings[stakingToken][user].distributionInfo[distributionId];
+        IERC20 stakingToken = _getDistributionChannel(distributionChannelId).stakingToken;
+        return _userStakings[stakingToken][user].distributionInfo[distributionChannelId];
     }
 
     /**
      * @dev Returns the total unclaimed payment for a user for a particular distribution channel
-     * @param distributionId ID of the distribution channel being queried
+     * @param distributionChannelId ID of the distribution channel being queried
      * @param user Address of the user being queried
      */
-    function getClaimableTokens(bytes32 distributionId, address user) external view override returns (uint256) {
-        DistributionChannel storage distributionChannel = _getDistributionChannel(distributionId);
+    function getClaimableTokens(bytes32 distributionChannelId, address user) external view override returns (uint256) {
+        DistributionChannel storage distributionChannel = _getDistributionChannel(distributionChannelId);
         UserStaking storage userStaking = _userStakings[distributionChannel.stakingToken][user];
-        UserDistributionInfo storage userDistributionInfo = userStaking.distributionInfo[distributionId];
+        UserDistributionInfo storage userDistributionInfo = userStaking.distributionInfo[distributionChannelId];
 
         // If the user isn't subscribed to the queried distribution channel, they don't have any unaccounted for tokens.
         // Then we can just return the stored number of tokens which the user can claim.
-        if (!userStaking.subscribedDistributions.contains(distributionId)) {
+        if (!userStaking.subscribedChannels.contains(distributionChannelId)) {
             return userDistributionInfo.unclaimedTokens;
         }
         return _getUnclaimedTokens(userStaking, userDistributionInfo, _globalTokensPerStake(distributionChannel));
@@ -187,7 +187,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @param distributionToken The token to be distributed to users
      * @param duration The duration over which each distribution is spread
      */
-    function createDistribution(
+    function createDistributionChannel(
         IERC20 stakingToken,
         IERC20 distributionToken,
         uint256 duration
@@ -243,7 +243,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @notice Deposits tokens to be distributed to stakers subscribed to distribution channel `distributionId`
+     * @notice Deposits tokens to be distributed to stakers subscribed to distribution channel `distributionChannelId`
      * @dev Starts a new distribution period for `duration` seconds from now.
      *      If the previous period is still active its undistributed tokens are rolled over into the new period.
      * @param distributionChannelId ID of the distribution channel to be funded
@@ -311,7 +311,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Subscribes a user to a list of distribution channels
      * @param distributionChannelIds List of distribution channels to subscribe
      */
-    function subscribeDistributions(bytes32[] calldata distributionChannelIds) external override {
+    function subscribeDistributionChannels(bytes32[] calldata distributionChannelIds) external override {
         bytes32 distributionChannelId;
         DistributionChannel storage distributionChannel;
         for (uint256 i; i < distributionChannelIds.length; i++) {
@@ -322,7 +322,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
             require(stakingToken != IERC20(0), "DISTRIBUTION_DOES_NOT_EXIST");
 
             UserStaking storage userStaking = _userStakings[stakingToken][msg.sender];
-            require(userStaking.subscribedDistributions.add(distributionChannelId), "ALREADY_SUBSCRIBED_DISTRIBUTION");
+            require(userStaking.subscribedChannels.add(distributionChannelId), "ALREADY_SUBSCRIBED_DISTRIBUTION");
 
             uint256 amount = userStaking.balance;
             if (amount > 0) {
@@ -346,7 +346,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Unsubscribes a user to a list of distribution channels
      * @param distributionChannelIds List of distribution channels to unsubscribe
      */
-    function unsubscribeDistributions(bytes32[] calldata distributionChannelIds) external override {
+    function unsubscribeDistributionChannels(bytes32[] calldata distributionChannelIds) external override {
         bytes32 distributionChannelId;
         DistributionChannel storage distributionChannel;
         for (uint256 i; i < distributionChannelIds.length; i++) {
@@ -372,7 +372,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
                 emit Unstaked(distributionChannelId, msg.sender, amount);
             }
 
-            require(userStaking.subscribedDistributions.remove(distributionChannelId), "DISTRIBUTION_NOT_SUBSCRIBED");
+            require(userStaking.subscribedChannels.remove(distributionChannelId), "DISTRIBUTION_NOT_SUBSCRIBED");
         }
     }
 
@@ -546,7 +546,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
         userStaking.balance = userStaking.balance.add(amount);
 
-        EnumerableSet.Bytes32Set storage subscribedChannelIds = userStaking.subscribedDistributions;
+        EnumerableSet.Bytes32Set storage subscribedChannelIds = userStaking.subscribedChannels;
         uint256 subscriptionsLength = subscribedChannelIds.length();
 
         // We also need to update all distribution channels the recipient is subscribed to,
@@ -594,7 +594,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         require(currentBalance >= amount, "UNSTAKE_AMOUNT_UNAVAILABLE");
         userStaking.balance = currentBalance - amount;
 
-        EnumerableSet.Bytes32Set storage subscribedChannelIds = userStaking.subscribedDistributions;
+        EnumerableSet.Bytes32Set storage subscribedChannelIds = userStaking.subscribedChannels;
         uint256 subscriptionsLength = subscribedChannelIds.length();
 
         // We also need to update all distribution channels the sender was subscribed to,
@@ -613,29 +613,29 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     function _claim(
-        bytes32[] calldata distributionIds,
+        bytes32[] calldata distributionChannelIds,
         IVault.UserBalanceOpKind kind,
         address sender,
         address recipient
     ) internal {
         // It is expected that there will be multiple transfers of the same token
-        // so that the actual number of transfers needed is less than distributionIds.length
+        // so that the actual number of transfers needed is less than distributionChannelId.length
         // We keep track of this number in numTokens to save gas later
         uint256 numTokens;
-        IAsset[] memory tokens = new IAsset[](distributionIds.length);
-        uint256[] memory amounts = new uint256[](distributionIds.length);
+        IAsset[] memory tokens = new IAsset[](distributionChannelIds.length);
+        uint256[] memory amounts = new uint256[](distributionChannelIds.length);
 
         bytes32 distributionChannelId;
         DistributionChannel storage distributionChannel;
-        for (uint256 i; i < distributionIds.length; i++) {
-            distributionChannelId = distributionIds[i];
+        for (uint256 i; i < distributionChannelIds.length; i++) {
+            distributionChannelId = distributionChannelIds[i];
             distributionChannel = _getDistributionChannel(distributionChannelId);
             UserStaking storage userStaking = _userStakings[distributionChannel.stakingToken][sender];
             UserDistributionInfo storage userDistributionInfo = userStaking.distributionInfo[distributionChannelId];
 
             // Note that the user may have unsubscribed from the distribution but still be due tokens. We therefore only
             // update the distribution if the user is subscribed to it (otherwise, it is already up to date).
-            if (userStaking.subscribedDistributions.contains(distributionChannelId)) {
+            if (userStaking.subscribedChannels.contains(distributionChannelId)) {
                 _updateUserTokensPerStake(distributionChannel, userStaking, userDistributionInfo);
             }
 
@@ -684,7 +684,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Updates the payment rate for all the distribution channels that a user has signed up for a staking token
      */
     function _updateSubscribedDistributions(UserStaking storage userStaking) internal {
-        EnumerableSet.Bytes32Set storage subscribedChannelIds = userStaking.subscribedDistributions;
+        EnumerableSet.Bytes32Set storage subscribedChannelIds = userStaking.subscribedChannels;
         uint256 subscriptionsLength = subscribedChannelIds.length();
 
         for (uint256 i; i < subscriptionsLength; i++) {

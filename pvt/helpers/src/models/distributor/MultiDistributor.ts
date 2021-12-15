@@ -102,7 +102,7 @@ export class MultiDistributor {
     params?: TxParams
   ): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.createDistribution(
+    return instance.createDistributionChannel(
       TypesConverter.toAddress(stakingToken),
       TypesConverter.toAddress(rewardsToken),
       duration
@@ -121,12 +121,12 @@ export class MultiDistributor {
 
   async subscribe(ids: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.subscribeDistributions(Array.isArray(ids) ? ids : [ids]);
+    return instance.subscribeDistributionChannels(Array.isArray(ids) ? ids : [ids]);
   }
 
   async unsubscribe(ids: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.unsubscribeDistributions(Array.isArray(ids) ? ids : [ids]);
+    return instance.unsubscribeDistributionChannels(Array.isArray(ids) ? ids : [ids]);
   }
 
   async stake(

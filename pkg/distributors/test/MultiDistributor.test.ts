@@ -2280,7 +2280,7 @@ describe('MultiDistributor', () => {
         const tx = await claim(distribution);
 
         expectEvent.inReceipt(await tx.wait(), 'DistributionClaimed', {
-          distribution,
+          distributionChannel: distribution,
           user: from.address,
           amount: expectedAmount,
         });
@@ -2390,12 +2390,12 @@ describe('MultiDistributor', () => {
                 const tx = await claim([distribution, anotherDistribution]);
 
                 expectEvent.inReceipt(await tx.wait(), 'DistributionClaimed', {
-                  distribution,
+                  distributionChannel: distribution,
                   user: from.address,
                   amount: expectedClaimAmount,
                 });
                 expectEvent.inReceipt(await tx.wait(), 'DistributionClaimed', {
-                  distribution: anotherDistribution,
+                  distributionChannel: anotherDistribution,
                   user: from.address,
                   amount: expectedAnotherClaimAmount,
                 });
@@ -2617,7 +2617,7 @@ describe('MultiDistributor', () => {
         const tx = await distributor.exit(stakingToken, distribution, { from: user1 });
 
         expectEvent.inReceipt(await tx.wait(), 'DistributionClaimed', {
-          distribution,
+          distributionChannel: distribution,
           user: user1.address,
           amount: expectedClaimAmount,
         });
