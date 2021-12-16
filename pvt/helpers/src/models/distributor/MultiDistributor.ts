@@ -120,23 +120,23 @@ export class MultiDistributor {
   }
 
   async subscribe(ids: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
-    const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.subscribeDistributions(Array.isArray(ids) ? ids : [ids]);
+    const sender = params?.from ?? (await getSigner());
+    return this.subscribeForUser(sender, ids, params);
   }
 
   async subscribeForUser(user: Account, ids: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.subscribeUserDistributions(TypesConverter.toAddress(user), Array.isArray(ids) ? ids : [ids]);
+    return instance.subscribeDistributions(TypesConverter.toAddress(user), Array.isArray(ids) ? ids : [ids]);
   }
 
   async unsubscribe(ids: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
-    const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.unsubscribeDistributions(Array.isArray(ids) ? ids : [ids]);
+    const sender = params?.from ?? (await getSigner());
+    return this.unsubscribeForUser(sender, ids, params);
   }
 
   async unsubscribeForUser(user: Account, ids: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
     const instance = params?.from ? this.instance.connect(params.from) : this.instance;
-    return instance.unsubscribeUserDistributions(TypesConverter.toAddress(user), Array.isArray(ids) ? ids : [ids]);
+    return instance.unsubscribeDistributions(TypesConverter.toAddress(user), Array.isArray(ids) ? ids : [ids]);
   }
 
   async stake(

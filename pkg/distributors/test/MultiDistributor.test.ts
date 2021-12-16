@@ -19,7 +19,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account, NAry } from '@balancer-labs/v2-helpers/src/models/types/types';
 
-describe('MultiDistributor', () => {
+describe.only('MultiDistributor', () => {
   let vault: Vault;
   let distributor: MultiDistributor;
   let distribution: string, anotherDistribution: string;
@@ -47,8 +47,8 @@ describe('MultiDistributor', () => {
     const stakeRole = await actionId(distributor.instance, 'stake');
     const stakeUsingVaultRole = await actionId(distributor.instance, 'stakeUsingVault');
     const unstakeRole = await actionId(distributor.instance, 'unstake');
-    const subscribeRole = await actionId(distributor.instance, 'subscribeUserDistributions');
-    const unsubscribeRole = await actionId(distributor.instance, 'unsubscribeUserDistributions');
+    const subscribeRole = await actionId(distributor.instance, 'subscribeDistributions');
+    const unsubscribeRole = await actionId(distributor.instance, 'unsubscribeDistributions');
     const fundRole = await actionId(distributor.instance, 'fundDistribution');
     const setDurationRole = await actionId(distributor.instance, 'setDistributionDuration');
 

@@ -132,13 +132,9 @@ interface IMultiDistributor {
 
     // Subscription
 
-    function subscribeDistributions(bytes32[] memory distributionIds) external;
+    function subscribeDistributions(address user, bytes32[] memory distributionIds) external;
 
-    function subscribeUserDistributions(address user, bytes32[] memory distributionIds) external;
-
-    function unsubscribeDistributions(bytes32[] memory distributionIds) external;
-
-    function unsubscribeUserDistributions(address user, bytes32[] memory distributionIds) external;
+    function unsubscribeDistributions(address user, bytes32[] memory distributionIds) external;
 
     // Unstaking
 
