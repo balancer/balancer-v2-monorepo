@@ -352,7 +352,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Unsubscribes a user to a list of distribution channels
+     * @dev Unsubscribes a user from a list of distribution channels
      * @param distributionChannelIds List of distribution channels to unsubscribe
      */
     function unsubscribeDistributionChannels(bytes32[] calldata distributionChannelIds) external override {
