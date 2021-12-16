@@ -79,8 +79,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * `unclaimedTokens` and releasing that amount of tokens to them.
      */
 
-    mapping(bytes32 => DistributionChannel) internal _distributions;
-    mapping(IERC20 => mapping(address => UserStaking)) internal _userStakings;
+    mapping(bytes32 => DistributionChannel) private _distributions;
+    mapping(IERC20 => mapping(address => UserStaking)) private _userStakings;
 
     constructor(IVault vault) MultiDistributorAuthorization(vault) {
         // solhint-disable-previous-line no-empty-blocks
@@ -209,8 +209,9 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Sets the duration for distributions within a distribution channel.
-     * @param distributionChannelId ID of the distribution channel to be modified
+     * @notice Sets the duration for a distribution
+     * @dev If the caller is not the owner of `distributionId`, it must be an authorized relayer for them.
+     * @param distributionChannelId ID of the distribution channel being modified
      * @param duration Duration over which each distribution is spread
      */
     function setDistributionDuration(bytes32 distributionChannelId, uint256 duration) external override {
@@ -220,15 +221,18 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
         // sentinel value that marks non-existent distributions.
         require(distributionChannel.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
-        require(distributionChannel.owner == msg.sender, "SENDER_NOT_OWNER");
         require(distributionChannel.periodFinish < block.timestamp, "DISTRIBUTION_STILL_ACTIVE");
+
+        // Check if msg.sender is authorised to fund this distribution
+        // This is required to allow distribution owners have contracts manage their distributions
+        _authenticateFor(distributionChannel.owner);
 
         _setDistributionDuration(distributionChannelId, distributionChannel, duration);
     }
 
     /**
-     * @dev Sets the duration for a distribution
-     * @param distributionChannelId The ID of the distribution channel being modified
+     * @notice Sets the duration for a distribution
+     * @param distributionChannelId ID of the distribution channel being modified
      * @param distributionChannel The distribution channel being modified
      * @param duration Duration over which each distribution is spread
      */
@@ -236,7 +240,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         bytes32 distributionChannelId,
         DistributionChannel storage distributionChannel,
         uint256 duration
-    ) internal {
+    ) private {
         require(duration > 0, "DISTRIBUTION_DURATION_ZERO");
         distributionChannel.duration = duration;
         emit DistributionDurationSet(distributionChannelId, duration);
@@ -246,6 +250,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @notice Deposits tokens to be distributed to stakers subscribed to distribution channel `distributionChannelId`
      * @dev Starts a new distribution period for `duration` seconds from now.
      *      If the previous period is still active its undistributed tokens are rolled over into the new period.
+     *
+     *      If the caller is not the owner of `distributionId`, it must be an authorized relayer for them.
      * @param distributionChannelId ID of the distribution channel to be funded
      * @param amount The amount of tokens to deposit
      */
@@ -254,7 +260,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         // These values being guaranteed to be non-zero for created distributions means we can rely on zero as a
         // sentinel value that marks non-existent distributions.
         require(distributionChannel.duration > 0, "DISTRIBUTION_DOES_NOT_EXIST");
-        require(distributionChannel.owner == msg.sender, "SENDER_NOT_OWNER");
+
+        // Check if msg.sender is authorised to fund this distribution
+        // This is required to allow distribution owners have contracts manage their distributions
+        _authenticateFor(distributionChannel.owner);
 
         // Before receiving tokens, we must sync the distribution channel up to the present as we are about to change
         // its payment rate, which would otherwise affect the accounting of tokens distributed since the last update
@@ -377,7 +386,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Stakes tokens
+     * @notice Stakes tokens
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param stakingToken The token to be staked to be eligible for distributions
      * @param amount Amount of tokens to be staked
      */
@@ -391,7 +401,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Stakes tokens using the user's token approval on the vault
+     * @notice Stakes tokens using the user's token approval on the vault
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param stakingToken The token to be staked to be eligible for distributions
      * @param amount Amount of tokens to be staked
      * @param sender The address which provides tokens to stake
@@ -407,9 +418,10 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Stakes tokens using a permit signature for approval
+     * @notice Stakes tokens using a permit signature for approval
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param stakingToken The token to be staked to be eligible for distributions
-     * @param user User staking tokens for
+     * @param sender User staking tokens for
      * @param amount Amount of tokens to be staked
      * @param deadline The time at which this expires (unix time)
      * @param v V of the signature
@@ -419,18 +431,19 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     function stakeWithPermit(
         IERC20 stakingToken,
         uint256 amount,
-        address user,
+        address sender,
         uint256 deadline,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) external override nonReentrant {
-        IERC20Permit(address(stakingToken)).permit(user, address(this), amount, deadline, v, r, s);
-        _stake(stakingToken, amount, user, user, false);
+        IERC20Permit(address(stakingToken)).permit(sender, address(this), amount, deadline, v, r, s);
+        _stake(stakingToken, amount, sender, sender, false);
     }
 
     /**
-     * @dev Unstake tokens
+     * @notice Unstake tokens
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param stakingToken The token to be unstaked
      * @param amount Amount of tokens to be unstaked
      * @param sender The address which is unstaking its tokens
@@ -446,7 +459,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Claims earned distribution tokens for a list of distribution channels
+     * @notice Claims earned distribution tokens for a list of distribution channels
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param distributionChannelIds List of distribution channels to claim
      * @param toInternalBalance Whether to send the claimed tokens to the recipient's internal balance
      * @param sender The address which earned the tokens being claimed
@@ -467,7 +481,8 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     }
 
     /**
-     * @dev Claims earned tokens for a list of distribution channels to a callback contract
+     * @notice Claims earned tokens for a list of distribution channels to a callback contract
+     * @dev If the caller is not `sender`, it must be an authorized relayer for them.
      * @param distributionChannelIds List of distribution channels to claim
      * @param sender The address which earned the tokens being claimed
      * @param callbackContract The contract where tokens will be transferred
@@ -536,7 +551,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         address sender,
         address recipient,
         bool useVaultApproval
-    ) internal {
+    ) private {
         require(amount > 0, "STAKE_AMOUNT_ZERO");
 
         UserStaking storage userStaking = _userStakings[stakingToken][recipient];
@@ -582,7 +597,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         uint256 amount,
         address sender,
         address recipient
-    ) internal {
+    ) private {
         require(amount > 0, "UNSTAKE_AMOUNT_ZERO");
 
         UserStaking storage userStaking = _userStakings[stakingToken][sender];
@@ -617,7 +632,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         IVault.UserBalanceOpKind kind,
         address sender,
         address recipient
-    ) internal {
+    ) private {
         // It is expected that there will be multiple transfers of the same token
         // so that the actual number of transfers needed is less than distributionChannelId.length
         // We keep track of this number in numTokens to save gas later
@@ -683,7 +698,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
     /**
      * @dev Updates the payment rate for all the distribution channels that a user has signed up for a staking token
      */
-    function _updateSubscribedDistributions(UserStaking storage userStaking) internal {
+    function _updateSubscribedDistributions(UserStaking storage userStaking) private {
         EnumerableSet.Bytes32Set storage subscribedChannelIds = userStaking.subscribedChannels;
         uint256 subscriptionsLength = subscribedChannelIds.length();
 
@@ -701,7 +716,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         DistributionChannel storage distributionChannel,
         UserStaking storage userStaking,
         UserDistributionInfo storage userDistribution
-    ) internal {
+    ) private {
         uint256 updatedGlobalTokensPerStake = _updateGlobalTokensPerStake(distributionChannel);
         userDistribution.unclaimedTokens = _getUnclaimedTokens(
             userStaking,
@@ -719,7 +734,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @return updatedGlobalTokensPerStake The updated number of distribution tokens paid per staked token
      */
     function _updateGlobalTokensPerStake(DistributionChannel storage distributionChannel)
-        internal
+        private
         returns (uint256 updatedGlobalTokensPerStake)
     {
         updatedGlobalTokensPerStake = _globalTokensPerStake(distributionChannel);
@@ -727,7 +742,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         distributionChannel.lastUpdateTime = _lastTimePaymentApplicable(distributionChannel);
     }
 
-    function _globalTokensPerStake(DistributionChannel storage distributionChannel) internal view returns (uint256) {
+    function _globalTokensPerStake(DistributionChannel storage distributionChannel) private view returns (uint256) {
         uint256 supply = distributionChannel.totalSupply;
         if (supply == 0) {
             return distributionChannel.globalTokensPerStake;
@@ -745,7 +760,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
      * @dev Returns the timestamp up to which a distribution channel has been distributing tokens
      * @param distribution The distribution channel being queried
      */
-    function _lastTimePaymentApplicable(DistributionChannel storage distribution) internal view returns (uint256) {
+    function _lastTimePaymentApplicable(DistributionChannel storage distribution) private view returns (uint256) {
         return Math.min(block.timestamp, distribution.periodFinish);
     }
 
@@ -760,7 +775,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         UserStaking storage userStaking,
         UserDistributionInfo storage userDistribution,
         uint256 updatedGlobalTokensPerStake
-    ) internal view returns (uint256) {
+    ) private view returns (uint256) {
         return
             _unaccountedUnclaimedTokens(userStaking, userDistribution, updatedGlobalTokensPerStake).add(
                 userDistribution.unclaimedTokens
@@ -779,7 +794,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
         UserStaking storage userStaking,
         UserDistributionInfo storage userDistributionInfo,
         uint256 updatedGlobalTokensPerStake
-    ) internal view returns (uint256) {
+    ) private view returns (uint256) {
         // `userDistribution.userTokensPerStake` cannot exceed `updatedGlobalTokensPerStake`
         // Both `updatedGlobalTokensPerStake` and `userDistribution.userTokensPerStake` are fixed point values
         uint256 unaccountedTokensPerStake = updatedGlobalTokensPerStake - userDistributionInfo.userTokensPerStake;
