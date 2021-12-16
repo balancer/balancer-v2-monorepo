@@ -322,6 +322,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
     /**
      * @dev Subscribes a user to a list of distributions
+     * @param user address of staker to be subscribed
      * @param distributionIds List of distributions to subscribe
      */
     function _subscribeDistributions(address user, bytes32[] memory distributionIds) internal {
@@ -370,6 +371,7 @@ contract MultiDistributor is IMultiDistributor, ReentrancyGuard, MultiDistributo
 
     /**
      * @dev Unsubscribes a user to a list of distributions
+     * @param user address of staker to be unsubscribed
      * @param distributionIds List of distributions to unsubscribe
      */
     function _unsubscribeDistributions(address user, bytes32[] memory distributionIds) internal {
