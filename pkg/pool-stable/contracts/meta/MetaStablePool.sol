@@ -36,8 +36,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
     using FixedPoint for uint256;
     using OracleMiscData for bytes32;
 
-    IRateProvider private immutable _rateProvider0;
-    IRateProvider private immutable _rateProvider1;
+    //IRateProvider private immutable _rateProvider0;
+    //IRateProvider private immutable _rateProvider1;
 
     // Price rate caches are used to avoid querying the price rate for a token every time we need to work with it.
     // Data is stored with the following structure:
@@ -54,7 +54,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
 
     event OracleEnabledChanged(bool enabled);
     event PriceRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
-    event PriceRateCacheUpdated(IERC20 indexed token, uint256 rate);
+    //event PriceRateCacheUpdated(IERC20 indexed token, uint256 rate);
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -96,7 +96,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
         // Set providers and initialise cache. We can't use `_setToken0PriceRateCache` as it relies on immutable
         // variables, which cannot be read from during construction.
 
-        IRateProvider rateProvider0 = params.rateProviders[0];
+        /*IRateProvider rateProvider0 = params.rateProviders[0];
         _rateProvider0 = rateProvider0;
         if (rateProvider0 != IRateProvider(address(0))) {
             (bytes32 cache, uint256 rate) = _getNewPriceRateCache(rateProvider0, params.priceRateCacheDuration[0]);
@@ -112,7 +112,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
             _priceRateCache1 = cache;
             emit PriceRateCacheUpdated(params.tokens[1], rate);
         }
-        emit PriceRateProviderSet(params.tokens[1], rateProvider1, params.priceRateCacheDuration[1]);
+        emit PriceRateProviderSet(params.tokens[1], rateProvider1, params.priceRateCacheDuration[1]);*/
 
         _setOracleEnabled(params.oracleEnabled);
     }
@@ -435,15 +435,6 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
     }
 
     // Price rates
-
-    /**
-     * @dev Returns the rate providers configured for each token (in the same order as registered).
-     */
-    function getRateProviders() external view returns (IRateProvider[] memory providers) {
-        providers = new IRateProvider[](2);
-        providers[0] = _getRateProvider0();
-        providers[1] = _getRateProvider1();
-    }
 
     /**
      * @dev Returns the cached value for token's rate
