@@ -108,23 +108,23 @@ contract StablePool is BaseStablePool {
         return _isToken0(token) || _isToken1(token) || _isToken2(token) || _isToken3(token) || _isToken4(token);
     }
 
-    function _isToken0(IERC20 token) internal view override returns (bool) {
+    function _isToken0(IERC20 token) internal view virtual override returns (bool) {
         return token == _token0;
     }
 
-    function _isToken1(IERC20 token) internal view override returns (bool) {
+    function _isToken1(IERC20 token) internal view returns (bool) {
         return token == _token1;
     }
 
-    function _isToken2(IERC20 token) internal view override returns (bool) {
+    function _isToken2(IERC20 token) internal view returns (bool) {
         return token == _token2;
     }
 
-    function _isToken3(IERC20 token) internal view override returns (bool) {
+    function _isToken3(IERC20 token) internal view returns (bool) {
         return token == _token3;
     }
 
-    function _isToken4(IERC20 token) internal view override returns (bool) {
+    function _isToken4(IERC20 token) internal view returns (bool) {
         return token == _token4;
     }
 
@@ -146,5 +146,13 @@ contract StablePool is BaseStablePool {
 
     function _getScalingFactor4() private view returns (uint256) {
         return _scalingFactor4;
+    }
+
+    function getRateProviders() public view virtual override returns (IRateProvider[] memory providers) {
+        return new IRateProvider[](_getTotalTokens());
+    }
+
+    function _getRateProvider(uint256) internal view virtual override returns (IRateProvider) {
+        return IRateProvider(0);
     }
 }

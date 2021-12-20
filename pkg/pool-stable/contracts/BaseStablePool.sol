@@ -15,39 +15,16 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
-
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
-import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
-import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/rates/BaseRateProvider.sol";
 
 import "./StableMath.sol";
 import "./StablePoolUserData.sol";
 
-abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IRateProvider {
+abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, BaseRateProvider {
     using WordCodec for bytes32;
-    using FixedPoint for uint256;
     using StablePoolUserData for bytes;
-    using PriceRateCache for bytes32;
-
-    // Price rate caches are used to avoid querying the price rate for a token every time we need to work with it.
-    // Data is stored with the following structure:
-    //
-    // [   expires   | duration | price rate value ]
-    // [   uint64    |  uint64  |      uint128     ]
-
-    mapping(IERC20 => bytes32) private _priceRateCaches;
-
-    uint256 private constant _PRICE_RATE_CACHE_VALUE_OFFSET = 0;
-    uint256 private constant _PRICE_RATE_CACHE_DURATION_OFFSET = 128;
-    uint256 private constant _PRICE_RATE_CACHE_EXPIRES_OFFSET = 128 + 64;
-
-    IRateProvider internal immutable _rateProvider0;
-    IRateProvider internal immutable _rateProvider1;
-    IRateProvider internal immutable _rateProvider2;
-    IRateProvider internal immutable _rateProvider3;
-    IRateProvider internal immutable _rateProvider4;
 
     // To track how many tokens are owed to the Vault as protocol fees, we measure and store the value of the invariant
     // after every join and exit. All invariant growth that happens between join and exit events is due to swap fees.
@@ -77,9 +54,6 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IR
 
     uint256 internal immutable _totalTokens;
 
-    event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
-    event PriceRateCacheUpdated(IERC20 indexed token, uint256 rate);
-
     constructor(
         IVault vault,
         string memory name,
@@ -108,34 +82,15 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IR
             bufferPeriodDuration,
             owner
         )
+        BaseRateProvider(tokens, rateProviders, priceRateCacheDurations)
     {
         _require(amplificationParameter >= StableMath._MIN_AMP, Errors.MIN_AMP);
         _require(amplificationParameter <= StableMath._MAX_AMP, Errors.MAX_AMP);
 
-        InputHelpers.ensureInputLengthMatch(
-            tokens.length,
-            rateProviders.length,
-            priceRateCacheDurations.length
-        );
-
         uint256 initialAmp = Math.mul(amplificationParameter, StableMath._AMP_PRECISION);
         _setAmplificationData(initialAmp);
 
-        uint256 totalTokens = tokens.length;
-        _totalTokens = totalTokens;
-
-        for (uint256 i = 0; i < totalTokens; i++) {
-            if (rateProviders[i] != IRateProvider(0)) {
-                _updatePriceRateCache(tokens[i], rateProviders[i], priceRateCacheDurations[i]);
-                emit TokenRateProviderSet(tokens[i], rateProviders[i], priceRateCacheDurations[i]);
-            }
-        }
-
-        _rateProvider0 = rateProviders[0];
-        _rateProvider1 = rateProviders[1];
-        _rateProvider2 = totalTokens > 2 ? rateProviders[2] : IRateProvider(0);
-        _rateProvider3 = totalTokens > 3 ? rateProviders[3] : IRateProvider(0);
-        _rateProvider4 = totalTokens > 4 ? rateProviders[4] : IRateProvider(0);
+        _totalTokens = tokens.length;
     }
 
     function getLastInvariant() external view returns (uint256 lastInvariant, uint256 lastInvariantAmp) {
@@ -716,7 +671,7 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IR
         }
     }
 
-    function _getMaxTokens() internal pure override returns (uint256) {
+    function _getMaxTokens() internal pure virtual override returns (uint256) {
         return StableMath._MAX_STABLE_TOKENS;
     }
 
@@ -745,163 +700,6 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IR
         endTime = _packedAmplificationData.decodeUint64(64 * 3);
     }
 
-    // Price rates
-
-    function updatePriceRateCache(IERC20 token) external {
-        uint256 duration = _getPriceRateCacheDuration(_getPriceRateCache(token));
-
-        if (_isToken0WithRateProvider(token)) {
-            _updatePriceRateCache(token, _getRateProvider0(), duration);
-        } else if (_isToken1WithRateProvider(token)) {
-            _updatePriceRateCache(token, _getRateProvider1(), duration);
-        } else if (_isToken2WithRateProvider(token)) {
-            _updatePriceRateCache(token, _getRateProvider2(), duration);
-        } else if (_isToken3WithRateProvider(token)) {
-            _updatePriceRateCache(token, _getRateProvider3(), duration);
-        } else if (_isToken4WithRateProvider(token)) {
-            _updatePriceRateCache(token, _getRateProvider4(), duration);
-        } else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-    }
-
-    /**
-     * @dev Returns the cached value for token's rate
-     */
-    function getPriceRateCache(IERC20 token)
-        external
-        view
-        returns (
-            uint256 rate,
-            uint256 duration,
-            uint256 expires
-        )
-    {
-        return _getPriceRateCache(_getPriceRateCache(token));
-    }
-
-    function _getPriceRateCache(IERC20 token) internal view returns (bytes32) {
-        if (_isValidToken(token)) {
-            return _priceRateCaches[token];
-        }
-
-        _revert(Errors.INVALID_TOKEN); 
-    }
-
-    function _isValidToken(IERC20 token) internal view virtual returns (bool);
-
-    /**
-     * @dev Returns the price rate for token. All price rates are fixed-point values with 18 decimals.
-     * In case there is no rate provider for the provided token it returns 1e18.
-     */
-    function _priceRate(IERC20 token) internal view virtual returns (uint256) {
-        // Given that this function is only used by `onSwap` which can only be called by the vault in the case of a
-        // Meta Stable Pool, we can be sure the vault will not forward a call with an invalid `token` param.
-
-        if (_isValidToken(token)) {
-            return _getPriceRateCacheValue(_getPriceRateCache(token));
-        } else {
-            return FixedPoint.ONE;
-        }
-    }
-
-    /**
-     * @dev Decodes a price rate cache into rate value, duration and expiration time
-     */
-    function _getPriceRateCache(bytes32 cache)
-        private
-        pure
-        returns (
-            uint256 rate,
-            uint256 duration,
-            uint256 expires
-        )
-    {
-        rate = _getPriceRateCacheValue(cache);
-        (duration, expires) = _getPriceRateCacheTimestamps(cache);
-    }
-
-    /**
-     * @dev Decodes the rate value for a price rate cache
-     */
-    function _getPriceRateCacheValue(bytes32 cache) private pure returns (uint256) {
-        return cache.decodeUint128(_PRICE_RATE_CACHE_VALUE_OFFSET);
-    }
-
-    /**
-     * @dev Decodes the duration for a price rate cache
-     */
-    function _getPriceRateCacheDuration(bytes32 cache) private pure returns (uint256) {
-        return cache.decodeUint64(_PRICE_RATE_CACHE_DURATION_OFFSET);
-    }
-
-    /**
-     * @dev Decodes the duration and expiration timestamp for a price rate cache
-     */
-    function _getPriceRateCacheTimestamps(bytes32 cache) internal pure returns (uint256 duration, uint256 expires) {
-        duration = _getPriceRateCacheDuration(cache);
-        expires = cache.decodeUint64(_PRICE_RATE_CACHE_EXPIRES_OFFSET);
-    }
-
-    /**
-     * @dev Returns the rate providers configured for each token (in the same order as registered).
-     */
-    function getRateProviders() external view returns (IRateProvider[] memory providers) {
-        uint256 totalTokens = _totalTokens;
-        providers = new IRateProvider[](totalTokens);
-
-        providers[0] = _rateProvider0;
-        providers[1] = _rateProvider1;
-
-        if (totalTokens > 2) {
-            providers[2] = _rateProvider2;
-
-            if (totalTokens > 3) {
-                providers[3] = _rateProvider3;
-
-                if (totalTokens > 4) {
-                    providers[4] = _rateProvider4;
-                }
-            }
-        }
-    }
-
-    /**
-     * @dev Sets a new duration for a token price rate cache. It reverts if there was no rate provider set initially.
-     * Note this function also updates the current cached value.
-     * @param duration Number of seconds until the current rate of token price is fetched again.
-     */
-    function setPriceRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
-        if (_isToken0WithRateProvider(token)) {
-            _updatePriceRateCache(token, _getRateProvider0(), duration);
-        } else if (_isToken1WithRateProvider(token)) {
-            _updatePriceRateCache(token, _getRateProvider1(), duration);
-        } else if (_isToken2WithRateProvider(token)) {
-            _updatePriceRateCache(token, _getRateProvider2(), duration);
-        } else if (_isToken3WithRateProvider(token)) {
-            _updatePriceRateCache(token, _getRateProvider3(), duration);
-        } else if (_isToken4WithRateProvider(token)) {
-            _updatePriceRateCache(token, _getRateProvider4(), duration);
-        } else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-    }
-
-    /**
-     * @dev Internal function to update a token rate cache for a known provider and duration.
-     * It trusts the given values, and does not perform any checks.
-     */
-    function _updatePriceRateCache(
-        IERC20 token,
-        IRateProvider provider,
-        uint256 duration
-    ) internal {
-        uint256 rate = provider.getRate();
-        bytes32 cache = PriceRateCache.encode(rate, duration);
-        _priceRateCaches[token] = cache;
-        emit PriceRateCacheUpdated(token, rate);
-    }
-
     function _setAmplificationData(
         uint256 startValue,
         uint256 endValue,
@@ -926,48 +724,4 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IR
     }
 
     function _isToken0(IERC20 token) internal view virtual returns (bool);
-    function _isToken1(IERC20 token) internal view virtual returns (bool);
-    function _isToken2(IERC20 token) internal view virtual returns (bool);
-    function _isToken3(IERC20 token) internal view virtual returns (bool);
-    function _isToken4(IERC20 token) internal view virtual returns (bool);
-
-    function _isToken0WithRateProvider(IERC20 token) internal view returns (bool) {
-        return _isToken0(token) && _getRateProvider0() != IRateProvider(address(0));
-    }
-
-    function _isToken1WithRateProvider(IERC20 token) internal view returns (bool) {
-        return _isToken1(token) && _getRateProvider1() != IRateProvider(address(0));
-    }
-
-    function _isToken2WithRateProvider(IERC20 token) internal view returns (bool) {
-        return _isToken2(token) && _getRateProvider2() != IRateProvider(address(0));
-    }
-
-    function _isToken3WithRateProvider(IERC20 token) internal view returns (bool) {
-        return _isToken3(token) && _getRateProvider3() != IRateProvider(address(0));
-    }
-
-    function _isToken4WithRateProvider(IERC20 token) internal view returns (bool) {
-        return _isToken4(token) && _getRateProvider4() != IRateProvider(address(0));
-    }
-
-    function _getRateProvider0() internal view returns (IRateProvider) {
-        return _rateProvider0;
-    }
-
-    function _getRateProvider1() internal view returns (IRateProvider) {
-        return _rateProvider1;
-    }
-
-    function _getRateProvider2() internal view returns (IRateProvider) {
-        return _rateProvider2;
-    }
-
-    function _getRateProvider3() internal view returns (IRateProvider) {
-        return _rateProvider3;
-    }
-
-    function _getRateProvider4() internal view returns (IRateProvider) {
-        return _rateProvider4;
-    }
 }

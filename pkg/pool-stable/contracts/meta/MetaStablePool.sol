@@ -42,6 +42,9 @@ contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
     uint256 internal immutable _scalingFactor0;
     uint256 internal immutable _scalingFactor1;
 
+    IRateProvider internal immutable _rateProvider0;
+    IRateProvider internal immutable _rateProvider1;
+
     event OracleEnabledChanged(bool enabled);
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
@@ -83,9 +86,11 @@ contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
         _scalingFactor0 = _computeScalingFactor(params.tokens[0]);
         _scalingFactor1 = _computeScalingFactor(params.tokens[1]);
 
+        _rateProvider0 = params.rateProviders[0];
+        _rateProvider1 = params.rateProviders[1];
+
         _setOracleEnabled(params.oracleEnabled);
     }
-
 
     function _getScalingFactor0() private view returns (uint256) {
         return _scalingFactor0;
@@ -93,6 +98,22 @@ contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
 
     function _getScalingFactor1() private view returns (uint256) {
         return _scalingFactor1;
+    }
+
+    function _getMaxTokens() internal pure override returns (uint256) {
+        return 2;
+    }
+
+    /**
+     * @dev Returns the rate providers configured for each token (in the same order as registered).
+     */
+    function getRateProviders() public view virtual override returns (IRateProvider[] memory) {
+        IRateProvider[] memory providers = new IRateProvider[](_getTotalTokens());
+
+        providers[0] = _rateProvider0;
+        providers[1] = _rateProvider1;
+
+        return providers;
     }
 
     // Swap
@@ -326,6 +347,15 @@ contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
     }
 
     /**
+     * @dev Sets a new duration for a token price rate cache. It reverts if there was no rate provider set initially.
+     * Note this function also updates the current cached value.
+     * @param duration Number of seconds until the current rate of token price is fetched again.
+     */
+    function setPriceRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
+        _updatePriceRateCache(token, duration);
+    }
+
+    /**
      * @dev Updates the Price Oracle based on the Pool's current state (balances, BPT supply and invariant). Must be
      * called on *all* state-changing functions with the balances *before* the state change happens, and with
      * `lastChangeBlock` as the number of the block in which any of the balances last changed.
@@ -437,23 +467,22 @@ contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
         return token == _token0;
     }
 
-    function _isToken1(IERC20 token) internal view override returns (bool) {
-        return token == _token1;
+    function _getRateProvider0() private view returns (IRateProvider) {
+        return _rateProvider0;
     }
 
-    function _isToken2(IERC20) internal pure override returns (bool) {
-        return false;
-    }
-    
-    function _isToken3(IERC20) internal pure override returns (bool) {
-        return false;
-    }
-    
-    function _isToken4(IERC20) internal pure override returns (bool) {
-        return false;
+    function _getRateProvider1() private view returns (IRateProvider) {
+        return _rateProvider1;
     }
 
-    function _isValidToken(IERC20 token) internal view virtual override returns (bool) {
-        return _isToken0(token) || _isToken1(token);
+    function _getRateProvider(uint256 index) internal view virtual override returns (IRateProvider) {
+        if (index == 0) {
+            return _getRateProvider0();
+        }
+        else if (index == 1) {
+            return _getRateProvider1();
+        }
+
+        _revert(Errors.OUT_OF_BOUNDS);
     }
 }
