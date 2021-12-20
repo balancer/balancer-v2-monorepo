@@ -11,7 +11,7 @@ import Vault from '../../vault/Vault';
 export type RawStablePoolDeployment = {
   tokens?: TokenList;
   rateProviders?: Account[];
-  priceRateCacheDuration?: BigNumberish[];
+  priceRateCacheDurations?: BigNumberish[];
   amplificationParameter?: BigNumberish;
   swapFeePercentage?: BigNumberish;
   pauseWindowDuration?: BigNumberish;
@@ -28,7 +28,7 @@ export type RawStablePoolDeployment = {
 export type StablePoolDeployment = {
   tokens: TokenList;
   rateProviders?: Account[];
-  priceRateCacheDuration?: BigNumberish[];
+  priceRateCacheDurations?: BigNumberish[];
   amplificationParameter: BigNumberish;
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;

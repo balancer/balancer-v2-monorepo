@@ -103,7 +103,7 @@ export default {
     let {
       tokens,
       rateProviders,
-      priceRateCacheDuration,
+      priceRateCacheDurations,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
@@ -114,7 +114,7 @@ export default {
 
     if (!tokens) tokens = new TokenList();
     if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
-    if (!priceRateCacheDuration) priceRateCacheDuration = Array(tokens.length).fill(DAY);
+    if (!priceRateCacheDurations) priceRateCacheDurations = Array(tokens.length).fill(DAY);
     if (!amplificationParameter) amplificationParameter = bn(200);
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
@@ -125,7 +125,7 @@ export default {
     return {
       tokens,
       rateProviders,
-      priceRateCacheDuration,
+      priceRateCacheDurations,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,

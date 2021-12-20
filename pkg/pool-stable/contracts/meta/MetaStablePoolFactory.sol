@@ -36,7 +36,7 @@ contract MetaStablePoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWind
         IERC20[] memory tokens,
         uint256 amplificationParameter,
         IRateProvider[] memory rateProviders,
-        uint256[] memory priceRateCacheDuration,
+        uint256[] memory priceRateCacheDurations,
         uint256 swapFeePercentage,
         bool oracleEnabled,
         address owner
@@ -52,7 +52,7 @@ contract MetaStablePoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWind
                         symbol: symbol,
                         tokens: tokens,
                         rateProviders: rateProviders,
-                        priceRateCacheDuration: priceRateCacheDuration,
+                        priceRateCacheDurations: priceRateCacheDurations,
                         amplificationParameter: amplificationParameter,
                         swapFeePercentage: swapFeePercentage,
                         pauseWindowDuration: pauseWindowDuration,

@@ -104,12 +104,28 @@ contract StablePool is BaseStablePool {
         return scalingFactors;
     }
 
+    function _isValidToken(IERC20 token) internal view virtual override returns (bool) {
+        return _isToken0(token) || _isToken1(token) || _isToken2(token) || _isToken3(token) || _isToken4(token);
+    }
+
     function _isToken0(IERC20 token) internal view override returns (bool) {
         return token == _token0;
     }
 
     function _isToken1(IERC20 token) internal view override returns (bool) {
         return token == _token1;
+    }
+
+    function _isToken2(IERC20 token) internal view override returns (bool) {
+        return token == _token2;
+    }
+
+    function _isToken3(IERC20 token) internal view override returns (bool) {
+        return token == _token3;
+    }
+
+    function _isToken4(IERC20 token) internal view override returns (bool) {
+        return token == _token4;
     }
 
     function _getScalingFactor0() private view returns (uint256) {

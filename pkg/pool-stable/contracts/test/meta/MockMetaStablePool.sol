@@ -51,10 +51,10 @@ contract MockMetaStablePool is MetaStablePool, MockStableOracleMath {
     }
 
     function mockMiscData(MiscData memory miscData) external {
-        _setMiscData(encode(miscData));
+        _setMiscData(_encode(miscData));
     }
 
-    function encode(MiscData memory _data) private pure returns (bytes32 data) {
+    function _encode(MiscData memory _data) private pure returns (bytes32 data) {
         data = data.setOracleEnabled(_data.oracleEnabled);
         data = data.setOracleIndex(_data.oracleIndex);
         data = data.setOracleSampleCreationTimestamp(_data.oracleSampleCreationTimestamp);

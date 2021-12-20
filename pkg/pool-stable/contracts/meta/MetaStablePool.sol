@@ -31,30 +31,18 @@ import "./StableOracleMath.sol";
  *
  * It additionally features a price oracle.
  */
-contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
+contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using OracleMiscData for bytes32;
 
-    //IRateProvider private immutable _rateProvider0;
-    //IRateProvider private immutable _rateProvider1;
+    IERC20 internal immutable _token0;
+    IERC20 internal immutable _token1;
 
-    // Price rate caches are used to avoid querying the price rate for a token every time we need to work with it.
-    // Data is stored with the following structure:
-    //
-    // [   expires   | duration | price rate value ]
-    // [   uint64    |  uint64  |      uint128     ]
-
-    bytes32 private _priceRateCache0;
-    bytes32 private _priceRateCache1;
-
-    uint256 private constant _PRICE_RATE_CACHE_VALUE_OFFSET = 0;
-    uint256 private constant _PRICE_RATE_CACHE_DURATION_OFFSET = 128;
-    uint256 private constant _PRICE_RATE_CACHE_EXPIRES_OFFSET = 128 + 64;
+    uint256 internal immutable _scalingFactor0;
+    uint256 internal immutable _scalingFactor1;
 
     event OracleEnabledChanged(bool enabled);
-    event PriceRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
-    //event PriceRateCacheUpdated(IERC20 indexed token, uint256 rate);
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -63,7 +51,7 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
         string symbol;
         IERC20[] tokens;
         IRateProvider[] rateProviders;
-        uint256[] priceRateCacheDuration;
+        uint256[] priceRateCacheDurations;
         uint256 amplificationParameter;
         uint256 swapFeePercentage;
         uint256 pauseWindowDuration;
@@ -73,11 +61,13 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
     }
 
     constructor(NewPoolParams memory params)
-        StablePool(
+        BaseStablePool(
             params.vault,
             params.name,
             params.symbol,
             params.tokens,
+            params.rateProviders,
+            params.priceRateCacheDurations,
             params.amplificationParameter,
             params.swapFeePercentage,
             params.pauseWindowDuration,
@@ -87,34 +77,22 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
     {
         _require(params.tokens.length == 2, Errors.NOT_TWO_TOKENS);
 
-        InputHelpers.ensureInputLengthMatch(
-            params.tokens.length,
-            params.rateProviders.length,
-            params.priceRateCacheDuration.length
-        );
+        _token0 = params.tokens[0];
+        _token1 = params.tokens[1];
 
-        // Set providers and initialise cache. We can't use `_setToken0PriceRateCache` as it relies on immutable
-        // variables, which cannot be read from during construction.
-
-        /*IRateProvider rateProvider0 = params.rateProviders[0];
-        _rateProvider0 = rateProvider0;
-        if (rateProvider0 != IRateProvider(address(0))) {
-            (bytes32 cache, uint256 rate) = _getNewPriceRateCache(rateProvider0, params.priceRateCacheDuration[0]);
-            _priceRateCache0 = cache;
-            emit PriceRateCacheUpdated(params.tokens[0], rate);
-        }
-        emit PriceRateProviderSet(params.tokens[0], rateProvider0, params.priceRateCacheDuration[0]);
-
-        IRateProvider rateProvider1 = params.rateProviders[1];
-        _rateProvider1 = rateProvider1;
-        if (rateProvider1 != IRateProvider(address(0))) {
-            (bytes32 cache, uint256 rate) = _getNewPriceRateCache(rateProvider1, params.priceRateCacheDuration[1]);
-            _priceRateCache1 = cache;
-            emit PriceRateCacheUpdated(params.tokens[1], rate);
-        }
-        emit PriceRateProviderSet(params.tokens[1], rateProvider1, params.priceRateCacheDuration[1]);*/
+        _scalingFactor0 = _computeScalingFactor(params.tokens[0]);
+        _scalingFactor1 = _computeScalingFactor(params.tokens[1]);
 
         _setOracleEnabled(params.oracleEnabled);
+    }
+
+
+    function _getScalingFactor0() private view returns (uint256) {
+        return _scalingFactor0;
+    }
+
+    function _getScalingFactor1() private view returns (uint256) {
+        return _scalingFactor1;
     }
 
     // Swap
@@ -416,10 +394,8 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
      * Note that it may update the price rate cache if necessary.
      */
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        uint256 baseScalingFactor = super._scalingFactor(token);
-        uint256 priceRate = _priceRate(token);
-        // Given there is no generic direction for this rounding, it simply follows the same strategy as the BasePool.
-        return baseScalingFactor.mulDown(priceRate);
+        //uint256 baseScalingFactor = super._scalingFactor(token);
+        return _priceRate(token);
     }
 
     /**
@@ -429,71 +405,9 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
     function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
         // Given there is no generic direction for this rounding, it simply follows the same strategy as the BasePool.
-        scalingFactors = super._scalingFactors();
-        scalingFactors[0] = scalingFactors[0].mulDown(_priceRate(_token0));
-        scalingFactors[1] = scalingFactors[1].mulDown(_priceRate(_token1));
-    }
-
-    // Price rates
-
-    /**
-     * @dev Returns the cached value for token's rate
-     */
-    function getPriceRateCache(IERC20 token)
-        external
-        view
-        returns (
-            uint256 rate,
-            uint256 duration,
-            uint256 expires
-        )
-    {
-        if (_isToken0(token)) return _getPriceRateCache(_getPriceRateCache0());
-        if (_isToken1(token)) return _getPriceRateCache(_getPriceRateCache1());
-        _revert(Errors.INVALID_TOKEN);
-    }
-
-    /**
-     * @dev Sets a new duration for a token price rate cache. It reverts if there was no rate provider set initially.
-     * Note this function also updates the current cached value.
-     * @param duration Number of seconds until the current rate of token price is fetched again.
-     */
-    function setPriceRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
-        if (_isToken0WithRateProvider(token)) {
-            _updateToken0PriceRateCache(duration);
-            emit PriceRateProviderSet(token, _getRateProvider0(), duration);
-        } else if (_isToken1WithRateProvider(token)) {
-            _updateToken1PriceRateCache(duration);
-            emit PriceRateProviderSet(token, _getRateProvider1(), duration);
-        } else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-    }
-
-    function updatePriceRateCache(IERC20 token) external {
-        if (_isToken0WithRateProvider(token)) {
-            _updateToken0PriceRateCache();
-        } else if (_isToken1WithRateProvider(token)) {
-            _updateToken1PriceRateCache();
-        } else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-    }
-
-    /**
-     * @dev Returns the price rate for token. All price rates are fixed-point values with 18 decimals.
-     * In case there is no rate provider for the provided token it returns 1e18.
-     */
-    function _priceRate(IERC20 token) internal view virtual returns (uint256) {
-        // Given that this function is only used by `onSwap` which can only be called by the vault in the case of a
-        // Meta Stable Pool, we can be sure the vault will not forward a call with an invalid `token` param.
-        if (_isToken0WithRateProvider(token)) {
-            return _getPriceRateCacheValue(_getPriceRateCache0());
-        } else if (_isToken1WithRateProvider(token)) {
-            return _getPriceRateCacheValue(_getPriceRateCache1());
-        } else {
-            return FixedPoint.ONE;
-        }
+        //scalingFactors = super._scalingFactors();
+        scalingFactors[0] = _scalingFactor0.mulDown(_priceRate(_token0));
+        scalingFactors[1] = _scalingFactor1.mulDown(_priceRate(_token1));
     }
 
     function _cachePriceRatesIfNecessary() internal {
@@ -503,126 +417,43 @@ contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
 
     function _cachePriceRate0IfNecessary() private {
         if (_getRateProvider0() != IRateProvider(address(0))) {
-            (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_getPriceRateCache0());
+            (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_getPriceRateCache(_token0));
             if (block.timestamp > expires) {
-                _updateToken0PriceRateCache(duration);
+                _updatePriceRateCache(_token0, _getRateProvider0(), duration);
             }
         }
     }
 
     function _cachePriceRate1IfNecessary() private {
         if (_getRateProvider1() != IRateProvider(address(0))) {
-            (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_getPriceRateCache1());
+            (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_getPriceRateCache(_token1));
             if (block.timestamp > expires) {
-                _updateToken1PriceRateCache(duration);
+                _updatePriceRateCache(_token1, _getRateProvider1(), duration);
             }
         }
     }
 
-    /**
-     * @dev Decodes a price rate cache into rate value, duration and expiration time
-     */
-    function _getPriceRateCache(bytes32 cache)
-        private
-        pure
-        returns (
-            uint256 rate,
-            uint256 duration,
-            uint256 expires
-        )
-    {
-        rate = _getPriceRateCacheValue(cache);
-        (duration, expires) = _getPriceRateCacheTimestamps(cache);
+    function _isToken0(IERC20 token) internal view override returns (bool) {
+        return token == _token0;
     }
 
-    /**
-     * @dev Decodes the rate value for a price rate cache
-     */
-    function _getPriceRateCacheValue(bytes32 cache) private pure returns (uint256) {
-        return cache.decodeUint128(_PRICE_RATE_CACHE_VALUE_OFFSET);
+    function _isToken1(IERC20 token) internal view override returns (bool) {
+        return token == _token1;
     }
 
-    /**
-     * @dev Decodes the duration for a price rate cache
-     */
-    function _getPriceRateCacheDuration(bytes32 cache) private pure returns (uint256) {
-        return cache.decodeUint64(_PRICE_RATE_CACHE_DURATION_OFFSET);
+    function _isToken2(IERC20) internal pure override returns (bool) {
+        return false;
+    }
+    
+    function _isToken3(IERC20) internal pure override returns (bool) {
+        return false;
+    }
+    
+    function _isToken4(IERC20) internal pure override returns (bool) {
+        return false;
     }
 
-    /**
-     * @dev Decodes the duration and expiration timestamp for a price rate cache
-     */
-    function _getPriceRateCacheTimestamps(bytes32 cache) private pure returns (uint256 duration, uint256 expires) {
-        duration = _getPriceRateCacheDuration(cache);
-        expires = cache.decodeUint64(_PRICE_RATE_CACHE_EXPIRES_OFFSET);
-    }
-
-    function _updateToken0PriceRateCache() private {
-        _updateToken0PriceRateCache(_getPriceRateCacheDuration(_getPriceRateCache0()));
-    }
-
-    function _updateToken0PriceRateCache(uint256 duration) private {
-        (bytes32 cache, uint256 rate) = _getNewPriceRateCache(_getRateProvider0(), duration);
-        _setToken0PriceRateCache(cache, rate);
-    }
-
-    function _updateToken1PriceRateCache() private {
-        _updateToken1PriceRateCache(_getPriceRateCacheDuration(_getPriceRateCache1()));
-    }
-
-    function _updateToken1PriceRateCache(uint256 duration) private {
-        (bytes32 cache, uint256 rate) = _getNewPriceRateCache(_getRateProvider1(), duration);
-        _setToken1PriceRateCache(cache, rate);
-    }
-
-    function _setToken0PriceRateCache(bytes32 cache, uint256 rate) private {
-        _priceRateCache0 = cache;
-        emit PriceRateCacheUpdated(_token0, rate);
-    }
-
-    function _setToken1PriceRateCache(bytes32 cache, uint256 rate) private {
-        _priceRateCache1 = cache;
-        emit PriceRateCacheUpdated(_token1, rate);
-    }
-
-    /**
-     * @dev Fetches the current price rate from a provider and builds a new price rate cache
-     */
-    function _getNewPriceRateCache(IRateProvider provider, uint256 duration)
-        private
-        view
-        returns (bytes32 cache, uint256 rate)
-    {
-        rate = provider.getRate();
-        _require(rate < 2**128, Errors.PRICE_RATE_OVERFLOW);
-
-        cache =
-            WordCodec.encodeUint(uint128(rate), _PRICE_RATE_CACHE_VALUE_OFFSET) |
-            WordCodec.encodeUint(uint64(duration), _PRICE_RATE_CACHE_DURATION_OFFSET) |
-            WordCodec.encodeUint(uint64(block.timestamp + duration), _PRICE_RATE_CACHE_EXPIRES_OFFSET);
-    }
-
-    function _isToken0WithRateProvider(IERC20 token) internal view returns (bool) {
-        return _isToken0(token) && _getRateProvider0() != IRateProvider(address(0));
-    }
-
-    function _isToken1WithRateProvider(IERC20 token) internal view returns (bool) {
-        return _isToken1(token) && _getRateProvider1() != IRateProvider(address(0));
-    }
-
-    function _getRateProvider0() internal view returns (IRateProvider) {
-        return _rateProvider0;
-    }
-
-    function _getRateProvider1() internal view returns (IRateProvider) {
-        return _rateProvider1;
-    }
-
-    function _getPriceRateCache0() internal view returns (bytes32) {
-        return _priceRateCache0;
-    }
-
-    function _getPriceRateCache1() internal view returns (bytes32) {
-        return _priceRateCache1;
+    function _isValidToken(IERC20 token) internal view virtual override returns (bool) {
+        return _isToken0(token) || _isToken1(token);
     }
 }

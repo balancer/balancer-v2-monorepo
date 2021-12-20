@@ -745,6 +745,104 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IR
         endTime = _packedAmplificationData.decodeUint64(64 * 3);
     }
 
+    // Price rates
+
+    function updatePriceRateCache(IERC20 token) external {
+        uint256 duration = _getPriceRateCacheDuration(_getPriceRateCache(token));
+
+        if (_isToken0WithRateProvider(token)) {
+            _updatePriceRateCache(token, _getRateProvider0(), duration);
+        } else if (_isToken1WithRateProvider(token)) {
+            _updatePriceRateCache(token, _getRateProvider1(), duration);
+        } else if (_isToken2WithRateProvider(token)) {
+            _updatePriceRateCache(token, _getRateProvider2(), duration);
+        } else if (_isToken3WithRateProvider(token)) {
+            _updatePriceRateCache(token, _getRateProvider3(), duration);
+        } else if (_isToken4WithRateProvider(token)) {
+            _updatePriceRateCache(token, _getRateProvider4(), duration);
+        } else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+    }
+
+    /**
+     * @dev Returns the cached value for token's rate
+     */
+    function getPriceRateCache(IERC20 token)
+        external
+        view
+        returns (
+            uint256 rate,
+            uint256 duration,
+            uint256 expires
+        )
+    {
+        return _getPriceRateCache(_getPriceRateCache(token));
+    }
+
+    function _getPriceRateCache(IERC20 token) internal view returns (bytes32) {
+        if (_isValidToken(token)) {
+            return _priceRateCaches[token];
+        }
+
+        _revert(Errors.INVALID_TOKEN); 
+    }
+
+    function _isValidToken(IERC20 token) internal view virtual returns (bool);
+
+    /**
+     * @dev Returns the price rate for token. All price rates are fixed-point values with 18 decimals.
+     * In case there is no rate provider for the provided token it returns 1e18.
+     */
+    function _priceRate(IERC20 token) internal view virtual returns (uint256) {
+        // Given that this function is only used by `onSwap` which can only be called by the vault in the case of a
+        // Meta Stable Pool, we can be sure the vault will not forward a call with an invalid `token` param.
+
+        if (_isValidToken(token)) {
+            return _getPriceRateCacheValue(_getPriceRateCache(token));
+        } else {
+            return FixedPoint.ONE;
+        }
+    }
+
+    /**
+     * @dev Decodes a price rate cache into rate value, duration and expiration time
+     */
+    function _getPriceRateCache(bytes32 cache)
+        private
+        pure
+        returns (
+            uint256 rate,
+            uint256 duration,
+            uint256 expires
+        )
+    {
+        rate = _getPriceRateCacheValue(cache);
+        (duration, expires) = _getPriceRateCacheTimestamps(cache);
+    }
+
+    /**
+     * @dev Decodes the rate value for a price rate cache
+     */
+    function _getPriceRateCacheValue(bytes32 cache) private pure returns (uint256) {
+        return cache.decodeUint128(_PRICE_RATE_CACHE_VALUE_OFFSET);
+    }
+
+    /**
+     * @dev Decodes the duration for a price rate cache
+     */
+    function _getPriceRateCacheDuration(bytes32 cache) private pure returns (uint256) {
+        return cache.decodeUint64(_PRICE_RATE_CACHE_DURATION_OFFSET);
+    }
+
+    /**
+     * @dev Decodes the duration and expiration timestamp for a price rate cache
+     */
+    function _getPriceRateCacheTimestamps(bytes32 cache) internal pure returns (uint256 duration, uint256 expires) {
+        duration = _getPriceRateCacheDuration(cache);
+        expires = cache.decodeUint64(_PRICE_RATE_CACHE_EXPIRES_OFFSET);
+    }
+
     /**
      * @dev Returns the rate providers configured for each token (in the same order as registered).
      */
@@ -769,6 +867,27 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IR
     }
 
     /**
+     * @dev Sets a new duration for a token price rate cache. It reverts if there was no rate provider set initially.
+     * Note this function also updates the current cached value.
+     * @param duration Number of seconds until the current rate of token price is fetched again.
+     */
+    function setPriceRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
+        if (_isToken0WithRateProvider(token)) {
+            _updatePriceRateCache(token, _getRateProvider0(), duration);
+        } else if (_isToken1WithRateProvider(token)) {
+            _updatePriceRateCache(token, _getRateProvider1(), duration);
+        } else if (_isToken2WithRateProvider(token)) {
+            _updatePriceRateCache(token, _getRateProvider2(), duration);
+        } else if (_isToken3WithRateProvider(token)) {
+            _updatePriceRateCache(token, _getRateProvider3(), duration);
+        } else if (_isToken4WithRateProvider(token)) {
+            _updatePriceRateCache(token, _getRateProvider4(), duration);
+        } else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+    }
+
+    /**
      * @dev Internal function to update a token rate cache for a known provider and duration.
      * It trusts the given values, and does not perform any checks.
      */
@@ -776,7 +895,7 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IR
         IERC20 token,
         IRateProvider provider,
         uint256 duration
-    ) private {
+    ) internal {
         uint256 rate = provider.getRate();
         bytes32 cache = PriceRateCache.encode(rate, duration);
         _priceRateCaches[token] = cache;
@@ -807,6 +926,48 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, IR
     }
 
     function _isToken0(IERC20 token) internal view virtual returns (bool);
-
     function _isToken1(IERC20 token) internal view virtual returns (bool);
+    function _isToken2(IERC20 token) internal view virtual returns (bool);
+    function _isToken3(IERC20 token) internal view virtual returns (bool);
+    function _isToken4(IERC20 token) internal view virtual returns (bool);
+
+    function _isToken0WithRateProvider(IERC20 token) internal view returns (bool) {
+        return _isToken0(token) && _getRateProvider0() != IRateProvider(address(0));
+    }
+
+    function _isToken1WithRateProvider(IERC20 token) internal view returns (bool) {
+        return _isToken1(token) && _getRateProvider1() != IRateProvider(address(0));
+    }
+
+    function _isToken2WithRateProvider(IERC20 token) internal view returns (bool) {
+        return _isToken2(token) && _getRateProvider2() != IRateProvider(address(0));
+    }
+
+    function _isToken3WithRateProvider(IERC20 token) internal view returns (bool) {
+        return _isToken3(token) && _getRateProvider3() != IRateProvider(address(0));
+    }
+
+    function _isToken4WithRateProvider(IERC20 token) internal view returns (bool) {
+        return _isToken4(token) && _getRateProvider4() != IRateProvider(address(0));
+    }
+
+    function _getRateProvider0() internal view returns (IRateProvider) {
+        return _rateProvider0;
+    }
+
+    function _getRateProvider1() internal view returns (IRateProvider) {
+        return _rateProvider1;
+    }
+
+    function _getRateProvider2() internal view returns (IRateProvider) {
+        return _rateProvider2;
+    }
+
+    function _getRateProvider3() internal view returns (IRateProvider) {
+        return _rateProvider3;
+    }
+
+    function _getRateProvider4() internal view returns (IRateProvider) {
+        return _rateProvider4;
+    }
 }
