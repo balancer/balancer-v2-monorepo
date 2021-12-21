@@ -293,50 +293,20 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
         whenNotPaused
         returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts)
     {
-        uint256[] memory scalingFactors = _scalingFactors();
-
-        uint256 bptAmountOut;
-        if (totalSupply() == 0) {
-            (bptAmountOut, amountsIn) = _onInitializePool(poolId, sender, recipient, scalingFactors, userData);
-
-            // On initialization, we lock _getMinimumBpt() by minting it for the zero address. This BPT acts as a
-            // minimum as it will never be burned, which reduces potential issues with rounding, and also prevents the
-            // Pool from ever being fully drained.
-            _require(bptAmountOut >= _getMinimumBpt(), Errors.MINIMUM_BPT);
-            _mintPoolTokens(address(0), _getMinimumBpt());
-            _mintPoolTokens(recipient, bptAmountOut - _getMinimumBpt());
-
-            // amountsIn are amounts entering the Pool, so we round up.
-            _downscaleUpArray(amountsIn, scalingFactors);
-
-            // There are no due protocol fee amounts during initialization
-            dueProtocolFeeAmounts = new uint256[](2);
-        } else {
-            _upscaleArray(balances, scalingFactors);
-
+        if (totalSupply() != 0) {
             // Update price oracle with the pre-join balances
             _updateOracle(lastChangeBlock, balances[0], balances[1]);
-
-            (bptAmountOut, amountsIn, dueProtocolFeeAmounts) = _onJoinPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                protocolSwapFeePercentage,
-                scalingFactors,
-                userData
-            );
-
-            // Note we no longer use `balances` after calling `_onJoinPool`, which may mutate it.
-
-            _mintPoolTokens(recipient, bptAmountOut);
-
-            // amountsIn are amounts entering the Pool, so we round up.
-            _downscaleUpArray(amountsIn, scalingFactors);
-            // dueProtocolFeeAmounts are amounts exiting the Pool, so we round down.
-            _downscaleDownArray(dueProtocolFeeAmounts, scalingFactors);
         }
+
+        (amountsIn, dueProtocolFeeAmounts) = super.onJoinPool(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            userData
+        );
 
         // Update cached total supply and invariant using the results after the join that will be used for future
         // oracle updates.
@@ -395,9 +365,9 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
      * amounts are considered upscaled and will be downscaled (rounding down) before being returned to the Vault.
      */
     function _onExitPool(
-        bytes32,
-        address,
-        address,
+        bytes32 poolId,
+        address sender,
+        address recipient,
         uint256[] memory balances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
@@ -408,46 +378,30 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
         virtual
         override
         returns (
-            uint256 bptAmountIn,
-            uint256[] memory amountsOut,
-            uint256[] memory dueProtocolFeeAmounts
+            uint256,
+            uint256[] memory,
+            uint256[] memory
         )
     {
         // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
         // out) remain functional.
 
-        (uint256[] memory normalizedWeights, uint256 maxWeightTokenIndex) = _getNormalizedWeightsAndMaxWeightIndex();
-
         if (_isNotPaused()) {
             // Update price oracle with the pre-exit balances
             _updateOracle(lastChangeBlock, balances[0], balances[1]);
-
-            // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
-            // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
-            // spending gas calculating the fees on each individual swap.
-            uint256 invariantBeforeExit = WeightedMath._calculateInvariant(normalizedWeights, balances);
-            dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
-                balances,
-                normalizedWeights,
-                maxWeightTokenIndex,
-                getLastInvariant(),
-                invariantBeforeExit,
-                protocolSwapFeePercentage
-            );
-
-            // Update current balances by subtracting the protocol fee amounts
-            _mutateAmounts(balances, dueProtocolFeeAmounts, FixedPoint.sub);
-        } else {
-            // If the contract is paused, swap protocol fee amounts are not charged and the oracle is not updated
-            // to avoid extra calculations and reduce the potential for errors.
-            dueProtocolFeeAmounts = new uint256[](2);
         }
 
-        (bptAmountIn, amountsOut) = _doExit(balances, normalizedWeights, scalingFactors, userData);
-
-        // Update the invariant with the balances the Pool will have after the exit, in order to compute the
-        // protocol swap fees due in future joins and exits.
-        _setLastInvariantAfterExit(balances, amountsOut, normalizedWeights);
+        return
+            super._onExitPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                scalingFactors,
+                userData
+            );
     }
 
     // Oracle functions
