@@ -23,6 +23,6 @@ contract MockStablePhantomPool is StablePhantomPool {
     }
 
     function mockCacheTokenRateIfNecessary(IERC20 token) external {
-        _cacheTokenRateIfNecessary(token);
+        _cachePriceRateIfNecessary(token);
     }
 }

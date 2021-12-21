@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-stable/contracts/StablePool.sol";
+import "@balancer-labs/v2-pool-stable/contracts/BaseStablePool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
@@ -24,6 +24,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 
 import "./StablePhantomPoolUserDataHelpers.sol";
+
+import "hardhat/console.sol";
 
 /**
  * @dev StablePool with preminted BPT and rate providers for each token, allowing for e.g. wrapped tokens with a known
@@ -38,7 +40,7 @@ import "./StablePhantomPoolUserDataHelpers.sol";
  * didn't exist, and the BPT total supply is not a useful value: we rely on the 'virtual supply' (how much BPT is
  * actually owned by some entity) instead.
  */
-contract StablePhantomPool is StablePool {
+contract StablePhantomPool is BaseStablePool {
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
     using StablePhantomPoolUserDataHelpers for bytes;
@@ -63,13 +65,17 @@ contract StablePhantomPool is StablePool {
 
     event CachedProtocolSwapFeePercentageUpdated(uint256 protocolSwapFeePercentage);
 
-    // Token rate caches are used to avoid querying the price rate for a token every time we need to work with it.
-    // Data is stored with the following structure:
-    //
-    // [   expires   | duration | price rate value ]
-    // [   uint64    |  uint64  |      uint128     ]
+    IERC20 internal immutable _token0;
+    IERC20 internal immutable _token1;
+    IERC20 internal immutable _token2;
+    IERC20 internal immutable _token3;
+    IERC20 internal immutable _token4;
 
-    mapping(IERC20 => bytes32) private _tokenRateCaches;
+    uint256 internal immutable _scalingFactor0;
+    uint256 internal immutable _scalingFactor1;
+    uint256 internal immutable _scalingFactor2;
+    uint256 internal immutable _scalingFactor3;
+    uint256 internal immutable _scalingFactor4;
 
     IRateProvider internal immutable _rateProvider0;
     IRateProvider internal immutable _rateProvider1;
@@ -77,8 +83,6 @@ contract StablePhantomPool is StablePool {
     IRateProvider internal immutable _rateProvider3;
     IRateProvider internal immutable _rateProvider4;
 
-    event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
-    event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
     event DueProtocolFeeIncreased(uint256 bptAmount);
 
     enum JoinKindPhantom { INIT, COLLECT_PROTOCOL_FEES }
@@ -99,12 +103,91 @@ contract StablePhantomPool is StablePool {
         address owner;
     }
 
+    function _addBptProviders(IERC20[] memory tokens, IERC20 token, IRateProvider[] memory rawProviders) private pure returns (IRateProvider[] memory providers) {
+        providers = new IRateProvider[](tokens.length + 1);
+
+        uint256 i;
+        for (i = tokens.length; i > 0 && tokens[i - 1] > token; i--) providers[i] = rawProviders[i - 1];
+        for (uint256 j = 0; j < i; j++) providers[j] = rawProviders[j];
+    }
+
+    function _addBptDurations(IERC20[] memory tokens, IERC20 token, uint256[] memory rawDurations) private pure returns (uint256[] memory durations) {
+        durations = new uint256[](tokens.length + 1);
+
+        uint256 i;
+        for (i = tokens.length; i > 0 && tokens[i - 1] > token; i--) durations[i] = rawDurations[i - 1];
+        for (uint256 j = 0; j < i; j++) durations[j] = rawDurations[j];
+    }
+
+
+    function _getRateProvider0() private view returns (IRateProvider) {
+        return _rateProvider0;
+    }
+
+    function _getRateProvider1() private view returns (IRateProvider) {
+        return _rateProvider1;
+    }
+
+    function _getRateProvider2() private view returns (IRateProvider) {
+        return _rateProvider2;
+    }
+
+    function _getRateProvider3() private view returns (IRateProvider) {
+        return _rateProvider3;
+    }
+
+    function _getRateProvider4() private view returns (IRateProvider) {
+        return _rateProvider4;
+    }
+
+    function _isToken0(IERC20 token) internal view virtual override returns (bool) {
+        return _token0 == token;
+    }
+
+    function _isToken1(IERC20 token) private view returns (bool) {
+        return _token1 == token;
+    }
+
+    function _isToken2(IERC20 token) private view returns (bool) {
+        return _token2 == token;
+    }
+
+    function _isToken3(IERC20 token) private view returns (bool) {
+        return _token3 == token;
+    }
+
+    function _isToken4(IERC20 token) private view returns (bool) {
+        return _token4 == token;
+    }
+
+    function _getRateProvider(uint256 index) internal view virtual override returns (IRateProvider) {
+        if (index == 0) {
+            return _getRateProvider0();
+        }
+        else if (index == 1) {
+            return _getRateProvider1();
+        }
+        else if (index == 2) {
+            return _getRateProvider2();
+        }
+        else if (index == 3) {
+            return _getRateProvider3();
+        }
+        else if (index == 4) {
+            return _getRateProvider4();
+        }
+    
+        _revert(Errors.OUT_OF_BOUNDS);
+    }
+
     constructor(NewPoolParams memory params)
-        StablePool(
+        BaseStablePool(
             params.vault,
             params.name,
             params.symbol,
             _insertSorted(params.tokens, IERC20(this)),
+            _addBptProviders(params.tokens, IERC20(this), params.rateProviders),
+            _addBptDurations(params.tokens, IERC20(this), params.tokenRateCacheDurations),
             params.amplificationParameter,
             params.swapFeePercentage,
             params.pauseWindowDuration,
@@ -116,19 +199,6 @@ contract StablePhantomPool is StablePool {
         // need to check ourselves that there are at least creator-supplied tokens (i.e. the minimum number of total
         // tokens for this contract is actually three, including the BPT).
         _require(params.tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
-
-        InputHelpers.ensureInputLengthMatch(
-            params.tokens.length,
-            params.rateProviders.length,
-            params.tokenRateCacheDurations.length
-        );
-
-        for (uint256 i = 0; i < params.tokens.length; i++) {
-            if (params.rateProviders[i] != IRateProvider(0)) {
-                _updateTokenRateCache(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
-                emit TokenRateProviderSet(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
-            }
-        }
 
         // The Vault keeps track of all Pool tokens in a specific order: we need to know what the index of BPT is in
         // this ordering to be able to identify it when balances arrays are received. Since the tokens array is sorted,
@@ -154,6 +224,19 @@ contract StablePhantomPool is StablePool {
                 tokensAndBPTRateProviders[i] = params.rateProviders[i - 1];
             }
         }
+
+        //TODO: NOt right - same skip issue!
+        _token0 = params.tokens[0];
+        _token1 = params.tokens[1];
+        _token2 = params.tokens[2];
+        _token3 = params.tokens[3];
+        _token4 = params.tokens[4];
+
+        _scalingFactor0 = _computeScalingFactor(params.tokens[0]);
+        _scalingFactor1 = _computeScalingFactor(params.tokens[1]);
+        _scalingFactor2 = _computeScalingFactor(params.tokens[2]);
+        _scalingFactor3 = _computeScalingFactor(params.tokens[3]);
+        _scalingFactor4 = _computeScalingFactor(params.tokens[4]);
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _rateProvider0 = (tokensAndBPTRateProviders.length > 0) ? tokensAndBPTRateProviders[0] : IRateProvider(0);
@@ -210,7 +293,7 @@ contract StablePhantomPool is StablePool {
         uint256 indexIn,
         uint256 indexOut
     ) internal virtual override whenNotPaused returns (uint256 amountOut) {
-        _cacheTokenRatesIfNecessary();
+        _cachePriceRatesIfNecessary();
 
         uint256 protocolSwapFeePercentage = _cachedProtocolSwapFeePercentage;
 
@@ -276,7 +359,7 @@ contract StablePhantomPool is StablePool {
         uint256 indexIn,
         uint256 indexOut
     ) internal virtual override whenNotPaused returns (uint256 amountIn) {
-        _cacheTokenRatesIfNecessary();
+        _cachePriceRatesIfNecessary();
 
         uint256 protocolSwapFeePercentage = _cachedProtocolSwapFeePercentage;
 
@@ -616,22 +699,42 @@ contract StablePhantomPool is StablePool {
         return _scalingFactor(token);
     }
 
+    function _getScalingFactor0() private view returns (uint256) {
+        return _scalingFactor0;
+    }
+
+    function _getScalingFactor1() private view returns (uint256) {
+        return _scalingFactor1;
+    }
+
+    function _getScalingFactor2() private view returns (uint256) {
+        return _scalingFactor2;
+    }
+
+    function _getScalingFactor3() private view returns (uint256) {
+        return _scalingFactor3;
+    }
+
+    function _getScalingFactor4() private view returns (uint256) {
+        return _scalingFactor4;
+    }
+
     /**
      * @dev Overrides scaling factor getter to introduce the tokens' rates.
      */
     function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
         uint256 totalTokens = _getTotalTokens();
-        scalingFactors = super._scalingFactors();
+        scalingFactors = new uint256[](totalTokens);
 
         // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
         // prettier-ignore
         {
-            if (totalTokens > 0) { scalingFactors[0] = scalingFactors[0].mulDown(getTokenRate(_token0)); }
-            if (totalTokens > 1) { scalingFactors[1] = scalingFactors[1].mulDown(getTokenRate(_token1)); }
-            if (totalTokens > 2) { scalingFactors[2] = scalingFactors[2].mulDown(getTokenRate(_token2)); }
-            if (totalTokens > 3) { scalingFactors[3] = scalingFactors[3].mulDown(getTokenRate(_token3)); }
-            if (totalTokens > 4) { scalingFactors[4] = scalingFactors[4].mulDown(getTokenRate(_token4)); }
+            if (totalTokens > 0) { scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0)); }
+            if (totalTokens > 1) { scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1)); }
+            if (totalTokens > 2) { scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2)); }
+            if (totalTokens > 3) { scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3)); }
+            if (totalTokens > 4) { scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4)); }
         }
     }
 
@@ -640,8 +743,13 @@ contract StablePhantomPool is StablePool {
      */
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
         // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
-        uint256 baseScalingFactor = super._scalingFactor(token);
-        return baseScalingFactor.mulDown(getTokenRate(token));
+        if (_isToken0(token)) { return _getScalingFactor0().mulDown(getTokenRate(token)); }
+        if (_isToken1(token)) { return _getScalingFactor1().mulDown(getTokenRate(token)); }
+        if (_isToken2(token)) { return _getScalingFactor2().mulDown(getTokenRate(token)); }
+        if (_isToken3(token)) { return _getScalingFactor3().mulDown(getTokenRate(token)); }
+        if (_isToken4(token)) { return _getScalingFactor4().mulDown(getTokenRate(token)); }
+
+        _revert(Errors.INVALID_TOKEN);
     }
 
     // Token rates
@@ -649,7 +757,7 @@ contract StablePhantomPool is StablePool {
     /**
      * @dev Returns the rate providers configured for each token (in the same order as registered).
      */
-    function getRateProviders() external view returns (IRateProvider[] memory providers) {
+    function getRateProviders() external view virtual override returns (IRateProvider[] memory providers) {
         uint256 totalTokens = _getTotalTokens();
         providers = new IRateProvider[](totalTokens);
 
@@ -676,115 +784,29 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
-     * @dev Returns the token rate for token. All token rates are fixed-point values with 18 decimals.
-     * In case there is no rate provider for the provided token it returns 1e18.
+     * @dev Returns the cached value for token's rate. Ensures the token has a provider.
      */
-    function getTokenRate(IERC20 token) public view virtual returns (uint256) {
-        // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
-        // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
-        // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read, since we don't need
-        // the provider at all).
-
-        if (token == this) {
-            return FixedPoint.ONE;
-        }
-
-        bytes32 tokenRateCache = _tokenRateCaches[token];
-        return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getRate();
-    }
-
-    /**
-     * @dev Returns the cached value for token's rate.
-     * Note it could return an empty value if the requested token does not have one or if the token does not belong
-     * to the pool.
-     */
-    function getTokenRateCache(IERC20 token)
+    function getPriceRateCache(IERC20 token)
         external
         view
+        virtual
+        override
         returns (
             uint256 rate,
             uint256 duration,
             uint256 expires
         )
     {
-        _require(_getRateProvider(token) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+        // This check is from StablePhantomPool
+        console.log("getPriceRateCache - index of token: %s", _indexOf(token));
+        console.log("BPT index: %s", _bptIndex);
+        console.log("Provider 0: %s", address(_rateProvider0));
+        console.log("Non-zero: %s", _rateProvider0 != IRateProvider(0));
 
-        rate = _tokenRateCaches[token].getRate();
-        (duration, expires) = _tokenRateCaches[token].getTimestamps();
-    }
+        //IRateProvider provider = _getRateProvider(_indexOf(token));
+        //_require(provider != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
 
-    /**
-     * @dev Sets a new duration for a token rate cache. It reverts if there was no rate provider set initially.
-     * Note this function also updates the current cached value.
-     * @param duration Number of seconds until the current token rate is fetched again.
-     */
-    function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
-        IRateProvider provider = _getRateProvider(token);
-        _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-        _updateTokenRateCache(token, provider, duration);
-        emit TokenRateProviderSet(token, provider, duration);
-    }
-
-    /**
-     * @dev Forces a rate cache hit for a token.
-     * It will revert if the requested token does not have an associated rate provider.
-     */
-    function updateTokenRateCache(IERC20 token) external {
-        IRateProvider provider = _getRateProvider(token);
-        _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-        uint256 duration = _tokenRateCaches[token].getDuration();
-        _updateTokenRateCache(token, provider, duration);
-    }
-
-    /**
-     * @dev Internal function to update a token rate cache for a known provider and duration.
-     * It trusts the given values, and does not perform any checks.
-     */
-    function _updateTokenRateCache(
-        IERC20 token,
-        IRateProvider provider,
-        uint256 duration
-    ) private {
-        uint256 rate = provider.getRate();
-        bytes32 cache = PriceRateCache.encode(rate, duration);
-        _tokenRateCaches[token] = cache;
-        emit TokenRateCacheUpdated(token, rate);
-    }
-
-    /**
-     * @dev Caches the rates of all tokens if necessary
-     */
-    function _cacheTokenRatesIfNecessary() internal {
-        uint256 totalTokens = _getTotalTokens();
-        // prettier-ignore
-        {
-            if (totalTokens > 0) { _cacheTokenRateIfNecessary(_token0); } else { return; }
-            if (totalTokens > 1) { _cacheTokenRateIfNecessary(_token1); } else { return; }
-            if (totalTokens > 2) { _cacheTokenRateIfNecessary(_token2); } else { return; }
-            if (totalTokens > 3) { _cacheTokenRateIfNecessary(_token3); } else { return; }
-            if (totalTokens > 4) { _cacheTokenRateIfNecessary(_token4); } else { return; }
-        }
-    }
-
-    /**
-     * @dev Caches the rate for a token if necessary. It ignores the call if there is no provider set.
-     */
-    function _cacheTokenRateIfNecessary(IERC20 token) internal {
-        // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
-        // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
-        // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read in situations where
-        // we might not need the provider if the cache is still valid).
-
-        if (token == this) return;
-
-        bytes32 cache = _tokenRateCaches[token];
-        if (cache != bytes32(0)) {
-            (uint256 duration, uint256 expires) = _tokenRateCaches[token].getTimestamps();
-            if (block.timestamp > expires) {
-                // solhint-disable-previous-line not-rely-on-time
-                _updateTokenRateCache(token, _getRateProvider(token), duration);
-            }
-        }
+        return _getPriceRateCache(_getPriceRateCache(token));
     }
 
     function getCachedProtocolSwapFeePercentage() public view returns (uint256) {
@@ -803,10 +825,22 @@ contract StablePhantomPool is StablePool {
     }
 
     /**
+     * @dev Sets a new duration for a token rate cache. It reverts if there was no rate provider set initially.
+     * Note this function also updates the current cached value.
+     * @param duration Number of seconds until the current token rate is fetched again.
+     */
+    function setPriceRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
+        IRateProvider provider = _getRateProvider(token);
+        _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+        _updatePriceRateCache(token, provider, duration);
+        emit TokenRateProviderSet(token, provider, duration);
+    }
+
+    /**
      * @dev Overrides only owner action to allow setting the cache duration for the token rates
      */
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
-        return (actionId == getActionId(this.setTokenRateCacheDuration.selector)) || super._isOwnerOnlyAction(actionId);
+        return (actionId == getActionId(this.setPriceRateCacheDuration.selector)) || super._isOwnerOnlyAction(actionId);
     }
 
     function _skipBptIndex(uint256 index) internal view returns (uint256) {

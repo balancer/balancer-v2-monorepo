@@ -148,7 +148,7 @@ contract StablePool is BaseStablePool {
         return _scalingFactor4;
     }
 
-    function getRateProviders() public view virtual override returns (IRateProvider[] memory providers) {
+    function getRateProviders() external view virtual override returns (IRateProvider[] memory providers) {
         return new IRateProvider[](_getTotalTokens());
     }
 

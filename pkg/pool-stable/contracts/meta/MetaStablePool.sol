@@ -424,8 +424,8 @@ contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
      * Note that it may update the price rate cache if necessary.
      */
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        //uint256 baseScalingFactor = super._scalingFactor(token);
-        return _priceRate(token);
+        uint256 baseScalingFactor = _isToken0(token) ? _scalingFactor0 : _scalingFactor1;
+        return baseScalingFactor.mulDown(getTokenRate(token));
     }
 
     /**
@@ -436,31 +436,8 @@ contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
         // Given there is no generic direction for this rounding, it simply follows the same strategy as the BasePool.
         //scalingFactors = super._scalingFactors();
-        scalingFactors[0] = _scalingFactor0.mulDown(_priceRate(_token0));
-        scalingFactors[1] = _scalingFactor1.mulDown(_priceRate(_token1));
-    }
-
-    function _cachePriceRatesIfNecessary() internal {
-        _cachePriceRate0IfNecessary();
-        _cachePriceRate1IfNecessary();
-    }
-
-    function _cachePriceRate0IfNecessary() private {
-        if (_getRateProvider0() != IRateProvider(address(0))) {
-            (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_getPriceRateCache(_token0));
-            if (block.timestamp > expires) {
-                _updatePriceRateCache(_token0, _getRateProvider0(), duration);
-            }
-        }
-    }
-
-    function _cachePriceRate1IfNecessary() private {
-        if (_getRateProvider1() != IRateProvider(address(0))) {
-            (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_getPriceRateCache(_token1));
-            if (block.timestamp > expires) {
-                _updatePriceRateCache(_token1, _getRateProvider1(), duration);
-            }
-        }
+        scalingFactors[0] = _scalingFactor0.mulDown(getTokenRate(_token0));
+        scalingFactors[1] = _scalingFactor1.mulDown(getTokenRate(_token1));
     }
 
     function _isToken0(IERC20 token) internal view override returns (bool) {

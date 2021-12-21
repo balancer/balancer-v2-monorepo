@@ -25,6 +25,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "./PriceRateCache.sol";
 import "../interfaces/IRateProvider.sol";
 
+import "hardhat/console.sol";
+
 abstract contract BaseRateProvider is IRateProvider {
     using WordCodec for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -75,7 +77,7 @@ abstract contract BaseRateProvider is IRateProvider {
         _updatePriceRateCache(token, duration);
     }
 
-    function _priceRate(IERC20 token) internal view virtual returns (uint256) {
+    function getTokenRate(IERC20 token) public view virtual returns (uint256) {
         // Given that this function is only used by `onSwap` which can only be called by the vault in the case of a
         // Meta Stable Pool, we can be sure the vault will not forward a call with an invalid `token` param.
 
@@ -83,6 +85,33 @@ abstract contract BaseRateProvider is IRateProvider {
             return _getPriceRateCacheValue(_getPriceRateCache(token));
         } else {
             return FixedPoint.ONE;
+        }
+    }
+
+    function _cachePriceRatesIfNecessary() internal {
+        IRateProvider provider;
+
+        for (uint256 i = 0; i < _validTokens.length(); i++) {
+            provider = _getRateProvider(i);
+            if (provider != IRateProvider(0)) {
+                IERC20 token = IERC20(_validTokens.unchecked_at(i));
+
+                _cachePriceRateIfNecessaryInternal(token, provider);
+            }
+        }
+    }
+
+    function _cachePriceRateIfNecessary(IERC20 token) internal {
+        IRateProvider provider = _getRateProvider(_indexOf(token));
+        if (provider != IRateProvider(0)) {
+            _cachePriceRateIfNecessaryInternal(token, provider);
+        }
+    }
+
+    function _cachePriceRateIfNecessaryInternal(IERC20 token, IRateProvider provider) private {
+        (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_priceRateCaches[token]);
+        if (block.timestamp > expires) {
+            _updatePriceRateCache(token, provider, duration);
         }
     }
 
@@ -95,6 +124,10 @@ abstract contract BaseRateProvider is IRateProvider {
         IRateProvider provider,
         uint256 duration
     ) internal {
+        console.log("token: %s", address(token));
+        console.log("provider: %s", address(provider));
+        console.log("duration: %s", duration);
+
         uint256 rate = provider.getRate();
         bytes32 cache = PriceRateCache.encode(rate, duration);
         _priceRateCaches[token] = cache;
@@ -115,6 +148,7 @@ abstract contract BaseRateProvider is IRateProvider {
     function getPriceRateCache(IERC20 token)
         external
         view
+        virtual
         returns (
             uint256 rate,
             uint256 duration,
@@ -128,7 +162,7 @@ abstract contract BaseRateProvider is IRateProvider {
      * @dev Decodes a price rate cache into rate value, duration and expiration time
      */
     function _getPriceRateCache(bytes32 cache)
-        private
+        internal
         pure
         returns (
             uint256 rate,
@@ -172,5 +206,13 @@ abstract contract BaseRateProvider is IRateProvider {
 
     function _isValidToken(IERC20 token) internal view virtual returns (bool) {
         return _validTokens.contains(address(token));
+    }
+
+    function _indexOf(IERC20 token) internal view returns (uint256) {
+        if (_isValidToken(token)) {
+            return _validTokens.rawIndexOf(address(token));
+        }
+
+        _revert(Errors.INVALID_TOKEN); 
     }
 }
