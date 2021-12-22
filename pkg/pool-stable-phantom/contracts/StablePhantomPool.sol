@@ -103,14 +103,6 @@ contract StablePhantomPool is BaseStablePool {
         address owner;
     }
 
-    function _addBptProviders(IERC20[] memory tokens, IERC20 token, IRateProvider[] memory rawProviders) private pure returns (IRateProvider[] memory providers) {
-        providers = new IRateProvider[](tokens.length + 1);
-
-        uint256 i;
-        for (i = tokens.length; i > 0 && tokens[i - 1] > token; i--) providers[i] = rawProviders[i - 1];
-        for (uint256 j = 0; j < i; j++) providers[j] = rawProviders[j];
-    }
-
     function _addBptDurations(IERC20[] memory tokens, IERC20 token, uint256[] memory rawDurations) private pure returns (uint256[] memory durations) {
         durations = new uint256[](tokens.length + 1);
 
@@ -186,7 +178,7 @@ contract StablePhantomPool is BaseStablePool {
             params.name,
             params.symbol,
             _insertSorted(params.tokens, IERC20(this)),
-            _addBptProviders(params.tokens, IERC20(this), params.rateProviders),
+            params.rateProviders,
             _addBptDurations(params.tokens, IERC20(this), params.tokenRateCacheDurations),
             params.amplificationParameter,
             params.swapFeePercentage,

@@ -25,8 +25,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "./PriceRateCache.sol";
 import "../interfaces/IRateProvider.sol";
 
-import "hardhat/console.sol";
-
 abstract contract BaseRateProvider is IRateProvider {
     using WordCodec for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -81,11 +79,16 @@ abstract contract BaseRateProvider is IRateProvider {
         // Given that this function is only used by `onSwap` which can only be called by the vault in the case of a
         // Meta Stable Pool, we can be sure the vault will not forward a call with an invalid `token` param.
 
-        if (_isValidToken(token)) {
-            return _getPriceRateCacheValue(_getPriceRateCache(token));
-        } else {
+        if (_priceRateCaches[token] == bytes32(0)) {
             return FixedPoint.ONE;
+        } else {
+            return _getPriceRateCacheValue(_getPriceRateCache(token));
         }
+    }
+
+    //TODO: Keep this? Or create a mock?
+    function cachePriceRatesIfNecessary() external {
+        _cachePriceRatesIfNecessary();
     }
 
     function _cachePriceRatesIfNecessary() internal {
@@ -124,10 +127,6 @@ abstract contract BaseRateProvider is IRateProvider {
         IRateProvider provider,
         uint256 duration
     ) internal {
-        console.log("token: %s", address(token));
-        console.log("provider: %s", address(provider));
-        console.log("duration: %s", duration);
-
         uint256 rate = provider.getRate();
         bytes32 cache = PriceRateCache.encode(rate, duration);
         _priceRateCaches[token] = cache;
@@ -139,6 +138,10 @@ abstract contract BaseRateProvider is IRateProvider {
         uint256 duration
     ) internal {
         IRateProvider provider = _getRateProvider(_validTokens.rawIndexOf(address(token)));
+        if (provider == IRateProvider(0)) {
+            _revert(Errors.INVALID_TOKEN);
+        }
+
         _updatePriceRateCache(token, provider, duration);
     }
 

@@ -34,6 +34,8 @@ contract StablePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders,
+        uint256[] memory priceRateCacheDurations,
         uint256 amplificationParameter,
         uint256 swapFeePercentage,
         address owner
@@ -46,6 +48,8 @@ contract StablePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
                 name,
                 symbol,
                 tokens,
+                rateProviders,
+                priceRateCacheDurations,
                 amplificationParameter,
                 swapFeePercentage,
                 pauseWindowDuration,

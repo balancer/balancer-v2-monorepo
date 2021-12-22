@@ -27,8 +27,8 @@ export type RawStablePoolDeployment = {
 
 export type StablePoolDeployment = {
   tokens: TokenList;
-  rateProviders?: Account[];
-  priceRateCacheDurations?: BigNumberish[];
+  rateProviders: Account[];
+  priceRateCacheDurations: BigNumberish[];
   amplificationParameter: BigNumberish;
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;

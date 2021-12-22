@@ -181,13 +181,11 @@ export default class StablePool {
     duration: BigNumberish,
     { from }: TxParams = {}
   ): Promise<ContractTransaction> {
-    if (!this.meta) throw Error('Cannot set price rate cache duration for non-meta stable pool');
     const pool = from ? this.instance.connect(from) : this.instance;
     return pool.setPriceRateCacheDuration(token.address, duration);
   }
 
   async updatePriceRateCache(token: Token): Promise<ContractTransaction> {
-    if (!this.meta) throw Error('Cannot update price rate cache for non-meta stable pool');
     return this.instance.updatePriceRateCache(token.address);
   }
 

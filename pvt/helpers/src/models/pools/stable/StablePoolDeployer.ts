@@ -65,6 +65,8 @@ export default {
             NAME,
             SYMBOL,
             tokens.addresses,
+            rateProviders.map(TypesConverter.toAddress),
+            priceRateCacheDurations,
             amplificationParameter,
             swapFeePercentage,
             pauseWindowDuration,
@@ -76,13 +78,15 @@ export default {
   },
 
   async _deployFromFactory(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, amplificationParameter, swapFeePercentage, owner, from } = params;
+    const { tokens, rateProviders, priceRateCacheDurations, amplificationParameter, swapFeePercentage, owner, from } = params;
 
     const factory = await deploy('v2-pool-stable/StablePoolFactory', { args: [vault.address], from });
     const tx = await factory.create(
       NAME,
       SYMBOL,
       tokens.addresses,
+      rateProviders.map(TypesConverter.toAddress),
+      priceRateCacheDurations,
       amplificationParameter,
       swapFeePercentage,
       TypesConverter.toAddress(owner)

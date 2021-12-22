@@ -626,6 +626,15 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, Ba
         _setAmplificationData(currentValue);
     }
 
+    /**
+     * @dev Sets a new duration for a token price rate cache. It reverts if there was no rate provider set initially.
+     * Note this function also updates the current cached value.
+     * @param duration Number of seconds until the current rate of token price is fetched again.
+     */
+    function setPriceRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
+        _updatePriceRateCache(token, duration);
+    }
+
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
             (actionId == getActionId(BaseStablePool.startAmplificationParameterUpdate.selector)) ||

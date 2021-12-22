@@ -31,6 +31,7 @@ import "./StableOracleMath.sol";
  *
  * It additionally features a price oracle.
  */
+ //TODO: Rename to OracleStablePool after review
 contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
@@ -344,15 +345,6 @@ contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
     function _setOracleEnabled(bool enabled) internal {
         _setMiscData(_getMiscData().setOracleEnabled(enabled));
         emit OracleEnabledChanged(enabled);
-    }
-
-    /**
-     * @dev Sets a new duration for a token price rate cache. It reverts if there was no rate provider set initially.
-     * Note this function also updates the current cached value.
-     * @param duration Number of seconds until the current rate of token price is fetched again.
-     */
-    function setPriceRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
-        _updatePriceRateCache(token, duration);
     }
 
     /**

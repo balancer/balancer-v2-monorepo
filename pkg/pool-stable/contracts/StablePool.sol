@@ -18,6 +18,8 @@ pragma experimental ABIEncoderV2;
 import "./BaseStablePool.sol";
 
 contract StablePool is BaseStablePool {
+    using FixedPoint for uint256;
+
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;
     IERC20 internal immutable _token2;
@@ -34,11 +36,19 @@ contract StablePool is BaseStablePool {
     uint256 internal immutable _scalingFactor3;
     uint256 internal immutable _scalingFactor4;
 
+    IRateProvider internal immutable _rateProvider0;
+    IRateProvider internal immutable _rateProvider1;
+    IRateProvider internal immutable _rateProvider2;
+    IRateProvider internal immutable _rateProvider3;
+    IRateProvider internal immutable _rateProvider4;
+
     constructor(
         IVault vault,
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders,
+        uint256[] memory priceRateCacheDurations,
         uint256 amplificationParameter,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
@@ -50,8 +60,8 @@ contract StablePool is BaseStablePool {
             name,
             symbol,
             tokens,
-            new IRateProvider[](tokens.length), // no rate providers
-            new uint256[](tokens.length),      // or rate cache durations
+            rateProviders,
+            priceRateCacheDurations,
             amplificationParameter,
             swapFeePercentage,
             pauseWindowDuration,
@@ -73,19 +83,33 @@ contract StablePool is BaseStablePool {
         _scalingFactor2 = totalTokens > 2 ? _computeScalingFactor(tokens[2]) : 0;
         _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(tokens[3]) : 0;
         _scalingFactor4 = totalTokens > 4 ? _computeScalingFactor(tokens[4]) : 0;
+
+        _rateProvider0 = rateProviders[0];
+        _rateProvider1 = rateProviders[1];
+        _rateProvider2 = totalTokens > 2 ? rateProviders[2] : IRateProvider(0);
+        _rateProvider3 = totalTokens > 3 ? rateProviders[3] : IRateProvider(0);
+        _rateProvider4 = totalTokens > 4 ? rateProviders[4] : IRateProvider(0);
      }
 
+    function getScalingFactor(IERC20 token) external view returns (uint256) {
+        return _scalingFactor(token);
+    }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        // prettier-ignore
-        if (_isToken0(token)) { return _getScalingFactor0(); }
-        else if (_isToken1(token)) { return _getScalingFactor1(); }
-        else if (token == _token2) { return _getScalingFactor2(); }
-        else if (token == _token3) { return _getScalingFactor3(); }
-        else if (token == _token4) { return _getScalingFactor4(); }
-        else {
+        if (!_isValidToken(token)) {
             _revert(Errors.INVALID_TOKEN);
         }
+
+        uint256 baseScalingFactor;
+
+        // prettier-ignore
+        if (_isToken0(token)) { baseScalingFactor = _getScalingFactor0(); }
+        else if (_isToken1(token)) { baseScalingFactor = _getScalingFactor1(); }
+        else if (_isToken2(token)) { baseScalingFactor = _getScalingFactor2(); }
+        else if (_isToken3(token)) { baseScalingFactor = _getScalingFactor3(); }
+        else { baseScalingFactor = _getScalingFactor4(); }
+
+        return baseScalingFactor.mulDown(getTokenRate(token));
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
@@ -94,14 +118,47 @@ contract StablePool is BaseStablePool {
 
         // prettier-ignore
         {
-            scalingFactors[0] = _getScalingFactor0();
-            scalingFactors[1] = _getScalingFactor1();
-            if (totalTokens > 2) { scalingFactors[2] = _getScalingFactor2(); } else { return scalingFactors; }
-            if (totalTokens > 3) { scalingFactors[3] = _getScalingFactor3(); } else { return scalingFactors; }
-            if (totalTokens > 4) { scalingFactors[4] = _getScalingFactor4(); } else { return scalingFactors; }
+            scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0));
+            scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1));
+            if (totalTokens > 2) { scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2)); } else { return scalingFactors; }
+            if (totalTokens > 3) { scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3)); } else { return scalingFactors; }
+            if (totalTokens > 4) { scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4)); } else { return scalingFactors; }
         }
 
         return scalingFactors;
+    }
+
+    function getRateProviders() external view virtual override returns (IRateProvider[] memory) {
+        uint256 totalTokens = _getTotalTokens();
+        IRateProvider[] memory providers = new IRateProvider[](totalTokens);
+
+        providers[0] = _getRateProvider0();
+        providers[1] = _getRateProvider1();
+        if (totalTokens > 2) { providers[2] = _getRateProvider2(); } else { return providers; }
+        if (totalTokens > 3) { providers[3] = _getRateProvider3(); } else { return providers; }
+        if (totalTokens > 4) { providers[4] = _getRateProvider4(); } else { return providers; }
+
+        return providers;
+    }
+
+    function _getRateProvider(uint256 index) internal view virtual override returns (IRateProvider) {
+        if (index == 0) {
+            return _getRateProvider0();
+        }
+        else if (index == 1) {
+            return _getRateProvider1();
+        }
+        else if (index == 2) {
+            return _getRateProvider2();
+        }
+        else if (index == 3) {
+            return _getRateProvider3();
+        }
+        else if (index == 4) {
+            return _getRateProvider4();
+        }
+
+        _revert(Errors.OUT_OF_BOUNDS);
     }
 
     function _isValidToken(IERC20 token) internal view virtual override returns (bool) {
@@ -148,11 +205,23 @@ contract StablePool is BaseStablePool {
         return _scalingFactor4;
     }
 
-    function getRateProviders() external view virtual override returns (IRateProvider[] memory providers) {
-        return new IRateProvider[](_getTotalTokens());
+    function _getRateProvider0() private view returns (IRateProvider) {
+        return _rateProvider0;
     }
 
-    function _getRateProvider(uint256) internal view virtual override returns (IRateProvider) {
-        return IRateProvider(0);
+    function _getRateProvider1() private view returns (IRateProvider) {
+        return _rateProvider1;
+    }
+
+    function _getRateProvider2() private view returns (IRateProvider) {
+        return _rateProvider2;
+    }
+
+    function _getRateProvider3() private view returns (IRateProvider) {
+        return _rateProvider3;
+    }
+
+    function _getRateProvider4() private view returns (IRateProvider) {
+        return _rateProvider4;
     }
 }
