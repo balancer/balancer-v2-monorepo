@@ -103,14 +103,17 @@ contract StablePhantomPool is BaseStablePool {
         address owner;
     }
 
-    function _addBptDurations(IERC20[] memory tokens, IERC20 token, uint256[] memory rawDurations) private pure returns (uint256[] memory durations) {
+    function _addBptDurations(
+        IERC20[] memory tokens,
+        IERC20 token,
+        uint256[] memory rawDurations
+    ) private pure returns (uint256[] memory durations) {
         durations = new uint256[](tokens.length + 1);
 
         uint256 i;
         for (i = tokens.length; i > 0 && tokens[i - 1] > token; i--) durations[i] = rawDurations[i - 1];
         for (uint256 j = 0; j < i; j++) durations[j] = rawDurations[j];
     }
-
 
     function _getRateProvider0() private view returns (IRateProvider) {
         return _rateProvider0;
@@ -155,20 +158,16 @@ contract StablePhantomPool is BaseStablePool {
     function _getRateProvider(uint256 index) internal view virtual override returns (IRateProvider) {
         if (index == 0) {
             return _getRateProvider0();
-        }
-        else if (index == 1) {
+        } else if (index == 1) {
             return _getRateProvider1();
-        }
-        else if (index == 2) {
+        } else if (index == 2) {
             return _getRateProvider2();
-        }
-        else if (index == 3) {
+        } else if (index == 3) {
             return _getRateProvider3();
-        }
-        else if (index == 4) {
+        } else if (index == 4) {
             return _getRateProvider4();
         }
-    
+
         _revert(Errors.OUT_OF_BOUNDS);
     }
 
@@ -735,11 +734,15 @@ contract StablePhantomPool is BaseStablePool {
      */
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
         // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
-        if (_isToken0(token)) { return _getScalingFactor0().mulDown(getTokenRate(token)); }
-        if (_isToken1(token)) { return _getScalingFactor1().mulDown(getTokenRate(token)); }
-        if (_isToken2(token)) { return _getScalingFactor2().mulDown(getTokenRate(token)); }
-        if (_isToken3(token)) { return _getScalingFactor3().mulDown(getTokenRate(token)); }
-        if (_isToken4(token)) { return _getScalingFactor4().mulDown(getTokenRate(token)); }
+
+        // prettier-ignore
+        {
+            if (_isToken0(token)) { return _getScalingFactor0().mulDown(getTokenRate(token)); }
+            if (_isToken1(token)) { return _getScalingFactor1().mulDown(getTokenRate(token)); }
+            if (_isToken2(token)) { return _getScalingFactor2().mulDown(getTokenRate(token)); }
+            if (_isToken3(token)) { return _getScalingFactor3().mulDown(getTokenRate(token)); }
+            if (_isToken4(token)) { return _getScalingFactor4().mulDown(getTokenRate(token)); }
+        }
 
         _revert(Errors.INVALID_TOKEN);
     }

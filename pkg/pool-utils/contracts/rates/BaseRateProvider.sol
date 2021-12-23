@@ -15,7 +15,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
@@ -42,18 +41,18 @@ abstract contract BaseRateProvider is IRateProvider {
     uint256 private constant _PRICE_RATE_CACHE_VALUE_OFFSET = 0;
     uint256 private constant _PRICE_RATE_CACHE_DURATION_OFFSET = 128;
     uint256 private constant _PRICE_RATE_CACHE_EXPIRES_OFFSET = 128 + 64;
-    
+
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
     event PriceRateCacheUpdated(IERC20 indexed token, uint256 rate);
 
-    constructor (IERC20[] memory tokens, IRateProvider[] memory rateProviders, uint256[] memory priceRateCacheDurations) {
+    constructor(
+        IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders,
+        uint256[] memory priceRateCacheDurations
+    ) {
         uint256 totalTokens = tokens.length;
 
-        InputHelpers.ensureInputLengthMatch(
-            totalTokens,
-            rateProviders.length,
-            priceRateCacheDurations.length
-        );
+        InputHelpers.ensureInputLengthMatch(totalTokens, rateProviders.length, priceRateCacheDurations.length);
 
         for (uint256 i = 0; i < totalTokens; i++) {
             _validTokens.add(address(tokens[i]));
@@ -113,6 +112,7 @@ abstract contract BaseRateProvider is IRateProvider {
 
     function _cachePriceRateIfNecessaryInternal(IERC20 token, IRateProvider provider) private {
         (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_priceRateCaches[token]);
+        // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > expires) {
             _updatePriceRateCache(token, provider, duration);
         }
@@ -133,10 +133,7 @@ abstract contract BaseRateProvider is IRateProvider {
         emit PriceRateCacheUpdated(token, rate);
     }
 
-    function _updatePriceRateCache(
-        IERC20 token,
-        uint256 duration
-    ) internal {
+    function _updatePriceRateCache(IERC20 token, uint256 duration) internal {
         IRateProvider provider = _getRateProvider(_validTokens.rawIndexOf(address(token)));
         if (provider == IRateProvider(0)) {
             _revert(Errors.INVALID_TOKEN);
@@ -182,7 +179,7 @@ abstract contract BaseRateProvider is IRateProvider {
             return _priceRateCaches[token];
         }
 
-        _revert(Errors.INVALID_TOKEN); 
+        _revert(Errors.INVALID_TOKEN);
     }
 
     /**
@@ -216,6 +213,6 @@ abstract contract BaseRateProvider is IRateProvider {
             return _validTokens.rawIndexOf(address(token));
         }
 
-        _revert(Errors.INVALID_TOKEN); 
+        _revert(Errors.INVALID_TOKEN);
     }
 }

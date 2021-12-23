@@ -31,7 +31,7 @@ import "./StableOracleMath.sol";
  *
  * It additionally features a price oracle.
  */
- //TODO: Rename to OracleStablePool after review
+//TODO: Rename to OracleStablePool after review
 contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
@@ -447,8 +447,7 @@ contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
     function _getRateProvider(uint256 index) internal view virtual override returns (IRateProvider) {
         if (index == 0) {
             return _getRateProvider0();
-        }
-        else if (index == 1) {
+        } else if (index == 1) {
             return _getRateProvider1();
         }
 

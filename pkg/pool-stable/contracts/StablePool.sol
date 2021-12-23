@@ -89,7 +89,7 @@ contract StablePool is BaseStablePool {
         _rateProvider2 = totalTokens > 2 ? rateProviders[2] : IRateProvider(0);
         _rateProvider3 = totalTokens > 3 ? rateProviders[3] : IRateProvider(0);
         _rateProvider4 = totalTokens > 4 ? rateProviders[4] : IRateProvider(0);
-     }
+    }
 
     function getScalingFactor(IERC20 token) external view returns (uint256) {
         return _scalingFactor(token);
@@ -120,9 +120,15 @@ contract StablePool is BaseStablePool {
         {
             scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0));
             scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1));
-            if (totalTokens > 2) { scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2)); } else { return scalingFactors; }
-            if (totalTokens > 3) { scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3)); } else { return scalingFactors; }
-            if (totalTokens > 4) { scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4)); } else { return scalingFactors; }
+            if (totalTokens > 2) {
+                scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2)); } else { return scalingFactors;
+            }
+            if (totalTokens > 3) {
+                scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3)); } else { return scalingFactors;
+            }
+            if (totalTokens > 4) {
+                scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4)); } else { return scalingFactors;
+            }
         }
 
         return scalingFactors;
@@ -132,11 +138,14 @@ contract StablePool is BaseStablePool {
         uint256 totalTokens = _getTotalTokens();
         IRateProvider[] memory providers = new IRateProvider[](totalTokens);
 
-        providers[0] = _getRateProvider0();
-        providers[1] = _getRateProvider1();
-        if (totalTokens > 2) { providers[2] = _getRateProvider2(); } else { return providers; }
-        if (totalTokens > 3) { providers[3] = _getRateProvider3(); } else { return providers; }
-        if (totalTokens > 4) { providers[4] = _getRateProvider4(); } else { return providers; }
+        // prettier-ignore
+        {
+            providers[0] = _getRateProvider0();
+            providers[1] = _getRateProvider1();
+            if (totalTokens > 2) { providers[2] = _getRateProvider2(); } else { return providers; }
+            if (totalTokens > 3) { providers[3] = _getRateProvider3(); } else { return providers; }
+            if (totalTokens > 4) { providers[4] = _getRateProvider4(); } else { return providers; }
+        }
 
         return providers;
     }
@@ -144,17 +153,13 @@ contract StablePool is BaseStablePool {
     function _getRateProvider(uint256 index) internal view virtual override returns (IRateProvider) {
         if (index == 0) {
             return _getRateProvider0();
-        }
-        else if (index == 1) {
+        } else if (index == 1) {
             return _getRateProvider1();
-        }
-        else if (index == 2) {
+        } else if (index == 2) {
             return _getRateProvider2();
-        }
-        else if (index == 3) {
+        } else if (index == 3) {
             return _getRateProvider3();
-        }
-        else if (index == 4) {
+        } else if (index == 4) {
             return _getRateProvider4();
         }
 

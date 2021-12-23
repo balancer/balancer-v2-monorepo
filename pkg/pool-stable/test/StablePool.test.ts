@@ -121,10 +121,12 @@ describe('StablePool', function () {
     context('with rate providers', () => {
       const createPoolWithInitialRates = (delta: number) => {
         sharedBeforeEach('mock price rates and deploy pool', async () => {
-          rateProviders = await Promise.all(INITIAL_BALANCES.slice(0, NUM_TOKENS).map(() => deploy('v2-pool-utils/MockRateProvider')));
+          rateProviders = await Promise.all(
+            INITIAL_BALANCES.slice(0, NUM_TOKENS).map(() => deploy('v2-pool-utils/MockRateProvider'))
+          );
           await rateProviders[0].mockRate(fp(1).add(fp(delta)));
           await rateProviders[1].mockRate(fp(1).add(fp(delta * 2)));
-  
+
           pool = await StablePool.create({
             tokens,
             swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
@@ -134,45 +136,45 @@ describe('StablePool', function () {
           });
         });
       };
-  
+
       const mockNewRatesAndAdvanceTime = (seconds: number) => {
         sharedBeforeEach('advance time', async () => {
           oldPriceRate0 = (await pool.instance.getPriceRateCache(tokens.first.address)).rate;
           oldPriceRate1 = (await pool.instance.getPriceRateCache(tokens.second.address)).rate;
-  
+
           await rateProviders[0].mockRate(fp(1.1));
           await rateProviders[1].mockRate(fp(1.2));
-  
+
           await advanceTime(seconds);
           await pool.instance.cachePriceRatesIfNecessary();
         });
       };
-  
+
       const itAdaptsTheScalingFactorsCorrectly = () => {
         it('adapt the scaling factors with the price rate', async () => {
           const priceRates = await Promise.all(rateProviders.map((provider) => provider.getRate()));
           priceRates[0] = scaleRate(priceRates[0], tokens.first);
           priceRates[1] = scaleRate(priceRates[1], tokens.second);
-  
+
           const scalingFactors = await pool.instance.getScalingFactors();
           expect(scalingFactors[0]).to.be.equal(priceRates[0]);
           expect(scalingFactors[1]).to.be.equal(priceRates[1]);
-  
+
           expect(await pool.instance.getScalingFactor(tokens.first.address)).to.be.equal(priceRates[0]);
           expect(await pool.instance.getScalingFactor(tokens.second.address)).to.be.equal(priceRates[1]);
         });
       };
-  
+
       const forceManualUpdate = () => {
         sharedBeforeEach('force update', async () => {
           const priceRates = await Promise.all(rateProviders.map((provider) => provider.getRate()));
-  
+
           const firstReceipt = await pool.updatePriceRateCache(tokens.first);
           expectEvent.inIndirectReceipt(await firstReceipt.wait(), pool.instance.interface, 'PriceRateCacheUpdated', {
             token: tokens.first.address,
             rate: priceRates[0],
           });
-  
+
           const secondReceipt = await pool.updatePriceRateCache(tokens.second);
           expectEvent.inIndirectReceipt(await secondReceipt.wait(), pool.instance.interface, 'PriceRateCacheUpdated', {
             token: tokens.second.address,
@@ -180,103 +182,103 @@ describe('StablePool', function () {
           });
         });
       };
-  
+
       describe('update', () => {
         context('initially', () => {
           context('with a price rate above 1', () => {
             createPoolWithInitialRates(0.1);
             itAdaptsTheScalingFactorsCorrectly();
-  
+
             it('initializes correctly', async () => {
               const cache0 = await pool.instance.getPriceRateCache(tokens.first.address);
               expect(cache0.duration).to.be.equal(cacheDurations[0]);
-  
+
               const cache1 = await pool.instance.getPriceRateCache(tokens.second.address);
               expect(cache1.duration).to.be.equal(cacheDurations[1]);
-  
+
               const providers = await pool.instance.getRateProviders();
               expect(providers[0]).to.be.equal(rateProviders[0].address);
               expect(providers[1]).to.be.equal(rateProviders[1].address);
             });
           });
-  
+
           context('with a price rate equal to 1', () => {
             createPoolWithInitialRates(0);
             itAdaptsTheScalingFactorsCorrectly();
           });
-  
+
           context('with a price rate below 1', () => {
             createPoolWithInitialRates(-0.1);
             itAdaptsTheScalingFactorsCorrectly();
           });
         });
-  
+
         context('after some time', () => {
           createPoolWithInitialRates(0);
-  
+
           context('before the first cache expires', () => {
             mockNewRatesAndAdvanceTime(cacheDurations[0] / 2);
-  
+
             context('when not forced', () => {
               it('does not update any cache', async () => {
                 const { rate: newPriceRate0 } = await pool.instance.getPriceRateCache(tokens.first.address);
                 const { rate: newPriceRate1 } = await pool.instance.getPriceRateCache(tokens.second.address);
-  
+
                 expect(newPriceRate0).to.be.equal(oldPriceRate0);
                 expect(newPriceRate1).to.be.equal(oldPriceRate1);
-  
+
                 const scalingFactors = await pool.instance.getScalingFactors();
                 expect(scalingFactors[0]).to.be.equal(scaleRate(oldPriceRate0, tokens.first));
                 expect(scalingFactors[1]).to.be.equal(scaleRate(oldPriceRate1, tokens.second));
               });
             });
-  
+
             context('when forced', () => {
               forceManualUpdate();
               itAdaptsTheScalingFactorsCorrectly();
             });
           });
-  
+
           context('after the first cache expired but before the second does', () => {
             mockNewRatesAndAdvanceTime(cacheDurations[0] + 1);
-  
+
             context('when not forced', () => {
               it('updates only the first cache', async () => {
                 const { rate: newPriceRate0 } = await pool.instance.getPriceRateCache(tokens.first.address);
                 const { rate: newPriceRate1 } = await pool.instance.getPriceRateCache(tokens.second.address);
-  
+
                 expect(newPriceRate0).to.be.gt(oldPriceRate0);
                 expect(newPriceRate1).to.be.equal(oldPriceRate1);
-  
+
                 const scalingFactors = await pool.instance.getScalingFactors();
                 expect(scalingFactors[0]).to.be.equal(scaleRate(newPriceRate0, tokens.first));
                 expect(scalingFactors[1]).to.be.equal(scaleRate(oldPriceRate1, tokens.second));
               });
             });
-  
+
             context('when forced', () => {
               forceManualUpdate();
               itAdaptsTheScalingFactorsCorrectly();
             });
           });
-  
+
           context('after both caches expired', () => {
             mockNewRatesAndAdvanceTime(cacheDurations[1] + 1);
-  
+
             context('when not forced', () => {
               it('updates both caches', async () => {
                 const { rate: newPriceRate0 } = await pool.instance.getPriceRateCache(tokens.first.address);
                 const { rate: newPriceRate1 } = await pool.instance.getPriceRateCache(tokens.second.address);
-  
+
                 expect(newPriceRate0).to.be.gt(oldPriceRate0);
                 expect(newPriceRate1).to.be.gt(oldPriceRate1);
-  
+
                 const scalingFactors = await pool.instance.getScalingFactors();
                 expect(scalingFactors[0]).to.be.equal(scaleRate(newPriceRate0, tokens.first));
                 expect(scalingFactors[1]).to.be.equal(scaleRate(newPriceRate1, tokens.second));
               });
             });
-  
+
             context('when forced', () => {
               forceManualUpdate();
               itAdaptsTheScalingFactorsCorrectly();
