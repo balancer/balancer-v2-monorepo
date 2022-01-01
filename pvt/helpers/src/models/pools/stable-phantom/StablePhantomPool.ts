@@ -159,8 +159,8 @@ export default class StablePhantomPool {
     return this.instance.getRateProviders();
   }
 
-  async getTokenRateCache(token: Account): Promise<{ expires: BigNumber; rate: BigNumber; duration: BigNumber }> {
-    return this.instance.getTokenRateCache(typeof token === 'string' ? token : token.address);
+  async getPriceRateCache(token: Account): Promise<{ expires: BigNumber; rate: BigNumber; duration: BigNumber }> {
+    return this.instance.getPriceRateCache(typeof token === 'string' ? token : token.address);
   }
 
   async getRate(): Promise<BigNumber> {
@@ -171,8 +171,8 @@ export default class StablePhantomPool {
     return this.instance.getVirtualSupply();
   }
 
-  async updateTokenRateCache(token: Token): Promise<ContractTransaction> {
-    return this.instance.updateTokenRateCache(token.address);
+  async updatePriceRateCache(token: Token): Promise<ContractTransaction> {
+    return this.instance.updatePriceRateCache(token.address);
   }
 
   async getCachedProtocolSwapFeePercentage(): Promise<BigNumber> {
@@ -183,9 +183,9 @@ export default class StablePhantomPool {
     return this.instance.updateCachedProtocolSwapFeePercentage();
   }
 
-  async setTokenRateCacheDuration(token: Token, duration: BigNumber, params?: TxParams): Promise<ContractTransaction> {
+  async setPriceRateCacheDuration(token: Token, duration: BigNumber, params?: TxParams): Promise<ContractTransaction> {
     const pool = params?.from ? this.instance.connect(params.from) : this.instance;
-    return pool.setTokenRateCacheDuration(token.address, duration);
+    return pool.setPriceRateCacheDuration(token.address, duration);
   }
 
   async pause(): Promise<void> {

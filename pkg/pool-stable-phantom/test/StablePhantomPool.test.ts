@@ -152,7 +152,7 @@ describe('StablePhantomPool', () => {
 
         it('sets the rate cache durations', async () => {
           await tokens.asyncEach(async (token, i) => {
-            const { duration, expires, rate } = await pool.getTokenRateCache(token);
+            const { duration, expires, rate } = await pool.getPriceRateCache(token);
             expect(rate).to.equal(tokenRates[i]);
             expect(duration).to.equal(tokenRateCacheDurations[i]);
             expect(expires).to.be.at.least(deployTimestamp.add(tokenRateCacheDurations[i]));
@@ -160,17 +160,17 @@ describe('StablePhantomPool', () => {
         });
 
         it('reverts when querying rate cache for BPT', async () => {
-          await expect(pool.getTokenRateCache(pool.address)).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
+          await expect(pool.getPriceRateCache(pool.address)).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
         });
 
         it('reverts when updating the cache for BPT', async () => {
-          await expect(pool.instance.updateTokenRateCache(pool.address)).to.be.revertedWith(
+          await expect(pool.instance.updatePriceRateCache(pool.address)).to.be.revertedWith(
             'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'
           );
         });
 
         it('reverts when setting the cache duration for BPT', async () => {
-          await expect(pool.instance.connect(owner).setTokenRateCacheDuration(pool.address, 0)).to.be.revertedWith(
+          await expect(pool.instance.connect(owner).setPriceRateCacheDuration(pool.address, 0)).to.be.revertedWith(
             'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'
           );
         });
@@ -577,13 +577,13 @@ describe('StablePhantomPool', () => {
 
         it('updating the cache reverts', async () => {
           await tokens.asyncEach(async (token) => {
-            await expect(pool.updateTokenRateCache(token)).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
+            await expect(pool.updatePriceRateCache(token)).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
           });
         });
 
         it('updating the cache duration reverts', async () => {
           await tokens.asyncEach(async (token) => {
-            await expect(pool.setTokenRateCacheDuration(token, bn(0), { from: owner })).to.be.revertedWith(
+            await expect(pool.setPriceRateCacheDuration(token, bn(0), { from: owner })).to.be.revertedWith(
               'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'
             );
           });
@@ -591,7 +591,7 @@ describe('StablePhantomPool', () => {
 
         it('querying the cache reverts', async () => {
           await tokens.asyncEach(async (token) => {
-            await expect(pool.getTokenRateCache(token)).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
+            await expect(pool.getPriceRateCache(token)).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
           });
         });
       });
@@ -633,7 +633,7 @@ describe('StablePhantomPool', () => {
             sharedBeforeEach('mock rates', async () => {
               await tokens.asyncEach(async (token, i) => {
                 await rateProviders[i].mockRate(fp(1 + i / 10));
-                await pool.updateTokenRateCache(token);
+                await pool.updatePriceRateCache(token);
               });
             });
 
@@ -644,7 +644,7 @@ describe('StablePhantomPool', () => {
             sharedBeforeEach('mock rates', async () => {
               await tokens.asyncEach(async (token, i) => {
                 await rateProviders[i].mockRate(fp(1));
-                await pool.updateTokenRateCache(token);
+                await pool.updatePriceRateCache(token);
               });
             });
 
@@ -655,7 +655,7 @@ describe('StablePhantomPool', () => {
             sharedBeforeEach('mock rate', async () => {
               await tokens.asyncEach(async (token, i) => {
                 await rateProviders[i].mockRate(fp(1 - i / 10));
-                await pool.updateTokenRateCache(token);
+                await pool.updatePriceRateCache(token);
               });
             });
 
@@ -669,14 +669,14 @@ describe('StablePhantomPool', () => {
 
             it('updates the cache', async () => {
               await tokens.asyncEach(async (token, i) => {
-                const previousCache = await pool.getTokenRateCache(token);
+                const previousCache = await pool.getPriceRateCache(token);
 
                 await rateProviders[i].mockRate(newRate);
                 const updatedAt = await currentTimestamp();
 
                 await action(token);
 
-                const currentCache = await pool.getTokenRateCache(token);
+                const currentCache = await pool.getPriceRateCache(token);
                 expect(currentCache.rate).to.be.equal(newRate);
                 expect(previousCache.rate).not.to.be.equal(newRate);
 
@@ -690,7 +690,7 @@ describe('StablePhantomPool', () => {
                 await rateProviders[i].mockRate(newRate);
                 const receipt = await action(token);
 
-                expectEvent.inReceipt(await receipt.wait(), 'TokenRateCacheUpdated', {
+                expectEvent.inReceipt(await receipt.wait(), 'PriceRateCacheUpdated', {
                   rate: newRate,
                   token: token.address,
                 });
@@ -708,11 +708,11 @@ describe('StablePhantomPool', () => {
 
               it('does not update the cache', async () => {
                 await tokens.asyncEach(async (token) => {
-                  const previousCache = await pool.getTokenRateCache(token);
+                  const previousCache = await pool.getPriceRateCache(token);
 
                   await action(token);
 
-                  const currentCache = await pool.getTokenRateCache(token);
+                  const currentCache = await pool.getPriceRateCache(token);
                   expect(currentCache.rate).to.be.equal(previousCache.rate);
                   expect(currentCache.expires).to.be.equal(previousCache.expires);
                   expect(currentCache.duration).to.be.equal(previousCache.duration);
@@ -721,7 +721,7 @@ describe('StablePhantomPool', () => {
             });
 
             context('when forced', () => {
-              const action = async (token: Token) => pool.updateTokenRateCache(token);
+              const action = async (token: Token) => pool.updatePriceRateCache(token);
 
               itUpdatesTheRateCache(action);
             });
@@ -739,7 +739,7 @@ describe('StablePhantomPool', () => {
             });
 
             context('when forced', () => {
-              const action = async (token: Token) => pool.updateTokenRateCache(token);
+              const action = async (token: Token) => pool.updatePriceRateCache(token);
 
               itUpdatesTheRateCache(action);
             });
@@ -750,21 +750,21 @@ describe('StablePhantomPool', () => {
           const newDuration = bn(MINUTE * 10);
 
           sharedBeforeEach('grant role to admin', async () => {
-            const action = await actionId(pool.instance, 'setTokenRateCacheDuration');
+            const action = await actionId(pool.instance, 'setPriceRateCacheDuration');
             await pool.vault.grantRoleGlobally(action, admin);
           });
 
           const itUpdatesTheCacheDuration = () => {
             it('updates the cache duration', async () => {
               await tokens.asyncEach(async (token, i) => {
-                const previousCache = await pool.getTokenRateCache(token);
+                const previousCache = await pool.getPriceRateCache(token);
 
                 const newRate = fp(1.5);
                 await rateProviders[i].mockRate(newRate);
                 const forceUpdateAt = await currentTimestamp();
-                await pool.setTokenRateCacheDuration(token, newDuration, { from: owner });
+                await pool.setPriceRateCacheDuration(token, newDuration, { from: owner });
 
-                const currentCache = await pool.getTokenRateCache(token);
+                const currentCache = await pool.getPriceRateCache(token);
                 expect(currentCache.rate).to.be.equal(newRate);
                 expect(previousCache.rate).not.to.be.equal(newRate);
                 expect(currentCache.duration).to.be.equal(newDuration);
@@ -774,7 +774,7 @@ describe('StablePhantomPool', () => {
 
             it('emits an event', async () => {
               await tokens.asyncEach(async (token, i) => {
-                const tx = await pool.setTokenRateCacheDuration(token, newDuration, { from: owner });
+                const tx = await pool.setPriceRateCacheDuration(token, newDuration, { from: owner });
 
                 expectEvent.inReceipt(await tx.wait(), 'TokenRateProviderSet', {
                   token: token.address,
@@ -805,7 +805,7 @@ describe('StablePhantomPool', () => {
 
           context('when it is requested by the admin', () => {
             it('reverts', async () => {
-              await expect(pool.setTokenRateCacheDuration(tokens.first, bn(10), { from: admin })).to.be.revertedWith(
+              await expect(pool.setPriceRateCacheDuration(tokens.first, bn(10), { from: admin })).to.be.revertedWith(
                 'SENDER_NOT_ALLOWED'
               );
             });
@@ -813,7 +813,7 @@ describe('StablePhantomPool', () => {
 
           context('when it is requested by another one', () => {
             it('reverts', async () => {
-              await expect(pool.setTokenRateCacheDuration(tokens.first, bn(10), { from: lp })).to.be.revertedWith(
+              await expect(pool.setPriceRateCacheDuration(tokens.first, bn(10), { from: lp })).to.be.revertedWith(
                 'SENDER_NOT_ALLOWED'
               );
             });

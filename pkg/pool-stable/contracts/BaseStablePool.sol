@@ -632,6 +632,8 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, Ba
      * @param duration Number of seconds until the current rate of token price is fetched again.
      */
     function setPriceRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
+        _require(_getRateProvider(_indexOf(token)) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+
         _updatePriceRateCache(token, duration);
     }
 

@@ -71,6 +71,8 @@ abstract contract BaseRateProvider is IRateProvider {
     function getRateProviders() external view virtual returns (IRateProvider[] memory providers);
 
     function updatePriceRateCache(IERC20 token) external {
+        _require(_getRateProvider(_indexOf(token)) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+
         uint256 duration = _getPriceRateCacheDuration(_getPriceRateCache(token));
 
         _updatePriceRateCache(token, duration);
@@ -132,6 +134,7 @@ abstract contract BaseRateProvider is IRateProvider {
         uint256 rate = provider.getRate();
         bytes32 cache = PriceRateCache.encode(rate, duration);
         _priceRateCaches[token] = cache;
+        emit TokenRateProviderSet(token, provider, duration);
         emit PriceRateCacheUpdated(token, rate);
     }
 

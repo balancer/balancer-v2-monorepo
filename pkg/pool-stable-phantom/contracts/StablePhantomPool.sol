@@ -106,6 +106,8 @@ contract StablePhantomPool is BaseStablePool {
         IERC20 token,
         uint256[] memory rawDurations
     ) private pure returns (uint256[] memory durations) {
+        InputHelpers.ensureInputLengthMatch(tokens.length, rawDurations.length);
+
         durations = new uint256[](tokens.length + 1);
 
         uint256 i;
@@ -118,6 +120,8 @@ contract StablePhantomPool is BaseStablePool {
         IERC20 token,
         IRateProvider[] memory rawProviders
     ) private pure returns (IRateProvider[] memory rateProviders) {
+        InputHelpers.ensureInputLengthMatch(tokens.length, rawProviders.length);
+
         rateProviders = new IRateProvider[](tokens.length + 1);
 
         uint256 i;
@@ -809,15 +813,7 @@ contract StablePhantomPool is BaseStablePool {
             uint256 expires
         )
     {
-        // This check is from StablePhantomPool
-        /*console.log("getPriceRateCache - index of token: %s", _indexOf(token));
-        console.log("BPT index: %s", _bptIndex);
-        console.log("Provider 0: %s", address(_rateProvider0));
-        console.log("Non-zero: %s", _rateProvider0 != IRateProvider(0));
-        */
-
-        //IRateProvider provider = _getRateProvider(_indexOf(token));
-        //_require(provider != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+        _require(_getRateProvider(token) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
 
         return _getPriceRateCache(_getPriceRateCache(token));
     }
