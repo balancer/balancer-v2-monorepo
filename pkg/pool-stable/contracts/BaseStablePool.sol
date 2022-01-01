@@ -639,6 +639,7 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, Ba
         return
             (actionId == getActionId(BaseStablePool.startAmplificationParameterUpdate.selector)) ||
             (actionId == getActionId(BaseStablePool.stopAmplificationParameterUpdate.selector)) ||
+            (actionId == getActionId(BaseStablePool.setPriceRateCacheDuration.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
 

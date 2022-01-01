@@ -25,8 +25,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 
 import "./StablePhantomPoolUserDataHelpers.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @dev StablePool with preminted BPT and rate providers for each token, allowing for e.g. wrapped tokens with a known
  * price ratio, such as Compound's cTokens.
@@ -103,7 +101,7 @@ contract StablePhantomPool is BaseStablePool {
         address owner;
     }
 
-    function _addBptDurations(
+    function _insertBptDuration(
         IERC20[] memory tokens,
         IERC20 token,
         uint256[] memory rawDurations
@@ -113,6 +111,18 @@ contract StablePhantomPool is BaseStablePool {
         uint256 i;
         for (i = tokens.length; i > 0 && tokens[i - 1] > token; i--) durations[i] = rawDurations[i - 1];
         for (uint256 j = 0; j < i; j++) durations[j] = rawDurations[j];
+    }
+
+    function _insertBptRateProvider(
+        IERC20[] memory tokens,
+        IERC20 token,
+        IRateProvider[] memory rawProviders
+    ) private pure returns (IRateProvider[] memory rateProviders) {
+        rateProviders = new IRateProvider[](tokens.length + 1);
+
+        uint256 i;
+        for (i = tokens.length; i > 0 && tokens[i - 1] > token; i--) rateProviders[i] = rawProviders[i - 1];
+        for (uint256 j = 0; j < i; j++) rateProviders[j] = rawProviders[j];
     }
 
     function _getRateProvider0() private view returns (IRateProvider) {
@@ -177,8 +187,8 @@ contract StablePhantomPool is BaseStablePool {
             params.name,
             params.symbol,
             _insertSorted(params.tokens, IERC20(this)),
-            params.rateProviders,
-            _addBptDurations(params.tokens, IERC20(this), params.tokenRateCacheDurations),
+            _insertBptRateProvider(params.tokens, IERC20(this), params.rateProviders),
+            _insertBptDuration(params.tokens, IERC20(this), params.tokenRateCacheDurations),
             params.amplificationParameter,
             params.swapFeePercentage,
             params.pauseWindowDuration,
@@ -205,36 +215,43 @@ contract StablePhantomPool is BaseStablePool {
         // reference them by token index in the full base tokens plus BPT set (i.e. the tokens the Pool registers). Due
         // to immutable variables requiring an explicit assignment instead of defaulting to an empty value, it is
         // simpler to create a new memory array with the values we want to assign to the immutable state variables.
-        IRateProvider[] memory tokensAndBPTRateProviders = new IRateProvider[](params.tokens.length + 1);
-        for (uint256 i = 0; i < tokensAndBPTRateProviders.length; ++i) {
+        uint256 totalLength = params.tokens.length + 1;
+
+        IRateProvider[] memory adjustedRateProviders = new IRateProvider[](totalLength);
+        IERC20[] memory adjustedTokens = new IERC20[](totalLength);
+
+        for (uint256 i = 0; i < adjustedRateProviders.length; ++i) {
             if (i < bptIndex) {
-                tokensAndBPTRateProviders[i] = params.rateProviders[i];
+                adjustedRateProviders[i] = params.rateProviders[i];
+                adjustedTokens[i] = params.tokens[i];
             } else if (i == bptIndex) {
-                tokensAndBPTRateProviders[i] = IRateProvider(0);
+                adjustedRateProviders[i] = IRateProvider(0);
+                adjustedTokens[i] = IERC20(this);
             } else {
-                tokensAndBPTRateProviders[i] = params.rateProviders[i - 1];
+                adjustedRateProviders[i] = params.rateProviders[i - 1];
+                adjustedTokens[i] = params.tokens[i - 1];
             }
         }
 
-        //TODO: NOt right - same skip issue!
-        _token0 = params.tokens[0];
-        _token1 = params.tokens[1];
-        _token2 = params.tokens[2];
-        _token3 = params.tokens[3];
-        _token4 = params.tokens[4];
-
-        _scalingFactor0 = _computeScalingFactor(params.tokens[0]);
-        _scalingFactor1 = _computeScalingFactor(params.tokens[1]);
-        _scalingFactor2 = _computeScalingFactor(params.tokens[2]);
-        _scalingFactor3 = _computeScalingFactor(params.tokens[3]);
-        _scalingFactor4 = _computeScalingFactor(params.tokens[4]);
-
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _rateProvider0 = (tokensAndBPTRateProviders.length > 0) ? tokensAndBPTRateProviders[0] : IRateProvider(0);
-        _rateProvider1 = (tokensAndBPTRateProviders.length > 1) ? tokensAndBPTRateProviders[1] : IRateProvider(0);
-        _rateProvider2 = (tokensAndBPTRateProviders.length > 2) ? tokensAndBPTRateProviders[2] : IRateProvider(0);
-        _rateProvider3 = (tokensAndBPTRateProviders.length > 3) ? tokensAndBPTRateProviders[3] : IRateProvider(0);
-        _rateProvider4 = (tokensAndBPTRateProviders.length > 4) ? tokensAndBPTRateProviders[4] : IRateProvider(0);
+        // There have to be at least three tokens (2 + BPT)
+        _rateProvider0 = adjustedRateProviders[0];
+        _rateProvider1 = adjustedRateProviders[1];
+        _rateProvider2 = adjustedRateProviders[2];
+        _rateProvider3 = (totalLength > 3) ? adjustedRateProviders[3] : IRateProvider(0);
+        _rateProvider4 = (totalLength > 4) ? adjustedRateProviders[4] : IRateProvider(0);
+
+        _token0 = adjustedTokens[0];
+        _token1 = adjustedTokens[1];
+        _token2 = adjustedTokens[2];
+        _token3 = (totalLength > 3) ? adjustedTokens[3] : IERC20(0);
+        _token4 = (totalLength > 4) ? adjustedTokens[4] : IERC20(0);
+
+        _scalingFactor0 = _computeScalingFactor(adjustedTokens[0]);
+        _scalingFactor1 = _computeScalingFactor(adjustedTokens[1]);
+        _scalingFactor2 = _computeScalingFactor(adjustedTokens[2]);
+        _scalingFactor3 = (totalLength > 3) ? _computeScalingFactor(adjustedTokens[3]) : FixedPoint.ONE;
+        _scalingFactor4 = (totalLength > 4) ? _computeScalingFactor(adjustedTokens[4]) : FixedPoint.ONE;
 
         _updateCachedProtocolSwapFeePercentage(params.vault);
     }
@@ -793,10 +810,11 @@ contract StablePhantomPool is BaseStablePool {
         )
     {
         // This check is from StablePhantomPool
-        console.log("getPriceRateCache - index of token: %s", _indexOf(token));
+        /*console.log("getPriceRateCache - index of token: %s", _indexOf(token));
         console.log("BPT index: %s", _bptIndex);
         console.log("Provider 0: %s", address(_rateProvider0));
         console.log("Non-zero: %s", _rateProvider0 != IRateProvider(0));
+        */
 
         //IRateProvider provider = _getRateProvider(_indexOf(token));
         //_require(provider != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
@@ -817,25 +835,6 @@ contract StablePhantomPool is BaseStablePool {
         _cachedProtocolSwapFeePercentage = newPercentage;
 
         emit CachedProtocolSwapFeePercentageUpdated(newPercentage);
-    }
-
-    /**
-     * @dev Sets a new duration for a token rate cache. It reverts if there was no rate provider set initially.
-     * Note this function also updates the current cached value.
-     * @param duration Number of seconds until the current token rate is fetched again.
-     */
-    function setPriceRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
-        IRateProvider provider = _getRateProvider(token);
-        _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-        _updatePriceRateCache(token, provider, duration);
-        emit TokenRateProviderSet(token, provider, duration);
-    }
-
-    /**
-     * @dev Overrides only owner action to allow setting the cache duration for the token rates
-     */
-    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
-        return (actionId == getActionId(this.setPriceRateCacheDuration.selector)) || super._isOwnerOnlyAction(actionId);
     }
 
     function _skipBptIndex(uint256 index) internal view returns (uint256) {

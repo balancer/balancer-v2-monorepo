@@ -59,6 +59,8 @@ abstract contract BaseRateProvider is IRateProvider {
 
             if (rateProviders[i] != IRateProvider(0)) {
                 _updatePriceRateCache(tokens[i], rateProviders[i], priceRateCacheDurations[i]);
+                // Note that the rateProvider storage is deferred, so the rate provider itself cannot
+                // be stored until the most derived constructor.
                 emit TokenRateProviderSet(tokens[i], rateProviders[i], priceRateCacheDurations[i]);
             }
         }
