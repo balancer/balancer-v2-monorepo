@@ -311,11 +311,11 @@ describe('StablePool', function () {
         await pool.vault.grantRoleGlobally(action, owner);
 
         await expect(pool.setPriceRateCacheDuration(tokens.first, MINUTE * 10, { from: owner })).to.be.revertedWith(
-          'INVALID_TOKEN'
+          'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'
         );
 
         await expect(pool.setPriceRateCacheDuration(tokens.second, MINUTE * 10, { from: owner })).to.be.revertedWith(
-          'INVALID_TOKEN'
+          'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'
         );
       });
     });

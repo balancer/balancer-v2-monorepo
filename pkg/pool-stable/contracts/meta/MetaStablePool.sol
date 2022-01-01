@@ -425,6 +425,8 @@ contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
      * Note that it may update the price rate cache if necessary.
      */
     function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
+        scalingFactors = new uint256[](2);
+
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
         // Given there is no generic direction for this rounding, it simply follows the same strategy as the BasePool.
         //scalingFactors = super._scalingFactors();

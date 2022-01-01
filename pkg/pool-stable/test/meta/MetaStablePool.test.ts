@@ -15,7 +15,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-describe.skip('MetaStablePool', function () {
+describe('MetaStablePool', function () {
   let pool: StablePool;
   let tokens: TokenList;
   let admin: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
@@ -594,9 +594,11 @@ describe.skip('MetaStablePool', function () {
       describe('setting', () => {
         createPoolWithInitialRates(0);
 
-        sharedBeforeEach('grant role to admin', async () => {
+        // PhantomStablePool had this as an owner method; MetaStable had it as non-owner (governance)
+        // It's now owner in the base class (for both), so need to change this from admin to owner
+        sharedBeforeEach('grant role to owner', async () => {
           const action = await actionId(pool.instance, 'setPriceRateCacheDuration');
-          await pool.vault.grantRoleGlobally(action, admin);
+          await pool.vault.grantRoleGlobally(action, owner);
         });
 
         const setNewPriceRateCache = () => {
@@ -606,14 +608,14 @@ describe.skip('MetaStablePool', function () {
           sharedBeforeEach('update price rate cache', async () => {
             forceUpdateAt = await currentTimestamp();
 
-            const firstReceipt = await pool.setPriceRateCacheDuration(tokens.first, newDuration, { from: admin });
+            const firstReceipt = await pool.setPriceRateCacheDuration(tokens.first, newDuration, { from: owner });
             expectEvent.inReceipt(await firstReceipt.wait(), 'TokenRateProviderSet', {
               token: tokens.first.address,
               provider: rateProviders[0].address,
               cacheDuration: newDuration,
             });
 
-            const secondReceipt = await pool.setPriceRateCacheDuration(tokens.second, newDuration, { from: admin });
+            const secondReceipt = await pool.setPriceRateCacheDuration(tokens.second, newDuration, { from: owner });
             expectEvent.inReceipt(await secondReceipt.wait(), 'TokenRateProviderSet', {
               token: tokens.second.address,
               provider: rateProviders[1].address,
@@ -633,13 +635,13 @@ describe.skip('MetaStablePool', function () {
         };
 
         context('when it is requested by the admin', () => {
-          context('when it did not passed the previous duration', () => {
+          context('when it did not pass the previous duration', () => {
             mockNewRatesAndAdvanceTime(MINUTE / 2);
             setNewPriceRateCache();
             itAdaptsTheScalingFactorsCorrectly();
           });
 
-          context('when it passed the previous duration', () => {
+          context('when it pass the previous duration', () => {
             mockNewRatesAndAdvanceTime(MINUTE * 2);
             setNewPriceRateCache();
             itAdaptsTheScalingFactorsCorrectly();
@@ -676,14 +678,14 @@ describe.skip('MetaStablePool', function () {
 
       it('cannot update the price rate cache duration', async () => {
         const action = await actionId(pool.instance, 'setPriceRateCacheDuration');
-        await pool.vault.grantRoleGlobally(action, admin);
+        await pool.vault.grantRoleGlobally(action, owner);
 
-        await expect(pool.setPriceRateCacheDuration(tokens.first, MINUTE * 10, { from: admin })).to.be.revertedWith(
-          'INVALID_TOKEN'
+        await expect(pool.setPriceRateCacheDuration(tokens.first, MINUTE * 10, { from: owner })).to.be.revertedWith(
+          'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'
         );
 
-        await expect(pool.setPriceRateCacheDuration(tokens.second, MINUTE * 10, { from: admin })).to.be.revertedWith(
-          'INVALID_TOKEN'
+        await expect(pool.setPriceRateCacheDuration(tokens.second, MINUTE * 10, { from: owner })).to.be.revertedWith(
+          'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'
         );
       });
     });
