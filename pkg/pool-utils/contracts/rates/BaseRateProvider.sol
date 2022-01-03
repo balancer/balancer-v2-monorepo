@@ -24,9 +24,15 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "./PriceRateCache.sol";
 import "../interfaces/IRateProvider.sol";
 
+/**
+ * @title BaseRateProvider
+ * @notice Factor out RateProvider functionality, to make it available in all Stable-like pools.
+ * @dev Stores packed data for each token - the duration and expiration of the cache, and the cached rate itself.
+ * Also store the token set, to allow quickly validating tokens without iteration.
+ */
 abstract contract BaseRateProvider is IRateProvider {
-    using WordCodec for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using WordCodec for bytes32;
 
     // Price rate caches are used to avoid querying the price rate for a token every time we need to work with it.
     // Data is stored with the following structure:
@@ -36,11 +42,11 @@ abstract contract BaseRateProvider is IRateProvider {
 
     mapping(IERC20 => bytes32) private _priceRateCaches;
 
-    EnumerableSet.AddressSet private _validTokens;
-
     uint256 private constant _PRICE_RATE_CACHE_VALUE_OFFSET = 0;
     uint256 private constant _PRICE_RATE_CACHE_DURATION_OFFSET = 128;
     uint256 private constant _PRICE_RATE_CACHE_EXPIRES_OFFSET = 128 + 64;
+
+    EnumerableSet.AddressSet private _validTokens;
 
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
     event PriceRateCacheUpdated(IERC20 indexed token, uint256 rate);
@@ -66,11 +72,32 @@ abstract contract BaseRateProvider is IRateProvider {
         }
     }
 
-    function _getRateProvider(uint256 index) internal view virtual returns (IRateProvider);
+    /**
+     * @dev Getter for RateProviders. Virtual, since storage is deferred to derived contracts.
+     */
+    function getRateProviders() external view virtual returns (IRateProvider[] memory);
 
-    function getRateProviders() external view virtual returns (IRateProvider[] memory providers);
+    /**
+     * @dev Returns the cached value for a token's rate
+     */
+    function getPriceRateCache(IERC20 token)
+        external
+        view
+        virtual
+        returns (
+            uint256 rate,
+            uint256 duration,
+            uint256 expires
+        )
+    {
+        return _getPriceRateCache(_getPriceRateCache(token));
+    }
 
+    /**
+     * @dev Get the cached duration for the given token, and update the price rate cache.
+     */
     function updatePriceRateCache(IERC20 token) external {
+        // _indexOf will revert with INVALID_TOKEN unless the token is in the pool
         _require(_getRateProvider(_indexOf(token)) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
 
         uint256 duration = _getPriceRateCacheDuration(_getPriceRateCache(token));
@@ -78,21 +105,27 @@ abstract contract BaseRateProvider is IRateProvider {
         _updatePriceRateCache(token, duration);
     }
 
+    /**
+     * @dev Force update of the caches (if any are out-of-date). Used for testing, but might be generally useful.
+     */
+    function cachePriceRatesIfNecessary() external {
+        _cachePriceRatesIfNecessary();
+    }
+
+    /**
+     * @dev Return the cached rate value (or 1 if there is no provider for the token).
+     */
     function getTokenRate(IERC20 token) public view virtual returns (uint256) {
         // Given that this function is only used by `onSwap` which can only be called by the vault in the case of a
         // Meta Stable Pool, we can be sure the vault will not forward a call with an invalid `token` param.
 
-        if (_priceRateCaches[token] == bytes32(0)) {
-            return FixedPoint.ONE;
-        } else {
-            return _getPriceRateCacheValue(_getPriceRateCache(token));
-        }
+        bytes32 cache = _getPriceRateCache(token);
+
+        return cache == bytes32(0) ? FixedPoint.ONE : _getPriceRateCacheValue(cache);
     }
 
-    //TODO: Keep this? Or create a mock?
-    function cachePriceRatesIfNecessary() external {
-        _cachePriceRatesIfNecessary();
-    }
+    // Storage deferred to derived contracts
+    function _getRateProvider(uint256 index) internal view virtual returns (IRateProvider);
 
     function _cachePriceRatesIfNecessary() internal {
         IRateProvider provider;
@@ -109,16 +142,9 @@ abstract contract BaseRateProvider is IRateProvider {
 
     function _cachePriceRateIfNecessary(IERC20 token) internal {
         IRateProvider provider = _getRateProvider(_indexOf(token));
+
         if (provider != IRateProvider(0)) {
             _cachePriceRateIfNecessaryInternal(token, provider);
-        }
-    }
-
-    function _cachePriceRateIfNecessaryInternal(IERC20 token, IRateProvider provider) private {
-        (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_priceRateCaches[token]);
-        // solhint-disable-next-line not-rely-on-time
-        if (block.timestamp > expires) {
-            _updatePriceRateCache(token, provider, duration);
         }
     }
 
@@ -134,6 +160,7 @@ abstract contract BaseRateProvider is IRateProvider {
         uint256 rate = provider.getRate();
         bytes32 cache = PriceRateCache.encode(rate, duration);
         _priceRateCaches[token] = cache;
+
         emit TokenRateProviderSet(token, provider, duration);
         emit PriceRateCacheUpdated(token, rate);
     }
@@ -145,22 +172,6 @@ abstract contract BaseRateProvider is IRateProvider {
         }
 
         _updatePriceRateCache(token, provider, duration);
-    }
-
-    /**
-     * @dev Returns the cached value for token's rate
-     */
-    function getPriceRateCache(IERC20 token)
-        external
-        view
-        virtual
-        returns (
-            uint256 rate,
-            uint256 duration,
-            uint256 expires
-        )
-    {
-        return _getPriceRateCache(_getPriceRateCache(token));
     }
 
     /**
@@ -188,20 +199,6 @@ abstract contract BaseRateProvider is IRateProvider {
     }
 
     /**
-     * @dev Decodes the rate value for a price rate cache
-     */
-    function _getPriceRateCacheValue(bytes32 cache) private pure returns (uint256) {
-        return cache.decodeUint128(_PRICE_RATE_CACHE_VALUE_OFFSET);
-    }
-
-    /**
-     * @dev Decodes the duration for a price rate cache
-     */
-    function _getPriceRateCacheDuration(bytes32 cache) private pure returns (uint256) {
-        return cache.decodeUint64(_PRICE_RATE_CACHE_DURATION_OFFSET);
-    }
-
-    /**
      * @dev Decodes the duration and expiration timestamp for a price rate cache
      */
     function _getPriceRateCacheTimestamps(bytes32 cache) internal pure returns (uint256 duration, uint256 expires) {
@@ -219,5 +216,27 @@ abstract contract BaseRateProvider is IRateProvider {
         }
 
         _revert(Errors.INVALID_TOKEN);
+    }
+
+    function _cachePriceRateIfNecessaryInternal(IERC20 token, IRateProvider provider) private {
+        (uint256 duration, uint256 expires) = _getPriceRateCacheTimestamps(_getPriceRateCache(token));
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > expires) {
+            _updatePriceRateCache(token, provider, duration);
+        }
+    }
+
+    /**
+     * @dev Decodes the rate value for a price rate cache
+     */
+    function _getPriceRateCacheValue(bytes32 cache) private pure returns (uint256) {
+        return cache.decodeUint128(_PRICE_RATE_CACHE_VALUE_OFFSET);
+    }
+
+    /**
+     * @dev Decodes the duration for a price rate cache
+     */
+    function _getPriceRateCacheDuration(bytes32 cache) private pure returns (uint256) {
+        return cache.decodeUint64(_PRICE_RATE_CACHE_DURATION_OFFSET);
     }
 }
