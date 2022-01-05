@@ -52,24 +52,4 @@ export default {
   mocha: {
     timeout: 40000,
   },
-  networks: {
-    kovan: {
-      saveDeployments: true,
-      //gas: 8000000,
-      //gasPrice: 90000000000,
-      url: `https://kovan.infura.io/v3/${process.env.INFURA_KEY}`,
-      accounts: {
-        mnemonic: process.env.MNEMONIC,
-      },
-    },
-    mainnet: {
-      saveDeployments: true,
-      //gas: 8000000,
-      //gasPrice: 90000000000,
-      url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
-      accounts: {
-        mnemonic: process.env.MNEMONIC,
-      },
-    },
-  }
 };
