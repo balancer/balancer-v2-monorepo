@@ -14,6 +14,8 @@ export default {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
+      //blockGasLimit: 124500000,
+      //gas: 124500000
     },
   },
   solidity: {

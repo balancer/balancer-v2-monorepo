@@ -8,7 +8,6 @@ import StablePool from './StablePool';
 import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
 import { RawStablePoolDeployment, StablePoolDeployment } from './types';
-import { ZERO_ADDRESS } from '../../../constants';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -79,7 +78,15 @@ export default {
   },
 
   async _deployFromFactory(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, rateProviders, priceRateCacheDurations, amplificationParameter, swapFeePercentage, owner, from } = params;
+    const {
+      tokens,
+      rateProviders,
+      priceRateCacheDurations,
+      amplificationParameter,
+      swapFeePercentage,
+      owner,
+      from,
+    } = params;
 
     const factory = await deploy('v2-pool-stable/StablePoolFactory', { args: [vault.address], from });
     const tx = await factory.create(
