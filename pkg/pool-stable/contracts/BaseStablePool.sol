@@ -26,15 +26,6 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, Ba
     using WordCodec for bytes32;
     using StablePoolUserData for bytes;
 
-    // To track how many tokens are owed to the Vault as protocol fees, we measure and store the value of the invariant
-    // after every join and exit. All invariant growth that happens between join and exit events is due to swap fees.
-    uint256 internal _lastInvariant;
-
-    // Because the invariant depends on the amplification parameter, and this value may change over time, we should only
-    // compare invariants that were computed using the same value. We therefore store it whenever we store
-    // _lastInvariant.
-    uint256 internal _lastInvariantAmp;
-
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
     // solhint-disable not-rely-on-time
@@ -49,10 +40,19 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, Ba
 
     bytes32 private _packedAmplificationData;
 
+    uint256 internal immutable _totalTokens;
+
+    // To track how many tokens are owed to the Vault as protocol fees, we measure and store the value of the invariant
+    // after every join and exit. All invariant growth that happens between join and exit events is due to swap fees.
+    uint256 internal _lastInvariant;
+
+    // Because the invariant depends on the amplification parameter, and this value may change over time, we should only
+    // compare invariants that were computed using the same value. We therefore store it whenever we store
+    // _lastInvariant.
+    uint256 internal _lastInvariantAmp;
+
     event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
     event AmpUpdateStopped(uint256 currentValue);
-
-    uint256 internal immutable _totalTokens;
 
     constructor(
         IVault vault,
@@ -96,6 +96,85 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, Ba
     function getLastInvariant() external view returns (uint256 lastInvariant, uint256 lastInvariantAmp) {
         lastInvariant = _lastInvariant;
         lastInvariantAmp = _lastInvariantAmp;
+    }
+
+    // Amplification
+
+    function getAmplificationParameter()
+        external
+        view
+        returns (
+            uint256 value,
+            bool isUpdating,
+            uint256 precision
+        )
+    {
+        (value, isUpdating) = _getAmplificationParameter();
+        precision = StableMath._AMP_PRECISION;
+    }
+
+    /**
+     * @dev Begins changing the amplification parameter to `rawEndValue` over time. The value will change linearly until
+     * `endTime` is reached, when it will be `rawEndValue`.
+     *
+     * NOTE: Internally, the amplification parameter is represented using higher precision. The values returned by
+     * `getAmplificationParameter` have to be corrected to account for this when comparing to `rawEndValue`.
+     */
+    function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticate {
+        _require(rawEndValue >= StableMath._MIN_AMP, Errors.MIN_AMP);
+        _require(rawEndValue <= StableMath._MAX_AMP, Errors.MAX_AMP);
+
+        uint256 duration = Math.sub(endTime, block.timestamp);
+        _require(duration >= _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
+
+        (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
+        _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
+
+        uint256 endValue = Math.mul(rawEndValue, StableMath._AMP_PRECISION);
+
+        // daily rate = (endValue / currentValue) / duration * 1 day
+        // We perform all multiplications first to not reduce precision, and round the division up as we want to avoid
+        // large rates. Note that these are regular integer multiplications and divisions, not fixed point.
+        uint256 dailyRate = endValue > currentValue
+            ? Math.divUp(Math.mul(1 days, endValue), Math.mul(currentValue, duration))
+            : Math.divUp(Math.mul(1 days, currentValue), Math.mul(endValue, duration));
+        _require(dailyRate <= _MAX_AMP_UPDATE_DAILY_RATE, Errors.AMP_RATE_TOO_HIGH);
+
+        _setAmplificationData(currentValue, endValue, block.timestamp, endTime);
+    }
+
+    /**
+     * @dev Stops the amplification parameter change process, keeping the current value.
+     */
+    function stopAmplificationParameterUpdate() external authenticate {
+        (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
+        _require(isUpdating, Errors.AMP_NO_ONGOING_UPDATE);
+
+        _setAmplificationData(currentValue);
+    }
+
+    /**
+     * @dev Sets a new duration for a token price rate cache. It reverts if there was no rate provider set initially.
+     * Note this function also updates the current cached value.
+     * @param duration Number of seconds until the current rate of token price is fetched again.
+     */
+    function setPriceRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
+        _require(_getRateProvider(_indexOf(token)) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+
+        _updatePriceRateCache(token, duration);
+    }
+
+    /**
+     * @dev This function returns the appreciation of one BPT relative to the
+     * underlying tokens. This starts at 1 when the pool is created and grows over time
+     */
+    function getRate() public view virtual override returns (uint256) {
+        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(balances, _scalingFactors());
+
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        return StableMath._getRate(balances, currentAmp, totalSupply());
     }
 
     // Base Pool handlers
@@ -199,6 +278,8 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, Ba
             balances[0] = balanceTokenIn;
             balances[1] = balanceTokenOut;
         } else {
+            // This is only called from `_onSwapGivenOut` with a two-token specialization,
+            // so we know there are only two tokens.
             // _token0 == swapRequest.tokenOut
             indexOut = 0;
             indexIn = 1;
@@ -571,91 +652,12 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, Ba
         }
     }
 
-    /**
-     * @dev This function returns the appreciation of one BPT relative to the
-     * underlying tokens. This starts at 1 when the pool is created and grows over time
-     */
-    function getRate() public view virtual override returns (uint256) {
-        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
-        _upscaleArray(balances, _scalingFactors());
-
-        (uint256 currentAmp, ) = _getAmplificationParameter();
-
-        return StableMath._getRate(balances, currentAmp, totalSupply());
-    }
-
-    // Amplification
-
-    /**
-     * @dev Begins changing the amplification parameter to `rawEndValue` over time. The value will change linearly until
-     * `endTime` is reached, when it will be `rawEndValue`.
-     *
-     * NOTE: Internally, the amplification parameter is represented using higher precision. The values returned by
-     * `getAmplificationParameter` have to be corrected to account for this when comparing to `rawEndValue`.
-     */
-    function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticate {
-        _require(rawEndValue >= StableMath._MIN_AMP, Errors.MIN_AMP);
-        _require(rawEndValue <= StableMath._MAX_AMP, Errors.MAX_AMP);
-
-        uint256 duration = Math.sub(endTime, block.timestamp);
-        _require(duration >= _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
-
-        (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
-        _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
-
-        uint256 endValue = Math.mul(rawEndValue, StableMath._AMP_PRECISION);
-
-        // daily rate = (endValue / currentValue) / duration * 1 day
-        // We perform all multiplications first to not reduce precision, and round the division up as we want to avoid
-        // large rates. Note that these are regular integer multiplications and divisions, not fixed point.
-        uint256 dailyRate = endValue > currentValue
-            ? Math.divUp(Math.mul(1 days, endValue), Math.mul(currentValue, duration))
-            : Math.divUp(Math.mul(1 days, currentValue), Math.mul(endValue, duration));
-        _require(dailyRate <= _MAX_AMP_UPDATE_DAILY_RATE, Errors.AMP_RATE_TOO_HIGH);
-
-        _setAmplificationData(currentValue, endValue, block.timestamp, endTime);
-    }
-
-    /**
-     * @dev Stops the amplification parameter change process, keeping the current value.
-     */
-    function stopAmplificationParameterUpdate() external authenticate {
-        (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
-        _require(isUpdating, Errors.AMP_NO_ONGOING_UPDATE);
-
-        _setAmplificationData(currentValue);
-    }
-
-    /**
-     * @dev Sets a new duration for a token price rate cache. It reverts if there was no rate provider set initially.
-     * Note this function also updates the current cached value.
-     * @param duration Number of seconds until the current rate of token price is fetched again.
-     */
-    function setPriceRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
-        _require(_getRateProvider(_indexOf(token)) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-
-        _updatePriceRateCache(token, duration);
-    }
-
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
             (actionId == getActionId(BaseStablePool.startAmplificationParameterUpdate.selector)) ||
             (actionId == getActionId(BaseStablePool.stopAmplificationParameterUpdate.selector)) ||
             (actionId == getActionId(BaseStablePool.setPriceRateCacheDuration.selector)) ||
             super._isOwnerOnlyAction(actionId);
-    }
-
-    function getAmplificationParameter()
-        external
-        view
-        returns (
-            uint256 value,
-            bool isUpdating,
-            uint256 precision
-        )
-    {
-        (value, isUpdating) = _getAmplificationParameter();
-        precision = StableMath._AMP_PRECISION;
     }
 
     function _getAmplificationParameter() internal view returns (uint256 value, bool isUpdating) {

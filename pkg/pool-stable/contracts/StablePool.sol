@@ -17,6 +17,11 @@ pragma experimental ABIEncoderV2;
 
 import "./BaseStablePool.sol";
 
+/**
+ * @title StablePool is a concrete implementation of BaseStablePool, with up to 5 tokens, that supports rate providers.
+ * @dev All logic is in BaseStablePool - this contract simply implements the storage and getters for tokens, scaling
+ * factors, and optional rate providers.
+ */
 contract StablePool is BaseStablePool {
     using FixedPoint for uint256;
 
@@ -69,6 +74,7 @@ contract StablePool is BaseStablePool {
             owner
         )
     {
+        // BaseStablePool will set _totalTokens, but cannot read immutables during construction
         uint256 totalTokens = tokens.length;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments

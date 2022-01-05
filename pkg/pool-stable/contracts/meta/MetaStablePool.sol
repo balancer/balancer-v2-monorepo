@@ -27,15 +27,16 @@ import "./StableOracleMath.sol";
 
 /**
  * @dev StablePool suitable for assets with proportional prices (i.e. with slow-changing exchange rates between them).
- * Requires an external feed of these exchange rates.
+ * Requires an external feed for these exchange rates.
  *
- * It additionally features a price oracle.
+ * It is a concrete implementation of BaseStablePool that adds a price oracle, and is therefore
+ * restricted to two tokens.
  */
 //TODO: Rename to OracleStablePool after review
 contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
-    using WordCodec for bytes32;
-    using FixedPoint for uint256;
     using OracleMiscData for bytes32;
+    using FixedPoint for uint256;
+    using WordCodec for bytes32;
 
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;
@@ -93,28 +94,55 @@ contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
         _setOracleEnabled(params.oracleEnabled);
     }
 
-    function _getScalingFactor0() private view returns (uint256) {
-        return _scalingFactor0;
-    }
-
-    function _getScalingFactor1() private view returns (uint256) {
-        return _scalingFactor1;
-    }
-
-    function _getMaxTokens() internal pure override returns (uint256) {
-        return 2;
-    }
-
     /**
      * @dev Returns the rate providers configured for each token (in the same order as registered).
      */
     function getRateProviders() public view virtual override returns (IRateProvider[] memory) {
         IRateProvider[] memory providers = new IRateProvider[](_getTotalTokens());
 
-        providers[0] = _rateProvider0;
-        providers[1] = _rateProvider1;
+        providers[0] = _getRateProvider0();
+        providers[1] = _getRateProvider1();
 
         return providers;
+    }
+
+    // Oracle interface
+
+    /**
+     * @dev Balancer Governance can always enable the Oracle, even if it was originally not enabled. This allows for
+     * Pools that unexpectedly drive much more volume and liquidity than expected to serve as Price Oracles.
+     *
+     * Note that the Oracle can only be enabled - it can never be disabled.
+     */
+    function enableOracle() external whenNotPaused authenticate {
+        _setOracleEnabled(true);
+
+        // Cache log invariant and supply only if the pool was initialized
+        if (totalSupply() > 0) {
+            _cacheInvariantAndSupply();
+        }
+    }
+
+    /**
+     * @dev Getter for all oracle-related data.
+     */
+    function getOracleMiscData()
+        external
+        view
+        returns (
+            int256 logInvariant,
+            int256 logTotalSupply,
+            uint256 oracleSampleCreationTimestamp,
+            uint256 oracleIndex,
+            bool oracleEnabled
+        )
+    {
+        bytes32 miscData = _getMiscData();
+        logInvariant = miscData.logInvariant();
+        logTotalSupply = miscData.logTotalSupply();
+        oracleSampleCreationTimestamp = miscData.oracleSampleCreationTimestamp();
+        oracleIndex = miscData.oracleIndex();
+        oracleEnabled = miscData.oracleEnabled();
     }
 
     // Swap
@@ -306,41 +334,7 @@ contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
             );
     }
 
-    // Oracle
-
-    function getOracleMiscData()
-        external
-        view
-        returns (
-            int256 logInvariant,
-            int256 logTotalSupply,
-            uint256 oracleSampleCreationTimestamp,
-            uint256 oracleIndex,
-            bool oracleEnabled
-        )
-    {
-        bytes32 miscData = _getMiscData();
-        logInvariant = miscData.logInvariant();
-        logTotalSupply = miscData.logTotalSupply();
-        oracleSampleCreationTimestamp = miscData.oracleSampleCreationTimestamp();
-        oracleIndex = miscData.oracleIndex();
-        oracleEnabled = miscData.oracleEnabled();
-    }
-
-    /**
-     * @dev Balancer Governance can always enable the Oracle, even if it was originally not enabled. This allows for
-     * Pools that unexpectedly drive much more volume and liquidity than expected to serve as Price Oracles.
-     *
-     * Note that the Oracle can only be enabled - it can never be disabled.
-     */
-    function enableOracle() external whenNotPaused authenticate {
-        _setOracleEnabled(true);
-
-        // Cache log invariant and supply only if the pool was initialized
-        if (totalSupply() > 0) {
-            _cacheInvariantAndSupply();
-        }
-    }
+    // Oracle internal
 
     function _setOracleEnabled(bool enabled) internal {
         _setMiscData(_getMiscData().setOracleEnabled(enabled));
@@ -416,7 +410,7 @@ contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
      * Note that it may update the price rate cache if necessary.
      */
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        uint256 baseScalingFactor = _isToken0(token) ? _scalingFactor0 : _scalingFactor1;
+        uint256 baseScalingFactor = _isToken0(token) ? _getScalingFactor0() : _getScalingFactor1();
         return baseScalingFactor.mulDown(getTokenRate(token));
     }
 
@@ -424,18 +418,40 @@ contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
      * @dev Overrides scaling factor getter to introduce the tokens' price rate.
      * Note that it may update the price rate cache if necessary.
      */
-    function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
-        scalingFactors = new uint256[](2);
+    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
+        uint256[] memory scalingFactors = new uint256[](2);
 
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
         // Given there is no generic direction for this rounding, it simply follows the same strategy as the BasePool.
         //scalingFactors = super._scalingFactors();
-        scalingFactors[0] = _scalingFactor0.mulDown(getTokenRate(_token0));
-        scalingFactors[1] = _scalingFactor1.mulDown(getTokenRate(_token1));
+        scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_getToken0()));
+        scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_getToken1()));
+
+        return scalingFactors;
     }
 
     function _isToken0(IERC20 token) internal view override returns (bool) {
-        return token == _token0;
+        return token == _getToken0();
+    }
+
+    function _getToken0() private view returns (IERC20) {
+        return _token0;
+    }
+
+    function _getToken1() private view returns (IERC20) {
+        return _token1;
+    }
+
+    function _getMaxTokens() internal pure override returns (uint256) {
+        return 2;
+    }
+
+    function _getScalingFactor0() private view returns (uint256) {
+        return _scalingFactor0;
+    }
+
+    function _getScalingFactor1() private view returns (uint256) {
+        return _scalingFactor1;
     }
 
     function _getRateProvider0() private view returns (IRateProvider) {

@@ -129,10 +129,12 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
     joinUserData = WeightedPoolEncoder.joinInit(tokens.map(() => initialPoolBalance));
   } else if (poolName == 'StablePool') {
     const amplificationParameter = bn(50);
+    const rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
+    const durations = Array(tokens.length).fill(0);
 
     pool = await deployPoolFromFactory(vault, poolName, {
       from: creator,
-      parameters: [tokens.addresses, amplificationParameter, swapFeePercentage],
+      parameters: [tokens.addresses, rateProviders, durations, amplificationParameter, swapFeePercentage],
     });
 
     joinUserData = StablePoolEncoder.joinInit(tokens.map(() => initialPoolBalance));
