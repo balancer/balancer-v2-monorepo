@@ -17,8 +17,8 @@ pragma experimental ABIEncoderV2;
 
 import "./relayer/BaseRelayerLibrary.sol";
 
-import "./relayer/AaveWrapping.sol";
-import "./relayer/LidoWrapping.sol";
+import "./wrapping/AaveWrapping.sol";
+import "./wrapping/LidoWrapping.sol";
 import "./relayer/VaultActions.sol";
 import "./relayer/VaultPermit.sol";
 
