@@ -52,6 +52,8 @@ abstract contract UnbuttonWrapping is IBaseRelayerLibrary {
 
         address underlyingToken = IButtonWrapper(wrapperToken).underlying();
 
+        // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
+        // to be sourced from outside the relayer, we must first them pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
             _pullToken(sender, IERC20(underlyingToken), uAmount);
@@ -81,6 +83,8 @@ abstract contract UnbuttonWrapping is IBaseRelayerLibrary {
             amount = _getChainedReferenceValue(amount);
         }
 
+        // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
+        // to be sourced from outside the relayer, we must first them pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
             _pullToken(sender, IERC20(wrapperToken), amount);
