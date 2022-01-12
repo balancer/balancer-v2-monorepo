@@ -16,7 +16,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { setup, tokenInitialBalance, rewardsDuration, rewardsVestingTime } from './MultiDistributorSharedSetup';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { MultiDistributor } from './helpers/MultiDistributor';
+import { MultiDistributor } from '@balancer-labs/v2-helpers/src/models/distributor/MultiDistributor';
 
 describe('Reinvestor', () => {
   let admin: SignerWithAddress, lp: SignerWithAddress, mockAssetManager: SignerWithAddress;
@@ -119,7 +119,7 @@ describe('Reinvestor', () => {
         ).wait();
 
         const deltas = [bn(0), bn(0)];
-        deltas[assets.indexOf(rewardToken.address)] = bn('999999999999999498');
+        deltas[assets.indexOf(rewardToken.address)] = bn('999999999999999898');
 
         expectEvent.inIndirectReceipt(receipt, vault.interface, 'PoolBalanceChanged', {
           poolId: destinationPoolId,
@@ -137,7 +137,7 @@ describe('Reinvestor', () => {
 
         await stakingContract.claimWithCallback(id, lp, callbackContract, calldata, { from: lp });
         const bptBalanceAfter = await destinationPool.balanceOf(lp.address);
-        expect(bptBalanceAfter.sub(bptBalanceBefore)).to.equal(bn('998703239790478024'));
+        expect(bptBalanceAfter.sub(bptBalanceBefore)).to.equal(bn('998703239790478424'));
       });
 
       describe('create', () => {

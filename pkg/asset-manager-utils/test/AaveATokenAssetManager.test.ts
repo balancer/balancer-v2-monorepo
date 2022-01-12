@@ -12,7 +12,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { MultiDistributor } from '@balancer-labs/v2-distributors/test/helpers/MultiDistributor';
+import { MultiDistributor } from '@balancer-labs/v2-helpers/src/models/distributor/MultiDistributor';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 

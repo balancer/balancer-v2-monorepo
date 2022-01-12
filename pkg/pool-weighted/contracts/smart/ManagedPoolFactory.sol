@@ -15,54 +15,59 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-pool-utils/contracts/controllers/ManagedPoolController.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
-import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
+import "./BaseManagedPoolFactory.sol";
 
-import "./ManagedPool.sol";
+/**
+ * @dev Deploys a new `ManagedPool` owned by a ManagedPoolController with the specified rights.
+ * It uses the BaseManagedPoolFactory to deploy the pool.
+ */
+contract ManagedPoolFactory {
+    // The address of the BaseManagedPoolFactory used to deploy the ManagedPool
+    address public immutable baseManagedPoolFactory;
 
-contract ManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(ManagedPool).creationCode) {
-        // solhint-disable-previous-line no-empty-blocks
+    mapping(address => bool) private _isPoolFromFactory;
+
+    event ManagedPoolCreated(address indexed pool, address indexed poolController);
+
+    constructor(address baseFactory) {
+        baseManagedPoolFactory = baseFactory;
     }
 
     /**
      * @dev Deploys a new `ManagedPool`.
      */
     function create(
-        string memory name,
-        string memory symbol,
-        IERC20[] memory tokens,
-        uint256[] memory weights,
-        address[] memory assetManagers,
-        uint256 swapFeePercentage,
-        address owner,
-        bool swapEnabledOnStart,
-        bool mustAllowlistLPs,
-        uint256 managementSwapFeePercentage
-    ) external returns (address) {
-        (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
+        ManagedPool.NewPoolParams memory poolParams,
+        BasePoolController.BasePoolRights calldata basePoolRights,
+        ManagedPoolController.ManagedPoolRights calldata managedPoolRights,
+        uint256 minWeightChangeDuration
+    ) external returns (address pool) {
+        ManagedPoolController poolController = new ManagedPoolController(
+            basePoolRights,
+            managedPoolRights,
+            minWeightChangeDuration,
+            msg.sender
+        );
 
-        return
-            _create(
-                abi.encode(
-                    ManagedPool.NewPoolParams({
-                        vault: getVault(),
-                        name: name,
-                        symbol: symbol,
-                        tokens: tokens,
-                        normalizedWeights: weights,
-                        assetManagers: assetManagers,
-                        swapFeePercentage: swapFeePercentage,
-                        pauseWindowDuration: pauseWindowDuration,
-                        bufferPeriodDuration: bufferPeriodDuration,
-                        owner: owner,
-                        swapEnabledOnStart: swapEnabledOnStart,
-                        mustAllowlistLPs: mustAllowlistLPs,
-                        managementSwapFeePercentage: managementSwapFeePercentage
-                    })
-                )
-            );
+        // Set the owner of the pool to the controller
+        poolParams.owner = address(poolController);
+
+        // Let the base factory deploy the pool
+        pool = BaseManagedPoolFactory(baseManagedPoolFactory).create(poolParams);
+
+        // Finally, initialize the controller
+        poolController.initialize(pool);
+
+        _isPoolFromFactory[pool] = true;
+        emit ManagedPoolCreated(pool, address(poolController));
+    }
+
+    /**
+     * @dev Returns true if `pool` was created by this factory.
+     */
+    function isPoolFromFactory(address pool) external view returns (bool) {
+        return _isPoolFromFactory[pool];
     }
 }

@@ -21,6 +21,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.so
 import "./IDistributorCallback.sol";
 
 interface IMultiDistributor {
+    // paymentRate and globalTokensPerStake are stored as 18 decimal fixed point values
     struct Distribution {
         IERC20 stakingToken;
         IERC20 distributionToken;
@@ -33,6 +34,7 @@ interface IMultiDistributor {
         uint256 globalTokensPerStake;
     }
 
+    // userTokensPerStake is stored as an 18 decimal fixed point value
     struct UserDistribution {
         uint256 unclaimedTokens;
         uint256 userTokensPerStake;
@@ -54,7 +56,7 @@ interface IMultiDistributor {
     );
     event DistributionDurationSet(bytes32 indexed distribution, uint256 duration);
     event DistributionFunded(bytes32 indexed distribution, uint256 amount);
-    event TokensClaimed(address indexed user, address indexed rewardToken, uint256 amount);
+    event DistributionClaimed(bytes32 indexed distribution, address indexed user, uint256 amount);
 
     // Getters
 
@@ -70,17 +72,25 @@ interface IMultiDistributor {
 
     function totalSupply(bytes32 distributionId) external view returns (uint256);
 
-    function lastTimePaymentApplicable(bytes32 distributionId) external view returns (uint256);
-
     function isSubscribed(bytes32 distributionId, address user) external view returns (bool);
 
     function getUserDistribution(bytes32 distributionId, address user) external view returns (UserDistribution memory);
 
-    function unaccountedUnclaimedTokens(bytes32 distributionId, address user) external view returns (uint256);
-
     function getClaimableTokens(bytes32 distributionId, address user) external view returns (uint256);
 
     function balanceOf(IERC20 stakingToken, address user) external view returns (uint256);
+
+    // Additionally, it is possible for an account to perform certain actions such as initiating a distribution or
+    // claiming tokens on behalf of another account. These accounts are said to be 'relayers' for these
+    // functions, and are expected to be smart contracts with sound authentication mechanisms.
+    // For an account to be able to wield this power, two things must occur:
+    //  - The Authorizer must grant the account the permission to be a relayer for the relevant MultiDistributor
+    //    function. This means that Balancer governance must approve each individual contract to act as a relayer
+    //    for the intended functions.
+    //  - Each user must approve the relayer to act on their behalf.
+    // This double protection means users cannot be tricked into approving malicious relayers (because they will not
+    // have been allowed by the Authorizer via governance), nor can malicious relayers approved by a compromised
+    // Authorizer or governance drain user funds, since they would also need to be approved by each individual user.
 
     // Distribution Management
 

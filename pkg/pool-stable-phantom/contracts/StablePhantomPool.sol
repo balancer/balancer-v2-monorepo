@@ -70,7 +70,12 @@ contract StablePhantomPool is StablePool {
     // [   uint64    |  uint64  |      uint128     ]
 
     mapping(IERC20 => bytes32) private _tokenRateCaches;
-    mapping(IERC20 => IRateProvider) private _rateProviders;
+
+    IRateProvider internal immutable _rateProvider0;
+    IRateProvider internal immutable _rateProvider1;
+    IRateProvider internal immutable _rateProvider2;
+    IRateProvider internal immutable _rateProvider3;
+    IRateProvider internal immutable _rateProvider4;
 
     event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
@@ -119,9 +124,10 @@ contract StablePhantomPool is StablePool {
         );
 
         for (uint256 i = 0; i < params.tokens.length; i++) {
-            _rateProviders[params.tokens[i]] = params.rateProviders[i];
-            _updateTokenRateCache(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
-            emit TokenRateProviderSet(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
+            if (params.rateProviders[i] != IRateProvider(0)) {
+                _updateTokenRateCache(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
+                emit TokenRateProviderSet(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
+            }
         }
 
         // The Vault keeps track of all Pool tokens in a specific order: we need to know what the index of BPT is in
@@ -133,6 +139,28 @@ contract StablePhantomPool is StablePool {
             // solhint-disable-previous-line no-empty-blocks
         }
         _bptIndex = bptIndex;
+
+        // The rate providers are stored as immutable state variables, and for simplicity when accessing those we'll
+        // reference them by token index in the full base tokens plus BPT set (i.e. the tokens the Pool registers). Due
+        // to immutable variables requiring an explicit assignment instead of defaulting to an empty value, it is
+        // simpler to create a new memory array with the values we want to assign to the immutable state variables.
+        IRateProvider[] memory tokensAndBPTRateProviders = new IRateProvider[](params.tokens.length + 1);
+        for (uint256 i = 0; i < tokensAndBPTRateProviders.length; ++i) {
+            if (i < bptIndex) {
+                tokensAndBPTRateProviders[i] = params.rateProviders[i];
+            } else if (i == bptIndex) {
+                tokensAndBPTRateProviders[i] = IRateProvider(0);
+            } else {
+                tokensAndBPTRateProviders[i] = params.rateProviders[i - 1];
+            }
+        }
+
+        // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
+        _rateProvider0 = (tokensAndBPTRateProviders.length > 0) ? tokensAndBPTRateProviders[0] : IRateProvider(0);
+        _rateProvider1 = (tokensAndBPTRateProviders.length > 1) ? tokensAndBPTRateProviders[1] : IRateProvider(0);
+        _rateProvider2 = (tokensAndBPTRateProviders.length > 2) ? tokensAndBPTRateProviders[2] : IRateProvider(0);
+        _rateProvider3 = (tokensAndBPTRateProviders.length > 3) ? tokensAndBPTRateProviders[3] : IRateProvider(0);
+        _rateProvider4 = (tokensAndBPTRateProviders.length > 4) ? tokensAndBPTRateProviders[4] : IRateProvider(0);
 
         _updateCachedProtocolSwapFeePercentage(params.vault);
     }
@@ -627,11 +655,23 @@ contract StablePhantomPool is StablePool {
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { providers[0] = _rateProviders[_token0]; } else { return providers; }
-            if (totalTokens > 1) { providers[1] = _rateProviders[_token1]; } else { return providers; }
-            if (totalTokens > 2) { providers[2] = _rateProviders[_token2]; } else { return providers; }
-            if (totalTokens > 3) { providers[3] = _rateProviders[_token3]; } else { return providers; }
-            if (totalTokens > 4) { providers[4] = _rateProviders[_token4]; } else { return providers; }
+            if (totalTokens > 0) { providers[0] = _rateProvider0; } else { return providers; }
+            if (totalTokens > 1) { providers[1] = _rateProvider1; } else { return providers; }
+            if (totalTokens > 2) { providers[2] = _rateProvider2; } else { return providers; }
+            if (totalTokens > 3) { providers[3] = _rateProvider3; } else { return providers; }
+            if (totalTokens > 4) { providers[4] = _rateProvider4; } else { return providers; }
+        }
+    }
+
+    function _getRateProvider(IERC20 token) internal view returns (IRateProvider) {
+        // prettier-ignore
+        if (token == _token0) { return _rateProvider0; }
+        else if (token == _token1) { return _rateProvider1; }
+        else if (token == _token2) { return _rateProvider2; }
+        else if (token == _token3) { return _rateProvider3; }
+        else if (token == _token4) { return _rateProvider4; }
+        else {
+            _revert(Errors.INVALID_TOKEN);
         }
     }
 
@@ -640,6 +680,15 @@ contract StablePhantomPool is StablePool {
      * In case there is no rate provider for the provided token it returns 1e18.
      */
     function getTokenRate(IERC20 token) public view virtual returns (uint256) {
+        // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
+        // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
+        // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read, since we don't need
+        // the provider at all).
+
+        if (token == this) {
+            return FixedPoint.ONE;
+        }
+
         bytes32 tokenRateCache = _tokenRateCaches[token];
         return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getRate();
     }
@@ -658,6 +707,8 @@ contract StablePhantomPool is StablePool {
             uint256 expires
         )
     {
+        _require(_getRateProvider(token) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+
         rate = _tokenRateCaches[token].getRate();
         (duration, expires) = _tokenRateCaches[token].getTimestamps();
     }
@@ -668,7 +719,7 @@ contract StablePhantomPool is StablePool {
      * @param duration Number of seconds until the current token rate is fetched again.
      */
     function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
-        IRateProvider provider = _rateProviders[token];
+        IRateProvider provider = _getRateProvider(token);
         _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
         _updateTokenRateCache(token, provider, duration);
         emit TokenRateProviderSet(token, provider, duration);
@@ -679,7 +730,7 @@ contract StablePhantomPool is StablePool {
      * It will revert if the requested token does not have an associated rate provider.
      */
     function updateTokenRateCache(IERC20 token) external {
-        IRateProvider provider = _rateProviders[token];
+        IRateProvider provider = _getRateProvider(token);
         _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
         uint256 duration = _tokenRateCaches[token].getDuration();
         _updateTokenRateCache(token, provider, duration);
@@ -719,12 +770,19 @@ contract StablePhantomPool is StablePool {
      * @dev Caches the rate for a token if necessary. It ignores the call if there is no provider set.
      */
     function _cacheTokenRateIfNecessary(IERC20 token) internal {
-        IRateProvider provider = _rateProviders[token];
-        if (address(provider) != address(0)) {
+        // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
+        // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
+        // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read in situations where
+        // we might not need the provider if the cache is still valid).
+
+        if (token == this) return;
+
+        bytes32 cache = _tokenRateCaches[token];
+        if (cache != bytes32(0)) {
             (uint256 duration, uint256 expires) = _tokenRateCaches[token].getTimestamps();
             if (block.timestamp > expires) {
                 // solhint-disable-previous-line not-rely-on-time
-                _updateTokenRateCache(token, provider, duration);
+                _updateTokenRateCache(token, _getRateProvider(token), duration);
             }
         }
     }
