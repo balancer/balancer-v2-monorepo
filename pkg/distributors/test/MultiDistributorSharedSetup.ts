@@ -3,11 +3,13 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { MultiDistributor } from '@balancer-labs/v2-helpers/src/models/distributor/MultiDistributor';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 export const tokenInitialBalance = bn(200e18);
 export const rewardTokenInitialBalance = bn(100e18);
@@ -22,8 +24,8 @@ interface SetupContracts {
   rewardTokens: TokenList;
   tokens: TokenList;
   pool: Contract;
-  stakingContract: Contract;
-  vault: Contract;
+  stakingContract: MultiDistributor;
+  vault: Vault;
   authorizer: Contract;
 }
 
@@ -41,9 +43,7 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
   const rewardTokens = await TokenList.create(['DAI'], { sorted: true });
 
   // Deploy Balancer Vault
-  const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
-
-  const vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
+  const vault = await Vault.create({ admin });
 
   const assetManagers = Array(tokens.length).fill(mockAssetManager.address);
 
@@ -65,20 +65,24 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
   const poolId = await pool.getPoolId();
 
   // Deploy staking contract for pool
-  const stakingContract = await deploy('MultiDistributor', {
-    args: [vault.address],
-  });
+  const stakingContract = await MultiDistributor.create(vault);
+
+  // Authorise distributor to use users' vault token approvals
+  const action = await actionId(vault.instance, 'manageUserBalance');
+  await vault.grantRoleGlobally(action, stakingContract);
+
+  await vault.setRelayerApproval(lp, stakingContract, true);
 
   await tokens.mint({ to: lp, amount: tokenInitialBalance });
-  await tokens.approve({ to: vault.address, from: [lp] });
+  await tokens.approve({ to: vault, from: [lp] });
 
   await rewardTokens.mint({ to: mockAssetManager, amount: rewardTokenInitialBalance });
   await rewardTokens.mint({ to: rewarder, amount: rewardTokenInitialBalance });
-  await rewardTokens.approve({ to: stakingContract.address, from: mockAssetManager });
+  await rewardTokens.approve({ to: vault, from: mockAssetManager });
 
   const assets = tokens.addresses;
 
-  await vault.connect(lp).joinPool(poolId, lp.address, lp.address, {
+  await vault.instance.connect(lp).joinPool(poolId, lp.address, lp.address, {
     assets,
     maxAmountsIn: Array(assets.length).fill(MAX_UINT256),
     fromInternalBalance: false,
@@ -95,7 +99,7 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
       pool,
       stakingContract,
       vault,
-      authorizer,
+      authorizer: vault.authorizer as Contract,
     },
     users: {
       admin,
