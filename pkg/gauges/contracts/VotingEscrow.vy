@@ -96,10 +96,6 @@ user_point_history: public(HashMap[address, Point[1000000000]])  # user -> Point
 user_point_epoch: public(HashMap[address, uint256])
 slope_changes: public(HashMap[uint256, int128])  # time -> signed slope change
 
-# Aragon's view methods for compatibility
-controller: public(address)
-transfersEnabled: public(bool)
-
 name: public(String[64])
 symbol: public(String[32])
 version: public(String[32])
@@ -127,8 +123,6 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _versi
     self.token = token_addr
     self.point_history[0].blk = block.number
     self.point_history[0].ts = block.timestamp
-    self.controller = msg.sender
-    self.transfersEnabled = True
 
     _decimals: uint256 = ERC20(token_addr).decimals()
     assert _decimals <= 255
@@ -658,14 +652,3 @@ def totalSupplyAt(_block: uint256) -> uint256:
     # Now dt contains info on how far are we beyond point
 
     return self.supply_at(point, point.ts + dt)
-
-
-# Dummy methods for compatibility with Aragon
-
-@external
-def changeController(_newController: address):
-    """
-    @dev Dummy method required for Aragon compatibility
-    """
-    assert msg.sender == self.controller
-    self.controller = _newController
