@@ -42,7 +42,7 @@ describe('MultiDistributor', () => {
 
     // Authorise distributor to use users' vault token approvals
     const manageUserRole = await actionId(vault.instance, 'manageUserBalance');
-    await vault.grantRoleGlobally(manageUserRole, distributor);
+    await vault.grantPermissionGlobally(manageUserRole, distributor);
 
     const stakeRole = await actionId(distributor.instance, 'stake');
     const stakeUsingVaultRole = await actionId(distributor.instance, 'stakeUsingVault');
@@ -50,11 +50,11 @@ describe('MultiDistributor', () => {
     const fundRole = await actionId(distributor.instance, 'fundDistribution');
     const setDurationRole = await actionId(distributor.instance, 'setDistributionDuration');
 
-    await vault.grantRoleGlobally(stakeRole, relayer);
-    await vault.grantRoleGlobally(stakeUsingVaultRole, relayer);
-    await vault.grantRoleGlobally(unstakeRole, relayer);
-    await vault.grantRoleGlobally(fundRole, relayer);
-    await vault.grantRoleGlobally(setDurationRole, relayer);
+    await vault.grantPermissionGlobally(stakeRole, relayer);
+    await vault.grantPermissionGlobally(stakeUsingVaultRole, relayer);
+    await vault.grantPermissionGlobally(unstakeRole, relayer);
+    await vault.grantPermissionGlobally(fundRole, relayer);
+    await vault.grantPermissionGlobally(setDurationRole, relayer);
   });
 
   sharedBeforeEach('deploy tokens', async () => {
