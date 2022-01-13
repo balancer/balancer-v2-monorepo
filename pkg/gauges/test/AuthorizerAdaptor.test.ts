@@ -51,8 +51,7 @@ describe('AuthorizerAdaptor', () => {
     let expectedResult: string;
 
     sharedBeforeEach('prepare action', async () => {
-      const selector = vault.interface.getSighash('getProtocolFeesCollector');
-      action = await adaptor.getActionId(selector);
+      action = await actionId(adaptor, 'getProtocolFeesCollector', vault.interface);
 
       target = vault.address;
       calldata = vault.interface.encodeFunctionData('getProtocolFeesCollector');
