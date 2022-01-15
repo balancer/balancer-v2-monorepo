@@ -21,6 +21,8 @@ import "../helpers/BalancerErrors.sol";
 
 library FixedPoint {
     uint256 internal constant ONE = 1e18; // 18 decimal places
+    uint256 internal constant TWO = 2 * ONE;
+    uint256 internal constant FOUR = 4 * ONE;
     uint256 internal constant MAX_POW_RELATIVE_ERROR = 10000; // 10^(-14)
 
     // Minimum base for the power function when the exponent is 'free' (larger than ONE).
@@ -103,13 +105,24 @@ library FixedPoint {
      * the true value (that is, the error function expected - actual is always positive).
      */
     function powDown(uint256 x, uint256 y) internal pure returns (uint256) {
-        uint256 raw = LogExpMath.pow(x, y);
-        uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
-
-        if (raw < maxError) {
-            return 0;
+        // Optimize for when y equals 1.0, 2.0 or 4.0, as those are very simple to implement and occur often in 50/50
+        // and 80/20 Weighted Pools
+        if (y == ONE) {
+            return x;
+        } else if (y == TWO) {
+            return mulDown(x, x);
+        } else if (y == FOUR) {
+            uint256 square = mulDown(x, x);
+            return mulDown(square, square);
         } else {
-            return sub(raw, maxError);
+            uint256 raw = LogExpMath.pow(x, y);
+            uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
+
+            if (raw < maxError) {
+                return 0;
+            } else {
+                return sub(raw, maxError);
+            }
         }
     }
 
@@ -118,10 +131,21 @@ library FixedPoint {
      * the true value (that is, the error function expected - actual is always negative).
      */
     function powUp(uint256 x, uint256 y) internal pure returns (uint256) {
-        uint256 raw = LogExpMath.pow(x, y);
-        uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
+        // Optimize for when y equals 1.0, 2.0 or 4.0, as those are very simple to implement and occur often in 50/50
+        // and 80/20 Weighted Pools
+        if (y == ONE) {
+            return x;
+        } else if (y == TWO) {
+            return mulUp(x, x);
+        } else if (y == FOUR) {
+            uint256 square = mulUp(x, x);
+            return mulUp(square, square);
+        } else {
+            uint256 raw = LogExpMath.pow(x, y);
+            uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
 
-        return add(raw, maxError);
+            return add(raw, maxError);
+        }
     }
 
     /**
