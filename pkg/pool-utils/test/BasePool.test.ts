@@ -425,4 +425,19 @@ describe('BasePool', function () {
       }
     });
   });
+
+  describe('pool comments', () => {
+    const COMMENT = 'This is a comment.';
+    let pool: Contract;
+
+    sharedBeforeEach('deploy pool', async () => {
+      pool = await deployBasePool();
+    });
+
+    it('anyone can comment', async () => {
+      const receipt = await (await pool.connect(other).addPoolComment(COMMENT)).wait();
+
+      expectEvent.inReceipt(receipt, 'PoolCommentAdded', { comment: COMMENT });
+    });
+  });
 });

@@ -68,6 +68,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     bytes32 private immutable _poolId;
 
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
+    event PoolCommentAdded(address indexed sender, bytes32 indexed poolId, string comment);
 
     constructor(
         IVault vault,
@@ -109,6 +110,14 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
         // Set immutable state variables - these cannot be read from during construction
         _poolId = poolId;
+    }
+
+    /**
+     * @dev This creates an open architecture by which anyone can publicly post information about a pool,
+     * and apps can selectively use information based on pool, publisher and content.
+     */
+    function addPoolComment(string memory comment) external {
+        emit PoolCommentAdded(msg.sender, getPoolId(), comment);
     }
 
     // Getters / Setters
