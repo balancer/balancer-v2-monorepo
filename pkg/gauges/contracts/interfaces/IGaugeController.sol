@@ -15,5 +15,6 @@
 pragma solidity ^0.7.0;
 
 interface IGaugeController {
+    // solhint-disable-next-line func-name-mixedcase
     function gauge_types(address gauge) external view returns (uint256);
 }

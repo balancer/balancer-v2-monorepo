@@ -15,7 +15,9 @@
 pragma solidity ^0.7.0;
 
 interface ILiquidityGauge {
+    // solhint-disable-next-line func-name-mixedcase
     function integrate_fraction(address user) external view returns (uint256);
 
+    // solhint-disable-next-line func-name-mixedcase
     function user_checkpoint(address user) external returns (bool);
 }
