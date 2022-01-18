@@ -14,13 +14,14 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
 
 import "./interfaces/IBalancerToken.sol";
 import "./interfaces/IGaugeController.sol";
 import "./interfaces/ILiquidityGauge.sol";
 
-contract BalancerMinter {
+contract BalancerMinter is ReentrancyGuard {
     using SafeMath for uint256;
 
     IBalancerToken private immutable _token;
@@ -42,7 +43,7 @@ contract BalancerMinter {
      * @notice Mint everything which belongs to `msg.sender` and send to them
      * @param gauge `LiquidityGauge` address to get mintable amount from
      */
-    function mint(address gauge) external {
+    function mint(address gauge) external nonReentrant {
         _mintFor(gauge, msg.sender);
     }
 
@@ -50,7 +51,7 @@ contract BalancerMinter {
      * @notice Mint everything which belongs to `msg.sender` across multiple gauges
      * @param gauges List of `LiquidityGauge` addresses
      */
-    function mintMany(address[] calldata gauges) external {
+    function mintMany(address[] calldata gauges) external nonReentrant {
         _mintForMany(gauges, msg.sender);
     }
 
@@ -60,7 +61,7 @@ contract BalancerMinter {
      * @param gauge `LiquidityGauge` address to get mintable amount from
      * @param user Address to mint to
      */
-    function mintFor(address gauge, address user) external {
+    function mintFor(address gauge, address user) external nonReentrant {
         require(_allowedMinter[msg.sender][user], "Caller not allowed to mint for user");
         _mintFor(gauge, user);
     }
@@ -71,7 +72,7 @@ contract BalancerMinter {
      * @param gauges List of `LiquidityGauge` addresses
      * @param user Address to mint to
      */
-    function mintManyFor(address[] calldata gauges, address user) external {
+    function mintManyFor(address[] calldata gauges, address user) external nonReentrant {
         require(_allowedMinter[msg.sender][user], "Caller not allowed to mint for user");
         _mintForMany(gauges, user);
     }
@@ -148,7 +149,7 @@ contract BalancerMinter {
      * @dev This function is not recommended as `mintMany()` is more flexible and gas efficient
      * @param gauges List of `LiquidityGauge` addresses
      */
-    function mint_many(address[8] calldata gauges) external {
+    function mint_many(address[8] calldata gauges) external nonReentrant {
         for (uint256 i = 0; i < 8; ++i) {
             if (gauges[i] == address(0)) {
                 break;
@@ -163,7 +164,7 @@ contract BalancerMinter {
      * @param gauge `LiquidityGauge` address to get mintable amount from
      * @param user Address to mint to
      */
-    function mint_for(address gauge, address user) external {
+    function mint_for(address gauge, address user) external nonReentrant {
         if (_allowedMinter[msg.sender][user]) {
             _mintFor(gauge, user);
         }
