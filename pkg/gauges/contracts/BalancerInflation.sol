@@ -76,7 +76,8 @@ contract BalancerInflation is Authentication {
         // On the BalancerGovernanceToken contract the minter role's admin is the DEFAULT_ADMIN_ROLE.
         // No external function exists to change the minter role's admin so we cannot make the list of
         // minters immutable without being the only address with DEFAULT_ADMIN_ROLE.
-        bytes32 minterRole = keccak256("MINTER_ROLE");
+        bytes32 minterRole = _balancerToken.MINTER_ROLE();
+        bytes32 snapshotRole = _balancerToken.SNAPSHOT_ROLE();
         bytes32 adminRole = _balancerToken.DEFAULT_ADMIN_ROLE();
 
         require(_balancerToken.hasRole(adminRole, address(this)), "BalancerInflation is not an admin");
@@ -101,11 +102,24 @@ contract BalancerInflation is Authentication {
             }
         }
 
+        // BalancerGovernanceToken exposes a role-restricted `snapshot` function for performing onchain voting.
+        // We delegate control over this to the Balancer Authorizer by removing this role from all current addresses
+        // and exposing a function which defers to the Authorizer for access control.
+        uint256 numberOfSnapshotters = _balancerToken.getRoleMemberCount(snapshotRole);
+        for (uint256 i = 0; i < numberOfSnapshotters; ++i){
+            address snapshotter = _balancerToken.getRoleMember(snapshotRole, i);
+            _balancerToken.revokeRole(snapshotRole, snapshotter);
+        }
+        // Give this contract snapshotting rights over the BAL token
+        _balancerToken.grantRole(snapshotRole, address(this));
+
         // Perform sanity checks to make sure we're not leaving the roles in a broken state
         require(_balancerToken.hasRole(minterRole, address(this)), "BalancerInflation is not a minter");
         require(_balancerToken.hasRole(adminRole, address(this)), "BalancerInflation has removed it own admin powers");
+        require(_balancerToken.hasRole(snapshotRole, address(this)), "BalancerInflation is not a snapshotter");
         require(_balancerToken.getRoleMemberCount(minterRole) == 1, "Multiple minters exist");
         require(_balancerToken.getRoleMemberCount(adminRole) == 1, "Multiple admins exist");
+        require(_balancerToken.getRoleMemberCount(snapshotRole) == 1, "Multiple snapshotters exist");
 
         // As BAL inflation is now enforced by this contract we can initialise the relevant variables.
         startEpochSupply = _balancerToken.totalSupply();
@@ -124,6 +138,14 @@ contract BalancerInflation is Authentication {
             "Mint amount exceeds remaining available supply"
         );
         _balancerToken.mint(to, amount);
+    }
+
+    /**
+     * @notice Perform a snapshot of BAL token balances
+     * @dev Callable only by addresses defined in the Balancer Authorizer contract
+     */
+    function snapshot() external authenticate {
+        _balancerToken.snapshot();
     }
 
     /**

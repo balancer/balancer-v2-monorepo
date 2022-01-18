@@ -34,4 +34,8 @@ interface IBalancerToken is IERC20 {
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
 
     function MINTER_ROLE() external view returns (bytes32);
+
+    function SNAPSHOT_ROLE() external view returns (bytes32);
+
+    function snapshot() external;
 }
