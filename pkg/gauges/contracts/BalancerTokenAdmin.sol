@@ -93,7 +93,7 @@ contract BalancerTokenAdmin is Authentication {
 
         require(_balancerToken.hasRole(adminRole, address(this)), "BalancerTokenAdmin is not an admin");
 
-        // All other minters must be removed
+        // All other minters must be removed to avoid inflation schedule enforcement being bypassed.
         uint256 numberOfMinters = _balancerToken.getRoleMemberCount(minterRole);
         for (uint256 i = 0; i < numberOfMinters; ++i){
             address minter = _balancerToken.getRoleMember(minterRole, i);
@@ -101,17 +101,6 @@ contract BalancerTokenAdmin is Authentication {
         }
         // Give this contract minting rights over the BAL token
         _balancerToken.grantRole(minterRole, address(this));
-
-        // As we can't prevent admins from adding extra minters in future, in order to secure minting rights
-        // this contract must then be the only admin. We then remove all other admins.
-        // We want to maintain this contract as an admin such that the SNAPSHOT_ROLE can be assigned in future.
-        uint256 numberOfAdmins = _balancerToken.getRoleMemberCount(adminRole);
-        for (uint256 i = 0; i < numberOfAdmins; ++i){
-            address admin = _balancerToken.getRoleMember(adminRole, i);
-            if(admin != address(this)){
-                _balancerToken.revokeRole(adminRole, admin);
-            }
-        }
 
         // BalancerGovernanceToken exposes a role-restricted `snapshot` function for performing onchain voting.
         // We delegate control over this to the Balancer Authorizer by removing this role from all current addresses
@@ -124,12 +113,28 @@ contract BalancerTokenAdmin is Authentication {
         // Give this contract snapshotting rights over the BAL token
         _balancerToken.grantRole(snapshotRole, address(this));
 
+        // BalancerTokenAdmin now is the only holder of MINTER_ROLE and SNAPSHOT_ROLE for BalancerGovernanceToken.
+
+        // We can't prevent any other admins from granting other addresses these roles however.
+        // This undermines the ability for BalancerTokenAdmin to enforce the correct inflation schedule.
+        // The only way to prevent this is for BalancerTokenAdmin to be the only admin. We then remove all other admins.
+        uint256 numberOfAdmins = _balancerToken.getRoleMemberCount(adminRole);
+        for (uint256 i = 0; i < numberOfAdmins; ++i){
+            address admin = _balancerToken.getRoleMember(adminRole, i);
+            if(admin != address(this)){
+                _balancerToken.revokeRole(adminRole, admin);
+            }
+        }
+
+        // BalancerTokenAdmin doesn't actually need admin rights any more and won't grant rights to any more addresses
+        // We then renounce our admin role to ensure that another address won't gain absolute minting powers.
+        _balancerToken.revokeRole(adminRole, address(this));
+
         // Perform sanity checks to make sure we're not leaving the roles in a broken state
+        require(_balancerToken.getRoleMemberCount(adminRole) == 0, "Address exists with admin rights");
         require(_balancerToken.hasRole(minterRole, address(this)), "BalancerTokenAdmin is not a minter");
-        require(_balancerToken.hasRole(adminRole, address(this)), "BalancerTokenAdmin has removed it own admin powers");
         require(_balancerToken.hasRole(snapshotRole, address(this)), "BalancerTokenAdmin is not a snapshotter");
         require(_balancerToken.getRoleMemberCount(minterRole) == 1, "Multiple minters exist");
-        require(_balancerToken.getRoleMemberCount(adminRole) == 1, "Multiple admins exist");
         require(_balancerToken.getRoleMemberCount(snapshotRole) == 1, "Multiple snapshotters exist");
 
         // As BAL inflation is now enforced by this contract we can initialise the relevant variables.
