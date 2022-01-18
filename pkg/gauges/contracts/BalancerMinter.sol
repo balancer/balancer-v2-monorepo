@@ -62,7 +62,7 @@ contract BalancerMinter {
      */
     function mintFor(address gauge, address user) external {
         require(_allowedMinter[msg.sender][user], "Caller not allowed to mint for user");
-        _mintFor(gauge, msg.sender);
+        _mintFor(gauge, user);
     }
 
     /**
@@ -165,7 +165,7 @@ contract BalancerMinter {
      */
     function mint_for(address gauge, address user) external {
         if (_allowedMinter[msg.sender][user]) {
-            _mintFor(gauge, msg.sender);
+            _mintFor(gauge, user);
         }
     }
 
