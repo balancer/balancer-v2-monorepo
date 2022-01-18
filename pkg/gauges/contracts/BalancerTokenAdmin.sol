@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/AccessControl.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
@@ -36,7 +36,7 @@ import "./interfaces/IBalancerToken.sol";
  * it is defined here, we must then wrap the token's minting functionality in order for this to be meaningful.
  */
 contract BalancerTokenAdmin is Authentication {
-    using SafeMath for uint256;
+    using Math for uint256;
 
     // TODO: set these constants appropriately
     uint256 private constant _INITIAL_RATE = 32165468432186542;
@@ -260,40 +260,42 @@ contract BalancerTokenAdmin is Authentication {
         uint256 currentEpochTime = startEpochTime;
         uint256 currentRate = rate;
 
+        // It shouldn't be possible to over/underflow in here but we add checked maths to be safe
+
         // Special case if end is in future (not yet minted) epoch
-        if (end > currentEpochTime + _RATE_REDUCTION_TIME) {
-            currentEpochTime += _RATE_REDUCTION_TIME;
-            currentRate = (currentRate * _RATE_DENOMINATOR) / _RATE_REDUCTION_COEFFICIENT;
+        if (end > currentEpochTime.add(_RATE_REDUCTION_TIME)) {
+            currentEpochTime = currentEpochTime.add(_RATE_REDUCTION_TIME);
+            currentRate = currentRate.mul(_RATE_DENOMINATOR).divDown(_RATE_REDUCTION_COEFFICIENT);
         }
 
-        require(end <= currentEpochTime + _RATE_REDUCTION_TIME, "too far in future");
+        require(end <= currentEpochTime.add(_RATE_REDUCTION_TIME), "too far in future");
 
         uint256 toMint = 0;
         for (uint256 epoch = 0; epoch < 999; ++epoch) {
             if (end >= currentEpochTime) {
                 uint256 currentEnd = end;
-                if (currentEnd > currentEpochTime + _RATE_REDUCTION_TIME) {
-                    currentEnd = currentEpochTime + _RATE_REDUCTION_TIME;
+                if (currentEnd > currentEpochTime.add(_RATE_REDUCTION_TIME)) {
+                    currentEnd = currentEpochTime.add(_RATE_REDUCTION_TIME);
                 }
 
                 uint256 currentStart = start;
-                if (currentStart >= currentEpochTime + _RATE_REDUCTION_TIME) {
+                if (currentStart >= currentEpochTime.add(_RATE_REDUCTION_TIME)) {
                     // We should never get here but what if...
                     break;
                 } else if (currentStart < currentEpochTime) {
                     currentStart = currentEpochTime;
                 }
 
-                toMint += currentRate * (currentEnd - currentStart);
+                toMint = toMint.add(currentRate.mul(currentEnd - currentStart));
 
                 if (start >= currentEpochTime) {
                     break;
                 }
             }
 
-            currentEpochTime -= _RATE_REDUCTION_TIME;
+            currentEpochTime = currentEpochTime.sub(_RATE_REDUCTION_TIME);
             // double-division with rounding made rate a bit less => good
-            currentRate = (currentRate * _RATE_REDUCTION_COEFFICIENT) / _RATE_DENOMINATOR;
+            currentRate = currentRate.mul(_RATE_REDUCTION_COEFFICIENT).divDown(_RATE_DENOMINATOR);
             assert(currentRate <= _INITIAL_RATE);
         }
 
