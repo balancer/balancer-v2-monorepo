@@ -91,11 +91,12 @@ VERSION: constant(String[8]) = "v5.0.0"
 EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
 PERMIT_TYPEHASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 
-CRV: constant(address) = 0xD533a949740bb3306d119CC777fa900bA034cd52
-GAUGE_CONTROLLER: constant(address) = 0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB
-MINTER: constant(address) = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0
-VEBOOST_PROXY: constant(address) = 0x8E0c00ed546602fD9927DF742bbAbF726D5B0d16
-VOTING_ESCROW: constant(address) = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2
+# TODO: Fill out addresses
+CRV: constant(address) = 0x0000000000000000000000000000000000000000
+GAUGE_CONTROLLER: constant(address) = 0x0000000000000000000000000000000000000000
+MINTER: constant(address) = 0x0000000000000000000000000000000000000000
+VEBOOST_PROXY: constant(address) = 0x0000000000000000000000000000000000000000
+VOTING_ESCROW: constant(address) = 0x0000000000000000000000000000000000000000
 
 
 # ERC20
