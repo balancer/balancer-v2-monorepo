@@ -804,7 +804,7 @@ def initialize(_lp_token: address):
     self.factory = msg.sender
 
     symbol: String[32] = ERC20Extended(_lp_token).symbol()
-    name: String[64] = concat("Curve.fi ", symbol, " Gauge Deposit")
+    name: String[64] = concat("Balancer ", symbol, " Gauge Deposit")
 
     self.name = name
     self.symbol = concat(symbol, "-gauge")
