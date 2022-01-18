@@ -24,7 +24,18 @@ import "./interfaces/IBalancerToken.sol";
 
 // solhint-disable not-rely-on-time
 
-contract BalancerInflation is Authentication {
+/**
+ * @title Balancer Token Admin
+ * @notice This contract holds all admin powers over the BAL token passing through calls
+ * while delegating access control to the Balancer Authorizer
+ *
+ * In addition, calls to the mint function must respect the inflation schedule as defined in this contract.
+ * As this contract is the only way to mint BAL tokens this ensures that the maximum allowed supply is enforced
+ * @dev This contract exists as a consequence of the gauge systems needing to know a fixed inflation schedule
+ * in order to know how much BAL a gauge is allowed to mint. As this does not exist within the BAL token itself
+ * it is defined here, we must then wrap the token's minting functionality in order for this to be meaningful.
+ */
+contract BalancerTokenAdmin is Authentication {
     using SafeMath for uint256;
 
     // TODO: set these constants appropriately
@@ -45,7 +56,7 @@ contract BalancerInflation is Authentication {
     uint256 public rate;
 
     constructor(IVault vault, IERC20 token) Authentication(bytes32(uint256(address(this)))) {
-        // BalancerInflation is a singleton, so it simply uses its own address to disambiguate action identifiers
+        // BalancerTokenAdmin is a singleton, so it simply uses its own address to disambiguate action identifiers
         _balancerToken = IBalancerToken(address(token));
         _vault = vault;
     }
@@ -80,7 +91,7 @@ contract BalancerInflation is Authentication {
         bytes32 snapshotRole = _balancerToken.SNAPSHOT_ROLE();
         bytes32 adminRole = _balancerToken.DEFAULT_ADMIN_ROLE();
 
-        require(_balancerToken.hasRole(adminRole, address(this)), "BalancerInflation is not an admin");
+        require(_balancerToken.hasRole(adminRole, address(this)), "BalancerTokenAdmin is not an admin");
 
         // All other minters must be removed
         uint256 numberOfMinters = _balancerToken.getRoleMemberCount(minterRole);
@@ -114,9 +125,9 @@ contract BalancerInflation is Authentication {
         _balancerToken.grantRole(snapshotRole, address(this));
 
         // Perform sanity checks to make sure we're not leaving the roles in a broken state
-        require(_balancerToken.hasRole(minterRole, address(this)), "BalancerInflation is not a minter");
-        require(_balancerToken.hasRole(adminRole, address(this)), "BalancerInflation has removed it own admin powers");
-        require(_balancerToken.hasRole(snapshotRole, address(this)), "BalancerInflation is not a snapshotter");
+        require(_balancerToken.hasRole(minterRole, address(this)), "BalancerTokenAdmin is not a minter");
+        require(_balancerToken.hasRole(adminRole, address(this)), "BalancerTokenAdmin has removed it own admin powers");
+        require(_balancerToken.hasRole(snapshotRole, address(this)), "BalancerTokenAdmin is not a snapshotter");
         require(_balancerToken.getRoleMemberCount(minterRole) == 1, "Multiple minters exist");
         require(_balancerToken.getRoleMemberCount(adminRole) == 1, "Multiple admins exist");
         require(_balancerToken.getRoleMemberCount(snapshotRole) == 1, "Multiple snapshotters exist");
