@@ -14,10 +14,12 @@
 
 pragma solidity ^0.7.0;
 
+// For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
+// naming convention.
+// solhint-disable func-name-mixedcase
+
 interface ILiquidityGauge {
-    // solhint-disable-next-line func-name-mixedcase
     function integrate_fraction(address user) external view returns (uint256);
 
-    // solhint-disable-next-line func-name-mixedcase
     function user_checkpoint(address user) external returns (bool);
 }

@@ -14,7 +14,10 @@
 
 pragma solidity ^0.7.0;
 
+// For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
+// naming convention.
+// solhint-disable func-name-mixedcase
+
 interface IGaugeController {
-    // solhint-disable-next-line func-name-mixedcase
     function gauge_types(address gauge) external view returns (uint256);
 }
