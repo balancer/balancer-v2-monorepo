@@ -69,15 +69,45 @@ contract BalancerInflation is Authentication {
     function activate() external authenticate {
         require(startEpochTime == type(uint256).max, "Already activated");
 
-        // Check that this contract can't be bypassed to mint more BAL in future.
-        bytes32 minterRole = keccak256("MINTER_ROLE");
-        require(_balancerToken.hasRole(minterRole, address(this)), "This contract is not a minter");
-        require(_balancerToken.getRoleMemberCount(minterRole) == 1, "Multiple minters exist");
-        require(
-            _balancerToken.getRoleMemberCount(_balancerToken.getRoleAdmin(minterRole)) == 0,
-            "Admin permissions over minting role not revoked"
-        );
+        // We need to check that this contract can't be bypassed to mint more BAL in future.
+        // If other addresses have minting rights over the BAL token then this inflation schedule
+        // can be bypassed by minting new tokens directly on the BalancerGovernanceToken contract.
 
+        // On the BalancerGovernanceToken contract the minter role's admin is the DEFAULT_ADMIN_ROLE.
+        // No external function exists to change the minter role's admin so we cannot make the list of
+        // minters immutable without being the only address with DEFAULT_ADMIN_ROLE.
+        bytes32 minterRole = keccak256("MINTER_ROLE");
+        bytes32 adminRole = _balancerToken.DEFAULT_ADMIN_ROLE();
+
+        require(_balancerToken.hasRole(adminRole, address(this)), "BalancerInflation is not an admin");
+
+        // All other minters must be removed
+        uint256 numberOfMinters = _balancerToken.getRoleMemberCount(minterRole);
+        for (uint256 i = 0; i < numberOfMinters; ++i){
+            address minter = _balancerToken.getRoleMember(minterRole, i);
+            _balancerToken.revokeRole(minterRole, minter);
+        }
+        // Give this contract minting rights over the BAL token
+        _balancerToken.grantRole(minterRole, address(this));
+
+        // As we can't prevent admins from adding extra minters in future, in order to secure minting rights
+        // this contract must then be the only admin. We then remove all other admins.
+        // We want to maintain this contract as an admin such that the SNAPSHOT_ROLE can be assigned in future.
+        uint256 numberOfAdmins = _balancerToken.getRoleMemberCount(adminRole);
+        for (uint256 i = 0; i < numberOfAdmins; ++i){
+            address admin = _balancerToken.getRoleMember(adminRole, i);
+            if(admin != address(this)){
+                _balancerToken.revokeRole(adminRole, admin);
+            }
+        }
+
+        // Perform sanity checks to make sure we're not leaving the roles in a broken state
+        require(_balancerToken.hasRole(minterRole, address(this)), "BalancerInflation is not a minter");
+        require(_balancerToken.hasRole(adminRole, address(this)), "BalancerInflation has removed it own admin powers");
+        require(_balancerToken.getRoleMemberCount(minterRole) == 1, "Multiple minters exist");
+        require(_balancerToken.getRoleMemberCount(adminRole) == 1, "Multiple admins exist");
+
+        // As BAL inflation is now enforced by this contract we can initialise the relevant variables.
         startEpochSupply = _balancerToken.totalSupply();
         startEpochTime = block.timestamp;
         rate = _INITIAL_RATE;
