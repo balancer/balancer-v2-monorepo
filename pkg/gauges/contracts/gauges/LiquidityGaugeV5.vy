@@ -10,7 +10,7 @@ from vyper.interfaces import ERC20
 implements: ERC20
 
 
-interface CRV20:
+interface TokenAdmin:
     def future_epoch_time_write() -> uint256: nonpayable
     def rate() -> uint256: view
 
@@ -92,7 +92,7 @@ EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string 
 PERMIT_TYPEHASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 
 # TODO: Fill out addresses
-CRV: constant(address) = 0x0000000000000000000000000000000000000000
+BAL_TOKEN_ADMIN: constant(address) = 0x0000000000000000000000000000000000000000
 GAUGE_CONTROLLER: constant(address) = 0x0000000000000000000000000000000000000000
 MINTER: constant(address) = 0x0000000000000000000000000000000000000000
 VEBOOST_PROXY: constant(address) = 0x0000000000000000000000000000000000000000
@@ -169,7 +169,7 @@ def __init__():
 def _checkpoint(addr: address):
     """
     @notice Checkpoint for a user
-    @dev Updates the CRV emissions a user is entitled to receive
+    @dev Updates the BAL emissions a user is entitled to receive
     @param addr User address
     """
     _period: int128 = self.period
@@ -182,8 +182,8 @@ def _checkpoint(addr: address):
     new_rate: uint256 = rate
 
     if prev_future_epoch >= _period_time:
-        new_rate = CRV20(CRV).rate()
-        self.inflation_params = shift(CRV20(CRV).future_epoch_time_write(), 216) + new_rate
+        new_rate = TokenAdmin(BAL_TOKEN_ADMIN).rate()
+        self.inflation_params = shift(TokenAdmin(BAL_TOKEN_ADMIN).future_epoch_time_write(), 216) + new_rate
 
     if self.is_killed:
         # Stop distributing inflation as soon as killed
@@ -300,9 +300,9 @@ def _checkpoint_rewards(_user: address, _total_supply: uint256, _claim: bool, _r
 @internal
 def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
     """
-    @notice Calculate limits which depend on the amount of CRV token per-user.
+    @notice Calculate limits which depend on the amount of BPT token per-user.
             Effectively it calculates working balances to apply amplification
-            of CRV production by CRV
+            of BAL production by BPT
     @param addr User address
     @param l User's amount of liquidity (LP tokens)
     @param L Total amount of liquidity (LP tokens)
@@ -686,7 +686,7 @@ def set_reward_distributor(_reward_token: address, _distributor: address):
 def set_killed(_is_killed: bool):
     """
     @notice Set the killed status for this contract
-    @dev When killed, the gauge always yields a rate of 0 and so cannot mint CRV
+    @dev When killed, the gauge always yields a rate of 0 and so cannot mint BAL
     @param _is_killed Killed status to set
     """
     assert msg.sender == Factory(self.factory).admin()  # dev: only owner
@@ -755,7 +755,7 @@ def integrate_checkpoint() -> uint256:
 @external
 def future_epoch_time() -> uint256:
     """
-    @notice Get the locally stored CRV future epoch start time
+    @notice Get the locally stored BAL future epoch start time
     """
     return shift(self.inflation_params, -216)
 
@@ -764,7 +764,7 @@ def future_epoch_time() -> uint256:
 @external
 def inflation_rate() -> uint256:
     """
-    @notice Get the locally stored CRV inflation rate
+    @notice Get the locally stored BAL inflation rate
     """
     return self.inflation_params % 2 ** 216
 
@@ -814,4 +814,4 @@ def initialize(_lp_token: address):
     )
 
     self.period_timestamp[0] = block.timestamp
-    self.inflation_params = shift(CRV20(CRV).future_epoch_time_write(), 216) + CRV20(CRV).rate()
+    self.inflation_params = shift(TokenAdmin(BAL_TOKEN_ADMIN).future_epoch_time_write(), 216) + TokenAdmin(BAL_TOKEN_ADMIN).rate()
