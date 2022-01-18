@@ -61,14 +61,23 @@ contract BalancerTokenAdmin is Authentication {
         _vault = vault;
     }
 
+    /**
+     * @dev Returns the Balancer token.
+     */
     function getBalancerToken() external view returns (IERC20) {
         return _balancerToken;
     }
 
+    /**
+     * @notice Returns the Balancer Vault.
+     */
     function getVault() public view returns (IVault) {
         return _vault;
     }
 
+    /**
+     * @notice Returns the Balancer Vault's current authorizer.
+     */
     function getAuthorizer() external view returns (IAuthorizer) {
         return _getAuthorizer();
     }
@@ -208,6 +217,9 @@ contract BalancerTokenAdmin is Authentication {
 
     // Internal functions
 
+    /**
+     * @notice Returns the Balancer Vault's current authorizer.
+     */
     function _getAuthorizer() internal view returns (IAuthorizer) {
         return getVault().getAuthorizer();
     }
