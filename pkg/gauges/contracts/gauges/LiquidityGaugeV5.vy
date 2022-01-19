@@ -25,7 +25,7 @@ interface ERC1271:
     def isValidSignature(_hash: bytes32, _signature: Bytes[65]) -> bytes32: view
 
 interface Factory:
-    def admin() -> address: view
+    def getAuthorizerAdaptor() -> address: view
 
 interface Minter:
     def minted(user: address, gauge: address) -> uint256: view
@@ -52,12 +52,6 @@ event UpdateLiquidityLimit:
     original_supply: uint256
     working_balance: uint256
     working_supply: uint256
-
-event CommitOwnership:
-    admin: address
-
-event ApplyOwnership:
-    admin: address
 
 event Transfer:
     _from: indexed(address)
@@ -655,7 +649,7 @@ def add_reward(_reward_token: address, _distributor: address):
     @param _reward_token The token to add as an additional reward
     @param _distributor Address permitted to fund this contract with the reward token
     """
-    assert msg.sender == Factory(self.factory).admin()  # dev: only owner
+    assert msg.sender == Factory(self.factory).getAuthorizerAdaptor()  # dev: only owner
 
     reward_count: uint256 = self.reward_count
     assert reward_count < MAX_REWARDS
@@ -675,7 +669,7 @@ def set_reward_distributor(_reward_token: address, _distributor: address):
     """
     current_distributor: address = self.reward_data[_reward_token].distributor
 
-    assert msg.sender == current_distributor or msg.sender == Factory(self.factory).admin()
+    assert msg.sender == current_distributor or msg.sender == Factory(self.factory).getAuthorizerAdaptor()
     assert current_distributor != ZERO_ADDRESS
     assert _distributor != ZERO_ADDRESS
 
@@ -689,7 +683,7 @@ def set_killed(_is_killed: bool):
     @dev When killed, the gauge always yields a rate of 0 and so cannot mint BAL
     @param _is_killed Killed status to set
     """
-    assert msg.sender == Factory(self.factory).admin()  # dev: only owner
+    assert msg.sender == Factory(self.factory).getAuthorizerAdaptor()  # dev: only owner
 
     self.is_killed = _is_killed
 
