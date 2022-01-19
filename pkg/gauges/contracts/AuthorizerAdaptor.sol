@@ -26,6 +26,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
  * and the Balancer Authorizer such that the Authorizer may grant/revoke admin powers to unlimited addresses. 
  *
  * The permissions the Authorizer can grant are granular such they may be global or specific to a particular contract
+ *
  * @dev When calculating the actionId to call a function on a target contract, it must be calculated as if it were 
  * to be called on this adaptor. This can be done by passing the function selector to the `getActionId` function.
  */
@@ -55,10 +56,6 @@ contract AuthorizerAdaptor is IAuthentication {
         return getVault().getAuthorizer();
     }
 
-    /**
-     * @dev As all contracts managed by this adaptor share the same action ID disambiguator
-     *      it's then important to be more granular over `where` an `account` is authorized to act.
-     */
     function _canPerform(bytes32 actionId, address account, address where) internal view returns (bool) {
         return getAuthorizer().canPerform(actionId, account, where);
     }
@@ -66,6 +63,9 @@ contract AuthorizerAdaptor is IAuthentication {
     /**
      * @notice Returns the action ID associated with calling a given function through this adaptor
      * @dev The contracts managed by this adaptor do not have action ID disambiguators we use the adaptor's globally
+     * This means that contracts with the same function selector will have a matching action ID: 
+     * if granularity is required then permissions must not be granted globally in the Authorizer.
+     *
      * @param selector - The 4 byte selector of the function to be called using `performAction`
      * @return The associated action ID
      */
@@ -96,6 +96,7 @@ contract AuthorizerAdaptor is IAuthentication {
      
         _require(_canPerform(getActionId(selector), msg.sender, target), Errors.SENDER_NOT_ALLOWED);
 
+        // We don't check that `target` is a contract so all calls to an EOA will succeed.
         return target.functionCall(data);
     }
 }
