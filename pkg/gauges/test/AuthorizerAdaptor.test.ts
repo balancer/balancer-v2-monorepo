@@ -88,7 +88,7 @@ describe('AuthorizerAdaptor', () => {
       });
 
       it('reverts', async () => {
-        await expect(adaptor.connect(other).performAction(target, calldata)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(adaptor.connect(grantee).performAction(target, calldata)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
 
