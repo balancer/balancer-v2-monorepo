@@ -71,6 +71,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     bytes32 private immutable _poolId;
 
+    // Note that this value is immutable in the Vault, so we can make it immutable here and save gas
     IProtocolFeesCollector private immutable _protocolFeesCollector;
 
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
@@ -115,7 +116,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
         // Set immutable state variables - these cannot be read from during construction
         _poolId = poolId;
-        _protocolFeesCollector = vault.getProtocolFeesCollector(); // Note that this value is immutable in the Vault
+        _protocolFeesCollector = vault.getProtocolFeesCollector();
     }
 
     // Getters / Setters
