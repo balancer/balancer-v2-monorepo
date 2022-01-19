@@ -27,14 +27,6 @@ contract WeightedPool is BaseWeightedPool {
 
     uint256 private immutable _totalTokens;
 
-    // Due protocol swap fee amounts are computed by measuring the growth of the invariant after a join or exit event
-    // and before the next one - the invariant's growth is due exclusively to swap fees. This avoids spending gas
-    // computing and tracking protocol fees on each individual swap.
-    // Note that this is only true because the weights are immutable: other Pools derived from BaseWeightedPool
-    // that feature dynamic weights will see their invariant change because of this, and must therefore rely on a
-    // different mechanism to track due protocol fees.
-    uint256 private _lastInvariant;
-
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;
     IERC20 internal immutable _token2;
@@ -80,6 +72,10 @@ contract WeightedPool is BaseWeightedPool {
     uint256 internal immutable _scalingFactor17;
     uint256 internal immutable _scalingFactor18;
     uint256 internal immutable _scalingFactor19;
+
+    // The protocol fees will always be charged using the token associated with the max weight in the pool.
+    // Since these Pools will register tokens only once, we can assume this index will be constant.
+    uint256 internal immutable _maxWeightTokenIndex;
 
     uint256 internal immutable _normalizedWeight0;
     uint256 internal immutable _normalizedWeight1;
@@ -131,16 +127,24 @@ contract WeightedPool is BaseWeightedPool {
 
         _totalTokens = numTokens;
 
-        // Ensure each normalized weight is above the minimum
+        // Ensure  each normalized weight is above them minimum and find the token index of the maximum weight
         uint256 normalizedSum = 0;
+        uint256 maxWeightTokenIndex = 0;
+        uint256 maxNormalizedWeight = 0;
         for (uint8 i = 0; i < numTokens; i++) {
             uint256 normalizedWeight = normalizedWeights[i];
             _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             normalizedSum = normalizedSum.add(normalizedWeight);
+            if (normalizedWeight > maxNormalizedWeight) {
+                maxWeightTokenIndex = i;
+                maxNormalizedWeight = normalizedWeight;
+            }
         }
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
+
+        _maxWeightTokenIndex = maxWeightTokenIndex;
 
         _normalizedWeight0 = normalizedWeights[0];
         _normalizedWeight1 = normalizedWeights[1];
@@ -265,6 +269,16 @@ contract WeightedPool is BaseWeightedPool {
         return normalizedWeights;
     }
 
+    function _getNormalizedWeightsAndMaxWeightIndex()
+        internal
+        view
+        virtual
+        override
+        returns (uint256[] memory, uint256)
+    {
+        return (_getNormalizedWeights(), _maxWeightTokenIndex);
+    }
+
     function _getMaxTokens() internal pure virtual override returns (uint256) {
         return _MAX_TOKENS;
     }
@@ -333,56 +347,5 @@ contract WeightedPool is BaseWeightedPool {
         }
 
         return scalingFactors;
-    }
-
-    function getLastInvariant() public view virtual returns (uint256) {
-        return _lastInvariant;
-    }
-
-    function _getDueProtocolFeesBeforeJoinExit(
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256 protocolSwapFeePercentage
-    ) internal view override returns (uint256) {
-        // Early return if the protocol swap fee percentage is zero, saving gas.
-        if (protocolSwapFeePercentage == 0) {
-            return 0;
-        }
-
-        uint256 currentInvariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
-        return
-            WeightedMath._calcDueProtocolFeeBPTAmount(
-                _lastInvariant,
-                currentInvariant,
-                totalSupply(),
-                protocolSwapFeePercentage
-            );
-    }
-
-    function _afterJoin(
-        uint256[] memory balances,
-        uint256[] memory amountsIn,
-        uint256[] memory normalizedWeights
-    ) internal override {
-        // Update the invariant with the balances the Pool will have after the join, in order to compute the
-        // protocol swap fee amounts due in future joins and exits.
-
-        for (uint256 i = 0; i < balances.length; ++i) {
-            balances[i] = balances[i].add(amountsIn[i]);
-        }
-
-        _lastInvariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
-    }
-
-    function _afterExit(
-        uint256[] memory balances,
-        uint256[] memory amountsOut,
-        uint256[] memory normalizedWeights
-    ) internal override {
-        for (uint256 i = 0; i < balances.length; ++i) {
-            balances[i] = balances[i].sub(amountsOut[i]);
-        }
-
-        _lastInvariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
 }

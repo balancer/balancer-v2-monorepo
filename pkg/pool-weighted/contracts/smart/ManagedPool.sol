@@ -20,7 +20,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
-import "../LegacyBaseWeightedPool.sol";
+import "../BaseWeightedPool.sol";
 import "../WeightedPoolUserData.sol";
 import "./WeightCompression.sol";
 
@@ -47,7 +47,7 @@ import "./WeightCompression.sol";
  * token counts, rebalancing through token changes, gradual weight or fee updates, circuit breakers for
  * IL-protection, and more.
  */
-contract ManagedPool is LegacyBaseWeightedPool, ReentrancyGuard {
+contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     // solhint-disable not-rely-on-time
 
     using FixedPoint for uint256;
@@ -131,7 +131,7 @@ contract ManagedPool is LegacyBaseWeightedPool, ReentrancyGuard {
     }
 
     constructor(NewPoolParams memory params)
-        LegacyBaseWeightedPool(
+        BaseWeightedPool(
             params.vault,
             params.name,
             params.symbol,

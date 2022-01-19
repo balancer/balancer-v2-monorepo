@@ -19,13 +19,13 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
-import "../LegacyBaseWeightedPool.sol";
+import "../BaseWeightedPool.sol";
 import "./WeightCompression.sol";
 
 /**
  * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping
  */
-contract LiquidityBootstrappingPool is LegacyBaseWeightedPool, ReentrancyGuard {
+contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
 
@@ -93,7 +93,7 @@ contract LiquidityBootstrappingPool is LegacyBaseWeightedPool, ReentrancyGuard {
         address owner,
         bool swapEnabledOnStart
     )
-        LegacyBaseWeightedPool(
+        BaseWeightedPool(
             vault,
             name,
             symbol,
