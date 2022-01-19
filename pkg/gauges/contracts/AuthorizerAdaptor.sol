@@ -16,6 +16,8 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IAuthorizer.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
@@ -30,7 +32,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
  * @dev When calculating the actionId to call a function on a target contract, it must be calculated as if it were 
  * to be called on this adaptor. This can be done by passing the function selector to the `getActionId` function.
  */
-contract AuthorizerAdaptor is IAuthentication {
+contract AuthorizerAdaptor is IAuthentication, ReentrancyGuard {
     using Address for address;
 
     bytes32 private immutable _actionIdDisambiguator;
@@ -82,7 +84,7 @@ contract AuthorizerAdaptor is IAuthentication {
      * @param data - Calldata to be sent to the target contract
      * @return The bytes encoded return value from the performed function call
      */
-    function performAction(address target, bytes calldata data) external returns (bytes memory) {
+    function performAction(address target, bytes calldata data) external payable nonReentrant returns (bytes memory) {
         // We want to check that the caller is authorized to call the function on the target rather than this function.
         // We must then pull the function selector from `data` rather than `msg.sig`.
         bytes4 selector;
@@ -97,6 +99,6 @@ contract AuthorizerAdaptor is IAuthentication {
         _require(_canPerform(getActionId(selector), msg.sender, target), Errors.SENDER_NOT_ALLOWED);
 
         // We don't check that `target` is a contract so all calls to an EOA will succeed.
-        return target.functionCall(data);
+        return target.functionCallWithValue(data, msg.value);
     }
 }
