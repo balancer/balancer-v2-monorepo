@@ -51,11 +51,7 @@ contract AuthorizerAdaptor is IAuthentication {
     /**
      * @notice Returns the Authorizer
      */
-    function getAuthorizer() external view returns (IAuthorizer) {
-        return _getAuthorizer();
-    }
-
-    function _getAuthorizer() internal view returns (IAuthorizer) {
+    function getAuthorizer() public view returns (IAuthorizer) {
         return getVault().getAuthorizer();
     }
 
@@ -64,7 +60,7 @@ contract AuthorizerAdaptor is IAuthentication {
      *      it's then important to be more granular over `where` an `account` is authorized to act.
      */
     function _canPerform(bytes32 actionId, address account, address where) internal view returns (bool) {
-        return _getAuthorizer().canPerform(actionId, account, where);
+        return getAuthorizer().canPerform(actionId, account, where);
     }
 
     /**
