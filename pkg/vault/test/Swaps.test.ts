@@ -179,7 +179,7 @@ describe('Swaps', () => {
 
           const traderBalanceBefore = await ethers.provider.getBalance(trader.address);
 
-          const gasPrice = 1;
+          const gasPrice = await ethers.provider.getGasPrice();
           const receipt: ContractReceipt = await (
             await expectBalanceChange(
               () =>
@@ -271,7 +271,7 @@ describe('Swaps', () => {
 
           const previousBalance = await ethers.provider.getBalance(sender.address);
 
-          const gasPrice = 1;
+          const gasPrice = await ethers.provider.getGasPrice();
           const receipt: ContractReceipt = await (
             await vault.connect(sender).batchSwap(SwapKind.GivenIn, swaps, tokenAddresses, funds, limits, deadline, {
               value: bn(1e18).add(42), // Only 1e18 is required
@@ -307,7 +307,7 @@ describe('Swaps', () => {
 
           const relayerBalanceBefore = await ethers.provider.getBalance(other.address);
 
-          const gasPrice = 1;
+          const gasPrice = await ethers.provider.getGasPrice();
           const receipt: ContractReceipt = await (
             await vault.connect(other).batchSwap(SwapKind.GivenIn, swaps, tokenAddresses, funds, limits, deadline, {
               value: bn(1e18).add(42), // Only 1e18 is required
@@ -334,7 +334,7 @@ describe('Swaps', () => {
 
           const relayerBalanceBefore = await ethers.provider.getBalance(other.address);
 
-          const gasPrice = 1;
+          const gasPrice = await ethers.provider.getGasPrice();
           const receipt: ContractReceipt = await (
             await vault.connect(other).batchSwap(SwapKind.GivenIn, swaps, tokenAddresses, funds, limits, deadline, {
               value: 42,
