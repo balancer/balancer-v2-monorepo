@@ -75,7 +75,7 @@ describe('Internal Balance', () => {
         expect(currentRecipientBalance[0]).to.be.equal(previousRecipientBalance[0].add(amount));
       });
 
-      it.only('returns ETH if any is sent', async () => {
+      it('returns ETH if any is sent', async () => {
         const senderAddress = relayed ? relayer.address : sender.address;
         const previousBalance = await ethers.provider.getBalance(senderAddress);
 
