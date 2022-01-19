@@ -11,6 +11,7 @@ import overrideQueryFunctions from '@balancer-labs/v2-helpers/plugins/overrideQu
 task(TASK_COMPILE).setAction(overrideQueryFunctions);
 
 export default {
+  networks: hardhatBaseConfig.networks,
   solidity: {
     compilers: hardhatBaseConfig.compilers,
     overrides: { ...hardhatBaseConfig.overrides(name) },

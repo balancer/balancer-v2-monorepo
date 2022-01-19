@@ -39,6 +39,21 @@ type SolcConfig = {
   };
 };
 
+type NetworkConfig = {
+  allowUnlimitedContractSize?: boolean;
+  initialBaseFeePerGas?: number;
+};
+
+type NetworksConfig = {
+  hardhat: NetworkConfig;
+};
+
+export const networks: NetworksConfig = {
+  hardhat: {
+    initialBaseFeePerGas: 0,
+  },
+};
+
 export const compilers: [SolcConfig] = [
   {
     version: '0.7.1',
