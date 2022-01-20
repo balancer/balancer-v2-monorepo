@@ -455,7 +455,12 @@ describe('BasePool', function () {
     it('anyone can comment', async () => {
       const receipt = await (await pool.connect(other).addPoolComment(COMMENT)).wait();
 
-      expectEvent.inReceipt(receipt, 'PoolCommentAdded', { comment: COMMENT });
+      expectEvent.inReceipt(receipt, 'PoolCommentAdded', { 
+        sender: other.address, 
+        poolId: await pool.getPoolId(), 
+        comment: COMMENT 
+      });
+
     });
   });
 });
