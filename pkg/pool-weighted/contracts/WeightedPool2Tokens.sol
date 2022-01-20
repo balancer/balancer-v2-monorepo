@@ -16,26 +16,16 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/LogCompression.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
 
 import "./BaseWeightedPool.sol";
 import "./WeightedOracleMath.sol";
+import "./WeightedPool2TokensMiscData.sol";
 
 contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracleMath {
     using FixedPoint for uint256;
-    using WordCodec for bytes32;
-
-    // Use BasePool's _miscData storage
-    // [ reserved  | oracle enabled | oracle index | oracle sample initial timestamp | log supply | log invariant ]
-    // [  uint64   |      bool      |    uint10    |              uint31             |    int22   |     int22     ]
-    // |MSB                                                                                                    LSB|
-    uint256 internal constant _LOG_INVARIANT_OFFSET = 0;
-    uint256 internal constant _LOG_TOTAL_SUPPLY_OFFSET = 22;
-    uint256 internal constant _ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET = 44;
-    uint256 internal constant _ORACLE_INDEX_OFFSET = 75;
-    uint256 internal constant _ORACLE_ENABLED_OFFSET = 85;
+    using WeightedPool2TokensMiscData for bytes32;
 
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;
@@ -120,15 +110,12 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
         )
     {
         bytes32 miscData = _getMiscData();
+        logInvariant = miscData.logInvariant();
+        logTotalSupply = miscData.logTotalSupply();
+        oracleSampleCreationTimestamp = miscData.oracleSampleCreationTimestamp();
+        oracleIndex = miscData.oracleIndex();
+        oracleEnabled = miscData.oracleEnabled();
 
-        logInvariant = miscData.decodeInt22(_LOG_INVARIANT_OFFSET);
-        logTotalSupply = miscData.decodeInt22(_LOG_TOTAL_SUPPLY_OFFSET);
-        oracleSampleCreationTimestamp = miscData.decodeUint31(_ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET);
-        oracleIndex = miscData.decodeUint10(_ORACLE_INDEX_OFFSET);
-        oracleEnabled = miscData.decodeBool(_ORACLE_ENABLED_OFFSET);
-
-        // BasePool's miscData is only the least significant 192 bits - the swap fee percentage is stored
-        // in the "reserved" portion of that bytes32 value, so we need to retrieve it with a separate call
         swapFeePercentage = getSwapFeePercentage();
     }
 
@@ -148,7 +135,7 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
     }
 
     function _setOracleEnabled(bool enabled) internal {
-        _setMiscData(_getMiscData().insertBool(enabled, _ORACLE_ENABLED_OFFSET));
+        _setMiscData(_getMiscData().setOracleEnabled(enabled));
         emit OracleEnabledChanged(enabled);
     }
 
@@ -418,7 +405,7 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
     ) internal {
         bytes32 miscData = _getMiscData();
 
-        if (miscData.decodeBool(_ORACLE_ENABLED_OFFSET) && block.number > lastChangeBlock) {
+        if (miscData.oracleEnabled() && block.number > lastChangeBlock) {
             int256 logSpotPrice = WeightedOracleMath._calcLogSpotPrice(
                 _normalizedWeight0,
                 balanceToken0,
@@ -429,26 +416,24 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
             int256 logBPTPrice = WeightedOracleMath._calcLogBPTPrice(
                 _normalizedWeight0,
                 balanceToken0,
-                miscData.decodeInt22(_LOG_TOTAL_SUPPLY_OFFSET)
+                miscData.logTotalSupply()
             );
 
-            uint256 oracleCurrentIndex = miscData.decodeUint10(_ORACLE_INDEX_OFFSET);
+            uint256 oracleCurrentIndex = miscData.oracleIndex();
 
             uint256 oracleUpdatedIndex = _processPriceData(
-                miscData.decodeUint31(_ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET),
+                miscData.oracleSampleCreationTimestamp(),
                 oracleCurrentIndex,
                 logSpotPrice,
                 logBPTPrice,
-                miscData.decodeInt22(_LOG_INVARIANT_OFFSET)
+                miscData.logInvariant()
             );
 
             if (oracleCurrentIndex != oracleUpdatedIndex) {
-                // solhint-disable not-rely-on-time
                 _setMiscData(
-                    miscData.insertUint10(oracleUpdatedIndex, _ORACLE_INDEX_OFFSET).insertUint31(
-                        block.timestamp,
-                        _ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET
-                    )
+                    // Oracle data is time-based: users should be careful to pick appropiate time windows
+                    // solhint-disable-next-line not-rely-on-time
+                    miscData.setOracleIndex(oracleUpdatedIndex).setOracleSampleCreationTimestamp(block.timestamp)
                 );
             }
         }
@@ -466,18 +451,17 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
     function _cacheInvariantAndSupply() internal {
         bytes32 miscData = _getMiscData();
 
-        if (miscData.decodeBool(_ORACLE_ENABLED_OFFSET)) {
+        if (miscData.oracleEnabled()) {
             _setMiscData(
-                miscData.insertInt22(LogCompression.toLowResLog(getLastInvariant()), _LOG_INVARIANT_OFFSET).insertInt22(
-                    LogCompression.toLowResLog(totalSupply()),
-                    _LOG_TOTAL_SUPPLY_OFFSET
+                miscData.setLogInvariant(LogCompression.toLowResLog(getLastInvariant())).setLogTotalSupply(
+                    LogCompression.toLowResLog(totalSupply())
                 )
             );
         }
     }
 
     function _getOracleIndex() internal view override returns (uint256) {
-        return _getMiscData().decodeUint10(_ORACLE_INDEX_OFFSET);
+        return _getMiscData().oracleIndex();
     }
 
     // Scaling

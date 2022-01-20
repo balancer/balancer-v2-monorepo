@@ -19,7 +19,7 @@ import "./MockWeightedOracleMath.sol";
 import "../WeightedPool2Tokens.sol";
 
 contract MockWeightedPool2Tokens is WeightedPool2Tokens, MockWeightedOracleMath {
-    using WordCodec for bytes32;
+    using WeightedPool2TokensMiscData for bytes32;
 
     // MiscData is now just the least significant 192 bits, and no longer contains the swapFeePercentage
     struct MiscData {
@@ -37,7 +37,7 @@ contract MockWeightedPool2Tokens is WeightedPool2Tokens, MockWeightedOracleMath 
     }
 
     function mockOracleIndex(uint256 index) external {
-        _setMiscData(_getMiscData().insertUint10(index, _ORACLE_INDEX_OFFSET));
+        _setMiscData(_getMiscData().setOracleIndex(index));
     }
 
     function mockMiscData(MiscData memory miscData) external {
@@ -48,10 +48,12 @@ contract MockWeightedPool2Tokens is WeightedPool2Tokens, MockWeightedOracleMath 
      * @dev Encodes a misc data object into a bytes32
      */
     function _encode(MiscData memory _data) private pure returns (bytes32 data) {
-        data = data.insertBool(_data.oracleEnabled, _ORACLE_ENABLED_OFFSET);
-        data = data.insertUint10(_data.oracleIndex, _ORACLE_INDEX_OFFSET);
-        data = data.insertUint31(_data.oracleSampleCreationTimestamp, _ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET);
-        data = data.insertInt22(_data.logTotalSupply, _LOG_TOTAL_SUPPLY_OFFSET);
-        data = data.insertInt22(_data.logInvariant, _LOG_INVARIANT_OFFSET);
+        return
+            data
+                .setOracleEnabled(_data.oracleEnabled)
+                .setOracleIndex(_data.oracleIndex)
+                .setOracleSampleCreationTimestamp(_data.oracleSampleCreationTimestamp)
+                .setLogTotalSupply(_data.logTotalSupply)
+                .setLogInvariant(_data.logInvariant);
     }
 }
