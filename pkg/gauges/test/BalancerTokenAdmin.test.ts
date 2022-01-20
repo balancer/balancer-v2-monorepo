@@ -145,7 +145,7 @@ describe('BalancerTokenAdmin', () => {
   });
 
   describe('updateMiningParameters', () => {
-    context('when BalancerTokenAdmin has been activated already', () => {
+    context('when BalancerTokenAdmin has been activated', () => {
       sharedBeforeEach('activate', async () => {
         const action = await actionId(tokenAdmin, 'activate');
         await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
@@ -183,6 +183,25 @@ describe('BalancerTokenAdmin', () => {
             rate: expectedRate,
             supply: expectedStartSupply,
           });
+        });
+      });
+    });
+  });
+
+  describe('snapshot', () => {
+    context('when caller is authorised to call this function', () => {
+      sharedBeforeEach('activate', async () => {
+        await token.connect(admin).grantRole(SNAPSHOT_ROLE, tokenAdmin.address);
+
+        const action = await actionId(tokenAdmin, 'snapshot');
+        await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+      });
+
+      it('emits a Snapshot event', async () => {
+        const tx = await tokenAdmin.connect(admin).snapshot();
+
+        expectEvent.inIndirectReceipt(await tx.wait(), token.interface, 'Snapshot', {
+          id: 0,
         });
       });
     });

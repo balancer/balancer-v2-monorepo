@@ -24,6 +24,8 @@ contract TestBalancerToken is TestAccessControl, ERC20, ERC20Burnable, ERC20Perm
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant SNAPSHOT_ROLE = keccak256("SNAPSHOT_ROLE");
 
+    event Snapshot(uint256 id);
+
     constructor(
         address admin,
         string memory name,
@@ -38,5 +40,10 @@ contract TestBalancerToken is TestAccessControl, ERC20, ERC20Burnable, ERC20Perm
     function mint(address recipient, uint256 amount) external {
         require(hasRole(MINTER_ROLE, msg.sender), "NOT_MINTER");
         _mint(recipient, amount);
+    }
+
+    function snapshot() external {
+        require(hasRole(SNAPSHOT_ROLE, msg.sender), "NOT_SNAPSHOTTER");
+        emit Snapshot(0);
     }
 }
