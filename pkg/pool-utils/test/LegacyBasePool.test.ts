@@ -14,7 +14,7 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 
-describe('BasePool', function () {
+describe('LegacyBasePool', function () {
   let admin: SignerWithAddress,
     poolOwner: SignerWithAddress,
     deployer: SignerWithAddress,
@@ -63,7 +63,7 @@ describe('BasePool', function () {
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
     if (!owner) owner = ZERO_ADDRESS;
 
-    return deploy('MockBasePool', {
+    return deploy('MockLegacyBasePool', {
       from: params.from,
       args: [
         vault.address,
@@ -152,24 +152,6 @@ describe('BasePool', function () {
           expect(await pool.getActionId(selector)).to.not.equal(await otherPool.getActionId(selector));
         });
       });
-    });
-  });
-
-  describe('protocol fees', () => {
-    let pool: Contract;
-
-    sharedBeforeEach(async () => {
-      pool = await deployBasePool();
-    });
-
-    it('mints bpt to the protocol fee collector', async () => {
-      const feeCollector = await pool.getProtocolFeesCollector();
-
-      const balanceBefore = await pool.balanceOf(feeCollector);
-      await pool.payProtocolFees(fp(42));
-      const balanceAfter = await pool.balanceOf(feeCollector);
-
-      expect(balanceAfter.sub(balanceBefore)).to.equal(fp(42));
     });
   });
 

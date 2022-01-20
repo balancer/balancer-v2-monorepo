@@ -155,7 +155,7 @@ describe('RebalancingRelayer', function () {
 
             // Overwrite assets addresses to use ETH instead of WETH
             request.assets = tokens.map((token) => (token === tokens.WETH ? ZERO_ADDRESS : token.address));
-            const gasPrice = 1;
+            const gasPrice = await ethers.provider.getGasPrice();
             const receipt = await relayer
               .connect(sender)
               .joinPool(poolId, recipient.address, request, { value: fp(10), gasPrice });

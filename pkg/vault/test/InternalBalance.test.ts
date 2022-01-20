@@ -79,7 +79,7 @@ describe('Internal Balance', () => {
         const senderAddress = relayed ? relayer.address : sender.address;
         const previousBalance = await ethers.provider.getBalance(senderAddress);
 
-        const gasPrice = 1;
+        const gasPrice = await ethers.provider.getGasPrice();
         const receipt: ContractReceipt = await (
           await vault.manageUserBalance(
             [{ kind, asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address }],
@@ -324,7 +324,7 @@ describe('Internal Balance', () => {
 
               const relayerBalanceBefore = await ethers.provider.getBalance(relayer.address);
 
-              const gasPrice = 1;
+              const gasPrice = await ethers.provider.getGasPrice();
               const receipt: ContractReceipt = await (
                 await vault.manageUserBalance(
                   [

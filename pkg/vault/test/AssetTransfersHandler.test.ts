@@ -58,7 +58,7 @@ describe('AssetTransfersHandler', function () {
           it('takes ETH from the caller', async () => {
             const callerBalanceBefore = await ethers.provider.getBalance(other.address);
 
-            const gasPrice = 1;
+            const gasPrice = await ethers.provider.getGasPrice();
             const receipt: ContractReceipt = await (
               await handler
                 .connect(other)
@@ -92,7 +92,7 @@ describe('AssetTransfersHandler', function () {
           it('does not return extra ETH to the caller', async () => {
             const callerBalanceBefore = await ethers.provider.getBalance(other.address);
 
-            const gasPrice = 1;
+            const gasPrice = await ethers.provider.getGasPrice();
             const receipt: ContractReceipt = await (
               await handler
                 .connect(other)
