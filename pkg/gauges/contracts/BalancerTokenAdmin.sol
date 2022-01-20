@@ -259,8 +259,9 @@ contract BalancerTokenAdmin is Authentication {
      * Total supply becomes slightly larger if this function is called late
      */
     function _updateMiningParameters() internal {
-        uint256 _rate = (rate * _RATE_DENOMINATOR) / _RATE_REDUCTION_COEFFICIENT;
+        uint256 _rate = rate;
         uint256 _startEpochSupply = startEpochSupply + _rate * _RATE_REDUCTION_TIME;
+        _rate = (_rate * _RATE_DENOMINATOR) / _RATE_REDUCTION_COEFFICIENT;
 
         miningEpoch += 1;
         startEpochTime += _RATE_REDUCTION_TIME;
