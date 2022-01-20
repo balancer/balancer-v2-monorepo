@@ -1,5 +1,7 @@
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
+import { solidityKeccak256 } from 'ethers/lib/utils';
+import { WeiPerEther as ONE } from '@ethersproject/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -7,7 +9,9 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
+import { advanceToTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
+
 const DEFAULT_ADMIN_ROLE = ZERO_BYTES32;
 const MINTER_ROLE = solidityKeccak256(['string'], ['MINTER_ROLE']);
 const SNAPSHOT_ROLE = solidityKeccak256(['string'], ['SNAPSHOT_ROLE']);
@@ -130,6 +134,50 @@ describe('BalancerTokenAdmin', () => {
               rate: '32165468432186542',
               supply: await token.totalSupply(),
             });
+          });
+        });
+      });
+    });
+  });
+
+  describe('updateMiningParameters', () => {
+    context('when BalancerTokenAdmin has been activated already', () => {
+      sharedBeforeEach('activate', async () => {
+        const action = await actionId(tokenAdmin, 'activate');
+        await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+
+        await token.connect(admin).grantRole(DEFAULT_ADMIN_ROLE, tokenAdmin.address);
+        await tokenAdmin.connect(admin).activate();
+      });
+
+      context('when current epoch has not finished', () => {
+        it('reverts', async () => {
+          await expect(tokenAdmin.updateMiningParameters()).to.be.revertedWith('Epoch has not finished yet');
+        });
+      });
+
+      context('when current epoch has finished', () => {
+        let expectedRate: BigNumber;
+        let expectedStartSupply: BigNumber;
+
+        sharedBeforeEach('activate', async () => {
+          const startOfNextEpoch = await tokenAdmin.callStatic.futureEpochTimeWrite();
+          await advanceToTimestamp(startOfNextEpoch.add(1));
+
+          const currentRate = await tokenAdmin.rate();
+          expectedRate = currentRate.mul(ONE).div('1189207115002721024');
+          expectedStartSupply = (await tokenAdmin.startEpochSupply()) + currentRate.mul(365 * DAY);
+        });
+
+        it('update the mining parameters', async () => {
+          const tx = await tokenAdmin.updateMiningParameters();
+          const receipt = await tx.wait();
+          const { timestamp } = await ethers.provider.getBlock(receipt.blockHash);
+
+          expectEvent.inReceipt(await tx.wait(), 'UpdateMiningParameters', {
+            time: timestamp,
+            rate: expectedRate,
+            supply: expectedStartSupply,
           });
         });
       });
