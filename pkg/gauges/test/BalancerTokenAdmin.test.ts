@@ -9,7 +9,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { MAX_UINT256, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceToTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 
 const DEFAULT_ADMIN_ROLE = ZERO_BYTES32;
@@ -183,6 +183,50 @@ describe('BalancerTokenAdmin', () => {
             rate: expectedRate,
             supply: expectedStartSupply,
           });
+        });
+      });
+    });
+  });
+
+  describe('mint', () => {
+    sharedBeforeEach('activate BalancerTokenAdmin', async () => {
+      const action = await actionId(tokenAdmin, 'activate');
+      await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+
+      await token.connect(admin).grantRole(DEFAULT_ADMIN_ROLE, tokenAdmin.address);
+      await tokenAdmin.connect(admin).activate();
+    });
+
+    context('when caller is authorised to call this function', () => {
+      sharedBeforeEach('activate', async () => {
+        const action = await actionId(tokenAdmin, 'mint');
+        await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+      });
+
+      context('when mint does not exceed available supply', () => {
+        it('mints the tokens', async () => {
+          const value = 1;
+          const tx = await tokenAdmin.connect(admin).mint(other.address, value);
+          const receipt = await tx.wait();
+
+          expectEvent.inIndirectReceipt(receipt, token.interface, 'Transfer', {
+            from: ZERO_ADDRESS,
+            to: other.address,
+            value,
+          });
+        });
+      });
+
+      context('when trying to mint more than the available supply', () => {
+        it('reverts', async () => {
+          const availableSupply = await tokenAdmin.availableSupply();
+          const totalSupply = await token.totalSupply();
+          const rate = await tokenAdmin.rate();
+
+          const invalidMintAmount = availableSupply.sub(totalSupply).add(rate.mul(10));
+          await expect(tokenAdmin.connect(admin).mint(other.address, invalidMintAmount)).to.be.revertedWith(
+            'Mint amount exceeds remaining available supply'
+          );
         });
       });
     });
