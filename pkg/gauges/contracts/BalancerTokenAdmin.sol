@@ -348,9 +348,8 @@ contract BalancerTokenAdmin is Authentication {
      * Total supply becomes slightly larger if this function is called late
      */
     function update_mining_parameters() external {
-        if (block.timestamp >= startEpochTime + _RATE_REDUCTION_TIME) {
-            _updateMiningParameters();
-        }
+        require(block.timestamp >= startEpochTime + _RATE_REDUCTION_TIME, "Epoch has not finished yet");
+        _updateMiningParameters();
     }
 
     /**
