@@ -89,21 +89,25 @@ describe('BalancerTokenAdmin', () => {
           });
 
           it('it revokes MINTER_ROLE from all addresses other than itself', async () => {
+            await token.connect(admin).grantRole(MINTER_ROLE, other.address);
             expect(await token.getRoleMemberCount(MINTER_ROLE)).to.be.gt(0);
 
             await tokenAdmin.connect(admin).activate();
 
             expect(await token.getRoleMemberCount(MINTER_ROLE)).to.be.eq(1);
             expect(await token.hasRole(MINTER_ROLE, tokenAdmin.address)).to.be.true;
+            expect(await token.hasRole(MINTER_ROLE, other.address)).to.be.false;
           });
 
           it('it revokes SNAPSHOT_ROLE from all addresses other than itself', async () => {
+            await token.connect(admin).grantRole(SNAPSHOT_ROLE, other.address);
             expect(await token.getRoleMemberCount(SNAPSHOT_ROLE)).to.be.gt(0);
 
             await tokenAdmin.connect(admin).activate();
 
             expect(await token.getRoleMemberCount(SNAPSHOT_ROLE)).to.be.eq(1);
             expect(await token.hasRole(SNAPSHOT_ROLE, tokenAdmin.address)).to.be.true;
+            expect(await token.hasRole(SNAPSHOT_ROLE, other.address)).to.be.false;
           });
 
           it('it revokes GLOBAL_ADMIN_ROLE from all addresses', async () => {
