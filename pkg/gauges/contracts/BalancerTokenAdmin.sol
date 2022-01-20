@@ -78,8 +78,8 @@ contract BalancerTokenAdmin is Authentication {
     /**
      * @notice Returns the Balancer Vault's current authorizer.
      */
-    function getAuthorizer() external view returns (IAuthorizer) {
-        return _getAuthorizer();
+    function getAuthorizer() public view returns (IAuthorizer) {
+        return getVault().getAuthorizer();
     }
 
     /**
@@ -222,15 +222,8 @@ contract BalancerTokenAdmin is Authentication {
 
     // Internal functions
 
-    /**
-     * @notice Returns the Balancer Vault's current authorizer.
-     */
-    function _getAuthorizer() internal view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
-    }
-
     function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return _getAuthorizer().canPerform(actionId, account, address(this));
+        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 
     /**
