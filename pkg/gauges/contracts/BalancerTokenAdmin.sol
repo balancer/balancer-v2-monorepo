@@ -104,8 +104,8 @@ contract BalancerTokenAdmin is Authentication {
 
         // All other minters must be removed to avoid inflation schedule enforcement being bypassed.
         uint256 numberOfMinters = _balancerToken.getRoleMemberCount(minterRole);
-        for (uint256 i = 0; i < numberOfMinters; ++i){
-            address minter = _balancerToken.getRoleMember(minterRole, i);
+        for (uint256 i = 0; i < numberOfMinters; ++i) {
+            address minter = _balancerToken.getRoleMember(minterRole, 0);
             _balancerToken.revokeRole(minterRole, minter);
         }
         // Give this contract minting rights over the BAL token
@@ -115,8 +115,8 @@ contract BalancerTokenAdmin is Authentication {
         // We delegate control over this to the Balancer Authorizer by removing this role from all current addresses
         // and exposing a function which defers to the Authorizer for access control.
         uint256 numberOfSnapshotters = _balancerToken.getRoleMemberCount(snapshotRole);
-        for (uint256 i = 0; i < numberOfSnapshotters; ++i){
-            address snapshotter = _balancerToken.getRoleMember(snapshotRole, i);
+        for (uint256 i = 0; i < numberOfSnapshotters; ++i) {
+            address snapshotter = _balancerToken.getRoleMember(snapshotRole, 0);
             _balancerToken.revokeRole(snapshotRole, snapshotter);
         }
         // Give this contract snapshotting rights over the BAL token
@@ -128,10 +128,14 @@ contract BalancerTokenAdmin is Authentication {
         // This undermines the ability for BalancerTokenAdmin to enforce the correct inflation schedule.
         // The only way to prevent this is for BalancerTokenAdmin to be the only admin. We then remove all other admins.
         uint256 numberOfAdmins = _balancerToken.getRoleMemberCount(adminRole);
-        for (uint256 i = 0; i < numberOfAdmins; ++i){
-            address admin = _balancerToken.getRoleMember(adminRole, i);
-            if(admin != address(this)){
+        uint256 skipSelf = 0;
+        for (uint256 i = 0; i < numberOfAdmins; ++i) {
+            address admin = _balancerToken.getRoleMember(adminRole, skipSelf);
+            if (admin != address(this)) {
                 _balancerToken.revokeRole(adminRole, admin);
+            } else {
+                // This contract is now the admin with index 0, we now delete the address with index 1 instead
+                skipSelf = 1;
             }
         }
 
