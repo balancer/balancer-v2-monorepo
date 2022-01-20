@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/LegacyBaseMinimalSwapInfoPool.sol";
 
 import "./WeightedPoolUserData.sol";
 import "./WeightedMath.sol";
@@ -28,7 +28,7 @@ import "./WeightedMath.sol";
  * the weights to subclasses. Derived contracts can choose to make weights immutable, mutable, or even dynamic
  *  based on local or external logic.
  */
-abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
+abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
     using FixedPoint for uint256;
     using WeightedPoolUserData for bytes;
 
@@ -45,10 +45,10 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256 bufferPeriodDuration,
         address owner
     )
-        BasePool(
+        LegacyBasePool(
             vault,
-            // Given BaseMinimalSwapInfoPool supports both of these specializations, and this Pool never registers or
-            // deregisters any tokens after construction, picking Two Token when the Pool only has two tokens is free
+            // Given LegacyBaseMinimalSwapInfoPool supports both of these specializations, and this Pool never registers
+            // or deregisters any tokens after construction, picking Two Token when the Pool only has two tokens is free
             // gas savings.
             tokens.length == 2 ? IVault.PoolSpecialization.TWO_TOKEN : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
             name,
