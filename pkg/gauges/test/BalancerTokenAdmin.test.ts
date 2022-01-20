@@ -59,6 +59,12 @@ describe('BalancerTokenAdmin', () => {
   });
 
   describe('activate', () => {
+    context('when the caller is not authorised to call this function', () => {
+      it('reverts', async () => {
+        await expect(tokenAdmin.connect(other).activate()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+    });
+
     context('when the caller is authorised to call this function', () => {
       sharedBeforeEach('authorize caller', async () => {
         const action = await actionId(tokenAdmin, 'activate');
@@ -197,7 +203,13 @@ describe('BalancerTokenAdmin', () => {
       await tokenAdmin.connect(admin).activate();
     });
 
-    context('when caller is authorised to call this function', () => {
+    context('when the caller is not authorised to call this function', () => {
+      it('reverts', async () => {
+        await expect(tokenAdmin.connect(other).mint(other.address, 1)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+    });
+
+    context('when the caller is authorised to call this function', () => {
       sharedBeforeEach('activate', async () => {
         const action = await actionId(tokenAdmin, 'mint');
         await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
@@ -233,7 +245,13 @@ describe('BalancerTokenAdmin', () => {
   });
 
   describe('snapshot', () => {
-    context('when caller is authorised to call this function', () => {
+    context('when the caller is not authorised to call this function', () => {
+      it('reverts', async () => {
+        await expect(tokenAdmin.connect(other).snapshot()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+    });
+
+    context('when the caller is authorised to call this function', () => {
       sharedBeforeEach('activate', async () => {
         await token.connect(admin).grantRole(SNAPSHOT_ROLE, tokenAdmin.address);
 
