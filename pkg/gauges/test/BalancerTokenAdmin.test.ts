@@ -8,6 +8,9 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+const DEFAULT_ADMIN_ROLE = ZERO_BYTES32;
+const MINTER_ROLE = solidityKeccak256(['string'], ['MINTER_ROLE']);
+const SNAPSHOT_ROLE = solidityKeccak256(['string'], ['SNAPSHOT_ROLE']);
 
 describe('BalancerTokenAdmin', () => {
   let vault: Vault;
@@ -60,7 +63,7 @@ describe('BalancerTokenAdmin', () => {
 
       context('when BalancerTokenAdmin has been activated already', () => {
         sharedBeforeEach('activate', async () => {
-          await token.connect(admin).grantRole(await token.DEFAULT_ADMIN_ROLE(), tokenAdmin.address);
+          await token.connect(admin).grantRole(DEFAULT_ADMIN_ROLE, tokenAdmin.address);
           await tokenAdmin.connect(admin).activate();
         });
 
@@ -78,33 +81,33 @@ describe('BalancerTokenAdmin', () => {
 
         context('when the BalancerTokenAdmin has admin powers over the BAL token', () => {
           sharedBeforeEach('activate', async () => {
-            await token.connect(admin).grantRole(await token.DEFAULT_ADMIN_ROLE(), tokenAdmin.address);
+            await token.connect(admin).grantRole(DEFAULT_ADMIN_ROLE, tokenAdmin.address);
           });
 
           it('it revokes MINTER_ROLE from all addresses other than itself', async () => {
-            expect(await token.getRoleMemberCount(await token.MINTER_ROLE())).to.be.gt(0);
+            expect(await token.getRoleMemberCount(MINTER_ROLE)).to.be.gt(0);
 
             await tokenAdmin.connect(admin).activate();
 
-            expect(await token.getRoleMemberCount(await token.MINTER_ROLE())).to.be.eq(1);
-            expect(await token.hasRole(await token.MINTER_ROLE(), tokenAdmin.address)).to.be.true;
+            expect(await token.getRoleMemberCount(MINTER_ROLE)).to.be.eq(1);
+            expect(await token.hasRole(MINTER_ROLE, tokenAdmin.address)).to.be.true;
           });
 
           it('it revokes SNAPSHOT_ROLE from all addresses other than itself', async () => {
-            expect(await token.getRoleMemberCount(await token.SNAPSHOT_ROLE())).to.be.gt(0);
+            expect(await token.getRoleMemberCount(SNAPSHOT_ROLE)).to.be.gt(0);
 
             await tokenAdmin.connect(admin).activate();
 
-            expect(await token.getRoleMemberCount(await token.SNAPSHOT_ROLE())).to.be.eq(1);
-            expect(await token.hasRole(await token.SNAPSHOT_ROLE(), tokenAdmin.address)).to.be.true;
+            expect(await token.getRoleMemberCount(SNAPSHOT_ROLE)).to.be.eq(1);
+            expect(await token.hasRole(SNAPSHOT_ROLE, tokenAdmin.address)).to.be.true;
           });
 
           it('it revokes GLOBAL_ADMIN_ROLE from all addresses', async () => {
-            expect(await token.getRoleMemberCount(await token.DEFAULT_ADMIN_ROLE())).to.be.gt(0);
+            expect(await token.getRoleMemberCount(DEFAULT_ADMIN_ROLE)).to.be.gt(0);
 
             await tokenAdmin.connect(admin).activate();
 
-            expect(await token.getRoleMemberCount(await token.DEFAULT_ADMIN_ROLE())).to.be.eq(0);
+            expect(await token.getRoleMemberCount(DEFAULT_ADMIN_ROLE)).to.be.eq(0);
           });
 
           it('it sets the initial inflation parameters', async () => {
