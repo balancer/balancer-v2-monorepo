@@ -45,14 +45,16 @@ abstract contract AccessControl {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     struct RoleData {
-        EnumerableSet.AddressSet members;
+        EnumerableSet.AddressSet globalMembers;
+        mapping(address => EnumerableSet.AddressSet) membersByContract;
         bytes32 adminRole;
     }
 
     mapping(bytes32 => RoleData) private _roles;
 
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
-
+    address public constant GLOBAL_ROLE_ADMIN = address(0);
+    
     /**
      * @dev Emitted when `newAdminRole` is set as ``role``'s admin role, replacing `previousAdminRole`
      *
@@ -64,51 +66,94 @@ abstract contract AccessControl {
     event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole);
 
     /**
-     * @dev Emitted when `account` is granted `role`.
+     * @dev Emitted when `account` is granted `role` in an specific contract `where`.
      *
      * `sender` is the account that originated the contract call, an admin role
      * bearer except when using {_setupRole}.
      */
-    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
+    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender, address where);
 
     /**
-     * @dev Emitted when `account` is revoked `role`.
+     * @dev Emitted when `account` is granted `role` across all contracts.
+     *
+     * `sender` is the account that originated the contract call, an admin role
+     * bearer except when using {_setupRole}.
+     */
+    event RoleGrantedGlobally(bytes32 indexed role, address indexed account, address indexed sender);
+
+    /**
+     * @dev Emitted when `account` is revoked `role` in an specific contract `where`.
      *
      * `sender` is the account that originated the contract call:
      *   - if using `revokeRole`, it is the admin role bearer
      *   - if using `renounceRole`, it is the role bearer (i.e. `account`)
      */
-    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
+    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender, address where);
 
     /**
-     * @dev Returns `true` if `account` has been granted `role`.
+     * @dev Emitted when `account` is revoked `role` across all contracts.
+     *
+     * `sender` is the account that originated the contract call:
+     *   - if using `revokeRole`, it is the admin role bearer
+     *   - if using `renounceRole`, it is the role bearer (i.e. `account`)
      */
-    function hasRole(bytes32 role, address account) public view virtual returns (bool) {
-        return _roles[role].members.contains(account);
+    event RoleRevokedGlobally(bytes32 indexed role, address indexed account, address indexed sender);
+
+    /**
+     * @dev Returns `true` if `account` has been granted `role` either globally
+     * or in specific `where`
+     */
+    function hasRole(bytes32 role, address account, address where) public view virtual returns (bool) {
+        return _roles[role].globalMembers.contains(account) || 
+            _roles[role].membersByContract[where].contains(account);
     }
 
     /**
-     * @dev Returns the number of accounts that have `role`. Can be used
-     * together with {getRoleMember} to enumerate all bearers of a role.
+     * @dev Returns the number of accounts that have `role` as global permission. Can be used
+     * together with {getRoleGlobalMember} to enumerate all bearers of a role.
      */
-    function getRoleMemberCount(bytes32 role) public view returns (uint256) {
-        return _roles[role].members.length();
+    function getRoleGlobalMemberCount(bytes32 role) public view returns (uint256) {
+        return _roles[role].globalMembers.length();
     }
 
     /**
-     * @dev Returns one of the accounts that have `role`. `index` must be a
-     * value between 0 and {getRoleMemberCount}, non-inclusive.
+     * @dev Returns one of the accounts that have `role` across contracts. `index` must be a
+     * value between 0 and {getRoleGlobalMemberCount}, non-inclusive.
      *
      * Role bearers are not sorted in any particular way, and their ordering may
      * change at any point.
      *
-     * WARNING: When using {getRoleMember} and {getRoleMemberCount}, make sure
+     * WARNING: When using {getRoleGlobalMember} and {getRoleGlobalMemberCount}, make sure
      * you perform all queries on the same block. See the following
      * https://forum.openzeppelin.com/t/iterating-over-elements-on-enumerableset-in-openzeppelin-contracts/2296[forum post]
      * for more information.
      */
-    function getRoleMember(bytes32 role, uint256 index) public view returns (address) {
-        return _roles[role].members.at(index);
+    function getRoleGlobalMember(bytes32 role, uint256 index) public view returns (address) {
+        return _roles[role].globalMembers.at(index);
+    }
+
+    /**
+     * @dev Returns the number of accounts that have `role` as global permission. Can be used
+     * together with {getRoleGlobalMember} to enumerate all bearers of a role.
+     */
+    function getRoleMemberCountByContract(bytes32 role, address where) public view returns (uint256) {
+        return _roles[role].membersByContract[where].length();
+    }
+
+    /**
+     * @dev Returns one of the accounts that have `role` in contract `where`. `index` must be a
+     * value between 0 and {getRoleMemberCountByContract}, non-inclusive.
+     *
+     * Role bearers are not sorted in any particular way, and their ordering may
+     * change at any point.
+     *
+     * WARNING: When using {getRoleMemberByContract} and {getRoleMemberCountByContract}, make sure
+     * you perform all queries on the same block. See the following
+     * https://forum.openzeppelin.com/t/iterating-over-elements-on-enumerableset-in-openzeppelin-contracts/2296[forum post]
+     * for more information.
+     */
+    function getRoleMemberByContract(bytes32 role, uint256 index, address where) public view returns (address) {
+        return _roles[role].membersByContract[where].at(index);
     }
 
     /**
@@ -122,7 +167,27 @@ abstract contract AccessControl {
     }
 
     /**
-     * @dev Grants `role` to `account`.
+     * @dev Grants `role` to `account` in specific contracts.
+     *
+     * If `account` had not been already granted `role`, emits a {RoleGranted}
+     * event.
+     *
+     * Requirements:
+     *
+     * - the caller must have ``role``'s admin role.
+     * - list of ``where``'s can't be empty
+     */
+    function grantRole(bytes32 role, address account, address[] calldata where) public virtual {
+        _require(where.length > 0, Errors.INPUT_LENGTH_MISMATCH);
+        _require(hasRole(_roles[role].adminRole, msg.sender, GLOBAL_ROLE_ADMIN), Errors.GRANT_SENDER_NOT_ADMIN);
+        for (uint256 i = 0; i < where.length; i++) {
+            _grantRole(role, account, where[i]);
+        }
+        
+    }
+
+    /**
+     * @dev Grants `role` to `account` in across all contracts.
      *
      * If `account` had not been already granted `role`, emits a {RoleGranted}
      * event.
@@ -131,14 +196,30 @@ abstract contract AccessControl {
      *
      * - the caller must have ``role``'s admin role.
      */
-    function grantRole(bytes32 role, address account) public virtual {
-        _require(hasRole(_roles[role].adminRole, msg.sender), Errors.GRANT_SENDER_NOT_ADMIN);
-
-        _grantRole(role, account);
+    function grantRoleGlobally(bytes32 role, address account) public virtual {
+        _require(hasRole(_roles[role].adminRole, msg.sender, GLOBAL_ROLE_ADMIN), Errors.GRANT_SENDER_NOT_ADMIN);
+        _grantRoleGlobally(role, account);
+        
     }
 
     /**
-     * @dev Revokes `role` from `account`.
+     * @dev Revokes `role` from `account` accross all.
+     *
+     * If `account` had already been granted `role`, emits a {RoleRevoked} event.
+     *
+     * Requirements:
+     *
+     * - the caller must have ``role``'s admin role.
+     * - list of ``where``'s can't be empty
+     */
+    function revokeRole(bytes32 role, address account, address[] calldata where) public virtual {
+        _require(hasRole(_roles[role].adminRole, msg.sender, GLOBAL_ROLE_ADMIN), Errors.REVOKE_SENDER_NOT_ADMIN);
+        _require(where.length > 0, Errors.INPUT_LENGTH_MISMATCH);
+        _revokeRole(role, account, where);
+    }
+
+    /**
+     * @dev Revokes `role` from `account` across all contracts.
      *
      * If `account` had already been granted `role`, emits a {RoleRevoked} event.
      *
@@ -146,14 +227,33 @@ abstract contract AccessControl {
      *
      * - the caller must have ``role``'s admin role.
      */
-    function revokeRole(bytes32 role, address account) public virtual {
-        _require(hasRole(_roles[role].adminRole, msg.sender), Errors.REVOKE_SENDER_NOT_ADMIN);
-
-        _revokeRole(role, account);
+    function revokeRoleGlobally(bytes32 role, address account) public virtual {
+        _require(hasRole(_roles[role].adminRole, msg.sender, GLOBAL_ROLE_ADMIN), Errors.REVOKE_SENDER_NOT_ADMIN);
+        _revokeRoleGlobally(role, account);
     }
 
     /**
-     * @dev Revokes `role` from the calling account.
+     * @dev Revokes `role` from the calling account, for specific contracts.
+     *
+     * Roles are often managed via {grantRole} and {revokeRole}: this function's
+     * purpose is to provide a mechanism for accounts to lose their privileges
+     * if they are compromised (such as when a trusted device is misplaced).
+     *
+     * If the calling account had been granted `role`, emits a {RoleRevoked}
+     * event.
+     *
+     * Requirements:
+     *
+     * - the caller must be `account`.
+     * - list of ``where``'s can't be empty
+     */
+    function renounceRole(bytes32 role, address account,address[] calldata where) public virtual {
+        _require(account == msg.sender, Errors.RENOUNCE_SENDER_NOT_ALLOWED);
+        _revokeRole(role, account, where);
+    }
+
+    /**
+     * @dev Revokes `role` from the calling account, for all contracts.
      *
      * Roles are often managed via {grantRole} and {revokeRole}: this function's
      * purpose is to provide a mechanism for accounts to lose their privileges
@@ -166,14 +266,15 @@ abstract contract AccessControl {
      *
      * - the caller must be `account`.
      */
-    function renounceRole(bytes32 role, address account) public virtual {
+    function renounceRoleGlobally(bytes32 role, address account) public virtual {
         _require(account == msg.sender, Errors.RENOUNCE_SENDER_NOT_ALLOWED);
-
-        _revokeRole(role, account);
+        _revokeRoleGlobally(role, account);
     }
 
+    
+
     /**
-     * @dev Grants `role` to `account`.
+     * @dev Grants `role` to `account`, globally for all contracts
      *
      * If `account` had not been already granted `role`, emits a {RoleGranted}
      * event. Note that unlike {grantRole}, this function doesn't perform any
@@ -189,7 +290,7 @@ abstract contract AccessControl {
      * ====
      */
     function _setupRole(bytes32 role, address account) internal virtual {
-        _grantRole(role, account);
+        _grantRoleGlobally(role, account);
     }
 
     /**
@@ -202,15 +303,31 @@ abstract contract AccessControl {
         _roles[role].adminRole = adminRole;
     }
 
-    function _grantRole(bytes32 role, address account) private {
-        if (_roles[role].members.add(account)) {
-            emit RoleGranted(role, account, msg.sender);
+    function _grantRole(bytes32 role, address account, address where) private {
+        require(where != address(0), "Where can't be GLOBAL_ROLE_ADMIN");
+        if (_roles[role].membersByContract[where].add(account)) {
+            emit RoleGranted(role, account, msg.sender, where);
         }
     }
 
-    function _revokeRole(bytes32 role, address account) private {
-        if (_roles[role].members.remove(account)) {
-            emit RoleRevoked(role, account, msg.sender);
+    function _grantRoleGlobally(bytes32 role, address account) private {
+        if (_roles[role].globalMembers.add(account)) {
+            emit RoleGrantedGlobally(role, account, msg.sender);
+        }
+    }
+
+    function _revokeRole(bytes32 role, address account, address[] calldata where) private {
+        for (uint256 i = 0; i < where.length; i++) {
+            if (_roles[role].membersByContract[where[i]].remove(account)) {
+                emit RoleRevoked(role, account, msg.sender, where[i]);
+            }
+        }
+        
+    }
+
+    function _revokeRoleGlobally(bytes32 role, address account) private {
+        if (_roles[role].globalMembers.remove(account)) {
+            emit RoleRevokedGlobally(role, account, msg.sender);
         }
     }
 }

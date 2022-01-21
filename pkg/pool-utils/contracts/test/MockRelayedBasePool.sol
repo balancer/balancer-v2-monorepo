@@ -15,10 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../BasePool.sol";
 import "../RelayedBasePool.sol";
 
-contract MockRelayedBasePool is BasePool, RelayedBasePool {
+contract MockRelayedBasePool is RelayedBasePool {
     uint256 private constant _MINIMUM_BPT = 1e6;
 
     uint256 private immutable _totalTokens;
@@ -40,7 +39,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         IBasePoolRelayer relayer,
         address owner
     )
-        BasePool(
+        LegacyBasePool(
             vault,
             specialization,
             name,
@@ -65,7 +64,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public override(BasePool, RelayedBasePool) returns (uint256[] memory, uint256[] memory) {
+    ) public override returns (uint256[] memory, uint256[] memory) {
         emit Join(poolId, sender, recipient, userData, balances);
         return
             RelayedBasePool.onJoinPool(
@@ -87,7 +86,7 @@ contract MockRelayedBasePool is BasePool, RelayedBasePool {
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public override(BasePool, RelayedBasePool) returns (uint256[] memory, uint256[] memory) {
+    ) public override returns (uint256[] memory, uint256[] memory) {
         emit Exit(poolId, sender, recipient, userData, balances);
         return
             RelayedBasePool.onExitPool(

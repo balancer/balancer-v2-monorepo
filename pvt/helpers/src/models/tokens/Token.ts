@@ -7,6 +7,7 @@ import TokensDeployer from './TokensDeployer';
 import TypesConverter from '../types/TypesConverter';
 import { Account, TxParams } from '../types/types';
 import { RawTokenDeployment } from './types';
+import { deployedAt } from '../../contract';
 
 export default class Token {
   name: string;
@@ -16,6 +17,15 @@ export default class Token {
 
   static async create(params: RawTokenDeployment): Promise<Token> {
     return TokensDeployer.deployToken(params);
+  }
+
+  static async deployedAt(address: string): Promise<Token> {
+    const instance = await deployedAt('v2-standalone-utils/TestToken', address);
+    const [name, symbol, decimals] = await Promise.all([instance.name(), instance.symbol(), instance.decimals()]);
+    if (symbol === 'WETH') {
+      return new Token(name, symbol, decimals, await deployedAt('v2-standalone-utils/TestWETH', address));
+    }
+    return new Token(name, symbol, decimals, instance);
   }
 
   constructor(name: string, symbol: string, decimals: number, instance: Contract) {

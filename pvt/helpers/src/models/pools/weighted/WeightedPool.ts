@@ -17,9 +17,11 @@ import {
   InitWeightedPool,
   JoinGivenInWeightedPool,
   JoinGivenOutWeightedPool,
+  JoinAllGivenOutWeightedPool,
   JoinResult,
   RawWeightedPoolDeployment,
   ExitResult,
+  SwapResult,
   SingleExitGivenInWeightedPool,
   MultiExitGivenInWeightedPool,
   ExitGivenOutWeightedPool,
@@ -30,6 +32,9 @@ import {
   MiscData,
   Sample,
   GradualUpdateParams,
+  WeightedPoolType,
+  VoidResult,
+  TokenCollectedFees,
 } from './types';
 import {
   calculateInvariant,
@@ -59,9 +64,10 @@ export default class WeightedPool {
   assetManagers: string[];
   swapFeePercentage: BigNumberish;
   vault: Vault;
-  twoTokens: boolean;
-  lbp: boolean;
+  poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
+  mustAllowlistLPs: boolean;
+  managementSwapFeePercentage: BigNumberish;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
     return WeightedPoolDeployer.deploy(params);
@@ -75,9 +81,10 @@ export default class WeightedPool {
     weights: BigNumberish[],
     assetManagers: string[],
     swapFeePercentage: BigNumberish,
-    twoTokens: boolean,
-    lbp: boolean,
-    swapEnabledOnStart: boolean
+    poolType: WeightedPoolType,
+    swapEnabledOnStart: boolean,
+    mustAllowlistLPs: boolean,
+    managementSwapFeePercentage: BigNumberish
   ) {
     this.instance = instance;
     this.poolId = poolId;
@@ -86,9 +93,10 @@ export default class WeightedPool {
     this.weights = weights;
     this.assetManagers = assetManagers;
     this.swapFeePercentage = swapFeePercentage;
-    this.twoTokens = twoTokens;
-    this.lbp = lbp;
+    this.poolType = poolType;
     this.swapEnabledOnStart = swapEnabledOnStart;
+    this.mustAllowlistLPs = mustAllowlistLPs;
+    this.managementSwapFeePercentage = managementSwapFeePercentage;
   }
 
   get address(): string {
@@ -165,12 +173,14 @@ export default class WeightedPool {
   }
 
   async isOracleEnabled(): Promise<boolean> {
-    if (!this.twoTokens) throw Error('Cannot query misc data for non-2-tokens weighted pool');
+    if (this.poolType != WeightedPoolType.WEIGHTED_POOL_2TOKENS)
+      throw Error('Cannot query misc data for non-2-tokens weighted pool');
     return (await this.getMiscData()).oracleEnabled;
   }
 
   async getMiscData(): Promise<MiscData> {
-    if (!this.twoTokens) throw Error('Cannot query misc data for non-2-tokens weighted pool');
+    if (this.poolType != WeightedPoolType.WEIGHTED_POOL_2TOKENS)
+      throw Error('Cannot query misc data for non-2-tokens weighted pool');
     return this.instance.getMiscData();
   }
 
@@ -179,12 +189,20 @@ export default class WeightedPool {
     return this.instance.getSample(oracleIndex);
   }
 
+  async getOwner(): Promise<string> {
+    return this.instance.getOwner();
+  }
+
   async getSwapFeePercentage(): Promise<BigNumber> {
     return this.instance.getSwapFeePercentage();
   }
 
   async getSwapEnabled(from: SignerWithAddress): Promise<boolean> {
     return this.instance.connect(from).getSwapEnabled();
+  }
+
+  async getManagementSwapFeePercentage(): Promise<BigNumber> {
+    return this.instance.getManagementSwapFeePercentage();
   }
 
   async getNormalizedWeights(): Promise<BigNumber[]> {
@@ -336,19 +354,25 @@ export default class WeightedPool {
     );
   }
 
-  async swapGivenIn(params: SwapWeightedPool): Promise<BigNumber> {
+  async swapGivenIn(params: SwapWeightedPool): Promise<SwapResult> {
     return this.swap(await this._buildSwapParams(SwapKind.GivenIn, params));
   }
 
-  async swapGivenOut(params: SwapWeightedPool): Promise<BigNumber> {
+  async swapGivenOut(params: SwapWeightedPool): Promise<SwapResult> {
     return this.swap(await this._buildSwapParams(SwapKind.GivenOut, params));
   }
 
-  async swap(params: MinimalSwap): Promise<BigNumber> {
+  async swap(params: MinimalSwap): Promise<SwapResult> {
     const tx = await this.vault.minimalSwap(params);
-    const receipt = await (await tx).wait();
+    const receipt = await tx.wait();
     const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
-    return amount;
+    return { amount, receipt };
+  }
+
+  async dirtyUninitializedOracleSamples(startSlot: number, endSlot: number): Promise<VoidResult> {
+    const tx = await this.instance.dirtyUninitializedOracleSamples(startSlot, endSlot);
+    const receipt = await tx.wait();
+    return { receipt };
   }
 
   async init(params: InitWeightedPool): Promise<JoinResult> {
@@ -369,6 +393,14 @@ export default class WeightedPool {
 
   async queryJoinGivenOut(params: JoinGivenOutWeightedPool): Promise<JoinQueryResult> {
     return this.queryJoin(this._buildJoinGivenOutParams(params));
+  }
+
+  async joinAllGivenOut(params: JoinAllGivenOutWeightedPool): Promise<JoinResult> {
+    return this.join(this._buildJoinAllGivenOutParams(params));
+  }
+
+  async queryJoinAllGivenOut(params: JoinAllGivenOutWeightedPool): Promise<JoinQueryResult> {
+    return this.queryJoin(this._buildJoinAllGivenOutParams(params));
   }
 
   async exitGivenOut(params: ExitGivenOutWeightedPool): Promise<ExitResult> {
@@ -418,7 +450,7 @@ export default class WeightedPool {
 
     const receipt = await (await tx).wait();
     const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFees };
+    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFees, receipt };
   }
 
   async queryExit(params: JoinExitWeightedPool): Promise<ExitQueryResult> {
@@ -444,7 +476,7 @@ export default class WeightedPool {
 
     const receipt = await (await tx).wait();
     const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees };
+    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees, receipt };
   }
 
   private async _executeQuery(params: JoinExitWeightedPool, fn: ContractFunction): Promise<PoolQueryResult> {
@@ -518,6 +550,17 @@ export default class WeightedPool {
     };
   }
 
+  private _buildJoinAllGivenOutParams(params: JoinAllGivenOutWeightedPool): JoinExitWeightedPool {
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: WeightedPoolEncoder.joinAllTokensInForExactBPTOut(params.bptOut),
+    };
+  }
+
   private _buildExitGivenOutParams(params: ExitGivenOutWeightedPool): JoinExitWeightedPool {
     const { amountsOut: amounts } = params;
     const amountsOut = Array.isArray(amounts) ? amounts : Array(this.tokens.length).fill(amounts);
@@ -555,18 +598,63 @@ export default class WeightedPool {
 
   async pause(): Promise<void> {
     const action = await actionId(this.instance, 'setPaused');
-    await this.vault.grantRole(action);
+    await this.vault.grantRoleGlobally(action);
     await this.instance.setPaused(true);
   }
 
-  async enableOracle(txParams: TxParams): Promise<void> {
+  async setPaused(paused: boolean): Promise<void> {
+    await this.instance.setPaused(paused);
+  }
+
+  async isPaused(): Promise<boolean> {
+    const result = await this.instance.getPausedState();
+
+    return result.paused;
+  }
+
+  async enableOracle(txParams: TxParams): Promise<VoidResult> {
     const pool = txParams.from ? this.instance.connect(txParams.from) : this.instance;
-    await pool.enableOracle();
+    const tx = await pool.enableOracle();
+    const receipt = await tx.wait();
+    return { receipt };
   }
 
   async setSwapEnabled(from: SignerWithAddress, swapEnabled: boolean): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
     return pool.setSwapEnabled(swapEnabled);
+  }
+
+  async addAllowedAddress(from: SignerWithAddress, member: string): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.addAllowedAddress(member);
+  }
+
+  async removeAllowedAddress(from: SignerWithAddress, member: string): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.removeAllowedAddress(member);
+  }
+
+  async getMustAllowlistLPs(): Promise<boolean> {
+    return this.instance.getMustAllowlistLPs();
+  }
+
+  async setMustAllowlistLPs(from: SignerWithAddress, mustAllowlistLPs: boolean): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.setMustAllowlistLPs(mustAllowlistLPs);
+  }
+
+  async isAllowedAddress(member: string): Promise<boolean> {
+    return this.instance.isAllowedAddress(member);
+  }
+
+  async withdrawCollectedManagementFees(
+    from: SignerWithAddress,
+    recipient?: SignerWithAddress
+  ): Promise<ContractTransaction> {
+    if (recipient === undefined) recipient = from;
+
+    const pool = this.instance.connect(from);
+    return pool.withdrawCollectedManagementFees(recipient.address);
   }
 
   async updateWeightsGradually(
@@ -582,5 +670,10 @@ export default class WeightedPool {
   async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualUpdateParams> {
     const pool = from ? this.instance.connect(from) : this.instance;
     return await pool.getGradualWeightUpdateParams();
+  }
+
+  async getCollectedManagementFees(): Promise<TokenCollectedFees> {
+    const result = await this.instance.getCollectedManagementFees();
+    return { amounts: result.collectedFees, tokenAddresses: result.tokens };
   }
 }

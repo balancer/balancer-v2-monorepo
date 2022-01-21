@@ -10,14 +10,20 @@ import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constan
 
 describe('BalancerPoolToken', () => {
   let token: Contract;
-  let holder: SignerWithAddress, spender: SignerWithAddress, recipient: SignerWithAddress;
+  let holder: SignerWithAddress, spender: SignerWithAddress, recipient: SignerWithAddress, vault: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, holder, spender, recipient] = await ethers.getSigners();
+    [, holder, spender, recipient, vault] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy token', async () => {
-    token = await deploy('MockBalancerPoolToken', { args: ['Token', 'TKN'] });
+    token = await deploy('MockBalancerPoolToken', { args: ['Token', 'TKN', vault.address] });
+  });
+
+  describe('allowance', () => {
+    it('is infinite for the vault', async () => {
+      expect(await token.allowance(holder.address, vault.address)).to.equal(MAX_UINT256);
+    });
   });
 
   describe('transfer from', () => {
@@ -30,11 +36,18 @@ describe('BalancerPoolToken', () => {
         to = recipientAddress || recipient.address;
       });
 
-      const itTransfersTokensProperly = (sendFromHolder?: boolean) => {
+      enum SendFrom {
+        SPENDER,
+        HOLDER,
+        VAULT,
+      }
+
+      const itTransfersTokensProperly = (sendFrom?: SendFrom) => {
         let signer: SignerWithAddress;
 
         beforeEach('define spender address', () => {
-          signer = sendFromHolder ? holder : spender;
+          signer =
+            (sendFrom ?? SendFrom.SPENDER) == SendFrom.HOLDER ? holder : sendFrom == SendFrom.SPENDER ? spender : vault;
         });
 
         describe('when the token holder has enough balance', () => {
@@ -91,7 +104,7 @@ describe('BalancerPoolToken', () => {
       };
 
       describe('when the spender is the token holder', () => {
-        itTransfersTokensProperly(true);
+        itTransfersTokensProperly(SendFrom.HOLDER);
 
         describe('when the token holder has enough balance', () => {
           sharedBeforeEach('mint tokens', async () => {
@@ -112,7 +125,7 @@ describe('BalancerPoolToken', () => {
           await token.connect(holder).approve(spender.address, amount);
         });
 
-        itTransfersTokensProperly(false);
+        itTransfersTokensProperly(SendFrom.SPENDER);
 
         describe('when the token holder has enough balance', () => {
           sharedBeforeEach('mint tokens', async () => {
@@ -146,7 +159,7 @@ describe('BalancerPoolToken', () => {
           await token.connect(holder).approve(spender.address, MAX_UINT256);
         });
 
-        itTransfersTokensProperly(false);
+        itTransfersTokensProperly(SendFrom.SPENDER);
 
         describe('when the token holder has enough balance', () => {
           sharedBeforeEach('mint tokens', async () => {
@@ -164,6 +177,32 @@ describe('BalancerPoolToken', () => {
 
           it('does not emit an approval event', async () => {
             const tx = await token.connect(spender).transferFrom(holder.address, to, amount);
+            const receipt = await tx.wait();
+
+            expectEvent.notEmitted(receipt, 'Approval');
+          });
+        });
+      });
+
+      describe('when the spender is the vault', () => {
+        itTransfersTokensProperly(SendFrom.VAULT);
+
+        describe('when the token holder has enough balance', () => {
+          sharedBeforeEach('mint tokens', async () => {
+            await token.mint(holder.address, amount);
+          });
+
+          it('does not decrease the spender allowance', async () => {
+            const previousAllowance = await token.allowance(holder.address, vault.address);
+
+            await token.connect(vault).transferFrom(holder.address, to, amount);
+
+            const currentAllowance = await token.allowance(holder.address, vault.address);
+            expect(currentAllowance).to.be.equal(previousAllowance);
+          });
+
+          it('does not emit an approval event', async () => {
+            const tx = await token.connect(vault).transferFrom(holder.address, to, amount);
             const receipt = await tx.wait();
 
             expectEvent.notEmitted(receipt, 'Approval');

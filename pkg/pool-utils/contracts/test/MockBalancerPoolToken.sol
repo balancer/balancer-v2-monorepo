@@ -14,10 +14,16 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+
 import "../BalancerPoolToken.sol";
 
 contract MockBalancerPoolToken is BalancerPoolToken {
-    constructor(string memory name, string memory symbol) BalancerPoolToken(name, symbol) {}
+    constructor(
+        string memory name,
+        string memory symbol,
+        IVault vault
+    ) BalancerPoolToken(name, symbol, vault) {}
 
     function mint(address recipient, uint256 amount) external {
         _mintPoolTokens(recipient, amount);

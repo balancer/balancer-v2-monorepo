@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
 
+// Based on the Address library from OpenZeppelin Contracts, altered by removing the `isContract` checks on
+// `functionCall` and `functionDelegateCall` in order to save gas, as the recipients are known to be contracts.
+
 pragma solidity ^0.7.0;
 
 import "../helpers/BalancerErrors.sol";
@@ -75,21 +78,40 @@ library Address {
      *
      * Requirements:
      *
-     * - `target` must be a contract.
      * - calling `target` with `data` must not revert.
      *
      * _Available since v3.1._
      */
     function functionCall(address target, bytes memory data) internal returns (bytes memory) {
-        _require(isContract(target), Errors.CALL_TO_NON_CONTRACT);
-
         (bool success, bytes memory returndata) = target.call(data);
         return verifyCallResult(success, returndata);
     }
 
     /**
-     * @dev Tool to verifies that a low level call was successful, and revert if it wasn't, either by bubbling the
-     * revert reason using the provided one.
+     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
+     * but passing some native ETH as msg.value to the call.
+     *
+     * _Available since v3.4._
+     */
+    function functionCallWithValue(address target, bytes memory data, uint256 value) internal returns (bytes memory) {
+        (bool success, bytes memory returndata) = target.call{value: value}(data);
+        return verifyCallResult(success, returndata);
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
+     * but performing a delegate call.
+     *
+     * _Available since v3.4._
+     */
+    function functionDelegateCall(address target, bytes memory data) internal returns (bytes memory) {
+        (bool success, bytes memory returndata) = target.delegatecall(data);
+        return verifyCallResult(success, returndata);
+    }
+
+    /**
+     * @dev Tool to verify that a low level call was successful, and revert if it wasn't, either by bubbling up the
+     * revert reason or using the one provided.
      *
      * _Available since v4.3._
      */

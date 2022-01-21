@@ -7,7 +7,7 @@ export type BigNumberish = string | number | BigNumber;
 
 export const decimal = (x: BigNumberish | Decimal): Decimal => new Decimal(x.toString());
 
-export const fp = (x: number | Decimal): BigNumber => bn(toFp(x));
+export const fp = (x: BigNumberish | Decimal): BigNumber => bn(toFp(x));
 
 export const toFp = (x: BigNumberish | Decimal): Decimal => decimal(x).mul(SCALING_FACTOR);
 
@@ -53,6 +53,14 @@ export const divCeil = (x: BigNumber, y: BigNumber): BigNumber =>
   x.add(y).sub(1).div(y);
 
 export const FP_SCALING_FACTOR = bn(SCALING_FACTOR);
+
+export function printGas(gas: number | BigNumber): string {
+  if (typeof gas !== 'number') {
+    gas = gas.toNumber();
+  }
+
+  return `${(gas / 1000).toFixed(1)}k`;
+}
 
 function parseScientific(num: string): string {
   // If the number is not in scientific notation return it as it is

@@ -2,26 +2,29 @@ import { assert } from 'console';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
+import { bn, printGas } from '@balancer-labs/v2-helpers/src/numbers';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { printGas, setupEnvironment, getWeightedPool, getStablePool, pickTokenAddresses } from './misc';
+import { setupEnvironment, getWeightedPool, getStablePool, pickTokenAddresses } from './misc';
 import { WeightedPoolEncoder, StablePoolEncoder } from '@balancer-labs/balancer-js';
 import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
 // setup environment
 const BPTAmount = bn(1e18);
 const numberJoinsExits = 3;
+const managedPoolMin = 15;
+const managedPoolMax = 35;
+const maxManagedTokens = 38;
+const managedPoolStep = 5;
 
-let vault: Contract;
+let vault: Vault;
 let tokens: TokenList;
 
 let trader: SignerWithAddress;
 
 const printTokens = (poolType: string, numTokens: number) => {
-  if (numTokens % 2 == 0) {
-    console.log(`${poolType} with ${numTokens} tokens`);
-  }
+  console.log(`${poolType} with ${numTokens} tokens`);
 };
 
 async function main() {
@@ -48,6 +51,28 @@ async function main() {
       exitWeightedUserData
     );
   }
+  console.log('\n');
+
+  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += managedPoolStep) {
+    printTokens('Managed pool', numTokens);
+    await joinAndExitPool(
+      () => getWeightedPool(vault, tokens, numTokens),
+      numTokens,
+      true,
+      joinWeightedUserData,
+      exitWeightedUserData
+    );
+  }
+  console.log('\n');
+
+  printTokens('Managed pool', maxManagedTokens);
+  await joinAndExitPool(
+    () => getWeightedPool(vault, tokens, maxManagedTokens),
+    maxManagedTokens,
+    true,
+    joinWeightedUserData,
+    exitWeightedUserData
+  );
   console.log('\n');
 
   // numTokens is the size of the pool: 2,4
@@ -77,6 +102,28 @@ async function main() {
       exitWeightedUserData
     );
   }
+  console.log('\n');
+
+  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += managedPoolStep) {
+    printTokens('Managed pool', numTokens);
+    await joinAndExitPool(
+      () => getWeightedPool(vault, tokens, numTokens),
+      numTokens,
+      false,
+      joinWeightedUserData,
+      exitWeightedUserData
+    );
+  }
+  console.log('\n');
+
+  printTokens('Managed pool', maxManagedTokens);
+  await joinAndExitPool(
+    () => getWeightedPool(vault, tokens, maxManagedTokens),
+    maxManagedTokens,
+    false,
+    joinWeightedUserData,
+    exitWeightedUserData
+  );
   console.log('\n');
 
   // numTokens is the size of the pool: 2,4
@@ -110,6 +157,30 @@ async function main() {
   }
   console.log('\n');
 
+  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += managedPoolStep) {
+    printTokens('Managed pool', numTokens);
+    await joinAndExitPool(
+      () => getWeightedPool(vault, tokens, numTokens),
+      numTokens,
+      true,
+      joinWeightedUserData,
+      exitWeightedUserData,
+      numberJoinsExits
+    );
+  }
+  console.log('\n');
+
+  printTokens('Managed pool', maxManagedTokens);
+  await joinAndExitPool(
+    () => getWeightedPool(vault, tokens, maxManagedTokens),
+    maxManagedTokens,
+    true,
+    joinWeightedUserData,
+    exitWeightedUserData,
+    numberJoinsExits
+  );
+  console.log('\n');
+
   for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
     printTokens('Stable pool', numTokens);
     await joinAndExitPool(
@@ -138,6 +209,30 @@ async function main() {
   }
   console.log('\n');
 
+  for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += managedPoolStep) {
+    printTokens('Managed pool', numTokens);
+    await joinAndExitPool(
+      () => getWeightedPool(vault, tokens, numTokens),
+      numTokens,
+      false,
+      joinWeightedUserData,
+      exitWeightedUserData,
+      numberJoinsExits
+    );
+  }
+  console.log('\n');
+
+  printTokens('Managed pool', maxManagedTokens);
+  await joinAndExitPool(
+    () => getWeightedPool(vault, tokens, maxManagedTokens),
+    maxManagedTokens,
+    false,
+    joinWeightedUserData,
+    exitWeightedUserData,
+    numberJoinsExits
+  );
+  console.log('\n');
+
   for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
     printTokens('Stable pool', numTokens);
     await joinAndExitPool(
@@ -160,7 +255,7 @@ async function joinAndExitPool(
   stageIdx = 1
 ) {
   const poolId: string = await getPoolId();
-  const [poolAddress] = await vault.getPool(poolId);
+  const { address: poolAddress } = await vault.getPool(poolId);
   const pool: Contract = await deployedAt('v2-pool-weighted/WeightedPool', poolAddress);
   const joinRequest = {
     assets: pickTokenAddresses(tokens, numTokens),
@@ -179,7 +274,9 @@ async function joinAndExitPool(
   let bpt;
 
   for (let idx = 1; idx <= stageIdx; idx++) {
-    receipt = await (await vault.connect(trader).joinPool(poolId, trader.address, trader.address, joinRequest)).wait();
+    receipt = await (
+      await vault.instance.connect(trader).joinPool(poolId, trader.address, trader.address, joinRequest)
+    ).wait();
     console.log(`${printGas(receipt.gasUsed)} gas for join ${idx}`);
 
     bpt = await pool.balanceOf(trader.address);
@@ -190,7 +287,9 @@ async function joinAndExitPool(
 
   // Now exit the pool
   for (let idx = 1; idx <= stageIdx; idx++) {
-    receipt = await (await vault.connect(trader).exitPool(poolId, trader.address, trader.address, exitRequest)).wait();
+    receipt = await (
+      await vault.instance.connect(trader).exitPool(poolId, trader.address, trader.address, exitRequest)
+    ).wait();
     console.log(`${printGas(receipt.gasUsed)} gas for exit ${idx}`);
 
     bpt = await pool.balanceOf(trader.address);

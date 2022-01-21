@@ -25,27 +25,24 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IMinimalSwapInfoPool.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePoolAuthorization.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BalancerPoolToken.sol";
-import "@balancer-labs/v2-pool-utils/contracts/interfaces/IPriceOracle.sol";
 import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
 import "@balancer-labs/v2-pool-utils/contracts/oracle/Buffer.sol";
 
 import "./WeightedMath.sol";
 import "./WeightedOracleMath.sol";
-import "./WeightedPoolUserDataHelpers.sol";
+import "./WeightedPoolUserData.sol";
 import "./WeightedPool2TokensMiscData.sol";
 
 contract WeightedPool2Tokens is
     IMinimalSwapInfoPool,
-    IPriceOracle,
     BasePoolAuthorization,
     BalancerPoolToken,
     TemporarilyPausable,
     PoolPriceOracle,
-    WeightedMath,
     WeightedOracleMath
 {
     using FixedPoint for uint256;
-    using WeightedPoolUserDataHelpers for bytes;
+    using WeightedPoolUserData for bytes;
     using WeightedPool2TokensMiscData for bytes32;
 
     uint256 private constant _MINIMUM_BPT = 1e6;
@@ -58,7 +55,6 @@ contract WeightedPool2Tokens is
     bytes32 internal _miscData;
     uint256 private _lastInvariant;
 
-    IVault private immutable _vault;
     bytes32 private immutable _poolId;
 
     IERC20 internal immutable _token0;
@@ -108,7 +104,7 @@ contract WeightedPool2Tokens is
         // any Pool created by the same factory), while still making action identifiers unique among different factories
         // if the selectors match, preventing accidental errors.
         Authentication(bytes32(uint256(msg.sender)))
-        BalancerPoolToken(params.name, params.symbol)
+        BalancerPoolToken(params.name, params.symbol, params.vault)
         BasePoolAuthorization(params.owner)
         TemporarilyPausable(params.pauseWindowDuration, params.bufferPeriodDuration)
     {
@@ -124,7 +120,6 @@ contract WeightedPool2Tokens is
         params.vault.registerTokens(poolId, tokens, new address[](2));
 
         // Set immutable state variables - these cannot be read from during construction
-        _vault = params.vault;
         _poolId = poolId;
 
         _token0 = params.token0;
@@ -134,8 +129,8 @@ contract WeightedPool2Tokens is
         _scalingFactor1 = _computeScalingFactor(params.token1);
 
         // Ensure each normalized weight is above them minimum and find the token index of the maximum weight
-        _require(params.normalizedWeight0 >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
-        _require(params.normalizedWeight1 >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
+        _require(params.normalizedWeight0 >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
+        _require(params.normalizedWeight1 >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
         // Ensure that the normalized weights sum to ONE
         uint256 normalizedSum = params.normalizedWeight0.add(params.normalizedWeight1);
@@ -147,10 +142,6 @@ contract WeightedPool2Tokens is
     }
 
     // Getters / Setters
-
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
 
     function getPoolId() public view override returns (bytes32) {
         return _poolId;
@@ -195,9 +186,7 @@ contract WeightedPool2Tokens is
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
-        return
-            (actionId == getActionId(BasePool.setSwapFeePercentage.selector)) ||
-            (actionId == getActionId(BasePool.setAssetManagerPoolConfig.selector));
+        return actionId == getActionId(this.setSwapFeePercentage.selector);
     }
 
     /**
@@ -442,8 +431,8 @@ contract WeightedPool2Tokens is
         address,
         bytes memory userData
     ) private returns (uint256, uint256[] memory) {
-        BaseWeightedPool.JoinKind kind = userData.joinKind();
-        _require(kind == BaseWeightedPool.JoinKind.INIT, Errors.UNINITIALIZED);
+        WeightedPoolUserData.JoinKind kind = userData.joinKind();
+        _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, 2);
@@ -527,12 +516,14 @@ contract WeightedPool2Tokens is
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        BaseWeightedPool.JoinKind kind = userData.joinKind();
+        WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
-        if (kind == BaseWeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+        if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(balances, normalizedWeights, userData);
-        } else if (kind == BaseWeightedPool.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+        } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(balances, normalizedWeights, userData);
+        } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
+            return _joinAllTokensInForExactBPTOut(balances, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
@@ -548,7 +539,7 @@ contract WeightedPool2Tokens is
 
         _upscaleArray(amountsIn);
 
-        uint256 bptAmountOut = WeightedMath._calcBptOutGivenExactTokensIn(
+        (uint256 bptAmountOut, ) = WeightedMath._calcBptOutGivenExactTokensIn(
             balances,
             normalizedWeights,
             amountsIn,
@@ -572,12 +563,29 @@ contract WeightedPool2Tokens is
         _require(tokenIndex < 2, Errors.OUT_OF_BOUNDS);
 
         uint256[] memory amountsIn = new uint256[](2);
-        amountsIn[tokenIndex] = WeightedMath._calcTokenInGivenExactBptOut(
+        (amountsIn[tokenIndex], ) = WeightedMath._calcTokenInGivenExactBptOut(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountOut,
             totalSupply(),
             getSwapFeePercentage()
+        );
+
+        return (bptAmountOut, amountsIn);
+    }
+
+    function _joinAllTokensInForExactBPTOut(uint256[] memory balances, bytes memory userData)
+        private
+        view
+        returns (uint256, uint256[] memory)
+    {
+        uint256 bptAmountOut = userData.allTokensInForExactBptOut();
+        // Note that there is no maximum amountsIn parameter: this is handled by `IVault.joinPool`.
+
+        uint256[] memory amountsIn = WeightedMath._calcAllTokensInGivenExactBptOut(
+            balances,
+            bptAmountOut,
+            totalSupply()
         );
 
         return (bptAmountOut, amountsIn);
@@ -700,15 +708,16 @@ contract WeightedPool2Tokens is
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        BaseWeightedPool.ExitKind kind = userData.exitKind();
+        WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
-        if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+        if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(balances, normalizedWeights, userData);
-        } else if (kind == BaseWeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(balances, userData);
-        } else {
-            // ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT
+        } else if (kind == WeightedPoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(balances, normalizedWeights, userData);
+        } else {
+            _revert(Errors.UNHANDLED_EXIT_KIND);
         }
     }
 
@@ -728,7 +737,7 @@ contract WeightedPool2Tokens is
         uint256[] memory amountsOut = new uint256[](2);
 
         // And then assign the result to the selected token
-        amountsOut[tokenIndex] = WeightedMath._calcTokenOutGivenExactBptIn(
+        (amountsOut[tokenIndex], ) = WeightedMath._calcTokenOutGivenExactBptIn(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountIn,
@@ -767,7 +776,7 @@ contract WeightedPool2Tokens is
         InputHelpers.ensureInputLengthMatch(amountsOut.length, 2);
         _upscaleArray(amountsOut);
 
-        uint256 bptAmountIn = WeightedMath._calcBptInGivenExactTokensOut(
+        (uint256 bptAmountIn, ) = WeightedMath._calcBptInGivenExactTokensOut(
             balances,
             normalizedWeights,
             amountsOut,
@@ -780,53 +789,6 @@ contract WeightedPool2Tokens is
     }
 
     // Oracle functions
-
-    function getLargestSafeQueryWindow() external pure override returns (uint256) {
-        return 34 hours;
-    }
-
-    function getLatest(Variable variable) external view override returns (uint256) {
-        int256 instantValue = _getInstantValue(variable, _miscData.oracleIndex());
-        return LogCompression.fromLowResLog(instantValue);
-    }
-
-    function getTimeWeightedAverage(OracleAverageQuery[] memory queries)
-        external
-        view
-        override
-        returns (uint256[] memory results)
-    {
-        results = new uint256[](queries.length);
-
-        uint256 oracleIndex = _miscData.oracleIndex();
-
-        OracleAverageQuery memory query;
-        for (uint256 i = 0; i < queries.length; ++i) {
-            query = queries[i];
-            _require(query.secs != 0, Errors.ORACLE_BAD_SECS);
-
-            int256 beginAccumulator = _getPastAccumulator(query.variable, oracleIndex, query.ago + query.secs);
-            int256 endAccumulator = _getPastAccumulator(query.variable, oracleIndex, query.ago);
-            results[i] = LogCompression.fromLowResLog((endAccumulator - beginAccumulator) / int256(query.secs));
-        }
-    }
-
-    function getPastAccumulators(OracleAccumulatorQuery[] memory queries)
-        external
-        view
-        override
-        returns (int256[] memory results)
-    {
-        results = new int256[](queries.length);
-
-        uint256 oracleIndex = _miscData.oracleIndex();
-
-        OracleAccumulatorQuery memory query;
-        for (uint256 i = 0; i < queries.length; ++i) {
-            query = queries[i];
-            results[i] = _getPastAccumulator(query.variable, oracleIndex, query.ago);
-        }
-    }
 
     /**
      * @dev Updates the Price Oracle based on the Pool's current state (balances, BPT supply and invariant). Must be
@@ -888,6 +850,10 @@ contract WeightedPool2Tokens is
             miscData = miscData.setLogTotalSupply(LogCompression.toLowResLog(totalSupply()));
             _miscData = miscData;
         }
+    }
+
+    function _getOracleIndex() internal view override returns (uint256) {
+        return _miscData.oracleIndex();
     }
 
     // Query functions

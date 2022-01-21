@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 export type NAry<T> = T | Array<T>;
 
-export type Account = string | SignerWithAddress | Contract;
+export type Account = string | SignerWithAddress | Contract | { address: string };
 
 export type TxParams = {
   from?: SignerWithAddress;

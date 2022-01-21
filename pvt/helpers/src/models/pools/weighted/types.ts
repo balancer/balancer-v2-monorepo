@@ -1,4 +1,4 @@
-import { BigNumber } from 'ethers';
+import { BigNumber, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { BigNumberish } from '../../../numbers';
@@ -6,6 +6,14 @@ import { BigNumberish } from '../../../numbers';
 import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import { Account, NAry } from '../../types/types';
+import Vault from '../../vault/Vault';
+
+export enum WeightedPoolType {
+  WEIGHTED_POOL = 0,
+  WEIGHTED_POOL_2TOKENS,
+  LIQUIDITY_BOOTSTRAPPING_POOL,
+  MANAGED_POOL,
+}
 
 export type RawWeightedPoolDeployment = {
   tokens?: TokenList;
@@ -16,13 +24,15 @@ export type RawWeightedPoolDeployment = {
   bufferPeriodDuration?: BigNumberish;
   oracleEnabled?: boolean;
   swapEnabledOnStart?: boolean;
-  owner?: SignerWithAddress;
+  mustAllowlistLPs?: boolean;
+  managementSwapFeePercentage?: BigNumberish;
+  owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
+  vault?: Vault;
   fromFactory?: boolean;
-  twoTokens?: boolean;
-  lbp?: boolean;
   noProtocolFee?: boolean;
+  poolType?: WeightedPoolType;
 };
 
 export type WeightedPoolDeployment = {
@@ -32,12 +42,13 @@ export type WeightedPoolDeployment = {
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
-  twoTokens: boolean;
-  lbp: boolean;
   noProtocolFee: boolean;
+  poolType: WeightedPoolType;
   oracleEnabled: boolean;
   swapEnabledOnStart: boolean;
-  owner?: SignerWithAddress;
+  mustAllowlistLPs: boolean;
+  managementSwapFeePercentage: BigNumberish;
+  owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
 };
@@ -88,6 +99,15 @@ export type JoinGivenOutWeightedPool = {
   protocolFeePercentage?: BigNumberish;
 };
 
+export type JoinAllGivenOutWeightedPool = {
+  bptOut: BigNumberish;
+  from?: SignerWithAddress;
+  recipient?: Account;
+  lastChangeBlock?: BigNumberish;
+  currentBalances?: BigNumberish[];
+  protocolFeePercentage?: BigNumberish;
+};
+
 export type ExitGivenOutWeightedPool = {
   amountsOut: NAry<BigNumberish>;
   maximumBptIn?: BigNumberish;
@@ -120,11 +140,18 @@ export type MultiExitGivenInWeightedPool = {
 export type JoinResult = {
   amountsIn: BigNumber[];
   dueProtocolFeeAmounts: BigNumber[];
+  receipt: ContractReceipt;
 };
 
 export type ExitResult = {
   amountsOut: BigNumber[];
   dueProtocolFeeAmounts: BigNumber[];
+  receipt: ContractReceipt;
+};
+
+export type SwapResult = {
+  amount: BigNumber;
+  receipt: ContractReceipt;
 };
 
 export type JoinQueryResult = {
@@ -135,6 +162,10 @@ export type JoinQueryResult = {
 export type ExitQueryResult = {
   bptIn: BigNumber;
   amountsOut: BigNumber[];
+};
+
+export type VoidResult = {
+  receipt: ContractReceipt;
 };
 
 export type MiscData = {
@@ -162,4 +193,39 @@ export type GradualUpdateParams = {
   startTime: BigNumber;
   endTime: BigNumber;
   endWeights: BigNumber[];
+};
+
+export type TokenCollectedFees = {
+  amounts: BigNumber[];
+  tokenAddresses: string[];
+};
+
+export type BasePoolRights = {
+  canTransferOwnership: boolean;
+  canChangeSwapFee: boolean;
+  canUpdateMetadata: boolean;
+};
+
+export type ManagedPoolRights = {
+  canChangeWeights: boolean;
+  canDisableSwaps: boolean;
+  canSetMustAllowlistLPs: boolean;
+  canSetCircuitBreakers: boolean;
+  canChangeTokens: boolean;
+};
+
+export type ManagedPoolParams = {
+  vault: string;
+  name: string;
+  symbol: string;
+  tokens: string[];
+  normalizedWeights: BigNumberish[];
+  assetManagers: string[];
+  swapFeePercentage: BigNumberish;
+  pauseWindowDuration: number;
+  bufferPeriodDuration: number;
+  owner: string;
+  swapEnabledOnStart: boolean;
+  mustAllowlistLPs: boolean;
+  managementSwapFeePercentage: BigNumberish;
 };

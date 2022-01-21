@@ -11,6 +11,10 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { MultiDistributor } from '@balancer-labs/v2-helpers/src/models/distributor/MultiDistributor';
+import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 const tokenInitialBalance = bn(200e18);
 
@@ -20,8 +24,7 @@ const setup = async () => {
   const tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
 
   // Deploy Balancer Vault
-  const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
-  const vault = await deploy('v2-vault/Vault', { args: [authorizer.address, tokens.DAI.address, 0, 0] });
+  const vault = await Vault.create({ admin });
 
   // Deploy mocked Aave
   const lendingPool = await deploy('MockAaveLendingPool', { args: [] });
@@ -59,19 +62,21 @@ const setup = async () => {
   const poolId = await pool.getPoolId();
 
   // Deploy staking contract for pool
-  const distributor = await deploy('v2-distributors/MultiRewards', {
-    args: [vault.address],
-  });
+  const distributor = await MultiDistributor.create(vault);
+
+  // Authorise distributor to use users' vault token approvals
+  const action = await actionId(vault.instance, 'manageUserBalance');
+  await vault.grantRoleGlobally(action, distributor);
+
+  await vault.setRelayerApproval(lp, distributor, true);
 
   await assetManager.initialize(poolId, distributor.address);
-
-  await distributor.allowlistRewarder(pool.address, admin.address, lp.address);
 
   await tokens.mint({ to: lp, amount: tokenInitialBalance });
   await tokens.approve({ to: vault.address, from: [lp] });
 
   const assets = tokens.addresses;
-  await vault.connect(lp).joinPool(poolId, lp.address, lp.address, {
+  await vault.instance.connect(lp).joinPool(poolId, lp.address, lp.address, {
     assets: tokens.addresses,
     maxAmountsIn: Array(assets.length).fill(MAX_UINT256),
     fromInternalBalance: false,
@@ -87,7 +92,7 @@ const setup = async () => {
       distributor,
       lendingPool,
       tokens,
-      stkAave,
+      stkAave: await Token.deployedAt(stkAave.address),
       pool,
       vault,
     },
@@ -95,7 +100,7 @@ const setup = async () => {
 };
 
 describe('Aave Asset manager', function () {
-  let vault: Contract, assetManager: Contract, distributor: Contract, pool: Contract, stkAave: Contract;
+  let vault: Vault, assetManager: Contract, distributor: MultiDistributor, pool: Contract, stkAave: Token;
 
   let lp: SignerWithAddress, other: SignerWithAddress;
 
@@ -114,21 +119,29 @@ describe('Aave Asset manager', function () {
   });
 
   describe('claimRewards', () => {
+    let id: string;
     const rewardAmount = fp(1);
 
     beforeEach(async () => {
-      const bptBalance = await pool.balanceOf(lp.address);
+      const bpt = await Token.deployedAt(pool.address);
+      const bptBalance = await bpt.balanceOf(lp);
+
       await pool.connect(lp).approve(distributor.address, bptBalance);
-      await distributor.connect(lp)['stake(address,uint256)'](pool.address, bptBalance.mul(3).div(4));
+
+      id = await distributor.getDistributionId(bpt, stkAave, assetManager.address);
+
+      await distributor.subscribe(id, { from: lp });
+      await distributor.stake(bpt, bptBalance.mul(3).div(4), lp, lp, { from: lp });
 
       // Stake half of the BPT to another address
-      await distributor.connect(lp)['stake(address,uint256,address)'](pool.address, bptBalance.div(4), other.address);
+      await distributor.subscribe(id, { from: other });
+      await distributor.stake(bpt, bptBalance.div(4), lp, other, { from: lp });
     });
 
     it('sends expected amount of stkAave to the rewards contract', async () => {
-      const rewardsBefore = await vault.getInternalBalance(distributor.address, [stkAave.address]);
+      const rewardsBefore = await vault.instance.getInternalBalance(distributor.address, [stkAave.address]);
       await assetManager.claimRewards();
-      const rewardsAfter = await vault.getInternalBalance(distributor.address, [stkAave.address]);
+      const rewardsAfter = await vault.instance.getInternalBalance(distributor.address, [stkAave.address]);
       expect(rewardsAfter[0]).to.be.eq(rewardsBefore[0].add(rewardAmount));
     });
 
@@ -137,7 +150,7 @@ describe('Aave Asset manager', function () {
       await advanceTime(10);
 
       const expectedReward = fp(0.75);
-      const actualReward = await distributor.totalEarned(pool.address, lp.address, stkAave.address);
+      const actualReward = await distributor.getClaimableTokens(id, lp);
       expect(expectedReward.sub(actualReward).abs()).to.be.lte(100);
     });
   });

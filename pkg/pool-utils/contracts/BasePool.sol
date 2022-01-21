@@ -36,6 +36,10 @@ import "./BasePoolAuthorization.sol";
  * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with optional
  * Asset Managers, an admin-controlled swap fee percentage, and an emergency pause mechanism.
  *
+ * This Pool pays protocol fees by minting BPT directly to the ProtocolFeeCollector instead of using the
+ * `dueProtocolFees` return value. This results in the underlying tokens continuing to provide liquidity
+ * for traders, while still keeping gas usage to a minimum since only a single token (the BPT) is transferred.
+ *
  * Note that neither swap fees nor the pause mechanism are used by this contract. They are passed through so that
  * derived contracts can use them via the `_addSwapFeeAmount` and `_subtractSwapFeeAmount` functions, and the
  * `whenNotPaused` modifier.
@@ -52,11 +56,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     uint256 private constant _MIN_TOKENS = 2;
 
+    uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
+
     // 1e18 corresponds to 1.0, or a 100% fee
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10%
-
-    uint256 private constant _MINIMUM_BPT = 1e6;
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10% - this fits in 64 bits
 
     // Storage slot that can be used to store unrelated pieces of information. In particular, by default is used
     // to store only the swap fee percentage of a pool. But it can be extended to store some more pieces of information.
@@ -65,8 +69,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     bytes32 private _miscData;
     uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
 
-    IVault private immutable _vault;
     bytes32 private immutable _poolId;
+
+    // Note that this value is immutable in the Vault, so we can make it immutable here and save gas
+    IProtocolFeesCollector private immutable _protocolFeesCollector;
 
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
 
@@ -88,7 +94,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         // any Pool created by the same factory), while still making action identifiers unique among different factories
         // if the selectors match, preventing accidental errors.
         Authentication(bytes32(uint256(msg.sender)))
-        BalancerPoolToken(name, symbol)
+        BalancerPoolToken(name, symbol, vault)
         BasePoolAuthorization(owner)
         TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
     {
@@ -109,15 +115,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         vault.registerTokens(poolId, tokens, assetManagers);
 
         // Set immutable state variables - these cannot be read from during construction
-        _vault = vault;
         _poolId = poolId;
+        _protocolFeesCollector = vault.getProtocolFeesCollector();
     }
 
     // Getters / Setters
-
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
 
     function getPoolId() public view override returns (bytes32) {
         return _poolId;
@@ -127,8 +129,23 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     function _getMaxTokens() internal pure virtual returns (uint256);
 
+    /**
+     * @dev Returns the minimum BPT supply. This amount is minted to the zero address during initialization, effectively
+     * locking it.
+     *
+     * This is useful to make sure Pool initialization happens only once, but derived Pools can change this value (even
+     * to zero) by overriding this function.
+     */
+    function _getMinimumBpt() internal pure virtual returns (uint256) {
+        return _DEFAULT_MINIMUM_BPT;
+    }
+
     function getSwapFeePercentage() public view returns (uint256) {
         return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
+    }
+
+    function getProtocolFeesCollector() public view returns (IProtocolFeesCollector) {
+        return _protocolFeesCollector;
     }
 
     function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
@@ -209,20 +226,20 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 userData
             );
 
-            // On initialization, we lock _MINIMUM_BPT by minting it for the zero address. This BPT acts as a minimum
-            // as it will never be burned, which reduces potential issues with rounding, and also prevents the Pool from
-            // ever being fully drained.
-            _require(bptAmountOut >= _MINIMUM_BPT, Errors.MINIMUM_BPT);
-            _mintPoolTokens(address(0), _MINIMUM_BPT);
-            _mintPoolTokens(recipient, bptAmountOut - _MINIMUM_BPT);
+            // On initialization, we lock _getMinimumBpt() by minting it for the zero address. This BPT acts as a
+            // minimum as it will never be burned, which reduces potential issues with rounding, and also prevents the
+            // Pool from ever being fully drained.
+            _require(bptAmountOut >= _getMinimumBpt(), Errors.MINIMUM_BPT);
+            _mintPoolTokens(address(0), _getMinimumBpt());
+            _mintPoolTokens(recipient, bptAmountOut - _getMinimumBpt());
 
             // amountsIn are amounts entering the Pool, so we round up.
             _downscaleUpArray(amountsIn, scalingFactors);
 
-            return (amountsIn, new uint256[](_getTotalTokens()));
+            return (amountsIn, new uint256[](balances.length));
         } else {
             _upscaleArray(balances, scalingFactors);
-            (uint256 bptAmountOut, uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _onJoinPool(
+            (uint256 bptAmountOut, uint256[] memory amountsIn) = _onJoinPool(
                 poolId,
                 sender,
                 recipient,
@@ -239,10 +256,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
             // amountsIn are amounts entering the Pool, so we round up.
             _downscaleUpArray(amountsIn, scalingFactors);
-            // dueProtocolFeeAmounts are amounts exiting the Pool, so we round down.
-            _downscaleDownArray(dueProtocolFeeAmounts, scalingFactors);
 
-            return (amountsIn, dueProtocolFeeAmounts);
+            // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
+            return (amountsIn, new uint256[](balances.length));
         }
     }
 
@@ -258,7 +274,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256[] memory scalingFactors = _scalingFactors();
         _upscaleArray(balances, scalingFactors);
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _onExitPool(
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = _onExitPool(
             poolId,
             sender,
             recipient,
@@ -273,11 +289,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
         _burnPoolTokens(sender, bptAmountIn);
 
-        // Both amountsOut and dueProtocolFeeAmounts are amounts exiting the Pool, so we round down.
+        // amountsOut are amounts exiting the Pool, so we round down.
         _downscaleDownArray(amountsOut, scalingFactors);
-        _downscaleDownArray(dueProtocolFeeAmounts, scalingFactors);
 
-        return (amountsOut, dueProtocolFeeAmounts);
+        // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
+        return (amountsOut, new uint256[](balances.length));
     }
 
     // Query functions
@@ -366,10 +382,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      *
      * Returns the amount of BPT to mint, and the token amounts the Pool will receive in return.
      *
-     * Minted BPT will be sent to `recipient`, except for _MINIMUM_BPT, which will be deducted from this amount and sent
-     * to the zero address instead. This will cause that BPT to remain forever locked there, preventing total BTP from
-     * ever dropping below that value, and ensuring `_onInitializePool` can only be called once in the entire Pool's
-     * lifetime.
+     * Minted BPT will be sent to `recipient`, except for _getMinimumBpt(), which will be deducted from this amount and
+     * sent to the zero address instead. This will cause that BPT to remain forever locked there, preventing total BTP
+     * from ever dropping below that value, and ensuring `_onInitializePool` can only be called once in the entire
+     * Pool's lifetime.
      *
      * The tokens granted to the Pool will be transferred from `sender`. These amounts are considered upscaled and will
      * be downscaled (rounding up) before being returned to the Vault.
@@ -408,14 +424,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        virtual
-        returns (
-            uint256 bptAmountOut,
-            uint256[] memory amountsIn,
-            uint256[] memory dueProtocolFeeAmounts
-        );
+    ) internal virtual returns (uint256 bptAmountOut, uint256[] memory amountsIn);
 
     /**
      * @dev Called whenever the Pool is exited.
@@ -443,16 +452,16 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        virtual
-        returns (
-            uint256 bptAmountIn,
-            uint256[] memory amountsOut,
-            uint256[] memory dueProtocolFeeAmounts
-        );
+    ) internal virtual returns (uint256 bptAmountIn, uint256[] memory amountsOut);
 
     // Internal functions
+
+    /**
+     * @dev Pays protocol fees by minting `bptAmount` to the Protocol Fee Collector.
+     */
+    function _payProtocolFees(uint256 bptAmount) internal {
+        _mintPoolTokens(address(getProtocolFeesCollector()), bptAmount);
+    }
 
     /**
      * @dev Adds swap fee amount to `amount`, returning a higher value.
@@ -478,6 +487,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * it had 18 decimals.
      */
     function _computeScalingFactor(IERC20 token) internal view returns (uint256) {
+        if (address(token) == address(this)) {
+            return FixedPoint.ONE;
+        }
+
         // Tokens that don't implement the `decimals` method are not supported.
         uint256 tokenDecimals = ERC20(address(token)).decimals();
 
@@ -587,7 +600,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes memory userData,
         function(bytes32, address, address, uint256[] memory, uint256, uint256, uint256[] memory, bytes memory)
             internal
-            returns (uint256, uint256[] memory, uint256[] memory) _action,
+            returns (uint256, uint256[] memory) _action,
         function(uint256[] memory, uint256[] memory) internal view _downscaleArray
     ) private {
         // This uses the same technique used by the Vault in queryBatchSwap. Refer to that function for a detailed
@@ -661,7 +674,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             uint256[] memory scalingFactors = _scalingFactors();
             _upscaleArray(balances, scalingFactors);
 
-            (uint256 bptAmount, uint256[] memory tokenAmounts, ) = _action(
+            (uint256 bptAmount, uint256[] memory tokenAmounts) = _action(
                 poolId,
                 sender,
                 recipient,

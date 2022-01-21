@@ -2,15 +2,18 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PoolSpecialization } from '@balancer-labs/balancer-js';
+import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { RawWeightedPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { RawWeightedPoolDeployment, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
-export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoTokenPool = false): void {
+export function itBehavesAsWeightedPool(
+  numberOfTokens: number,
+  poolType: WeightedPoolType = WeightedPoolType.WEIGHTED_POOL
+): void {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
@@ -28,7 +31,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
 
     params = Object.assign(
       {},
-      { tokens, weights, assetManagers, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, twoTokens: useCustomTwoTokenPool },
+      { tokens, weights, assetManagers, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, poolType },
       params
     );
     pool = await WeightedPool.create(params);
@@ -80,7 +83,9 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
       it('sets the asset managers', async () => {
         await tokens.asyncEach(async (token) => {
           const info = await pool.getTokenInfo(token);
-          expect(info.assetManager).to.equal(useCustomTwoTokenPool ? ZERO_ADDRESS : assetManager.address);
+          expect(info.assetManager).to.equal(
+            poolType == WeightedPoolType.WEIGHTED_POOL_2TOKENS ? ZERO_ADDRESS : assetManager.address
+          );
         });
       });
 
@@ -102,7 +107,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
     });
 
     context('when the creation fails', () => {
-      if (!useCustomTwoTokenPool) {
+      if (poolType != WeightedPoolType.WEIGHTED_POOL_2TOKENS) {
         it('reverts if the number of tokens and weights do not match', async () => {
           const badWeights = weights.slice(1);
 
@@ -113,7 +118,8 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
       it('reverts if there are repeated tokens', async () => {
         const badTokens = new TokenList(Array(numberOfTokens).fill(tokens.first));
 
-        const error = useCustomTwoTokenPool ? 'TOKEN_ALREADY_REGISTERED' : 'UNSORTED_ARRAY';
+        const error =
+          poolType == WeightedPoolType.WEIGHTED_POOL_2TOKENS ? 'TOKEN_ALREADY_REGISTERED' : 'UNSORTED_ARRAY';
         await expect(deployPool({ tokens: badTokens, fromFactory: true })).to.be.revertedWith(error);
       });
 
@@ -210,7 +216,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
           // Protocol fees should be zero
           expect(result.dueProtocolFeeAmounts).to.be.zeros;
 
-          // Make sure received BPT is closed to what we expect
+          // Make sure received BPT is close to what we expect
           const currentBptBalance = await pool.balanceOf(recipient);
           expect(currentBptBalance.sub(previousBptBalance)).to.be.equalWithError(expectedBptOut, 0.0001);
         });
@@ -265,12 +271,12 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
           // Protocol fees should be zero
           expect(result.dueProtocolFeeAmounts).to.be.zeros;
 
-          // Make sure received BPT is closed to what we expect
+          // Make sure received BPT is close to what we expect
           const currentBptBalance = await pool.balanceOf(recipient);
           expect(currentBptBalance.sub(previousBptBalance)).to.be.equal(bptOut);
         });
 
-        it('can tell how many token amounts it will have to receive', async () => {
+        it('can tell what token amounts it will have to receive', async () => {
           const expectedAmountIn = await pool.estimateTokenIn(token, bptOut, initialBalances);
 
           const result = await pool.queryJoinGivenOut({ bptOut, token });
@@ -293,6 +299,60 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
           await pool.pause();
 
           await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('PAUSED');
+        });
+      });
+    });
+
+    context('join all tokens in for exact BPT out', () => {
+      it('fails if not initialized', async () => {
+        await expect(pool.joinAllGivenOut({ bptOut: fp(2) })).to.be.revertedWith('UNINITIALIZED');
+      });
+
+      context('once initialized', () => {
+        sharedBeforeEach('initialize pool', async () => {
+          await pool.init({ recipient, initialBalances });
+        });
+
+        it('grants exact BPT for tokens in', async () => {
+          const previousBptBalance = await pool.balanceOf(recipient);
+          // We want to join for half the initial BPT supply, which will require half the initial balances
+          const bptOut = previousBptBalance.div(2);
+
+          const expectedAmountsIn = initialBalances.map((balance) => balance.div(2));
+
+          const result = await pool.joinAllGivenOut({ recipient, bptOut });
+
+          for (let i = 0; i < expectedAmountsIn.length; i++) {
+            expect(result.amountsIn[i]).to.be.equalWithError(expectedAmountsIn[i], 0.001);
+          }
+
+          // Protocol fees should be zero
+          expect(result.dueProtocolFeeAmounts).to.be.zeros;
+
+          // Make sure received BPT equals we expect (since bptOut is given)
+          const currentBptBalance = await pool.balanceOf(recipient);
+          expect(currentBptBalance.sub(previousBptBalance)).to.be.equal(bptOut);
+        });
+
+        it('can tell what token amounts it will have to receive', async () => {
+          const expectedAmountsIn = initialBalances.map((balance) => balance.div(2));
+          const previousBptBalance = await pool.balanceOf(recipient);
+          // We want to join for half the initial BPT supply, which will require half the initial balances
+          const bptOut = previousBptBalance.div(2);
+
+          const result = await pool.queryJoinAllGivenOut({ bptOut });
+
+          expect(result.bptOut).to.be.equal(bptOut);
+
+          for (let i = 0; i < expectedAmountsIn.length; i++) {
+            expect(result.amountsIn[i]).to.be.equalWithError(expectedAmountsIn[i], 0.001);
+          }
+        });
+
+        it('reverts if paused', async () => {
+          await pool.pause();
+
+          await expect(pool.joinAllGivenOut({ bptOut: fp(2) })).to.be.revertedWith('PAUSED');
         });
       });
     });
@@ -408,7 +468,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
         expect(await pool.balanceOf(lp)).to.equal(0);
       });
 
-      it('can tell how many token amounts it will give in return', async () => {
+      it('can tell what token amounts it will give in return', async () => {
         const totalBPT = await pool.totalSupply();
         const expectedAmountsOut = initialBalances.map((balance) => balance.mul(previousBptBalance).div(totalBPT));
 
@@ -480,6 +540,26 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
     });
 
     context('given in', () => {
+      it('reverts if caller is not the vault', async () => {
+        await expect(
+          pool.instance.onSwap(
+            {
+              kind: SwapKind.GivenIn,
+              tokenIn: tokens.first.address,
+              tokenOut: tokens.second.address,
+              amount: 0,
+              poolId: await pool.getPoolId(),
+              lastChangeBlock: 0,
+              from: other.address,
+              to: other.address,
+              userData: '0x',
+            },
+            0,
+            0
+          )
+        ).to.be.revertedWith('CALLER_NOT_VAULT');
+      });
+
       it('calculates amount out', async () => {
         const amount = fp(0.1);
         const amountWithFees = amount.mul(POOL_SWAP_FEE_PERCENTAGE.add(fp(1))).div(fp(1));
@@ -487,7 +567,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
 
         const result = await pool.swapGivenIn({ in: 1, out: 0, amount: amountWithFees });
 
-        expect(result).to.be.equalWithError(expectedAmountOut, 0.01);
+        expect(result.amount).to.be.equalWithError(expectedAmountOut, 0.01);
       });
 
       it('calculates max amount out', async () => {
@@ -497,7 +577,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
 
         const result = await pool.swapGivenIn({ in: 1, out: 0, amount: maxAmountInWithFees });
 
-        expect(result).to.be.equalWithError(expectedAmountOut, 0.05);
+        expect(result.amount).to.be.equalWithError(expectedAmountOut, 0.05);
       });
 
       it('reverts if token in exceeds max in ratio', async () => {
@@ -508,7 +588,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
         await expect(pool.swapGivenIn({ in: 1, out: 0, amount })).to.be.revertedWith('MAX_IN_RATIO');
       });
 
-      if (!useCustomTwoTokenPool) {
+      if (poolType != WeightedPoolType.WEIGHTED_POOL_2TOKENS) {
         it('reverts if token in is not in the pool', async () => {
           await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
@@ -526,13 +606,33 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
     });
 
     context('given out', () => {
+      it('reverts if caller is not the vault', async () => {
+        await expect(
+          pool.instance.onSwap(
+            {
+              kind: SwapKind.GivenOut,
+              tokenIn: tokens.first.address,
+              tokenOut: tokens.second.address,
+              amount: 0,
+              poolId: await pool.getPoolId(),
+              lastChangeBlock: 0,
+              from: other.address,
+              to: other.address,
+              userData: '0x',
+            },
+            0,
+            0
+          )
+        ).to.be.revertedWith('CALLER_NOT_VAULT');
+      });
+
       it('calculates amount in', async () => {
         const amount = fp(0.1);
         const expectedAmountIn = await pool.estimateGivenOut({ in: 1, out: 0, amount });
 
         const result = await pool.swapGivenOut({ in: 1, out: 0, amount });
 
-        expect(result).to.be.equalWithError(expectedAmountIn, 0.1);
+        expect(result.amount).to.be.equalWithError(expectedAmountIn, 0.1);
       });
 
       it('calculates max amount in', async () => {
@@ -541,7 +641,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
 
         const result = await pool.swapGivenOut({ in: 1, out: 0, amount });
 
-        expect(result).to.be.equalWithError(expectedAmountIn, 0.1);
+        expect(result.amount).to.be.equalWithError(expectedAmountIn, 0.1);
       });
 
       it('reverts if token in exceeds max out ratio', async () => {
@@ -550,7 +650,7 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
         await expect(pool.swapGivenOut({ in: 1, out: 0, amount })).to.be.revertedWith('MAX_OUT_RATIO');
       });
 
-      if (!useCustomTwoTokenPool) {
+      if (poolType != WeightedPoolType.WEIGHTED_POOL_2TOKENS) {
         it('reverts if token in is not in the pool when given out', async () => {
           await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
@@ -582,6 +682,9 @@ export function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoToke
         expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
 
         joinResult = await pool.joinGivenOut({ from: lp, bptOut: fp(1), token: 0, protocolFeePercentage });
+        expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
+
+        joinResult = await pool.joinAllGivenOut({ from: lp, bptOut: fp(0.1) });
         expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
 
         let exitResult = await pool.singleExitGivenIn({ from: lp, bptIn: fp(10), token: 0, protocolFeePercentage });

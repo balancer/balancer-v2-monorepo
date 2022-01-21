@@ -145,6 +145,22 @@ library Errors {
     uint256 internal constant SWAPS_DISABLED = 327;
     uint256 internal constant CALLER_IS_NOT_LBP_OWNER = 328;
     uint256 internal constant PRICE_RATE_OVERFLOW = 329;
+    uint256 internal constant INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED = 330;
+    uint256 internal constant WEIGHT_CHANGE_TOO_FAST = 331;
+    uint256 internal constant LOWER_GREATER_THAN_UPPER_TARGET = 332;
+    uint256 internal constant UPPER_TARGET_TOO_HIGH = 333;
+    uint256 internal constant UNHANDLED_BY_LINEAR_POOL = 334;
+    uint256 internal constant OUT_OF_TARGET_RANGE = 335;
+    uint256 internal constant UNHANDLED_EXIT_KIND = 336;
+    uint256 internal constant UNAUTHORIZED_EXIT = 337;
+    uint256 internal constant MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 338;
+    uint256 internal constant UNHANDLED_BY_MANAGED_POOL = 339;
+    uint256 internal constant UNHANDLED_BY_PHANTOM_POOL = 340;
+    uint256 internal constant TOKEN_DOES_NOT_HAVE_RATE_PROVIDER = 341;
+    uint256 internal constant INVALID_INITIALIZATION = 342;
+    uint256 internal constant OUT_OF_NEW_TARGET_RANGE = 343;
+    uint256 internal constant UNAUTHORIZED_OPERATION = 344;
+    uint256 internal constant UNINITIALIZED_POOL_CONTROLLER = 345;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
@@ -178,6 +194,9 @@ library Errors {
     uint256 internal constant CODE_DEPLOYMENT_FAILED = 428;
     uint256 internal constant CALL_TO_NON_CONTRACT = 429;
     uint256 internal constant LOW_LEVEL_CALL_FAILED = 430;
+    uint256 internal constant NOT_PAUSED = 431;
+    uint256 internal constant ADDRESS_ALREADY_ALLOWLISTED = 432;
+    uint256 internal constant ADDRESS_NOT_ALLOWLISTED = 433;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;

@@ -11,6 +11,7 @@ export function shouldBehaveLikeMap(
   const [keyA, keyB, keyC] = keys;
   const [valueA, valueB, valueC] = values;
 
+  const indexOfErrorCode = 41;
   const getErrorCode = 42;
 
   async function expectMembersMatch(map: Contract, keys: Array<string | BigNumber>, values: Array<string | BigNumber>) {
@@ -20,7 +21,7 @@ export function shouldBehaveLikeMap(
 
     expect(await map.length()).to.equal(keys.length.toString());
 
-    expect(await Promise.all(keys.map((key) => map.get(key, getErrorCode)))).to.have.same.members(values);
+    expect(await Promise.all(keys.map((key) => map.get(key, getErrorCode)))).to.deep.equal(values);
 
     // To compare key-value pairs, we zip keys and values, and convert BNs to
     // strings to workaround Chai limitations when dealing with nested arrays
@@ -95,6 +96,30 @@ export function shouldBehaveLikeMap(
 
     it('reverts with a custom message if the key is not in the map', async () => {
       await expect(store.map.get(keyA, getErrorCode)).to.be.revertedWith(getErrorCode.toString());
+    });
+  });
+
+  describe('indexOf', () => {
+    it('returns the index of an added key', async () => {
+      await store.map.set(keyA, valueA);
+      await store.map.set(keyB, valueB);
+
+      expect(await store.map.indexOf(keyA, indexOfErrorCode)).to.equal(0);
+      expect(await store.map.indexOf(keyB, indexOfErrorCode)).to.equal(1);
+    });
+
+    it('adding and removing keys can change the index', async () => {
+      await store.map.set(keyA, valueA);
+      await store.map.set(keyB, valueB);
+
+      await store.map.remove(keyA);
+
+      // B is now the only element; its index must be 0
+      expect(await store.map.indexOf(keyB, indexOfErrorCode)).to.equal(0);
+    });
+
+    it('reverts if the key is not in the map', async () => {
+      await expect(store.map.indexOf(keyA, indexOfErrorCode)).to.be.revertedWith(indexOfErrorCode.toString());
     });
   });
 

@@ -107,6 +107,13 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
     }
 
     /**
+     * @dev Reverts if the contract is not paused.
+     */
+    function _ensurePaused() internal view {
+        _require(!_isNotPaused(), Errors.NOT_PAUSED);
+    }
+
+    /**
      * @dev Returns true if the contract is unpaused.
      *
      * Once the Buffer Period expires, the gas cost of calling this function is reduced dramatically, as storage is no

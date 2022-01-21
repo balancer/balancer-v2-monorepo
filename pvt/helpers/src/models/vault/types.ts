@@ -44,28 +44,28 @@ export type GeneralSwap = Swap & {
 };
 
 export type JoinPool = {
-  poolAddress: string;
   poolId: string;
-  recipient: string;
-  currentBalances: BigNumberish[];
   tokens: string[];
-  lastChangeBlock: BigNumberish;
-  protocolFeePercentage: BigNumberish;
-  data: string;
+  poolAddress?: string;
+  recipient?: string;
+  currentBalances?: BigNumberish[];
+  lastChangeBlock?: BigNumberish;
+  protocolFeePercentage?: BigNumberish;
+  data?: string;
   maxAmountsIn?: BigNumberish[];
   fromInternalBalance?: boolean;
   from?: SignerWithAddress;
 };
 
 export type ExitPool = {
-  poolAddress: string;
   poolId: string;
-  recipient: string;
-  currentBalances: BigNumberish[];
   tokens: string[];
-  lastChangeBlock: BigNumberish;
-  protocolFeePercentage: BigNumberish;
-  data: string;
+  poolAddress?: string;
+  recipient?: string;
+  currentBalances?: BigNumberish[];
+  lastChangeBlock?: BigNumberish;
+  protocolFeePercentage?: BigNumberish;
+  data?: string;
   minAmountsOut?: BigNumberish[];
   toInternalBalance?: boolean;
   from?: SignerWithAddress;

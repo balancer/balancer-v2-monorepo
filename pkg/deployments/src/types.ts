@@ -4,7 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import Task from './task';
 
-export const NETWORKS = ['goerli', 'kovan', 'mainnet', 'rinkeby', 'ropsten', 'polygon'];
+export const NETWORKS = ['goerli', 'kovan', 'mainnet', 'rinkeby', 'ropsten', 'polygon', 'arbitrum'];
 
 export type Network = typeof NETWORKS[number];
 
@@ -39,6 +39,8 @@ export type Output = {
 export type RawOutput = {
   [key: string]: string | Contract;
 };
+
+export type Libraries = { [key: string]: string };
 
 export type Artifact = {
   abi: unknown[];

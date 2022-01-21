@@ -5,12 +5,14 @@ export enum WeightedPoolJoinKind {
   INIT = 0,
   EXACT_TOKENS_IN_FOR_BPT_OUT,
   TOKEN_IN_FOR_EXACT_BPT_OUT,
+  ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
 }
 
 export enum WeightedPoolExitKind {
   EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0,
   EXACT_BPT_IN_FOR_TOKENS_OUT,
   BPT_IN_FOR_EXACT_TOKENS_OUT,
+  MANAGEMENT_FEE_TOKENS_OUT,
 }
 
 export class WeightedPoolEncoder {
@@ -40,7 +42,7 @@ export class WeightedPoolEncoder {
     );
 
   /**
-   * Encodes the userData parameter for joining a WeightedPool with to receive an exact amount of BPT
+   * Encodes the userData parameter for joining a WeightedPool with a single token to receive an exact amount of BPT
    * @param bptAmountOut - the amount of BPT to be minted
    * @param enterTokenIndex - the index of the token to be provided as liquidity
    */
@@ -48,6 +50,16 @@ export class WeightedPoolEncoder {
     defaultAbiCoder.encode(
       ['uint256', 'uint256', 'uint256'],
       [WeightedPoolJoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT, bptAmountOut, enterTokenIndex]
+    );
+
+  /**
+   * Encodes the userData parameter for joining a WeightedPool proportionally to receive an exact amount of BPT
+   * @param bptAmountOut - the amount of BPT to be minted
+   */
+  static joinAllTokensInForExactBPTOut = (bptAmountOut: BigNumberish): string =>
+    defaultAbiCoder.encode(
+      ['uint256', 'uint256'],
+      [WeightedPoolJoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT, bptAmountOut]
     );
 
   /**
@@ -78,4 +90,20 @@ export class WeightedPoolEncoder {
       ['uint256', 'uint256[]', 'uint256'],
       [WeightedPoolExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT, amountsOut, maxBPTAmountIn]
     );
+}
+
+export class ManagedPoolEncoder {
+  /**
+   * Cannot be constructed.
+   */
+  private constructor() {
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+  }
+
+  /**
+   * Encodes the userData parameter for exiting a ManagedPool for withdrawing management fees.
+   * This can only be done by the pool owner.
+   */
+  static exitForManagementFees = (): string =>
+    defaultAbiCoder.encode(['uint256'], [WeightedPoolExitKind.MANAGEMENT_FEE_TOKENS_OUT]);
 }

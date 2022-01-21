@@ -35,47 +35,100 @@ contract Authorizer is AccessControl, IAuthorizer {
     function canPerform(
         bytes32 actionId,
         address account,
-        address
+        address where
     ) public view override returns (bool) {
-        // This Authorizer ignores the 'where' field completely.
-        return AccessControl.hasRole(actionId, account);
+        return AccessControl.hasRole(actionId, account, where);
     }
 
     /**
-     * @dev Grants multiple roles to a single account.
+     * @dev Grants multiple roles to a single account for a set of contracts.
      */
-    function grantRoles(bytes32[] memory roles, address account) external {
+    function grantRoles(
+        bytes32[] memory roles,
+        address account,
+        address[] calldata where
+    ) external {
         for (uint256 i = 0; i < roles.length; i++) {
-            grantRole(roles[i], account);
+            grantRole(roles[i], account, where);
         }
     }
 
     /**
-     * @dev Grants roles to a list of accounts.
+     * @dev Grants multiple roles to a single account for all contracts.
      */
-    function grantRolesToMany(bytes32[] memory roles, address[] memory accounts) external {
+    function grantRolesGlobally(bytes32[] memory roles, address account) external {
+        for (uint256 i = 0; i < roles.length; i++) {
+            grantRoleGlobally(roles[i], account);
+        }
+    }
+
+    /**
+     * @dev Grants roles to a list of accounts for a set of contracts.
+     */
+    function grantRolesToMany(
+        bytes32[] memory roles,
+        address[] memory accounts,
+        address[] calldata where
+    ) external {
         InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
         for (uint256 i = 0; i < roles.length; i++) {
-            grantRole(roles[i], accounts[i]);
+            grantRole(roles[i], accounts[i], where);
         }
     }
 
     /**
-     * @dev Revokes multiple roles from a single account.
+     * @dev Grants roles to a list of accounts for all contracts.
      */
-    function revokeRoles(bytes32[] memory roles, address account) external {
+    function grantRolesGloballyToMany(bytes32[] memory roles, address[] memory accounts) external {
+        InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
         for (uint256 i = 0; i < roles.length; i++) {
-            revokeRole(roles[i], account);
+            grantRoleGlobally(roles[i], accounts[i]);
+        }
+    }
+
+    /**
+     * @dev Revokes multiple roles from a single account for a set of contracts.
+     */
+    function revokeRoles(
+        bytes32[] memory roles,
+        address account,
+        address[] calldata where
+    ) external {
+        for (uint256 i = 0; i < roles.length; i++) {
+            revokeRole(roles[i], account, where);
+        }
+    }
+
+    /**
+     * @dev Revokes multiple roles from a single account for all contracts.
+     */
+    function revokeRolesGlobally(bytes32[] memory roles, address account) external {
+        for (uint256 i = 0; i < roles.length; i++) {
+            revokeRoleGlobally(roles[i], account);
+        }
+    }
+
+    /**
+     * @dev Revokes roles from a list of accounts across a set of contracts
+     */
+    function revokeRolesFromMany(
+        bytes32[] memory roles,
+        address[] memory accounts,
+        address[] calldata where
+    ) external {
+        InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
+        for (uint256 i = 0; i < roles.length; i++) {
+            revokeRole(roles[i], accounts[i], where);
         }
     }
 
     /**
      * @dev Revokes roles from a list of accounts.
      */
-    function revokeRolesFromMany(bytes32[] memory roles, address[] memory accounts) external {
+    function revokeRolesGloballyFromMany(bytes32[] memory roles, address[] memory accounts) external {
         InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
         for (uint256 i = 0; i < roles.length; i++) {
-            revokeRole(roles[i], accounts[i]);
+            revokeRoleGlobally(roles[i], accounts[i]);
         }
     }
 }

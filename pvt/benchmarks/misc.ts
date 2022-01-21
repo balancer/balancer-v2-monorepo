@@ -1,132 +1,150 @@
-import { pick } from 'lodash';
 import { ethers } from 'hardhat';
-import { BigNumber, Contract, ContractReceipt } from 'ethers';
+import { Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { StablePoolEncoder, toNormalizedWeights, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS, MAX_WEIGHTED_TOKENS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { deploySortedTokens, mintTokens, TokenList } from '@balancer-labs/v2-helpers/src/tokens';
-import { advanceTime, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
+import { range } from 'lodash';
+import {
+  BasePoolRights,
+  ManagedPoolParams,
+  ManagedPoolRights,
+} from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
-export const tokenSymbols = [
-  'AAA',
-  'BBB',
-  'CCC',
-  'DDD',
-  'EEE',
-  'FFF',
-  'GGG',
-  'HHH',
-  'III',
-  'JJJ',
-  'KKK',
-  'LLL',
-  'MMM',
-  'NNN',
-  'OOO',
-  'PPP',
-  'QQQ',
-  'RRR',
-  'SSS',
-  'TTT',
-];
+const name = 'Balancer Pool Token';
+const symbol = 'BPT';
 
 export async function setupEnvironment(): Promise<{
-  vault: Contract;
+  vault: Vault;
   tokens: TokenList;
   trader: SignerWithAddress;
+  others: SignerWithAddress[];
 }> {
-  const { admin, creator, trader } = await getSigners();
+  const { admin, creator, trader, others } = await getSigners();
 
-  const weth = await deploy('v2-standalone-utils/TestWETH', { args: [admin.address] });
+  const vault = await Vault.create({ admin });
 
-  const authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
+  const tokens = await TokenList.create(
+    Array.from({ length: MAX_WEIGHTED_TOKENS }).map((_, i) => `TKN${i}`),
+    { sorted: true }
+  );
 
-  const vault = await deploy('v2-vault/Vault', { args: [authorizer.address, weth.address, 0, 0] });
-
-  const tokens = await deploySortedTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
-
-  const symbols = Object.keys(tokens);
-  const tokenAddresses = symbols.map((symbol) => tokens[symbol].address);
-
-  for (const symbol in tokens) {
+  await tokens.asyncEach(async (token) => {
     // creator tokens are used to initialize pools, but tokens are only minted when required
-    await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
+    await token.approve(vault, MAX_UINT256, { from: creator });
 
     // trader tokens are used to trade and not have non-zero balances
-    await mintTokens(tokens, symbol, trader, 200e18);
-    await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
-  }
+    await token.mint(trader, fp(200));
+    await token.approve(vault, MAX_UINT256, { from: trader });
+  });
 
   // deposit internal balance for trader to make it non-zero
-  const transfers = [];
+  const transfers = tokens.map((token) => ({
+    kind: 0, // deposit
+    asset: token.address,
+    amount: fp(100),
+    sender: trader.address,
+    recipient: trader.address,
+  }));
 
-  for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-    transfers.push({
-      kind: 0, // deposit
-      asset: tokenAddresses[idx],
-      amount: bn(100e18),
-      sender: trader.address,
-      recipient: trader.address,
-    });
-  }
+  await vault.instance.connect(trader).manageUserBalance(transfers);
 
-  await vault.connect(trader).manageUserBalance(transfers);
-
-  return { vault, tokens, trader };
+  return { vault, tokens, trader, others };
 }
 
-export async function deployPool(vault: Contract, tokens: TokenList, poolName: PoolName): Promise<string> {
+export async function deployPool(vault: Vault, tokens: TokenList, poolName: PoolName): Promise<string> {
   const { creator } = await getSigners();
 
-  const symbols = Object.keys(tokens);
-
   const initialPoolBalance = bn(100e18);
-  for (const symbol of symbols) {
-    await mintTokens(tokens, symbol, creator, initialPoolBalance);
-  }
+  await tokens.asyncEach(async (token) => {
+    await token.mint(creator, initialPoolBalance);
+  });
 
-  const tokenAddresses = symbols.map((symbol) => tokens[symbol].address);
   const swapFeePercentage = fp(0.02); // 2%
+  const managementFee = fp(0.5); // 50%
 
   let pool: Contract;
   let joinUserData: string;
 
-  if (poolName == 'WeightedPool' || poolName == 'WeightedPool2Tokens') {
-    const weights = toNormalizedWeights(symbols.map(() => fp(1))); // Equal weights for all tokens
+  if (poolName == 'WeightedPool' || poolName == 'WeightedPool2Tokens' || poolName == 'ManagedPool') {
+    const WEIGHTS = range(10000, 10000 + tokens.length);
+    const weights = toNormalizedWeights(WEIGHTS.map(bn)); // Equal weights for all tokens
     const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
+    let params;
 
-    const params =
-      poolName == 'WeightedPool2Tokens'
-        ? [tokenAddresses, weights, swapFeePercentage, true]
-        : [tokenAddresses, weights, assetManagers, swapFeePercentage];
+    switch (poolName) {
+      case 'ManagedPool': {
+        const newPoolParams: ManagedPoolParams = {
+          vault: vault.address,
+          name: name,
+          symbol: symbol,
+          tokens: tokens.addresses,
+          normalizedWeights: weights,
+          assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
+          swapFeePercentage: swapFeePercentage,
+          pauseWindowDuration: MONTH * 3,
+          bufferPeriodDuration: MONTH,
+          owner: creator.address,
+          swapEnabledOnStart: true,
+          mustAllowlistLPs: false,
+          managementSwapFeePercentage: managementFee,
+        };
+
+        const basePoolRights: BasePoolRights = {
+          canTransferOwnership: true,
+          canChangeSwapFee: true,
+          canUpdateMetadata: true,
+        };
+
+        const managedPoolRights: ManagedPoolRights = {
+          canChangeWeights: true,
+          canDisableSwaps: true,
+          canSetMustAllowlistLPs: true,
+          canSetCircuitBreakers: true,
+          canChangeTokens: true,
+        };
+        params = [newPoolParams, basePoolRights, managedPoolRights, DAY];
+        break;
+      }
+      case 'WeightedPool2Tokens': {
+        params = [tokens.addresses, weights, swapFeePercentage, true];
+        break;
+      }
+      default: {
+        params = [tokens.addresses, weights, assetManagers, swapFeePercentage];
+      }
+    }
+
     pool = await deployPoolFromFactory(vault, poolName, {
       from: creator,
       parameters: params,
     });
 
-    joinUserData = WeightedPoolEncoder.joinInit(tokenAddresses.map(() => initialPoolBalance));
+    joinUserData = WeightedPoolEncoder.joinInit(tokens.map(() => initialPoolBalance));
   } else if (poolName == 'StablePool') {
     const amplificationParameter = bn(50);
 
     pool = await deployPoolFromFactory(vault, poolName, {
       from: creator,
-      parameters: [tokenAddresses, amplificationParameter, swapFeePercentage],
+      parameters: [tokens.addresses, amplificationParameter, swapFeePercentage],
     });
 
-    joinUserData = StablePoolEncoder.joinInit(tokenAddresses.map(() => initialPoolBalance));
+    joinUserData = StablePoolEncoder.joinInit(tokens.map(() => initialPoolBalance));
   } else {
     throw new Error(`Unhandled pool: ${poolName}`);
   }
 
   const poolId = await pool.getPoolId();
 
-  await vault.connect(creator).joinPool(poolId, creator.address, creator.address, {
-    assets: tokenAddresses,
-    maxAmountsIn: tokenAddresses.map(() => initialPoolBalance), // These end up being the actual join amounts
+  await vault.instance.connect(creator).joinPool(poolId, creator.address, creator.address, {
+    assets: tokens.addresses,
+    maxAmountsIn: tokens.map(() => initialPoolBalance), // These end up being the actual join amounts
     fromInternalBalance: false,
     userData: joinUserData,
   });
@@ -137,72 +155,66 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   return poolId;
 }
 
-export async function getWeightedPool(
-  vault: Contract,
-  tokens: TokenList,
-  size: number,
-  offset?: number
-): Promise<string> {
+export async function getWeightedPool(vault: Vault, tokens: TokenList, size: number, offset = 0): Promise<string> {
   return size === 2
-    ? deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool2Tokens')
-    : deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool');
+    ? deployPool(vault, tokens.subset(size, offset), 'WeightedPool2Tokens')
+    : size > 20
+    ? deployPool(vault, tokens.subset(size, offset), 'ManagedPool')
+    : deployPool(vault, tokens.subset(size, offset), 'WeightedPool');
 }
 
-export async function getStablePool(
-  vault: Contract,
-  tokens: TokenList,
-  size: number,
-  offset?: number
-): Promise<string> {
-  return deployPool(vault, pickTokens(tokens, size, offset), 'StablePool');
-}
-
-function pickTokens(tokens: TokenList, size: number, offset?: number): TokenList {
-  return pick(tokens, tokenSymbols.slice(offset ?? 0, size + (offset ?? 0)));
+export async function getStablePool(vault: Vault, tokens: TokenList, size: number, offset?: number): Promise<string> {
+  return deployPool(vault, tokens.subset(size, offset), 'StablePool');
 }
 
 export function pickTokenAddresses(tokens: TokenList, size: number, offset?: number): string[] {
-  return tokenSymbols.slice(offset ?? 0, size + (offset ?? 0)).map((symbol) => tokens[symbol].address);
+  return tokens.subset(size, offset).addresses;
 }
 
 export async function getSigners(): Promise<{
   admin: SignerWithAddress;
   creator: SignerWithAddress;
   trader: SignerWithAddress;
+  others: SignerWithAddress[];
 }> {
-  const [, admin, creator, trader] = await ethers.getSigners();
+  const [, admin, creator, trader, ...others] = await ethers.getSigners();
 
-  return { admin, creator, trader };
+  return { admin, creator, trader, others };
 }
 
-export function printGas(gas: number | BigNumber): string {
-  if (typeof gas !== 'number') {
-    gas = gas.toNumber();
-  }
-
-  return `${(gas / 1000).toFixed(1)}k`;
-}
-
-type PoolName = 'WeightedPool' | 'WeightedPool2Tokens' | 'StablePool';
+type PoolName = 'WeightedPool' | 'WeightedPool2Tokens' | 'StablePool' | 'ManagedPool';
 
 async function deployPoolFromFactory(
-  vault: Contract,
+  vault: Vault,
   poolName: PoolName,
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
   const fullName = `${poolName == 'StablePool' ? 'v2-pool-stable' : 'v2-pool-weighted'}/${poolName}`;
-  const factory = await deploy(`${fullName}Factory`, { args: [vault.address] });
+  const libraries =
+    poolName == 'WeightedPool2Tokens'
+      ? { QueryProcessor: await (await deploy('v2-pool-utils/QueryProcessor')).address }
+      : undefined;
+  let factory: Contract;
+  if (poolName == 'ManagedPool') {
+    const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', { args: [vault.address] });
+    factory = await deploy(`${fullName}Factory`, { args: [baseFactory.address] });
+  } else {
+    factory = await deploy(`${fullName}Factory`, { args: [vault.address], libraries });
+  }
+
   // We could reuse this factory if we saved it across pool deployments
 
-  const name = 'Balancer Pool Token';
-  const symbol = 'BPT';
-  const owner = ZERO_ADDRESS;
+  let receipt: ContractReceipt;
+  let event;
 
-  const receipt: ContractReceipt = await (
-    await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)
-  ).wait();
+  if (poolName == 'ManagedPool') {
+    receipt = await (await factory.connect(args.from).create(...args.parameters)).wait();
+    event = receipt.events?.find((e) => e.event == 'ManagedPoolCreated');
+  } else {
+    receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, ZERO_ADDRESS)).wait();
+    event = receipt.events?.find((e) => e.event == 'PoolCreated');
+  }
 
-  const event = receipt.events?.find((e) => e.event == 'PoolCreated');
   if (event == undefined) {
     throw new Error('Could not find PoolCreated event');
   }

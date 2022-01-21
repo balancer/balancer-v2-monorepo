@@ -1,4 +1,5 @@
 import { ethers } from 'hardhat';
+import { SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -7,11 +8,12 @@ import TokenList from '../tokens/TokenList';
 import VaultDeployer from './VaultDeployer';
 import TypesConverter from '../types/TypesConverter';
 import { actionId } from '../misc/actions';
-import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
+import { deployedAt } from '../../contract';
 import { BigNumberish } from '../../numbers';
 import { Account, NAry, TxParams } from '../types/types';
+import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
 import { ExitPool, JoinPool, RawVaultDeployment, MinimalSwap, GeneralSwap } from './types';
-import { deployedAt } from '../../contract';
+import { Interface } from '@ethersproject/abi';
 
 export default class Vault {
   mocked: boolean;
@@ -19,6 +21,10 @@ export default class Vault {
   authorizer?: Contract;
   admin?: SignerWithAddress;
   feesCollector?: Contract;
+
+  get interface(): Interface {
+    return this.instance.interface;
+  }
 
   static async create(deployment: RawVaultDeployment = {}): Promise<Vault> {
     return VaultDeployer.deploy(deployment);
@@ -53,6 +59,10 @@ export default class Vault {
     return this.instance.getPoolTokenInfo(poolId, token.address);
   }
 
+  async updateBalances(poolId: string, balances: BigNumber[]): Promise<ContractTransaction> {
+    return this.instance.updateBalances(poolId, balances);
+  }
+
   async minimalSwap(params: MinimalSwap): Promise<ContractTransaction> {
     return this.instance.callMinimalPoolSwap(
       params.poolAddress,
@@ -73,63 +83,95 @@ export default class Vault {
   }
 
   async generalSwap(params: GeneralSwap): Promise<ContractTransaction> {
-    return this.instance.callGeneralPoolSwap(
-      params.poolAddress,
-      {
-        kind: params.kind,
-        poolId: params.poolId,
-        from: params.from ?? ZERO_ADDRESS,
-        to: params.to,
-        tokenIn: params.tokenIn,
-        tokenOut: params.tokenOut,
-        lastChangeBlock: params.lastChangeBlock,
-        userData: params.data,
-        amount: params.amount,
-      },
-      params.balances,
-      params.indexIn,
-      params.indexOut
-    );
+    const sender = params.from || (await this._defaultSender());
+    const vault = params.from ? this.instance.connect(sender) : this.instance;
+
+    return this.mocked
+      ? vault.callGeneralPoolSwap(
+          params.poolAddress,
+          {
+            kind: params.kind,
+            poolId: params.poolId,
+            from: params.from ?? ZERO_ADDRESS,
+            to: params.to,
+            tokenIn: params.tokenIn,
+            tokenOut: params.tokenOut,
+            lastChangeBlock: params.lastChangeBlock,
+            userData: params.data,
+            amount: params.amount,
+          },
+          params.balances,
+          params.indexIn,
+          params.indexOut
+        )
+      : vault.swap(
+          {
+            poolId: params.poolId,
+            kind: params.kind,
+            assetIn: params.tokenIn,
+            assetOut: params.tokenOut,
+            amount: params.amount,
+            userData: params.data,
+          },
+          {
+            sender: sender.address,
+            fromInternalBalance: false,
+            recipient: TypesConverter.toAddress(params.to),
+            toInternalBalance: false,
+          },
+          params.kind === SwapKind.GivenIn ? 0 : MAX_UINT256,
+          MAX_UINT256
+        );
   }
 
   async joinPool(params: JoinPool): Promise<ContractTransaction> {
     const vault = params.from ? this.instance.connect(params.from) : this.instance;
     return this.mocked
       ? vault.callJoinPool(
-          params.poolAddress,
+          params.poolAddress ?? ZERO_ADDRESS,
           params.poolId,
-          params.recipient,
-          params.currentBalances,
-          params.lastChangeBlock,
-          params.protocolFeePercentage,
-          params.data
+          params.recipient ?? ZERO_ADDRESS,
+          params.currentBalances ?? Array(params.tokens.length).fill(0),
+          params.lastChangeBlock ?? 0,
+          params.protocolFeePercentage ?? 0,
+          params.data ?? '0x'
         )
-      : vault.joinPool(params.poolId, (params.from || (await this._defaultSender())).address, params.recipient, {
-          assets: params.tokens,
-          maxAmountsIn: params.maxAmountsIn ?? Array(params.tokens.length).fill(MAX_UINT256),
-          fromInternalBalance: params.fromInternalBalance ?? false,
-          userData: params.data,
-        });
+      : vault.joinPool(
+          params.poolId,
+          (params.from || (await this._defaultSender())).address,
+          params.recipient ?? ZERO_ADDRESS,
+          {
+            assets: params.tokens,
+            maxAmountsIn: params.maxAmountsIn ?? Array(params.tokens.length).fill(MAX_UINT256),
+            fromInternalBalance: params.fromInternalBalance ?? false,
+            userData: params.data ?? '0x',
+          }
+        );
   }
 
   async exitPool(params: ExitPool): Promise<ContractTransaction> {
     const vault = params.from ? this.instance.connect(params.from) : this.instance;
     return this.mocked
       ? vault.callExitPool(
-          params.poolAddress,
+          params.poolAddress ?? ZERO_ADDRESS,
           params.poolId,
-          params.recipient,
-          params.currentBalances,
-          params.lastChangeBlock,
-          params.protocolFeePercentage,
-          params.data
+          params.recipient ?? ZERO_ADDRESS,
+          params.currentBalances ?? Array(params.tokens.length).fill(0),
+          params.lastChangeBlock ?? 0,
+          params.protocolFeePercentage ?? 0,
+          params.data ?? '0x'
         )
-      : vault.exitPool(params.poolId, (params.from || (await this._defaultSender())).address, params.recipient, {
-          assets: params.tokens,
-          minAmountsOut: params.minAmountsOut ?? Array(params.tokens.length).fill(0),
-          toInternalBalance: params.toInternalBalance ?? false,
-          userData: params.data,
-        });
+      : vault.exitPool(
+          params.poolId,
+          (params.from || (await this._defaultSender())).address,
+          params.recipient ?? ZERO_ADDRESS,
+          {
+            assets: params.tokens,
+            minAmountsOut: params.minAmountsOut ?? Array(params.tokens.length).fill(0),
+            toInternalBalance: params.toInternalBalance ?? false,
+            userData: params.data ?? '0x',
+          }
+        );
   }
 
   async getCollectedFeeAmounts(tokens: TokenList | string[]): Promise<BigNumber[]> {
@@ -177,7 +219,7 @@ export default class Vault {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
-      await this.grantRole(await actionId(feesCollector, 'setSwapFeePercentage'), this.admin);
+      await this.grantRoleGlobally(await actionId(feesCollector, 'setSwapFeePercentage'), this.admin);
     }
 
     const sender = from || this.admin;
@@ -192,7 +234,7 @@ export default class Vault {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
-      await this.grantRole(await actionId(feesCollector, 'setFlashLoanFeePercentage'), this.admin);
+      await this.grantRoleGlobally(await actionId(feesCollector, 'setFlashLoanFeePercentage'), this.admin);
     }
 
     const sender = from || this.admin;
@@ -200,10 +242,21 @@ export default class Vault {
     return instance.setFlashLoanFeePercentage(flashLoanFeePercentage);
   }
 
-  async grantRole(actionId: string, to?: Account): Promise<ContractTransaction> {
+  async grantRoleGlobally(actionId: string, to?: Account): Promise<ContractTransaction> {
     if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
     if (!to) to = await this._defaultSender();
-    return this.authorizer.connect(this.admin).grantRole(actionId, TypesConverter.toAddress(to));
+    return this.authorizer.connect(this.admin).grantRoleGlobally(actionId, TypesConverter.toAddress(to));
+  }
+
+  async grantRoleWhere(actionId: string, where: Contract[], to?: Account): Promise<ContractTransaction> {
+    if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
+    if (!to) to = await this._defaultSender();
+    const whereAddresses = where.map((x) => TypesConverter.toAddress(x));
+    return this.authorizer.connect(this.admin).grantRole(actionId, TypesConverter.toAddress(to), whereAddresses);
+  }
+
+  async setRelayerApproval(user: SignerWithAddress, relayer: Account, approval: boolean): Promise<ContractTransaction> {
+    return this.instance.connect(user).setRelayerApproval(user.address, TypesConverter.toAddress(relayer), approval);
   }
 
   async _defaultSender(): Promise<SignerWithAddress> {

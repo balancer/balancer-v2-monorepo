@@ -8,10 +8,9 @@ describe('StablePoolFactory', function () {
 
   it('has a vault reference', async () => {
     const input = task.input();
-    const output = task.output();
 
-    const factory = await task.instanceAt('StablePoolFactory', output.factory);
+    const factory = await task.deployedInstance('StablePoolFactory');
 
-    expect(await factory.getVault()).to.be.equal(input.vault);
+    expect(await factory.getVault()).to.be.equal(input.Vault);
   });
 });

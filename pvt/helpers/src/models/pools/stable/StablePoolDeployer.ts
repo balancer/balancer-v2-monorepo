@@ -15,7 +15,7 @@ const SYMBOL = 'BPT';
 export default {
   async deploy(params: RawStablePoolDeployment): Promise<StablePool> {
     const deployment = TypesConverter.toStablePoolDeployment(params);
-    const vault = await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params));
+    const vault = params.vault ?? (await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params)));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
     const { owner, tokens, amplificationParameter, swapFeePercentage, meta } = deployment;
@@ -57,6 +57,7 @@ export default {
             },
           ],
           from,
+          libraries: { QueryProcessor: (await deploy('QueryProcessor')).address },
         })
       : deploy('v2-pool-stable/StablePool', {
           args: [

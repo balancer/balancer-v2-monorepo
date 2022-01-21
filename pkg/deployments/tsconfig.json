@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "declaration": true,
+    "outDir": "dist",
+    "resolveJsonModule": true
+  },
+  "include": ["index.ts", "src", "tasks/**/abi/*.json", "tasks/**/bytecode/*.json", "tasks/**/output/*.json"],
+  "exclude": ["tasks/**/test", "tasks/**/output/test.json"],
+  "files": ["./hardhat.config.ts"]
+}

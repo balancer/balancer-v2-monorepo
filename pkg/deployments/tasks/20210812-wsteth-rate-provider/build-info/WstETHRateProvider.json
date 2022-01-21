@@ -1,0 +1,1502 @@
+{
+  "id": "8c39e2651fca79a8f1f1278a53a83ecc",
+  "_format": "hh-sol-build-info-1",
+  "solcVersion": "0.7.1",
+  "solcLongVersion": "0.7.1+commit.f4a555be",
+  "input": {
+    "language": "Solidity",
+    "sources": {
+      "contracts/CTokenRateProvider.sol": {
+        "content": "// SPDX-License-Identifier: GPL-3.0-or-later\n// This program is free software: you can redistribute it and/or modify\n// it under the terms of the GNU General Public License as published by\n// the Free Software Foundation, either version 3 of the License, or\n// (at your option) any later version.\n\n// This program is distributed in the hope that it will be useful,\n// but WITHOUT ANY WARRANTY; without even the implied warranty of\n// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n// GNU General Public License for more details.\n\n// You should have received a copy of the GNU General Public License\n// along with this program.  If not, see <http://www.gnu.org/licenses/>.\n\npragma solidity ^0.7.0;\n\nimport \"./interfaces/IRateProvider.sol\";\nimport \"./interfaces/ICToken.sol\";\n\n/**\n * @title cToken Rate Provider\n * @notice Returns the value of a cToken in terms of its underlying\n */\ncontract CTokenRateProvider is IRateProvider {\n    ICToken public immutable cToken;\n\n    constructor(ICToken _cToken) {\n        require(_cToken.isCToken(), \"Provided address is not cToken\");\n        cToken = _cToken;\n    }\n\n    /**\n     * @return the value of RateProvider's cToken in terms of its underlying\n     */\n    function getRate() external view override returns (uint256) {\n        return cToken.exchangeRateStored();\n    }\n}\n"
+      },
+      "contracts/interfaces/IRateProvider.sol": {
+        "content": "// SPDX-License-Identifier: GPL-3.0-or-later\n// This program is free software: you can redistribute it and/or modify\n// it under the terms of the GNU General Public License as published by\n// the Free Software Foundation, either version 3 of the License, or\n// (at your option) any later version.\n\n// This program is distributed in the hope that it will be useful,\n// but WITHOUT ANY WARRANTY; without even the implied warranty of\n// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n// GNU General Public License for more details.\n\n// You should have received a copy of the GNU General Public License\n// along with this program.  If not, see <http://www.gnu.org/licenses/>.\n\npragma solidity ^0.7.0;\n\n// TODO: pull this from the monorepo\ninterface IRateProvider {\n    function getRate() external view returns (uint256);\n}\n"
+      },
+      "contracts/interfaces/ICToken.sol": {
+        "content": "// SPDX-License-Identifier: GPL-3.0-or-later\n// This program is free software: you can redistribute it and/or modify\n// it under the terms of the GNU General Public License as published by\n// the Free Software Foundation, either version 3 of the License, or\n// (at your option) any later version.\n\n// This program is distributed in the hope that it will be useful,\n// but WITHOUT ANY WARRANTY; without even the implied warranty of\n// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n// GNU General Public License for more details.\n\n// You should have received a copy of the GNU General Public License\n// along with this program.  If not, see <http://www.gnu.org/licenses/>.\n\npragma solidity ^0.7.0;\n\ninterface ICToken {\n    /**\n     * @notice Indicator that this is a CToken contract (for inspection)\n     */\n    function isCToken() external view returns (bool);\n\n    /**\n     * @notice Calculates the exchange rate from the underlying to the CToken\n     */\n    function exchangeRateStored() external view returns (uint256);\n}\n"
+      },
+      "contracts/WstETHRateProvider.sol": {
+        "content": "// SPDX-License-Identifier: GPL-3.0-or-later\n// This program is free software: you can redistribute it and/or modify\n// it under the terms of the GNU General Public License as published by\n// the Free Software Foundation, either version 3 of the License, or\n// (at your option) any later version.\n\n// This program is distributed in the hope that it will be useful,\n// but WITHOUT ANY WARRANTY; without even the implied warranty of\n// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n// GNU General Public License for more details.\n\n// You should have received a copy of the GNU General Public License\n// along with this program.  If not, see <http://www.gnu.org/licenses/>.\n\npragma solidity ^0.7.0;\n\nimport \"./interfaces/IRateProvider.sol\";\nimport \"./interfaces/IwstETH.sol\";\n\n/**\n * @title Wrapped stETH Rate Provider\n * @notice Returns the value of wstETH in terms of stETH\n */\ncontract WstETHRateProvider is IRateProvider {\n    IwstETH public immutable wstETH;\n\n    constructor(IwstETH _wstETH) {\n        wstETH = _wstETH;\n    }\n\n    /**\n     * @return the value of wstETH in terms of stETH\n     */\n    function getRate() external view override returns (uint256) {\n        return wstETH.stEthPerToken();\n    }\n}\n"
+      },
+      "contracts/interfaces/IwstETH.sol": {
+        "content": "// SPDX-FileCopyrightText: 2021 Lido <info@lido.fi>\n\n// SPDX-License-Identifier: GPL-3.0\n\npragma solidity ^0.7.1;\n\n/**\n * @title StETH token wrapper with static balances.\n * @dev It's an ERC20 token that represents the account's share of the total\n * supply of stETH tokens. WstETH token's balance only changes on transfers,\n * unlike StETH that is also changed when oracles report staking rewards and\n * penalties. It's a \"power user\" token for DeFi protocols which don't\n * support rebasable tokens.\n *\n * The contract is also a trustless wrapper that accepts stETH tokens and mints\n * wstETH in return. Then the user unwraps, the contract burns user's wstETH\n * and sends user locked stETH in return.\n *\n * The contract provides the staking shortcut: user can send ETH with regular\n * transfer and get wstETH in return. The contract will send ETH to Lido submit\n * method, staking it and wrapping the received stETH.\n *\n */\ninterface IwstETH {\n    /**\n     * @notice Get amount of wstETH for a one stETH\n     * @return Amount of stETH for 1 wstETH\n     */\n    function stEthPerToken() external view returns (uint256);\n}\n"
+      }
+    },
+    "settings": {
+      "optimizer": {
+        "enabled": true,
+        "runs": 9999
+      },
+      "outputSelection": {
+        "*": {
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers"
+          ],
+          "": [
+            "ast"
+          ]
+        }
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "contracts/CTokenRateProvider.sol": {
+        "CTokenRateProvider": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "contract ICToken",
+                  "name": "_cToken",
+                  "type": "address"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "constructor"
+            },
+            {
+              "inputs": [],
+              "name": "cToken",
+              "outputs": [
+                {
+                  "internalType": "contract ICToken",
+                  "name": "",
+                  "type": "address"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "getRate",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "linkReferences": {},
+              "object": "60a060405234801561001057600080fd5b506040516102a13803806102a18339818101604052602081101561003357600080fd5b505160408051637f4e225760e11b815290516001600160a01b0383169163fe9c44ae916004808301926020929190829003018186803b15801561007557600080fd5b505afa158015610089573d6000803e3d6000fd5b505050506040513d602081101561009f57600080fd5b50516100f2576040805162461bcd60e51b815260206004820152601e60248201527f50726f76696465642061646472657373206973206e6f742063546f6b656e0000604482015290519081900360640190fd5b606081901b6001600160601b0319166080526001600160a01b031661017961012860003980608a528061012152506101796000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c8063679aefce1461003b57806369e527da14610055575b600080fd5b610043610086565b60408051918252519081900360200190f35b61005d61011f565b6040805173ffffffffffffffffffffffffffffffffffffffff9092168252519081900360200190f35b60007f000000000000000000000000000000000000000000000000000000000000000073ffffffffffffffffffffffffffffffffffffffff1663182df0f56040518163ffffffff1660e01b815260040160206040518083038186803b1580156100ee57600080fd5b505afa158015610102573d6000803e3d6000fd5b505050506040513d602081101561011857600080fd5b5051905090565b7f00000000000000000000000000000000000000000000000000000000000000008156fea264697066735822122030959625ca068583048043bd319097efc7256d23f7da9e285339677a0de648ff64736f6c63430007010033",
+              "opcodes": "PUSH1 0xA0 PUSH1 0x40 MSTORE CALLVALUE DUP1 ISZERO PUSH2 0x10 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP PUSH1 0x40 MLOAD PUSH2 0x2A1 CODESIZE SUB DUP1 PUSH2 0x2A1 DUP4 CODECOPY DUP2 DUP2 ADD PUSH1 0x40 MSTORE PUSH1 0x20 DUP2 LT ISZERO PUSH2 0x33 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP MLOAD PUSH1 0x40 DUP1 MLOAD PUSH4 0x7F4E2257 PUSH1 0xE1 SHL DUP2 MSTORE SWAP1 MLOAD PUSH1 0x1 PUSH1 0x1 PUSH1 0xA0 SHL SUB DUP4 AND SWAP2 PUSH4 0xFE9C44AE SWAP2 PUSH1 0x4 DUP1 DUP4 ADD SWAP3 PUSH1 0x20 SWAP3 SWAP2 SWAP1 DUP3 SWAP1 SUB ADD DUP2 DUP7 DUP1 EXTCODESIZE ISZERO DUP1 ISZERO PUSH2 0x75 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP GAS STATICCALL ISZERO DUP1 ISZERO PUSH2 0x89 JUMPI RETURNDATASIZE PUSH1 0x0 DUP1 RETURNDATACOPY RETURNDATASIZE PUSH1 0x0 REVERT JUMPDEST POP POP POP POP PUSH1 0x40 MLOAD RETURNDATASIZE PUSH1 0x20 DUP2 LT ISZERO PUSH2 0x9F JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP MLOAD PUSH2 0xF2 JUMPI PUSH1 0x40 DUP1 MLOAD PUSH3 0x461BCD PUSH1 0xE5 SHL DUP2 MSTORE PUSH1 0x20 PUSH1 0x4 DUP3 ADD MSTORE PUSH1 0x1E PUSH1 0x24 DUP3 ADD MSTORE PUSH32 0x50726F76696465642061646472657373206973206E6F742063546F6B656E0000 PUSH1 0x44 DUP3 ADD MSTORE SWAP1 MLOAD SWAP1 DUP2 SWAP1 SUB PUSH1 0x64 ADD SWAP1 REVERT JUMPDEST PUSH1 0x60 DUP2 SWAP1 SHL PUSH1 0x1 PUSH1 0x1 PUSH1 0x60 SHL SUB NOT AND PUSH1 0x80 MSTORE PUSH1 0x1 PUSH1 0x1 PUSH1 0xA0 SHL SUB AND PUSH2 0x179 PUSH2 0x128 PUSH1 0x0 CODECOPY DUP1 PUSH1 0x8A MSTORE DUP1 PUSH2 0x121 MSTORE POP PUSH2 0x179 PUSH1 0x0 RETURN INVALID PUSH1 0x80 PUSH1 0x40 MSTORE CALLVALUE DUP1 ISZERO PUSH2 0x10 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP PUSH1 0x4 CALLDATASIZE LT PUSH2 0x36 JUMPI PUSH1 0x0 CALLDATALOAD PUSH1 0xE0 SHR DUP1 PUSH4 0x679AEFCE EQ PUSH2 0x3B JUMPI DUP1 PUSH4 0x69E527DA EQ PUSH2 0x55 JUMPI JUMPDEST PUSH1 0x0 DUP1 REVERT JUMPDEST PUSH2 0x43 PUSH2 0x86 JUMP JUMPDEST PUSH1 0x40 DUP1 MLOAD SWAP2 DUP3 MSTORE MLOAD SWAP1 DUP2 SWAP1 SUB PUSH1 0x20 ADD SWAP1 RETURN JUMPDEST PUSH2 0x5D PUSH2 0x11F JUMP JUMPDEST PUSH1 0x40 DUP1 MLOAD PUSH20 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF SWAP1 SWAP3 AND DUP3 MSTORE MLOAD SWAP1 DUP2 SWAP1 SUB PUSH1 0x20 ADD SWAP1 RETURN JUMPDEST PUSH1 0x0 PUSH32 0x0 PUSH20 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF AND PUSH4 0x182DF0F5 PUSH1 0x40 MLOAD DUP2 PUSH4 0xFFFFFFFF AND PUSH1 0xE0 SHL DUP2 MSTORE PUSH1 0x4 ADD PUSH1 0x20 PUSH1 0x40 MLOAD DUP1 DUP4 SUB DUP2 DUP7 DUP1 EXTCODESIZE ISZERO DUP1 ISZERO PUSH2 0xEE JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP GAS STATICCALL ISZERO DUP1 ISZERO PUSH2 0x102 JUMPI RETURNDATASIZE PUSH1 0x0 DUP1 RETURNDATACOPY RETURNDATASIZE PUSH1 0x0 REVERT JUMPDEST POP POP POP POP PUSH1 0x40 MLOAD RETURNDATASIZE PUSH1 0x20 DUP2 LT ISZERO PUSH2 0x118 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP MLOAD SWAP1 POP SWAP1 JUMP JUMPDEST PUSH32 0x0 DUP2 JUMP INVALID LOG2 PUSH5 0x6970667358 0x22 SLT KECCAK256 ADDRESS SWAP6 SWAP7 0x25 0xCA MOD DUP6 DUP4 DIV DUP1 NUMBER 0xBD BALANCE SWAP1 SWAP8 0xEF 0xC7 0x25 PUSH14 0x23F7DA9E285339677A0DE648FF64 PUSH20 0x6F6C634300070100330000000000000000000000 ",
+              "sourceMap": "897:434:0:-:0;;;986:133;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;-1:-1:-1;986:133:0;1033:18;;;-1:-1:-1;;;1033:18:0;;;;-1:-1:-1;;;;;1033:16:0;;;;;:18;;;;;986:133;;1033:18;;;;;;;:16;:18;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;-1:-1:-1;1033:18:0;1025:61;;;;;-1:-1:-1;;;1025:61:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;1096:16;;;;-1:-1:-1;;;;;;1096:16:0;;;-1:-1:-1;;;;;897:434:0;;;;;;;;"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {
+                "8": [
+                  {
+                    "length": 32,
+                    "start": 138
+                  },
+                  {
+                    "length": 32,
+                    "start": 289
+                  }
+                ]
+              },
+              "linkReferences": {},
+              "object": "608060405234801561001057600080fd5b50600436106100365760003560e01c8063679aefce1461003b57806369e527da14610055575b600080fd5b610043610086565b60408051918252519081900360200190f35b61005d61011f565b6040805173ffffffffffffffffffffffffffffffffffffffff9092168252519081900360200190f35b60007f000000000000000000000000000000000000000000000000000000000000000073ffffffffffffffffffffffffffffffffffffffff1663182df0f56040518163ffffffff1660e01b815260040160206040518083038186803b1580156100ee57600080fd5b505afa158015610102573d6000803e3d6000fd5b505050506040513d602081101561011857600080fd5b5051905090565b7f00000000000000000000000000000000000000000000000000000000000000008156fea264697066735822122030959625ca068583048043bd319097efc7256d23f7da9e285339677a0de648ff64736f6c63430007010033",
+              "opcodes": "PUSH1 0x80 PUSH1 0x40 MSTORE CALLVALUE DUP1 ISZERO PUSH2 0x10 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP PUSH1 0x4 CALLDATASIZE LT PUSH2 0x36 JUMPI PUSH1 0x0 CALLDATALOAD PUSH1 0xE0 SHR DUP1 PUSH4 0x679AEFCE EQ PUSH2 0x3B JUMPI DUP1 PUSH4 0x69E527DA EQ PUSH2 0x55 JUMPI JUMPDEST PUSH1 0x0 DUP1 REVERT JUMPDEST PUSH2 0x43 PUSH2 0x86 JUMP JUMPDEST PUSH1 0x40 DUP1 MLOAD SWAP2 DUP3 MSTORE MLOAD SWAP1 DUP2 SWAP1 SUB PUSH1 0x20 ADD SWAP1 RETURN JUMPDEST PUSH2 0x5D PUSH2 0x11F JUMP JUMPDEST PUSH1 0x40 DUP1 MLOAD PUSH20 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF SWAP1 SWAP3 AND DUP3 MSTORE MLOAD SWAP1 DUP2 SWAP1 SUB PUSH1 0x20 ADD SWAP1 RETURN JUMPDEST PUSH1 0x0 PUSH32 0x0 PUSH20 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF AND PUSH4 0x182DF0F5 PUSH1 0x40 MLOAD DUP2 PUSH4 0xFFFFFFFF AND PUSH1 0xE0 SHL DUP2 MSTORE PUSH1 0x4 ADD PUSH1 0x20 PUSH1 0x40 MLOAD DUP1 DUP4 SUB DUP2 DUP7 DUP1 EXTCODESIZE ISZERO DUP1 ISZERO PUSH2 0xEE JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP GAS STATICCALL ISZERO DUP1 ISZERO PUSH2 0x102 JUMPI RETURNDATASIZE PUSH1 0x0 DUP1 RETURNDATACOPY RETURNDATASIZE PUSH1 0x0 REVERT JUMPDEST POP POP POP POP PUSH1 0x40 MLOAD RETURNDATASIZE PUSH1 0x20 DUP2 LT ISZERO PUSH2 0x118 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP MLOAD SWAP1 POP SWAP1 JUMP JUMPDEST PUSH32 0x0 DUP2 JUMP INVALID LOG2 PUSH5 0x6970667358 0x22 SLT KECCAK256 ADDRESS SWAP6 SWAP7 0x25 0xCA MOD DUP6 DUP4 DIV DUP1 NUMBER 0xBD BALANCE SWAP1 SWAP8 0xEF 0xC7 0x25 PUSH14 0x23F7DA9E285339677A0DE648FF64 PUSH20 0x6F6C634300070100330000000000000000000000 ",
+              "sourceMap": "897:434:0:-:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;1218:111;;;:::i;:::-;;;;;;;;;;;;;;;;948:31;;;:::i;:::-;;;;;;;;;;;;;;;;;;;1218:111;1269:7;1295:6;:25;;;:27;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;-1:-1:-1;1295:27:0;;-1:-1:-1;1218:111:0;:::o;948:31::-;;;:::o"
+            },
+            "methodIdentifiers": {
+              "cToken()": "69e527da",
+              "getRate()": "679aefce"
+            }
+          }
+        }
+      },
+      "contracts/WstETHRateProvider.sol": {
+        "WstETHRateProvider": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "contract IwstETH",
+                  "name": "_wstETH",
+                  "type": "address"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "constructor"
+            },
+            {
+              "inputs": [],
+              "name": "getRate",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "wstETH",
+              "outputs": [
+                {
+                  "internalType": "contract IwstETH",
+                  "name": "",
+                  "type": "address"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "linkReferences": {},
+              "object": "60a060405234801561001057600080fd5b506040516101e33803806101e38339818101604052602081101561003357600080fd5b5051606081901b6001600160601b0319166080526001600160a01b031661017961006a600039806088528060ae52506101796000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80634aa07e641461003b578063679aefce1461006c575b600080fd5b610043610086565b6040805173ffffffffffffffffffffffffffffffffffffffff9092168252519081900360200190f35b6100746100aa565b60408051918252519081900360200190f35b7f000000000000000000000000000000000000000000000000000000000000000081565b60007f000000000000000000000000000000000000000000000000000000000000000073ffffffffffffffffffffffffffffffffffffffff1663035faf826040518163ffffffff1660e01b815260040160206040518083038186803b15801561011257600080fd5b505afa158015610126573d6000803e3d6000fd5b505050506040513d602081101561013c57600080fd5b505190509056fea2646970667358221220ea76cab9de832dbe7dd8e95e2f7455ec90d1a6e7f91a1e03ec840a8393d33dbc64736f6c63430007010033",
+              "opcodes": "PUSH1 0xA0 PUSH1 0x40 MSTORE CALLVALUE DUP1 ISZERO PUSH2 0x10 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP PUSH1 0x40 MLOAD PUSH2 0x1E3 CODESIZE SUB DUP1 PUSH2 0x1E3 DUP4 CODECOPY DUP2 DUP2 ADD PUSH1 0x40 MSTORE PUSH1 0x20 DUP2 LT ISZERO PUSH2 0x33 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP MLOAD PUSH1 0x60 DUP2 SWAP1 SHL PUSH1 0x1 PUSH1 0x1 PUSH1 0x60 SHL SUB NOT AND PUSH1 0x80 MSTORE PUSH1 0x1 PUSH1 0x1 PUSH1 0xA0 SHL SUB AND PUSH2 0x179 PUSH2 0x6A PUSH1 0x0 CODECOPY DUP1 PUSH1 0x88 MSTORE DUP1 PUSH1 0xAE MSTORE POP PUSH2 0x179 PUSH1 0x0 RETURN INVALID PUSH1 0x80 PUSH1 0x40 MSTORE CALLVALUE DUP1 ISZERO PUSH2 0x10 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP PUSH1 0x4 CALLDATASIZE LT PUSH2 0x36 JUMPI PUSH1 0x0 CALLDATALOAD PUSH1 0xE0 SHR DUP1 PUSH4 0x4AA07E64 EQ PUSH2 0x3B JUMPI DUP1 PUSH4 0x679AEFCE EQ PUSH2 0x6C JUMPI JUMPDEST PUSH1 0x0 DUP1 REVERT JUMPDEST PUSH2 0x43 PUSH2 0x86 JUMP JUMPDEST PUSH1 0x40 DUP1 MLOAD PUSH20 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF SWAP1 SWAP3 AND DUP3 MSTORE MLOAD SWAP1 DUP2 SWAP1 SUB PUSH1 0x20 ADD SWAP1 RETURN JUMPDEST PUSH2 0x74 PUSH2 0xAA JUMP JUMPDEST PUSH1 0x40 DUP1 MLOAD SWAP2 DUP3 MSTORE MLOAD SWAP1 DUP2 SWAP1 SUB PUSH1 0x20 ADD SWAP1 RETURN JUMPDEST PUSH32 0x0 DUP2 JUMP JUMPDEST PUSH1 0x0 PUSH32 0x0 PUSH20 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF AND PUSH4 0x35FAF82 PUSH1 0x40 MLOAD DUP2 PUSH4 0xFFFFFFFF AND PUSH1 0xE0 SHL DUP2 MSTORE PUSH1 0x4 ADD PUSH1 0x20 PUSH1 0x40 MLOAD DUP1 DUP4 SUB DUP2 DUP7 DUP1 EXTCODESIZE ISZERO DUP1 ISZERO PUSH2 0x112 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP GAS STATICCALL ISZERO DUP1 ISZERO PUSH2 0x126 JUMPI RETURNDATASIZE PUSH1 0x0 DUP1 RETURNDATACOPY RETURNDATASIZE PUSH1 0x0 REVERT JUMPDEST POP POP POP POP PUSH1 0x40 MLOAD RETURNDATASIZE PUSH1 0x20 DUP2 LT ISZERO PUSH2 0x13C JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP MLOAD SWAP1 POP SWAP1 JUMP INVALID LOG2 PUSH5 0x6970667358 0x22 SLT KECCAK256 0xEA PUSH23 0xCAB9DE832DBE7DD8E95E2F7455EC90D1A6E7F91A1E03EC DUP5 EXP DUP4 SWAP4 0xD3 RETURNDATASIZE 0xBC PUSH5 0x736F6C6343 STOP SMOD ADD STOP CALLER ",
+              "sourceMap": "893:334:1:-:0;;;982:62;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;-1:-1:-1;982:62:1;1021:16;;;;-1:-1:-1;;;;;;1021:16:1;;;-1:-1:-1;;;;;893:334:1;;;;;;;;"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {
+                "47": [
+                  {
+                    "length": 32,
+                    "start": 136
+                  },
+                  {
+                    "length": 32,
+                    "start": 174
+                  }
+                ]
+              },
+              "linkReferences": {},
+              "object": "608060405234801561001057600080fd5b50600436106100365760003560e01c80634aa07e641461003b578063679aefce1461006c575b600080fd5b610043610086565b6040805173ffffffffffffffffffffffffffffffffffffffff9092168252519081900360200190f35b6100746100aa565b60408051918252519081900360200190f35b7f000000000000000000000000000000000000000000000000000000000000000081565b60007f000000000000000000000000000000000000000000000000000000000000000073ffffffffffffffffffffffffffffffffffffffff1663035faf826040518163ffffffff1660e01b815260040160206040518083038186803b15801561011257600080fd5b505afa158015610126573d6000803e3d6000fd5b505050506040513d602081101561013c57600080fd5b505190509056fea2646970667358221220ea76cab9de832dbe7dd8e95e2f7455ec90d1a6e7f91a1e03ec840a8393d33dbc64736f6c63430007010033",
+              "opcodes": "PUSH1 0x80 PUSH1 0x40 MSTORE CALLVALUE DUP1 ISZERO PUSH2 0x10 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP PUSH1 0x4 CALLDATASIZE LT PUSH2 0x36 JUMPI PUSH1 0x0 CALLDATALOAD PUSH1 0xE0 SHR DUP1 PUSH4 0x4AA07E64 EQ PUSH2 0x3B JUMPI DUP1 PUSH4 0x679AEFCE EQ PUSH2 0x6C JUMPI JUMPDEST PUSH1 0x0 DUP1 REVERT JUMPDEST PUSH2 0x43 PUSH2 0x86 JUMP JUMPDEST PUSH1 0x40 DUP1 MLOAD PUSH20 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF SWAP1 SWAP3 AND DUP3 MSTORE MLOAD SWAP1 DUP2 SWAP1 SUB PUSH1 0x20 ADD SWAP1 RETURN JUMPDEST PUSH2 0x74 PUSH2 0xAA JUMP JUMPDEST PUSH1 0x40 DUP1 MLOAD SWAP2 DUP3 MSTORE MLOAD SWAP1 DUP2 SWAP1 SUB PUSH1 0x20 ADD SWAP1 RETURN JUMPDEST PUSH32 0x0 DUP2 JUMP JUMPDEST PUSH1 0x0 PUSH32 0x0 PUSH20 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF AND PUSH4 0x35FAF82 PUSH1 0x40 MLOAD DUP2 PUSH4 0xFFFFFFFF AND PUSH1 0xE0 SHL DUP2 MSTORE PUSH1 0x4 ADD PUSH1 0x20 PUSH1 0x40 MLOAD DUP1 DUP4 SUB DUP2 DUP7 DUP1 EXTCODESIZE ISZERO DUP1 ISZERO PUSH2 0x112 JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP GAS STATICCALL ISZERO DUP1 ISZERO PUSH2 0x126 JUMPI RETURNDATASIZE PUSH1 0x0 DUP1 RETURNDATACOPY RETURNDATASIZE PUSH1 0x0 REVERT JUMPDEST POP POP POP POP PUSH1 0x40 MLOAD RETURNDATASIZE PUSH1 0x20 DUP2 LT ISZERO PUSH2 0x13C JUMPI PUSH1 0x0 DUP1 REVERT JUMPDEST POP MLOAD SWAP1 POP SWAP1 JUMP INVALID LOG2 PUSH5 0x6970667358 0x22 SLT KECCAK256 0xEA PUSH23 0xCAB9DE832DBE7DD8E95E2F7455EC90D1A6E7F91A1E03EC DUP5 EXP DUP4 SWAP4 0xD3 RETURNDATASIZE 0xBC PUSH5 0x736F6C6343 STOP SMOD ADD STOP CALLER ",
+              "sourceMap": "893:334:1:-:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;944:31;;;:::i;:::-;;;;;;;;;;;;;;;;;;;1119:106;;;:::i;:::-;;;;;;;;;;;;;;;;944:31;;;:::o;1119:106::-;1170:7;1196:6;:20;;;:22;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;-1:-1:-1;1196:22:1;;-1:-1:-1;1119:106:1;:::o"
+            },
+            "methodIdentifiers": {
+              "getRate()": "679aefce",
+              "wstETH()": "4aa07e64"
+            }
+          }
+        }
+      },
+      "contracts/interfaces/ICToken.sol": {
+        "ICToken": {
+          "abi": [
+            {
+              "inputs": [],
+              "name": "exchangeRateStored",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "isCToken",
+              "outputs": [
+                {
+                  "internalType": "bool",
+                  "name": "",
+                  "type": "bool"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "linkReferences": {},
+              "object": "",
+              "opcodes": "",
+              "sourceMap": ""
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "linkReferences": {},
+              "object": "",
+              "opcodes": "",
+              "sourceMap": ""
+            },
+            "methodIdentifiers": {
+              "exchangeRateStored()": "182df0f5",
+              "isCToken()": "fe9c44ae"
+            }
+          }
+        }
+      },
+      "contracts/interfaces/IRateProvider.sol": {
+        "IRateProvider": {
+          "abi": [
+            {
+              "inputs": [],
+              "name": "getRate",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "linkReferences": {},
+              "object": "",
+              "opcodes": "",
+              "sourceMap": ""
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "linkReferences": {},
+              "object": "",
+              "opcodes": "",
+              "sourceMap": ""
+            },
+            "methodIdentifiers": {
+              "getRate()": "679aefce"
+            }
+          }
+        }
+      },
+      "contracts/interfaces/IwstETH.sol": {
+        "IwstETH": {
+          "abi": [
+            {
+              "inputs": [],
+              "name": "stEthPerToken",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "linkReferences": {},
+              "object": "",
+              "opcodes": "",
+              "sourceMap": ""
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "linkReferences": {},
+              "object": "",
+              "opcodes": "",
+              "sourceMap": ""
+            },
+            "methodIdentifiers": {
+              "stEthPerToken()": "035faf82"
+            }
+          }
+        }
+      }
+    },
+    "sources": {
+      "contracts/CTokenRateProvider.sol": {
+        "ast": {
+          "absolutePath": "contracts/CTokenRateProvider.sol",
+          "exportedSymbols": {
+            "CTokenRateProvider": [
+              38
+            ]
+          },
+          "id": 39,
+          "license": "GPL-3.0-or-later",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "^",
+                "0.7",
+                ".0"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "688:23:0"
+            },
+            {
+              "absolutePath": "contracts/interfaces/IRateProvider.sol",
+              "file": "./interfaces/IRateProvider.sol",
+              "id": 2,
+              "nodeType": "ImportDirective",
+              "scope": 39,
+              "sourceUnit": 94,
+              "src": "713:40:0",
+              "symbolAliases": [],
+              "unitAlias": ""
+            },
+            {
+              "absolutePath": "contracts/interfaces/ICToken.sol",
+              "file": "./interfaces/ICToken.sol",
+              "id": 3,
+              "nodeType": "ImportDirective",
+              "scope": 39,
+              "sourceUnit": 86,
+              "src": "754:34:0",
+              "symbolAliases": [],
+              "unitAlias": ""
+            },
+            {
+              "abstract": false,
+              "baseContracts": [
+                {
+                  "baseName": {
+                    "id": 5,
+                    "name": "IRateProvider",
+                    "nodeType": "UserDefinedTypeName",
+                    "referencedDeclaration": 93,
+                    "src": "928:13:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_contract$_IRateProvider_$93",
+                      "typeString": "contract IRateProvider"
+                    }
+                  },
+                  "id": 6,
+                  "nodeType": "InheritanceSpecifier",
+                  "src": "928:13:0"
+                }
+              ],
+              "contractDependencies": [
+                93
+              ],
+              "contractKind": "contract",
+              "documentation": {
+                "id": 4,
+                "nodeType": "StructuredDocumentation",
+                "src": "790:106:0",
+                "text": " @title cToken Rate Provider\n @notice Returns the value of a cToken in terms of its underlying"
+              },
+              "fullyImplemented": true,
+              "id": 38,
+              "linearizedBaseContracts": [
+                38,
+                93
+              ],
+              "name": "CTokenRateProvider",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "constant": false,
+                  "functionSelector": "69e527da",
+                  "id": 8,
+                  "mutability": "immutable",
+                  "name": "cToken",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 38,
+                  "src": "948:31:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_contract$_ICToken_$85",
+                    "typeString": "contract ICToken"
+                  },
+                  "typeName": {
+                    "id": 7,
+                    "name": "ICToken",
+                    "nodeType": "UserDefinedTypeName",
+                    "referencedDeclaration": 85,
+                    "src": "948:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_contract$_ICToken_$85",
+                      "typeString": "contract ICToken"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 24,
+                    "nodeType": "Block",
+                    "src": "1015:104:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "arguments": [
+                            {
+                              "arguments": [],
+                              "expression": {
+                                "argumentTypes": [],
+                                "expression": {
+                                  "id": 14,
+                                  "name": "_cToken",
+                                  "nodeType": "Identifier",
+                                  "overloadedDeclarations": [],
+                                  "referencedDeclaration": 10,
+                                  "src": "1033:7:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_contract$_ICToken_$85",
+                                    "typeString": "contract ICToken"
+                                  }
+                                },
+                                "id": 15,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": false,
+                                "lValueRequested": false,
+                                "memberName": "isCToken",
+                                "nodeType": "MemberAccess",
+                                "referencedDeclaration": 78,
+                                "src": "1033:16:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_function_external_view$__$returns$_t_bool_$",
+                                  "typeString": "function () view external returns (bool)"
+                                }
+                              },
+                              "id": 16,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "kind": "functionCall",
+                              "lValueRequested": false,
+                              "names": [],
+                              "nodeType": "FunctionCall",
+                              "src": "1033:18:0",
+                              "tryCall": false,
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_bool",
+                                "typeString": "bool"
+                              }
+                            },
+                            {
+                              "hexValue": "50726f76696465642061646472657373206973206e6f742063546f6b656e",
+                              "id": 17,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "kind": "string",
+                              "lValueRequested": false,
+                              "nodeType": "Literal",
+                              "src": "1053:32:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_stringliteral_907712cd5520644a684bbdbea382092593712ea80ccab615d4105508ea74a68c",
+                                "typeString": "literal_string \"Provided address is not cToken\""
+                              },
+                              "value": "Provided address is not cToken"
+                            }
+                          ],
+                          "expression": {
+                            "argumentTypes": [
+                              {
+                                "typeIdentifier": "t_bool",
+                                "typeString": "bool"
+                              },
+                              {
+                                "typeIdentifier": "t_stringliteral_907712cd5520644a684bbdbea382092593712ea80ccab615d4105508ea74a68c",
+                                "typeString": "literal_string \"Provided address is not cToken\""
+                              }
+                            ],
+                            "id": 13,
+                            "name": "require",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [
+                              -18,
+                              -18
+                            ],
+                            "referencedDeclaration": -18,
+                            "src": "1025:7:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_require_pure$_t_bool_$_t_string_memory_ptr_$returns$__$",
+                              "typeString": "function (bool,string memory) pure"
+                            }
+                          },
+                          "id": 18,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "1025:61:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$__$",
+                            "typeString": "tuple()"
+                          }
+                        },
+                        "id": 19,
+                        "nodeType": "ExpressionStatement",
+                        "src": "1025:61:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 22,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 20,
+                            "name": "cToken",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 8,
+                            "src": "1096:6:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_contract$_ICToken_$85",
+                              "typeString": "contract ICToken"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 21,
+                            "name": "_cToken",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 10,
+                            "src": "1105:7:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_contract$_ICToken_$85",
+                              "typeString": "contract ICToken"
+                            }
+                          },
+                          "src": "1096:16:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_contract$_ICToken_$85",
+                            "typeString": "contract ICToken"
+                          }
+                        },
+                        "id": 23,
+                        "nodeType": "ExpressionStatement",
+                        "src": "1096:16:0"
+                      }
+                    ]
+                  },
+                  "id": 25,
+                  "implemented": true,
+                  "kind": "constructor",
+                  "modifiers": [],
+                  "name": "",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 11,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 10,
+                        "mutability": "mutable",
+                        "name": "_cToken",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 25,
+                        "src": "998:15:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_contract$_ICToken_$85",
+                          "typeString": "contract ICToken"
+                        },
+                        "typeName": {
+                          "id": 9,
+                          "name": "ICToken",
+                          "nodeType": "UserDefinedTypeName",
+                          "referencedDeclaration": 85,
+                          "src": "998:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_contract$_ICToken_$85",
+                            "typeString": "contract ICToken"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "997:17:0"
+                  },
+                  "returnParameters": {
+                    "id": 12,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "1015:0:0"
+                  },
+                  "scope": 38,
+                  "src": "986:133:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "public"
+                },
+                {
+                  "baseFunctions": [
+                    92
+                  ],
+                  "body": {
+                    "id": 36,
+                    "nodeType": "Block",
+                    "src": "1278:51:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "arguments": [],
+                          "expression": {
+                            "argumentTypes": [],
+                            "expression": {
+                              "id": 32,
+                              "name": "cToken",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 8,
+                              "src": "1295:6:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_contract$_ICToken_$85",
+                                "typeString": "contract ICToken"
+                              }
+                            },
+                            "id": 33,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberName": "exchangeRateStored",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 84,
+                            "src": "1295:25:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_external_view$__$returns$_t_uint256_$",
+                              "typeString": "function () view external returns (uint256)"
+                            }
+                          },
+                          "id": 34,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "1295:27:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 31,
+                        "id": 35,
+                        "nodeType": "Return",
+                        "src": "1288:34:0"
+                      }
+                    ]
+                  },
+                  "documentation": {
+                    "id": 26,
+                    "nodeType": "StructuredDocumentation",
+                    "src": "1125:88:0",
+                    "text": " @return the value of RateProvider's cToken in terms of its underlying"
+                  },
+                  "functionSelector": "679aefce",
+                  "id": 37,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "getRate",
+                  "nodeType": "FunctionDefinition",
+                  "overrides": {
+                    "id": 28,
+                    "nodeType": "OverrideSpecifier",
+                    "overrides": [],
+                    "src": "1251:8:0"
+                  },
+                  "parameters": {
+                    "id": 27,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "1234:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 31,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 30,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 37,
+                        "src": "1269:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 29,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1269:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "1268:9:0"
+                  },
+                  "scope": 38,
+                  "src": "1218:111:0",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 39,
+              "src": "897:434:0"
+            }
+          ],
+          "src": "688:644:0"
+        },
+        "id": 0
+      },
+      "contracts/WstETHRateProvider.sol": {
+        "ast": {
+          "absolutePath": "contracts/WstETHRateProvider.sol",
+          "exportedSymbols": {
+            "WstETHRateProvider": [
+              70
+            ]
+          },
+          "id": 71,
+          "license": "GPL-3.0-or-later",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 40,
+              "literals": [
+                "solidity",
+                "^",
+                "0.7",
+                ".0"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "688:23:1"
+            },
+            {
+              "absolutePath": "contracts/interfaces/IRateProvider.sol",
+              "file": "./interfaces/IRateProvider.sol",
+              "id": 41,
+              "nodeType": "ImportDirective",
+              "scope": 71,
+              "sourceUnit": 94,
+              "src": "713:40:1",
+              "symbolAliases": [],
+              "unitAlias": ""
+            },
+            {
+              "absolutePath": "contracts/interfaces/IwstETH.sol",
+              "file": "./interfaces/IwstETH.sol",
+              "id": 42,
+              "nodeType": "ImportDirective",
+              "scope": 71,
+              "sourceUnit": 104,
+              "src": "754:34:1",
+              "symbolAliases": [],
+              "unitAlias": ""
+            },
+            {
+              "abstract": false,
+              "baseContracts": [
+                {
+                  "baseName": {
+                    "id": 44,
+                    "name": "IRateProvider",
+                    "nodeType": "UserDefinedTypeName",
+                    "referencedDeclaration": 93,
+                    "src": "924:13:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_contract$_IRateProvider_$93",
+                      "typeString": "contract IRateProvider"
+                    }
+                  },
+                  "id": 45,
+                  "nodeType": "InheritanceSpecifier",
+                  "src": "924:13:1"
+                }
+              ],
+              "contractDependencies": [
+                93
+              ],
+              "contractKind": "contract",
+              "documentation": {
+                "id": 43,
+                "nodeType": "StructuredDocumentation",
+                "src": "790:102:1",
+                "text": " @title Wrapped stETH Rate Provider\n @notice Returns the value of wstETH in terms of stETH"
+              },
+              "fullyImplemented": true,
+              "id": 70,
+              "linearizedBaseContracts": [
+                70,
+                93
+              ],
+              "name": "WstETHRateProvider",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "constant": false,
+                  "functionSelector": "4aa07e64",
+                  "id": 47,
+                  "mutability": "immutable",
+                  "name": "wstETH",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 70,
+                  "src": "944:31:1",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_contract$_IwstETH_$103",
+                    "typeString": "contract IwstETH"
+                  },
+                  "typeName": {
+                    "id": 46,
+                    "name": "IwstETH",
+                    "nodeType": "UserDefinedTypeName",
+                    "referencedDeclaration": 103,
+                    "src": "944:7:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_contract$_IwstETH_$103",
+                      "typeString": "contract IwstETH"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 56,
+                    "nodeType": "Block",
+                    "src": "1011:33:1",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 54,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 52,
+                            "name": "wstETH",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 47,
+                            "src": "1021:6:1",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_contract$_IwstETH_$103",
+                              "typeString": "contract IwstETH"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 53,
+                            "name": "_wstETH",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 49,
+                            "src": "1030:7:1",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_contract$_IwstETH_$103",
+                              "typeString": "contract IwstETH"
+                            }
+                          },
+                          "src": "1021:16:1",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_contract$_IwstETH_$103",
+                            "typeString": "contract IwstETH"
+                          }
+                        },
+                        "id": 55,
+                        "nodeType": "ExpressionStatement",
+                        "src": "1021:16:1"
+                      }
+                    ]
+                  },
+                  "id": 57,
+                  "implemented": true,
+                  "kind": "constructor",
+                  "modifiers": [],
+                  "name": "",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 50,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 49,
+                        "mutability": "mutable",
+                        "name": "_wstETH",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 57,
+                        "src": "994:15:1",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_contract$_IwstETH_$103",
+                          "typeString": "contract IwstETH"
+                        },
+                        "typeName": {
+                          "id": 48,
+                          "name": "IwstETH",
+                          "nodeType": "UserDefinedTypeName",
+                          "referencedDeclaration": 103,
+                          "src": "994:7:1",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_contract$_IwstETH_$103",
+                            "typeString": "contract IwstETH"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "993:17:1"
+                  },
+                  "returnParameters": {
+                    "id": 51,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "1011:0:1"
+                  },
+                  "scope": 70,
+                  "src": "982:62:1",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "public"
+                },
+                {
+                  "baseFunctions": [
+                    92
+                  ],
+                  "body": {
+                    "id": 68,
+                    "nodeType": "Block",
+                    "src": "1179:46:1",
+                    "statements": [
+                      {
+                        "expression": {
+                          "arguments": [],
+                          "expression": {
+                            "argumentTypes": [],
+                            "expression": {
+                              "id": 64,
+                              "name": "wstETH",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 47,
+                              "src": "1196:6:1",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_contract$_IwstETH_$103",
+                                "typeString": "contract IwstETH"
+                              }
+                            },
+                            "id": 65,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberName": "stEthPerToken",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 102,
+                            "src": "1196:20:1",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_external_view$__$returns$_t_uint256_$",
+                              "typeString": "function () view external returns (uint256)"
+                            }
+                          },
+                          "id": 66,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "1196:22:1",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 63,
+                        "id": 67,
+                        "nodeType": "Return",
+                        "src": "1189:29:1"
+                      }
+                    ]
+                  },
+                  "documentation": {
+                    "id": 58,
+                    "nodeType": "StructuredDocumentation",
+                    "src": "1050:64:1",
+                    "text": " @return the value of wstETH in terms of stETH"
+                  },
+                  "functionSelector": "679aefce",
+                  "id": 69,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "getRate",
+                  "nodeType": "FunctionDefinition",
+                  "overrides": {
+                    "id": 60,
+                    "nodeType": "OverrideSpecifier",
+                    "overrides": [],
+                    "src": "1152:8:1"
+                  },
+                  "parameters": {
+                    "id": 59,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "1135:2:1"
+                  },
+                  "returnParameters": {
+                    "id": 63,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 62,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 69,
+                        "src": "1170:7:1",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 61,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1170:7:1",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "1169:9:1"
+                  },
+                  "scope": 70,
+                  "src": "1119:106:1",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 71,
+              "src": "893:334:1"
+            }
+          ],
+          "src": "688:540:1"
+        },
+        "id": 1
+      },
+      "contracts/interfaces/ICToken.sol": {
+        "ast": {
+          "absolutePath": "contracts/interfaces/ICToken.sol",
+          "exportedSymbols": {
+            "ICToken": [
+              85
+            ]
+          },
+          "id": 86,
+          "license": "GPL-3.0-or-later",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 72,
+              "literals": [
+                "solidity",
+                "^",
+                "0.7",
+                ".0"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "688:23:2"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "contractDependencies": [],
+              "contractKind": "interface",
+              "fullyImplemented": false,
+              "id": 85,
+              "linearizedBaseContracts": [
+                85
+              ],
+              "name": "ICToken",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "documentation": {
+                    "id": 73,
+                    "nodeType": "StructuredDocumentation",
+                    "src": "737:84:2",
+                    "text": " @notice Indicator that this is a CToken contract (for inspection)"
+                  },
+                  "functionSelector": "fe9c44ae",
+                  "id": 78,
+                  "implemented": false,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "isCToken",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 74,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "843:2:2"
+                  },
+                  "returnParameters": {
+                    "id": 77,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 76,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 78,
+                        "src": "869:4:2",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bool",
+                          "typeString": "bool"
+                        },
+                        "typeName": {
+                          "id": 75,
+                          "name": "bool",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "869:4:2",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "868:6:2"
+                  },
+                  "scope": 85,
+                  "src": "826:49:2",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "documentation": {
+                    "id": 79,
+                    "nodeType": "StructuredDocumentation",
+                    "src": "881:89:2",
+                    "text": " @notice Calculates the exchange rate from the underlying to the CToken"
+                  },
+                  "functionSelector": "182df0f5",
+                  "id": 84,
+                  "implemented": false,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "exchangeRateStored",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 80,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "1002:2:2"
+                  },
+                  "returnParameters": {
+                    "id": 83,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 82,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 84,
+                        "src": "1028:7:2",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 81,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1028:7:2",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "1027:9:2"
+                  },
+                  "scope": 85,
+                  "src": "975:62:2",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 86,
+              "src": "713:326:2"
+            }
+          ],
+          "src": "688:352:2"
+        },
+        "id": 2
+      },
+      "contracts/interfaces/IRateProvider.sol": {
+        "ast": {
+          "absolutePath": "contracts/interfaces/IRateProvider.sol",
+          "exportedSymbols": {
+            "IRateProvider": [
+              93
+            ]
+          },
+          "id": 94,
+          "license": "GPL-3.0-or-later",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 87,
+              "literals": [
+                "solidity",
+                "^",
+                "0.7",
+                ".0"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "688:23:3"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "contractDependencies": [],
+              "contractKind": "interface",
+              "fullyImplemented": false,
+              "id": 93,
+              "linearizedBaseContracts": [
+                93
+              ],
+              "name": "IRateProvider",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "functionSelector": "679aefce",
+                  "id": 92,
+                  "implemented": false,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "getRate",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 88,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "796:2:3"
+                  },
+                  "returnParameters": {
+                    "id": 91,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 90,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 92,
+                        "src": "822:7:3",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 89,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "822:7:3",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "821:9:3"
+                  },
+                  "scope": 93,
+                  "src": "780:51:3",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 94,
+              "src": "750:83:3"
+            }
+          ],
+          "src": "688:146:3"
+        },
+        "id": 3
+      },
+      "contracts/interfaces/IwstETH.sol": {
+        "ast": {
+          "absolutePath": "contracts/interfaces/IwstETH.sol",
+          "exportedSymbols": {
+            "IwstETH": [
+              103
+            ]
+          },
+          "id": 104,
+          "license": "GPL-3.0",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 95,
+              "literals": [
+                "solidity",
+                "^",
+                "0.7",
+                ".1"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "90:23:4"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "contractDependencies": [],
+              "contractKind": "interface",
+              "documentation": {
+                "id": 96,
+                "nodeType": "StructuredDocumentation",
+                "src": "115:811:4",
+                "text": " @title StETH token wrapper with static balances.\n @dev It's an ERC20 token that represents the account's share of the total\n supply of stETH tokens. WstETH token's balance only changes on transfers,\n unlike StETH that is also changed when oracles report staking rewards and\n penalties. It's a \"power user\" token for DeFi protocols which don't\n support rebasable tokens.\n The contract is also a trustless wrapper that accepts stETH tokens and mints\n wstETH in return. Then the user unwraps, the contract burns user's wstETH\n and sends user locked stETH in return.\n The contract provides the staking shortcut: user can send ETH with regular\n transfer and get wstETH in return. The contract will send ETH to Lido submit\n method, staking it and wrapping the received stETH."
+              },
+              "fullyImplemented": false,
+              "id": 103,
+              "linearizedBaseContracts": [
+                103
+              ],
+              "name": "IwstETH",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "documentation": {
+                    "id": 97,
+                    "nodeType": "StructuredDocumentation",
+                    "src": "951:107:4",
+                    "text": " @notice Get amount of wstETH for a one stETH\n @return Amount of stETH for 1 wstETH"
+                  },
+                  "functionSelector": "035faf82",
+                  "id": 102,
+                  "implemented": false,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "stEthPerToken",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 98,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "1085:2:4"
+                  },
+                  "returnParameters": {
+                    "id": 101,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 100,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 102,
+                        "src": "1111:7:4",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 99,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1111:7:4",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "1110:9:4"
+                  },
+                  "scope": 103,
+                  "src": "1063:57:4",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 104,
+              "src": "927:195:4"
+            }
+          ],
+          "src": "90:1033:4"
+        },
+        "id": 4
+      }
+    }
+  }
+}

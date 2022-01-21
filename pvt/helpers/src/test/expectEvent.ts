@@ -46,9 +46,11 @@ export function inIndirectReceipt(
   receipt: ContractReceipt,
   emitter: Interface,
   eventName: string,
-  eventArgs = {}
+  eventArgs = {},
+  address?: string
 ): any {
   const decodedEvents = receipt.logs
+    .filter((log) => (address ? log.address === address : true))
     .map((log) => {
       try {
         return emitter.parseLog(log);

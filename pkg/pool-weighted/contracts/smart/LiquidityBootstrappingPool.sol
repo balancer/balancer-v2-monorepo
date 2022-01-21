@@ -382,7 +382,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 normalizedSum = 0;
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
-            _require(endWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
+            _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             newPoolState = newPoolState
                 .insertUint31(startWeights[i].compress31(), _START_WEIGHT_OFFSET + i * 31)
@@ -445,8 +445,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { scalingFactors[0] = _scalingFactor0; } else { return scalingFactors; }
-            if (totalTokens > 1) { scalingFactors[1] = _scalingFactor1; } else { return scalingFactors; }
+            scalingFactors[0] = _scalingFactor0;
+            scalingFactors[1] = _scalingFactor1;
             if (totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
             if (totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
         }

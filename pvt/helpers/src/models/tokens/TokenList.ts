@@ -1,6 +1,11 @@
+import { BigNumber } from 'ethers';
+
 import Token from './Token';
 import TokensDeployer from './TokensDeployer';
 import TypesConverter from '../types/TypesConverter';
+
+import { Account } from '../types/types';
+import { ZERO_ADDRESS } from '../../constants';
 import {
   RawTokenApproval,
   RawTokenMint,
@@ -9,7 +14,6 @@ import {
   TokenMint,
   TokensDeploymentOptions,
 } from './types';
-import { ZERO_ADDRESS } from '../../constants';
 
 export const ETH_TOKEN_ADDRESS = ZERO_ADDRESS;
 
@@ -48,6 +52,10 @@ export default class TokenList {
     return this.findBySymbol('DAI');
   }
 
+  get CDAI(): Token {
+    return this.findBySymbol('CDAI');
+  }
+
   get MKR(): Token {
     return this.findBySymbol('MKR');
   }
@@ -78,8 +86,8 @@ export default class TokenList {
     return [this.indexOf(token), this.indexOf(anotherToken)];
   }
 
-  subset(length: number): TokenList {
-    return new TokenList(this.tokens.slice(0, length));
+  subset(length: number, offset = 0): TokenList {
+    return new TokenList(this.tokens.slice(offset, offset + length));
   }
 
   async mint(rawParams: RawTokenMint): Promise<void> {
@@ -94,6 +102,10 @@ export default class TokenList {
     await Promise.all(
       params.flatMap(({ to, amount, from }) => this.tokens.map((token) => token.approve(to, amount, { from })))
     );
+  }
+
+  async balanceOf(account: Account): Promise<BigNumber[]> {
+    return Promise.all(this.tokens.map((token) => token.balanceOf(account)));
   }
 
   each(fn: (value: Token, i: number, array: Token[]) => void, thisArg?: unknown): void {
@@ -127,5 +139,11 @@ export default class TokenList {
     const index = this.tokens.findIndex((token) => token.symbol.toLowerCase() === symbol.toLowerCase());
     if (index == -1) throw Error(`Could not find token with symbol ${symbol}`);
     return index;
+  }
+
+  sort(): TokenList {
+    return new TokenList(
+      this.tokens.sort((tokenA, tokenB) => (tokenA.address.toLowerCase() > tokenB.address.toLowerCase() ? 1 : -1))
+    );
   }
 }

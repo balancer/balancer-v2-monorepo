@@ -32,7 +32,7 @@ describe('StablePoolFactory', function () {
 
   before('run task', async () => {
     await task.run({ force: true });
-    factory = await task.instanceAt('StablePoolFactory', task.output().factory);
+    factory = await task.deployedInstance('StablePoolFactory');
   });
 
   before('load signers', async () => {
