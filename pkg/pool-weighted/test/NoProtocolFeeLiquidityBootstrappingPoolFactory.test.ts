@@ -123,8 +123,7 @@ describe('NoProtocolFeesLiquidityBootstrappingPoolFactory', function () {
 
     context('when authorized', () => {
       sharedBeforeEach('grant permission to the admin', async () => {
-        const authorizer = await deployedAt('v2-vault/Authorizer', await vault.instance.getAuthorizer());
-        await authorizer.connect(admin).grantRoles(await actionId(factory, 'disable'), admin.address);
+        await vault.grantRoleGlobally(await actionId(factory, 'disable'), admin.address);
       });
 
       it('disables the factory', async () => {
