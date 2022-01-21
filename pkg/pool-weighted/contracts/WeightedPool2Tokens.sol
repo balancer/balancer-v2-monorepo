@@ -326,7 +326,7 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
             _cacheInvariantAndSupply();
         }
 
-        return ((amountsOut, dueProtocolFeeAmounts));
+        return (amountsOut, dueProtocolFeeAmounts);
     }
 
     // Oracle functions
