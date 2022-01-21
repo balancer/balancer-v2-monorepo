@@ -17,15 +17,15 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
 
-import "./interfaces/IBalancerToken.sol";
+import "./interfaces/IBalancerTokenAdmin.sol";
 import "./interfaces/IGaugeController.sol";
 import "./interfaces/ILiquidityGauge.sol";
 
 contract BalancerMinter is ReentrancyGuard {
     using SafeMath for uint256;
 
-    IBalancerToken private immutable _token;
-    IGaugeController private immutable _controller;
+    IBalancerTokenAdmin private immutable _tokenAdmin;
+    IGaugeController private immutable _gaugeController;
 
     event Minted(address indexed recipient, address gauge, uint256 minted);
 
@@ -34,9 +34,23 @@ contract BalancerMinter is ReentrancyGuard {
     // minter -> user -> can mint?
     mapping(address => mapping(address => bool)) private _allowedMinter;
 
-    constructor(IBalancerToken token, IGaugeController controller) {
-        _token = token;
-        _controller = controller;
+    constructor(IBalancerTokenAdmin tokenAdmin, IGaugeController gaugeController) {
+        _tokenAdmin = tokenAdmin;
+        _gaugeController = gaugeController;
+    }
+
+    /**
+     * @notice Returns the address of the Balancer Token Admin contract
+     */
+    function getBalancerTokenAdmin() external view returns (address) {
+        return address(_tokenAdmin);
+    }
+
+    /**
+     * @notice Returns the address of the Gauge Controller
+     */
+    function getGaugeController() external view returns (IGaugeController) {
+        return _gaugeController;
     }
 
     /**
@@ -103,7 +117,7 @@ contract BalancerMinter is ReentrancyGuard {
     function _mintFor(address gauge, address user) internal {
         uint256 tokensToMint = _updateGauge(gauge, user);
         if (tokensToMint > 0) {
-            _token.mint(user, tokensToMint);
+            _tokenAdmin.mint(user, tokensToMint);
         }
     }
 
@@ -116,12 +130,12 @@ contract BalancerMinter is ReentrancyGuard {
         }
 
         if (tokensToMint > 0) {
-            _token.mint(user, tokensToMint);
+            _tokenAdmin.mint(user, tokensToMint);
         }
     }
 
     function _updateGauge(address gauge, address user) internal returns (uint256 tokensToMint) {
-        require(_controller.gauge_types(gauge) >= 0, "Gauge does not exist on Controller");
+        require(_gaugeController.gauge_types(gauge) >= 0, "Gauge does not exist on Controller");
 
         ILiquidityGauge(gauge).user_checkpoint(user);
         uint256 totalMint = ILiquidityGauge(gauge).integrate_fraction(user);
