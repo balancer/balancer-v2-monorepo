@@ -137,10 +137,8 @@ describe('BalancerTokenAdmin', () => {
           it('it emits an MiningParametersUpdated event', async () => {
             const tx = await tokenAdmin.connect(admin).activate();
             const receipt = await tx.wait();
-            const { timestamp } = await ethers.provider.getBlock(receipt.blockHash);
 
-            expectEvent.inReceipt(await tx.wait(), 'MiningParametersUpdated', {
-              time: timestamp,
+            expectEvent.inReceipt(receipt, 'MiningParametersUpdated', {
               rate: '32165468432186542',
               supply: await token.totalSupply(),
             });
@@ -182,10 +180,8 @@ describe('BalancerTokenAdmin', () => {
         it('update the mining parameters', async () => {
           const tx = await tokenAdmin.updateMiningParameters();
           const receipt = await tx.wait();
-          const { timestamp } = await ethers.provider.getBlock(receipt.blockHash);
 
-          expectEvent.inReceipt(await tx.wait(), 'MiningParametersUpdated', {
-            time: timestamp,
+          expectEvent.inReceipt(receipt, 'MiningParametersUpdated', {
             rate: expectedRate,
             supply: expectedStartSupply,
           });

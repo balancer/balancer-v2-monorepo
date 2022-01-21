@@ -47,7 +47,7 @@ contract BalancerTokenAdmin is Authentication {
     IVault private immutable _vault;
     IBalancerToken private immutable _balancerToken;
 
-    event MiningParametersUpdated(uint256 time, uint256 rate, uint256 supply);
+    event MiningParametersUpdated(uint256 rate, uint256 supply);
 
     // Supply Variables
     uint256 public miningEpoch;
@@ -154,7 +154,7 @@ contract BalancerTokenAdmin is Authentication {
         startEpochSupply = _balancerToken.totalSupply();
         startEpochTime = block.timestamp;
         rate = _INITIAL_RATE;
-        emit MiningParametersUpdated(block.timestamp, _INITIAL_RATE, startEpochSupply);
+        emit MiningParametersUpdated(_INITIAL_RATE, startEpochSupply);
     }
 
     /**
@@ -261,7 +261,7 @@ contract BalancerTokenAdmin is Authentication {
         rate = _rate;
         startEpochSupply = _startEpochSupply;
 
-        emit MiningParametersUpdated(block.timestamp, _rate, _startEpochSupply);
+        emit MiningParametersUpdated(_rate, _startEpochSupply);
     }
 
     /**
