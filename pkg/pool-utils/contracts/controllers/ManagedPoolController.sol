@@ -79,10 +79,11 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
         pure
         returns (bytes32)
     {
-        bytes32 permissions = super.encodePermissions(baseRights)
-                .insertBool(managedRights.canChangeWeights, _CHANGE_WEIGHTS_OFFSET)
-                .insertBool(managedRights.canDisableSwaps, _DISABLE_SWAPS_OFFSET)
-                .insertBool(managedRights.canSetMustAllowlistLPs, _MUST_ALLOWLIST_LPS_OFFSET);
+        bytes32 permissions = super
+            .encodePermissions(baseRights)
+            .insertBool(managedRights.canChangeWeights, _CHANGE_WEIGHTS_OFFSET)
+            .insertBool(managedRights.canDisableSwaps, _DISABLE_SWAPS_OFFSET)
+            .insertBool(managedRights.canSetMustAllowlistLPs, _MUST_ALLOWLIST_LPS_OFFSET);
 
         return
             permissions
@@ -209,9 +210,13 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
     /**
      * @dev Pass a call to ManagedPool's setManagementSwapFeePercentage through to the underlying pool.
      */
-    function setManagementSwapFeePercentage(
-        uint256 managementSwapFeePercentage
-    ) external virtual override onlyManager withBoundPool {
+    function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage)
+        external
+        virtual
+        override
+        onlyManager
+        withBoundPool
+    {
         _require(canChangeManagementSwapFeePercentage(), Errors.UNAUTHORIZED_OPERATION);
 
         IControlledManagedPool(pool).setManagementSwapFeePercentage(managementSwapFeePercentage);
