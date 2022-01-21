@@ -52,8 +52,8 @@ contract LiquidityGaugeFactory is Authentication, Ownable {
     /**
      * @dev Returns the address of the Vault's Authorizer.
      */
-    function getAuthorizer() external view returns (IAuthorizer) {
-        return _getAuthorizer();
+    function getAuthorizer() public view returns (IAuthorizer) {
+        return getVault().getAuthorizer();
     }
 
     /**
@@ -133,11 +133,7 @@ contract LiquidityGaugeFactory is Authentication, Ownable {
 
     // Authorization
 
-    function _getAuthorizer() internal view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
-    }
-
     function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return _getAuthorizer().canPerform(actionId, account, address(this));
+        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 }
