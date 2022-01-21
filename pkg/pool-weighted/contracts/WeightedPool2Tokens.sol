@@ -156,110 +156,38 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
         return (_getNormalizedWeights(), _maxWeightTokenIndex);
     }
 
-    // Swap Hooks
-
-    function onSwap(
-        SwapRequest memory request,
-        uint256 balanceTokenIn,
-        uint256 balanceTokenOut
-    ) public virtual override whenNotPaused onlyVault(request.poolId) returns (uint256) {
-        bool tokenInIsToken0 = request.tokenIn == _token0;
-
-        uint256 scalingFactorTokenIn = _scalingFactor(tokenInIsToken0);
-        uint256 scalingFactorTokenOut = _scalingFactor(!tokenInIsToken0);
-
-        uint256 normalizedWeightIn = tokenInIsToken0 ? _normalizedWeight0 : _normalizedWeight1;
-        uint256 normalizedWeightOut = tokenInIsToken0 ? _normalizedWeight1 : _normalizedWeight0;
-
-        // All token amounts are upscaled.
-        balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-        balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
-
-        // Update price oracle with the pre-swap balances
-        _updateOracle(
-            request.lastChangeBlock,
-            tokenInIsToken0 ? balanceTokenIn : balanceTokenOut,
-            tokenInIsToken0 ? balanceTokenOut : balanceTokenIn
-        );
-
-        if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            uint256 amountInMinusSwapFees = _subtractSwapFeeAmount(request.amount);
-
-            // Process the (upscaled!) swap fee.
-            uint256 swapFee = request.amount - amountInMinusSwapFees;
-            _processSwapFeeAmount(request.tokenIn, _upscale(swapFee, scalingFactorTokenIn));
-
-            request.amount = amountInMinusSwapFees;
-
-            uint256 amountOut = _onSwapGivenIn(
-                request,
-                balanceTokenIn,
-                balanceTokenOut,
-                normalizedWeightIn,
-                normalizedWeightOut
-            );
-
-            // amountOut tokens are exiting the Pool, so we round down.
-            return _downscaleDown(amountOut, scalingFactorTokenOut);
-        } else {
-            request.amount = _upscale(request.amount, scalingFactorTokenOut);
-
-            uint256 amountIn = _onSwapGivenOut(
-                request,
-                balanceTokenIn,
-                balanceTokenOut,
-                normalizedWeightIn,
-                normalizedWeightOut
-            );
-
-            // amountIn tokens are entering the Pool, so we round up.
-            amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
-
-            // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-            uint256 amountInPlusSwapFees = _addSwapFeeAmount(amountIn);
-
-            // Process the (upscaled!) swap fee.
-            uint256 swapFee = amountInPlusSwapFees - amountIn;
-            _processSwapFeeAmount(request.tokenIn, _upscale(swapFee, scalingFactorTokenIn));
-
-            return amountInPlusSwapFees;
-        }
-    }
-
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut,
-        uint256 normalizedWeightIn,
-        uint256 normalizedWeightOut
-    ) private pure returns (uint256) {
-        // Swaps are disabled while the contract is paused.
-        return
-            WeightedMath._calcOutGivenIn(
-                currentBalanceTokenIn,
-                normalizedWeightIn,
-                currentBalanceTokenOut,
-                normalizedWeightOut,
-                swapRequest.amount
-            );
+        uint256 currentBalanceTokenOut
+    ) internal virtual override returns (uint256) {
+        bool tokenInIsToken0 = swapRequest.tokenIn == _token0;
+
+        // Update price oracle with the pre-swap balances
+        _updateOracle(
+            swapRequest.lastChangeBlock,
+            tokenInIsToken0 ? currentBalanceTokenIn : currentBalanceTokenOut,
+            tokenInIsToken0 ? currentBalanceTokenOut : currentBalanceTokenIn
+        );
+
+        super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
 
     function _onSwapGivenOut(
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut,
-        uint256 normalizedWeightIn,
-        uint256 normalizedWeightOut
-    ) private pure returns (uint256) {
-        // Swaps are disabled while the contract is paused.
-        return
-            WeightedMath._calcInGivenOut(
-                currentBalanceTokenIn,
-                normalizedWeightIn,
-                currentBalanceTokenOut,
-                normalizedWeightOut,
-                swapRequest.amount
-            );
+        uint256 currentBalanceTokenOut
+    ) internal virtual override returns (uint256) {
+        bool tokenInIsToken0 = swapRequest.tokenIn == _token0;
+
+        // Update price oracle with the pre-swap balances
+        _updateOracle(
+            swapRequest.lastChangeBlock,
+            tokenInIsToken0 ? currentBalanceTokenIn : currentBalanceTokenOut,
+            tokenInIsToken0 ? currentBalanceTokenOut : currentBalanceTokenIn
+        );
+
+        super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
 
     // Join Hook
