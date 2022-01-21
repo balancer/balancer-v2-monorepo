@@ -344,7 +344,7 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
         if (block.number == lastChangeBlock) {
             return;
         }
-        
+
         bytes32 miscData = _getMiscData();
 
         if (miscData.oracleEnabled()) {
