@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/LegacyBaseMinimalSwapInfoPool.sol";
 
 import "./WeightedPoolUserData.sol";
 import "./WeightedMath.sol";
@@ -28,7 +28,7 @@ import "./WeightedMath.sol";
  * the weights to subclasses. Derived contracts can choose to make weights immutable, mutable, or even dynamic
  *  based on local or external logic.
  */
-abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
+abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
     using FixedPoint for uint256;
     using WeightedPoolUserData for bytes;
 
@@ -45,10 +45,10 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256 bufferPeriodDuration,
         address owner
     )
-        BasePool(
+        LegacyBasePool(
             vault,
-            // Given BaseMinimalSwapInfoPool supports both of these specializations, and this Pool never registers or
-            // deregisters any tokens after construction, picking Two Token when the Pool only has two tokens is free
+            // Given LegacyBaseMinimalSwapInfoPool supports both of these specializations, and this Pool never registers
+            // or deregisters any tokens after construction, picking Two Token when the Pool only has two tokens is free
             // gas savings.
             tokens.length == 2 ? IVault.PoolSpecialization.TWO_TOKEN : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
             name,
@@ -112,7 +112,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override whenNotPaused returns (uint256) {
         // Swaps are disabled while the contract is paused.
 
         return
@@ -129,7 +129,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override whenNotPaused returns (uint256) {
         // Swaps are disabled while the contract is paused.
 
         return
@@ -374,9 +374,18 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the
         // protocol swap fees due in future joins and exits.
-        _lastInvariant = _invariantAfterExit(balances, amountsOut, normalizedWeights);
+        _setLastInvariantAfterExit(balances, amountsOut, normalizedWeights);
 
         return (bptAmountIn, amountsOut, dueProtocolFeeAmounts);
+    }
+
+    // Introduced to keep _lastInvariant private
+    function _setLastInvariantAfterExit(
+        uint256[] memory balances,
+        uint256[] memory amountsOut,
+        uint256[] memory normalizedWeights
+    ) internal {
+        _lastInvariant = _invariantAfterExit(balances, amountsOut, normalizedWeights);
     }
 
     function _doExit(
@@ -484,7 +493,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256 previousInvariant,
         uint256 currentInvariant,
         uint256 protocolSwapFeePercentage
-    ) private view returns (uint256[] memory) {
+    ) internal view returns (uint256[] memory) {
         // Initialize with zeros
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
 
@@ -523,7 +532,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory balances,
         uint256[] memory amountsOut,
         uint256[] memory normalizedWeights
-    ) private view returns (uint256) {
+    ) internal view returns (uint256) {
         _mutateAmounts(balances, amountsOut, FixedPoint.sub);
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
@@ -537,7 +546,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory toMutate,
         uint256[] memory arguments,
         function(uint256, uint256) pure returns (uint256) mutation
-    ) private view {
+    ) internal view {
         for (uint256 i = 0; i < _getTotalTokens(); ++i) {
             toMutate[i] = mutation(toMutate[i], arguments[i]);
         }
