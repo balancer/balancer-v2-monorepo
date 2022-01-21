@@ -186,9 +186,7 @@ contract WeightedPool2Tokens is
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
-        return
-            (actionId == getActionId(BasePool.setSwapFeePercentage.selector)) ||
-            (actionId == getActionId(BasePool.setAssetManagerPoolConfig.selector));
+        return actionId == getActionId(this.setSwapFeePercentage.selector);
     }
 
     /**

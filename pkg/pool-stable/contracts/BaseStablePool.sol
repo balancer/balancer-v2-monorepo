@@ -16,13 +16,13 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
-import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/LegacyBaseMinimalSwapInfoPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/BaseRateProvider.sol";
 
 import "./StableMath.sol";
 import "./StablePoolUserData.sol";
 
-abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, BaseRateProvider {
+abstract contract BaseStablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, BaseRateProvider {
     using WordCodec for bytes32;
     using StablePoolUserData for bytes;
 
@@ -67,7 +67,7 @@ abstract contract BaseStablePool is BaseGeneralPool, BaseMinimalSwapInfoPool, Ba
         uint256 bufferPeriodDuration,
         address owner
     )
-        BasePool(
+        LegacyBasePool(
             vault,
             // Because we're inheriting from both BaseGeneralPool and BaseMinimalSwapInfoPool we can choose any
             // specialization setting. Since this Pool never registers or deregisters any tokens after construction,
