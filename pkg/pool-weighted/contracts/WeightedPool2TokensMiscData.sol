@@ -17,20 +17,19 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 /**
- * @dev This module provides an interface to store seemingly unrelated pieces of information, in particular used by
- * pools with a price oracle.
+ * @dev This module provides an interface to store seemingly unrelated pieces of information in the same storage slot,
+ * in particular to be used by Weighted Pools with a price oracle.
  *
- * These pieces of information are all kept together in a single storage slot to reduce the number of storage reads. In
- * particular, we not only store configuration values (such as the swap fee percentage), but also cache
- * reduced-precision versions of the total BPT supply and invariant, which lets us not access nor compute these values
- * when producing oracle updates during a swap.
+ * These pieces of information are all kept together in a single storage slot to reduce the number of storage accesses.
+ * We not only store configuration values (such as whether the oracle is enabled), but also cache reduced-precision
+ * versions of the total BPT supply and invariant, which lets us not access nor compute these values when producing
+ * oracle updates during a swap.
  *
- * Data is stored with the following structure:
+ * Data is stored with the following structure, which is compatible with BasePool's misc data field as the upper 64 bits
+ * are reserved.
  *
- * [ swap fee pct | oracle enabled | oracle index | oracle sample initial timestamp | log supply | log invariant ]
- * [    uint64    |      bool      |    uint10    |              uint31             |    int22   |     int22     ]
- *
- * Note that we are not using the most-significant 106 bits.
+ * [ reserved | unused  | oracle enabled | oracle index | oracle sample initial timestamp | log supply | log invariant ]
+ * [  uint64  | uint106 |     bool       |    uint10    |              uint31             |    int22   |     int22     ]
  */
 library WeightedPool2TokensMiscData {
     using WordCodec for bytes32;
@@ -41,7 +40,6 @@ library WeightedPool2TokensMiscData {
     uint256 private constant _ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET = 44;
     uint256 private constant _ORACLE_INDEX_OFFSET = 75;
     uint256 private constant _ORACLE_ENABLED_OFFSET = 85;
-    uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 86;
 
     /**
      * @dev Returns the cached logarithm of the invariant.
@@ -79,13 +77,6 @@ library WeightedPool2TokensMiscData {
     }
 
     /**
-     * @dev Returns the swap fee percentage.
-     */
-    function swapFeePercentage(bytes32 data) internal pure returns (uint256) {
-        return data.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
-    }
-
-    /**
      * @dev Sets the logarithm of the invariant in `data`, returning the updated value.
      */
     function setLogInvariant(bytes32 data, int256 _logInvariant) internal pure returns (bytes32) {
@@ -118,12 +109,5 @@ library WeightedPool2TokensMiscData {
      */
     function setOracleEnabled(bytes32 data, bool _oracleEnabled) internal pure returns (bytes32) {
         return data.insertBool(_oracleEnabled, _ORACLE_ENABLED_OFFSET);
-    }
-
-    /**
-     * @dev Sets the swap fee percentage in `data`, returning the updated value.
-     */
-    function setSwapFeePercentage(bytes32 data, uint256 _swapFeePercentage) internal pure returns (bytes32) {
-        return data.insertUint64(_swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET);
     }
 }
