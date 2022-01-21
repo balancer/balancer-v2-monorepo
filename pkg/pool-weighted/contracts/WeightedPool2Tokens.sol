@@ -341,9 +341,13 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
         uint256 balanceToken0,
         uint256 balanceToken1
     ) internal {
+        if (block.number == lastChangeBlock) {
+            return;
+        }
+        
         bytes32 miscData = _getMiscData();
 
-        if (miscData.oracleEnabled() && block.number > lastChangeBlock) {
+        if (miscData.oracleEnabled()) {
             int256 logSpotPrice = WeightedOracleMath._calcLogSpotPrice(
                 _normalizedWeight0,
                 balanceToken0,
