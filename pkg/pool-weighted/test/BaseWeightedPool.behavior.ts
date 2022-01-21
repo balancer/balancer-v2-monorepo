@@ -564,6 +564,7 @@ export function itBehavesAsWeightedPool(
         const expectedAmountOut = await pool.estimateGivenIn({ in: 1, out: 0, amount: amountWithFees });
 
         const result = await pool.swapGivenIn({ in: 1, out: 0, amount: amountWithFees });
+        console.log(result);
 
         expect(result.amount).to.be.equalWithError(expectedAmountOut, 0.01);
       });

@@ -156,6 +156,10 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
         return (_getNormalizedWeights(), _maxWeightTokenIndex);
     }
 
+    // Swaps remain the same, except we need to update the oracle with the pre-swap balances (after these have been
+    // upscaled, but before we return). A good place to do this is at the beginning of BaseMinimalSwapInfoPool's
+    // _onSwapGivenIn and _onSwapGivenOut.
+
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
@@ -170,7 +174,7 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
             tokenInIsToken0 ? currentBalanceTokenOut : currentBalanceTokenIn
         );
 
-        super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        return super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
 
     function _onSwapGivenOut(
@@ -187,10 +191,50 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
             tokenInIsToken0 ? currentBalanceTokenOut : currentBalanceTokenIn
         );
 
-        super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
 
-    // Join Hook
+    // Joins and exit also remain the same, except we need to update the oracle with the pre-join/exit balances (after
+    // these have been upscaled, but before we subtract join/exits amounts from them), and we need to cache the
+    // post-join/exit invariant and total supply.
+    // The oracle update can be performed at the beginning of BasePool's _onJoinPool and _onExitPool, while the cache
+    // update requires BPT to have been minted or burned already, so the most suitable place is at the end of
+    // IBasePool's onJoinPool and onExitPool, immediately before returning to the Vault.
+
+    function _onJoinPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    )
+        internal
+        virtual
+        override
+        returns (
+            uint256,
+            uint256[] memory,
+            uint256[] memory
+        )
+    {
+        // Update price oracle with the pre-join balances
+        _updateOracle(lastChangeBlock, balances[0], balances[1]);
+
+        return
+            super._onJoinPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                scalingFactors,
+                userData
+            );
+    }
 
     function onJoinPool(
         bytes32 poolId,
@@ -200,20 +244,8 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    )
-        public
-        virtual
-        override
-        onlyVault(poolId)
-        whenNotPaused
-        returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts)
-    {
-        if (totalSupply() != 0) {
-            // Update price oracle with the pre-join balances
-            _updateOracle(lastChangeBlock, balances[0], balances[1]);
-        }
-
-        (amountsIn, dueProtocolFeeAmounts) = super.onJoinPool(
+    ) public virtual override returns (uint256[] memory, uint256[] memory) {
+        (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = super.onJoinPool(
             poolId,
             sender,
             recipient,
@@ -226,59 +258,10 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
         // Update cached total supply and invariant using the results after the join that will be used for future
         // oracle updates.
         _cacheInvariantAndSupply();
+
+        return (amountsIn, dueProtocolFeeAmounts);
     }
 
-    // Exit Hook
-
-    function onExitPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        bytes memory userData
-    )
-        public
-        virtual
-        override
-        onlyVault(poolId)
-        returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts)
-    {
-        (amountsOut, dueProtocolFeeAmounts) = super.onExitPool(
-            poolId,
-            sender,
-            recipient,
-            balances,
-            lastChangeBlock,
-            protocolSwapFeePercentage,
-            userData
-        );
-
-        // Update cached total supply and invariant using the results after the exit that will be used for future
-        // oracle updates, only if the pool was not paused (to minimize code paths taken while paused).
-        if (_isNotPaused()) {
-            _cacheInvariantAndSupply();
-        }
-    }
-
-    /**
-     * @dev Called whenever the Pool is exited.
-     *
-     * Returns the amount of BPT to burn, the token amounts for each Pool token that the Pool will grant in return, and
-     * the number of tokens to pay in protocol swap fees.
-     *
-     * Implementations of this function might choose to mutate the `balances` array to save gas (e.g. when
-     * performing intermediate calculations, such as subtraction of due protocol fees). This can be done safely.
-     *
-     * BPT will be burnt from `sender`.
-     *
-     * The Pool will grant tokens to `recipient`. These amounts are considered upscaled and will be downscaled
-     * (rounding down) before being returned to the Vault.
-     *
-     * Due protocol swap fees will be taken from the Pool's balance in the Vault (see `IBasePool.onExitPool`). These
-     * amounts are considered upscaled and will be downscaled (rounding down) before being returned to the Vault.
-     */
     function _onExitPool(
         bytes32 poolId,
         address sender,
@@ -298,9 +281,8 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
             uint256[] memory
         )
     {
-        // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
-        // out) remain functional.
-
+        // The oracle is not updated if the Pool is paused to avoid extra calculations and reduce the potential for
+        // errors.
         if (_isNotPaused()) {
             // Update price oracle with the pre-exit balances
             _updateOracle(lastChangeBlock, balances[0], balances[1]);
@@ -317,6 +299,34 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
                 scalingFactors,
                 userData
             );
+    }
+
+    function onExitPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) public virtual override returns (uint256[] memory, uint256[] memory) {
+        (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = super.onExitPool(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            userData
+        );
+
+        // Update cached total supply and invariant using the results after the exit that will be used for future
+        // oracle updates, only if the pool was not paused (to minimize code paths taken while paused).
+        if (_isNotPaused()) {
+            _cacheInvariantAndSupply();
+        }
+
+        return ((amountsOut, dueProtocolFeeAmounts));
     }
 
     // Oracle functions
