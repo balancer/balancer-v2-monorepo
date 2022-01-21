@@ -89,6 +89,17 @@ library Address {
 
     /**
      * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
+     * but passing some native ETH as msg.value to the call.
+     *
+     * _Available since v3.4._
+     */
+    function functionCallWithValue(address target, bytes memory data, uint256 value) internal returns (bytes memory) {
+        (bool success, bytes memory returndata) = target.call{value: value}(data);
+        return verifyCallResult(success, returndata);
+    }
+
+    /**
+     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
      * but performing a delegate call.
      *
      * _Available since v3.4._

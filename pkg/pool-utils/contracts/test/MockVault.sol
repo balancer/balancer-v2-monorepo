@@ -23,6 +23,8 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IPoolSwapStructs.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IMinimalSwapInfoPool.sol";
 
+import "@balancer-labs/v2-vault/contracts/ProtocolFeesCollector.sol";
+
 contract MockVault is IPoolSwapStructs {
     struct Pool {
         IERC20[] tokens;
@@ -30,6 +32,8 @@ contract MockVault is IPoolSwapStructs {
     }
 
     IAuthorizer private _authorizer;
+    IProtocolFeesCollector private _protocolFeesCollector;
+
     mapping(bytes32 => Pool) private pools;
 
     event Swap(bytes32 indexed poolId, IERC20 indexed tokenIn, IERC20 indexed tokenOut, uint256 amount);
@@ -44,10 +48,15 @@ contract MockVault is IPoolSwapStructs {
 
     constructor(IAuthorizer authorizer) {
         _authorizer = authorizer;
+        _protocolFeesCollector = new ProtocolFeesCollector(IVault(address(this)));
     }
 
     function getAuthorizer() external view returns (IAuthorizer) {
         return _authorizer;
+    }
+
+    function getProtocolFeesCollector() public view returns (IProtocolFeesCollector) {
+        return _protocolFeesCollector;
     }
 
     function getPoolTokens(bytes32 poolId) external view returns (IERC20[] memory tokens, uint256[] memory balances) {

@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/LegacyBasePool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 
@@ -47,7 +47,7 @@ import "./LinearPoolUserData.sol";
  * traders whose swaps return the balance to the desired region.
  * The net revenue via fees is expected to be zero: all collected fees are used to pay for this 'rebalancing'.
  */
-abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
+abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
@@ -110,7 +110,7 @@ abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         uint256 bufferPeriodDuration,
         address owner
     )
-        BasePool(
+        LegacyBasePool(
             vault,
             IVault.PoolSpecialization.GENERAL,
             name,

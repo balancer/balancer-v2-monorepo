@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 
-import "./BasePool.sol";
+import "./LegacyBasePool.sol";
 import "./interfaces/IBasePoolRelayer.sol";
 import "./interfaces/IRelayedBasePool.sol";
 
@@ -27,7 +27,7 @@ import "./interfaces/IRelayedBasePool.sol";
  * This contract is a simple mixin for pools. Implementing pools must make sure to call the BasePool's constructor
  * properly.
  */
-abstract contract RelayedBasePool is BasePool, IRelayedBasePool {
+abstract contract RelayedBasePool is LegacyBasePool, IRelayedBasePool {
     using Address for address;
 
     IBasePoolRelayer internal immutable _relayer;
