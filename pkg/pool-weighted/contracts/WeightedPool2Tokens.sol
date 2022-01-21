@@ -73,7 +73,7 @@ contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracl
         )
     {
         _require(params.tokens.length == 2, Errors.TOKENS_LENGTH_MUST_BE_2);
-        // Ensure each normalized weight is above them minimum and find the token index of the maximum weight
+        // Ensure each normalized weight is above the minimum, and find the token index of the maximum weight
         _require(params.normalizedWeight0 >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
         _require(params.normalizedWeight1 >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
