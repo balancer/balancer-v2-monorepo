@@ -103,7 +103,11 @@ export default class TokenList {
     const params: TokenMint[] = TypesConverter.toTokenMints(rawParams);
 
     await Promise.all(
-      params.flatMap(({ to, amount, from }) => this.tokens.map((token) => token.mint(to, amount ? (Number(amount) * 10**token.decimals).toString() : 0, { from })))
+      params.flatMap(({ to, amount, from }) =>
+        this.tokens.map((token) =>
+          token.mint(to, amount ? (Number(amount) * 10 ** token.decimals).toString() : 0, { from })
+        )
+      )
     );
   }
 
