@@ -18,18 +18,17 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
-
 import "@balancer-labs/v2-vault/contracts/interfaces/IAuthorizer.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 /**
  * @title Authorizer Adaptor
  * @notice This contract is intended to act as an adaptor between systems which expect a single admin address
- * and the Balancer Authorizer such that the Authorizer may grant/revoke admin powers to unlimited addresses. 
+ * and the Balancer Authorizer such that the Authorizer may grant/revoke admin powers to unlimited addresses.
  *
  * The permissions the Authorizer can grant are granular such they may be global or specific to a particular contract
  *
- * @dev When calculating the actionId to call a function on a target contract, it must be calculated as if it were 
+ * @dev When calculating the actionId to call a function on a target contract, it must be calculated as if it were
  * to be called on this adaptor. This can be done by passing the function selector to the `getActionId` function.
  */
 contract AuthorizerAdaptor is IAuthentication, ReentrancyGuard {
@@ -58,14 +57,18 @@ contract AuthorizerAdaptor is IAuthentication, ReentrancyGuard {
         return getVault().getAuthorizer();
     }
 
-    function _canPerform(bytes32 actionId, address account, address where) internal view returns (bool) {
+    function _canPerform(
+        bytes32 actionId,
+        address account,
+        address where
+    ) internal view returns (bool) {
         return getAuthorizer().canPerform(actionId, account, where);
     }
 
     /**
      * @notice Returns the action ID associated with calling a given function through this adaptor
      * @dev The contracts managed by this adaptor do not have action ID disambiguators we use the adaptor's globally
-     * This means that contracts with the same function selector will have a matching action ID: 
+     * This means that contracts with the same function selector will have a matching action ID:
      * if granularity is required then permissions must not be granted globally in the Authorizer.
      *
      * @param selector - The 4 byte selector of the function to be called using `performAction`
@@ -96,7 +99,7 @@ contract AuthorizerAdaptor is IAuthentication, ReentrancyGuard {
             // 96 + 4 = 100 bytes
             selector := calldataload(100)
         }
-     
+
         _require(_canPerform(getActionId(selector), msg.sender, target), Errors.SENDER_NOT_ALLOWED);
 
         // We don't check that `target` is a contract so all calls to an EOA will succeed.

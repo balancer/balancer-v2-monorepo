@@ -415,7 +415,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view override returns (uint256) {
+    ) internal override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         return super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
@@ -425,7 +425,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view override returns (uint256) {
+    ) internal override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
