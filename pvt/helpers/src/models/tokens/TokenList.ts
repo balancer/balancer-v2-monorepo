@@ -6,7 +6,6 @@ import TypesConverter from '../types/TypesConverter';
 
 import { Account } from '../types/types';
 import { ZERO_ADDRESS } from '../../constants';
-import { bn } from '../../numbers';
 import {
   RawTokenApproval,
   RawTokenMint,
