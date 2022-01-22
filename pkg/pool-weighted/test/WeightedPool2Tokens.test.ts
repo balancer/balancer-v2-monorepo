@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp, bn, fromFp, scaleUp, scaleDown } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_INT22, MAX_UINT10, MAX_UINT31, MIN_INT22 } from '@balancer-labs/v2-helpers/src/constants';
 import { MINUTE, advanceTime, currentTimestamp, lastBlockNumber } from '@balancer-labs/v2-helpers/src/time';
 
@@ -31,17 +31,27 @@ describe('WeightedPool2Tokens', function () {
   let tokens: TokenList;
 
   sharedBeforeEach('deploy tokens', async () => {
-    tokens = await TokenList.create(['MKR', 'DAI'], { sorted: true });
-    await tokens.mint({ to: [lp, trader], amount: fp(100) });
+    // Setting varyDecimals to true will create one with 18 and one with 17 decimals
+    tokens = await TokenList.create(['MKR', 'DAI'], { sorted: true, varyDecimals: true });
+    // mintScaled will compute the correct scaled initial balance, from a raw number of tokens
+    await tokens.mintScaled({ to: [lp, trader], amount: 100 });
   });
 
   let pool: WeightedPool;
+  let scalingFactors: BigNumber[];
+  let initialBalances: BigNumber[];
   const weights = [fp(30), fp(70)];
-  const initialBalances = [fp(0.9), fp(1.8)];
+  const rawInitialBalances = [fp(0.9), fp(1.8)];
 
   sharedBeforeEach('deploy pool', async () => {
     const params = { poolType: WeightedPoolType.WEIGHTED_POOL_2TOKENS, tokens, weights };
     pool = await WeightedPool.create(params);
+    // Get the scaling factors from the pool, so that we can adjust incoming balances
+    // The WeightedPool.ts computation methods expect all tokens to be 18 decimals, like the Vault
+    scalingFactors = await pool.getScalingFactors();
+    scalingFactors = scalingFactors.map((f) => bn(fromFp(f)));
+
+    initialBalances = rawInitialBalances.map((b, i) => scaleDown(b, scalingFactors[i]));
   });
 
   const initializePool = () => {
@@ -87,6 +97,8 @@ describe('WeightedPool2Tokens', function () {
 
         sharedBeforeEach(async () => {
           previousBalances = await pool.getBalances();
+          // Adjust for non-18 decimal tokens
+          previousBalances = previousBalances.map((b, i) => scaleUp(b, scalingFactors[i]));
           previousTotalSupply = await pool.totalSupply();
 
           await advanceTime(MINUTE * 10); // force index update
