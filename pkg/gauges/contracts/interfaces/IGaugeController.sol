@@ -19,5 +19,9 @@ pragma solidity ^0.7.0;
 // solhint-disable func-name-mixedcase
 
 interface IGaugeController {
+    function checkpoint_gauge(address gauge) external returns (uint256);
+
+    function gauge_relative_weight(address gauge, uint256 time) external returns (uint256);
+
     function gauge_types(address gauge) external view returns (uint256);
 }
