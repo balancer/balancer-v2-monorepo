@@ -98,8 +98,8 @@ contract LiquidityGaugeFactory is Authentication, Ownable {
     /**
      * @notice Sets the address of the adaptor used for administration of gauges.
      */
-    function setAuthorizerAdaptor(address newGaugeImplementation) external authenticate {
-        _transferOwnership(newGaugeImplementation);
+    function setAuthorizerAdaptor(address newAuthorizerAdaptor) external authenticate {
+        _transferOwnership(newAuthorizerAdaptor);
     }
 
     /**
