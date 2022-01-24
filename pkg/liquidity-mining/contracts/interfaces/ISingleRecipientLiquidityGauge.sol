@@ -18,4 +18,6 @@ import "./ILiquidityGauge.sol";
 
 interface ISingleRecipientLiquidityGauge is ILiquidityGauge {
     function initialize(address recipient) external;
+
+    function getRecipient() external view returns (address);
 }

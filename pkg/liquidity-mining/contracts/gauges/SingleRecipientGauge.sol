@@ -35,6 +35,10 @@ contract SingleRecipientGauge is ISingleRecipientLiquidityGauge, StakelessGauge 
         _recipient = recipient;
     }
 
+    function getRecipient() external view override returns (address) {
+        return _recipient;
+    }
+
     function _postMintAction(uint256 mintAmount) internal override {
         _balToken.safeTransfer(_recipient, mintAmount);
     }
