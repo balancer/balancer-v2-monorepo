@@ -85,7 +85,7 @@ WEEK: constant(uint256) = 7 * 86400  # all future times are rounded by week
 MAXTIME: constant(uint256) = 4 * 365 * 86400  # 4 years
 MULTIPLIER: constant(uint256) = 10 ** 18
 
-token: public(address)
+TOKEN: immutable(address) 
 supply: public(uint256)
 
 locked: public(HashMap[address, LockedBalance])
@@ -120,7 +120,7 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _versi
     @param _version Contract version - required for Aragon compatibility
     """
     self.admin = msg.sender
-    self.token = token_addr
+    TOKEN = token_addr
     self.point_history[0].blk = block.number
     self.point_history[0].ts = block.timestamp
 
@@ -132,6 +132,10 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _versi
     self.symbol = _symbol
     self.version = _version
 
+@external
+@view
+def token() -> address:
+    return TOKEN
 
 @external
 def commit_transfer_ownership(addr: address):
@@ -368,7 +372,7 @@ def _deposit_for(_addr: address, _value: uint256, unlock_time: uint256, locked_b
     self._checkpoint(_addr, old_locked, _locked)
 
     if _value != 0:
-        assert ERC20(self.token).transferFrom(_addr, self, _value)
+        assert ERC20(TOKEN).transferFrom(_addr, self, _value)
 
     log Deposit(_addr, _value, _locked.end, type, block.timestamp)
     log Supply(supply_before, supply_before + _value)
@@ -481,7 +485,7 @@ def withdraw():
     # Both can have >= 0 amount
     self._checkpoint(msg.sender, old_locked, _locked)
 
-    assert ERC20(self.token).transfer(msg.sender, value)
+    assert ERC20(TOKEN).transfer(msg.sender, value)
 
     log Withdraw(msg.sender, value, block.timestamp)
     log Supply(supply_before, supply_before - value)
