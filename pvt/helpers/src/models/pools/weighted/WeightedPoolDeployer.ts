@@ -74,8 +74,8 @@ export default {
     let result: Promise<Contract>;
 
     switch (poolType) {
-      case WeightedPoolType.WEIGHTED_POOL_2TOKENS: {
-        result = deploy('v2-pool-weighted/MockWeightedPool2Tokens', {
+      case WeightedPoolType.ORACLE_WEIGHTED_POOL: {
+        result = deploy('v2-pool-weighted/MockOracleWeightedPool', {
           args: [
             {
               vault: vault.address,
@@ -177,8 +177,8 @@ export default {
     let result: Promise<Contract>;
 
     switch (poolType) {
-      case WeightedPoolType.WEIGHTED_POOL_2TOKENS: {
-        const factory = await deploy('v2-pool-weighted/WeightedPool2TokensFactory', {
+      case WeightedPoolType.ORACLE_WEIGHTED_POOL: {
+        const factory = await deploy('v2-pool-weighted/OracleWeightedPoolFactory', {
           args: [vault.address],
           from,
           libraries: { QueryProcessor: await (await deploy('QueryProcessor')).address },
@@ -194,7 +194,7 @@ export default {
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-        result = deployedAt('v2-pool-weighted/WeightedPool2Tokens', event.args.pool);
+        result = deployedAt('v2-pool-weighted/OracleWeightedPool', event.args.pool);
         break;
       }
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
