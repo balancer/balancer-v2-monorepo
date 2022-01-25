@@ -20,15 +20,15 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
-import "./WeightedPool2Tokens.sol";
+import "./WeightedOraclePool.sol";
 
-contract WeightedPool2TokensFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(WeightedPool2Tokens).creationCode) {
+contract WeightedOraclePoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(WeightedOraclePool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
-     * @dev Deploys a new `WeightedPool2Tokens`.
+     * @dev Deploys a new `WeightedOraclePool`.
      */
     function create(
         string memory name,
@@ -42,7 +42,7 @@ contract WeightedPool2TokensFactory is BasePoolSplitCodeFactory, FactoryWidePaus
         // TODO: Do not use arrays in the interface for tokens and weights
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        WeightedPool2Tokens.NewPoolParams memory params = WeightedPool2Tokens.NewPoolParams({
+        WeightedOraclePool.NewPoolParams memory params = WeightedOraclePool.NewPoolParams({
             vault: getVault(),
             name: name,
             symbol: symbol,

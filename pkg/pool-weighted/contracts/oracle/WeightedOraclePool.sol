@@ -19,13 +19,13 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/LogCompression.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
 
-import "./BaseWeightedPool.sol";
+import "../BaseWeightedPool.sol";
 import "./WeightedOracleMath.sol";
-import "./WeightedPool2TokensMiscData.sol";
+import "./WeightedOraclePoolMiscData.sol";
 
-contract WeightedPool2Tokens is BaseWeightedPool, PoolPriceOracle, WeightedOracleMath {
+contract WeightedOraclePool is BaseWeightedPool, PoolPriceOracle, WeightedOracleMath {
     using FixedPoint for uint256;
-    using WeightedPool2TokensMiscData for bytes32;
+    using WeightedOraclePoolMiscData for bytes32;
 
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;

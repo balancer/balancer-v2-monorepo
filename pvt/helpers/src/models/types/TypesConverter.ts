@@ -80,7 +80,7 @@ export default {
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
     if (managementSwapFeePercentage === undefined) managementSwapFeePercentage = fp(0);
-    if (poolType === WeightedPoolType.WEIGHTED_POOL_2TOKENS && tokens.length !== 2)
+    if (poolType === WeightedPoolType.WEIGHTED_ORACLE_POOL && tokens.length !== 2)
       throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
     return {
       tokens,

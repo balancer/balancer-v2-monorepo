@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/test/MockLogCompression.sol";
 
-import "../WeightedOracleMath.sol";
+import "../oracle/WeightedOracleMath.sol";
 
 contract MockWeightedOracleMath is WeightedOracleMath, MockLogCompression {
     function calcLogSpotPrice(

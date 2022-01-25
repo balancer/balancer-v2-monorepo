@@ -13,9 +13,9 @@ import { Sample, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/p
 
 import { itBehavesAsWeightedPool } from './BaseWeightedPool.behavior';
 
-describe('WeightedPool2Tokens', function () {
+describe('WeightedOraclePool', function () {
   describe('as a 2 token weighted pool', () => {
-    itBehavesAsWeightedPool(2, WeightedPoolType.WEIGHTED_POOL_2TOKENS);
+    itBehavesAsWeightedPool(2, WeightedPoolType.WEIGHTED_ORACLE_POOL);
   });
 
   let trader: SignerWithAddress,
@@ -44,7 +44,7 @@ describe('WeightedPool2Tokens', function () {
   const rawInitialBalances = [fp(0.9), fp(1.8)];
 
   sharedBeforeEach('deploy pool', async () => {
-    const params = { poolType: WeightedPoolType.WEIGHTED_POOL_2TOKENS, tokens, weights };
+    const params = { poolType: WeightedPoolType.WEIGHTED_ORACLE_POOL, tokens, weights };
     pool = await WeightedPool.create(params);
     // Get the scaling factors from the pool, so that we can adjust incoming balances
     // The WeightedPool.ts computation methods expect all tokens to be 18 decimals, like the Vault

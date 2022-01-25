@@ -31,7 +31,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
  * [ reserved | unused  | oracle enabled | oracle index | oracle sample initial timestamp | log supply | log invariant ]
  * [  uint64  | uint106 |     bool       |    uint10    |              uint31             |    int22   |     int22     ]
  */
-library WeightedPool2TokensMiscData {
+library WeightedOraclePoolMiscData {
     using WordCodec for bytes32;
     using WordCodec for uint256;
 
