@@ -9,11 +9,11 @@ import { calculateBPTPrice, calculateSpotPrice } from '@balancer-labs/v2-helpers
 
 const MAX_RELATIVE_ERROR = 0.00005; // 0.05%, or ~e^0.00005
 
-describe('WeighteOracledMath', function () {
+describe('OracleWeightedMath', function () {
   let mock: Contract;
 
   before(async function () {
-    mock = await deploy('MockWeightedOracleMath');
+    mock = await deploy('MockOracleWeightedMath');
   });
 
   function valuesInMagnitude(power: number) {
