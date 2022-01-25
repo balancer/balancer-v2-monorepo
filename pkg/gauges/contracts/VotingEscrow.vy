@@ -89,7 +89,6 @@ TOKEN: immutable(address)
 
 NAME: immutable(String[64])
 SYMBOL: immutable(String[32])
-VERSION: immutable(String[32])
 DECIMALS: immutable(uint256)
 
 supply: public(uint256)
@@ -111,13 +110,12 @@ future_admin: public(address)
 
 
 @external
-def __init__(token_addr: address, _name: String[64], _symbol: String[32], _version: String[32]):
+def __init__(token_addr: address, _name: String[64], _symbol: String[32]):
     """
     @notice Contract constructor
     @param token_addr `ERC20CRV` token address
     @param _name Token name
     @param _symbol Token symbol
-    @param _version Contract version - required for Aragon compatibility
     """
     self.admin = msg.sender
     TOKEN = token_addr
@@ -129,7 +127,6 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _versi
     
     NAME = _name
     SYMBOL = _symbol
-    VERSION = _version
     DECIMALS = _decimals
 
 @external
@@ -146,11 +143,6 @@ def name() -> String[64]:
 @view
 def symbol() -> String[32]:
     return SYMBOL
-
-@external
-@view
-def version() -> String[32]:
-    return VERSION
 
 @external
 @view
