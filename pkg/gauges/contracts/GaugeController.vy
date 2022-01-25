@@ -67,8 +67,8 @@ MULTIPLIER: constant(uint256) = 10 ** 18
 admin: public(address)  # Can and will be a smart contract
 future_admin: public(address)  # Can and will be a smart contract
 
-token: public(address)  # CRV token
-voting_escrow: public(address)  # Voting escrow
+TOKEN: immutable(address) # BPT token
+VOTING_ESCROW: immutable(address)  # Voting escrow
 
 # Gauge parameters
 # All numbers are "fixed point" on the basis of 1e18
@@ -119,10 +119,19 @@ def __init__(_token: address, _voting_escrow: address):
     assert _voting_escrow != ZERO_ADDRESS
 
     self.admin = msg.sender
-    self.token = _token
-    self.voting_escrow = _voting_escrow
+    TOKEN = _token
+    VOTING_ESCROW = _voting_escrow
     self.time_total = block.timestamp / WEEK * WEEK
 
+@external
+@view
+def token() -> address:
+    return TOKEN
+
+@external
+@view
+def voting_escrow() -> address:
+    return VOTING_ESCROW
 
 @external
 def commit_transfer_ownership(addr: address):
@@ -487,9 +496,8 @@ def vote_for_gauge_weights(_gauge_addr: address, _user_weight: uint256):
     @param _gauge_addr Gauge which `msg.sender` votes for
     @param _user_weight Weight for a gauge in bps (units of 0.01%). Minimal is 0.01%. Ignored if 0
     """
-    escrow: address = self.voting_escrow
-    slope: uint256 = convert(VotingEscrow(escrow).get_last_user_slope(msg.sender), uint256)
-    lock_end: uint256 = VotingEscrow(escrow).locked__end(msg.sender)
+    slope: uint256 = convert(VotingEscrow(VOTING_ESCROW).get_last_user_slope(msg.sender), uint256)
+    lock_end: uint256 = VotingEscrow(VOTING_ESCROW).locked__end(msg.sender)
     _n_gauges: int128 = self.n_gauges
     next_time: uint256 = (block.timestamp + WEEK) / WEEK * WEEK
     assert lock_end > next_time, "Your token lock expires too soon"
