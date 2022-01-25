@@ -27,12 +27,12 @@ import "../interfaces/IBaseRelayerLibrary.sol";
 
 /**
  * @title VaultActions
- * @notice Allows users to call the core functions on the Balancer Vault (swaps/joins/exits/balance management)
+ * @notice Allows users to call the core functions on the Balancer Vault (swaps/joins/exits/user balance management)
  * @dev
- * The relayer is not expected to hold the user's funds so it is expected that the user's address will be provided
- * as the recipient of any token transfers from the Vault.
+ * Since the relayer is not expected to hold user funds, we expect the user to be the recipient of any token transfers
+ * from the Vault.
  *
- * All functions must be payable so that it can be called as part of a multicall involving ETH
+ * All functions must be payable so they can be called from a multicall involving ETH
  */
 abstract contract VaultActions is IBaseRelayerLibrary {
     using Math for uint256;
@@ -89,9 +89,9 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         for (uint256 i = 0; i < outputReferences.length; ++i) {
             require(_isChainedReference(outputReferences[i].key), "invalid chained reference");
 
-            // Batch swap return values are signed, as they are Vault deltas (positive values stand for assets sent
-            // to the Vault, negatives for assets sent from the Vault). To simplify the chained reference value
-            // model, we simply store the absolute value.
+            // Batch swap return values are signed, as they are Vault deltas (positive values correspond to assets sent
+            // to the Vault, and negative values are assets received from the Vault). To simplify the chained reference
+            // value model, we simply store the absolute value.
             // This should be fine for most use cases, as the caller can reason about swap results via the `limits`
             // parameter.
             _setChainedReferenceValue(outputReferences[i].key, Math.abs(results[outputReferences[i].index]));
@@ -120,9 +120,9 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     ) external payable {
         require(sender == msg.sender || sender == address(this), "Incorrect sender");
 
-        // The output of a join is expected to be balance in the Pool's token contract, typically known as BPT (Balancer
-        // Pool Tokens). Since the Vault is unaware of this (BPT is minted directly to the recipient), we manually
-        // measure this balance increase (but only if an output reference is provided).
+        // The output of a join will be the Pool's token contract, typically known as BPT (Balancer Pool Tokens).
+        // Since the Vault is unaware of this (BPT tokens are minted directly to the recipient), we manually
+        // measure this balance increase: but only if an output reference is provided.
         IERC20 bpt = IERC20(VaultHelpers.toPoolAddress(poolId));
         uint256 maybeInitialRecipientBPT = _isChainedReference(outputReference) ? bpt.balanceOf(recipient) : 0;
 
@@ -132,7 +132,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
 
         if (_isChainedReference(outputReference)) {
             // In this context, `maybeInitialRecipientBPT` is guaranteed to have been initialized, so we can safely read
-            // from it. Note that we assume that the recipient balance change has a positive sign (i.e. the recipient
+            // from it. Note that we assume the recipient balance change has a positive sign (i.e. the recipient
             // received BPT).
             uint256 finalRecipientBPT = bpt.balanceOf(recipient);
             _setChainedReferenceValue(outputReference, finalRecipientBPT.sub(maybeInitialRecipientBPT));
@@ -191,11 +191,11 @@ abstract contract VaultActions is IBaseRelayerLibrary {
     ) external payable {
         require(sender == msg.sender || sender == address(this), "Incorrect sender");
 
-        // To track the changes of internal balances we need an array of token addresses.
-        // We save this here to avoid having to recalculate after we perform the exit.
+        // To track the changes of internal balances, we need an array of token addresses.
+        // We save this here to avoid having to recalculate after the exit.
         IERC20[] memory trackedTokens = new IERC20[](outputReferences.length);
 
-        // Query initial balances for all tokens which we want to record into chained references
+        // Query initial balances for all tokens, and record them as chained references
         uint256[] memory initialRecipientBalances = new uint256[](outputReferences.length);
         for (uint256 i = 0; i < outputReferences.length; i++) {
             require(_isChainedReference(outputReferences[i].key), "invalid chained reference");
@@ -211,7 +211,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
             initialRecipientBalances = getVault().getInternalBalance(recipient, trackedTokens);
         }
 
-        // Execute exit from pool
+        // Exit the Pool
         request.userData = _doExitPoolChainedReferenceReplacements(kind, request.userData);
         getVault().exitPool(poolId, sender, recipient, request);
 
@@ -228,7 +228,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
             }
         }
 
-        // Calculate deltas and save to chained references
+        // Calculate deltas and save as chained references
         for (uint256 i = 0; i < outputReferences.length; i++) {
             _setChainedReferenceValue(
                 outputReferences[i].key,
