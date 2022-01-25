@@ -59,14 +59,14 @@ describe('PoolCommentRegistry', function () {
       context('with pool address', () => {
         it('emits an event', async () => {
           const receipt = await (await registry.connect(other).addPoolComment(pool.address, comment)).wait();
-          expectEvent.inReceipt(receipt, 'PoolCommentAdded', { sender: other.address, poolId: pool.poolId, comment });
+          expectEvent.inReceipt(receipt, 'PoolComment', { sender: other.address, poolId: pool.poolId, comment });
         });
       });
 
       context('with pool id', () => {
         it('emits an event', async () => {
           const receipt = await (await registry.connect(other).addPoolIdComment(pool.poolId, comment)).wait();
-          expectEvent.inReceipt(receipt, 'PoolCommentAdded', { sender: other.address, poolId: pool.poolId, comment });
+          expectEvent.inReceipt(receipt, 'PoolComment', { sender: other.address, poolId: pool.poolId, comment });
         });
       });
     });

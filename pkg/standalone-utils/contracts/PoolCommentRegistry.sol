@@ -26,7 +26,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
  * like a subgraph is unnecessary: simply filtering this contract's events is sufficient.
  */
 contract PoolCommentRegistry {
-    event PoolCommentAdded(address indexed sender, bytes32 indexed poolId, string comment);
+    event PoolComment(address indexed sender, bytes32 indexed poolId, string comment);
 
     IVault private _vault;
 
@@ -52,6 +52,6 @@ contract PoolCommentRegistry {
         // what we're interested in is the fact that this call will revert if the Pool was not registered.
         _vault.getPool(poolId);
 
-        emit PoolCommentAdded(msg.sender, poolId, comment);
+        emit PoolComment(msg.sender, poolId, comment);
     }
 }
