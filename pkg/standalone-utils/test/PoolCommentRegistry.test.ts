@@ -36,6 +36,10 @@ describe('PoolCommentRegistry', function () {
     registry = await deploy('PoolCommentRegistry', { args: [vault.address] });
   });
 
+  it('Should store the vault', async () => {
+    expect(await registry.getVault()).to.equal(vault.address);
+  });
+
   describe('addPoolComment', () => {
     context('with unregistered pool', () => {
       context('with pool address', () => {
