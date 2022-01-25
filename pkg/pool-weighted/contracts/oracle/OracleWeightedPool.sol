@@ -21,11 +21,11 @@ import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
 
 import "../BaseWeightedPool.sol";
 import "./WeightedOracleMath.sol";
-import "./WeightedOraclePoolMiscData.sol";
+import "./OracleWeightedPoolMiscData.sol";
 
-contract WeightedOraclePool is BaseWeightedPool, PoolPriceOracle, WeightedOracleMath {
+contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, WeightedOracleMath {
     using FixedPoint for uint256;
-    using WeightedOraclePoolMiscData for bytes32;
+    using OracleWeightedPoolMiscData for bytes32;
 
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;

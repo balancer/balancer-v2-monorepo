@@ -10,7 +10,7 @@ import Vault from '../../vault/Vault';
 
 export enum WeightedPoolType {
   WEIGHTED_POOL = 0,
-  WEIGHTED_ORACLE_POOL,
+  ORACLE_WEIGHTED_POOL,
   LIQUIDITY_BOOTSTRAPPING_POOL,
   MANAGED_POOL,
 }

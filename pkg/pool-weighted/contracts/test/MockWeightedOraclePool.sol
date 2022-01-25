@@ -16,10 +16,10 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./MockWeightedOracleMath.sol";
-import "../oracle/WeightedOraclePool.sol";
+import "../oracle/OracleWeightedPool.sol";
 
-contract MockWeightedOraclePool is WeightedOraclePool, MockWeightedOracleMath {
-    using WeightedOraclePoolMiscData for bytes32;
+contract MockOracleWeightedPool is OracleWeightedPool, MockWeightedOracleMath {
+    using OracleWeightedPoolMiscData for bytes32;
 
     // MiscData is now just the least significant 192 bits, and no longer contains the swapFeePercentage
     struct MiscData {
@@ -30,7 +30,7 @@ contract MockWeightedOraclePool is WeightedOraclePool, MockWeightedOracleMath {
         bool oracleEnabled;
     }
 
-    constructor(NewPoolParams memory params) WeightedOraclePool(params) {}
+    constructor(NewPoolParams memory params) OracleWeightedPool(params) {}
 
     function mockOracleDisabled() external {
         _setOracleEnabled(false);

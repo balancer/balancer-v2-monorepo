@@ -72,7 +72,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
   let pool: Contract;
   let joinUserData: string;
 
-  if (poolName == 'WeightedPool' || poolName == 'WeightedOraclePool' || poolName == 'ManagedPool') {
+  if (poolName == 'WeightedPool' || poolName == 'OracleWeightedPool' || poolName == 'ManagedPool') {
     const WEIGHTS = range(10000, 10000 + tokens.length);
     const weights = toNormalizedWeights(WEIGHTS.map(bn)); // Equal weights for all tokens
     const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
@@ -112,7 +112,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
         params = [newPoolParams, basePoolRights, managedPoolRights, DAY];
         break;
       }
-      case 'WeightedOraclePool': {
+      case 'OracleWeightedPool': {
         params = [tokens.addresses, weights, swapFeePercentage, true];
         break;
       }
@@ -157,7 +157,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 
 export async function getWeightedPool(vault: Vault, tokens: TokenList, size: number, offset = 0): Promise<string> {
   return size === 2
-    ? deployPool(vault, tokens.subset(size, offset), 'WeightedOraclePool')
+    ? deployPool(vault, tokens.subset(size, offset), 'OracleWeightedPool')
     : size > 20
     ? deployPool(vault, tokens.subset(size, offset), 'ManagedPool')
     : deployPool(vault, tokens.subset(size, offset), 'WeightedPool');
@@ -182,7 +182,7 @@ export async function getSigners(): Promise<{
   return { admin, creator, trader, others };
 }
 
-type PoolName = 'WeightedPool' | 'WeightedOraclePool' | 'StablePool' | 'ManagedPool';
+type PoolName = 'WeightedPool' | 'OracleWeightedPool' | 'StablePool' | 'ManagedPool';
 
 async function deployPoolFromFactory(
   vault: Vault,
@@ -191,7 +191,7 @@ async function deployPoolFromFactory(
 ): Promise<Contract> {
   const fullName = `${poolName == 'StablePool' ? 'v2-pool-stable' : 'v2-pool-weighted'}/${poolName}`;
   const libraries =
-    poolName == 'WeightedOraclePool'
+    poolName == 'OracleWeightedPool'
       ? { QueryProcessor: await (await deploy('v2-pool-utils/QueryProcessor')).address }
       : undefined;
   let factory: Contract;

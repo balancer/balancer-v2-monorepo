@@ -173,13 +173,13 @@ export default class WeightedPool {
   }
 
   async isOracleEnabled(): Promise<boolean> {
-    if (this.poolType != WeightedPoolType.WEIGHTED_ORACLE_POOL)
+    if (this.poolType != WeightedPoolType.ORACLE_WEIGHTED_POOL)
       throw Error('Cannot query misc data for non-2-tokens weighted pool');
     return (await this.getMiscData()).oracleEnabled;
   }
 
   async getMiscData(): Promise<MiscData> {
-    if (this.poolType != WeightedPoolType.WEIGHTED_ORACLE_POOL)
+    if (this.poolType != WeightedPoolType.ORACLE_WEIGHTED_POOL)
       throw Error('Cannot query misc data for non-2-tokens weighted pool');
     return this.instance.getMiscData();
   }
