@@ -16,6 +16,7 @@ describe('PoolCommentRegistry', function () {
   let registry: Contract, vault: Vault, pool: WeightedPool, lp: SignerWithAddress, other: SignerWithAddress;
 
   const comment = 'This is a comment';
+  const bytesComment = `0x${Buffer.from(comment, 'utf8').toString('hex')}`;
 
   before('setup signers', async () => {
     [, lp, other] = await ethers.getSigners();
@@ -42,31 +43,81 @@ describe('PoolCommentRegistry', function () {
 
   describe('addPoolComment', () => {
     context('with unregistered pool', () => {
-      context('with pool address', () => {
-        it('reverts', async () => {
-          await expect(registry.addPoolComment(other.address, comment)).to.be.reverted; // The getPoolId() call reverts
+      context('using bytes', () => {
+        context('with pool address', () => {
+          it('reverts', async () => {
+            await expect(registry.addPoolComment(other.address, bytesComment)).to.be.reverted; // The getPoolId() call reverts
+          });
+        });
+
+        context('with pool id', () => {
+          it('reverts', async () => {
+            await expect(registry.addPoolIdComment(ZERO_BYTES32, bytesComment)).to.be.revertedWith('INVALID_POOL_ID');
+          });
         });
       });
 
-      context('with pool id', () => {
-        it('reverts', async () => {
-          await expect(registry.addPoolIdComment(ZERO_BYTES32, comment)).to.be.revertedWith('INVALID_POOL_ID');
+      context('using string', () => {
+        context('with pool address', () => {
+          it('reverts', async () => {
+            await expect(registry.addPoolStringComment(other.address, comment)).to.be.reverted; // The getPoolId() call reverts
+          });
+        });
+
+        context('with pool id', () => {
+          it('reverts', async () => {
+            await expect(registry.addPoolIdStringComment(ZERO_BYTES32, comment)).to.be.revertedWith('INVALID_POOL_ID');
+          });
         });
       });
     });
 
     context('with registered pool', () => {
-      context('with pool address', () => {
-        it('emits an event', async () => {
-          const receipt = await (await registry.connect(other).addPoolComment(pool.address, comment)).wait();
-          expectEvent.inReceipt(receipt, 'PoolComment', { sender: other.address, poolId: pool.poolId, comment });
+      context('using bytes', () => {
+        context('with pool address', () => {
+          it('emits an event', async () => {
+            const receipt = await (await registry.connect(other).addPoolComment(pool.address, bytesComment)).wait();
+            expectEvent.inReceipt(receipt, 'PoolComment', {
+              sender: other.address,
+              poolId: pool.poolId,
+              comment: bytesComment,
+            });
+          });
+        });
+
+        context('with pool id', () => {
+          it('emits an event', async () => {
+            const receipt = await (await registry.connect(other).addPoolIdComment(pool.poolId, bytesComment)).wait();
+            expectEvent.inReceipt(receipt, 'PoolComment', {
+              sender: other.address,
+              poolId: pool.poolId,
+              comment: bytesComment,
+            });
+          });
         });
       });
 
-      context('with pool id', () => {
-        it('emits an event', async () => {
-          const receipt = await (await registry.connect(other).addPoolIdComment(pool.poolId, comment)).wait();
-          expectEvent.inReceipt(receipt, 'PoolComment', { sender: other.address, poolId: pool.poolId, comment });
+      context('using string', () => {
+        context('with pool address', () => {
+          it('emits an event', async () => {
+            const receipt = await (await registry.connect(other).addPoolStringComment(pool.address, comment)).wait();
+            expectEvent.inReceipt(receipt, 'PoolComment', {
+              sender: other.address,
+              poolId: pool.poolId,
+              comment: bytesComment,
+            });
+          });
+        });
+
+        context('with pool id', () => {
+          it('emits an event', async () => {
+            const receipt = await (await registry.connect(other).addPoolIdStringComment(pool.poolId, comment)).wait();
+            expectEvent.inReceipt(receipt, 'PoolComment', {
+              sender: other.address,
+              poolId: pool.poolId,
+              comment: bytesComment,
+            });
+          });
         });
       });
     });

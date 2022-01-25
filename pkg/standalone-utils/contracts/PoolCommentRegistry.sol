@@ -26,7 +26,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
  * like a subgraph is unnecessary: simply filtering this contract's events is sufficient.
  */
 contract PoolCommentRegistry {
-    event PoolComment(address indexed sender, bytes32 indexed poolId, string comment);
+    event PoolComment(address indexed sender, bytes32 indexed poolId, bytes comment);
 
     IVault private _vault;
 
@@ -38,15 +38,23 @@ contract PoolCommentRegistry {
         return _vault;
     }
 
-    function addPoolIdComment(bytes32 poolId, string calldata comment) external {
+    function addPoolIdComment(bytes32 poolId, bytes calldata comment) external {
         _addPoolComment(poolId, comment);
     }
 
-    function addPoolComment(address pool, string calldata comment) external {
+    function addPoolComment(address pool, bytes calldata comment) external {
         _addPoolComment(IBasePool(pool).getPoolId(), comment);
     }
 
-    function _addPoolComment(bytes32 poolId, string calldata comment) private {
+    function addPoolIdStringComment(bytes32 poolId, string calldata comment) external {
+        _addPoolComment(poolId, bytes(comment));
+    }
+
+    function addPoolStringComment(address pool, string calldata comment) external {
+        _addPoolComment(IBasePool(pool).getPoolId(), bytes(comment));
+    }
+
+    function _addPoolComment(bytes32 poolId, bytes calldata comment) private {
         // We want to check that `poolId` corresponds to a valid Pool to avoid incorrect entries, but lack a way to
         // check this directly. The simplest approach is to call `vault.getPool()` - we ignore the return values, as
         // what we're interested in is the fact that this call will revert if the Pool was not registered.
