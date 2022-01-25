@@ -41,6 +41,9 @@ contract LiquidityGaugeFactory is Authentication {
         _vault = vault;
         _gaugeImplementation = gauge;
         _authorizerAdaptor = authorizerAdaptor;
+
+        emit GaugeImplementationUpdated(address(0), address(gauge));
+        emit AuthorizerAdaptorUpdated(address(0), authorizerAdaptor);
     }
 
     /**
