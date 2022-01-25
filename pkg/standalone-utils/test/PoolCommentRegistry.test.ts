@@ -36,7 +36,7 @@ describe('PoolCommentRegistry', function () {
     registry = await deploy('PoolCommentRegistry', { args: [vault.address] });
   });
 
-  it('Should store the vault', async () => {
+  it('returns the vault address', async () => {
     expect(await registry.getVault()).to.equal(vault.address);
   });
 
