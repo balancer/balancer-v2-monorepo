@@ -15,10 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./MockWeightedOracleMath.sol";
+import "./MockOracleWeightedMath.sol";
 import "../oracle/OracleWeightedPool.sol";
 
-contract MockOracleWeightedPool is OracleWeightedPool, MockWeightedOracleMath {
+contract MockOracleWeightedPool is OracleWeightedPool, MockOracleWeightedMath {
     using OracleWeightedPoolMiscData for bytes32;
 
     // MiscData is now just the least significant 192 bits, and no longer contains the swapFeePercentage

@@ -20,10 +20,10 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/LogCompression.sol";
 import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
 
 import "../BaseWeightedPool.sol";
-import "./WeightedOracleMath.sol";
+import "./OracleWeightedMath.sol";
 import "./OracleWeightedPoolMiscData.sol";
 
-contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, WeightedOracleMath {
+contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeightedMath {
     using FixedPoint for uint256;
     using OracleWeightedPoolMiscData for bytes32;
 
@@ -348,14 +348,14 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, WeightedOracle
         bytes32 miscData = _getMiscData();
 
         if (miscData.oracleEnabled()) {
-            int256 logSpotPrice = WeightedOracleMath._calcLogSpotPrice(
+            int256 logSpotPrice = OracleWeightedMath._calcLogSpotPrice(
                 _normalizedWeight0,
                 balanceToken0,
                 _normalizedWeight1,
                 balanceToken1
             );
 
-            int256 logBPTPrice = WeightedOracleMath._calcLogBPTPrice(
+            int256 logBPTPrice = OracleWeightedMath._calcLogBPTPrice(
                 _normalizedWeight0,
                 balanceToken0,
                 miscData.logTotalSupply()
