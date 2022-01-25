@@ -64,7 +64,7 @@ library CodeDeployer {
      */
     function deploy(bytes memory code) internal returns (address destination) {
         bytes32 deployerCreationCode = _DEPLOYER_CREATION_CODE;
-        
+
         // We need to concatenate the deployer creation code and `code` in memory, but want to avoid copying all of
         // `code` (which could be quite long) into a new memory location. Therefore, we operate in-place using
         // assembly.
