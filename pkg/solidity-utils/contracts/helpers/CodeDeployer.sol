@@ -52,7 +52,8 @@ library CodeDeployer {
     // [11] PUSH1 0x00
     // [12] RETURN
     //
-    // The padding is just the 0xfe sequence (invalid opcode).
+    // The padding is just the 0xfe sequence (invalid opcode). It is important as it lets us work in-place, avoiding
+    // memory allocation and copying.
     bytes32
         private constant _DEPLOYER_CREATION_CODE = 0x602038038060206000396000f3fefefefefefefefefefefefefefefefefefefe;
 
@@ -63,6 +64,10 @@ library CodeDeployer {
      */
     function deploy(bytes memory code) internal returns (address destination) {
         bytes32 deployerCreationCode = _DEPLOYER_CREATION_CODE;
+        
+        // We need to concatenate the deployer creation code and `code` in memory, but want to avoid copying all of
+        // `code` (which could be quite long) into a new memory location. Therefore, we operate in-place using
+        // assembly.
 
         // solhint-disable-next-line no-inline-assembly
         assembly {

@@ -62,6 +62,22 @@ export function printGas(gas: number | BigNumber): string {
   return `${(gas / 1000).toFixed(1)}k`;
 }
 
+export function scaleUp(n: BigNumber, scalingFactor: BigNumber): BigNumber {
+  if (scalingFactor == bn(1)) {
+    return n;
+  }
+
+  return n.mul(scalingFactor);
+}
+
+export function scaleDown(n: BigNumber, scalingFactor: BigNumber): BigNumber {
+  if (scalingFactor == bn(1)) {
+    return n;
+  }
+
+  return n.div(scalingFactor);
+}
+
 function parseScientific(num: string): string {
   // If the number is not in scientific notation return it as it is
   if (!/\d+\.?\d*e[+-]*\d+/i.test(num)) return num;
