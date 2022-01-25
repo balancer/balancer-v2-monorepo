@@ -24,6 +24,7 @@ struct VotedSlope:
 
 
 interface VotingEscrow:
+    def token() -> address: view
     def get_last_user_slope(addr: address) -> int128: view
     def locked__end(addr: address) -> uint256: view
 
@@ -109,17 +110,15 @@ time_type_weight: public(uint256[1000000000])  # type_id -> last scheduled time 
 
 
 @external
-def __init__(_token: address, _voting_escrow: address):
+def __init__(_voting_escrow: address):
     """
     @notice Contract constructor
-    @param _token `ERC20CRV` contract address
     @param _voting_escrow `VotingEscrow` contract address
     """
-    assert _token != ZERO_ADDRESS
     assert _voting_escrow != ZERO_ADDRESS
 
     self.admin = msg.sender
-    TOKEN = _token
+    TOKEN = VotingEscrow(_voting_escrow).token()
     VOTING_ESCROW = _voting_escrow
     self.time_total = block.timestamp / WEEK * WEEK
 
