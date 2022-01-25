@@ -97,6 +97,20 @@ export default class TokenList {
     );
   }
 
+  // Assumes the amount is an unscaled (non-FP) number, and will scale it by the decimals of the token
+  // So passing in 100 to mint DAI, WBTC and USDC would result in fp(100), bn(100e8), bn(100e6): 100 tokens of each
+  async mintScaled(rawParams: RawTokenMint): Promise<void> {
+    const params: TokenMint[] = TypesConverter.toTokenMints(rawParams);
+
+    await Promise.all(
+      params.flatMap(({ to, amount, from }) =>
+        this.tokens.map((token) =>
+          token.mint(to, amount ? (Number(amount) * 10 ** token.decimals).toString() : 0, { from })
+        )
+      )
+    );
+  }
+
   async approve(rawParams: RawTokenApproval): Promise<void> {
     const params: TokenApproval[] = TypesConverter.toTokenApprovals(rawParams);
     await Promise.all(
