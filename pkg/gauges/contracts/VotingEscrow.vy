@@ -85,9 +85,14 @@ WEEK: constant(uint256) = 7 * 86400  # all future times are rounded by week
 MAXTIME: constant(uint256) = 4 * 365 * 86400  # 4 years
 MULTIPLIER: constant(uint256) = 10 ** 18
 
-TOKEN: immutable(address) 
-supply: public(uint256)
+TOKEN: immutable(address)
 
+NAME: immutable(String[64])
+SYMBOL: immutable(String[32])
+VERSION: immutable(String[32])
+DECIMALS: immutable(uint256)
+
+supply: public(uint256)
 locked: public(HashMap[address, LockedBalance])
 
 epoch: public(uint256)
@@ -95,11 +100,6 @@ point_history: public(Point[100000000000000000000000000000])  # epoch -> unsigne
 user_point_history: public(HashMap[address, Point[1000000000]])  # user -> Point[user_epoch]
 user_point_epoch: public(HashMap[address, uint256])
 slope_changes: public(HashMap[uint256, int128])  # time -> signed slope change
-
-name: public(String[64])
-symbol: public(String[32])
-version: public(String[32])
-decimals: public(uint256)
 
 # Checker for whitelisted (smart contract) wallets which are allowed to deposit
 # The goal is to prevent tokenizing the escrow
@@ -126,16 +126,36 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _versi
 
     _decimals: uint256 = ERC20(token_addr).decimals()
     assert _decimals <= 255
-    self.decimals = _decimals
-
-    self.name = _name
-    self.symbol = _symbol
-    self.version = _version
+    
+    NAME = _name
+    SYMBOL = _symbol
+    VERSION = _version
+    DECIMALS = _decimals
 
 @external
 @view
 def token() -> address:
     return TOKEN
+
+@external
+@view
+def name() -> String[64]:
+    return NAME
+
+@external
+@view
+def symbol() -> String[32]:
+    return SYMBOL
+
+@external
+@view
+def version() -> String[32]:
+    return VERSION
+
+@external
+@view
+def decimals() -> uint256:
+    return DECIMALS
 
 @external
 def commit_transfer_ownership(addr: address):
