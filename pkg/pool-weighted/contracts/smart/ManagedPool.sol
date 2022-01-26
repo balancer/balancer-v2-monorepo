@@ -85,7 +85,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
-    // [ 155 bits|   5 bits |  32 bits   |   64 bits    |
+    // [ 123 bits|   5 bits |  64 bits   |   64 bits    |
     // [ unused  | decimals | end weight | start weight |
     // |MSB                                          LSB|
     mapping(IERC20 => bytes32) private _tokenState;
@@ -94,7 +94,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     uint256 private constant _START_WEIGHT_OFFSET = 0;
     uint256 private constant _END_WEIGHT_OFFSET = 64;
-    uint256 private constant _DECIMAL_DIFF_OFFSET = 96;
+    uint256 private constant _DECIMAL_DIFF_OFFSET = 128;
 
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
@@ -235,7 +235,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         endWeights = new uint256[](totalTokens);
 
         for (uint256 i = 0; i < totalTokens; i++) {
-            endWeights[i] = _tokenState[tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
+            endWeights[i] = _tokenState[tokens[i]].decodeUint64(_END_WEIGHT_OFFSET).uncompress64();
         }
     }
 
@@ -615,7 +615,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     /**
      * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
-     * if necessary. Time travel elements commented out.
+     * if necessary.
      */
     function _startGradualWeightChange(
         uint256 startTime,
@@ -638,7 +638,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             // Store decimal difference instead of actual scaling factor
             _tokenState[token] = tokenState
                 .insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET)
-                .insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET)
+                .insertUint64(endWeight.compress64(), _END_WEIGHT_OFFSET)
                 .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
 
             normalizedSum = normalizedSum.add(endWeight);
@@ -699,7 +699,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private pure returns (uint256 finalWeight) {
         uint256 startWeight = tokenData.decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
-        uint256 endWeight = tokenData.decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
+        uint256 endWeight = tokenData.decodeUint64(_END_WEIGHT_OFFSET).uncompress64();
 
         if (pctProgress == 0 || startWeight == endWeight) return startWeight;
         if (pctProgress >= FixedPoint.ONE) return endWeight;
