@@ -90,13 +90,13 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
     function activate() external nonReentrant authenticate {
         require(startEpochTime == type(uint256).max, "Already activated");
 
-        // We need to check that this contract can't be bypassed to mint more BAL in future.
-        // If other addresses have minting rights over the BAL token then this inflation schedule
-        // can be bypassed by minting new tokens directly on the BalancerGovernanceToken contract.
+        // We need to check that this contract can't be bypassed to mint more BAL in the future.
+        // If other addresses had minting rights over the BAL token then this inflation schedule
+        // could be bypassed by minting new tokens directly on the BalancerGovernanceToken contract.
 
         // On the BalancerGovernanceToken contract the minter role's admin is the DEFAULT_ADMIN_ROLE.
         // No external function exists to change the minter role's admin so we cannot make the list of
-        // minters immutable without being the only address with DEFAULT_ADMIN_ROLE.
+        // minters immutable without revoking all access to DEFAULT_ADMIN_ROLE.
         bytes32 minterRole = _balancerToken.MINTER_ROLE();
         bytes32 snapshotRole = _balancerToken.SNAPSHOT_ROLE();
         bytes32 adminRole = _balancerToken.DEFAULT_ADMIN_ROLE();
@@ -247,11 +247,6 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
         return _startEpochTime;
     }
 
-    /**
-     * @notice Update mining rate and supply at the start of the epoch
-     * @dev Callable by any address, but only once per epoch
-     * Total supply becomes slightly larger if this function is called late
-     */
     function _updateMiningParameters() internal {
         uint256 _rate = rate;
         uint256 _startEpochSupply = startEpochSupply + _rate * _RATE_REDUCTION_TIME;
