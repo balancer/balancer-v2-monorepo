@@ -51,10 +51,10 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
     event MiningParametersUpdated(uint256 rate, uint256 supply);
 
     // Supply Variables
-    uint256 public miningEpoch;
-    uint256 public startEpochTime = type(uint256).max; // Sentinel value for contract not being activated
-    uint256 public startEpochSupply;
-    uint256 public rate;
+    uint256 private _miningEpoch;
+    uint256 private _startEpochTime = type(uint256).max; // Sentinel value for contract not being activated
+    uint256 private _startEpochSupply;
+    uint256 private _rate;
 
     constructor(IVault vault, IERC20 token) Authentication(bytes32(uint256(address(this)))) {
         // BalancerTokenAdmin is a singleton, so it simply uses its own address to disambiguate action identifiers
@@ -88,7 +88,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      * @dev Reverts if contract does not have sole minting powers over BAL (and no other minters can be added).
      */
     function activate() external nonReentrant authenticate {
-        require(startEpochTime == type(uint256).max, "Already activated");
+        require(_startEpochTime == type(uint256).max, "Already activated");
 
         // We need to check that this contract can't be bypassed to mint more BAL in the future.
         // If other addresses had minting rights over the BAL token then this inflation schedule
@@ -152,10 +152,10 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
         require(_balancerToken.getRoleMemberCount(snapshotRole) == 1, "Multiple snapshotters exist");
 
         // As BAL inflation is now enforced by this contract we can initialise the relevant variables.
-        startEpochSupply = _balancerToken.totalSupply();
-        startEpochTime = block.timestamp;
-        rate = _INITIAL_RATE;
-        emit MiningParametersUpdated(_INITIAL_RATE, startEpochSupply);
+        _startEpochSupply = _balancerToken.totalSupply();
+        _startEpochTime = block.timestamp;
+        _rate = _INITIAL_RATE;
+        emit MiningParametersUpdated(_INITIAL_RATE, _startEpochSupply);
     }
 
     /**
@@ -164,7 +164,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      */
     function mint(address to, uint256 amount) external authenticate {
         // Check if we've passed into a new epoch such that we should calculate available supply with a smaller rate.
-        if (block.timestamp >= startEpochTime + _RATE_REDUCTION_TIME) {
+        if (block.timestamp >= _startEpochTime + _RATE_REDUCTION_TIME) {
             _updateMiningParameters();
         }
 
@@ -212,7 +212,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      * Total supply becomes slightly larger if this function is called late
      */
     function updateMiningParameters() external {
-        require(block.timestamp >= startEpochTime + _RATE_REDUCTION_TIME, "Epoch has not finished yet");
+        require(block.timestamp >= _startEpochTime + _RATE_REDUCTION_TIME, "Epoch has not finished yet");
         _updateMiningParameters();
     }
 
@@ -236,7 +236,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      * @notice Maximum allowable number of tokens in existence (claimed or unclaimed)
      */
     function _availableSupply() internal view returns (uint256) {
-        return startEpochSupply + (block.timestamp - startEpochTime) * rate;
+        return _startEpochSupply + (block.timestamp - _startEpochTime) * _rate;
     }
 
     /**
@@ -244,25 +244,25 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      * @return Timestamp of the current epoch
      */
     function _startEpochTimeWrite() internal returns (uint256) {
-        uint256 _startEpochTime = startEpochTime;
-        if (block.timestamp >= _startEpochTime + _RATE_REDUCTION_TIME) {
+        uint256 startEpochTime = _startEpochTime;
+        if (block.timestamp >= startEpochTime + _RATE_REDUCTION_TIME) {
             _updateMiningParameters();
-            return startEpochTime;
+            return _startEpochTime;
         }
-        return _startEpochTime;
+        return startEpochTime;
     }
 
     function _updateMiningParameters() internal {
-        uint256 _rate = rate;
-        uint256 _startEpochSupply = startEpochSupply + _rate * _RATE_REDUCTION_TIME;
-        _rate = (_rate * _RATE_DENOMINATOR) / _RATE_REDUCTION_COEFFICIENT;
+        uint256 rate = _rate;
+        uint256 startEpochSupply = _startEpochSupply + rate * _RATE_REDUCTION_TIME;
+        rate = (rate * _RATE_DENOMINATOR) / _RATE_REDUCTION_COEFFICIENT;
 
-        miningEpoch += 1;
-        startEpochTime += _RATE_REDUCTION_TIME;
-        rate = _rate;
-        startEpochSupply = _startEpochSupply;
+        _miningEpoch += 1;
+        _startEpochTime += _RATE_REDUCTION_TIME;
+        _rate = rate;
+        _startEpochSupply = startEpochSupply;
 
-        emit MiningParametersUpdated(_rate, _startEpochSupply);
+        emit MiningParametersUpdated(rate, startEpochSupply);
     }
 
     /**
@@ -274,8 +274,8 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
     function _mintableInTimeframe(uint256 start, uint256 end) internal view returns (uint256) {
         require(start <= end, "start > end");
 
-        uint256 currentEpochTime = startEpochTime;
-        uint256 currentRate = rate;
+        uint256 currentEpochTime = _startEpochTime;
+        uint256 currentRate = _rate;
 
         // It shouldn't be possible to over/underflow in here but we add checked maths to be safe
 
@@ -349,7 +349,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      * Total supply becomes slightly larger if this function is called late
      */
     function update_mining_parameters() external {
-        require(block.timestamp >= startEpochTime + _RATE_REDUCTION_TIME, "Epoch has not finished yet");
+        require(block.timestamp >= _startEpochTime + _RATE_REDUCTION_TIME, "Epoch has not finished yet");
         _updateMiningParameters();
     }
 
