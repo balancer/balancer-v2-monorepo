@@ -40,10 +40,10 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
     using Math for uint256;
 
     // TODO: set these constants appropriately
-    uint256 private constant _INITIAL_RATE = 32165468432186542;
-    uint256 private constant _RATE_REDUCTION_TIME = 365 days;
-    uint256 private constant _RATE_REDUCTION_COEFFICIENT = 1189207115002721024; // 2 ** (1/4) * 1e18
-    uint256 private constant _RATE_DENOMINATOR = 1e18;
+    uint256 public constant INITIAL_RATE = 32165468432186542;
+    uint256 public constant RATE_REDUCTION_TIME = 365 days;
+    uint256 public constant RATE_REDUCTION_COEFFICIENT = 1189207115002721024; // 2 ** (1/4) * 1e18
+    uint256 public constant RATE_DENOMINATOR = 1e18;
 
     IVault private immutable _vault;
     IBalancerToken private immutable _balancerToken;
@@ -154,8 +154,8 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
         // As BAL inflation is now enforced by this contract we can initialise the relevant variables.
         _startEpochSupply = _balancerToken.totalSupply();
         _startEpochTime = block.timestamp;
-        _rate = _INITIAL_RATE;
-        emit MiningParametersUpdated(_INITIAL_RATE, _startEpochSupply);
+        _rate = INITIAL_RATE;
+        emit MiningParametersUpdated(INITIAL_RATE, _startEpochSupply);
     }
 
     /**
@@ -164,7 +164,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      */
     function mint(address to, uint256 amount) external authenticate {
         // Check if we've passed into a new epoch such that we should calculate available supply with a smaller rate.
-        if (block.timestamp >= _startEpochTime + _RATE_REDUCTION_TIME) {
+        if (block.timestamp >= _startEpochTime + RATE_REDUCTION_TIME) {
             _updateMiningParameters();
         }
 
@@ -201,7 +201,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      * @notice Returns the start timestamp of the next epoch.
      */
     function getFutureEpochTime() external view returns (uint256) {
-        return _startEpochTime + _RATE_REDUCTION_TIME;
+        return _startEpochTime + RATE_REDUCTION_TIME;
     }
 
     /**
@@ -238,7 +238,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      * @return Timestamp of the next epoch
      */
     function futureEpochTimeWrite() external returns (uint256) {
-        return _startEpochTimeWrite() + _RATE_REDUCTION_TIME;
+        return _startEpochTimeWrite() + RATE_REDUCTION_TIME;
     }
 
     /**
@@ -247,7 +247,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      * Total supply becomes slightly larger if this function is called late
      */
     function updateMiningParameters() external {
-        require(block.timestamp >= _startEpochTime + _RATE_REDUCTION_TIME, "Epoch has not finished yet");
+        require(block.timestamp >= _startEpochTime + RATE_REDUCTION_TIME, "Epoch has not finished yet");
         _updateMiningParameters();
     }
 
@@ -280,7 +280,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      */
     function _startEpochTimeWrite() internal returns (uint256) {
         uint256 startEpochTime = _startEpochTime;
-        if (block.timestamp >= startEpochTime + _RATE_REDUCTION_TIME) {
+        if (block.timestamp >= startEpochTime + RATE_REDUCTION_TIME) {
             _updateMiningParameters();
             return _startEpochTime;
         }
@@ -289,11 +289,11 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
 
     function _updateMiningParameters() internal {
         uint256 inflationRate = _rate;
-        uint256 startEpochSupply = _startEpochSupply + inflationRate * _RATE_REDUCTION_TIME;
-        inflationRate = (inflationRate * _RATE_DENOMINATOR) / _RATE_REDUCTION_COEFFICIENT;
+        uint256 startEpochSupply = _startEpochSupply + inflationRate * RATE_REDUCTION_TIME;
+        inflationRate = (inflationRate * RATE_DENOMINATOR) / RATE_REDUCTION_COEFFICIENT;
 
         _miningEpoch += 1;
-        _startEpochTime += _RATE_REDUCTION_TIME;
+        _startEpochTime += RATE_REDUCTION_TIME;
         _rate = inflationRate;
         _startEpochSupply = startEpochSupply;
 
@@ -315,23 +315,23 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
         // It shouldn't be possible to over/underflow in here but we add checked maths to be safe
 
         // Special case if end is in future (not yet minted) epoch
-        if (end > currentEpochTime.add(_RATE_REDUCTION_TIME)) {
-            currentEpochTime = currentEpochTime.add(_RATE_REDUCTION_TIME);
-            currentRate = currentRate.mul(_RATE_DENOMINATOR).divDown(_RATE_REDUCTION_COEFFICIENT);
+        if (end > currentEpochTime.add(RATE_REDUCTION_TIME)) {
+            currentEpochTime = currentEpochTime.add(RATE_REDUCTION_TIME);
+            currentRate = currentRate.mul(RATE_DENOMINATOR).divDown(RATE_REDUCTION_COEFFICIENT);
         }
 
-        require(end <= currentEpochTime.add(_RATE_REDUCTION_TIME), "too far in future");
+        require(end <= currentEpochTime.add(RATE_REDUCTION_TIME), "too far in future");
 
         uint256 toMint = 0;
         for (uint256 epoch = 0; epoch < 999; ++epoch) {
             if (end >= currentEpochTime) {
                 uint256 currentEnd = end;
-                if (currentEnd > currentEpochTime.add(_RATE_REDUCTION_TIME)) {
-                    currentEnd = currentEpochTime.add(_RATE_REDUCTION_TIME);
+                if (currentEnd > currentEpochTime.add(RATE_REDUCTION_TIME)) {
+                    currentEnd = currentEpochTime.add(RATE_REDUCTION_TIME);
                 }
 
                 uint256 currentStart = start;
-                if (currentStart >= currentEpochTime.add(_RATE_REDUCTION_TIME)) {
+                if (currentStart >= currentEpochTime.add(RATE_REDUCTION_TIME)) {
                     // We should never get here but what if...
                     break;
                 } else if (currentStart < currentEpochTime) {
@@ -345,10 +345,10 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
                 }
             }
 
-            currentEpochTime = currentEpochTime.sub(_RATE_REDUCTION_TIME);
+            currentEpochTime = currentEpochTime.sub(RATE_REDUCTION_TIME);
             // double-division with rounding made rate a bit less => good
-            currentRate = currentRate.mul(_RATE_REDUCTION_COEFFICIENT).divDown(_RATE_DENOMINATOR);
-            assert(currentRate <= _INITIAL_RATE);
+            currentRate = currentRate.mul(RATE_REDUCTION_COEFFICIENT).divDown(RATE_DENOMINATOR);
+            assert(currentRate <= INITIAL_RATE);
         }
 
         return toMint;
@@ -379,7 +379,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      * @return Timestamp of the next epoch
      */
     function future_epoch_time_write() external returns (uint256) {
-        return _startEpochTimeWrite() + _RATE_REDUCTION_TIME;
+        return _startEpochTimeWrite() + RATE_REDUCTION_TIME;
     }
 
     /**
@@ -388,7 +388,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      * Total supply becomes slightly larger if this function is called late
      */
     function update_mining_parameters() external {
-        require(block.timestamp >= _startEpochTime + _RATE_REDUCTION_TIME, "Epoch has not finished yet");
+        require(block.timestamp >= _startEpochTime + RATE_REDUCTION_TIME, "Epoch has not finished yet");
         _updateMiningParameters();
     }
 
