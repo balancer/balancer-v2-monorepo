@@ -167,7 +167,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
         if (block.timestamp >= startEpochTime + _RATE_REDUCTION_TIME) {
             _updateMiningParameters();
         }
-        
+
         require(
             _balancerToken.totalSupply().add(amount) <= _availableSupply(),
             "Mint amount exceeds remaining available supply"
@@ -212,7 +212,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      * Total supply becomes slightly larger if this function is called late
      */
     function updateMiningParameters() external {
-        require(block.timestamp >= startEpochTime + _RATE_REDUCTION_TIME, "Epoch has not finished yet");       
+        require(block.timestamp >= startEpochTime + _RATE_REDUCTION_TIME, "Epoch has not finished yet");
         _updateMiningParameters();
     }
 
