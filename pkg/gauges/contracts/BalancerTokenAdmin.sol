@@ -184,9 +184,44 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
     }
 
     /**
+     * @notice Returns the current epoch number.
+     */
+    function getMiningEpoch() external view returns (uint256) {
+        return _miningEpoch;
+    }
+
+    /**
+     * @notice Returns the start timestamp of the current epoch.
+     */
+    function getStartEpochTime() external view returns (uint256) {
+        return _startEpochTime;
+    }
+
+    /**
+     * @notice Returns the start timestamp of the next epoch.
+     */
+    function getFutureEpochTime() external view returns (uint256) {
+        return _startEpochTime + _RATE_REDUCTION_TIME;
+    }
+
+    /**
+     * @notice Returns the available supply at the beginning of the current epoch.
+     */
+    function getStartEpochSupply() external view returns (uint256) {
+        return _startEpochSupply;
+    }
+
+    /**
+     * @notice Returns the current inflation rate of BAL per second
+     */
+    function getInflationRate() external view returns (uint256) {
+        return _rate;
+    }
+
+    /**
      * @notice Maximum allowable number of tokens in existence (claimed or unclaimed)
      */
-    function availableSupply() external view returns (uint256) {
+    function getAvailableSupply() external view returns (uint256) {
         return _availableSupply();
     }
 
@@ -253,16 +288,16 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
     }
 
     function _updateMiningParameters() internal {
-        uint256 rate = _rate;
-        uint256 startEpochSupply = _startEpochSupply + rate * _RATE_REDUCTION_TIME;
-        rate = (rate * _RATE_DENOMINATOR) / _RATE_REDUCTION_COEFFICIENT;
+        uint256 inflationRate = _rate;
+        uint256 startEpochSupply = _startEpochSupply + inflationRate * _RATE_REDUCTION_TIME;
+        inflationRate = (inflationRate * _RATE_DENOMINATOR) / _RATE_REDUCTION_COEFFICIENT;
 
         _miningEpoch += 1;
         _startEpochTime += _RATE_REDUCTION_TIME;
-        _rate = rate;
+        _rate = inflationRate;
         _startEpochSupply = startEpochSupply;
 
-        emit MiningParametersUpdated(rate, startEpochSupply);
+        emit MiningParametersUpdated(inflationRate, startEpochSupply);
     }
 
     /**
@@ -322,6 +357,10 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
     // The below functions are duplicates of functions available above.
     // They are included for ABI compatibility with snake_casing as used in vyper contracts.
     // solhint-disable func-name-mixedcase
+
+    function rate() external view returns (uint256) {
+        return _rate;
+    }
 
     function available_supply() external view returns (uint256) {
         return _availableSupply();
