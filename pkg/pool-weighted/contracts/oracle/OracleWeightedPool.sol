@@ -146,16 +146,6 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeighted
         return normalizedWeights;
     }
 
-    function _getNormalizedWeightsAndMaxWeightIndex()
-        internal
-        view
-        virtual
-        override
-        returns (uint256[] memory, uint256)
-    {
-        return (_getNormalizedWeights(), _maxWeightTokenIndex);
-    }
-
     // Swaps remain the same, except we need to update the oracle with the pre-swap balances (after these have been
     // upscaled, but before we return). A good place to do this is at the beginning of BaseMinimalSwapInfoPool's
     // _onSwapGivenIn and _onSwapGivenOut.
@@ -210,16 +200,7 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeighted
         uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        virtual
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {
+    ) internal virtual override returns (uint256, uint256[] memory) {
         // Update price oracle with the pre-join balances
         _updateOracle(lastChangeBlock, balances[0], balances[1]);
 
@@ -271,16 +252,7 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeighted
         uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        virtual
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {
+    ) internal virtual override returns (uint256, uint256[] memory) {
         // The oracle is not updated if the Pool is paused to avoid extra calculations and reduce the potential for
         // errors.
         if (_isNotPaused()) {
@@ -401,6 +373,9 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeighted
             );
         }
     }
+
+    // TODO: implement
+    function getLastInvariant() public view returns (uint256) {}
 
     function _getOracleIndex() internal view override returns (uint256) {
         return _getMiscData().oracleIndex();
