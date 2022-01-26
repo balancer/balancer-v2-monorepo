@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/AccessControl.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
@@ -35,7 +36,7 @@ import "./interfaces/IBalancerToken.sol";
  * in order to know how much BAL a gauge is allowed to mint. As this does not exist within the BAL token itself
  * it is defined here, we must then wrap the token's minting functionality in order for this to be meaningful.
  */
-contract BalancerTokenAdmin is Authentication {
+contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
     using Math for uint256;
 
     // TODO: set these constants appropriately
@@ -86,7 +87,7 @@ contract BalancerTokenAdmin is Authentication {
      * @notice Initiate BAL token inflation schedule
      * @dev Reverts if contract does not have sole minting powers over BAL (and no other minters can be added).
      */
-    function activate() external authenticate {
+    function activate() external nonReentrant authenticate {
         require(startEpochTime == type(uint256).max, "Already activated");
 
         // We need to check that this contract can't be bypassed to mint more BAL in future.
