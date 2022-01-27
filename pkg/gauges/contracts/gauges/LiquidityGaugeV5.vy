@@ -15,6 +15,7 @@ interface TokenAdmin:
     def rate() -> uint256: view
 
 interface Controller:
+    def voting_escrow() -> address: view
     def checkpoint_gauge(addr: address): nonpayable
     def gauge_relative_weight(addr: address, time: uint256) -> uint256: view
 
@@ -28,6 +29,8 @@ interface Factory:
     def getAuthorizerAdaptor() -> address: view
 
 interface Minter:
+    def getBalancerTokenAdmin() -> address: view
+    def getGaugeController() -> address: view
     def minted(user: address, gauge: address) -> uint256: view
 
 interface VotingEscrow:
@@ -85,12 +88,11 @@ VERSION: constant(String[8]) = "v5.0.0"
 EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
 PERMIT_TYPEHASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 
-# TODO: Fill out addresses
-BAL_TOKEN_ADMIN: constant(address) = 0x0000000000000000000000000000000000000000
-GAUGE_CONTROLLER: constant(address) = 0x0000000000000000000000000000000000000000
-MINTER: constant(address) = 0x0000000000000000000000000000000000000000
-VEBOOST_PROXY: constant(address) = 0x0000000000000000000000000000000000000000
-VOTING_ESCROW: constant(address) = 0x0000000000000000000000000000000000000000
+BAL_TOKEN_ADMIN: immutable(address)
+GAUGE_CONTROLLER: immutable(address)
+MINTER: immutable(address)
+VOTING_ESCROW: immutable(address)
+VEBOOST_PROXY: immutable(address)
 
 
 # ERC20
@@ -151,7 +153,17 @@ integrate_inv_supply: public(uint256[100000000000000000000000000000])  # bump ep
 
 
 @external
-def __init__():
+def __init__(minter: address, veBoostProxy: address):
+    """
+    @param minter Address of minter contract
+    @param veBoostProxy Address of boost delegation contract
+    """
+    gaugeController: address = Minter(minter).getGaugeController()
+    BAL_TOKEN_ADMIN = Minter(minter).getBalancerTokenAdmin()
+    GAUGE_CONTROLLER = gaugeController
+    MINTER = minter
+    VOTING_ESCROW = Controller(gaugeController).voting_escrow()
+    VEBOOST_PROXY = veBoostProxy
     # prevent initialization of implementation
     self.lp_token = 0x000000000000000000000000000000000000dEaD
 
