@@ -31,10 +31,13 @@ interface IBalancerToken is IERC20 {
 
     function revokeRole(bytes32 role, address account) external;
 
+    // solhint-disable-next-line func-name-mixedcase
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
 
+    // solhint-disable-next-line func-name-mixedcase
     function MINTER_ROLE() external view returns (bytes32);
 
+    // solhint-disable-next-line func-name-mixedcase
     function SNAPSHOT_ROLE() external view returns (bytes32);
 
     function snapshot() external;

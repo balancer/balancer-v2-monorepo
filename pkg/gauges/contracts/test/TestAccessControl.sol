@@ -97,6 +97,7 @@ abstract contract TestAccessControl {
         return _roles[role].members.length();
     }
 
+    // solhint-disable max-line-length
     /**
      * @dev Returns one of the accounts that have `role`. `index` must be a
      * value between 0 and {getRoleMemberCount}, non-inclusive.
@@ -109,6 +110,7 @@ abstract contract TestAccessControl {
      * https://forum.openzeppelin.com/t/iterating-over-elements-on-enumerableset-in-openzeppelin-contracts/2296[forum post]
      * for more information.
      */
+    // solhint-enable max-line-length
     function getRoleMember(bytes32 role, uint256 index) public view returns (address) {
         return _roles[role].members.at(index);
     }
