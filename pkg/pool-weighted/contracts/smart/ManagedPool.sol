@@ -85,9 +85,9 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     // Store scaling factor and start/end weights for each token
     // Mapping should be more efficient than trying to compress it further
-    // [ 123 bits|   5 bits |  64 bits   |   64 bits    |
-    // [ unused  | decimals | end weight | start weight |
-    // |MSB                                          LSB|
+    // [ 123 bits |  5 bits  |  64 bits   |   64 bits    |
+    // [ unused   | decimals | end weight | start weight |
+    // |MSB                                           LSB|
     mapping(IERC20 => bytes32) private _tokenState;
 
     EnumerableMap.IERC20ToUint256Map private _tokenCollectedManagementFees;
@@ -98,6 +98,11 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
+
+    // Adding and removing tokens can cause the sum of the absolute weights to diverge from 1.
+    // To preserve the weighted pool interface standard, multiply or divide all weight values
+    // passed in or returned by this value to convert to normalized weights.
+    uint256 private _totalWeight = FixedPoint.ONE;
 
     // Event declarations
 
@@ -235,7 +240,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         endWeights = new uint256[](totalTokens);
 
         for (uint256 i = 0; i < totalTokens; i++) {
-            endWeights[i] = _tokenState[tokens[i]].decodeUint64(_END_WEIGHT_OFFSET).uncompress64();
+            endWeights[i] = _downscaleWeight(_tokenState[tokens[i]].decodeUint64(_END_WEIGHT_OFFSET).uncompress64(_totalWeight));
         }
     }
 
@@ -351,6 +356,41 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         _setMiscData(_getMiscData().insertBool(swapEnabled, _SWAP_ENABLED_OFFSET));
 
         emit SwapEnabledSet(swapEnabled);
+    }
+
+    /**
+     * @dev Getter for the sum of all weights. In initially FixedPoint.ONE, it can be higher or lower
+     * as a result of adds and removes.
+     */
+    function getTotalWeight() external view returns (uint256) {
+        return _totalWeight;
+    }
+
+    /**
+     * @dev Placeholder function for testing. Adding or removing a token may cause the total weight to
+     * diverge from ONE.
+     */
+    function setTotalWeight(uint256[] memory normalizedWeights, uint256 totalWeight) external {
+        InputHelpers.ensureInputLengthMatch(_getTotalTokens(), normalizedWeights.length);
+        _require(totalWeight > WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
+
+        if (totalWeight == _totalWeight) {
+            return;
+        }
+
+        _totalWeight = totalWeight;
+
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+
+        uint256 currentTime = block.timestamp;
+
+        _startGradualWeightChange(
+            currentTime,
+            currentTime,
+            normalizedWeights,
+            normalizedWeights,
+            tokens
+        );
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -624,25 +664,18 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] memory endWeights,
         IERC20[] memory tokens
     ) internal virtual {
+        uint256 totalWeight = _totalWeight;
         uint256 normalizedSum = 0;
-        bytes32 tokenState;
 
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
+            normalizedSum = normalizedSum.add(endWeight);
 
             IERC20 token = tokens[i];
-
-            // Tokens with more than 18 decimals are not supported
-            // Scaling calculations must be exact/lossless
-            // Store decimal difference instead of actual scaling factor
-            _tokenState[token] = tokenState
-                .insertUint64(startWeights[i].compress64(), _START_WEIGHT_OFFSET)
-                .insertUint64(endWeight.compress64(), _END_WEIGHT_OFFSET)
-                .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
-
-            normalizedSum = normalizedSum.add(endWeight);
+            _tokenState[token] = _updateTokenState(token, startWeights[i], endWeight, totalWeight);
         }
+
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
@@ -653,6 +686,20 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
+    // Factored out to avoid stack issues
+    function _updateTokenState(IERC20 token, uint256 startWeight, uint256 endWeight, uint256 totalWeight) private view returns (bytes32) {
+        bytes32 tokenState;
+
+        // Tokens with more than 18 decimals are not supported
+        // Scaling calculations must be exact/lossless
+        // Store decimal difference instead of actual scaling factor
+        return tokenState
+            .insertUint64(_upscaleWeight(startWeight).compress64(totalWeight), _START_WEIGHT_OFFSET)
+            .insertUint64(_upscaleWeight(endWeight).compress64(totalWeight), _END_WEIGHT_OFFSET)
+            .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
+    }
+
+    // Convert a decimal difference value to the scaling factor
     function _readScalingFactor(bytes32 tokenState) private pure returns (uint256) {
         uint256 decimalsDifference = tokenState.decodeUint5(_DECIMAL_DIFF_OFFSET);
 
@@ -697,9 +744,10 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         return secondsElapsed.divDown(totalSeconds);
     }
 
-    function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private pure returns (uint256 finalWeight) {
-        uint256 startWeight = tokenData.decodeUint64(_START_WEIGHT_OFFSET).uncompress64();
-        uint256 endWeight = tokenData.decodeUint64(_END_WEIGHT_OFFSET).uncompress64();
+    function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private view returns (uint256 finalWeight) {
+        uint256 totalWeight = _totalWeight;
+        uint256 startWeight = _downscaleWeight(tokenData.decodeUint64(_START_WEIGHT_OFFSET).uncompress64(totalWeight));
+        uint256 endWeight = _downscaleWeight(tokenData.decodeUint64(_END_WEIGHT_OFFSET).uncompress64(totalWeight));
 
         if (pctProgress == 0 || startWeight == endWeight) return startWeight;
         if (pctProgress >= FixedPoint.ONE) return endWeight;
@@ -718,5 +766,23 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // A valid token can't be zero (must have non-zero weights)
         _require(tokenData != 0, Errors.INVALID_TOKEN);
+    }
+
+    function _totalWeightEqualsOne() private view returns (bool) {
+        return FixedPoint.ONE == _totalWeight;
+    }
+
+    // Functions that convert weights between internal and external representations
+    // This is roughly analogous to scaling balances up (to full 18-decimals for internal processing by the Vault),
+    // and down (to native encodings, for I/O)
+
+    // Convert from the internal representation to normalized weights (summing to ONE)
+    function _downscaleWeight(uint256 weight) private view returns (uint256) {
+        return _totalWeightEqualsOne() ? weight : weight.divDown(_totalWeight);
+    }
+
+    // converts from normalized form to the internal representation (summing to _totalWeight)
+    function _upscaleWeight(uint256 weight) private view returns (uint256) {
+        return _totalWeightEqualsOne() ? weight : weight.mulUp(_totalWeight);
     }
 }
