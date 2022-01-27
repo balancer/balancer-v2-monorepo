@@ -242,7 +242,9 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         endWeights = new uint256[](totalTokens);
 
         for (uint256 i = 0; i < totalTokens; i++) {
-            endWeights[i] = _downscaleWeight(_tokenState[tokens[i]].decodeUint64(_END_WEIGHT_OFFSET).uncompress64(_totalWeight));
+            endWeights[i] = _downscaleWeight(
+                _tokenState[tokens[i]].decodeUint64(_END_WEIGHT_OFFSET).uncompress64(_totalWeight)
+            );
         }
     }
 
@@ -386,13 +388,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         uint256 currentTime = block.timestamp;
 
-        _startGradualWeightChange(
-            currentTime,
-            currentTime,
-            normalizedWeights,
-            normalizedWeights,
-            tokens
-        );
+        _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights, tokens);
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -689,16 +685,22 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     // Factored out to avoid stack issues
-    function _updateTokenState(IERC20 token, uint256 startWeight, uint256 endWeight, uint256 totalWeight) private view returns (bytes32) {
+    function _updateTokenState(
+        IERC20 token,
+        uint256 startWeight,
+        uint256 endWeight,
+        uint256 totalWeight
+    ) private view returns (bytes32) {
         bytes32 tokenState;
 
         // Tokens with more than 18 decimals are not supported
         // Scaling calculations must be exact/lossless
         // Store decimal difference instead of actual scaling factor
-        return tokenState
-            .insertUint64(_upscaleWeight(startWeight).compress64(totalWeight), _START_WEIGHT_OFFSET)
-            .insertUint64(_upscaleWeight(endWeight).compress64(totalWeight), _END_WEIGHT_OFFSET)
-            .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
+        return
+            tokenState
+                .insertUint64(_upscaleWeight(startWeight).compress64(totalWeight), _START_WEIGHT_OFFSET)
+                .insertUint64(_upscaleWeight(endWeight).compress64(totalWeight), _END_WEIGHT_OFFSET)
+                .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
     }
 
     // Convert a decimal difference value to the scaling factor
