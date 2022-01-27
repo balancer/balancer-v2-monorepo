@@ -23,10 +23,11 @@ import "../BaseWeightedPool.sol";
 import "./WeightCompression.sol";
 
 /**
- * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping
+ * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping.
  */
 contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
-    // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
+    // LiquidityBootstrappingPool change their weights over time: these periods are expected to be long enough (e.g.
+    // days) that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
 
     using FixedPoint for uint256;
@@ -316,7 +317,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view override returns (uint256) {
+    ) internal override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         return super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
@@ -326,7 +327,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view override returns (uint256) {
+    ) internal override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);

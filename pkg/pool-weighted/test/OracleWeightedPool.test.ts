@@ -3,8 +3,8 @@ import { expect } from 'chai';
 import { BigNumber, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_INT22, MAX_UINT10, MAX_UINT31, MAX_UINT64, MIN_INT22 } from '@balancer-labs/v2-helpers/src/constants';
+import { BigNumberish, fp, bn, fromFp, scaleUp, scaleDown } from '@balancer-labs/v2-helpers/src/numbers';
+import { MAX_INT22, MAX_UINT10, MAX_UINT31, MIN_INT22 } from '@balancer-labs/v2-helpers/src/constants';
 import { MINUTE, advanceTime, currentTimestamp, lastBlockNumber } from '@balancer-labs/v2-helpers/src/time';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -13,9 +13,9 @@ import { Sample, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/p
 
 import { itBehavesAsWeightedPool } from './BaseWeightedPool.behavior';
 
-describe('WeightedPool2Tokens', function () {
+describe('OracleWeightedPool', function () {
   describe('as a 2 token weighted pool', () => {
-    itBehavesAsWeightedPool(2, WeightedPoolType.WEIGHTED_POOL_2TOKENS);
+    itBehavesAsWeightedPool(2, WeightedPoolType.ORACLE_WEIGHTED_POOL);
   });
 
   let trader: SignerWithAddress,
@@ -31,17 +31,27 @@ describe('WeightedPool2Tokens', function () {
   let tokens: TokenList;
 
   sharedBeforeEach('deploy tokens', async () => {
-    tokens = await TokenList.create(['MKR', 'DAI'], { sorted: true });
-    await tokens.mint({ to: [lp, trader], amount: fp(100) });
+    // Setting varyDecimals to true will create one with 18 and one with 17 decimals
+    tokens = await TokenList.create(['MKR', 'DAI'], { sorted: true, varyDecimals: true });
+    // mintScaled will compute the correct scaled initial balance, from a raw number of tokens
+    await tokens.mintScaled({ to: [lp, trader], amount: 100 });
   });
 
   let pool: WeightedPool;
+  let scalingFactors: BigNumber[];
+  let initialBalances: BigNumber[];
   const weights = [fp(30), fp(70)];
-  const initialBalances = [fp(0.9), fp(1.8)];
+  const rawInitialBalances = [fp(0.9), fp(1.8)];
 
   sharedBeforeEach('deploy pool', async () => {
-    const params = { poolType: WeightedPoolType.WEIGHTED_POOL_2TOKENS, tokens, weights };
+    const params = { poolType: WeightedPoolType.ORACLE_WEIGHTED_POOL, tokens, weights };
     pool = await WeightedPool.create(params);
+    // Get the scaling factors from the pool, so that we can adjust incoming balances
+    // The WeightedPool.ts computation methods expect all tokens to be 18 decimals, like the Vault
+    scalingFactors = await pool.getScalingFactors();
+    scalingFactors = scalingFactors.map((f) => bn(fromFp(f)));
+
+    initialBalances = rawInitialBalances.map((b, i) => scaleDown(b, scalingFactors[i]));
   });
 
   const initializePool = () => {
@@ -87,6 +97,8 @@ describe('WeightedPool2Tokens', function () {
 
         sharedBeforeEach(async () => {
           previousBalances = await pool.getBalances();
+          // Adjust for non-18 decimal tokens
+          previousBalances = previousBalances.map((b, i) => scaleUp(b, scalingFactors[i]));
           previousTotalSupply = await pool.totalSupply();
 
           await advanceTime(MINUTE * 10); // force index update
@@ -387,7 +399,6 @@ describe('WeightedPool2Tokens', function () {
     initializePool();
 
     const assertPacking = async (
-      swapFeePercentage: BigNumberish,
       oracleEnabled: boolean,
       oracleIndex: BigNumberish,
       oracleSampleCreationTimestamp: BigNumberish,
@@ -395,7 +406,6 @@ describe('WeightedPool2Tokens', function () {
       logTotalSupply: BigNumberish
     ) => {
       await pool.instance.mockMiscData({
-        swapFeePercentage,
         oracleEnabled,
         oracleIndex,
         oracleSampleCreationTimestamp,
@@ -404,7 +414,7 @@ describe('WeightedPool2Tokens', function () {
       });
 
       const miscData = await pool.getMiscData();
-      expect(miscData.swapFeePercentage).to.be.equal(swapFeePercentage);
+
       expect(miscData.oracleEnabled).to.be.equal(oracleEnabled);
       expect(miscData.oracleIndex).to.be.equal(oracleIndex);
       expect(miscData.oracleSampleCreationTimestamp).to.be.equal(oracleSampleCreationTimestamp);
@@ -413,34 +423,20 @@ describe('WeightedPool2Tokens', function () {
     };
 
     it('packs samples correctly', async () => {
-      await assertPacking(100, true, 5, 50, 2, 3);
-      await assertPacking(100, false, 5, 50, -2, -3);
-      await assertPacking(MAX_UINT64, true, 0, 0, 0, 0);
-      await assertPacking(0, false, 0, 0, 0, 0);
-      await assertPacking(0, true, MAX_UINT10, 0, 0, 0);
-      await assertPacking(0, false, 0, MAX_UINT31, 0, 0);
-      await assertPacking(0, true, 0, 0, MAX_INT22, 0);
-      await assertPacking(0, false, 0, 0, MIN_INT22, 0);
-      await assertPacking(0, true, 0, 0, 0, MIN_INT22);
-      await assertPacking(0, false, 0, 0, 0, MAX_INT22);
-      await assertPacking(MAX_UINT64, true, MAX_UINT10, MAX_UINT31, MIN_INT22, MIN_INT22);
-      await assertPacking(MAX_UINT64, false, MAX_UINT10, MAX_UINT31, MAX_INT22, MAX_INT22);
-      await assertPacking(
-        MAX_UINT64.div(2),
-        true,
-        MAX_UINT10.div(2),
-        MAX_UINT31.div(2),
-        MIN_INT22.div(2),
-        MIN_INT22.div(2)
-      );
-      await assertPacking(
-        MAX_UINT64.div(2),
-        false,
-        MAX_UINT10.div(2),
-        MAX_UINT31.div(2),
-        MAX_INT22.div(2),
-        MAX_INT22.div(2)
-      );
+      await assertPacking(true, 5, 50, 2, 3);
+      await assertPacking(false, 5, 50, -2, -3);
+      await assertPacking(true, 0, 0, 0, 0);
+      await assertPacking(false, 0, 0, 0, 0);
+      await assertPacking(true, MAX_UINT10, 0, 0, 0);
+      await assertPacking(false, 0, MAX_UINT31, 0, 0);
+      await assertPacking(true, 0, 0, MAX_INT22, 0);
+      await assertPacking(false, 0, 0, MIN_INT22, 0);
+      await assertPacking(true, 0, 0, 0, MIN_INT22);
+      await assertPacking(false, 0, 0, 0, MAX_INT22);
+      await assertPacking(true, MAX_UINT10, MAX_UINT31, MIN_INT22, MIN_INT22);
+      await assertPacking(false, MAX_UINT10, MAX_UINT31, MAX_INT22, MAX_INT22);
+      await assertPacking(true, MAX_UINT10.div(2), MAX_UINT31.div(2), MIN_INT22.div(2), MIN_INT22.div(2));
+      await assertPacking(false, MAX_UINT10.div(2), MAX_UINT31.div(2), MAX_INT22.div(2), MAX_INT22.div(2));
     });
   });
 });

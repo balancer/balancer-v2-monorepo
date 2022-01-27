@@ -48,6 +48,8 @@ import "./WeightCompression.sol";
  * IL-protection, and more.
  */
 contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
+    // LiquidityBootstrappingPool change their weights over time: these periods are expected to be long enough (e.g.
+    // days) that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
 
     using FixedPoint for uint256;
@@ -415,7 +417,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view override returns (uint256) {
+    ) internal override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         return super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
@@ -425,7 +427,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view override returns (uint256) {
+    ) internal override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
