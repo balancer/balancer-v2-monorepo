@@ -48,7 +48,7 @@ import "./WeightCompression.sol";
  * IL-protection, and more.
  */
 contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
-    // ManagedPool weights can change over time: these periods are expected to be long enough (e.g., days)
+    // ManagedPool weights can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
 
