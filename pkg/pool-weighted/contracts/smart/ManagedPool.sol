@@ -374,7 +374,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
      * @dev Placeholder function for testing. Adding or removing a token may cause the total weight to
      * diverge from ONE.
      */
-    function setTotalWeight(uint256[] memory normalizedWeights, uint256 totalWeight) external {
+    function _setTotalWeight(uint256[] memory normalizedWeights, uint256 totalWeight) internal {
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), normalizedWeights.length);
         _require(totalWeight > WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
