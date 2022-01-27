@@ -88,10 +88,14 @@ contract AuthorizerAdaptor is IAuthentication, ReentrancyGuard {
      * @return The bytes encoded return value from the performed function call
      */
     function performAction(address target, bytes calldata data) external payable nonReentrant returns (bytes memory) {
-        // We want to check that the caller is authorized to call the function on the target rather than this function.
-        // We must then pull the function selector from `data` rather than `msg.sig`.
-        // Note that if `data` is empty this will return an empty function signature (0x00000000)
         bytes4 selector;
+
+        // We want to check that the caller is authorized to call the function on the target rather than this function.
+        // We must then pull the function selector from `data` rather than `msg.sig`. The most effective way to do this
+        // is via assembly.
+        // Note that if `data` is empty this will return an empty function signature (0x00000000)
+
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             // The function selector encoded in `data` has an offset relative to the start of msg.data of:
             // - 4 bytes due to the function selector for `performAction`
