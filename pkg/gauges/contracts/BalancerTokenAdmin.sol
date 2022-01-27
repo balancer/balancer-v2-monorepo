@@ -338,7 +338,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
                     currentStart = currentEpochTime;
                 }
 
-                toMint = toMint.add(currentRate.mul(currentEnd - currentStart));
+                toMint = toMint.add(currentRate.mul(currentEnd.sub(currentStart)));
 
                 if (start >= currentEpochTime) {
                     break;
