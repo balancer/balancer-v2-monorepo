@@ -414,40 +414,46 @@ library WeightedMath {
         return amountsOut;
     }
 
-    function _calcDueTokenProtocolSwapFeeAmount(
-        uint256 balance,
-        uint256 normalizedWeight,
+    function _calcDueProtocolSwapFeeBPTAmount(
+        uint256 totalSupply,
         uint256 previousInvariant,
         uint256 currentInvariant,
         uint256 protocolSwapFeePercentage
     ) internal pure returns (uint256) {
-        /*********************************************************************************
-        /*  protocolSwapFeePercentage * balanceToken * ( 1 - (previousInvariant / currentInvariant) ^ (1 / weightToken))
-        *********************************************************************************/
-
         if (currentInvariant <= previousInvariant) {
             // This shouldn't happen outside of rounding errors, but have this safeguard nonetheless to prevent the Pool
             // from entering a locked state in which joins and exits revert while computing accumulated swap fees.
             return 0;
         }
 
+        // Assuming the Pool is balanced and token weights have not changed, a growth of the invariant translates into
+        // proportional growth of all token balances. The protocol is due a percentage of that growth: more precisely,
+        // it is due `fee * (growth - 1) * balance / growth` for each token.
+        // We compute the amount of BPT to mint for the protocol that would allow it to proportionally exit the Pool and
+        // receive these balances. Note that the total BPT supply will increase when minting, so we need to account for
+        // this in order to compute the percentage of Pool ownership the protocol will have.
+
+        // The formula is:
+        //
+        //            supply * protocol fee * (growth - 1)
+        //                     ---------------------------
+        //                              growth
+        // toMint = --------------------------------------
+        //            1 - protocol fee * (growth - 1)
+        //                ---------------------------
+        //                          growth
+        //
+
         // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less in protocol
         // fees to the Vault.
+        uint256 growth = currentInvariant.divDown(previousInvariant);
 
-        // Fee percentage and balance multiplications round down, while the subtrahend (power) rounds up (as does the
-        // base). Because previousInvariant / currentInvariant <= 1, the exponent rounds down.
+        // We compute protocol fee * (growth - 1) / growth, as we'll use that value twice.
+        uint256 k = protocolSwapFeePercentage.mulDown(growth.sub(FixedPoint.ONE)).divDown(growth);
 
-        uint256 base = previousInvariant.divUp(currentInvariant);
-        uint256 exponent = FixedPoint.ONE.divDown(normalizedWeight);
+        uint256 numerator = totalSupply.mulDown(k);
+        uint256 denominator = FixedPoint.ONE.sub(k);
 
-        // Because the exponent is larger than one, the base of the power function has a lower bound. We cap to this
-        // value to avoid numeric issues, which means in the extreme case (where the invariant growth is larger than
-        // 1 / min exponent) the Pool will pay less in protocol fees than it should.
-        base = Math.max(base, FixedPoint.MIN_POW_BASE_FREE_EXPONENT);
-
-        uint256 power = base.powUp(exponent);
-
-        uint256 tokenAccruedFees = balance.mulDown(power.complement());
-        return tokenAccruedFees.mulDown(protocolSwapFeePercentage);
+        return numerator.divDown(denominator);
     }
 }

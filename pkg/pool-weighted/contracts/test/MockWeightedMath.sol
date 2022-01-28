@@ -125,17 +125,15 @@ contract MockWeightedMath {
         return bptIn;
     }
 
-    function calculateDueTokenProtocolSwapFeeAmount(
-        uint256 balance,
-        uint256 normalizedWeight,
+    function calculateDueProtocolSwapFeeBPTAmount(
+        uint256 totalSupply,
         uint256 previousInvariant,
         uint256 currentInvariant,
         uint256 protocolSwapFeePercentage
     ) external pure returns (uint256) {
         return
-            WeightedMath._calcDueTokenProtocolSwapFeeAmount(
-                balance,
-                normalizedWeight,
+            WeightedMath._calcDueProtocolSwapFeeBPTAmount(
+                totalSupply,
                 previousInvariant,
                 currentInvariant,
                 protocolSwapFeePercentage
