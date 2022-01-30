@@ -115,7 +115,7 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
-        result = deploy('v2-pool-weighted/ManagedPool', {
+        result = deploy('v2-pool-weighted/MockManagedPool', {
           args: [
             {
               vault: vault.address,

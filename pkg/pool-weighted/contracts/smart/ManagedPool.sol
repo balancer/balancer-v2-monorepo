@@ -24,6 +24,8 @@ import "../BaseWeightedPool.sol";
 import "../WeightedPoolUserData.sol";
 import "./WeightCompression.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @dev Weighted Pool with mutable tokens and weights, designed to be used in conjunction with a pool controller
  * contract (as the owner, containing any specific business logic). Since the pool itself permits "dangerous"
@@ -101,6 +103,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
+    uint256 private _totalWeight = FixedPoint.ONE;
+
     // Event declarations
 
     event GradualWeightUpdateScheduled(
@@ -115,6 +119,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     event ManagementFeesCollected(IERC20[] tokens, uint256[] amounts);
     event AllowlistAddressAdded(address indexed member);
     event AllowlistAddressRemoved(address indexed member);
+    event TokenRemoved(IERC20 indexed token);
 
     struct NewPoolParams {
         IVault vault;
@@ -193,21 +198,21 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     /**
      * @dev Returns true if the allowlist for LPs is enabled.
-     */
+     *
     function getMustAllowlistLPs() public view returns (bool) {
         return _getMiscData().decodeBool(_MUST_ALLOWLIST_LPS_OFFSET);
     }
 
     /**
      * @dev Verifies that a given address is allowed to hold tokens.
-     */
+     *
     function isAllowedAddress(address member) public view returns (bool) {
         return !getMustAllowlistLPs() || _allowedAddresses[member];
     }
 
     /**
      * @dev Returns the management swap fee percentage as a 18-decimals fixed point number.
-     */
+     *
     function getManagementSwapFeePercentage() public view returns (uint256) {
         return _managementSwapFeePercentage;
     }
@@ -215,7 +220,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     /**
      * @dev Return start time, end time, and endWeights as an array.
      * Current weights should be retrieved via `getNormalizedWeights()`.
-     */
+     *
     function getGradualWeightUpdateParams()
         external
         view
@@ -239,7 +244,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         for (uint256 i = 0; i < totalTokens; i++) {
             endWeights[i] = _tokenState[tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
         }
-    }
+    }*/
 
     function _getMaxTokens() internal pure virtual override returns (uint256) {
         return _MAX_MANAGED_TOKENS;
@@ -287,7 +292,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         _downscaleDownArray(collectedFees, _scalingFactors());
     }
 
-    function withdrawCollectedManagementFees(address recipient) external authenticate whenNotPaused nonReentrant {
+    /*function withdrawCollectedManagementFees(address recipient) external authenticate whenNotPaused nonReentrant {
         (IERC20[] memory tokens, uint256[] memory collectedFees) = getCollectedManagementFees();
 
         getVault().exitPool(
@@ -309,7 +314,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     /**
      * @dev Adds an address to the allowlist.
-     */
+     *
     function addAllowedAddress(address member) external authenticate whenNotPaused {
         _require(getMustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
         _require(!_allowedAddresses[member], Errors.ADDRESS_ALREADY_ALLOWLISTED);
@@ -320,7 +325,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     /**
      * @dev Removes an address from the allowlist.
-     */
+     *
     function removeAllowedAddress(address member) external authenticate whenNotPaused {
         _require(_allowedAddresses[member], Errors.ADDRESS_NOT_ALLOWLISTED);
 
@@ -331,10 +336,10 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     /**
      * @dev Can enable/disable the LP allowlist. Note that any addresses added to the allowlist
      * will be retained if the allowlist is toggled off and back on again.
-     */
+     *
     function setMustAllowlistLPs(bool mustAllowlistLPs) external authenticate whenNotPaused {
         _setMustAllowlistLPs(mustAllowlistLPs);
-    }
+    }*/
 
     function _setMustAllowlistLPs(bool mustAllowlistLPs) private {
         _setMiscData(_getMiscData().insertBool(mustAllowlistLPs, _MUST_ALLOWLIST_LPS_OFFSET));
@@ -353,6 +358,89 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         _setMiscData(_getMiscData().insertBool(swapEnabled, _SWAP_ENABLED_OFFSET));
 
         emit SwapEnabledSet(swapEnabled);
+    }
+
+    /**
+     * @dev Remove a token from the pool. This is a permissioned function that performs the following operations:
+     * - Verify there are enough tokens, and there is no ongoing weight change
+     * - Calculate the BPT value of the full token balance, and returns it for possible use by the caller
+     * - Exit the pool, returning the full balance of the token to the recipient
+     * - Deregister the token in the Vault (since it now has zero balance)
+     * - Reduce the total weight by the weight of the token removed, and update the number of tokens and `_tokenState`
+     *   (all other weights then scale accordingly)
+     */
+    function removeToken(uint256 tokenIndex, address recipient) external authenticate whenNotPaused returns (uint256) {
+        return _removeToken(tokenIndex, recipient);
+    }
+
+    function _removeToken(uint256 tokenIndex, address recipient) internal returns (uint256) {
+        // Calculate the BPT value of the full token balance (other values returned to avoid duplication)
+        //(uint256 bptAmountIn, uint256 minAmountOut, uint256 normalizedWeight) = getTotalBptForToken(tokenIndex);
+        // Exit the pool, returning the full balance of the token to the recipient
+        (IERC20[] memory tokens, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+        _require(tokenIndex < tokens.length, Errors.OUT_OF_BOUNDS);
+        _require(tokens.length > 2, Errors.MIN_TOKENS);
+        // Verify there is no ongoing weight change
+        _require(
+            0 == _calculateWeightChangeProgress() || FixedPoint.ONE == _calculateWeightChangeProgress(),
+            Errors.REMOVE_TOKEN_DURING_WEIGHT_CHANGE
+        );
+
+        _upscaleArray(balances, _scalingFactors());
+
+        uint256 weightOfRemovedToken = _exitWithEntireBalance(tokens, tokenIndex, balances[tokenIndex], recipient);
+
+        // Deregister the token in the Vault
+        IERC20[] memory tokensToRemove = new IERC20[](1);
+        IERC20 removedToken = tokens[tokenIndex];
+        tokensToRemove[0] = removedToken;
+        getVault().deregisterTokens(getPoolId(), tokensToRemove);
+
+        emit TokenRemoved(removedToken);
+
+        // Clean up data structures and update the token count
+        delete _tokenState[removedToken];
+        _setMiscData(_getMiscData().insertUint7(tokens.length - 1, _TOTAL_TOKENS_OFFSET));
+
+        // Decrease the total weight by the weight of the token being removed
+        _totalWeight -= weightOfRemovedToken;
+
+        // The bpt amount corresponding to the token is simply its proportional share of the totalSupply
+        return weightOfRemovedToken.mulDown(totalSupply());
+    }
+
+    // Separated to avoid stack too deep
+    function _exitWithEntireBalance(
+        IERC20[] memory tokens,
+        uint256 tokenIndex,
+        uint256 tokenAmountOut,
+        address recipient
+    ) private returns (uint256) {
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256[] memory minAmountsOut = new uint256[](tokens.length);
+        //minAmountsOut[tokenIndex] = tokenAmountOut; // causes intermittent 505
+
+        getVault().exitPool(
+            getPoolId(),
+            address(this),
+            payable(recipient),
+            IVault.ExitPoolRequest({
+                assets: _asIAsset(tokens),
+                minAmountsOut: minAmountsOut,
+                userData: abi.encode(WeightedPoolUserData.ExitKind.REMOVE_TOKEN, tokenIndex, tokenAmountOut),
+                toInternalBalance: false
+            })
+        );
+
+        return normalizedWeights[tokenIndex];
+    }
+
+    /**
+     * @dev Getter for the sum of all weights. In initially FixedPoint.ONE, it can be higher or lower
+     * as a result of adds and removes.
+     */
+    function getTotalWeight() external view returns (uint256) {
+        return _totalWeight;
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -453,7 +541,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         _revert(Errors.UNHANDLED_BY_MANAGED_POOL);
     }
 
-    function _onJoinPool(
+    /*function _onJoinPool(
         bytes32,
         address sender,
         address,
@@ -486,7 +574,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         (bptAmountOut, amountsIn) = _doJoin(balances, _getNormalizedWeights(), scalingFactors, userData);
         dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
-    }
+    }*/
 
     function _onExitPool(
         bytes32,
@@ -512,12 +600,13 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // If swaps are disabled, the only exit kind that is allowed is the proportional one (as all others involve
         // implicit swaps and alter token prices) and management fee collection (as there's no point in restricting
-        // that).
+        // that). It also allows removing a token.
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
         _require(
             getSwapEnabled() ||
                 kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT ||
-                kind == WeightedPoolUserData.ExitKind.MANAGEMENT_FEE_TOKENS_OUT,
+                kind == WeightedPoolUserData.ExitKind.MANAGEMENT_FEE_TOKENS_OUT ||
+                kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
@@ -544,6 +633,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         if (kind == WeightedPoolUserData.ExitKind.MANAGEMENT_FEE_TOKENS_OUT) {
             return _exitManagerFeeTokensOut(sender);
+        } else if (kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN) {
+            return _exitRemoveToken(sender, userData);
         } else {
             return _doExit(balances, normalizedWeights, scalingFactors, userData);
         }
@@ -571,6 +662,28 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             amountsOut[i] = _tokenCollectedManagementFees.unchecked_valueAt(i);
             _tokenCollectedManagementFees.unchecked_setAt(i, 0);
         }
+    }
+
+    function _exitRemoveToken(address sender, bytes memory userData)
+        private
+        view
+        whenNotPaused
+        returns (uint256 bptAmountIn, uint256[] memory amountsOut)
+    {
+        // This exit function is disabled if the contract is paused.
+
+        // This exit function can only be called by the Pool itself - the authorization logic that governs when that
+        // call can be made resides in withdrawCollectedManagementFees.
+        _require(sender == address(this), Errors.UNAUTHORIZED_EXIT);
+
+        // No BPT is required for the exit operation itself. The `removeToken` function calculates and returns
+        // the bptAmountIn, but leaves any further action, such as burning BPT, up to the caller.
+        bptAmountIn = 0;
+
+        (uint256 tokenIndex, uint256 amountOut) = userData.removeToken();
+
+        amountsOut = new uint256[](_getTotalTokens());
+        amountsOut[tokenIndex] = amountOut;
     }
 
     function _tokenAddressToIndex(IERC20 token) internal view override returns (uint256) {
@@ -668,10 +781,11 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         return
             (actionId == getActionId(ManagedPool.updateWeightsGradually.selector)) ||
             (actionId == getActionId(ManagedPool.setSwapEnabled.selector)) ||
-            (actionId == getActionId(ManagedPool.withdrawCollectedManagementFees.selector)) ||
-            (actionId == getActionId(ManagedPool.addAllowedAddress.selector)) ||
-            (actionId == getActionId(ManagedPool.removeAllowedAddress.selector)) ||
-            (actionId == getActionId(ManagedPool.setMustAllowlistLPs.selector)) ||
+            //(actionId == getActionId(ManagedPool.withdrawCollectedManagementFees.selector)) ||
+            //(actionId == getActionId(ManagedPool.addAllowedAddress.selector)) ||
+            //(actionId == getActionId(ManagedPool.removeAllowedAddress.selector)) ||
+            //(actionId == getActionId(ManagedPool.setMustAllowlistLPs.selector)) ||
+            (actionId == getActionId(ManagedPool.removeToken.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
 

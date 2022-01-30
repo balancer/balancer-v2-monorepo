@@ -13,6 +13,7 @@ export enum WeightedPoolExitKind {
   EXACT_BPT_IN_FOR_TOKENS_OUT,
   BPT_IN_FOR_EXACT_TOKENS_OUT,
   MANAGEMENT_FEE_TOKENS_OUT,
+  REMOVE_TOKEN,
 }
 
 export class WeightedPoolEncoder {
@@ -106,4 +107,12 @@ export class ManagedPoolEncoder {
    */
   static exitForManagementFees = (): string =>
     defaultAbiCoder.encode(['uint256'], [WeightedPoolExitKind.MANAGEMENT_FEE_TOKENS_OUT]);
+
+  /**
+   * Encodes the userData parameter for exiting a ManagedPool to remove a token.
+   * This can only be done by the pool owner.
+   */
+   static exitForRemoveToken = (tokenIndex: BigNumberish): string =>
+    defaultAbiCoder.encode(['uint256', 'uint256'], [WeightedPoolExitKind.REMOVE_TOKEN, tokenIndex]);
+ 
 }

@@ -23,7 +23,8 @@ library WeightedPoolUserData {
         EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
         EXACT_BPT_IN_FOR_TOKENS_OUT,
         BPT_IN_FOR_EXACT_TOKENS_OUT,
-        MANAGEMENT_FEE_TOKENS_OUT // for ManagedPool
+        MANAGEMENT_FEE_TOKENS_OUT, // for ManagedPool
+        REMOVE_TOKEN // for ManagedPool
     }
 
     function joinKind(bytes memory self) internal pure returns (JoinKind) {
@@ -72,5 +73,9 @@ library WeightedPoolUserData {
         returns (uint256[] memory amountsOut, uint256 maxBPTAmountIn)
     {
         (, amountsOut, maxBPTAmountIn) = abi.decode(self, (ExitKind, uint256[], uint256));
+    }
+
+    function removeToken(bytes memory self) internal pure returns (uint256 tokenIndex, uint256 amountOut) {
+        (, tokenIndex, amountOut) = abi.decode(self, (ExitKind, uint256, uint256));
     }
 }

@@ -964,4 +964,150 @@ describe('ManagedPool', function () {
       });
     });
   });
+
+  describe.only('remove token', () => {
+    let vault: Vault;
+
+    sharedBeforeEach('deploy Vault', async () => {
+      vault = await Vault.create();
+    });
+
+    context('two-token pool', () => {
+      sharedBeforeEach('deploy 2-token pool', async () => {
+        allTokens = await TokenList.create(2, { sorted: true });
+
+        const params = {
+          tokens: allTokens,
+          weights: [fp(0.5), fp(0.5)],
+          owner: owner.address,
+          poolType: WeightedPoolType.MANAGED_POOL,
+          swapEnabledOnStart: true,
+          vault,
+        };
+        pool = await WeightedPool.create(params);
+      });
+
+      it('prevents removing from a 2-token pool', async () => {
+        await expect(pool.removeToken(owner, 0, other.address)).to.be.revertedWith('MIN_TOKENS');
+      });
+    });
+
+    function itRemovesTheToken(tokenIndex: number, swapEnabled: boolean): void {
+      context('three-token pool', () => {
+        let threeTokens: TokenList;
+        const threeTokenWeights = [fp(0.5), fp(0.25), fp(0.25)];
+        // varyDecimals will result in A=18 decimals; B=17, C=16
+        const initialBalances = [fp(50), bn(40e17), bn(80e16)];
+        const tokensRemaining: string[] = [];
+        let totalSupply: BigNumber;
+
+        sharedBeforeEach('deploy vault and pool', async () => {
+          threeTokens = await TokenList.create(3, { sorted: true, varyDecimals: true });
+
+          const params = {
+            tokens: threeTokens,
+            weights: threeTokenWeights,
+            owner: owner.address,
+            poolType: WeightedPoolType.MANAGED_POOL,
+            swapEnabledOnStart: true,
+            vault,
+          };
+
+          pool = await WeightedPool.create(params);
+        });
+
+        sharedBeforeEach('initialize pool', async () => {
+          await threeTokens.mint({ to: owner, amount: fp(100) });
+          await threeTokens.approve({ from: owner, to: await pool.getVault() });
+          await pool.init({ from: owner, initialBalances });
+
+          totalSupply = await pool.totalSupply();
+        });
+
+        context('when the sender is not the owner', () => {
+          beforeEach('set sender to other', () => {
+            sender = other;
+          });
+
+          it('non-owners cannot remove tokens', async () => {
+            await expect(pool.removeToken(sender, 0, other.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
+        });
+
+        context('when the sender is the owner', () => {
+          beforeEach('set sender to owner', () => {
+            sender = owner;
+          });
+
+          it('remove rejects invalid token indices', async () => {
+            await expect(pool.removeToken(sender, 3, other.address)).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
+
+          it('rejects remove during a weight change', async () => {
+            const startTime = await currentTimestamp();
+            const endTime = startTime.add(DAY * 3);
+
+            await pool.updateWeightsGradually(sender, startTime, endTime, threeTokenWeights);
+            await advanceTime(DAY);
+
+            await expect(pool.removeToken(sender, tokenIndex, other.address)).to.be.revertedWith(
+              'REMOVE_TOKEN_DURING_WEIGHT_CHANGE'
+            );
+          });
+
+          context('tokens can be removed', () => {
+            let expectedBptAmountIn: BigNumber;
+
+            sharedBeforeEach('Sets the SwapEnabled flag', async () => {
+              if (!swapEnabled) {
+                await pool.setSwapEnabled(sender, false);
+              }
+            });
+
+            beforeEach('calculates tokensRemaining', () => {
+              for (let i = 0; i < 3; i++) {
+                if (i != tokenIndex) {
+                  tokensRemaining.push(threeTokens.get(i).address);
+                }
+              }
+
+              expectedBptAmountIn = totalSupply.mul(threeTokenWeights[tokenIndex]).div(fp(1));
+            });
+
+            it(`removes the token with index ${tokenIndex}; swap enabled: ${swapEnabled}`, async () => {
+              await pool.removeToken(sender, tokenIndex, other.address);
+
+              expect(await pool.instance.getTotalTokens()).to.equal(2);
+              const poolTokens = await pool.getTokens();
+
+              expect(poolTokens.tokens.length).to.equal(tokensRemaining.length);
+              for (const tokenAddress in poolTokens.tokens) {
+                expect(tokenAddress).to.not.equal(threeTokens.tokens[tokenIndex]);
+              }
+            });
+
+            it('removal emits an event', async () => {
+              const tx = await pool.instance.connect(sender).removeToken(tokenIndex, other.address);
+              const receipt = await tx.wait();
+
+              expectEvent.inReceipt(receipt, 'TokenRemoved', {
+                token: threeTokens.get(tokenIndex).address,
+              });
+            });
+
+            it('returns the correct BptAmount', async () => {
+              await pool.instance
+                .connect(sender)
+                .checkRemoveTokenBptAmount(tokenIndex, other.address, expectedBptAmountIn);
+            });
+          });
+        });
+      });
+    }
+
+    for (let i = 0; i < 3; i++) {
+      itRemovesTheToken(i, true);
+      itRemovesTheToken(i, false);
+    }
+  });
 });
