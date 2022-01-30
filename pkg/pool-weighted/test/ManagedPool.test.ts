@@ -999,7 +999,6 @@ describe('ManagedPool', function () {
         // varyDecimals will result in A=18 decimals; B=17, C=16
         const initialBalances = [fp(50), bn(40e17), bn(80e16)];
         const tokensRemaining: string[] = [];
-        let totalSupply: BigNumber;
 
         sharedBeforeEach('deploy vault and pool', async () => {
           threeTokens = await TokenList.create(3, { sorted: true, varyDecimals: true });
@@ -1020,8 +1019,6 @@ describe('ManagedPool', function () {
           await threeTokens.mint({ to: owner, amount: fp(100) });
           await threeTokens.approve({ from: owner, to: await pool.getVault() });
           await pool.init({ from: owner, initialBalances });
-
-          totalSupply = await pool.totalSupply();
         });
 
         context('when the sender is not the owner', () => {
@@ -1056,8 +1053,6 @@ describe('ManagedPool', function () {
           });
 
           context('tokens can be removed', () => {
-            let expectedBptAmountIn: BigNumber;
-
             sharedBeforeEach('Sets the SwapEnabled flag', async () => {
               if (!swapEnabled) {
                 await pool.setSwapEnabled(sender, false);
@@ -1070,8 +1065,6 @@ describe('ManagedPool', function () {
                   tokensRemaining.push(threeTokens.get(i).address);
                 }
               }
-
-              expectedBptAmountIn = totalSupply.mul(threeTokenWeights[tokenIndex]).div(fp(1));
             });
 
             it(`removes the token with index ${tokenIndex}; swap enabled: ${swapEnabled}`, async () => {
@@ -1096,9 +1089,7 @@ describe('ManagedPool', function () {
             });
 
             it('returns the correct BptAmount', async () => {
-              await pool.instance
-                .connect(sender)
-                .checkRemoveTokenBptAmount(tokenIndex, other.address, expectedBptAmountIn);
+              await pool.instance.connect(sender).checkRemoveTokenBptAmount(tokenIndex, other.address);
             });
           });
         });
