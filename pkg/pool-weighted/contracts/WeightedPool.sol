@@ -389,6 +389,9 @@ contract WeightedPool is BaseWeightedPool {
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights
     ) internal virtual override {
+        // After all joins and exits we store the post join/exit invariant in order to compute growth due to swap fees
+        // in the next one.
+
         // Compute the post balances by adding or removing the deltas. Note that we're allowed to mutate preBalances.
         for (uint256 i = 0; i < _totalTokens; ++i) {
             preBalances[i] = isJoin ? preBalances[i].add(balanceDeltas[i]) : preBalances[i].sub(balanceDeltas[i]);

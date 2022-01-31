@@ -130,6 +130,36 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             );
     }
 
+    /**
+     * @dev Called before any join or exit operation. Empty by default, but derived contracts may choose to add custom
+     * behavior at these steps. This often has to do with protocol fee processing.
+     */
+    function _beforeJoinExit(
+        bool isJoin,
+        uint256[] memory preBalances,
+        uint256[] memory normalizedWeights,
+        uint256 protocolSwapFeePercentage
+    ) internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    /**
+     * @dev Called before any join or exit operation (including initialization). Empty by default, but derived contracts
+     * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
+     *
+     * If isJoin is true, balanceDeltas are the amounts in, and they are the amounts out otherwise.
+     *
+     * This function is free to mutate the `preBalances` array.
+     */
+    function _afterJoinExit(
+        bool isJoin,
+        uint256[] memory preBalances,
+        uint256[] memory balanceDeltas,
+        uint256[] memory normalizedWeights
+    ) internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
     // Initialize
 
     function _onInitializePool(
@@ -149,43 +179,16 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), amountsIn.length);
         _upscaleArray(amountsIn, scalingFactors);
 
-        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(_getNormalizedWeights(), amountsIn);
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(normalizedWeights, amountsIn);
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
         // consistent in Pools with similar compositions but different number of tokens.
         uint256 bptAmountOut = Math.mul(invariantAfterJoin, _getTotalTokens());
 
+        _afterJoinExit(true, new uint256[](amountsIn.length), amountsIn, normalizedWeights);
+
         return (bptAmountOut, amountsIn);
-    }
-
-    /**
-     * @dev Called before any join or exit operation. Empty by default, but derived contracts may choose to add custom
-     * behavior at these steps. This often has to do with protocol fee processing.
-     */
-    function _beforeJoinExit(
-        bool isJoin,
-        uint256[] memory preBalances,
-        uint256[] memory normalizedWeights,
-        uint256 protocolSwapFeePercentage
-    ) internal virtual {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    /**
-     * @dev Called before any join or exit operation. Empty by default, but derived contracts may choose to add custom
-     * behavior at these steps. This often has to do with protocol fee processing.
-     *
-     * If isJoin is true, balanceDeltas are the amounts in, and they are the amounts out otherwise.
-     *
-     * This function is free to mutate the `preBalances` array.
-     */
-    function _afterJoinExit(
-        bool isJoin,
-        uint256[] memory preBalances,
-        uint256[] memory balanceDeltas,
-        uint256[] memory normalizedWeights
-    ) internal virtual {
-        // solhint-disable-previous-line no-empty-blocks
     }
 
     // Join
