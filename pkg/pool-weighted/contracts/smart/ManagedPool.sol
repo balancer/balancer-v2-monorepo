@@ -198,21 +198,21 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     /**
      * @dev Returns true if the allowlist for LPs is enabled.
-     *
+     */
     function getMustAllowlistLPs() public view returns (bool) {
         return _getMiscData().decodeBool(_MUST_ALLOWLIST_LPS_OFFSET);
     }
 
     /**
      * @dev Verifies that a given address is allowed to hold tokens.
-     *
+     */
     function isAllowedAddress(address member) public view returns (bool) {
         return !getMustAllowlistLPs() || _allowedAddresses[member];
     }
 
     /**
      * @dev Returns the management swap fee percentage as a 18-decimals fixed point number.
-     *
+     */
     function getManagementSwapFeePercentage() public view returns (uint256) {
         return _managementSwapFeePercentage;
     }
@@ -220,7 +220,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     /**
      * @dev Return start time, end time, and endWeights as an array.
      * Current weights should be retrieved via `getNormalizedWeights()`.
-     *
+     */
     function getGradualWeightUpdateParams()
         external
         view
@@ -244,7 +244,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         for (uint256 i = 0; i < totalTokens; i++) {
             endWeights[i] = _tokenState[tokens[i]].decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
         }
-    }*/
+    }
 
     function _getMaxTokens() internal pure virtual override returns (uint256) {
         return _MAX_MANAGED_TOKENS;
@@ -292,7 +292,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         _downscaleDownArray(collectedFees, _scalingFactors());
     }
 
-    /*function withdrawCollectedManagementFees(address recipient) external authenticate whenNotPaused nonReentrant {
+    function withdrawCollectedManagementFees(address recipient) external authenticate whenNotPaused nonReentrant {
         (IERC20[] memory tokens, uint256[] memory collectedFees) = getCollectedManagementFees();
 
         getVault().exitPool(
@@ -314,7 +314,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     /**
      * @dev Adds an address to the allowlist.
-     *
+     */
     function addAllowedAddress(address member) external authenticate whenNotPaused {
         _require(getMustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
         _require(!_allowedAddresses[member], Errors.ADDRESS_ALREADY_ALLOWLISTED);
@@ -325,7 +325,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     /**
      * @dev Removes an address from the allowlist.
-     *
+     */
     function removeAllowedAddress(address member) external authenticate whenNotPaused {
         _require(_allowedAddresses[member], Errors.ADDRESS_NOT_ALLOWLISTED);
 
@@ -336,10 +336,10 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     /**
      * @dev Can enable/disable the LP allowlist. Note that any addresses added to the allowlist
      * will be retained if the allowlist is toggled off and back on again.
-     *
+     */
     function setMustAllowlistLPs(bool mustAllowlistLPs) external authenticate whenNotPaused {
         _setMustAllowlistLPs(mustAllowlistLPs);
-    }*/
+    }
 
     function _setMustAllowlistLPs(bool mustAllowlistLPs) private {
         _setMiscData(_getMiscData().insertBool(mustAllowlistLPs, _MUST_ALLOWLIST_LPS_OFFSET));
@@ -541,7 +541,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         _revert(Errors.UNHANDLED_BY_MANAGED_POOL);
     }
 
-    /*function _onJoinPool(
+    function _onJoinPool(
         bytes32,
         address sender,
         address,
@@ -574,7 +574,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         (bptAmountOut, amountsIn) = _doJoin(balances, _getNormalizedWeights(), scalingFactors, userData);
         dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
-    }*/
+    }
 
     function _onExitPool(
         bytes32,
@@ -781,10 +781,10 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         return
             (actionId == getActionId(ManagedPool.updateWeightsGradually.selector)) ||
             (actionId == getActionId(ManagedPool.setSwapEnabled.selector)) ||
-            //(actionId == getActionId(ManagedPool.withdrawCollectedManagementFees.selector)) ||
-            //(actionId == getActionId(ManagedPool.addAllowedAddress.selector)) ||
-            //(actionId == getActionId(ManagedPool.removeAllowedAddress.selector)) ||
-            //(actionId == getActionId(ManagedPool.setMustAllowlistLPs.selector)) ||
+            (actionId == getActionId(ManagedPool.withdrawCollectedManagementFees.selector)) ||
+            (actionId == getActionId(ManagedPool.addAllowedAddress.selector)) ||
+            (actionId == getActionId(ManagedPool.removeAllowedAddress.selector)) ||
+            (actionId == getActionId(ManagedPool.setMustAllowlistLPs.selector)) ||
             (actionId == getActionId(ManagedPool.removeToken.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
