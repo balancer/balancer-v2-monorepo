@@ -16,11 +16,12 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./BaseWeightedPool.sol";
+import "./InvariantGrowthProtocolFees.sol";
 
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
-contract WeightedPool is BaseWeightedPool {
+contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
     using FixedPoint for uint256;
 
     uint256 private constant _MAX_TOKENS = 20;
@@ -97,12 +98,6 @@ contract WeightedPool is BaseWeightedPool {
     uint256 internal immutable _normalizedWeight17;
     uint256 internal immutable _normalizedWeight18;
     uint256 internal immutable _normalizedWeight19;
-
-    // This Pool pays protocol fees by measuring the growth of the invariant between joins and exits. Since weights are
-    // immmutable, the invariant only changes due to accumulated swap fees, which lets the Pool not perform any protocol
-    // fee associated computation or accounting during swaps, saving gas.
-    // This mechanism requires keeping track of the invariant after the last join or exit.
-    uint256 _lastPostJoinExitInvariant;
 
     constructor(
         IVault vault,
@@ -284,13 +279,6 @@ contract WeightedPool is BaseWeightedPool {
     }
 
     /**
-     * @dev Returns the value of the invariant after the last join or exit operation.
-     */
-    function getLastInvariant() external view returns (uint256) {
-        return _lastPostJoinExitInvariant;
-    }
-
-    /**
      * @dev Returns the scaling factor for one of the Pool's tokens. Reverts if `token` is not a token registered by the
      * Pool.
      */
@@ -352,35 +340,15 @@ contract WeightedPool is BaseWeightedPool {
         return scalingFactors;
     }
 
-    // Protocol fee accounting
+    // InvariantGrowthProtocolFees
 
     function _beforeJoinExit(
         bool isJoin,
         uint256[] memory preBalances,
         uint256[] memory normalizedWeights,
         uint256 protocolSwapFeePercentage
-    ) internal virtual override {
-        // Before joins and exits, we measure the growth of the invariant compared to the invariant after the last join
-        // or exit, which will have been caused by swap fees, and use it to mint BPT as protocol fees. This dillutes all
-        // LPs, which means that new LPs will join the pool debt-free, and LPs exiting will pay their due befere
-        // leaving.
-
-        // We return immediately if the fee percentage is zero (to avoid unnecessary computation), or when processing
-        // exits if the pool is paused (to avoid complex computation during emergency withdrawals).
-        if ((protocolSwapFeePercentage == 0) || (!isJoin && !_isNotPaused())) {
-            return;
-        }
-
-        uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
-
-        uint256 toMint = WeightedMath._calcDueProtocolSwapFeeBPTAmount(
-            totalSupply(),
-            _lastPostJoinExitInvariant,
-            preJoinExitInvariant,
-            protocolSwapFeePercentage
-        );
-
-        _payProtocolFees(toMint);
+    ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
+        InvariantGrowthProtocolFees._beforeJoinExit(isJoin, preBalances, normalizedWeights, protocolSwapFeePercentage);
     }
 
     function _afterJoinExit(
@@ -388,16 +356,7 @@ contract WeightedPool is BaseWeightedPool {
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights
-    ) internal virtual override {
-        // After all joins and exits we store the post join/exit invariant in order to compute growth due to swap fees
-        // in the next one.
-
-        // Compute the post balances by adding or removing the deltas. Note that we're allowed to mutate preBalances.
-        for (uint256 i = 0; i < _totalTokens; ++i) {
-            preBalances[i] = isJoin ? preBalances[i].add(balanceDeltas[i]) : preBalances[i].sub(balanceDeltas[i]);
-        }
-
-        uint256 postJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
-        _lastPostJoinExitInvariant = postJoinExitInvariant;
+    ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
+        InvariantGrowthProtocolFees._afterJoinExit(isJoin, preBalances, balanceDeltas, normalizedWeights);
     }
 }

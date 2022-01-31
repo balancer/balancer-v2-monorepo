@@ -20,10 +20,11 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/LogCompression.sol";
 import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
 
 import "../BaseWeightedPool.sol";
+import "../InvariantGrowthProtocolFees.sol";
 import "./OracleWeightedMath.sol";
 import "./OracleWeightedPoolMiscData.sol";
 
-contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeightedMath {
+contract OracleWeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees, PoolPriceOracle, OracleWeightedMath {
     using FixedPoint for uint256;
     using OracleWeightedPoolMiscData for bytes32;
 
@@ -368,9 +369,6 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeighted
         }
     }
 
-    // TODO: implement
-    function getLastInvariant() public view returns (uint256) {}
-
     function _getOracleIndex() internal view override returns (uint256) {
         return _getMiscData().oracleIndex();
     }
@@ -402,5 +400,25 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeighted
 
     function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
         return token == _token0 ? _normalizedWeight0 : _normalizedWeight1;
+    }
+
+    // InvariantGrowthProtocolFees
+
+    function _beforeJoinExit(
+        bool isJoin,
+        uint256[] memory preBalances,
+        uint256[] memory normalizedWeights,
+        uint256 protocolSwapFeePercentage
+    ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
+        InvariantGrowthProtocolFees._beforeJoinExit(isJoin, preBalances, normalizedWeights, protocolSwapFeePercentage);
+    }
+
+    function _afterJoinExit(
+        bool isJoin,
+        uint256[] memory preBalances,
+        uint256[] memory balanceDeltas,
+        uint256[] memory normalizedWeights
+    ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
+        InvariantGrowthProtocolFees._afterJoinExit(isJoin, preBalances, balanceDeltas, normalizedWeights);
     }
 }
