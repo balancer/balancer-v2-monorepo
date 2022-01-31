@@ -33,10 +33,6 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeighted
     uint256 private immutable _normalizedWeight0;
     uint256 private immutable _normalizedWeight1;
 
-    // The protocol fees will always be charged using the token associated with the max weight in the pool.
-    // Since these Pools will register tokens only once, we can assume this index will be constant.
-    uint256 private immutable _maxWeightTokenIndex;
-
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
     // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
@@ -89,8 +85,6 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeighted
 
         _normalizedWeight0 = params.normalizedWeight0;
         _normalizedWeight1 = params.normalizedWeight1;
-
-        _maxWeightTokenIndex = params.normalizedWeight0 >= params.normalizedWeight1 ? 0 : 1;
 
         _setOracleEnabled(params.oracleEnabled);
     }
