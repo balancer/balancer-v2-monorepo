@@ -59,6 +59,7 @@ describe('UnbuttonWrapping', function () {
     await ampl.approve(wampl.address, amplFP(150), { from: senderUser });
 
     await wampl.instance.connect(senderUser).deposit(amplFP(150));
+    await ampl.instance.rebase(20000);
   });
 
   sharedBeforeEach('set up relayer', async () => {
@@ -385,15 +386,18 @@ describe('UnbuttonWrapping', function () {
 
       await WETH.mint(admin, fp(20));
 
-      await ampl.mint(admin, amplFP(6000));
-      await ampl.approve(wampl, amplFP(6000), { from: admin });
-      await wampl.instance.connect(admin).mint(fp(6));
+      const wamplAmt = fp(6);
+      const amplAmt = await wampl.instance.wrapperToUnderlying(wamplAmt);
+
+      await ampl.mint(admin, amplAmt);
+      await ampl.approve(wampl, amplAmt, { from: admin });
+      await wampl.instance.connect(admin).mint(wamplAmt);
 
       await WETH.approve(vault, MAX_UINT256, { from: admin });
       await wampl.approve(vault, MAX_UINT256, { from: admin });
 
       // Seed liquidity in pool
-      await pool.init({ initialBalances: [fp(2), fp(6)], from: admin });
+      await pool.init({ initialBalances: [fp(2), wamplAmt], from: admin });
     });
 
     describe('swap', () => {
