@@ -377,7 +377,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // Calculate the BPT value of the full token balance (other values returned to avoid duplication)
         //(uint256 bptAmountIn, uint256 minAmountOut, uint256 normalizedWeight) = getTotalBptForToken(tokenIndex);
         // Exit the pool, returning the full balance of the token to the recipient
-        (IERC20[] memory tokens, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+        (IERC20[] memory tokens, uint256[] memory rawBalances, ) = getVault().getPoolTokens(getPoolId());
         _require(tokenIndex < tokens.length, Errors.OUT_OF_BOUNDS);
         _require(tokens.length > 2, Errors.MIN_TOKENS);
         // Verify there is no ongoing weight change
@@ -386,13 +386,18 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             Errors.REMOVE_TOKEN_DURING_WEIGHT_CHANGE
         );
 
-        _upscaleArray(balances, _scalingFactors());
-
-        uint256 weightOfRemovedToken = _exitWithEntireBalance(tokens, tokenIndex, balances[tokenIndex], recipient);
+        IERC20 removedToken = tokens[tokenIndex];
+        uint256 weightOfRemovedToken = _exitWithEntireBalance(
+            tokens,
+            _getNormalizedWeights(),
+            tokenIndex,
+            _scalingFactor(removedToken),
+            rawBalances[tokenIndex],
+            recipient
+        );
 
         // Deregister the token in the Vault
         IERC20[] memory tokensToRemove = new IERC20[](1);
-        IERC20 removedToken = tokens[tokenIndex];
         tokensToRemove[0] = removedToken;
         getVault().deregisterTokens(getPoolId(), tokensToRemove);
 
@@ -412,13 +417,15 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     // Separated to avoid stack too deep
     function _exitWithEntireBalance(
         IERC20[] memory tokens,
+        uint256[] memory normalizedWeights,
         uint256 tokenIndex,
-        uint256 tokenAmountOut,
+        uint256 scalingFactor,
+        uint256 unscaledTokenAmountOut,
         address recipient
     ) private returns (uint256) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
         uint256[] memory minAmountsOut = new uint256[](tokens.length);
-        //minAmountsOut[tokenIndex] = tokenAmountOut; // causes intermittent 505
+        // In the limit, compensate for BasePool downscaling of amountOut
+        minAmountsOut[tokenIndex] = _downscaleUp(unscaledTokenAmountOut, scalingFactor);
 
         getVault().exitPool(
             getPoolId(),
@@ -427,7 +434,11 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             IVault.ExitPoolRequest({
                 assets: _asIAsset(tokens),
                 minAmountsOut: minAmountsOut,
-                userData: abi.encode(WeightedPoolUserData.ExitKind.REMOVE_TOKEN, tokenIndex, tokenAmountOut),
+                userData: abi.encode(
+                    WeightedPoolUserData.ExitKind.REMOVE_TOKEN,
+                    tokenIndex,
+                    _upscale(unscaledTokenAmountOut, scalingFactor) // Upscale raw amount for Vault
+                ),
                 toInternalBalance: false
             })
         );

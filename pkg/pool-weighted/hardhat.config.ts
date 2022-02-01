@@ -17,7 +17,7 @@ export default {
   },
   networks: {
     hardhat: {
-      allowUnlimitedContractSize: true
-    }
-  }
+      allowUnlimitedContractSize: true,
+    },
+  },
 };

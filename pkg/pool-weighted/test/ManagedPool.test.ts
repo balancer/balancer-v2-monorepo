@@ -965,7 +965,7 @@ describe('ManagedPool', function () {
     });
   });
 
-  describe.only('remove token', () => {
+  describe('remove token', () => {
     let vault: Vault;
 
     sharedBeforeEach('deploy Vault', async () => {
@@ -996,8 +996,7 @@ describe('ManagedPool', function () {
       context('three-token pool', () => {
         let threeTokens: TokenList;
         const threeTokenWeights = [fp(0.5), fp(0.25), fp(0.25)];
-        // varyDecimals will result in A=18 decimals; B=17, C=16
-        const initialBalances = [fp(50), bn(40e17), bn(80e16)];
+        const initialBalances = [fp(50), fp(40), fp(80)];
         const tokensRemaining: string[] = [];
 
         sharedBeforeEach('deploy vault and pool', async () => {
