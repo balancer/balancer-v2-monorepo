@@ -990,6 +990,17 @@ describe('ManagedPool', function () {
       it('prevents removing from a 2-token pool', async () => {
         await expect(pool.removeToken(owner, 0, other.address)).to.be.revertedWith('MIN_TOKENS');
       });
+
+      it('reverts if the vault is called directly', async () => {
+        await expect(
+          vault.instance.connect(sender).exitPool(await pool.getPoolId(), sender.address, other.address, {
+            assets: allTokens.addresses,
+            minAmountsOut: new Array(allTokens.length).fill(bn(0)),
+            userData: ManagedPoolEncoder.exitForRemoveToken(fp(0), fp(100)),
+            toInternalBalance: false,
+          })
+        ).to.be.revertedWith('UNAUTHORIZED_EXIT');
+      });
     });
 
     function itRemovesTheToken(tokenIndex: number, swapEnabled: boolean): void {

@@ -24,8 +24,6 @@ import "../BaseWeightedPool.sol";
 import "../WeightedPoolUserData.sol";
 import "./WeightCompression.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @dev Weighted Pool with mutable tokens and weights, designed to be used in conjunction with a pool controller
  * contract (as the owner, containing any specific business logic). Since the pool itself permits "dangerous"

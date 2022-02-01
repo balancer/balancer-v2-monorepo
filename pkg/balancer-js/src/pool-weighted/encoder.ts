@@ -112,7 +112,9 @@ export class ManagedPoolEncoder {
    * Encodes the userData parameter for exiting a ManagedPool to remove a token.
    * This can only be done by the pool owner.
    */
-   static exitForRemoveToken = (tokenIndex: BigNumberish): string =>
-    defaultAbiCoder.encode(['uint256', 'uint256'], [WeightedPoolExitKind.REMOVE_TOKEN, tokenIndex]);
- 
+  static exitForRemoveToken = (tokenIndex: BigNumberish, tokenAmount: BigNumberish): string =>
+    defaultAbiCoder.encode(
+      ['uint256', 'uint256', 'uint256'],
+      [WeightedPoolExitKind.REMOVE_TOKEN, tokenIndex, tokenAmount]
+    );
 }
