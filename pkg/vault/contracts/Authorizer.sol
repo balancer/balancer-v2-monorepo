@@ -56,16 +56,14 @@ contract Authorizer is IAuthorizer {
     /**
      * @dev Emitted when `account` is granted `role` in an specific contract `where`.
      *
-     * `sender` is the account that originated the contract call, an admin role
-     * bearer except when using {_setupRole}.
+     * `sender` is the account that originated the contract call
      */
     event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender, address where);
 
     /**
      * @dev Emitted when `account` is granted `role` across all contracts.
      *
-     * `sender` is the account that originated the contract call, an admin role
-     * bearer except when using {_setupRole}.
+     * `sender` is the account that originated the contract call
      */
     event RoleGrantedGlobally(bytes32 indexed role, address indexed account, address indexed sender);
 
@@ -88,7 +86,7 @@ contract Authorizer is IAuthorizer {
     event RoleRevokedGlobally(bytes32 indexed role, address indexed account, address indexed sender);
 
     constructor(address admin) {
-        _setupRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRoleGlobally(DEFAULT_ADMIN_ROLE, admin);
     }
 
     function canPerform(
@@ -270,26 +268,6 @@ contract Authorizer is IAuthorizer {
     function renounceRoleGlobally(bytes32 role, address account) public virtual {
         _require(account == msg.sender, Errors.RENOUNCE_SENDER_NOT_ALLOWED);
         _revokeRoleGlobally(role, account);
-    }
-
-    /**
-     * @dev Grants `role` to `account`, globally for all contracts
-     *
-     * If `account` had not been already granted `role`, emits a {RoleGranted}
-     * event. Note that unlike {grantRole}, this function doesn't perform any
-     * checks on the calling account.
-     *
-     * [WARNING]
-     * ====
-     * This function should only be called from the constructor when setting
-     * up the initial roles for the system.
-     *
-     * Using this function in any other way is effectively circumventing the admin
-     * system imposed by {AccessControl}.
-     * ====
-     */
-    function _setupRole(bytes32 role, address account) internal virtual {
-        _grantRoleGlobally(role, account);
     }
 
     /**
