@@ -82,7 +82,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(type: WeightedPoolType): v
           it('is updated by joins', async () => {
             // We only test with a proportional join, since all joins are treated equally
             await pool.join({
-              data: WeightedPoolEncoder.joinAllTokensInForExactBPTOut(fp(1)),
+              data: WeightedPoolEncoder.joinAllTokensInForExactBPTOut((await pool.totalSupply()).div(2)),
               from: lp,
             });
 
@@ -95,7 +95,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(type: WeightedPoolType): v
             // We only test with a proportional exit, since all exits are treated equally and proportional exits remain
             // enabled while paused
             await pool.exit({
-              data: WeightedPoolEncoder.exitExactBPTInForTokensOut(fp(1)),
+              data: WeightedPoolEncoder.exitExactBPTInForTokensOut((await pool.totalSupply()).div(2)),
               from: lp,
             });
 

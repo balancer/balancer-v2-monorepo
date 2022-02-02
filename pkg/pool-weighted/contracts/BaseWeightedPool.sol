@@ -321,7 +321,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+    ) internal virtual override returns (uint256, uint256[] memory) {
         // Exits are not disabled by default while the contract is paused, as some of them remain available to allow LPs
         // to safely exit the Pool in case of an emergency. Other exit kinds are disabled on a case-by-case basis in
         // their handlers.
@@ -329,15 +329,15 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
         _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
-        (uint256 bptAmountOut, uint256[] memory amountsIn) = _doExit(
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
             balances,
             _getNormalizedWeights(),
             scalingFactors,
             userData
         );
-        _afterJoinExit(true, balances, amountsIn, normalizedWeights);
+        _afterJoinExit(false, balances, amountsOut, normalizedWeights);
 
-        return (bptAmountOut, amountsIn);
+        return (bptAmountIn, amountsOut);
     }
 
     function _doExit(
