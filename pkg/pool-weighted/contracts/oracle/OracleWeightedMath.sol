@@ -17,7 +17,11 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/LogCompression.sol";
 
-contract OracleWeightedMath {
+// These functions start with an underscore, as if they were part of a contract and not a library. At some point this
+// should be fixed.
+// solhint-disable private-vars-leading-underscore
+
+library OracleWeightedMath {
     using FixedPoint for uint256;
 
     /**
