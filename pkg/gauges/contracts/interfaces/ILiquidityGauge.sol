@@ -19,6 +19,8 @@ pragma solidity ^0.7.0;
 // solhint-disable func-name-mixedcase
 
 interface ILiquidityGauge {
+    function initialize(address lpToken) external;
+
     function integrate_fraction(address user) external view returns (uint256);
 
     function user_checkpoint(address user) external returns (bool);
