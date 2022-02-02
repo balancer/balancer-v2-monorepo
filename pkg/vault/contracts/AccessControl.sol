@@ -2,9 +2,8 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/BalancerErrors.sol";
-
-import "./EnumerableSet.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
 /**
  * @dev Contract module that allows children to implement role-based access
@@ -54,7 +53,7 @@ abstract contract AccessControl {
 
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
     address public constant GLOBAL_ROLE_ADMIN = address(0);
-    
+
     /**
      * @dev Emitted when `newAdminRole` is set as ``role``'s admin role, replacing `previousAdminRole`
      *
@@ -103,9 +102,12 @@ abstract contract AccessControl {
      * @dev Returns `true` if `account` has been granted `role` either globally
      * or in specific `where`
      */
-    function hasRole(bytes32 role, address account, address where) public view virtual returns (bool) {
-        return _roles[role].globalMembers.contains(account) || 
-            _roles[role].membersByContract[where].contains(account);
+    function hasRole(
+        bytes32 role,
+        address account,
+        address where
+    ) public view virtual returns (bool) {
+        return _roles[role].globalMembers.contains(account) || _roles[role].membersByContract[where].contains(account);
     }
 
     /**
@@ -125,7 +127,7 @@ abstract contract AccessControl {
      *
      * WARNING: When using {getRoleGlobalMember} and {getRoleGlobalMemberCount}, make sure
      * you perform all queries on the same block. See the following
-     * https://forum.openzeppelin.com/t/iterating-over-elements-on-enumerableset-in-openzeppelin-contracts/2296[forum post]
+     * https://forum.openzeppelin.com/t/iterating-over-elements-on-enumerableset-in-openzeppelin-contracts/2296
      * for more information.
      */
     function getRoleGlobalMember(bytes32 role, uint256 index) public view returns (address) {
@@ -149,10 +151,14 @@ abstract contract AccessControl {
      *
      * WARNING: When using {getRoleMemberByContract} and {getRoleMemberCountByContract}, make sure
      * you perform all queries on the same block. See the following
-     * https://forum.openzeppelin.com/t/iterating-over-elements-on-enumerableset-in-openzeppelin-contracts/2296[forum post]
+     * https://forum.openzeppelin.com/t/iterating-over-elements-on-enumerableset-in-openzeppelin-contracts/2296
      * for more information.
      */
-    function getRoleMemberByContract(bytes32 role, uint256 index, address where) public view returns (address) {
+    function getRoleMemberByContract(
+        bytes32 role,
+        uint256 index,
+        address where
+    ) public view returns (address) {
         return _roles[role].membersByContract[where].at(index);
     }
 
@@ -177,13 +183,16 @@ abstract contract AccessControl {
      * - the caller must have ``role``'s admin role.
      * - list of ``where``'s can't be empty
      */
-    function grantRole(bytes32 role, address account, address[] calldata where) public virtual {
+    function grantRole(
+        bytes32 role,
+        address account,
+        address[] calldata where
+    ) public virtual {
         _require(where.length > 0, Errors.INPUT_LENGTH_MISMATCH);
         _require(hasRole(_roles[role].adminRole, msg.sender, GLOBAL_ROLE_ADMIN), Errors.GRANT_SENDER_NOT_ADMIN);
         for (uint256 i = 0; i < where.length; i++) {
             _grantRole(role, account, where[i]);
         }
-        
     }
 
     /**
@@ -199,7 +208,6 @@ abstract contract AccessControl {
     function grantRoleGlobally(bytes32 role, address account) public virtual {
         _require(hasRole(_roles[role].adminRole, msg.sender, GLOBAL_ROLE_ADMIN), Errors.GRANT_SENDER_NOT_ADMIN);
         _grantRoleGlobally(role, account);
-        
     }
 
     /**
@@ -212,7 +220,11 @@ abstract contract AccessControl {
      * - the caller must have ``role``'s admin role.
      * - list of ``where``'s can't be empty
      */
-    function revokeRole(bytes32 role, address account, address[] calldata where) public virtual {
+    function revokeRole(
+        bytes32 role,
+        address account,
+        address[] calldata where
+    ) public virtual {
         _require(hasRole(_roles[role].adminRole, msg.sender, GLOBAL_ROLE_ADMIN), Errors.REVOKE_SENDER_NOT_ADMIN);
         _require(where.length > 0, Errors.INPUT_LENGTH_MISMATCH);
         _revokeRole(role, account, where);
@@ -247,7 +259,11 @@ abstract contract AccessControl {
      * - the caller must be `account`.
      * - list of ``where``'s can't be empty
      */
-    function renounceRole(bytes32 role, address account,address[] calldata where) public virtual {
+    function renounceRole(
+        bytes32 role,
+        address account,
+        address[] calldata where
+    ) public virtual {
         _require(account == msg.sender, Errors.RENOUNCE_SENDER_NOT_ALLOWED);
         _revokeRole(role, account, where);
     }
@@ -270,8 +286,6 @@ abstract contract AccessControl {
         _require(account == msg.sender, Errors.RENOUNCE_SENDER_NOT_ALLOWED);
         _revokeRoleGlobally(role, account);
     }
-
-    
 
     /**
      * @dev Grants `role` to `account`, globally for all contracts
@@ -303,7 +317,11 @@ abstract contract AccessControl {
         _roles[role].adminRole = adminRole;
     }
 
-    function _grantRole(bytes32 role, address account, address where) private {
+    function _grantRole(
+        bytes32 role,
+        address account,
+        address where
+    ) private {
         require(where != address(0), "Where can't be GLOBAL_ROLE_ADMIN");
         if (_roles[role].membersByContract[where].add(account)) {
             emit RoleGranted(role, account, msg.sender, where);
@@ -316,13 +334,16 @@ abstract contract AccessControl {
         }
     }
 
-    function _revokeRole(bytes32 role, address account, address[] calldata where) private {
+    function _revokeRole(
+        bytes32 role,
+        address account,
+        address[] calldata where
+    ) private {
         for (uint256 i = 0; i < where.length; i++) {
             if (_roles[role].membersByContract[where[i]].remove(account)) {
                 emit RoleRevoked(role, account, msg.sender, where[i]);
             }
         }
-        
     }
 
     function _revokeRoleGlobally(bytes32 role, address account) private {
