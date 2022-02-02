@@ -204,8 +204,6 @@ export function calculateBPTSwapFeeFeeAmount(
     .mul(growth.sub(decimal(1)))
     .div(growth);
 
-  console.log(k);
-
   const numerator = fromFp(fpBptTotalSupply).mul(k);
   const denominator = decimal(1).sub(k);
 
