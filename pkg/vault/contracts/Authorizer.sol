@@ -111,6 +111,10 @@ contract Authorizer is IAuthorizer {
         return _roles[role].globalMembers.contains(account) || _roles[role].membersByContract[where].contains(account);
     }
 
+    function isAdmin(bytes32 role, address account) public view returns (bool) {
+        return hasRole(_roles[role].adminRole, account, GLOBAL_ROLE_ADMIN);
+    }
+
     /**
      * @dev Returns the number of accounts that have `role` as global permission. Can be used
      * together with {getRoleGlobalMember} to enumerate all bearers of a role.
@@ -181,8 +185,12 @@ contract Authorizer is IAuthorizer {
         address account,
         address[] calldata where
     ) external {
+        _require(where.length > 0, Errors.INPUT_LENGTH_MISMATCH);
         for (uint256 i = 0; i < roles.length; i++) {
-            grantRole(roles[i], account, where);
+            _require(isAdmin(roles[i], msg.sender), Errors.GRANT_SENDER_NOT_ADMIN);
+            for (uint256 j = 0; j < where.length; j++) {
+                _grantRole(roles[i], account, where[j]);
+            }
         }
     }
 
@@ -191,70 +199,9 @@ contract Authorizer is IAuthorizer {
      */
     function grantRolesGlobally(bytes32[] memory roles, address account) external {
         for (uint256 i = 0; i < roles.length; i++) {
-            grantRoleGlobally(roles[i], account);
+            _require(isAdmin(roles[i], msg.sender), Errors.GRANT_SENDER_NOT_ADMIN);
+            _grantRoleGlobally(roles[i], account);
         }
-    }
-
-    /**
-     * @dev Grants roles to a list of accounts for a set of contracts.
-     */
-    function grantRolesToMany(
-        bytes32[] memory roles,
-        address[] memory accounts,
-        address[] calldata where
-    ) external {
-        InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
-        for (uint256 i = 0; i < roles.length; i++) {
-            grantRole(roles[i], accounts[i], where);
-        }
-    }
-
-    /**
-     * @dev Grants roles to a list of accounts for all contracts.
-     */
-    function grantRolesGloballyToMany(bytes32[] memory roles, address[] memory accounts) external {
-        InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
-        for (uint256 i = 0; i < roles.length; i++) {
-            grantRoleGlobally(roles[i], accounts[i]);
-        }
-    }
-
-    /**
-     * @dev Grants `role` to `account` in specific contracts.
-     *
-     * If `account` had not been already granted `role`, emits a {RoleGranted}
-     * event.
-     *
-     * Requirements:
-     *
-     * - the caller must have ``role``'s admin role.
-     * - list of ``where``'s can't be empty
-     */
-    function grantRole(
-        bytes32 role,
-        address account,
-        address[] calldata where
-    ) public virtual {
-        _require(where.length > 0, Errors.INPUT_LENGTH_MISMATCH);
-        _require(hasRole(_roles[role].adminRole, msg.sender, GLOBAL_ROLE_ADMIN), Errors.GRANT_SENDER_NOT_ADMIN);
-        for (uint256 i = 0; i < where.length; i++) {
-            _grantRole(role, account, where[i]);
-        }
-    }
-
-    /**
-     * @dev Grants `role` to `account` in across all contracts.
-     *
-     * If `account` had not been already granted `role`, emits a {RoleGranted}
-     * event.
-     *
-     * Requirements:
-     *
-     * - the caller must have ``role``'s admin role.
-     */
-    function grantRoleGlobally(bytes32 role, address account) public virtual {
-        _require(hasRole(_roles[role].adminRole, msg.sender, GLOBAL_ROLE_ADMIN), Errors.GRANT_SENDER_NOT_ADMIN);
-        _grantRoleGlobally(role, account);
     }
 
     /**
@@ -265,8 +212,10 @@ contract Authorizer is IAuthorizer {
         address account,
         address[] calldata where
     ) external {
+        _require(where.length > 0, Errors.INPUT_LENGTH_MISMATCH);
         for (uint256 i = 0; i < roles.length; i++) {
-            revokeRole(roles[i], account, where);
+            _require(isAdmin(roles[i], msg.sender), Errors.REVOKE_SENDER_NOT_ADMIN);
+            _revokeRole(roles[i], account, where);
         }
     }
 
@@ -275,66 +224,9 @@ contract Authorizer is IAuthorizer {
      */
     function revokeRolesGlobally(bytes32[] memory roles, address account) external {
         for (uint256 i = 0; i < roles.length; i++) {
-            revokeRoleGlobally(roles[i], account);
+            _require(isAdmin(roles[i], msg.sender), Errors.REVOKE_SENDER_NOT_ADMIN);
+            _revokeRoleGlobally(roles[i], account);
         }
-    }
-
-    /**
-     * @dev Revokes roles from a list of accounts across a set of contracts
-     */
-    function revokeRolesFromMany(
-        bytes32[] memory roles,
-        address[] memory accounts,
-        address[] calldata where
-    ) external {
-        InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
-        for (uint256 i = 0; i < roles.length; i++) {
-            revokeRole(roles[i], accounts[i], where);
-        }
-    }
-
-    /**
-     * @dev Revokes roles from a list of accounts.
-     */
-    function revokeRolesGloballyFromMany(bytes32[] memory roles, address[] memory accounts) external {
-        InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
-        for (uint256 i = 0; i < roles.length; i++) {
-            revokeRoleGlobally(roles[i], accounts[i]);
-        }
-    }
-
-    /**
-     * @dev Revokes `role` from `account` accross all.
-     *
-     * If `account` had already been granted `role`, emits a {RoleRevoked} event.
-     *
-     * Requirements:
-     *
-     * - the caller must have ``role``'s admin role.
-     * - list of ``where``'s can't be empty
-     */
-    function revokeRole(
-        bytes32 role,
-        address account,
-        address[] calldata where
-    ) public virtual {
-        _require(hasRole(_roles[role].adminRole, msg.sender, GLOBAL_ROLE_ADMIN), Errors.REVOKE_SENDER_NOT_ADMIN);
-        _require(where.length > 0, Errors.INPUT_LENGTH_MISMATCH);
-        _revokeRole(role, account, where);
-    }
-
-    /**
-     * @dev Revokes `role` from `account` across all contracts.
-     *
-     * If `account` had already been granted `role`, emits a {RoleRevoked} event.
-     *
-     * Requirements:
-     *
-     * - the caller must have ``role``'s admin role.
-     */
-    function revokeRoleGlobally(bytes32 role, address account) public virtual {
-        _require(hasRole(_roles[role].adminRole, msg.sender, GLOBAL_ROLE_ADMIN), Errors.REVOKE_SENDER_NOT_ADMIN);
-        _revokeRoleGlobally(role, account);
     }
 
     /**

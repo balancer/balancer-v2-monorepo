@@ -31,7 +31,7 @@ describe('Flash Loans', () => {
     feesCollector = await deployedAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
     const action = await actionId(feesCollector, 'setFlashLoanFeePercentage');
-    await authorizer.connect(admin).grantRoleGlobally(action, feeSetter.address);
+    await authorizer.connect(admin).grantRolesGlobally([action], feeSetter.address);
 
     tokens = await TokenList.create(['DAI', 'MKR'], { from: minter, sorted: true });
     await tokens.mint({ from: minter, to: vault, amount: bn(100e18) });

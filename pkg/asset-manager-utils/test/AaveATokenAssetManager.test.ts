@@ -66,7 +66,7 @@ const setup = async () => {
 
   // Authorise distributor to use users' vault token approvals
   const action = await actionId(vault.instance, 'manageUserBalance');
-  await vault.grantRoleGlobally(action, distributor);
+  await vault.grantRolesGlobally([action], distributor);
 
   await vault.setRelayerApproval(lp, distributor, true);
 
