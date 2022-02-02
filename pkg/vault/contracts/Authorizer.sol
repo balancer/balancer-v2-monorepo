@@ -228,46 +228,22 @@ contract Authorizer is IAuthorizer {
     }
 
     /**
-     * @dev Revokes `role` from the calling account, for specific contracts.
-     *
-     * Roles are often managed via {grantRole} and {revokeRole}: this function's
-     * purpose is to provide a mechanism for accounts to lose their privileges
-     * if they are compromised (such as when a trusted device is misplaced).
-     *
-     * If the calling account had been granted `role`, emits a {RoleRevoked}
-     * event.
-     *
-     * Requirements:
-     *
-     * - the caller must be `account`.
-     * - list of ``where``'s can't be empty
+     * @dev Renounces from multiple `roles` for the sender for a set of contracts.
      */
-    function renounceRole(
-        bytes32 role,
-        address account,
-        address[] calldata where
-    ) public virtual {
-        _require(account == msg.sender, Errors.RENOUNCE_SENDER_NOT_ALLOWED);
-        _revokeRole(role, account, where);
+    function renounceRoles(bytes32[] memory roles, address[] calldata where) public virtual {
+        _require(where.length > 0, Errors.INPUT_LENGTH_MISMATCH);
+        for (uint256 i = 0; i < roles.length; i++) {
+            _revokeRole(roles[i], msg.sender, where);
+        }
     }
 
     /**
-     * @dev Revokes `role` from the calling account, for all contracts.
-     *
-     * Roles are often managed via {grantRole} and {revokeRole}: this function's
-     * purpose is to provide a mechanism for accounts to lose their privileges
-     * if they are compromised (such as when a trusted device is misplaced).
-     *
-     * If the calling account had been granted `role`, emits a {RoleRevoked}
-     * event.
-     *
-     * Requirements:
-     *
-     * - the caller must be `account`.
+     * @dev Renounces from multiple `roles` for the sender for all contracts.
      */
-    function renounceRoleGlobally(bytes32 role, address account) public virtual {
-        _require(account == msg.sender, Errors.RENOUNCE_SENDER_NOT_ALLOWED);
-        _revokeRoleGlobally(role, account);
+    function renounceRolesGlobally(bytes32[] memory roles) public virtual {
+        for (uint256 i = 0; i < roles.length; i++) {
+            _revokeRoleGlobally(roles[i], msg.sender);
+        }
     }
 
     /**

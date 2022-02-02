@@ -155,4 +155,88 @@ describe('Authorizer', () => {
       });
     });
   });
+
+  describe('renounceRoles', () => {
+    context('when the sender does not have the role', () => {
+      it('ignores the request', async () => {
+        await expect(authorizer.connect(grantee).renounceRoles(ROLES, WHERE)).not.to.be.reverted;
+      });
+    });
+
+    context('when the sender has the role', () => {
+      context('when the sender has the role for a specific contract', () => {
+        sharedBeforeEach('grant permissions', async () => {
+          await authorizer.connect(admin).grantRoles(ROLES, grantee.address, WHERE);
+        });
+
+        it('revokes the requested roles', async () => {
+          await authorizer.connect(grantee).renounceRoles(ROLES, WHERE);
+
+          for (const role of ROLES) {
+            for (const where of WHERE) {
+              expect(await authorizer.canPerform(role, grantee.address, where)).to.be.false;
+            }
+          }
+        });
+      });
+
+      context('when the sender has the role globally', () => {
+        sharedBeforeEach('grant permissions', async () => {
+          await authorizer.connect(admin).grantRolesGlobally(ROLES, grantee.address);
+        });
+
+        it('does not revoke the role', async () => {
+          await authorizer.connect(grantee).renounceRoles(ROLES, WHERE);
+
+          for (const role of ROLES) {
+            for (const where of WHERE) {
+              expect(await authorizer.canPerform(role, grantee.address, where)).to.be.true;
+            }
+          }
+        });
+      });
+    });
+  });
+
+  describe('renounceRolesGlobally', () => {
+    context('when the sender does not have the role', () => {
+      it('ignores the request', async () => {
+        await expect(authorizer.connect(grantee).renounceRolesGlobally(ROLES)).not.to.be.reverted;
+      });
+    });
+
+    context('when the sender has the role', () => {
+      context('when the sender has the role for a specific contract', () => {
+        sharedBeforeEach('grant permissions', async () => {
+          await authorizer.connect(admin).grantRoles(ROLES, grantee.address, WHERE);
+        });
+
+        it('does not revoke the requested roles', async () => {
+          await authorizer.connect(grantee).renounceRolesGlobally(ROLES);
+
+          for (const role of ROLES) {
+            for (const where of WHERE) {
+              expect(await authorizer.canPerform(role, grantee.address, where)).to.be.true;
+            }
+          }
+        });
+      });
+
+      context('when the sender has the role globally', () => {
+        sharedBeforeEach('grant permissions', async () => {
+          await authorizer.connect(admin).grantRolesGlobally(ROLES, grantee.address);
+        });
+
+        it('revokes the requested roles', async () => {
+          await authorizer.connect(grantee).renounceRolesGlobally(ROLES);
+
+          for (const role of ROLES) {
+            for (const where of WHERE) {
+              expect(await authorizer.canPerform(role, grantee.address, where)).to.be.false;
+            }
+          }
+        });
+      });
+    });
+  });
 });
