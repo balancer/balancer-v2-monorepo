@@ -230,7 +230,12 @@ export default class WeightedPool {
 
   async estimateSpotPrice(currentBalances?: BigNumberish[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
-    return calculateSpotPrice(currentBalances, this.weights);
+
+    const scalingFactors = await this.getScalingFactors();
+    return calculateSpotPrice(
+      currentBalances.map((x, i) => bn(x).mul(scalingFactors[i]).div(FP_SCALING_FACTOR)),
+      this.weights
+    );
   }
 
   async estimateBptPrice(
@@ -240,7 +245,14 @@ export default class WeightedPool {
   ): Promise<BigNumber> {
     if (!currentBalance) currentBalance = (await this.getBalances())[tokenIndex];
     if (!currentSupply) currentSupply = await this.totalSupply();
-    return calculateBPTPrice(currentBalance, this.weights[tokenIndex], currentSupply);
+
+    const scalingFactors = await this.getScalingFactors();
+
+    return calculateBPTPrice(
+      bn(currentBalance).mul(scalingFactors[tokenIndex]).div(FP_SCALING_FACTOR),
+      this.weights[tokenIndex],
+      currentSupply
+    );
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
