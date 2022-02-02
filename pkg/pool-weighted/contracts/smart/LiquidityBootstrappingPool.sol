@@ -19,8 +19,10 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
+import "../lib/WeightChange.sol";
+import "../lib/WeightCompression.sol";
+
 import "../BaseWeightedPool.sol";
-import "./WeightCompression.sol";
 
 /**
  * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping.
@@ -216,10 +218,10 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
         uint256 startWeight = poolState.decodeUint31(_START_WEIGHT_OFFSET + i * 31).uncompress31();
         uint256 endWeight = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).uncompress16();
-
-        uint256 pctProgress = _calculateWeightChangeProgress(poolState);
-
-        return _interpolateWeight(startWeight, endWeight, pctProgress);
+        uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
+        uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+        
+        return WeightChange.getNormalizedWeight(startWeight, endWeight, startTime, endTime);
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory) {
@@ -346,29 +348,6 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     // Private functions
 
     /**
-     * @dev Returns a fixed-point number representing how far along the current weight change is, where 0 means the
-     * change has not yet started, and FixedPoint.ONE means it has fully completed.
-     */
-    function _calculateWeightChangeProgress(bytes32 poolState) private view returns (uint256) {
-        uint256 currentTime = block.timestamp;
-        uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
-        uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
-
-        if (currentTime > endTime) {
-            return FixedPoint.ONE;
-        } else if (currentTime < startTime) {
-            return 0;
-        }
-
-        // No need for SafeMath as it was checked right above: endTime >= currentTime >= startTime
-        uint256 totalSeconds = endTime - startTime;
-        uint256 secondsElapsed = currentTime - startTime;
-
-        // In the degenerate case of a zero duration change, consider it completed (and avoid division by zero)
-        return totalSeconds == 0 ? FixedPoint.ONE : secondsElapsed.divDown(totalSeconds);
-    }
-
-    /**
      * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
      * if necessary.
      */
@@ -397,23 +376,6 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         _poolState = newPoolState.insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET);
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
-    }
-
-    function _interpolateWeight(
-        uint256 startWeight,
-        uint256 endWeight,
-        uint256 pctProgress
-    ) private pure returns (uint256) {
-        if (pctProgress == 0 || startWeight == endWeight) return startWeight;
-        if (pctProgress >= FixedPoint.ONE) return endWeight;
-
-        if (startWeight > endWeight) {
-            uint256 weightDelta = pctProgress.mulDown(startWeight - endWeight);
-            return startWeight.sub(weightDelta);
-        } else {
-            uint256 weightDelta = pctProgress.mulDown(endWeight - startWeight);
-            return startWeight.add(weightDelta);
-        }
     }
 
     function _setSwapEnabled(bool swapEnabled) private {
