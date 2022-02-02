@@ -34,7 +34,6 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
     }
 
     function _beforeJoinExit(
-        bool isJoin,
         uint256[] memory preBalances,
         uint256[] memory normalizedWeights,
         uint256 protocolSwapFeePercentage
@@ -44,9 +43,9 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
         // LPs, which means that new LPs will join the pool debt-free, and LPs exiting will pay their due befere
         // leaving.
 
-        // We return immediately if the fee percentage is zero (to avoid unnecessary computation), or when processing
-        // exits if the pool is paused (to avoid complex computation during emergency withdrawals).
-        if ((protocolSwapFeePercentage == 0) || (!isJoin && !_isNotPaused())) {
+        // We return immediately if the fee percentage is zero (to avoid unnecessary computation), or when the pool is
+        // paused (to avoid complex computation during emergency withdrawals).
+        if ((protocolSwapFeePercentage == 0) || !_isNotPaused()) {
             return;
         }
 

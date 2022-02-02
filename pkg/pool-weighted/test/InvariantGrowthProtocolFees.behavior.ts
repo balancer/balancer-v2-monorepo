@@ -2,10 +2,11 @@ import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
+import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
 import { range } from 'lodash';
 
@@ -18,27 +19,31 @@ export function itPaysProtocolFeesFromInvariantGrowth(type: WeightedPoolType): v
 
   let pool: WeightedPool;
   let tokens: TokenList;
+  let protocolFeesCollector: string;
 
   let lp: SignerWithAddress;
 
-  before('setup', async () => {
-    [, lp] = await ethers.getSigners();
-  });
-
-  sharedBeforeEach(async () => {
-    tokens = await TokenList.create(numTokens, { sorted: true, varyDecimals: true });
-
-    pool = await WeightedPool.create({
-      poolType: WeightedPoolType.WEIGHTED_POOL,
-      tokens,
-      weights: WEIGHTS.slice(0, numTokens),
-      swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-    });
-  });
-
   describe('invariant growth protocol fees', () => {
+    before('setup', async () => {
+      [, lp] = await ethers.getSigners();
+    });
+
+    sharedBeforeEach(async () => {
+      tokens = await TokenList.create(numTokens, { sorted: true, varyDecimals: true });
+
+      pool = await WeightedPool.create({
+        poolType: WeightedPoolType.WEIGHTED_POOL,
+        tokens,
+        weights: WEIGHTS.slice(0, numTokens),
+        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+      });
+
+      ({ address: protocolFeesCollector } = await pool.vault.getFeesCollector());
+    });
+
     const protocolFeePercentage = fp(0.3); // 30 %
     const initialBalances = range(1, numTokens + 1).map(fp);
+    const initialBalanceGrowth = bn(3);
 
     describe('last post join/exit invariant', () => {
       it('is set on initialization', async () => {
@@ -54,7 +59,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(type: WeightedPoolType): v
         sharedBeforeEach('accumulate fees by increasing balance', async () => {
           await pool.vault.updateBalances(
             pool.poolId,
-            initialBalances.map((x) => x.mul(2))
+            initialBalances.map((x) => x.mul(initialBalanceGrowth))
           );
         });
 
@@ -100,90 +105,65 @@ export function itPaysProtocolFeesFromInvariantGrowth(type: WeightedPoolType): v
       });
     });
 
-    function itPaysProtocolFees() {}
+    describe('protocol fees', () => {
+      async function protocolFeesPaid(): Promise<BigNumber> {
+        const previousProtocolFeeCollectorBalance = await pool.balanceOf(protocolFeesCollector);
 
-    function itDoesNotPayProtocolFees() {}
+        // We trigger protocol fee payment by executing a proportional exit (which works even while paused) for 0 BPT
+        await pool.exit({
+          data: WeightedPoolEncoder.exitExactBPTInForTokensOut(fp(0)),
+          protocolFeePercentage,
+        });
 
-    describe('joins and exits', () => {
-      describe('proportional', () => {
-        itDoesNotPayProtocolFees();
-      });
+        const currentProtocolFeeCollectorBalance = await pool.balanceOf(protocolFeesCollector);
+        return currentProtocolFeeCollectorBalance.sub(previousProtocolFeeCollectorBalance);
+      }
 
-      describe('single token', () => {
-        itDoesNotPayProtocolFees();
+      context('once initialized and with accumulated fees', () => {
+        sharedBeforeEach('initialize pool', async () => {
+          await pool.init({ initialBalances, recipient: lp });
+        });
+
+        sharedBeforeEach('accumulate fees by increasing balance', async () => {
+          await pool.vault.updateBalances(
+            pool.poolId,
+            initialBalances.map((x) => x.mul(initialBalanceGrowth))
+          );
+        });
+
+        context('when not paused', () => {
+          it('pays protocol fees', async () => {
+            const fees = await protocolFeesPaid();
+            const totalBPT = await pool.totalSupply();
+
+            // Balances increased by initialBalanceGrowth, and protocol was due protocolFeePercentage of that. It should
+            // therefore have been paid (initialBalanceGrowth - 1) * protocolFeePercentage / initialBalanceGrowth of the
+            // total BPT.
+
+            const bptOwnership = fees.mul(FP_SCALING_FACTOR).div(totalBPT);
+            const expectedOwnership = initialBalanceGrowth.sub(1).mul(protocolFeePercentage).div(initialBalanceGrowth);
+
+            await expectEqualWithError(bptOwnership, expectedOwnership);
+          });
+
+          it('does not pay fees again until more are accumulated', async () => {
+            await protocolFeesPaid();
+
+            const secondPayment = await protocolFeesPaid();
+            expect(secondPayment).to.equal(0);
+          });
+        });
+
+        context('when paused', () => {
+          sharedBeforeEach(async () => {
+            await pool.pause();
+          });
+
+          it('does not pay protocol fees', async () => {
+            expect(await protocolFeesPaid()).to.equal(0);
+          });
+        });
       });
     });
-
-    describe('swaps', () => {
-      context('when paused', () => {});
-
-      context('when not paused', () => {});
-    });
-
-    // context('with previous swap', () => {
-    //   let currentBalances: BigNumber[], expectedDueProtocolFeeAmounts: BigNumber[];
-
-    //   sharedBeforeEach('simulate doubled initial balances ', async () => {
-    //     // 4/3 of the initial balances
-    //     currentBalances = initialBalances.map((balance) => balance.mul(4).div(3));
-    //   });
-
-    //   sharedBeforeEach('compute expected due protocol fees', async () => {
-    //     const paidTokenIndex = pool.weights.indexOf(pool.maxWeight);
-    //     const protocolFeeAmount = await pool.estimateSwapFeeAmount(
-    //       paidTokenIndex,
-    //       protocolFeePercentage,
-    //       currentBalances
-    //     );
-    //     expectedDueProtocolFeeAmounts = ZEROS.map((n, i) => (i === paidTokenIndex ? protocolFeeAmount : n));
-    //   });
-
-    //   it('pays swap protocol fees on join exact tokens in for BPT out', async () => {
-    //     const result = await pool.joinGivenIn({ from: lp, amountsIn: fp(1), currentBalances, protocolFeePercentage });
-
-    //     expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
-    //   });
-
-    //   it('pays swap protocol fees on exit exact BPT in for one token out', async () => {
-    //     const result = await pool.singleExitGivenIn({
-    //       from: lp,
-    //       bptIn: fp(0.5),
-    //       token: 0,
-    //       currentBalances,
-    //       protocolFeePercentage,
-    //     });
-
-    //     expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
-    //   });
-
-    //   it('pays swap protocol fees on exit exact BPT in for all tokens out', async () => {
-    //     const result = await pool.multiExitGivenIn({
-    //       from: lp,
-    //       bptIn: fp(1),
-    //       currentBalances,
-    //       protocolFeePercentage,
-    //     });
-
-    //     expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
-    //   });
-
-    //   it('pays swap protocol fees on exit BPT In for exact tokens out', async () => {
-    //     const result = await pool.exitGivenOut({
-    //       from: lp,
-    //       amountsOut: fp(1),
-    //       currentBalances,
-    //       protocolFeePercentage,
-    //     });
-
-    //     expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
-    //   });
-
-    //   it('does not charges fee on exit if paused', async () => {
-    //     await pool.pause();
-
-    //     const exitResult = await pool.multiExitGivenIn({ from: lp, bptIn: fp(0.5), protocolFeePercentage });
-    //     expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
-    //   });
-    // });
   });
 }

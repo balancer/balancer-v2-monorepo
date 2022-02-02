@@ -135,7 +135,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * behavior at these steps. This often has to do with protocol fee processing.
      */
     function _beforeJoinExit(
-        bool isJoin,
         uint256[] memory preBalances,
         uint256[] memory normalizedWeights,
         uint256 protocolSwapFeePercentage
@@ -207,7 +206,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        _beforeJoinExit(true, balances, normalizedWeights, protocolSwapFeePercentage);
+        _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
             balances,
             _getNormalizedWeights(),
@@ -329,7 +328,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        _beforeJoinExit(true, balances, normalizedWeights, protocolSwapFeePercentage);
+        _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doExit(
             balances,
             _getNormalizedWeights(),
