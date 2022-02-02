@@ -1,7 +1,7 @@
 import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
 
 import { actionId } from '../../misc/actions';
-import { BigNumberish, bn, fp } from '../../../numbers';
+import { BigNumberish, bn, fp, FP_SCALING_FACTOR } from '../../../numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../constants';
 
 import * as expectEvent from '../../../test/expectEvent';
@@ -245,7 +245,12 @@ export default class WeightedPool {
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
-    return calculateInvariant(currentBalances, this.weights);
+    const scalingFactors = await this.getScalingFactors();
+
+    return calculateInvariant(
+      currentBalances.map((x, i) => bn(x).mul(scalingFactors[i]).div(FP_SCALING_FACTOR)),
+      this.weights
+    );
   }
 
   async estimateSwapFeeAmount(
