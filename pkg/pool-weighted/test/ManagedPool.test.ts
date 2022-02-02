@@ -319,10 +319,6 @@ describe('ManagedPool', function () {
         expect(endWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
       });
 
-      it('reverts when querying last invariant', async () => {
-        await expect(pool.getLastInvariant()).to.be.revertedWith('UNHANDLED_BY_MANAGED_POOL');
-      });
-
       it('reverts if swap hook caller is not the vault', async () => {
         await expect(
           pool.instance.onSwap(
