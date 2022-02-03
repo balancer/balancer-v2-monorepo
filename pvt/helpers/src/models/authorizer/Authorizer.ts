@@ -1,12 +1,15 @@
 import { Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { Account, NAry, TxParams } from '../types/types';
+import { ANY_ADDRESS } from '../../constants';
 import { AuthorizerDeployment } from './types';
+import { Account, NAry, TxParams } from '../types/types';
 
 import AuthorizerDeployer from './AuthorizerDeployer';
 
 export default class Authorizer {
+  static ANYWHERE = ANY_ADDRESS;
+
   instance: Contract;
   admin: SignerWithAddress;
 
@@ -32,7 +35,7 @@ export default class Authorizer {
     wheres: Account[],
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).grantRoles(actions, this.toAddress(account), this.toAddresses(wheres));
+    return this.with(params).grantPermissions(actions, this.toAddress(account), this.toAddresses(wheres));
   }
 
   async revokePermissions(
@@ -41,23 +44,23 @@ export default class Authorizer {
     wheres: Account[],
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).revokeRoles(actions, this.toAddress(account), this.toAddresses(wheres));
+    return this.with(params).revokePermissions(actions, this.toAddress(account), this.toAddresses(wheres));
   }
 
   async renouncePermissions(actions: string[], wheres: Account[], params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).renounceRoles(actions, this.toAddresses(wheres));
+    return this.with(params).renouncePermissions(actions, this.toAddresses(wheres));
   }
 
   async grantPermissionsGlobally(actions: string[], account: Account, params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).grantRolesGlobally(actions, this.toAddress(account));
+    return this.with(params).grantPermissions(actions, this.toAddress(account), [Authorizer.ANYWHERE]);
   }
 
   async revokePermissionsGlobally(actions: string[], account: Account, param?: TxParams): Promise<ContractTransaction> {
-    return this.with(param).revokeRolesGlobally(actions, this.toAddress(account));
+    return this.with(param).revokePermissions(actions, this.toAddress(account), [Authorizer.ANYWHERE]);
   }
 
   async renouncePermissionsGlobally(actions: string[], params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).renounceRolesGlobally(actions);
+    return this.with(params).renouncePermissions(actions, [Authorizer.ANYWHERE]);
   }
 
   with(params: TxParams = {}): Contract {

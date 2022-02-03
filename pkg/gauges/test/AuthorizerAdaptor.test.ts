@@ -7,6 +7,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { defaultAbiCoder } from 'ethers/lib/utils';
+import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('AuthorizerAdaptor', () => {
   let vault: Vault;
@@ -36,7 +37,7 @@ describe('AuthorizerAdaptor', () => {
 
     it('tracks authorizer changes in the vault', async () => {
       const action = await actionId(vault.instance, 'setAuthorizer');
-      await authorizer.connect(admin).grantRolesGlobally([action], admin.address);
+      await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
 
       await vault.instance.connect(admin).setAuthorizer(other.address);
 
@@ -61,7 +62,7 @@ describe('AuthorizerAdaptor', () => {
 
     context('when caller is authorized globally', () => {
       sharedBeforeEach('authorize caller globally', async () => {
-        await authorizer.connect(admin).grantRolesGlobally([action], grantee.address);
+        await authorizer.connect(admin).grantPermissions([action], grantee.address, [ANY_ADDRESS]);
       });
 
       it('performs the expected function call', async () => {

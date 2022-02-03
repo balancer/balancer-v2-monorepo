@@ -14,9 +14,9 @@ describe('Authorizer', () => {
     [, admin, grantee] = await ethers.getSigners();
   });
 
-  const ROLE_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
-  const ROLE_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
-  const ACTIONS = [ROLE_1, ROLE_2];
+  const ACTION_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
+  const ACTION_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
+  const ACTIONS = [ACTION_1, ACTION_2];
 
   const ANYWHERE = ZERO_ADDRESS;
   const WHERE = [ethers.Wallet.createRandom().address, ethers.Wallet.createRandom().address];
@@ -26,7 +26,7 @@ describe('Authorizer', () => {
     authorizer = await Authorizer.create({ admin });
   });
 
-  describe('grantRoles', () => {
+  describe('grantPermissions', () => {
     context('when the sender is the admin', () => {
       beforeEach('set sender', async () => {
         from = admin;
@@ -55,11 +55,10 @@ describe('Authorizer', () => {
           const receipt = await (await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from })).wait();
 
           for (const [action, where] of authorizer.permissionsFor(ACTIONS, WHERE)) {
-            expectEvent.inReceipt(receipt, 'RoleGranted', {
-              role: action,
+            expectEvent.inReceipt(receipt, 'PermissionGranted', {
+              action,
               account: grantee.address,
-              where: where,
-              sender: admin.address,
+              where,
             });
           }
         });
@@ -91,7 +90,7 @@ describe('Authorizer', () => {
 
           it('does not emit an event', async () => {
             const tx = await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
-            expectEvent.notEmitted(await tx.wait(), 'RoleGranted');
+            expectEvent.notEmitted(await tx.wait(), 'PermissionGranted');
           });
         });
 
@@ -122,11 +121,10 @@ describe('Authorizer', () => {
             const receipt = await (await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from })).wait();
 
             for (const [action, where] of authorizer.permissionsFor(ACTIONS, WHERE)) {
-              expectEvent.inReceipt(receipt, 'RoleGranted', {
-                role: action,
+              expectEvent.inReceipt(receipt, 'PermissionGranted', {
+                action,
                 account: grantee.address,
-                where: where,
-                sender: admin.address,
+                where,
               });
             }
           });
@@ -141,13 +139,13 @@ describe('Authorizer', () => {
 
       it('reverts', async () => {
         await expect(authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from })).to.be.revertedWith(
-          'GRANT_SENDER_NOT_ADMIN'
+          'SENDER_NOT_ALLOWED'
         );
       });
     });
   });
 
-  describe('grantRolesGlobally', () => {
+  describe('grantPermissionsGlobally', () => {
     context('when the sender is the admin', () => {
       beforeEach('set sender', async () => {
         from = admin;
@@ -170,10 +168,10 @@ describe('Authorizer', () => {
           const receipt = await (await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from })).wait();
 
           for (const action of ACTIONS) {
-            expectEvent.inReceipt(receipt, 'RoleGrantedGlobally', {
-              role: action,
+            expectEvent.inReceipt(receipt, 'PermissionGranted', {
+              action,
               account: grantee.address,
-              sender: admin.address,
+              where: Authorizer.ANYWHERE,
             });
           }
         });
@@ -201,10 +199,10 @@ describe('Authorizer', () => {
             const receipt = await (await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from })).wait();
 
             for (const action of ACTIONS) {
-              expectEvent.inReceipt(receipt, 'RoleGrantedGlobally', {
-                role: action,
+              expectEvent.inReceipt(receipt, 'PermissionGranted', {
+                action,
                 account: grantee.address,
-                sender: admin.address,
+                where: Authorizer.ANYWHERE,
               });
             }
           });
@@ -229,7 +227,7 @@ describe('Authorizer', () => {
 
           it('does not emit an event', async () => {
             const tx = await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from });
-            expectEvent.notEmitted(await tx.wait(), 'RoleGrantedGlobally');
+            expectEvent.notEmitted(await tx.wait(), 'PermissionGrantedGlobally');
           });
         });
       });
@@ -241,14 +239,12 @@ describe('Authorizer', () => {
       });
 
       it('reverts', async () => {
-        await expect(authorizer.grantPermissionsGlobally(ACTIONS, grantee)).to.be.revertedWith(
-          'GRANT_SENDER_NOT_ADMIN'
-        );
+        await expect(authorizer.grantPermissionsGlobally(ACTIONS, grantee)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
   });
 
-  describe('revokeRoles', () => {
+  describe('revokePermissions', () => {
     context('when the sender is the admin', () => {
       beforeEach('set sender', async () => {
         from = admin;
@@ -269,7 +265,7 @@ describe('Authorizer', () => {
 
         it('does not emit an event', async () => {
           const tx = await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
-          expectEvent.notEmitted(await tx.wait(), 'RoleRevoked');
+          expectEvent.notEmitted(await tx.wait(), 'PermissionRevoked');
         });
       });
 
@@ -295,11 +291,10 @@ describe('Authorizer', () => {
             const receipt = await (await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from })).wait();
 
             for (const [action, where] of authorizer.permissionsFor(ACTIONS, WHERE)) {
-              expectEvent.inReceipt(receipt, 'RoleRevoked', {
-                role: action,
+              expectEvent.inReceipt(receipt, 'PermissionRevoked', {
+                action,
                 account: grantee.address,
-                where: where,
-                sender: admin.address,
+                where,
               });
             }
           });
@@ -324,7 +319,7 @@ describe('Authorizer', () => {
 
           it('does not emit an event', async () => {
             const tx = await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
-            expectEvent.notEmitted(await tx.wait(), 'RoleRevoked');
+            expectEvent.notEmitted(await tx.wait(), 'PermissionRevoked');
           });
         });
       });
@@ -337,13 +332,13 @@ describe('Authorizer', () => {
 
       it('reverts', async () => {
         await expect(authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from })).to.be.revertedWith(
-          'REVOKE_SENDER_NOT_ADMIN'
+          'SENDER_NOT_ALLOWED'
         );
       });
     });
   });
 
-  describe('revokeRolesGlobally', () => {
+  describe('revokePermissionsGlobally', () => {
     context('when the sender is the admin', () => {
       beforeEach('set sender', async () => {
         from = admin;
@@ -364,7 +359,7 @@ describe('Authorizer', () => {
 
         it('does not emit an event', async () => {
           const tx = await authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from });
-          expectEvent.notEmitted(await tx.wait(), 'RoleRevokedGlobally');
+          expectEvent.notEmitted(await tx.wait(), 'PermissionRevokedGlobally');
         });
       });
 
@@ -388,7 +383,7 @@ describe('Authorizer', () => {
 
           it('does not emit an event', async () => {
             const tx = await authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from });
-            expectEvent.notEmitted(await tx.wait(), 'RoleRevokedGlobally');
+            expectEvent.notEmitted(await tx.wait(), 'PermissionRevokedGlobally');
           });
         });
 
@@ -413,10 +408,10 @@ describe('Authorizer', () => {
             const receipt = await (await authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from })).wait();
 
             for (const action of ACTIONS) {
-              expectEvent.inReceipt(receipt, 'RoleRevokedGlobally', {
-                role: action,
+              expectEvent.inReceipt(receipt, 'PermissionRevoked', {
+                action,
                 account: grantee.address,
-                sender: admin.address,
+                where: Authorizer.ANYWHERE,
               });
             }
           });
@@ -431,13 +426,13 @@ describe('Authorizer', () => {
 
       it('reverts', async () => {
         await expect(authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from })).to.be.revertedWith(
-          'REVOKE_SENDER_NOT_ADMIN'
+          'SENDER_NOT_ALLOWED'
         );
       });
     });
   });
 
-  describe('renounceRoles', () => {
+  describe('renouncePermissions', () => {
     beforeEach('set sender', async () => {
       from = grantee;
     });
@@ -495,7 +490,7 @@ describe('Authorizer', () => {
     });
   });
 
-  describe('renounceRolesGlobally', () => {
+  describe('renouncePermissionsGlobally', () => {
     beforeEach('set sender', async () => {
       from = grantee;
     });

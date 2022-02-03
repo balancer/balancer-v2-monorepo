@@ -10,7 +10,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { getPoolAddress, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { BigNumber, Contract } from 'ethers';
@@ -70,7 +70,7 @@ describe('VaultActions', function () {
       )
     );
     const authorizer = await deployedAt('v2-vault/Authorizer', await vault.instance.getAuthorizer());
-    await authorizer.connect(admin).grantRolesGlobally(relayerActionIds, relayer.address);
+    await authorizer.connect(admin).grantPermissions(relayerActionIds, relayer.address, [ANY_ADDRESS]);
 
     // Approve relayer by sender
     await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
