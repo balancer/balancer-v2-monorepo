@@ -89,28 +89,24 @@ contract Authorizer is IAuthorizer {
         _grantRoleGlobally(DEFAULT_ADMIN_ROLE, admin);
     }
 
+    /**
+     * @dev Returns `true` if `account` has permission for `actionId` either globally or in specific `where`
+     */
     function canPerform(
         bytes32 actionId,
         address account,
         address where
     ) public view override returns (bool) {
-        return hasRole(actionId, account, where);
+        return
+            _roles[actionId].globalMembers.contains(account) ||
+            _roles[actionId].membersByContract[where].contains(account);
     }
 
     /**
-     * @dev Returns `true` if `account` has been granted `role` either globally
-     * or in specific `where`
+     * @dev Returns `true` if `account` has been granted admin role for `role`
      */
-    function hasRole(
-        bytes32 role,
-        address account,
-        address where
-    ) public view virtual returns (bool) {
-        return _roles[role].globalMembers.contains(account) || _roles[role].membersByContract[where].contains(account);
-    }
-
     function isAdmin(bytes32 role, address account) public view returns (bool) {
-        return hasRole(_roles[role].adminRole, account, GLOBAL_ROLE_ADMIN);
+        return canPerform(_roles[role].adminRole, account, GLOBAL_ROLE_ADMIN);
     }
 
     /**
