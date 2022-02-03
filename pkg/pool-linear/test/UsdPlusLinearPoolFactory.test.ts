@@ -33,7 +33,7 @@ describe('UsdPlusLinearPoolFactory', function () {
     const [deployer] = await ethers.getSigners();
 
     vault = await Vault.create();
-    factory = await deploy('UsdPlusLinearPoolFactory', { args: [vault.address] });
+    factory = await deploy('ERC4626LinearPoolFactory', { args: [vault.address] });
     creationTime = await currentTimestamp();
 
     mainToken = await Token.create('USD+');

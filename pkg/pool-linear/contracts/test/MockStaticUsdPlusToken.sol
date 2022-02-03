@@ -16,9 +16,9 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-standalone-utils/contracts/test/TestToken.sol";
 
-import "../interfaces/IStaticUsdPlusToken.sol";
+import "../interfaces/IERC4626.sol";
 
-contract MockStaticUsdPlusToken is TestToken, IStaticUsdPlusToken {
+contract MockStaticUsdPlusToken is TestToken, IERC4626 {
     uint256 private _rate = 1e27;
     address private immutable _mainToken;
 

@@ -15,12 +15,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IStaticUsdPlusToken.sol";
+import "../interfaces/IERC4626.sol";
 
 import "../LinearPool.sol";
 
-contract UsdPlusLinearPool is LinearPool {
-    IStaticUsdPlusToken private immutable _wrappedToken;
+contract ERC4626LinearPool is LinearPool {
+    IERC4626 private immutable _wrappedToken;
 
     constructor(
         IVault vault,
@@ -47,8 +47,8 @@ contract UsdPlusLinearPool is LinearPool {
             owner
         )
     {
-        _require(address(mainToken) == IStaticUsdPlusToken(address(wrappedToken)).underlying(), Errors.TOKENS_MISMATCH);
-        _wrappedToken = IStaticUsdPlusToken(address(wrappedToken));
+        _require(address(mainToken) == IERC4626(address(wrappedToken)).underlying(), Errors.TOKENS_MISMATCH);
+        _wrappedToken = IERC4626(address(wrappedToken));
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {

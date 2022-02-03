@@ -42,7 +42,7 @@ describe('UsdPlusLinearPool', function () {
 
   sharedBeforeEach('deploy pool factory', async () => {
     const vault = await Vault.create();
-    poolFactory = await deploy('UsdPlusLinearPoolFactory', {
+    poolFactory = await deploy('ERC4626LinearPoolFactory', {
       args: [vault.address],
     });
   });

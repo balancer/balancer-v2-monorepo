@@ -15,17 +15,17 @@
 pragma solidity ^0.7.0;
 
 
-interface IStaticUsdPlusToken {
+interface IERC4626 {
 
     /**
-     * @dev Returns UsdPlusToken liquidity index in e27 (ray)
-     * @return assetsPerShare Rate between StaticUsdPlusToken and UsdPlusToken in e27 (ray)
-     **/
+     * @dev Returns liquidity index in 10^(vault decimals)
+     * @return assetsPerShare Rate between IERC4626 wrapper and underlying token
+    **/
     function assetsPerShare() external view returns (uint256);
 
     /**
-     * @dev Returns UsdPlusToken address
-     * @return address The address of UsdPlusToken
+     * @dev Returns wrapped token address
+     * @return address The address of the wrapped token
      **/
     function underlying() external view returns (address);
 
