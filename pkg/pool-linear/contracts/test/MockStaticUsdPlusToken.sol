@@ -37,11 +37,11 @@ contract MockStaticUsdPlusToken is TestToken, IStaticUsdPlusToken {
         _rate = newRate;
     }
 
-    function rate() external view override returns (uint256){
+    function assetsPerShare() external view override returns (uint256){
         return _rate;
     }
 
-    function mainToken() external view override returns (address){
+    function underlying() external view override returns (address){
         return _mainToken;
     }
 
