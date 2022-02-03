@@ -33,6 +33,7 @@ describe('ManagedPool', function () {
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.7);
+  const NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.8);
   const WEIGHTS = range(10000, 10000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
 
   const poolWeights: BigNumber[] = Array(TOKEN_COUNT).fill(fp(1 / TOKEN_COUNT)); //WEIGHTS.slice(0, TOKEN_COUNT).map(fp);
@@ -688,6 +689,31 @@ describe('ManagedPool', function () {
         const { tokens: vaultTokenAddresses } = await vault.getPoolTokens(await pool.getPoolId());
 
         expect(feeTokenAddresses).to.deep.equal(vaultTokenAddresses);
+      });
+
+      describe('set management fee', () => {
+        context('when the sender is not the owner', () => {
+          it('non-owners cannot set the management fee', async () => {
+            await expect(
+              pool.setManagementSwapFeePercentage(other, NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE)
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
+        });
+
+        context('when the sender is the owner', () => {
+          it('the management fee can be set', async () => {
+            await pool.setManagementSwapFeePercentage(owner, NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE);
+            expect(await pool.getManagementSwapFeePercentage()).to.equal(NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE);
+          });
+
+          it('setting the management fee emits an event', async () => {
+            const receipt = await pool.setManagementSwapFeePercentage(owner, NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE);
+
+            expectEvent.inReceipt(await receipt.wait(), 'ManagementFeePercentageChanged', {
+              managementFeePercentage: NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+            });
+          });
+        });
       });
 
       describe('fee collection', () => {

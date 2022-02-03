@@ -91,6 +91,7 @@ describe('ManagedPoolFactory', function () {
       canSetMustAllowlistLPs: true,
       canSetCircuitBreakers: true,
       canChangeTokens: true,
+      canChangeMgmtSwapFee: true,
     };
 
     const receipt = await (

@@ -64,8 +64,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     // creation gas consumption.
     uint256 private constant _MAX_MANAGED_TOKENS = 50;
 
-    // Percentage of swap fees that are allocated to the Pool owner.
-    uint256 private immutable _managementSwapFeePercentage;
     uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
 
     // Use the _miscData slot in BasePool
@@ -100,6 +98,9 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
+
+    // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
+    uint256 private _managementSwapFeePercentage;
 
     // Event declarations
 
@@ -153,11 +154,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // Double check it fits in 7 bits
         _require(_getTotalTokens() == totalTokens, Errors.MAX_TOKENS);
 
-        // This must be inlined in the constructor as we're setting an immutable variable.
-        _require(
-            params.managementSwapFeePercentage <= _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE,
-            Errors.MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE
-        );
+        // Validate and set initial fee
+        _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
 
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(
@@ -178,10 +176,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // If true, only addresses on the manager-controlled allowlist may join the pool.
         _setMustAllowlistLPs(params.mustAllowlistLPs);
-
-        _managementSwapFeePercentage = params.managementSwapFeePercentage;
-
-        emit ManagementFeePercentageChanged(params.managementSwapFeePercentage);
     }
 
     /**
@@ -343,7 +337,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     /**
-     * @dev Can enable/disable trading
+     * @dev Enable/disable trading
      */
     function setSwapEnabled(bool swapEnabled) external authenticate whenNotPaused {
         _setSwapEnabled(swapEnabled);
@@ -353,6 +347,23 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         _setMiscData(_getMiscData().insertBool(swapEnabled, _SWAP_ENABLED_OFFSET));
 
         emit SwapEnabledSet(swapEnabled);
+    }
+
+    /**
+     * @dev Set the management fee percentage
+     */
+    function setManagementSwapFeePercentage(uint256 managementFeePercentage) external authenticate whenNotPaused {
+        _setManagementSwapFeePercentage(managementFeePercentage);
+    }
+
+    function _setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) private {
+        _require(
+            managementSwapFeePercentage <= _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+            Errors.MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE
+        );
+
+        _managementSwapFeePercentage = managementSwapFeePercentage;
+        emit ManagementFeePercentageChanged(managementSwapFeePercentage);
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -672,6 +683,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             (actionId == getActionId(ManagedPool.addAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPool.removeAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPool.setMustAllowlistLPs.selector)) ||
+            (actionId == getActionId(ManagedPool.setManagementSwapFeePercentage.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
 
