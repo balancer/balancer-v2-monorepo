@@ -97,21 +97,26 @@ export default {
         break;
       }
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
-        result = deploy('v2-pool-weighted/LiquidityBootstrappingPool', {
-          args: [
-            vault.address,
-            NAME,
-            SYMBOL,
-            tokens.addresses,
-            weights,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner,
-            swapEnabledOnStart,
-          ],
-          from,
-        });
+        result = deploy(
+          params.noProtocolFee
+            ? 'v2-pool-weighted/NoProtocolFeeLiquidityBootstrappingPool'
+            : 'v2-pool-weighted/LiquidityBootstrappingPool',
+          {
+            args: [
+              vault.address,
+              NAME,
+              SYMBOL,
+              tokens.addresses,
+              weights,
+              swapFeePercentage,
+              pauseWindowDuration,
+              bufferPeriodDuration,
+              TypesConverter.toAddress(owner),
+              swapEnabledOnStart,
+            ],
+            from,
+          }
+        );
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
@@ -198,10 +203,15 @@ export default {
         break;
       }
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
-        const factory = await deploy('v2-pool-weighted/LiquidityBootstrappingPoolFactory', {
-          args: [vault.address],
-          from,
-        });
+        const factory = await deploy(
+          params.noProtocolFee
+            ? 'v2-pool-weighted/NoProtocolFeeLiquidityBootstrappingPoolFactory'
+            : 'v2-pool-weighted/LiquidityBootstrappingPoolFactory',
+          {
+            args: [vault.address],
+            from,
+          }
+        );
         const tx = await factory.create(
           NAME,
           SYMBOL,
