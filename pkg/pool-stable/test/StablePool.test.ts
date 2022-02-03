@@ -308,7 +308,7 @@ describe('StablePool', function () {
 
       it('cannot update the price rate cache duration', async () => {
         const action = await actionId(pool.instance, 'setPriceRateCacheDuration');
-        await pool.vault.grantRoleGlobally(action, owner);
+        await pool.vault.grantRolesGlobally([action], owner);
 
         await expect(pool.setPriceRateCacheDuration(tokens.first, MINUTE * 10, { from: owner })).to.be.revertedWith(
           'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'

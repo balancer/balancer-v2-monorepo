@@ -365,7 +365,7 @@ describe('MetaStablePool', function () {
 
       sharedBeforeEach('grant role to admin', async () => {
         const action = await actionId(pool.instance, 'enableOracle');
-        await pool.vault.grantRoleGlobally(action, admin);
+        await pool.vault.grantRolesGlobally([action], admin);
       });
 
       context('when it starts enabled', () => {
@@ -598,7 +598,7 @@ describe('MetaStablePool', function () {
         // It's now owner in the base class (for both), so need to change this from admin to owner
         sharedBeforeEach('grant role to owner', async () => {
           const action = await actionId(pool.instance, 'setPriceRateCacheDuration');
-          await pool.vault.grantRoleGlobally(action, owner);
+          await pool.vault.grantRolesGlobally([action], admin);
         });
 
         const setNewPriceRateCache = () => {
@@ -678,7 +678,7 @@ describe('MetaStablePool', function () {
 
       it('cannot update the price rate cache duration', async () => {
         const action = await actionId(pool.instance, 'setPriceRateCacheDuration');
-        await pool.vault.grantRoleGlobally(action, owner);
+        await pool.vault.grantRolesGlobally([action], admin);
 
         await expect(pool.setPriceRateCacheDuration(tokens.first, MINUTE * 10, { from: owner })).to.be.revertedWith(
           'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'
