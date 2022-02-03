@@ -8,12 +8,12 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('Authorizer', () => {
   let authorizer: Contract;
-  let admin: SignerWithAddress, grantee: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress, grantee: SignerWithAddress;
 
   const ANYWHERE = ZERO_ADDRESS;
 
   before('setup signers', async () => {
-    [, admin, grantee, other] = await ethers.getSigners();
+    [, admin, grantee] = await ethers.getSigners();
   });
 
   const ROLE_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
@@ -70,61 +70,6 @@ describe('Authorizer', () => {
     });
   });
 
-  describe('grantRolesToMany', () => {
-    context('when the sender is the admin', () => {
-      let randomAddress: string;
-      beforeEach('set sender', async () => {
-        authorizer = authorizer.connect(admin);
-        randomAddress = ethers.Wallet.createRandom().address;
-      });
-
-      it('grants a list of roles globally', async () => {
-        await authorizer.grantRolesGloballyToMany(ROLES, [grantee.address, other.address]);
-
-        expect(await authorizer.canPerform(ROLE_1, grantee.address, ANYWHERE)).to.be.true;
-        expect(await authorizer.canPerform(ROLE_2, other.address, ANYWHERE)).to.be.true;
-
-        expect(await authorizer.canPerform(ROLE_1, grantee.address, randomAddress)).to.be.true;
-        expect(await authorizer.canPerform(ROLE_2, other.address, randomAddress)).to.be.true;
-
-        expect(await authorizer.canPerform(ROLE_2, grantee.address, ANYWHERE)).to.be.false;
-        expect(await authorizer.canPerform(ROLE_1, other.address, ANYWHERE)).to.be.false;
-      });
-
-      it('grants a list of roles to a specific set of contracts', async () => {
-        await authorizer.grantRolesToMany(ROLES, [grantee.address, other.address], WHERE);
-        for (const where of WHERE) {
-          expect(await authorizer.canPerform(ROLE_1, grantee.address, where)).to.be.true;
-          expect(await authorizer.canPerform(ROLE_2, other.address, where)).to.be.true;
-
-          expect(await authorizer.canPerform(ROLE_1, grantee.address, randomAddress)).to.be.false;
-          expect(await authorizer.canPerform(ROLE_2, other.address, randomAddress)).to.be.false;
-
-          expect(await authorizer.canPerform(ROLE_2, grantee.address, where)).to.be.false;
-          expect(await authorizer.canPerform(ROLE_1, other.address, where)).to.be.false;
-        }
-      });
-    });
-
-    context('when the sender is not the admin', () => {
-      beforeEach('set sender', async () => {
-        authorizer = authorizer.connect(grantee);
-      });
-
-      it('reverts globally', async () => {
-        await expect(authorizer.grantRolesGloballyToMany(ROLES, [grantee.address, other.address])).to.be.revertedWith(
-          'GRANT_SENDER_NOT_ADMIN'
-        );
-      });
-
-      it('reverts for specific wheres', async () => {
-        await expect(authorizer.grantRolesToMany(ROLES, [grantee.address, other.address], WHERE)).to.be.revertedWith(
-          'GRANT_SENDER_NOT_ADMIN'
-        );
-      });
-    });
-  });
-
   describe('revokeRoles', () => {
     context('when the sender is the admin', () => {
       beforeEach('set sender', async () => {
@@ -163,7 +108,7 @@ describe('Authorizer', () => {
 
       context('when one of the roles was not granted for a set of contracts', () => {
         sharedBeforeEach('grant one role', async () => {
-          await authorizer.grantRole(ROLE_1, grantee.address, WHERE);
+          await authorizer.grantRoles([ROLE_1], grantee.address, WHERE);
         });
 
         it('ignores the request', async () => {
@@ -179,7 +124,7 @@ describe('Authorizer', () => {
 
       context('when one of the roles was not granted globally', () => {
         sharedBeforeEach('grant one role', async () => {
-          await authorizer.grantRoleGlobally(ROLE_1, grantee.address);
+          await authorizer.grantRolesGlobally([ROLE_1], grantee.address);
         });
 
         it('ignores the request', async () => {
@@ -211,91 +156,86 @@ describe('Authorizer', () => {
     });
   });
 
-  describe('revokeRolesFromMany', () => {
-    context('when the sender is the admin', () => {
-      beforeEach('set sender', async () => {
-        authorizer = authorizer.connect(admin);
+  describe('renounceRoles', () => {
+    context('when the sender does not have the role', () => {
+      it('ignores the request', async () => {
+        await expect(authorizer.connect(grantee).renounceRoles(ROLES, WHERE)).not.to.be.reverted;
       });
+    });
 
-      context('when the roles ANYWHERE granted globally', () => {
+    context('when the sender has the role', () => {
+      context('when the sender has the role for a specific contract', () => {
         sharedBeforeEach('grant permissions', async () => {
-          await authorizer.grantRolesGloballyToMany(ROLES, [grantee.address, other.address]);
+          await authorizer.connect(admin).grantRoles(ROLES, grantee.address, WHERE);
         });
 
-        it('revokes a list of roles', async () => {
-          await authorizer.revokeRolesGloballyFromMany(ROLES, [grantee.address, other.address]);
-
-          for (const role of ROLES) {
-            expect(await authorizer.canPerform(role, grantee.address, ANYWHERE)).to.be.false;
-            expect(await authorizer.canPerform(role, other.address, ANYWHERE)).to.be.false;
-          }
-        });
-      });
-
-      context('when the roles ANYWHERE granted to a set of contracts', () => {
-        sharedBeforeEach('grant permissions', async () => {
-          await authorizer.grantRolesToMany(ROLES, [grantee.address, other.address], WHERE);
-        });
-
-        it('revokes a list of roles', async () => {
-          await authorizer.revokeRolesFromMany(ROLES, [grantee.address, other.address], WHERE);
+        it('revokes the requested roles', async () => {
+          await authorizer.connect(grantee).renounceRoles(ROLES, WHERE);
 
           for (const role of ROLES) {
             for (const where of WHERE) {
               expect(await authorizer.canPerform(role, grantee.address, where)).to.be.false;
-              expect(await authorizer.canPerform(role, other.address, where)).to.be.false;
             }
           }
         });
       });
 
-      context('when one of the roles was not granted globally', () => {
-        sharedBeforeEach('grant one role', async () => {
-          await authorizer.grantRolesGlobally([ROLE_1], grantee.address);
+      context('when the sender has the role globally', () => {
+        sharedBeforeEach('grant permissions', async () => {
+          await authorizer.connect(admin).grantRolesGlobally(ROLES, grantee.address);
         });
 
-        it('ignores the request', async () => {
-          await authorizer.revokeRolesGloballyFromMany(ROLES, [grantee.address, other.address]);
-
-          for (const role of ROLES) {
-            expect(await authorizer.canPerform(role, grantee.address, ANYWHERE)).to.be.false;
-            expect(await authorizer.canPerform(role, other.address, ANYWHERE)).to.be.false;
-          }
-        });
-      });
-
-      context('when one of the roles was not granted for a set of contracts', () => {
-        sharedBeforeEach('grant one role', async () => {
-          await authorizer.grantRoles([ROLE_1], grantee.address, WHERE);
-        });
-
-        it('ignores the request', async () => {
-          await authorizer.revokeRolesFromMany(ROLES, [grantee.address, other.address], WHERE);
+        it('does not revoke the role', async () => {
+          await authorizer.connect(grantee).renounceRoles(ROLES, WHERE);
 
           for (const role of ROLES) {
             for (const where of WHERE) {
-              expect(await authorizer.canPerform(role, grantee.address, where)).to.be.false;
-              expect(await authorizer.canPerform(role, other.address, where)).to.be.false;
+              expect(await authorizer.canPerform(role, grantee.address, where)).to.be.true;
             }
           }
         });
       });
     });
+  });
 
-    context('when the sender is not the admin', () => {
-      beforeEach('set sender', async () => {
-        authorizer = authorizer.connect(grantee);
+  describe('renounceRolesGlobally', () => {
+    context('when the sender does not have the role', () => {
+      it('ignores the request', async () => {
+        await expect(authorizer.connect(grantee).renounceRolesGlobally(ROLES)).not.to.be.reverted;
+      });
+    });
+
+    context('when the sender has the role', () => {
+      context('when the sender has the role for a specific contract', () => {
+        sharedBeforeEach('grant permissions', async () => {
+          await authorizer.connect(admin).grantRoles(ROLES, grantee.address, WHERE);
+        });
+
+        it('does not revoke the requested roles', async () => {
+          await authorizer.connect(grantee).renounceRolesGlobally(ROLES);
+
+          for (const role of ROLES) {
+            for (const where of WHERE) {
+              expect(await authorizer.canPerform(role, grantee.address, where)).to.be.true;
+            }
+          }
+        });
       });
 
-      it('reverts globally', async () => {
-        await expect(
-          authorizer.revokeRolesGloballyFromMany(ROLES, [grantee.address, other.address])
-        ).to.be.revertedWith('REVOKE_SENDER_NOT_ADMIN');
-      });
-      it('reverts for a set of contracts', async () => {
-        await expect(authorizer.revokeRolesFromMany(ROLES, [grantee.address, other.address], WHERE)).to.be.revertedWith(
-          'REVOKE_SENDER_NOT_ADMIN'
-        );
+      context('when the sender has the role globally', () => {
+        sharedBeforeEach('grant permissions', async () => {
+          await authorizer.connect(admin).grantRolesGlobally(ROLES, grantee.address);
+        });
+
+        it('revokes the requested roles', async () => {
+          await authorizer.connect(grantee).renounceRolesGlobally(ROLES);
+
+          for (const role of ROLES) {
+            for (const where of WHERE) {
+              expect(await authorizer.canPerform(role, grantee.address, where)).to.be.false;
+            }
+          }
+        });
       });
     });
   });

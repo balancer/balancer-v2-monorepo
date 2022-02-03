@@ -24,11 +24,10 @@ import "../interfaces/IstETH.sol";
 
 contract MockStETH is TestToken, IstETH {
     constructor(
-        address admin,
         string memory name,
         string memory symbol,
         uint8 decimals
-    ) TestToken(admin, name, symbol, decimals) {
+    ) TestToken(name, symbol, decimals) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
