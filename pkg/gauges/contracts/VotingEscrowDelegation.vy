@@ -91,7 +91,8 @@ struct Point:
 IDENTITY_PRECOMPILE: constant(address) = 0x0000000000000000000000000000000000000004
 MAX_PCT: constant(uint256) = 10_000
 WEEK: constant(uint256) = 86400 * 7
-VOTING_ESCROW: constant(address) = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2
+
+VOTING_ESCROW: immutable(address)  # Voting escrow
 
 
 balanceOf: public(HashMap[address, uint256])
@@ -132,7 +133,8 @@ grey_list: public(HashMap[address, HashMap[address, bool]])
 
 
 @external
-def __init__(_name: String[32], _symbol: String[32], _base_uri: String[128]):
+def __init__(_voting_escrow: address, _name: String[32], _symbol: String[32], _base_uri: String[128]):
+    VOTING_ESCROW = _voting_escrow
     self.name = _name
     self.symbol = _symbol
     self.base_uri = _base_uri
