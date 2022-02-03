@@ -99,10 +99,11 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
-    // Adding and removing tokens can cause the sum of the absolute weights to diverge from 1.
-    // To preserve the weighted pool interface standard, multiply or divide all weight values
-    // passed in or returned by this value to convert to normalized weights.
-    uint256 private _totalWeight = FixedPoint.ONE;
+    // We need to work with normalized weights (i.e. they should add up to 100%), but storing normalized weights
+    // would require updating all weights whenever one of them changes, for example in an add or remove token
+    // operation. Instead, we keep track of the sum of all weights, and dynamically normalize them by dividing
+    // each weight by the total sum.
+    uint256 private _weightSum = FixedPoint.ONE;
 
     // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
     uint256 private _managementSwapFeePercentage;
@@ -236,8 +237,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         endWeights = new uint256[](totalTokens);
 
         for (uint256 i = 0; i < totalTokens; i++) {
-            endWeights[i] = _downscaleWeight(
-                _tokenState[tokens[i]].decodeUint64(_END_WEIGHT_OFFSET).uncompress64(_totalWeight)
+            endWeights[i] = _normalizeWeight(
+                _tokenState[tokens[i]].decodeUint64(_END_WEIGHT_OFFSET).uncompress64(_weightSum)
             );
         }
     }
@@ -358,25 +359,26 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     /**
      * @dev Getter for the sum of all weights. In initially FixedPoint.ONE, it can be higher or lower
-     * as a result of adds and removes.
+     * as a result of adds and removes. Production code should not need to call this function, as the
+     * value it returns is only used internally for weight.
      */
-    function getTotalWeight() external view returns (uint256) {
-        return _totalWeight;
+    function getWeightSum() external view returns (uint256) {
+        return _weightSum;
     }
 
     /**
      * @dev Placeholder function for testing. Adding or removing a token may cause the total weight to
      * diverge from ONE.
      */
-    function _setTotalWeight(uint256[] memory normalizedWeights, uint256 totalWeight) internal {
+    function _setWeightSum(uint256[] memory normalizedWeights, uint256 weightSum) internal {
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), normalizedWeights.length);
-        _require(totalWeight > WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
+        _require(weightSum > WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
-        if (totalWeight == _totalWeight) {
+        if (weightSum == _weightSum) {
             return;
         }
 
-        _totalWeight = totalWeight;
+        _weightSum = weightSum;
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
@@ -673,7 +675,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] memory endWeights,
         IERC20[] memory tokens
     ) internal virtual {
-        uint256 totalWeight = _totalWeight;
+        uint256 weightSum = _weightSum;
         uint256 normalizedSum = 0;
 
         for (uint256 i = 0; i < endWeights.length; i++) {
@@ -682,7 +684,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             normalizedSum = normalizedSum.add(endWeight);
 
             IERC20 token = tokens[i];
-            _tokenState[token] = _updateTokenState(token, startWeights[i], endWeight, totalWeight);
+            _tokenState[token] = _updateTokenState(token, startWeights[i], endWeight, weightSum);
         }
 
         // Ensure that the normalized weights sum to ONE
@@ -709,8 +711,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // Store decimal difference instead of actual scaling factor
         return
             tokenState
-                .insertUint64(_upscaleWeight(startWeight).compress64(totalWeight), _START_WEIGHT_OFFSET)
-                .insertUint64(_upscaleWeight(endWeight).compress64(totalWeight), _END_WEIGHT_OFFSET)
+                .insertUint64(_denormalizeWeight(startWeight).compress64(totalWeight), _START_WEIGHT_OFFSET)
+                .insertUint64(_denormalizeWeight(endWeight).compress64(totalWeight), _END_WEIGHT_OFFSET)
                 .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
     }
 
@@ -761,9 +763,9 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private view returns (uint256 finalWeight) {
-        uint256 totalWeight = _totalWeight;
-        uint256 startWeight = _downscaleWeight(tokenData.decodeUint64(_START_WEIGHT_OFFSET).uncompress64(totalWeight));
-        uint256 endWeight = _downscaleWeight(tokenData.decodeUint64(_END_WEIGHT_OFFSET).uncompress64(totalWeight));
+        uint256 weightSum = _weightSum;
+        uint256 startWeight = _normalizeWeight(tokenData.decodeUint64(_START_WEIGHT_OFFSET).uncompress64(weightSum));
+        uint256 endWeight = _normalizeWeight(tokenData.decodeUint64(_END_WEIGHT_OFFSET).uncompress64(weightSum));
 
         if (pctProgress == 0 || startWeight == endWeight) return startWeight;
         if (pctProgress >= FixedPoint.ONE) return endWeight;
@@ -784,21 +786,15 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         _require(tokenData != 0, Errors.INVALID_TOKEN);
     }
 
-    function _totalWeightEqualsOne() private view returns (bool) {
-        return FixedPoint.ONE == _totalWeight;
-    }
-
-    // Functions that convert weights between internal and external representations
-    // This is roughly analogous to scaling balances up (to full 18-decimals for internal processing by the Vault),
-    // and down (to native encodings, for I/O)
+    // Functions that convert weights between internal (denormalized) and external (normalized) representations
 
     // Convert from the internal representation to normalized weights (summing to ONE)
-    function _downscaleWeight(uint256 weight) private view returns (uint256) {
-        return _totalWeightEqualsOne() ? weight : weight.divDown(_totalWeight);
+    function _normalizeWeight(uint256 weight) private view returns (uint256) {
+        return weight.divDown(_weightSum);
     }
 
-    // converts from normalized form to the internal representation (summing to _totalWeight)
-    function _upscaleWeight(uint256 weight) private view returns (uint256) {
-        return _totalWeightEqualsOne() ? weight : weight.mulUp(_totalWeight);
+    // converts from normalized form to the internal representation (summing to _weightSum)
+    function _denormalizeWeight(uint256 weight) private view returns (uint256) {
+        return weight.mulUp(_weightSum);
     }
 }

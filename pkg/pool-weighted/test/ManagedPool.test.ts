@@ -48,10 +48,10 @@ describe('ManagedPool', function () {
     await poolTokens.mint({ to: [other], amount: fp(200) });
   });
 
-  function itComputesWeightsAndScalingFactors(totalWeight = 1): void {
+  function itComputesWeightsAndScalingFactors(weightSum = 1): void {
     describe('weights and scaling factors', () => {
       for (const numTokens of range(2, MAX_TOKENS + 1)) {
-        context(`with ${numTokens} tokens and a totalWeight of ${totalWeight}`, () => {
+        context(`with ${numTokens} tokens and a totalWeight of ${weightSum}`, () => {
           let tokens: TokenList;
 
           sharedBeforeEach('deploy pool', async () => {
@@ -66,11 +66,11 @@ describe('ManagedPool', function () {
             });
 
             const finalWeights = toNormalizedWeights(WEIGHTS.slice(0, numTokens).map(bn));
-            await pool.instance.setTotalWeight(finalWeights, fp(totalWeight));
+            await pool.instance.setWeightSum(finalWeights, fp(weightSum));
           });
 
           it('has the correct total weight', async () => {
-            expect(await pool.instance.getTotalWeight()).to.equal(fp(totalWeight));
+            expect(await pool.instance.getWeightSum()).to.equal(fp(weightSum));
           });
 
           it('sets token weights', async () => {
@@ -580,7 +580,7 @@ describe('ManagedPool', function () {
           });
         });
 
-        function itHandlesWeightUpdates(totalWeight = 1): void {
+        function itHandlesWeightUpdates(weightSum = 1): void {
           context('with valid parameters (ongoing weight update)', () => {
             // startWeights must equal "weights" above - just not using fp to keep math simple
             const startWeights = [...poolWeights];
@@ -616,7 +616,7 @@ describe('ManagedPool', function () {
               startTime = now.add(START_DELAY);
               endTime = startTime.add(UPDATE_DURATION);
 
-              await pool.instance.setTotalWeight(startWeights, fp(totalWeight));
+              await pool.instance.setWeightSum(startWeights, fp(weightSum));
 
               await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
             });
