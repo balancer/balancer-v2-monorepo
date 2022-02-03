@@ -255,6 +255,7 @@ export default {
           canSetMustAllowlistLPs: true,
           canSetCircuitBreakers: true,
           canChangeTokens: true,
+          canChangeMgmtSwapFee: true,
         };
 
         const tx = await factory
