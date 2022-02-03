@@ -28,11 +28,10 @@ abstract contract PremintedGauge is ILiquidityGauge, ReentrancyGuard {
     IBalancerMinter private immutable _minter;
     IGaugeController private immutable _gaugeController;
 
-    // TODO: pull these from BalancerTokenAdmin instead of duplicating definitions
-    uint256 private constant _INITIAL_RATE = 32165468432186542;
-    uint256 private constant _RATE_REDUCTION_TIME = 365 days;
-    uint256 private constant _RATE_REDUCTION_COEFFICIENT = 1189207115002721024; // 2 ** (1/4) * 1e18
-    uint256 private constant _RATE_DENOMINATOR = 1e18;
+    uint256 private immutable _INITIAL_RATE;
+    uint256 private immutable _RATE_REDUCTION_TIME;
+    uint256 private immutable _RATE_REDUCTION_COEFFICIENT;
+    uint256 private immutable _RATE_DENOMINATOR;
 
     uint256 private _rate;
     uint256 private _period;
@@ -49,6 +48,11 @@ abstract contract PremintedGauge is ILiquidityGauge, ReentrancyGuard {
         _tokenAdmin = tokenAdmin;
         _minter = minter;
         _gaugeController = minter.getGaugeController();
+
+        _INITIAL_RATE = tokenAdmin.INITIAL_RATE();
+        _RATE_REDUCTION_TIME = tokenAdmin.RATE_REDUCTION_TIME();
+        _RATE_REDUCTION_COEFFICIENT = tokenAdmin.RATE_REDUCTION_COEFFICIENT();
+        _RATE_DENOMINATOR = tokenAdmin.RATE_DENOMINATOR();
 
         // Because we calculate the rate locally, this gauge cannot
         // be used prior to the start of the first emission period

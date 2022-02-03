@@ -17,6 +17,14 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
 interface IBalancerTokenAdmin {
+    function INITIAL_RATE() external view returns (uint256);
+
+    function RATE_REDUCTION_TIME() external view returns (uint256);
+
+    function RATE_REDUCTION_COEFFICIENT() external view returns (uint256);
+
+    function RATE_DENOMINATOR() external view returns (uint256);
+
     function getBalancerToken() external view returns (IERC20);
 
     function rate() external view returns (uint256);
