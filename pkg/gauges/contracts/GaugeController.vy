@@ -68,7 +68,7 @@ MULTIPLIER: constant(uint256) = 10 ** 18
 admin: public(address)  # Can and will be a smart contract
 future_admin: public(address)  # Can and will be a smart contract
 
-TOKEN: immutable(address) # BPT token
+TOKEN: immutable(address) # 80-20 BAL-WETH BPT token
 VOTING_ESCROW: immutable(address)  # Voting escrow
 
 # Gauge parameters
