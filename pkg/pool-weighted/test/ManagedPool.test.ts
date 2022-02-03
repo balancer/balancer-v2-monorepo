@@ -701,6 +701,11 @@ describe('ManagedPool', function () {
         });
 
         context('when the sender is the owner', () => {
+          it('the management fee can be set', async () => {
+            await pool.setManagementSwapFeePercentage(owner, NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE);
+            expect(await pool.getManagementSwapFeePercentage()).to.equal(NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE);
+          });
+
           it('setting the management fee emits an event', async () => {
             const receipt = await pool.setManagementSwapFeePercentage(owner, NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE);
 

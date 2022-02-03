@@ -85,6 +85,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
             .insertBool(managedRights.canDisableSwaps, _DISABLE_SWAPS_OFFSET)
             .insertBool(managedRights.canSetMustAllowlistLPs, _MUST_ALLOWLIST_LPS_OFFSET);
 
+        // Needed to avoid "stack too deep"
         return
             permissions
                 .insertBool(managedRights.canChangeMgmtSwapFee, _CHANGE_MGMT_SWAP_FEE_OFFSET)
