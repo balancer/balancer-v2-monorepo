@@ -66,14 +66,17 @@ describe('ERC4626LinearPool', function () {
     });
 
     it('returns the expected value', async () => {
-      // Reserve's normalised income is stored with 27 decimals (i.e. a 'ray' value)
-      // 1e27 implies a 1:1 exchange rate between main and wrapped token
-      await wrappedTokenInstance.setRate(bn(1e27));
+      // Rate should be at wrapped token scale - 6
+      await wrappedTokenInstance.setRate(bn(1e6));
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
 
       // We now double the reserve's normalised income to change the exchange rate to 2:1
-      await wrappedTokenInstance.setRate(bn(2e27));
+      await wrappedTokenInstance.setRate(bn(2e6));
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2));
+
+      // We now double the reserve's normalised income to change the exchange rate to 1.234567:1.000000
+      await wrappedTokenInstance.setRate(bn(1234567));
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1.234567));
     });
   });
 
