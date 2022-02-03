@@ -19,15 +19,15 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
-import "./UsdPlusLinearPool.sol";
+import "./ERC4626LinearPool.sol";
 
-contract UsdPlusLinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(UsdPlusLinearPool).creationCode) {
+contract ERC4626LinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(ERC4626LinearPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
-     * @dev Deploys a new `UsdPlusLinearPool`.
+     * @dev Deploys a new `ERC4626LinearPool`.
      */
     function create(
         string memory name,
@@ -40,7 +40,7 @@ contract UsdPlusLinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseW
     ) external returns (LinearPool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        LinearPool pool = UsdPlusLinearPool(
+        LinearPool pool = ERC4626LinearPool(
             _create(
                 abi.encode(
                     getVault(),
