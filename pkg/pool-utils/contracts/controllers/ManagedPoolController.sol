@@ -45,7 +45,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
     uint256 internal immutable _minWeightChangeDuration;
 
     // Immutable controller state - the first 16 bits are reserved as a bitmap for permission flags
-    // (3 used in the base class; 5 used here), and the remaining 240 bits can be used by derived classes
+    // (3 used in the base class; 6 used here), and the remaining 240 bits can be used by derived classes
     // to store any other immutable data.
     //
     //               Managed Pool Controller Permissions             |   Base Controller Permissions  ]
