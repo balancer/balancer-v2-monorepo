@@ -11,6 +11,7 @@ implements: ERC20
 
 
 interface TokenAdmin:
+    def getVault() -> address: view
     def future_epoch_time_write() -> uint256: nonpayable
     def rate() -> uint256: view
 
@@ -89,6 +90,7 @@ EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string 
 PERMIT_TYPEHASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 
 BAL_TOKEN_ADMIN: immutable(address)
+BAL_VAULT: immutable(address)
 GAUGE_CONTROLLER: immutable(address)
 MINTER: immutable(address)
 VOTING_ESCROW: immutable(address)
@@ -159,7 +161,9 @@ def __init__(minter: address, veBoostProxy: address):
     @param veBoostProxy Address of boost delegation contract
     """
     gaugeController: address = Minter(minter).getGaugeController()
-    BAL_TOKEN_ADMIN = Minter(minter).getBalancerTokenAdmin()
+    balTokenAdmin: address = Minter(minter).getBalancerTokenAdmin()
+    BAL_TOKEN_ADMIN = balTokenAdmin
+    BAL_VAULT = TokenAdmin(balTokenAdmin).getVault()
     GAUGE_CONTROLLER = gaugeController
     MINTER = minter
     VOTING_ESCROW = Controller(gaugeController).voting_escrow()
