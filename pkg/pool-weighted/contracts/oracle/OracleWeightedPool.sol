@@ -23,7 +23,7 @@ import "../BaseWeightedPool.sol";
 import "./OracleWeightedMath.sol";
 import "./OracleWeightedPoolMiscData.sol";
 
-contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeightedMath {
+contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle {
     using FixedPoint for uint256;
     using OracleWeightedPoolMiscData for bytes32;
 

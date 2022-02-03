@@ -85,9 +85,13 @@ WEEK: constant(uint256) = 7 * 86400  # all future times are rounded by week
 MAXTIME: constant(uint256) = 4 * 365 * 86400  # 4 years
 MULTIPLIER: constant(uint256) = 10 ** 18
 
-token: public(address)
-supply: public(uint256)
+TOKEN: immutable(address)
 
+NAME: immutable(String[64])
+SYMBOL: immutable(String[32])
+DECIMALS: immutable(uint256)
+
+supply: public(uint256)
 locked: public(HashMap[address, LockedBalance])
 
 epoch: public(uint256)
@@ -95,11 +99,6 @@ point_history: public(Point[100000000000000000000000000000])  # epoch -> unsigne
 user_point_history: public(HashMap[address, Point[1000000000]])  # user -> Point[user_epoch]
 user_point_epoch: public(HashMap[address, uint256])
 slope_changes: public(HashMap[uint256, int128])  # time -> signed slope change
-
-name: public(String[64])
-symbol: public(String[32])
-version: public(String[32])
-decimals: public(uint256)
 
 # Checker for whitelisted (smart contract) wallets which are allowed to deposit
 # The goal is to prevent tokenizing the escrow
@@ -111,27 +110,44 @@ future_admin: public(address)
 
 
 @external
-def __init__(token_addr: address, _name: String[64], _symbol: String[32], _version: String[32]):
+def __init__(token_addr: address, _name: String[64], _symbol: String[32]):
     """
     @notice Contract constructor
     @param token_addr `ERC20CRV` token address
     @param _name Token name
     @param _symbol Token symbol
-    @param _version Contract version - required for Aragon compatibility
     """
     self.admin = msg.sender
-    self.token = token_addr
+    TOKEN = token_addr
     self.point_history[0].blk = block.number
     self.point_history[0].ts = block.timestamp
 
     _decimals: uint256 = ERC20(token_addr).decimals()
     assert _decimals <= 255
-    self.decimals = _decimals
+    
+    NAME = _name
+    SYMBOL = _symbol
+    DECIMALS = _decimals
 
-    self.name = _name
-    self.symbol = _symbol
-    self.version = _version
+@external
+@view
+def token() -> address:
+    return TOKEN
 
+@external
+@view
+def name() -> String[64]:
+    return NAME
+
+@external
+@view
+def symbol() -> String[32]:
+    return SYMBOL
+
+@external
+@view
+def decimals() -> uint256:
+    return DECIMALS
 
 @external
 def commit_transfer_ownership(addr: address):
@@ -368,7 +384,7 @@ def _deposit_for(_addr: address, _value: uint256, unlock_time: uint256, locked_b
     self._checkpoint(_addr, old_locked, _locked)
 
     if _value != 0:
-        assert ERC20(self.token).transferFrom(_addr, self, _value)
+        assert ERC20(TOKEN).transferFrom(_addr, self, _value)
 
     log Deposit(_addr, _value, _locked.end, type, block.timestamp)
     log Supply(supply_before, supply_before + _value)
@@ -481,7 +497,7 @@ def withdraw():
     # Both can have >= 0 amount
     self._checkpoint(msg.sender, old_locked, _locked)
 
-    assert ERC20(self.token).transfer(msg.sender, value)
+    assert ERC20(TOKEN).transfer(msg.sender, value)
 
     log Withdraw(msg.sender, value, block.timestamp)
     log Supply(supply_before, supply_before - value)

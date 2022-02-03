@@ -32,8 +32,9 @@ import "./StableOracleMath.sol";
  * It is a concrete implementation of BaseStablePool that adds a price oracle, and is therefore
  * restricted to two tokens.
  */
-//TODO: Rename to OracleStablePool after review
-contract MetaStablePool is BaseStablePool, StableOracleMath, PoolPriceOracle {
+contract MetaStablePool is BaseStablePool, PoolPriceOracle {
+    using WordCodec for bytes32;
+    using FixedPoint for uint256;
     using OracleMiscData for bytes32;
     using FixedPoint for uint256;
     using WordCodec for bytes32;

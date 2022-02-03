@@ -18,7 +18,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/test/MockLogCompression.sol";
 
 import "../oracle/OracleWeightedMath.sol";
 
-contract MockOracleWeightedMath is OracleWeightedMath, MockLogCompression {
+contract MockOracleWeightedMath is MockLogCompression {
     function calcLogSpotPrice(
         uint256 normalizedWeightA,
         uint256 balanceA,
