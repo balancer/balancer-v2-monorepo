@@ -13,7 +13,7 @@ import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import LinearPool from "@balancer-labs/v2-helpers/src/models/pools/linear/LinearPool";
 
-describe('UsdPlusLinearPoolFactory', function () {
+describe('ERC4626LinearPoolFactory', function () {
   let mainToken: Token, wrappedToken: Token;
   let vault: Vault, tokens: TokenList, factory: Contract;
   let creationTime: BigNumber, owner: SignerWithAddress;
@@ -37,7 +37,7 @@ describe('UsdPlusLinearPoolFactory', function () {
     creationTime = await currentTimestamp();
 
     mainToken = await Token.create('USD+');
-    const wrappedTokenInstance = await deploy('MockStaticUsdPlusToken', {
+    const wrappedTokenInstance = await deploy('MockERC4626Token', {
       args: [deployer.address, 'stUSD+', 'stUSD+', 6, mainToken.address],
     });
     wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);

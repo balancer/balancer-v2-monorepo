@@ -14,7 +14,7 @@ import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/Linear
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
-describe('UsdPlusLinearPool', function () {
+describe('ERC4626LinearPool', function () {
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
   let poolFactory: Contract;
   let wrappedTokenInstance: Contract;
@@ -30,7 +30,7 @@ describe('UsdPlusLinearPool', function () {
     const [deployer] = await ethers.getSigners();
 
     mainToken = await Token.create('USD+');
-    wrappedTokenInstance = await deploy('MockStaticUsdPlusToken', {
+    wrappedTokenInstance = await deploy('MockERC4626Token', {
       args: [deployer.address, 'stUSD+', 'stUSD+', 6, mainToken.address],
     });
     wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
