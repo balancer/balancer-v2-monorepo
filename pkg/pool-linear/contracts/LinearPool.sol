@@ -151,7 +151,7 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
         return address(_mainToken);
     }
 
-    function getWrappedToken() external view returns (address) {
+    function getWrappedToken() public view returns (address) {
         return address(_wrappedToken);
     }
 

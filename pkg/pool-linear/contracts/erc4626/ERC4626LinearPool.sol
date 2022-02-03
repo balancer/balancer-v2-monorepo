@@ -23,8 +23,6 @@ import "../interfaces/IERC4626.sol";
 import "../LinearPool.sol";
 
 contract ERC4626LinearPool is LinearPool {
-    IERC4626 private immutable _wrappedToken;
-
     uint256 immutable _wrappedTokenRateScale;
 
     constructor(
@@ -53,7 +51,6 @@ contract ERC4626LinearPool is LinearPool {
         )
     {
         _require(address(mainToken) == IERC4626(address(wrappedToken)).underlying(), Errors.TOKENS_MISMATCH);
-        _wrappedToken = IERC4626(address(wrappedToken));
 
         // _getWrappedTokenRate is scaled e18, we may need to scale the assetsPerShare (in terms of token decimals)
         uint256 tokenDecimals = ERC20(address(wrappedToken)).decimals();
@@ -63,7 +60,7 @@ contract ERC4626LinearPool is LinearPool {
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
         // Rate between wrapped and their underlying token at _wrappedToken.decimals() scale
-        uint256 rate = _wrappedToken.assetsPerShare();
+        uint256 rate = IERC4626(getWrappedToken()).assetsPerShare();
 
         // Upscale to e18
         return rate * _wrappedTokenRateScale;
