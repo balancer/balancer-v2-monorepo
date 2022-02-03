@@ -570,6 +570,9 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
         return _getWrappedTokenRate();
     }
 
+    /**
+     * @dev Should be 1e18 for the subsequent calculation of the wrapper token scaling factor.
+     */
     function _getWrappedTokenRate() internal view virtual returns (uint256);
 
     function getTargets() public view returns (uint256 lowerTarget, uint256 upperTarget) {

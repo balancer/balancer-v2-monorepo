@@ -15,6 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+
 import "../interfaces/IERC4626.sol";
 
 import "../LinearPool.sol";
@@ -52,10 +55,13 @@ contract ERC4626LinearPool is LinearPool {
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
+        // Rate between wrapped and their underlying token at _wrappedToken.decimals() scale
         uint256 rate = _wrappedToken.assetsPerShare();
 
-        // This function returns a 18 decimal fixed point number, but `rate` has 27 decimals (i.e. a 'ray' value)
-        // so we need to convert it.
-        return rate / 10**9;
+        uint256 tokenDecimals = ERC20(address(_wrappedToken)).decimals();
+        uint256 decimalsDifference = Math.sub(18, tokenDecimals);
+
+        // Upscale to e18
+        return rate * 10 ** decimalsDifference;
     }
 }

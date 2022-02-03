@@ -29,6 +29,7 @@ contract MockERC4626Token is TestToken, IERC4626 {
         address mainToken
     ) TestToken(name, symbol, decimals) {
         _mainToken = mainToken;
+        _rate = 10 ** decimals;
     }
 
 
