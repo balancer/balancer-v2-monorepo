@@ -19,14 +19,14 @@ interface IStaticUsdPlusToken {
 
     /**
      * @dev Returns UsdPlusToken liquidity index in e27 (ray)
-     * @return rate Rate between StaticUsdPlusToken and UsdPlusToken in e27 (ray)
+     * @return assetsPerShare Rate between StaticUsdPlusToken and UsdPlusToken in e27 (ray)
      **/
-    function rate() external view returns (uint256);
+    function assetsPerShare() external view returns (uint256);
 
     /**
      * @dev Returns UsdPlusToken address
      * @return address The address of UsdPlusToken
      **/
-    function mainToken() external view returns (address);
+    function underlying() external view returns (address);
 
 }

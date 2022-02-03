@@ -47,12 +47,12 @@ contract UsdPlusLinearPool is LinearPool {
             owner
         )
     {
-        _require(address(mainToken) == IStaticUsdPlusToken(address(wrappedToken)).mainToken(), Errors.TOKENS_MISMATCH);
+        _require(address(mainToken) == IStaticUsdPlusToken(address(wrappedToken)).underlying(), Errors.TOKENS_MISMATCH);
         _wrappedToken = IStaticUsdPlusToken(address(wrappedToken));
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        uint256 rate = _wrappedToken.rate();
+        uint256 rate = _wrappedToken.assetsPerShare();
 
         // This function returns a 18 decimal fixed point number, but `rate` has 27 decimals (i.e. a 'ray' value)
         // so we need to convert it.
