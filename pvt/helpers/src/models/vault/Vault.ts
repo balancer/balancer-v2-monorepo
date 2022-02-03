@@ -219,7 +219,7 @@ export default class Vault {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
-      await this.grantRoleGlobally(await actionId(feesCollector, 'setSwapFeePercentage'), this.admin);
+      await this.grantRolesGlobally([await actionId(feesCollector, 'setSwapFeePercentage')], this.admin);
     }
 
     const sender = from || this.admin;
@@ -234,7 +234,7 @@ export default class Vault {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
-      await this.grantRoleGlobally(await actionId(feesCollector, 'setFlashLoanFeePercentage'), this.admin);
+      await this.grantRolesGlobally([await actionId(feesCollector, 'setFlashLoanFeePercentage')], this.admin);
     }
 
     const sender = from || this.admin;
@@ -242,17 +242,10 @@ export default class Vault {
     return instance.setFlashLoanFeePercentage(flashLoanFeePercentage);
   }
 
-  async grantRoleGlobally(actionId: string, to?: Account): Promise<ContractTransaction> {
+  async grantRolesGlobally(actionIds: string[], to?: Account): Promise<ContractTransaction> {
     if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
     if (!to) to = await this._defaultSender();
-    return this.authorizer.connect(this.admin).grantRoleGlobally(actionId, TypesConverter.toAddress(to));
-  }
-
-  async grantRoleWhere(actionId: string, where: Contract[], to?: Account): Promise<ContractTransaction> {
-    if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
-    if (!to) to = await this._defaultSender();
-    const whereAddresses = where.map((x) => TypesConverter.toAddress(x));
-    return this.authorizer.connect(this.admin).grantRole(actionId, TypesConverter.toAddress(to), whereAddresses);
+    return this.authorizer.connect(this.admin).grantRolesGlobally(actionIds, TypesConverter.toAddress(to));
   }
 
   async setRelayerApproval(user: SignerWithAddress, relayer: Account, approval: boolean): Promise<ContractTransaction> {

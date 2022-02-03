@@ -27,12 +27,8 @@ describe('AaveLinearPool', function () {
   });
 
   sharedBeforeEach('deploy tokens', async () => {
-    const [deployer] = await ethers.getSigners();
-
     mainToken = await Token.create('DAI');
-    const wrappedTokenInstance = await deploy('MockStaticAToken', {
-      args: [deployer.address, 'cDAI', 'cDAI', 18, mainToken.address],
-    });
+    const wrappedTokenInstance = await deploy('MockStaticAToken', { args: ['cDAI', 'cDAI', 18, mainToken.address] });
     wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
 
     tokens = new TokenList([mainToken, wrappedToken]).sort();

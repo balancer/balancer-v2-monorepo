@@ -289,7 +289,7 @@ describe('Swaps', () => {
       context('when the sender is an approved relayer', () => {
         sharedBeforeEach(async () => {
           const action = await actionId(vault, 'batchSwap');
-          await authorizer.connect(admin).grantRoleGlobally(action, other.address);
+          await authorizer.connect(admin).grantRolesGlobally([action], other.address);
 
           await vault.connect(trader).setRelayerApproval(trader.address, other.address, true);
         });

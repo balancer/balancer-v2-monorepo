@@ -29,10 +29,9 @@ describe('LidoWrapping', function () {
   });
 
   sharedBeforeEach('deploy Vault', async () => {
-    const [deployer] = await ethers.getSigners();
     vault = await Vault.create({ admin });
 
-    const stETHContract = await deploy('MockStETH', { args: [deployer.address, 'stETH', 'stETH', 18] });
+    const stETHContract = await deploy('MockStETH', { args: ['stETH', 'stETH', 18] });
     stETH = new Token('stETH', 'stETH', 18, stETHContract);
 
     const wstETHContract = await deploy('MockWstETH', { args: [stETH.address] });
