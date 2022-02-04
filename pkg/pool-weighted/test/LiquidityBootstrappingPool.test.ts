@@ -6,6 +6,7 @@ import { decimal, fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
+import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { range } from 'lodash';
@@ -495,7 +496,7 @@ describe('LiquidityBootstrappingPool', function () {
 
         for (let i = 0; i < weights.length; i++) {
           const base = decimal(endWeights[i]).div(startWeights[i]);
-          const exponent = decimal(seconds).sub(1).div(decimal(totalSeconds).sub(1));
+          const exponent = decimal(seconds).div(decimal(totalSeconds));
           const power = base.pow(exponent);
           intermediateWeights[i] = fp(decimal(startWeights[i]).mul(power));
         }
@@ -551,15 +552,18 @@ describe('LiquidityBootstrappingPool', function () {
       });
 
       for (let pct = 5; pct < 100; pct += 5) {
-        it.skip(`gets correct intermediate weights if called ${pct}% through`, async () => {
-          const seconds = START_DELAY + (UPDATE_DURATION * pct) / 100;
-          await advanceTime(seconds);
-          console.log('seconds', seconds);
+        it(`gets correct intermediate weights if called ${pct}% through`, async () => {
+          const seconds = (UPDATE_DURATION * pct) / 100;
+          const delayPlusSeconds = START_DELAY + seconds;
+          await advanceTime(delayPlusSeconds);
+
+          const expectedWeights = getEndWeights(bn(seconds), totalSeconds);
+          const expectedNormalizedWeights = toNormalizedWeights(expectedWeights);
 
           const normalizedWeights = await pool.getNormalizedWeights();
 
           // Need to decrease precision
-          expect(normalizedWeights).to.equalWithError(getEndWeights(bn(seconds), totalSeconds), 0.005);
+          expect(normalizedWeights).to.equalWithError(expectedNormalizedWeights, 0.005);
         });
       }
     });

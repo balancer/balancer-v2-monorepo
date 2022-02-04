@@ -216,33 +216,74 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             _revert(Errors.INVALID_TOKEN);
         }
 
-        return _getNormalizedWeightByIndex(i, _poolState);
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        return normalizedWeights[i];
     }
 
-    function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
+    function _getWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
         uint256 startWeight = poolState.decodeUint31(_START_WEIGHT_OFFSET + i * 31).uncompress31();
         uint256 endWeight = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).uncompress16();
         uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
 
-        return WeightChange.getNormalizedWeight(_weightChangeMode, startWeight, endWeight, startTime, endTime);
+        return WeightChange.getWeight(_weightChangeMode, startWeight, endWeight, startTime, endTime);
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory) {
         uint256 totalTokens = _getTotalTokens();
-        uint256[] memory normalizedWeights = new uint256[](totalTokens);
+        uint256[] memory weights = new uint256[](totalTokens);
 
         bytes32 poolState = _poolState;
 
         // prettier-ignore
         {
-            normalizedWeights[0] = _getNormalizedWeightByIndex(0, poolState);
-            normalizedWeights[1] = _getNormalizedWeightByIndex(1, poolState);
-            if (totalTokens == 2) return normalizedWeights;
-            normalizedWeights[2] = _getNormalizedWeightByIndex(2, poolState);
-            if (totalTokens == 3) return normalizedWeights;
-            normalizedWeights[3] = _getNormalizedWeightByIndex(3, poolState);
+            weights[0] = _getWeightByIndex(0, poolState);
+            weights[1] = _getWeightByIndex(1, poolState);
+            if (totalTokens == 2) return weights;
+            weights[2] = _getWeightByIndex(2, poolState);
+            if (totalTokens == 3) return weights;
+            weights[3] = _getWeightByIndex(3, poolState);
         }
+
+        return _normalizedWeights(weights);
+    }
+
+    function _normalizedWeights(uint256[] memory weights) private view returns (uint256[] memory) {
+        uint256 totalTokens = _getTotalTokens();
+
+        uint256 normalizedSum = 0;
+        normalizedSum = normalizedSum.add(weights[0]);
+        normalizedSum = normalizedSum.add(weights[1]);
+        if (totalTokens >= 3) {
+            normalizedSum = normalizedSum.add(weights[2]);
+        }
+        if (totalTokens == 4) {
+            normalizedSum = normalizedSum.add(weights[3]);
+        }
+
+        uint256[] memory normalizedWeights = new uint256[](totalTokens);
+
+        // Ensure  each normalized weight is above them minimum
+        normalizedWeights[0] = weights[0].divDown(normalizedSum);
+        _require(weights[0] >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
+        if (totalTokens == 2) {
+            normalizedWeights[1] = FixedPoint.ONE.sub(normalizedWeights[0]);
+            _require(weights[1] >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
+            return normalizedWeights;
+        }
+        normalizedWeights[1] = weights[1].divDown(normalizedSum);
+        _require(weights[1] >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
+        if (totalTokens == 3) {
+            normalizedWeights[2] = FixedPoint.ONE.sub(normalizedWeights[0]).sub(normalizedWeights[1]);
+            _require(weights[2] >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
+            return normalizedWeights;
+        }
+        normalizedWeights[2] = weights[2].divDown(normalizedSum);
+        _require(weights[2] >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
+        normalizedWeights[3] = FixedPoint.ONE.sub(normalizedWeights[0]).sub(normalizedWeights[1]).sub(
+            normalizedWeights[2]
+        );
+        _require(weights[3] >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
         return normalizedWeights;
     }

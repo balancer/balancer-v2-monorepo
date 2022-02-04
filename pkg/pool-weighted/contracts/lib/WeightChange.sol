@@ -32,8 +32,22 @@ library WeightChange {
     ) internal view returns (uint256) {
         if (mode == WeightChangeMode.EQUAL_WEIGHT_CHANGE) {
             return getNormalizedWeightByEqualWeightChange(startWeight, endWeight, startTime, endTime);
+        } else {
+            _revert(Errors.UNHANDLED_JOIN_KIND);
+        }
+    }
+
+    function getWeight(
+        WeightChangeMode mode,
+        uint256 startWeight,
+        uint256 endWeight,
+        uint256 startTime,
+        uint256 endTime
+    ) internal view returns (uint256) {
+        if (mode == WeightChangeMode.EQUAL_WEIGHT_CHANGE) {
+            return getNormalizedWeightByEqualWeightChange(startWeight, endWeight, startTime, endTime);
         } else if (mode == WeightChangeMode.EQUAL_PRICE_PERCENTAGE_CHANGE) {
-            return getNormalizedWeightByEqualPricePercentage(startWeight, endWeight, startTime, endTime);
+            return getWeightByEqualPricePercentage(startWeight, endWeight, startTime, endTime);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
@@ -49,7 +63,7 @@ library WeightChange {
         return _interpolateWeight(startWeight, endWeight, pctProgress);
     }
 
-    function getNormalizedWeightByEqualPricePercentage(
+    function getWeightByEqualPricePercentage(
         uint256 startWeight,
         uint256 endWeight,
         uint256 startTime,
@@ -62,7 +76,7 @@ library WeightChange {
 
         //wn = w1 *  (finalWeight / initWeight) ^ ((n-1)/(N-1))
         uint256 base = endWeight.divDown(startWeight);
-        uint256 exponent = secondsElapsed.sub(1).divDown(totalSeconds.sub(1));
+        uint256 exponent = secondsElapsed.divDown(totalSeconds);
         uint256 power = base.powDown(exponent);
         return startWeight.mulDown(power);
     }
