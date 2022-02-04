@@ -99,7 +99,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
-    uint256 private _totalWeight = FixedPoint.ONE;
+    uint256 private _weightSum = FixedPoint.ONE;
 
     // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
     uint256 private _managementSwapFeePercentage;
@@ -393,7 +393,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         _setMiscData(_getMiscData().insertUint7(tokens.length - 1, _TOTAL_TOKENS_OFFSET));
 
         // Decrease the total weight by the weight of the token being removed
-        _totalWeight -= normalizedWeightBeforeRemove;
+        _weightSum -= normalizedWeightBeforeRemove;
 
         // The bpt amount corresponding to the token is simply its proportional share of the totalSupply
         return normalizedWeightBeforeRemove.mulDown(totalSupply());
@@ -443,8 +443,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
      * @dev Getter for the sum of all weights. In initially FixedPoint.ONE, it can be higher or lower
      * as a result of adds and removes.
      */
-    function getTotalWeight() external view returns (uint256) {
-        return _totalWeight;
+    function getWeightSum() external view returns (uint256) {
+        return _weightSum;
     }
 
     /**
