@@ -37,7 +37,8 @@ contract LiquidityBootstrappingPoolFactory is BasePoolSplitCodeFactory, FactoryW
         uint256[] memory weights,
         uint256 swapFeePercentage,
         address owner,
-        bool swapEnabledOnStart
+        bool swapEnabledOnStart,
+        WeightChange.WeightChangeMode weightChangeMode
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -53,7 +54,8 @@ contract LiquidityBootstrappingPoolFactory is BasePoolSplitCodeFactory, FactoryW
                     pauseWindowDuration,
                     bufferPeriodDuration,
                     owner,
-                    swapEnabledOnStart
+                    swapEnabledOnStart,
+                    weightChangeMode
                 )
             );
     }

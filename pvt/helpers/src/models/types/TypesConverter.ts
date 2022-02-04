@@ -17,6 +17,7 @@ import {
   WeightedPoolDeployment,
   WeightedPoolType,
   BasePoolRights,
+  WeightChangeMode,
 } from '../pools/weighted/types';
 import {
   RawTokenApproval,
@@ -63,6 +64,7 @@ export default {
       bufferPeriodDuration,
       oracleEnabled,
       swapEnabledOnStart,
+      weightChangeMode,
       mustAllowlistLPs,
       managementSwapFeePercentage,
       poolType,
@@ -78,6 +80,7 @@ export default {
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
+    if (!weightChangeMode) weightChangeMode = WeightChangeMode.EQUAL_WEIGHT_CHANGE;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
     if (managementSwapFeePercentage === undefined) managementSwapFeePercentage = fp(0);
     if (poolType === WeightedPoolType.ORACLE_WEIGHTED_POOL && tokens.length !== 2)
@@ -91,6 +94,7 @@ export default {
       bufferPeriodDuration,
       oracleEnabled,
       swapEnabledOnStart,
+      weightChangeMode,
       mustAllowlistLPs,
       managementSwapFeePercentage,
       owner: params.owner,

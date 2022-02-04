@@ -11,6 +11,8 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 
+import { WeightChangeMode } from '../../../pvt/helpers/src/models/pools/weighted/types';
+
 describe('LiquidityBootstrappingPoolFactory', function () {
   let tokens: TokenList;
   let factory: Contract;
@@ -44,7 +46,8 @@ describe('LiquidityBootstrappingPoolFactory', function () {
         WEIGHTS,
         POOL_SWAP_FEE_PERCENTAGE,
         ZERO_ADDRESS,
-        swapsEnabled
+        swapsEnabled,
+        WeightChangeMode.EQUAL_WEIGHT_CHANGE
       )
     ).wait();
 

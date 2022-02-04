@@ -12,22 +12,59 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+pragma solidity ^0.7.0;
+
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-pragma solidity ^0.7.0;
+// solhint-disable not-rely-on-time
 
 library WeightChange {
     using FixedPoint for uint256;
 
+    enum WeightChangeMode { EQUAL_WEIGHT_CHANGE, EQUAL_PRICE_PERCENTAGE_CHANGE }
+
     function getNormalizedWeight(
+        WeightChangeMode mode,
+        uint256 startWeight,
+        uint256 endWeight,
+        uint256 startTime,
+        uint256 endTime
+    ) internal view returns (uint256) {
+        if (mode == WeightChangeMode.EQUAL_WEIGHT_CHANGE) {
+            return getNormalizedWeightByEqualWeightChange(startWeight, endWeight, startTime, endTime);
+        } else if (mode == WeightChangeMode.EQUAL_PRICE_PERCENTAGE_CHANGE) {
+            return getNormalizedWeightByEqualPricePercentage(startWeight, endWeight, startTime, endTime);
+        } else {
+            _revert(Errors.UNHANDLED_JOIN_KIND);
+        }
+    }
+
+    function getNormalizedWeightByEqualWeightChange(
         uint256 startWeight,
         uint256 endWeight,
         uint256 startTime,
         uint256 endTime
     ) internal view returns (uint256) {
         uint256 pctProgress = _calculateWeightChangeProgress(startTime, endTime);
-
         return _interpolateWeight(startWeight, endWeight, pctProgress);
+    }
+
+    function getNormalizedWeightByEqualPricePercentage(
+        uint256 startWeight,
+        uint256 endWeight,
+        uint256 startTime,
+        uint256 endTime
+    ) internal view returns (uint256) {
+        (uint256 secondsElapsed, uint256 totalSeconds) = _calculateSecondsProgress(startTime, endTime);
+
+        if (secondsElapsed >= totalSeconds || totalSeconds == 0) return endWeight;
+        if (secondsElapsed == 0) return startWeight;
+
+        //wn = w1 *  (finalWeight / initWeight) ^ ((n-1)/(N-1))
+        uint256 base = endWeight.divDown(startWeight);
+        uint256 exponent = secondsElapsed.sub(1).divDown(totalSeconds.sub(1));
+        uint256 power = base.powDown(exponent);
+        return startWeight.mulDown(power);
     }
 
     // Private functions
@@ -54,19 +91,28 @@ library WeightChange {
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
     function _calculateWeightChangeProgress(uint256 startTime, uint256 endTime) private view returns (uint256) {
-        uint256 currentTime = block.timestamp;
+        (uint256 secondsElapsed, uint256 totalSeconds) = _calculateSecondsProgress(startTime, endTime);
 
-        if (currentTime > endTime) {
+        if (secondsElapsed > totalSeconds || totalSeconds == 0) {
             return FixedPoint.ONE;
-        } else if (currentTime < startTime) {
+        } else if (secondsElapsed == 0) {
             return 0;
         }
 
-        // No need for SafeMath as it was checked right above: endTime >= currentTime >= startTime
-        uint256 totalSeconds = endTime - startTime;
-        uint256 secondsElapsed = currentTime - startTime;
+        // Division by zero is avoided because it previously considered it completed in the degenerate case of a zero
+        // duration change.
+        return secondsElapsed.divDown(totalSeconds);
+    }
 
-        // In the degenerate case of a zero duration change, consider it completed (and avoid division by zero)
-        return totalSeconds == 0 ? FixedPoint.ONE : secondsElapsed.divDown(totalSeconds);
+    function _calculateSecondsProgress(uint256 startTime, uint256 endTime)
+        private
+        view
+        returns (uint256 secondsElapsed, uint256 totalSeconds)
+    {
+        uint256 currentTime = block.timestamp;
+
+        // No need for SafeMath as it was checked right above: endTime >= currentTime >= startTime
+        secondsElapsed = currentTime > startTime ? currentTime - startTime : 0;
+        totalSeconds = endTime > startTime ? endTime - startTime : 0;
     }
 }

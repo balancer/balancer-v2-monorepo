@@ -24,6 +24,7 @@ export type RawWeightedPoolDeployment = {
   bufferPeriodDuration?: BigNumberish;
   oracleEnabled?: boolean;
   swapEnabledOnStart?: boolean;
+  weightChangeMode?: WeightChangeMode;
   mustAllowlistLPs?: boolean;
   managementSwapFeePercentage?: BigNumberish;
   owner?: string;
@@ -44,6 +45,7 @@ export type WeightedPoolDeployment = {
   poolType: WeightedPoolType;
   oracleEnabled: boolean;
   swapEnabledOnStart: boolean;
+  weightChangeMode: WeightChangeMode;
   mustAllowlistLPs: boolean;
   managementSwapFeePercentage: BigNumberish;
   owner?: string;
@@ -227,3 +229,8 @@ export type ManagedPoolParams = {
   mustAllowlistLPs: boolean;
   managementSwapFeePercentage: BigNumberish;
 };
+
+export enum WeightChangeMode {
+  EQUAL_WEIGHT_CHANGE = 0,
+  EQUAL_PRICE_PERCENTAGE_CHANGE,
+}

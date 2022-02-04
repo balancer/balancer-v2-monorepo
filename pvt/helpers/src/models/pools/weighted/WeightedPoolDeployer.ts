@@ -65,6 +65,7 @@ export default {
       oracleEnabled,
       poolType,
       swapEnabledOnStart,
+      weightChangeMode,
       mustAllowlistLPs,
       managementSwapFeePercentage,
       owner,
@@ -109,6 +110,7 @@ export default {
             bufferPeriodDuration,
             owner,
             swapEnabledOnStart,
+            weightChangeMode,
           ],
           from,
         });
@@ -167,6 +169,7 @@ export default {
       swapFeePercentage,
       oracleEnabled,
       swapEnabledOnStart,
+      weightChangeMode,
       mustAllowlistLPs,
       managementSwapFeePercentage,
       poolType,
@@ -209,7 +212,8 @@ export default {
           weights,
           swapFeePercentage,
           owner,
-          swapEnabledOnStart
+          swapEnabledOnStart,
+          weightChangeMode
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');

@@ -42,6 +42,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
     // State variables
 
+    WeightChange.WeightChangeMode internal immutable _weightChangeMode;
+
     uint256 private immutable _totalTokens;
 
     IERC20 internal immutable _token0;
@@ -94,7 +96,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner,
-        bool swapEnabledOnStart
+        bool swapEnabledOnStart,
+        WeightChange.WeightChangeMode weightChangeMode
     )
         BaseWeightedPool(
             vault,
@@ -126,6 +129,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         uint256 currentTime = block.timestamp;
 
+        _weightChangeMode = weightChangeMode;
         _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights);
 
         // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction)
@@ -220,8 +224,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 endWeight = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).uncompress16();
         uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
-        
-        return WeightChange.getNormalizedWeight(startWeight, endWeight, startTime, endTime);
+
+        return WeightChange.getNormalizedWeight(_weightChangeMode, startWeight, endWeight, startTime, endTime);
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory) {
