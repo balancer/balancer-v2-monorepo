@@ -14,7 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-interface IERC4626 {
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+
+interface IERC4626 is IERC20 {
 
     /**
      * @dev `sender` has exchanged `assets` for `shares`, and transferred those `shares` to `receiver`.

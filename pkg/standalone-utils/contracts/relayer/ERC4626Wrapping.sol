@@ -16,22 +16,22 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/misc/IERC4626.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "../interfaces/IBaseRelayerLibrary.sol";
-import "../interfaces/IStaticUsdPlusToken.sol";
 
 /**
- * @title UsdPlusWrapping
- * @notice Allows users to wrap and unwrap UsdPlusTokens into their StaticUsdPlusToken wrappers
+ * @title ERC4626Wrapping
+ * @notice Allows users to wrap and unwrap ERC4626 tokens
  * @dev All functions must be payable so they can be called from a multicall involving ETH
  */
-abstract contract UsdPlusWrapping is IBaseRelayerLibrary {
+abstract contract ERC4626Wrapping is IBaseRelayerLibrary {
     using Address for address payable;
 
-    function wrapUsdPlusDynamicToken(
-        IStaticUsdPlusToken staticToken,
+    function wrapToken(
+        IERC4626 wrappedToken,
         address sender,
         address recipient,
         uint256 amount,
@@ -41,7 +41,7 @@ abstract contract UsdPlusWrapping is IBaseRelayerLibrary {
             amount = _getChainedReferenceValue(amount);
         }
 
-        IERC20 dynamicToken = IERC20(staticToken.mainToken());
+        IERC20 dynamicToken = IERC20(wrappedToken.asset());
 
         // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
         // to be sourced from outside the relayer, we must first pull them here.
@@ -50,17 +50,17 @@ abstract contract UsdPlusWrapping is IBaseRelayerLibrary {
             _pullToken(sender, dynamicToken, amount);
         }
 
-        dynamicToken.approve(address(staticToken), amount);
+        dynamicToken.approve(address(wrappedToken), amount);
         // Use 0 for the referral code
-        uint256 result = staticToken.wrap(recipient, amount);
+        uint256 result = wrappedToken.deposit(amount, recipient);
 
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, result);
         }
     }
 
-    function unwrapUsdPlusStaticToken(
-        IStaticUsdPlusToken staticToken,
+    function unwrapToken(
+        IERC4626 wrappedToken,
         address sender,
         address recipient,
         uint256 amount,
@@ -74,11 +74,11 @@ abstract contract UsdPlusWrapping is IBaseRelayerLibrary {
         // to be sourced from outside the relayer, we must first pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, staticToken, amount);
+            _pullToken(sender, wrappedToken, amount);
         }
 
         // No approval is needed here, as the Static Tokens are burned directly from the relayer's account
-        (, uint256 result) = staticToken.unwrap(recipient, amount);
+        uint256 result = wrappedToken.redeem(amount, recipient, sender);
 
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, result);
