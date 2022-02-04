@@ -118,7 +118,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     event ManagementFeesCollected(IERC20[] tokens, uint256[] amounts);
     event AllowlistAddressAdded(address indexed member);
     event AllowlistAddressRemoved(address indexed member);
-    event TokenRemoved(IERC20 indexed token);
+    event TokenRemoved(IERC20 indexed token, uint256 tokenAmountOut);
 
     struct NewPoolParams {
         IVault vault;
@@ -392,7 +392,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         tokensToRemove[0] = token;
         getVault().deregisterTokens(getPoolId(), tokensToRemove);
 
-        emit TokenRemoved(token);
+        emit TokenRemoved(token, rawBalances[tokenIndex]);
 
         // Clean up data structures and update the token count
         delete _tokenState[token];

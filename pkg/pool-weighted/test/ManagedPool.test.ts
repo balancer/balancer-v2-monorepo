@@ -1121,6 +1121,7 @@ describe('ManagedPool', function () {
 
               expectEvent.inReceipt(receipt, 'TokenRemoved', {
                 token: threeTokens.get(tokenIndex).address,
+                tokenAmountOut: initialBalances[tokenIndex]
               });
             });
 
