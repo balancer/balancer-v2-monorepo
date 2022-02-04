@@ -17,8 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-
-import "../interfaces/IERC4626.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/misc/IERC4626.sol";
 
 import "../LinearPool.sol";
 
@@ -50,7 +49,7 @@ contract ERC4626LinearPool is LinearPool {
             owner
         )
     {
-        _require(address(mainToken) == IERC4626(address(wrappedToken)).underlying(), Errors.TOKENS_MISMATCH);
+        _require(address(mainToken) == IERC4626(address(wrappedToken)).asset(), Errors.TOKENS_MISMATCH);
 
         // _getWrappedTokenRate is scaled e18, we may need to scale the assetsPerShare (in terms of token decimals)
         uint256 tokenDecimals = ERC20(address(wrappedToken)).decimals();

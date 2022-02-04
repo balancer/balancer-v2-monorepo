@@ -15,8 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-standalone-utils/contracts/test/TestToken.sol";
-
-import "../interfaces/IERC4626.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/misc/IERC4626.sol";
 
 contract MockERC4626Token is TestToken, IERC4626 {
     uint256 private _rate = 1e27;
@@ -41,8 +40,15 @@ contract MockERC4626Token is TestToken, IERC4626 {
         return _rate;
     }
 
-    function underlying() external view override returns (address){
+    function asset() external view override returns (address){
         return _mainToken;
     }
 
+    function deposit(uint256 assets, address receiver) external override returns (uint256) {
+        return assets/_rate;
+    }
+
+    function redeem(uint256 shares, address receiver, address owner) external override returns (uint256) {
+        return shares*_rate;
+    }
 }
