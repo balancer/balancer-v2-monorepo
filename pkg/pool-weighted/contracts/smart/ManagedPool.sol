@@ -417,11 +417,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             IVault.ExitPoolRequest({
                 assets: _asIAsset(tokens),
                 minAmountsOut: minAmountsOut,
-                userData: abi.encode(
-                    WeightedPoolUserData.ExitKind.REMOVE_TOKEN,
-                    tokenIndex,
-                    unscaledTokenAmountOut
-                ),
+                userData: abi.encode(WeightedPoolUserData.ExitKind.REMOVE_TOKEN, tokenIndex, unscaledTokenAmountOut),
                 toInternalBalance: false
             })
         );
@@ -439,7 +435,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         if (currentTime < startTime) {
             _revert(Errors.REMOVE_TOKEN_PENDING_WEIGHT_CHANGE);
         } else if (currentTime < endTime) {
-            _revert(Errors.REMOVE_TOKEN_DURING_WEIGHT_CHANGE);            
+            _revert(Errors.REMOVE_TOKEN_DURING_WEIGHT_CHANGE);
         }
     }
 
@@ -689,12 +685,11 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
-    function _exitRemoveToken(address sender, uint256[] memory scalingFactors, bytes memory userData)
-        private
-        view
-        whenNotPaused
-        returns (uint256 bptAmountIn, uint256[] memory amountsOut)
-    {
+    function _exitRemoveToken(
+        address sender,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    ) private view whenNotPaused returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         // This exit function is disabled if the contract is paused.
 
         // This exit function can only be called by the Pool itself - the authorization logic that governs when that

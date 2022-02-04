@@ -1063,7 +1063,9 @@ describe('ManagedPool', function () {
           });
 
           it('non-owners cannot remove tokens', async () => {
-            await expect(pool.removeToken(sender, threeTokens.get(0).address, other.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            await expect(pool.removeToken(sender, threeTokens.get(0).address, other.address)).to.be.revertedWith(
+              'SENDER_NOT_ALLOWED'
+            );
           });
         });
 
@@ -1083,9 +1085,9 @@ describe('ManagedPool', function () {
             await pool.updateWeightsGradually(sender, startTime, endTime, threeTokenWeights);
             await advanceTime(DAY);
 
-            await expect(pool.removeToken(sender, threeTokens.get(tokenIndex).address, other.address)).to.be.revertedWith(
-              'REMOVE_TOKEN_DURING_WEIGHT_CHANGE'
-            );
+            await expect(
+              pool.removeToken(sender, threeTokens.get(tokenIndex).address, other.address)
+            ).to.be.revertedWith('REMOVE_TOKEN_DURING_WEIGHT_CHANGE');
           });
 
           it('rejects remove when a weight change is pending', async () => {
@@ -1094,9 +1096,9 @@ describe('ManagedPool', function () {
 
             await pool.updateWeightsGradually(sender, startTime.add(DAY), endTime, threeTokenWeights);
 
-            await expect(pool.removeToken(sender, threeTokens.get(tokenIndex).address, other.address)).to.be.revertedWith(
-              'REMOVE_TOKEN_PENDING_WEIGHT_CHANGE'
-            );
+            await expect(
+              pool.removeToken(sender, threeTokens.get(tokenIndex).address, other.address)
+            ).to.be.revertedWith('REMOVE_TOKEN_PENDING_WEIGHT_CHANGE');
           });
 
           context('tokens can be removed', () => {
@@ -1127,17 +1129,21 @@ describe('ManagedPool', function () {
             });
 
             it('removal emits an event', async () => {
-              const tx = await pool.instance.connect(sender).removeToken(threeTokens.get(tokenIndex).address, other.address);
+              const tx = await pool.instance
+                .connect(sender)
+                .removeToken(threeTokens.get(tokenIndex).address, other.address);
               const receipt = await tx.wait();
 
               expectEvent.inReceipt(receipt, 'TokenRemoved', {
                 token: threeTokens.get(tokenIndex).address,
-                tokenAmountOut: initialBalances[tokenIndex]
+                tokenAmountOut: initialBalances[tokenIndex],
               });
             });
 
             it('returns the correct BptAmount', async () => {
-              await pool.instance.connect(sender).checkRemoveTokenBptAmount(threeTokens.get(tokenIndex).address, other.address);
+              await pool.instance
+                .connect(sender)
+                .checkRemoveTokenBptAmount(threeTokens.get(tokenIndex).address, other.address);
             });
           });
         });
