@@ -372,11 +372,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         (IERC20[] memory tokens, uint256[] memory rawBalances, ) = getVault().getPoolTokens(getPoolId());
         uint256 tokenIndex = _tokenAddressToIndex(token);
         _require(tokens.length > 2, Errors.MIN_TOKENS);
-        // Verify there is no ongoing weight change
-        _require(
-            0 == _calculateWeightChangeProgress() || FixedPoint.ONE == _calculateWeightChangeProgress(),
-            Errors.REMOVE_TOKEN_DURING_WEIGHT_CHANGE
-        );
+        // Do not allow removing tokens if there is an ongoing or pending gradual weight change
+        _ensureConstantWeights();
 
         uint256 weightOfRemovedToken = _exitWithEntireBalance(
             tokens,
@@ -435,6 +432,20 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         );
 
         return normalizedWeights[tokenIndex];
+    }
+
+    function _ensureConstantWeights() private view {
+        uint256 currentTime = block.timestamp;
+        bytes32 poolState = _getMiscData();
+
+        uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
+        uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+
+        if (currentTime < startTime) {
+            _revert(Errors.REMOVE_TOKEN_PENDING_WEIGHT_CHANGE);
+        } else if (currentTime < endTime) {
+            _revert(Errors.REMOVE_TOKEN_DURING_WEIGHT_CHANGE);            
+        }
     }
 
     /**

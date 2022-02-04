@@ -1088,6 +1088,17 @@ describe('ManagedPool', function () {
             );
           });
 
+          it('rejects remove when a weight change is pending', async () => {
+            const startTime = await currentTimestamp();
+            const endTime = startTime.add(DAY * 3);
+
+            await pool.updateWeightsGradually(sender, startTime.add(DAY), endTime, threeTokenWeights);
+
+            await expect(pool.removeToken(sender, threeTokens.get(tokenIndex).address, other.address)).to.be.revertedWith(
+              'REMOVE_TOKEN_PENDING_WEIGHT_CHANGE'
+            );
+          });
+
           context('tokens can be removed', () => {
             sharedBeforeEach('Sets the SwapEnabled flag', async () => {
               if (!swapEnabled) {
