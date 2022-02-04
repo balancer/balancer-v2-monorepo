@@ -46,7 +46,7 @@ describe('BalancerTokenAdmin', () => {
 
     it('tracks authorizer changes in the vault', async () => {
       const action = await actionId(vault.instance, 'setAuthorizer');
-      await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+      await vault.grantRolesGlobally([action], admin.address);
 
       await vault.instance.connect(admin).setAuthorizer(other.address);
 
@@ -54,7 +54,7 @@ describe('BalancerTokenAdmin', () => {
     });
 
     it('sets the startEpochTime to the sentinel value', async () => {
-      expect(await tokenAdmin.startEpochTime()).to.be.eq(MAX_UINT256);
+      expect(await tokenAdmin.getStartEpochTime()).to.be.eq(MAX_UINT256);
     });
   });
 
@@ -68,7 +68,7 @@ describe('BalancerTokenAdmin', () => {
     context('when the caller is authorised to call this function', () => {
       sharedBeforeEach('authorize caller', async () => {
         const action = await actionId(tokenAdmin, 'activate');
-        await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+        await vault.grantRolesGlobally([action], admin.address);
       });
 
       context('when BalancerTokenAdmin has been activated already', () => {
@@ -129,9 +129,9 @@ describe('BalancerTokenAdmin', () => {
             const receipt = await tx.wait();
             const { timestamp } = await ethers.provider.getBlock(receipt.blockHash);
 
-            expect(await tokenAdmin.startEpochTime()).to.be.eq(timestamp);
-            expect(await tokenAdmin.startEpochSupply()).to.be.eq(await token.totalSupply());
-            expect(await tokenAdmin.rate()).to.be.eq('32165468432186542');
+            expect(await tokenAdmin.getStartEpochTime()).to.be.eq(timestamp);
+            expect(await tokenAdmin.getStartEpochSupply()).to.be.eq(await token.totalSupply());
+            expect(await tokenAdmin.getInflationRate()).to.be.eq('32165468432186542');
           });
 
           it('it emits an MiningParametersUpdated event', async () => {
@@ -152,7 +152,7 @@ describe('BalancerTokenAdmin', () => {
     context('when BalancerTokenAdmin has been activated', () => {
       sharedBeforeEach('activate', async () => {
         const action = await actionId(tokenAdmin, 'activate');
-        await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+        await vault.grantRolesGlobally([action], admin.address);
 
         await token.connect(admin).grantRole(DEFAULT_ADMIN_ROLE, tokenAdmin.address);
         await tokenAdmin.connect(admin).activate();
@@ -174,7 +174,7 @@ describe('BalancerTokenAdmin', () => {
 
           const currentRate = await tokenAdmin.rate();
           expectedRate = currentRate.mul(ONE).div('1189207115002721024');
-          expectedStartSupply = (await tokenAdmin.startEpochSupply()) + currentRate.mul(365 * DAY);
+          expectedStartSupply = (await tokenAdmin.getStartEpochSupply()) + currentRate.mul(365 * DAY);
         });
 
         it('update the mining parameters', async () => {
@@ -193,7 +193,7 @@ describe('BalancerTokenAdmin', () => {
   describe('mint', () => {
     sharedBeforeEach('activate BalancerTokenAdmin', async () => {
       const action = await actionId(tokenAdmin, 'activate');
-      await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+      await vault.grantRolesGlobally([action], admin.address);
 
       await token.connect(admin).grantRole(DEFAULT_ADMIN_ROLE, tokenAdmin.address);
       await tokenAdmin.connect(admin).activate();
@@ -208,7 +208,7 @@ describe('BalancerTokenAdmin', () => {
     context('when the caller is authorised to call this function', () => {
       sharedBeforeEach('activate', async () => {
         const action = await actionId(tokenAdmin, 'mint');
-        await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+        await vault.grantRolesGlobally([action], admin.address);
       });
 
       context('when mint does not exceed available supply', () => {
@@ -227,7 +227,7 @@ describe('BalancerTokenAdmin', () => {
 
       context('when trying to mint more than the available supply', () => {
         it('reverts', async () => {
-          const availableSupply = await tokenAdmin.availableSupply();
+          const availableSupply = await tokenAdmin.getAvailableSupply();
           const totalSupply = await token.totalSupply();
           const rate = await tokenAdmin.rate();
 
@@ -252,7 +252,7 @@ describe('BalancerTokenAdmin', () => {
         await token.connect(admin).grantRole(SNAPSHOT_ROLE, tokenAdmin.address);
 
         const action = await actionId(tokenAdmin, 'snapshot');
-        await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+        await vault.grantRolesGlobally([action], admin.address);
       });
 
       it('emits a Snapshot event', async () => {
