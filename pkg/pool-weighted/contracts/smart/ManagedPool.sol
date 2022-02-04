@@ -366,21 +366,18 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _removeToken(IERC20 token, address recipient) internal returns (uint256) {
-        // Calculate the BPT value of the full token balance (other values returned to avoid duplication)
-        //(uint256 bptAmountIn, uint256 minAmountOut, uint256 normalizedWeight) = getTotalBptForToken(tokenIndex);
         // Exit the pool, returning the full balance of the token to the recipient
-        (IERC20[] memory tokens, uint256[] memory rawBalances, ) = getVault().getPoolTokens(getPoolId());
+        (IERC20[] memory tokens, uint256[] memory unscaledBalances, ) = getVault().getPoolTokens(getPoolId());
         uint256 tokenIndex = _tokenAddressToIndex(token);
         _require(tokens.length > 2, Errors.MIN_TOKENS);
         // Do not allow removing tokens if there is an ongoing or pending gradual weight change
         _ensureConstantWeights();
 
-        uint256 weightOfRemovedToken = _exitWithEntireBalance(
+        uint256 normalizedWeightBeforeRemove = _exitWithEntireBalance(
             tokens,
             _getNormalizedWeights(),
             tokenIndex,
-            _scalingFactor(token),
-            rawBalances[tokenIndex],
+            unscaledBalances[tokenIndex],
             recipient
         );
 
@@ -389,17 +386,17 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         tokensToRemove[0] = token;
         getVault().deregisterTokens(getPoolId(), tokensToRemove);
 
-        emit TokenRemoved(token, rawBalances[tokenIndex]);
+        emit TokenRemoved(token, unscaledBalances[tokenIndex]);
 
         // Clean up data structures and update the token count
         delete _tokenState[token];
         _setMiscData(_getMiscData().insertUint7(tokens.length - 1, _TOTAL_TOKENS_OFFSET));
 
         // Decrease the total weight by the weight of the token being removed
-        _totalWeight -= weightOfRemovedToken;
+        _totalWeight -= normalizedWeightBeforeRemove;
 
         // The bpt amount corresponding to the token is simply its proportional share of the totalSupply
-        return weightOfRemovedToken.mulDown(totalSupply());
+        return normalizedWeightBeforeRemove.mulDown(totalSupply());
     }
 
     // Separated to avoid stack too deep
@@ -407,13 +404,11 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         IERC20[] memory tokens,
         uint256[] memory normalizedWeights,
         uint256 tokenIndex,
-        uint256 scalingFactor,
         uint256 unscaledTokenAmountOut,
         address recipient
     ) private returns (uint256) {
         uint256[] memory minAmountsOut = new uint256[](tokens.length);
-        // In the limit, compensate for BasePool downscaling of amountOut
-        minAmountsOut[tokenIndex] = _downscaleUp(unscaledTokenAmountOut, scalingFactor);
+        minAmountsOut[tokenIndex] = unscaledTokenAmountOut;
 
         getVault().exitPool(
             getPoolId(),
@@ -425,7 +420,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
                 userData: abi.encode(
                     WeightedPoolUserData.ExitKind.REMOVE_TOKEN,
                     tokenIndex,
-                    _upscale(unscaledTokenAmountOut, scalingFactor) // Upscale raw amount for Vault
+                    unscaledTokenAmountOut
                 ),
                 toInternalBalance: false
             })
@@ -664,7 +659,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         if (kind == WeightedPoolUserData.ExitKind.MANAGEMENT_FEE_TOKENS_OUT) {
             return _exitManagerFeeTokensOut(sender);
         } else if (kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN) {
-            return _exitRemoveToken(sender, userData);
+            return _exitRemoveToken(sender, scalingFactors, userData);
         } else {
             return _doExit(balances, normalizedWeights, scalingFactors, userData);
         }
@@ -694,7 +689,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
-    function _exitRemoveToken(address sender, bytes memory userData)
+    function _exitRemoveToken(address sender, uint256[] memory scalingFactors, bytes memory userData)
         private
         view
         whenNotPaused
@@ -713,7 +708,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         (uint256 tokenIndex, uint256 amountOut) = userData.removeToken();
 
         amountsOut = new uint256[](_getTotalTokens());
-        amountsOut[tokenIndex] = amountOut;
+        amountsOut[tokenIndex] = _upscale(amountOut, scalingFactors[tokenIndex]);
     }
 
     function _tokenAddressToIndex(IERC20 token) internal view override returns (uint256) {
