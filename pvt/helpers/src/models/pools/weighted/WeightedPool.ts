@@ -685,8 +685,8 @@ export default class WeightedPool {
     return { amounts: result.collectedFees, tokenAddresses: result.tokens };
   }
 
-  async removeToken(from: SignerWithAddress, tokenIndex: number, recipient: string): Promise<ContractTransaction> {
+  async removeToken(from: SignerWithAddress, token: string, recipient: string): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    return await pool.removeToken(tokenIndex, recipient);
+    return await pool.removeToken(token, recipient);
   }
 }

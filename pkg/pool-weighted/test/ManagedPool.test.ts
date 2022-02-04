@@ -1014,7 +1014,7 @@ describe('ManagedPool', function () {
       });
 
       it('prevents removing from a 2-token pool', async () => {
-        await expect(pool.removeToken(owner, 0, other.address)).to.be.revertedWith('MIN_TOKENS');
+        await expect(pool.removeToken(owner, allTokens.get(0).address, other.address)).to.be.revertedWith('MIN_TOKENS');
       });
 
       it('reverts if the vault is called directly', async () => {
@@ -1063,7 +1063,7 @@ describe('ManagedPool', function () {
           });
 
           it('non-owners cannot remove tokens', async () => {
-            await expect(pool.removeToken(sender, 0, other.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            await expect(pool.removeToken(sender, threeTokens.get(0).address, other.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
         });
 
@@ -1072,8 +1072,8 @@ describe('ManagedPool', function () {
             sender = owner;
           });
 
-          it('remove rejects invalid token indices', async () => {
-            await expect(pool.removeToken(sender, 3, other.address)).to.be.revertedWith('OUT_OF_BOUNDS');
+          it('remove rejects invalid token', async () => {
+            await expect(pool.removeToken(sender, ZERO_ADDRESS, other.address)).to.be.revertedWith('INVALID_TOKEN');
           });
 
           it('rejects remove during a weight change', async () => {
@@ -1083,7 +1083,7 @@ describe('ManagedPool', function () {
             await pool.updateWeightsGradually(sender, startTime, endTime, threeTokenWeights);
             await advanceTime(DAY);
 
-            await expect(pool.removeToken(sender, tokenIndex, other.address)).to.be.revertedWith(
+            await expect(pool.removeToken(sender, threeTokens.get(tokenIndex).address, other.address)).to.be.revertedWith(
               'REMOVE_TOKEN_DURING_WEIGHT_CHANGE'
             );
           });
@@ -1104,7 +1104,7 @@ describe('ManagedPool', function () {
             });
 
             it(`removes the token with index ${tokenIndex}; swap enabled: ${swapEnabled}`, async () => {
-              await pool.removeToken(sender, tokenIndex, other.address);
+              await pool.removeToken(sender, threeTokens.get(tokenIndex).address, other.address);
 
               expect(await pool.instance.getTotalTokens()).to.equal(2);
               const poolTokens = await pool.getTokens();
@@ -1116,7 +1116,7 @@ describe('ManagedPool', function () {
             });
 
             it('removal emits an event', async () => {
-              const tx = await pool.instance.connect(sender).removeToken(tokenIndex, other.address);
+              const tx = await pool.instance.connect(sender).removeToken(threeTokens.get(tokenIndex).address, other.address);
               const receipt = await tx.wait();
 
               expectEvent.inReceipt(receipt, 'TokenRemoved', {
@@ -1125,7 +1125,7 @@ describe('ManagedPool', function () {
             });
 
             it('returns the correct BptAmount', async () => {
-              await pool.instance.connect(sender).checkRemoveTokenBptAmount(tokenIndex, other.address);
+              await pool.instance.connect(sender).checkRemoveTokenBptAmount(threeTokens.get(tokenIndex).address, other.address);
             });
           });
         });

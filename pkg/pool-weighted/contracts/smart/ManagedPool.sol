@@ -361,16 +361,16 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
      * - Reduce the total weight by the weight of the token removed, and update the number of tokens and `_tokenState`
      *   (all other weights then scale accordingly)
      */
-    function removeToken(uint256 tokenIndex, address recipient) external authenticate whenNotPaused returns (uint256) {
-        return _removeToken(tokenIndex, recipient);
+    function removeToken(IERC20 token, address recipient) external authenticate whenNotPaused returns (uint256) {
+        return _removeToken(token, recipient);
     }
 
-    function _removeToken(uint256 tokenIndex, address recipient) internal returns (uint256) {
+    function _removeToken(IERC20 token, address recipient) internal returns (uint256) {
         // Calculate the BPT value of the full token balance (other values returned to avoid duplication)
         //(uint256 bptAmountIn, uint256 minAmountOut, uint256 normalizedWeight) = getTotalBptForToken(tokenIndex);
         // Exit the pool, returning the full balance of the token to the recipient
         (IERC20[] memory tokens, uint256[] memory rawBalances, ) = getVault().getPoolTokens(getPoolId());
-        _require(tokenIndex < tokens.length, Errors.OUT_OF_BOUNDS);
+        uint256 tokenIndex = _tokenAddressToIndex(token);
         _require(tokens.length > 2, Errors.MIN_TOKENS);
         // Verify there is no ongoing weight change
         _require(
@@ -378,25 +378,24 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             Errors.REMOVE_TOKEN_DURING_WEIGHT_CHANGE
         );
 
-        IERC20 removedToken = tokens[tokenIndex];
         uint256 weightOfRemovedToken = _exitWithEntireBalance(
             tokens,
             _getNormalizedWeights(),
             tokenIndex,
-            _scalingFactor(removedToken),
+            _scalingFactor(token),
             rawBalances[tokenIndex],
             recipient
         );
 
         // Deregister the token in the Vault
         IERC20[] memory tokensToRemove = new IERC20[](1);
-        tokensToRemove[0] = removedToken;
+        tokensToRemove[0] = token;
         getVault().deregisterTokens(getPoolId(), tokensToRemove);
 
-        emit TokenRemoved(removedToken);
+        emit TokenRemoved(token);
 
         // Clean up data structures and update the token count
-        delete _tokenState[removedToken];
+        delete _tokenState[token];
         _setMiscData(_getMiscData().insertUint7(tokens.length - 1, _TOTAL_TOKENS_OFFSET));
 
         // Decrease the total weight by the weight of the token being removed

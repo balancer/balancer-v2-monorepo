@@ -26,10 +26,11 @@ contract MockManagedPool is ManagedPool {
       return _getTotalTokens();
     }
 
-    function checkRemoveTokenBptAmount(uint256 tokenIndex, address recipient) external {
+    function checkRemoveTokenBptAmount(IERC20 token, address recipient) external {
       uint256[] memory weights = _getNormalizedWeights();
+      uint256 tokenIndex = _tokenAddressToIndex(token);
       uint256 expected = weights[tokenIndex].mulDown(totalSupply());
-      uint256 bptAmountIn = _removeToken(tokenIndex, recipient);
+      uint256 bptAmountIn = _removeToken(token, recipient);
 
       require(bptAmountIn == expected, "BptAmountIn does not match expected");
     }
