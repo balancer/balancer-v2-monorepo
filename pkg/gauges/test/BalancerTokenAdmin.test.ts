@@ -54,7 +54,7 @@ describe('BalancerTokenAdmin', () => {
     });
 
     it('sets the startEpochTime to the sentinel value', async () => {
-      expect(await tokenAdmin.startEpochTime()).to.be.eq(MAX_UINT256);
+      expect(await tokenAdmin.getStartEpochTime()).to.be.eq(MAX_UINT256);
     });
   });
 
@@ -129,9 +129,9 @@ describe('BalancerTokenAdmin', () => {
             const receipt = await tx.wait();
             const { timestamp } = await ethers.provider.getBlock(receipt.blockHash);
 
-            expect(await tokenAdmin.startEpochTime()).to.be.eq(timestamp);
-            expect(await tokenAdmin.startEpochSupply()).to.be.eq(await token.totalSupply());
-            expect(await tokenAdmin.rate()).to.be.eq('32165468432186542');
+            expect(await tokenAdmin.getStartEpochTime()).to.be.eq(timestamp);
+            expect(await tokenAdmin.getStartEpochSupply()).to.be.eq(await token.totalSupply());
+            expect(await tokenAdmin.getInflationRate()).to.be.eq('32165468432186542');
           });
 
           it('it emits an MiningParametersUpdated event', async () => {
@@ -174,7 +174,7 @@ describe('BalancerTokenAdmin', () => {
 
           const currentRate = await tokenAdmin.rate();
           expectedRate = currentRate.mul(ONE).div('1189207115002721024');
-          expectedStartSupply = (await tokenAdmin.startEpochSupply()) + currentRate.mul(365 * DAY);
+          expectedStartSupply = (await tokenAdmin.getStartEpochSupply()) + currentRate.mul(365 * DAY);
         });
 
         it('update the mining parameters', async () => {
@@ -227,7 +227,7 @@ describe('BalancerTokenAdmin', () => {
 
       context('when trying to mint more than the available supply', () => {
         it('reverts', async () => {
-          const availableSupply = await tokenAdmin.availableSupply();
+          const availableSupply = await tokenAdmin.getAvailableSupply();
           const totalSupply = await token.totalSupply();
           const rate = await tokenAdmin.rate();
 
