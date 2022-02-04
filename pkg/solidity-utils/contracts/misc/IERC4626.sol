@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "../openzeppelin/IERC20.sol";
 
 interface IERC4626 is IERC20 {
     /**
