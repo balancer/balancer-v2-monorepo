@@ -11,10 +11,12 @@ implements: ERC20
 
 
 interface TokenAdmin:
+    def getVault() -> address: view
     def future_epoch_time_write() -> uint256: nonpayable
     def rate() -> uint256: view
 
 interface Controller:
+    def voting_escrow() -> address: view
     def checkpoint_gauge(addr: address): nonpayable
     def gauge_relative_weight(addr: address, time: uint256) -> uint256: view
 
@@ -28,6 +30,8 @@ interface Factory:
     def getAuthorizerAdaptor() -> address: view
 
 interface Minter:
+    def getBalancerTokenAdmin() -> address: view
+    def getGaugeController() -> address: view
     def minted(user: address, gauge: address) -> uint256: view
 
 interface VotingEscrow:
@@ -85,18 +89,18 @@ VERSION: constant(String[8]) = "v5.0.0"
 EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
 PERMIT_TYPEHASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 
-# TODO: Fill out addresses
-BAL_TOKEN_ADMIN: constant(address) = 0x0000000000000000000000000000000000000000
-GAUGE_CONTROLLER: constant(address) = 0x0000000000000000000000000000000000000000
-MINTER: constant(address) = 0x0000000000000000000000000000000000000000
-VEBOOST_PROXY: constant(address) = 0x0000000000000000000000000000000000000000
-VOTING_ESCROW: constant(address) = 0x0000000000000000000000000000000000000000
+BAL_TOKEN_ADMIN: immutable(address)
+BAL_VAULT: immutable(address)
+GAUGE_CONTROLLER: immutable(address)
+MINTER: immutable(address)
+VOTING_ESCROW: immutable(address)
+VEBOOST_PROXY: immutable(address)
 
 
 # ERC20
 balanceOf: public(HashMap[address, uint256])
 totalSupply: public(uint256)
-allowance: public(HashMap[address, HashMap[address, uint256]])
+_allowance: HashMap[address, HashMap[address, uint256]]
 
 name: public(String[64])
 symbol: public(String[40])
@@ -151,13 +155,36 @@ integrate_inv_supply: public(uint256[100000000000000000000000000000])  # bump ep
 
 
 @external
-def __init__():
+def __init__(minter: address, veBoostProxy: address):
+    """
+    @param minter Address of minter contract
+    @param veBoostProxy Address of boost delegation contract
+    """
+    gaugeController: address = Minter(minter).getGaugeController()
+    balTokenAdmin: address = Minter(minter).getBalancerTokenAdmin()
+    BAL_TOKEN_ADMIN = balTokenAdmin
+    BAL_VAULT = TokenAdmin(balTokenAdmin).getVault()
+    GAUGE_CONTROLLER = gaugeController
+    MINTER = minter
+    VOTING_ESCROW = Controller(gaugeController).voting_escrow()
+    VEBOOST_PROXY = veBoostProxy
     # prevent initialization of implementation
     self.lp_token = 0x000000000000000000000000000000000000dEaD
 
 
 # Internal Functions
 
+@view
+@internal
+def _get_allowance(owner: address, spender: address) -> uint256:
+    """
+     @dev Override to grant the Vault infinite allowance, causing for Gauge Tokens to not require approval.
+     This is sound as the Vault already provides authorization mechanisms when initiating token transfers, which this
+     contract inherits.
+    """
+    if (spender == BAL_VAULT):
+        return MAX_UINT256
+    return self._allowance[owner][spender]
 
 @internal
 def _checkpoint(addr: address):
@@ -432,9 +459,9 @@ def transferFrom(_from: address, _to :address, _value: uint256) -> bool:
      @param _to address The address which you want to transfer to
      @param _value uint256 the amount of tokens to be transferred
     """
-    _allowance: uint256 = self.allowance[_from][msg.sender]
+    _allowance: uint256 = self._get_allowance(_from, msg.sender)
     if _allowance != MAX_UINT256:
-        self.allowance[_from][msg.sender] = _allowance - _value
+        self._allowance[_from][msg.sender] = _allowance - _value
 
     self._transfer(_from, _to, _value)
 
@@ -469,7 +496,7 @@ def approve(_spender : address, _value : uint256) -> bool:
     @param _value The amount of tokens that may be transferred
     @return bool success
     """
-    self.allowance[msg.sender][_spender] = _value
+    self._allowance[msg.sender][_spender] = _value
     log Approval(msg.sender, _spender, _value)
 
     return True
@@ -519,7 +546,7 @@ def permit(
     else:
         assert ecrecover(digest, convert(_v, uint256), convert(_r, uint256), convert(_s, uint256)) == _owner
 
-    self.allowance[_owner][_spender] = _value
+    self._allowance[_owner][_spender] = _value
     self.nonces[_owner] = nonce + 1
 
     log Approval(_owner, _spender, _value)
@@ -536,8 +563,8 @@ def increaseAllowance(_spender: address, _added_value: uint256) -> bool:
     @param _added_value The amount of to increase the allowance
     @return bool success
     """
-    allowance: uint256 = self.allowance[msg.sender][_spender] + _added_value
-    self.allowance[msg.sender][_spender] = allowance
+    allowance: uint256 = self._get_allowance(msg.sender,_spender) + _added_value
+    self._allowance[msg.sender][_spender] = allowance
 
     log Approval(msg.sender, _spender, allowance)
 
@@ -554,8 +581,8 @@ def decreaseAllowance(_spender: address, _subtracted_value: uint256) -> bool:
     @param _subtracted_value The amount of to decrease the allowance
     @return bool success
     """
-    allowance: uint256 = self.allowance[msg.sender][_spender] - _subtracted_value
-    self.allowance[msg.sender][_spender] = allowance
+    allowance: uint256 = self._get_allowance(msg.sender, _spender) - _subtracted_value
+    self._allowance[msg.sender][_spender] = allowance
 
     log Approval(msg.sender, _spender, allowance)
 
@@ -781,6 +808,14 @@ def version() -> String[8]:
     @notice Get the version of this gauge contract
     """
     return VERSION
+
+@view
+@external
+def allowance(owner: address, spender: address) -> uint256:
+    """
+     @notice Get `spender`'s current allowance from `owner` 
+    """
+    return self._get_allowance(owner, spender)
 
 
 # Initializer

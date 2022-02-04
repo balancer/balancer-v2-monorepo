@@ -461,7 +461,7 @@ describe('ERC20', () => {
 
       context('when the sender does not have enough balance', () => {
         it('reverts', async () => {
-          await expect(token.burn(holder.address, amount)).be.revertedWith('ERC20_BURN_EXCEEDS_ALLOWANCE');
+          await expect(token.burn(holder.address, amount)).be.revertedWith('ERC20_BURN_EXCEEDS_BALANCE');
         });
       });
 
