@@ -34,8 +34,8 @@ contract Authorizer is IAuthorizer {
 
     address public constant ANYWHERE = address(-1);
 
-    bytes32 public constant GRANT_PERMISSION = bytes32("GRANT_PERMISSION");
-    bytes32 public constant REVOKE_PERMISSION = bytes32("REVOKE_PERMISSION");
+    bytes32 public constant GRANT_PERMISSION = keccak256("GRANT_PERMISSION");
+    bytes32 public constant REVOKE_PERMISSION = keccak256("REVOKE_PERMISSION");
 
     mapping(bytes32 => bool) public isAllowed;
 
@@ -67,7 +67,7 @@ contract Authorizer is IAuthorizer {
         address account,
         address where
     ) public pure returns (bytes32) {
-        return keccak256(abi.encode(action, account, where));
+        return keccak256(abi.encodePacked(action, account, where));
     }
 
     /**

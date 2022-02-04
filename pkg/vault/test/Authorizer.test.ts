@@ -2,7 +2,6 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import Authorizer from '@balancer-labs/v2-helpers/src/models/authorizer/Authorizer';
 
@@ -18,12 +17,100 @@ describe('Authorizer', () => {
   const ACTION_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
   const ACTIONS = [ACTION_1, ACTION_2];
 
-  const ANYWHERE = ZERO_ADDRESS;
+  const ANYWHERE = Authorizer.ANYWHERE;
   const WHERE = [ethers.Wallet.createRandom().address, ethers.Wallet.createRandom().address];
   const NOT_WHERE = ethers.Wallet.createRandom().address;
 
   sharedBeforeEach('deploy authorizer', async () => {
     authorizer = await Authorizer.create({ admin });
+  });
+
+  describe('admin', () => {
+    let GRANT_PERMISSION: string, REVOKE_PERMISSION: string;
+
+    sharedBeforeEach('set constants', async () => {
+      GRANT_PERMISSION = await authorizer.GRANT_PERMISSION();
+      REVOKE_PERMISSION = await authorizer.REVOKE_PERMISSION();
+    });
+
+    it('defines its permissions correctly', async () => {
+      expect(GRANT_PERMISSION).to.be.equal(ethers.utils.solidityKeccak256(['string'], ['GRANT_PERMISSION']));
+      expect(REVOKE_PERMISSION).to.be.equal(ethers.utils.solidityKeccak256(['string'], ['REVOKE_PERMISSION']));
+
+      const expectedGrantId = ethers.utils.solidityKeccak256(
+        ['bytes32', 'address', 'address'],
+        [GRANT_PERMISSION, admin.address, ANYWHERE]
+      );
+      expect(await authorizer.permissionId(GRANT_PERMISSION, admin, ANYWHERE)).to.be.equal(expectedGrantId);
+
+      const expectedRevokeId = ethers.utils.solidityKeccak256(
+        ['bytes32', 'address', 'address'],
+        [REVOKE_PERMISSION, admin.address, ANYWHERE]
+      );
+      expect(await authorizer.permissionId(REVOKE_PERMISSION, admin, ANYWHERE)).to.be.equal(expectedRevokeId);
+    });
+
+    it('can grant permissions anywhere', async () => {
+      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, WHERE)).to.be.true;
+      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, ANYWHERE)).to.be.true;
+    });
+
+    it('can revoke permissions anywhere', async () => {
+      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, WHERE)).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, ANYWHERE)).to.be.true;
+    });
+
+    it('can grant permission to other address to grant permissions for a custom contract', async () => {
+      await authorizer.grantPermissions(GRANT_PERMISSION, grantee, WHERE, { from: admin });
+
+      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, WHERE)).to.be.true;
+      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, ANYWHERE)).to.be.false;
+    });
+
+    it('can grant permission to other address to grant permissions anywhere', async () => {
+      await authorizer.grantPermissionsGlobally(GRANT_PERMISSION, grantee, { from: admin });
+
+      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, WHERE)).to.be.true;
+      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, ANYWHERE)).to.be.true;
+    });
+
+    it('can grant permission to other address to revoke permissions for a custom contract', async () => {
+      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, WHERE, { from: admin });
+
+      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, WHERE)).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, ANYWHERE)).to.be.false;
+    });
+
+    it('can grant permission to other address to revoke permissions anywhere', async () => {
+      await authorizer.grantPermissionsGlobally(REVOKE_PERMISSION, grantee, { from: admin });
+
+      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, WHERE)).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, ANYWHERE)).to.be.true;
+    });
+
+    it('can have their global permissions revoked by an authorized address for any contract', async () => {
+      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, ANYWHERE, { from: admin });
+
+      await authorizer.revokePermissions(GRANT_PERMISSION, admin, ANYWHERE, { from: grantee });
+      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, WHERE)).to.be.false;
+      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, ANYWHERE)).to.be.false;
+
+      await authorizer.revokePermissions(REVOKE_PERMISSION, admin, ANYWHERE, { from: grantee });
+      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, WHERE)).to.be.false;
+      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, ANYWHERE)).to.be.false;
+    });
+
+    it('cannot have their global permissions revoked by an authorized address for a specific contract', async () => {
+      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, WHERE, { from: admin });
+
+      await expect(
+        authorizer.revokePermissions(GRANT_PERMISSION, admin, ANYWHERE, { from: grantee })
+      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+
+      await expect(
+        authorizer.revokePermissions(REVOKE_PERMISSION, admin, ANYWHERE, { from: grantee })
+      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+    });
   });
 
   describe('grantPermissions', () => {

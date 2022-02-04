@@ -22,6 +22,18 @@ export default class Authorizer {
     this.admin = admin;
   }
 
+  async GRANT_PERMISSION(): Promise<string> {
+    return this.instance.GRANT_PERMISSION();
+  }
+
+  async REVOKE_PERMISSION(): Promise<string> {
+    return this.instance.REVOKE_PERMISSION();
+  }
+
+  async permissionId(action: string, account: Account, where: Account): Promise<string> {
+    return this.instance.permissionId(action, this.toAddress(account), this.toAddress(where));
+  }
+
   async canPerform(actions: NAry<string>, account: Account, wheres: NAry<Account>): Promise<boolean> {
     const options = this.permissionsFor(actions, wheres);
     const promises = options.map(([action, where]) => this.instance.canPerform(action, this.toAddress(account), where));
@@ -30,54 +42,68 @@ export default class Authorizer {
   }
 
   async grantPermissions(
-    actions: string[],
+    actions: NAry<string>,
     account: Account,
-    wheres: Account[],
+    wheres: NAry<Account>,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).grantPermissions(actions, this.toAddress(account), this.toAddresses(wheres));
+    return this.with(params).grantPermissions(this.toList(actions), this.toAddress(account), this.toAddresses(wheres));
   }
 
   async revokePermissions(
-    actions: string[],
+    actions: NAry<string>,
     account: Account,
-    wheres: Account[],
+    wheres: NAry<Account>,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).revokePermissions(actions, this.toAddress(account), this.toAddresses(wheres));
+    return this.with(params).revokePermissions(this.toList(actions), this.toAddress(account), this.toAddresses(wheres));
   }
 
-  async renouncePermissions(actions: string[], wheres: Account[], params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).renouncePermissions(actions, this.toAddresses(wheres));
+  async renouncePermissions(
+    actions: NAry<string>,
+    wheres: NAry<Account>,
+    params?: TxParams
+  ): Promise<ContractTransaction> {
+    return this.with(params).renouncePermissions(this.toList(actions), this.toAddresses(wheres));
   }
 
-  async grantPermissionsGlobally(actions: string[], account: Account, params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).grantPermissions(actions, this.toAddress(account), [Authorizer.ANYWHERE]);
+  async grantPermissionsGlobally(
+    actions: NAry<string>,
+    account: Account,
+    params?: TxParams
+  ): Promise<ContractTransaction> {
+    return this.with(params).grantPermissions(this.toList(actions), this.toAddress(account), [Authorizer.ANYWHERE]);
   }
 
-  async revokePermissionsGlobally(actions: string[], account: Account, param?: TxParams): Promise<ContractTransaction> {
-    return this.with(param).revokePermissions(actions, this.toAddress(account), [Authorizer.ANYWHERE]);
+  async revokePermissionsGlobally(
+    actions: NAry<string>,
+    account: Account,
+    params?: TxParams
+  ): Promise<ContractTransaction> {
+    return this.with(params).revokePermissions(this.toList(actions), this.toAddress(account), [Authorizer.ANYWHERE]);
   }
 
-  async renouncePermissionsGlobally(actions: string[], params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).renouncePermissions(actions, [Authorizer.ANYWHERE]);
+  async renouncePermissionsGlobally(actions: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).renouncePermissions(this.toList(actions), [Authorizer.ANYWHERE]);
   }
 
-  with(params: TxParams = {}): Contract {
-    return params.from ? this.instance.connect(params.from) : this.instance;
+  permissionsFor(actions: NAry<string>, w: NAry<Account>): string[][] {
+    return this.toList(actions).flatMap((a) => this.toList(w).map((where) => [a, this.toAddress(where)]));
   }
 
   toAddress(account: Account): string {
     return typeof account === 'string' ? account : account.address;
   }
 
-  toAddresses(accounts: Account[]): string[] {
-    return accounts.map(this.toAddress);
+  toAddresses(accounts: NAry<Account>): string[] {
+    return this.toList(accounts).map(this.toAddress);
   }
 
-  permissionsFor(actions: NAry<string>, wheres: NAry<Account>): string[][] {
-    if (!Array.isArray(actions)) actions = [actions];
-    if (!Array.isArray(wheres)) wheres = [wheres];
-    return actions.flatMap((action) => (wheres as []).map((where) => [action, this.toAddress(where)]));
+  toList<T>(items: NAry<T>): T[] {
+    return Array.isArray(items) ? items : [items];
+  }
+
+  with(params: TxParams = {}): Contract {
+    return params.from ? this.instance.connect(params.from) : this.instance;
   }
 }
