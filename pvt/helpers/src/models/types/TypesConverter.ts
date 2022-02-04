@@ -63,7 +63,6 @@ export default {
       bufferPeriodDuration,
       oracleEnabled,
       swapEnabledOnStart,
-      noProtocolFee,
       mustAllowlistLPs,
       managementSwapFeePercentage,
       poolType,
@@ -77,7 +76,6 @@ export default {
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!oracleEnabled) oracleEnabled = true;
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
-    if (!noProtocolFee) noProtocolFee = false;
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
@@ -97,7 +95,6 @@ export default {
       managementSwapFeePercentage,
       owner: this.toAddress(params.owner),
       from: params.from,
-      noProtocolFee,
       poolType,
     };
   },
