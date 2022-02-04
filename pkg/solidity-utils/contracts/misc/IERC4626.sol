@@ -17,26 +17,15 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
 interface IERC4626 is IERC20 {
-
     /**
      * @dev `sender` has exchanged `assets` for `shares`, and transferred those `shares` to `receiver`.
      */
-    event Deposit(
-        address indexed sender,
-        address indexed receiver,
-        uint256 assets,
-        uint256 shares
-    );
+    event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
 
     /**
      * @dev `sender` has exchanged `shares` for `assets`, and transferred those `assets` to `receiver`.
      */
-    event Withdraw(
-        address indexed sender,
-        address indexed receiver,
-        uint256 assets,
-        uint256 shares
-    );
+    event Withdraw(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
 
     /**
      * @dev Mints `shares` Vault shares to `receiver` by depositing exactly `amount` of underlying tokens.
@@ -46,7 +35,11 @@ interface IERC4626 is IERC20 {
     /**
      * @dev Redeems `shares` from `owner` and sends `assets` of underlying tokens to `receiver`.
      */
-    function redeem(uint256 shares, address receiver, address owner) external returns (uint256);
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) external returns (uint256);
 
     /**
      * @dev The current exchange rate of shares to assets, quoted per unit share
@@ -58,5 +51,4 @@ interface IERC4626 is IERC20 {
      * @return address The address of the wrapped token
      **/
     function asset() external view returns (address);
-
 }

@@ -22,7 +22,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/misc/IERC4626.sol";
 import "../LinearPool.sol";
 
 contract ERC4626LinearPool is LinearPool {
-    uint256 immutable _wrappedTokenRateScale;
+    uint256 private immutable _wrappedTokenRateScale;
 
     constructor(
         IVault vault,
@@ -54,7 +54,7 @@ contract ERC4626LinearPool is LinearPool {
         // _getWrappedTokenRate is scaled e18, we may need to scale the assetsPerShare (in terms of token decimals)
         uint256 tokenDecimals = ERC20(address(wrappedToken)).decimals();
         uint256 decimalsDifference = Math.sub(18, tokenDecimals);
-        _wrappedTokenRateScale = 10 ** decimalsDifference;
+        _wrappedTokenRateScale = 10**decimalsDifference;
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {

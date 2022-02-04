@@ -27,8 +27,6 @@ describe('ERC4626LinearPool', function () {
   });
 
   sharedBeforeEach('deploy tokens', async () => {
-    const [deployer] = await ethers.getSigners();
-
     mainToken = await Token.create('USD+');
     wrappedTokenInstance = await deploy('MockERC4626Token', {
       args: ['stUSD+', 'stUSD+', 6, mainToken.address],
