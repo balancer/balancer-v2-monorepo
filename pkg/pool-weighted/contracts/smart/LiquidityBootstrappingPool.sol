@@ -263,27 +263,20 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         uint256[] memory normalizedWeights = new uint256[](totalTokens);
 
-        // Ensure  each normalized weight is above them minimum
         normalizedWeights[0] = weights[0].divDown(normalizedSum);
-        _require(weights[0] >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
         if (totalTokens == 2) {
             normalizedWeights[1] = FixedPoint.ONE.sub(normalizedWeights[0]);
-            _require(weights[1] >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
             return normalizedWeights;
         }
         normalizedWeights[1] = weights[1].divDown(normalizedSum);
-        _require(weights[1] >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
         if (totalTokens == 3) {
             normalizedWeights[2] = FixedPoint.ONE.sub(normalizedWeights[0]).sub(normalizedWeights[1]);
-            _require(weights[2] >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
             return normalizedWeights;
         }
         normalizedWeights[2] = weights[2].divDown(normalizedSum);
-        _require(weights[2] >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
         normalizedWeights[3] = FixedPoint.ONE.sub(normalizedWeights[0]).sub(normalizedWeights[1]).sub(
             normalizedWeights[2]
         );
-        _require(weights[3] >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
         return normalizedWeights;
     }
