@@ -31,7 +31,7 @@ import "./StableOracleMath.sol";
  *
  * It additionally features a price oracle.
  */
-contract MetaStablePool is StablePool, StableOracleMath, PoolPriceOracle {
+contract MetaStablePool is StablePool, PoolPriceOracle {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using OracleMiscData for bytes32;

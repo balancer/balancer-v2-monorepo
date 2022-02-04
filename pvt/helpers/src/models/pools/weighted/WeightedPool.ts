@@ -598,7 +598,7 @@ export default class WeightedPool {
 
   async pause(): Promise<void> {
     const action = await actionId(this.instance, 'setPaused');
-    await this.vault.grantRoleGlobally(action);
+    await this.vault.grantRolesGlobally([action]);
     await this.instance.setPaused(true);
   }
 
@@ -622,6 +622,14 @@ export default class WeightedPool {
   async setSwapEnabled(from: SignerWithAddress, swapEnabled: boolean): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
     return pool.setSwapEnabled(swapEnabled);
+  }
+
+  async setManagementSwapFeePercentage(
+    from: SignerWithAddress,
+    managementFee: BigNumberish
+  ): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.setManagementSwapFeePercentage(managementFee);
   }
 
   async addAllowedAddress(from: SignerWithAddress, member: string): Promise<ContractTransaction> {
