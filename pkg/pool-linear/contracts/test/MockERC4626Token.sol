@@ -44,11 +44,11 @@ contract MockERC4626Token is TestToken, IERC4626 {
         return _mainToken;
     }
 
-    function deposit(uint256 assets, address) external override returns (uint256) {
+    function deposit(uint256 assets, address) external view override returns (uint256) {
         return assets/_rate;
     }
 
-    function redeem(uint256 shares, address, address) external override returns (uint256) {
+    function redeem(uint256 shares, address, address) external view override returns (uint256) {
         return shares*_rate;
     }
 }
