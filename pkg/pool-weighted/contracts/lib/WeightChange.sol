@@ -33,7 +33,7 @@ library WeightChange {
         if (mode == WeightChangeMode.EQUAL_WEIGHT_CHANGE) {
             return getNormalizedWeightByEqualWeightChange(startWeight, endWeight, startTime, endTime);
         } else {
-            _revert(Errors.UNHANDLED_JOIN_KIND);
+            _revert(Errors.UNHANDLED_WEIGHT_CHANGE_MODE);
         }
     }
 
@@ -49,7 +49,7 @@ library WeightChange {
         } else if (mode == WeightChangeMode.EQUAL_PRICE_PERCENTAGE_CHANGE) {
             return getWeightByEqualPricePercentage(startWeight, endWeight, startTime, endTime);
         } else {
-            _revert(Errors.UNHANDLED_JOIN_KIND);
+            _revert(Errors.UNHANDLED_WEIGHT_CHANGE_MODE);
         }
     }
 
