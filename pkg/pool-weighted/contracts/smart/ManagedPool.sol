@@ -392,6 +392,19 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         delete _tokenState[token];
         _setMiscData(_getMiscData().insertUint7(tokens.length - 1, _TOTAL_TOKENS_OFFSET));
 
+        // Also fix collected fees
+        // We are assuming the manager, who is removing the token, has first collected any fees in this token
+        // Otherwise, they're lost
+        _tokenCollectedManagementFees.remove(token);
+
+        // Fetch final token list again
+        (tokens, , ) = getVault().getPoolTokens(getPoolId());
+        for (uint256 i = 0; i < tokens.length; i++) {
+            // Need to fix up indexes so we can still use unchecked_at
+            //TODO needs tests
+            _tokenCollectedManagementFees.setIndex(tokens[i], i, 100); // 100 is OUT_OF_BOUNDS
+        }
+
         // Decrease the total weight by the weight of the token being removed
         _weightSum -= normalizedWeightBeforeRemove;
 
@@ -433,9 +446,9 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
 
         if (currentTime < startTime) {
-            _revert(Errors.REMOVE_TOKEN_PENDING_WEIGHT_CHANGE);
+            _revert(Errors.CHANGE_TOKENS_PENDING_WEIGHT_CHANGE);
         } else if (currentTime < endTime) {
-            _revert(Errors.REMOVE_TOKEN_DURING_WEIGHT_CHANGE);
+            _revert(Errors.CHANGE_TOKENS_DURING_WEIGHT_CHANGE);
         }
     }
 
@@ -693,7 +706,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // This exit function is disabled if the contract is paused.
 
         // This exit function can only be called by the Pool itself - the authorization logic that governs when that
-        // call can be made resides in withdrawCollectedManagementFees.
+        // call can be made resides in removeToken.
         _require(sender == address(this), Errors.UNAUTHORIZED_EXIT);
 
         // No BPT is required for the exit operation itself. The `removeToken` function calculates and returns

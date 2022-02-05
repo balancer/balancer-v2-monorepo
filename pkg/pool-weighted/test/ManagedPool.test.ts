@@ -1087,7 +1087,7 @@ describe('ManagedPool', function () {
 
             await expect(
               pool.removeToken(sender, threeTokens.get(tokenIndex).address, other.address)
-            ).to.be.revertedWith('REMOVE_TOKEN_DURING_WEIGHT_CHANGE');
+            ).to.be.revertedWith('CHANGE_TOKENS_DURING_WEIGHT_CHANGE');
           });
 
           it('rejects remove when a weight change is pending', async () => {
@@ -1098,7 +1098,7 @@ describe('ManagedPool', function () {
 
             await expect(
               pool.removeToken(sender, threeTokens.get(tokenIndex).address, other.address)
-            ).to.be.revertedWith('REMOVE_TOKEN_PENDING_WEIGHT_CHANGE');
+            ).to.be.revertedWith('CHANGE_TOKENS_PENDING_WEIGHT_CHANGE');
           });
 
           context('tokens can be removed', () => {

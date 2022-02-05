@@ -161,8 +161,8 @@ library Errors {
     uint256 internal constant OUT_OF_NEW_TARGET_RANGE = 343;
     uint256 internal constant UNAUTHORIZED_OPERATION = 344;
     uint256 internal constant UNINITIALIZED_POOL_CONTROLLER = 345;
-    uint256 internal constant REMOVE_TOKEN_DURING_WEIGHT_CHANGE = 346;
-    uint256 internal constant REMOVE_TOKEN_PENDING_WEIGHT_CHANGE = 347;
+    uint256 internal constant CHANGE_TOKENS_DURING_WEIGHT_CHANGE = 346;
+    uint256 internal constant CHANGE_TOKENS_PENDING_WEIGHT_CHANGE = 347;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
