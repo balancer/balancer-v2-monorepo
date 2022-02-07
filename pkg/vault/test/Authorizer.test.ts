@@ -17,7 +17,7 @@ describe('Authorizer', () => {
   const ACTION_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
   const ACTIONS = [ACTION_1, ACTION_2];
 
-  const ANYWHERE = Authorizer.ANYWHERE;
+  const EVERYWHERE = Authorizer.EVERYWHERE;
   const WHERE = [ethers.Wallet.createRandom().address, ethers.Wallet.createRandom().address];
   const NOT_WHERE = ethers.Wallet.createRandom().address;
 
@@ -39,76 +39,77 @@ describe('Authorizer', () => {
 
       const expectedGrantId = ethers.utils.solidityKeccak256(
         ['bytes32', 'address', 'address'],
-        [GRANT_PERMISSION, admin.address, ANYWHERE]
+        [GRANT_PERMISSION, admin.address, EVERYWHERE]
       );
-      expect(await authorizer.permissionId(GRANT_PERMISSION, admin, ANYWHERE)).to.be.equal(expectedGrantId);
+      expect(await authorizer.permissionId(GRANT_PERMISSION, admin, EVERYWHERE)).to.be.equal(expectedGrantId);
 
       const expectedRevokeId = ethers.utils.solidityKeccak256(
         ['bytes32', 'address', 'address'],
-        [REVOKE_PERMISSION, admin.address, ANYWHERE]
+        [REVOKE_PERMISSION, admin.address, EVERYWHERE]
       );
-      expect(await authorizer.permissionId(REVOKE_PERMISSION, admin, ANYWHERE)).to.be.equal(expectedRevokeId);
+      expect(await authorizer.permissionId(REVOKE_PERMISSION, admin, EVERYWHERE)).to.be.equal(expectedRevokeId);
     });
 
-    it('can grant permissions anywhere', async () => {
+    it('can grant permissions everywhere', async () => {
       expect(await authorizer.canPerform(GRANT_PERMISSION, admin, WHERE)).to.be.true;
-      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, ANYWHERE)).to.be.true;
+      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, EVERYWHERE)).to.be.true;
     });
 
-    it('can revoke permissions anywhere', async () => {
+    it('can revoke permissions everywhere', async () => {
       expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, WHERE)).to.be.true;
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, ANYWHERE)).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, EVERYWHERE)).to.be.true;
     });
 
     it('can grant permission to other address to grant permissions for a custom contract', async () => {
-      await authorizer.grantPermissions(GRANT_PERMISSION, grantee, WHERE, { from: admin });
+      await authorizer.grantPermissions(GRANT_PERMISSION, grantee, WHERE[0], { from: admin });
 
-      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, WHERE)).to.be.true;
-      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, ANYWHERE)).to.be.false;
+      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, WHERE[0])).to.be.true;
+      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, EVERYWHERE)).to.be.false;
     });
 
-    it('can grant permission to other address to grant permissions anywhere', async () => {
+    it('can grant permission to other address to grant permissions everywhere', async () => {
       await authorizer.grantPermissionsGlobally(GRANT_PERMISSION, grantee, { from: admin });
 
       expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, WHERE)).to.be.true;
-      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, ANYWHERE)).to.be.true;
+      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, EVERYWHERE)).to.be.true;
     });
 
     it('can grant permission to other address to revoke permissions for a custom contract', async () => {
-      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, WHERE, { from: admin });
+      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, WHERE[0], { from: admin });
 
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, WHERE)).to.be.true;
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, ANYWHERE)).to.be.false;
+      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, WHERE[0])).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, EVERYWHERE)).to.be.false;
     });
 
-    it('can grant permission to other address to revoke permissions anywhere', async () => {
+    it('can grant permission to other address to revoke permissions everywhere', async () => {
       await authorizer.grantPermissionsGlobally(REVOKE_PERMISSION, grantee, { from: admin });
 
       expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, WHERE)).to.be.true;
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, ANYWHERE)).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, EVERYWHERE)).to.be.true;
     });
 
     it('can have their global permissions revoked by an authorized address for any contract', async () => {
-      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, ANYWHERE, { from: admin });
+      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, EVERYWHERE, { from: admin });
 
-      await authorizer.revokePermissions(GRANT_PERMISSION, admin, ANYWHERE, { from: grantee });
+      await authorizer.revokePermissions(GRANT_PERMISSION, admin, EVERYWHERE, { from: grantee });
       expect(await authorizer.canPerform(GRANT_PERMISSION, admin, WHERE)).to.be.false;
-      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, ANYWHERE)).to.be.false;
+      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, EVERYWHERE)).to.be.false;
 
-      await authorizer.revokePermissions(REVOKE_PERMISSION, admin, ANYWHERE, { from: grantee });
+      await authorizer.revokePermissions(REVOKE_PERMISSION, admin, EVERYWHERE, { from: grantee });
       expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, WHERE)).to.be.false;
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, ANYWHERE)).to.be.false;
+      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, EVERYWHERE)).to.be.false;
     });
 
     it('cannot have their global permissions revoked by an authorized address for a specific contract', async () => {
-      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, WHERE, { from: admin });
+      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, WHERE[0], { from: admin });
+      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, WHERE[1], { from: admin });
 
       await expect(
-        authorizer.revokePermissions(GRANT_PERMISSION, admin, ANYWHERE, { from: grantee })
+        authorizer.revokePermissions(GRANT_PERMISSION, admin, EVERYWHERE, { from: grantee })
       ).to.be.revertedWith('SENDER_NOT_ALLOWED');
 
       await expect(
-        authorizer.revokePermissions(REVOKE_PERMISSION, admin, ANYWHERE, { from: grantee })
+        authorizer.revokePermissions(REVOKE_PERMISSION, admin, EVERYWHERE, { from: grantee })
       ).to.be.revertedWith('SENDER_NOT_ALLOWED');
     });
   });
@@ -123,13 +124,14 @@ describe('Authorizer', () => {
         it('grants permission to perform the requested actions for the requested contracts', async () => {
           await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
 
-          expect(await authorizer.canPerform(ACTIONS, grantee, WHERE)).to.be.true;
+          expect(await authorizer.canPerform(ACTIONS[0], grantee, WHERE[0])).to.be.true;
+          expect(await authorizer.canPerform(ACTIONS[1], grantee, WHERE[1])).to.be.true;
         });
 
-        it('does not grant permission to perform the requested actions anywhere', async () => {
+        it('does not grant permission to perform the requested actions everywhere', async () => {
           await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
 
-          expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
         });
 
         it('does not grant permission to perform the requested actions for other contracts', async () => {
@@ -141,13 +143,13 @@ describe('Authorizer', () => {
         it('emits an event', async () => {
           const receipt = await (await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from })).wait();
 
-          for (const [action, where] of authorizer.permissionsFor(ACTIONS, WHERE)) {
+          ACTIONS.forEach((action, i) => {
             expectEvent.inReceipt(receipt, 'PermissionGranted', {
               action,
               account: grantee.address,
-              where,
+              where: WHERE[i],
             });
-          }
+          });
         });
       });
 
@@ -160,13 +162,14 @@ describe('Authorizer', () => {
           it('ignores the request and can still perform those actions', async () => {
             await expect(authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from })).not.to.reverted;
 
-            expect(await authorizer.canPerform(ACTIONS, grantee, WHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTIONS[0], grantee, WHERE[0])).to.be.true;
+            expect(await authorizer.canPerform(ACTIONS[1], grantee, WHERE[1])).to.be.true;
           });
 
-          it('does not grant permission to perform the requested actions anywhere', async () => {
+          it('does not grant permission to perform the requested actions everywhere', async () => {
             await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
 
-            expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
           });
 
           it('does not grant permission to perform the requested actions for other contracts', async () => {
@@ -192,10 +195,10 @@ describe('Authorizer', () => {
             expect(await authorizer.canPerform(ACTIONS, grantee, WHERE)).to.be.true;
           });
 
-          it('still can perform the requested actions anywhere', async () => {
+          it('still can perform the requested actions everywhere', async () => {
             await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
 
-            expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.true;
           });
 
           it('still can perform the requested actions for other contracts', async () => {
@@ -207,13 +210,13 @@ describe('Authorizer', () => {
           it('emits an event', async () => {
             const receipt = await (await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from })).wait();
 
-            for (const [action, where] of authorizer.permissionsFor(ACTIONS, WHERE)) {
+            ACTIONS.forEach((action, i) => {
               expectEvent.inReceipt(receipt, 'PermissionGranted', {
                 action,
                 account: grantee.address,
-                where,
+                where: WHERE[i],
               });
-            }
+            });
           });
         });
       });
@@ -239,10 +242,10 @@ describe('Authorizer', () => {
       });
 
       context('when the target does not have the permission granted', () => {
-        it('grants permission to perform the requested actions anywhere', async () => {
+        it('grants permission to perform the requested actions everywhere', async () => {
           await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from });
 
-          expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.true;
+          expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.true;
         });
 
         it('grants permission to perform the requested actions in any specific contract', async () => {
@@ -258,7 +261,7 @@ describe('Authorizer', () => {
             expectEvent.inReceipt(receipt, 'PermissionGranted', {
               action,
               account: grantee.address,
-              where: Authorizer.ANYWHERE,
+              where: Authorizer.EVERYWHERE,
             });
           }
         });
@@ -270,10 +273,10 @@ describe('Authorizer', () => {
             await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
           });
 
-          it('grants permission to perform the requested actions anywhere', async () => {
+          it('grants permission to perform the requested actions everywhere', async () => {
             await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from });
 
-            expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.true;
           });
 
           it('still can perform the requested actions for the previously granted contracts', async () => {
@@ -289,7 +292,7 @@ describe('Authorizer', () => {
               expectEvent.inReceipt(receipt, 'PermissionGranted', {
                 action,
                 account: grantee.address,
-                where: Authorizer.ANYWHERE,
+                where: Authorizer.EVERYWHERE,
               });
             }
           });
@@ -300,10 +303,10 @@ describe('Authorizer', () => {
             await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from });
           });
 
-          it('ignores the request and can still perform the requested actions anywhere', async () => {
+          it('ignores the request and can still perform the requested actions everywhere', async () => {
             await expect(authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from })).not.to.be.reverted;
 
-            expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.true;
           });
 
           it('ignores the request and can still perform the requested actions in any specific contract', async () => {
@@ -338,10 +341,10 @@ describe('Authorizer', () => {
       });
 
       context('when the target does not have the permission granted', () => {
-        it('ignores the request and cannot perform the requested actions anywhere', async () => {
+        it('ignores the request and cannot perform the requested actions everywhere', async () => {
           await expect(authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from })).not.to.be.reverted;
 
-          expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
         });
 
         it('ignores the request and cannot perform the requested actions in any specific contract', async () => {
@@ -368,22 +371,22 @@ describe('Authorizer', () => {
             expect(await authorizer.canPerform(ACTIONS, grantee, WHERE)).to.be.false;
           });
 
-          it('still cannot perform the requested actions anywhere', async () => {
+          it('still cannot perform the requested actions everywhere', async () => {
             await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from });
 
-            expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
           });
 
           it('emits an event', async () => {
             const receipt = await (await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from })).wait();
 
-            for (const [action, where] of authorizer.permissionsFor(ACTIONS, WHERE)) {
+            ACTIONS.forEach((action, i) => {
               expectEvent.inReceipt(receipt, 'PermissionRevoked', {
                 action,
                 account: grantee.address,
-                where,
+                where: WHERE[i],
               });
-            }
+            });
           });
         });
 
@@ -398,10 +401,10 @@ describe('Authorizer', () => {
             expect(await authorizer.canPerform(ACTIONS, grantee, WHERE)).to.be.true;
           });
 
-          it('still can perform the requested actions anywhere', async () => {
+          it('still can perform the requested actions everywhere', async () => {
             await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from });
 
-            expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.true;
           });
 
           it('does not emit an event', async () => {
@@ -432,10 +435,10 @@ describe('Authorizer', () => {
       });
 
       context('when the sender does not have the permission granted', () => {
-        it('ignores the request and cannot perform the requested actions anywhere', async () => {
+        it('ignores the request and cannot perform the requested actions everywhere', async () => {
           await expect(authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from })).not.to.be.reverted;
 
-          expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
         });
 
         it('ignores the request and cannot perform the requested actions in any specific contract', async () => {
@@ -456,16 +459,17 @@ describe('Authorizer', () => {
             await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
           });
 
-          it('still cannot perform the requested actions anywhere', async () => {
+          it('still cannot perform the requested actions everywhere', async () => {
             await authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from });
 
-            expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.false;
+            expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
           });
 
           it('still can perform the requested actions for the previously granted permissions', async () => {
             await authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from });
 
-            expect(await authorizer.canPerform(ACTIONS, grantee, WHERE)).to.be.true;
+            expect(await authorizer.canPerform(ACTIONS[0], grantee, WHERE[0])).to.be.true;
+            expect(await authorizer.canPerform(ACTIONS[1], grantee, WHERE[1])).to.be.true;
           });
 
           it('does not emit an event', async () => {
@@ -479,7 +483,7 @@ describe('Authorizer', () => {
             await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from });
           });
 
-          it('revokes the requested global permission and cannot perform the requested actions anywhere', async () => {
+          it('revokes the requested global permission and cannot perform the requested actions everywhere', async () => {
             await authorizer.revokePermissionsGlobally(ACTIONS, grantee, { from });
 
             expect(await authorizer.canPerform(ACTIONS, grantee, WHERE)).to.be.false;
@@ -498,7 +502,7 @@ describe('Authorizer', () => {
               expectEvent.inReceipt(receipt, 'PermissionRevoked', {
                 action,
                 account: grantee.address,
-                where: Authorizer.ANYWHERE,
+                where: Authorizer.EVERYWHERE,
               });
             }
           });
@@ -525,10 +529,10 @@ describe('Authorizer', () => {
     });
 
     context('when the sender does not have the permission granted', () => {
-      it('ignores the request and still cannot perform the requested actions anywhere', async () => {
+      it('ignores the request and still cannot perform the requested actions everywhere', async () => {
         await expect(authorizer.renouncePermissions(ACTIONS, WHERE, { from })).not.to.be.reverted;
 
-        expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.false;
+        expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
       });
 
       it('ignores the request and still cannot perform the requested actions in any specific contract', async () => {
@@ -550,10 +554,10 @@ describe('Authorizer', () => {
           expect(await authorizer.canPerform(ACTIONS, grantee, WHERE)).to.be.false;
         });
 
-        it('still cannot perform the requested actions anywhere', async () => {
+        it('still cannot perform the requested actions everywhere', async () => {
           await authorizer.renouncePermissions(ACTIONS, WHERE, { from });
 
-          expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
         });
       });
 
@@ -568,10 +572,10 @@ describe('Authorizer', () => {
           expect(await authorizer.canPerform(ACTIONS, grantee, WHERE)).to.be.true;
         });
 
-        it('still can perform the requested actions anywhere', async () => {
+        it('still can perform the requested actions everywhere', async () => {
           await authorizer.renouncePermissions(ACTIONS, WHERE, { from });
 
-          expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.true;
+          expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.true;
         });
       });
     });
@@ -583,10 +587,10 @@ describe('Authorizer', () => {
     });
 
     context('when the sender does not have the permission granted', () => {
-      it('ignores the request and still cannot perform the requested actions anywhere', async () => {
+      it('ignores the request and still cannot perform the requested actions everywhere', async () => {
         await expect(authorizer.renouncePermissionsGlobally(ACTIONS, { from })).not.to.be.reverted;
 
-        expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.false;
+        expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
       });
 
       it('ignores the request and still cannot perform the requested actions in any specific contract', async () => {
@@ -605,13 +609,14 @@ describe('Authorizer', () => {
         it('still can perform the requested actions for the requested contracts', async () => {
           await authorizer.renouncePermissionsGlobally(ACTIONS, { from });
 
-          expect(await authorizer.canPerform(ACTIONS, grantee, WHERE)).to.be.true;
+          expect(await authorizer.canPerform(ACTIONS[0], grantee, WHERE[0])).to.be.true;
+          expect(await authorizer.canPerform(ACTIONS[1], grantee, WHERE[1])).to.be.true;
         });
 
-        it('still cannot perform the requested actions anywhere', async () => {
+        it('still cannot perform the requested actions everywhere', async () => {
           await authorizer.renouncePermissionsGlobally(ACTIONS, { from });
 
-          expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
         });
       });
 
@@ -620,10 +625,10 @@ describe('Authorizer', () => {
           await authorizer.grantPermissionsGlobally(ACTIONS, grantee, { from: admin });
         });
 
-        it('revokes the requested permissions anywhere', async () => {
+        it('revokes the requested permissions everywhere', async () => {
           await authorizer.renouncePermissionsGlobally(ACTIONS, { from });
 
-          expect(await authorizer.canPerform(ACTIONS, grantee, ANYWHERE)).to.be.false;
+          expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
         });
 
         it('still cannot perform the requested actions in any specific contract', async () => {

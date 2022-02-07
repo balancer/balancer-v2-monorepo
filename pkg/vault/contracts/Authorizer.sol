@@ -16,7 +16,6 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
 import "./interfaces/IAuthorizer.sol";
 
@@ -30,24 +29,17 @@ import "./interfaces/IAuthorizer.sol";
  * manage permissions across multiple contracts and to natively handle timelocks.
  */
 contract Authorizer is IAuthorizer {
-    using EnumerableSet for EnumerableSet.AddressSet;
-
-    address public constant ANYWHERE = address(-1);
+    address public constant EVERYWHERE = address(-1);
 
     bytes32 public constant GRANT_PERMISSION = keccak256("GRANT_PERMISSION");
     bytes32 public constant REVOKE_PERMISSION = keccak256("REVOKE_PERMISSION");
 
-    mapping(bytes32 => bool) public isAllowed;
-
-    modifier authenticate(bytes32 action, address where) {
-        _require(canPerform(action, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
-        _;
-    }
+    mapping(bytes32 => bool) public hasPermission;
 
     /**
      * @dev Emitted when `account` is granted permission to perform `action` in `where`.
      */
-    event PermissionGranted(bytes32 indexed action, address indexed account, address where);
+    event PermissionGranted(bytes32 indexed action, address indexed account, address indexed where);
 
     /**
      * @dev Emitted when an `account`'s permission to perform `action` is revoked from `where`.
@@ -55,8 +47,8 @@ contract Authorizer is IAuthorizer {
     event PermissionRevoked(bytes32 indexed action, address indexed account, address where);
 
     constructor(address admin) {
-        _grantPermission(GRANT_PERMISSION, admin, ANYWHERE);
-        _grantPermission(REVOKE_PERMISSION, admin, ANYWHERE);
+        _grantPermission(GRANT_PERMISSION, admin, EVERYWHERE);
+        _grantPermission(REVOKE_PERMISSION, admin, EVERYWHERE);
     }
 
     /**
@@ -78,7 +70,9 @@ contract Authorizer is IAuthorizer {
         address account,
         address where
     ) public view override returns (bool) {
-        return isAllowed[permissionId(action, account, where)] || isAllowed[permissionId(action, account, ANYWHERE)];
+        return
+            hasPermission[permissionId(action, account, where)] ||
+            hasPermission[permissionId(action, account, EVERYWHERE)];
     }
 
     /**
@@ -89,10 +83,10 @@ contract Authorizer is IAuthorizer {
         address account,
         address[] memory where
     ) external {
+        InputHelpers.ensureInputLengthMatch(actions.length, where.length);
         for (uint256 i = 0; i < actions.length; i++) {
-            for (uint256 j = 0; j < where.length; j++) {
-                grantPermission(actions[i], account, where[j]);
-            }
+            _authenticate(GRANT_PERMISSION, where[i]);
+            _grantPermission(actions[i], account, where[i]);
         }
     }
 
@@ -104,10 +98,10 @@ contract Authorizer is IAuthorizer {
         address account,
         address[] memory where
     ) external {
+        InputHelpers.ensureInputLengthMatch(actions.length, where.length);
         for (uint256 i = 0; i < actions.length; i++) {
-            for (uint256 j = 0; j < where.length; j++) {
-                revokePermission(actions[i], account, where[j]);
-            }
+            _authenticate(REVOKE_PERMISSION, where[i]);
+            _revokePermission(actions[i], account, where[i]);
         }
     }
 
@@ -115,33 +109,10 @@ contract Authorizer is IAuthorizer {
      * @dev Renounces from multiple permissions
      */
     function renouncePermissions(bytes32[] memory actions, address[] memory where) external {
+        InputHelpers.ensureInputLengthMatch(actions.length, where.length);
         for (uint256 i = 0; i < actions.length; i++) {
-            for (uint256 j = 0; j < where.length; j++) {
-                _revokePermission(actions[i], msg.sender, where[j]);
-            }
+            _revokePermission(actions[i], msg.sender, where[i]);
         }
-    }
-
-    /**
-     * @dev Grants permission to perform `action` to `account` in `where`.
-     */
-    function grantPermission(
-        bytes32 action,
-        address account,
-        address where
-    ) public authenticate(GRANT_PERMISSION, where) {
-        _grantPermission(action, account, where);
-    }
-
-    /**
-     * @dev Revokes permission to perform `action` from `account` in `where`.
-     */
-    function revokePermission(
-        bytes32 action,
-        address account,
-        address where
-    ) public authenticate(REVOKE_PERMISSION, where) {
-        _revokePermission(action, account, where);
     }
 
     function _grantPermission(
@@ -150,8 +121,8 @@ contract Authorizer is IAuthorizer {
         address where
     ) private {
         bytes32 permission = permissionId(action, account, where);
-        if (!isAllowed[permission]) {
-            isAllowed[permission] = true;
+        if (!hasPermission[permission]) {
+            hasPermission[permission] = true;
             emit PermissionGranted(action, account, where);
         }
     }
@@ -162,9 +133,13 @@ contract Authorizer is IAuthorizer {
         address where
     ) private {
         bytes32 permission = permissionId(action, account, where);
-        if (isAllowed[permission]) {
-            isAllowed[permission] = false;
+        if (hasPermission[permission]) {
+            hasPermission[permission] = false;
             emit PermissionRevoked(action, account, where);
         }
+    }
+
+    function _authenticate(bytes32 action, address where) internal view {
+        _require(canPerform(action, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
     }
 }

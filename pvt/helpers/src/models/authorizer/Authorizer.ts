@@ -8,7 +8,7 @@ import { Account, NAry, TxParams } from '../types/types';
 import AuthorizerDeployer from './AuthorizerDeployer';
 
 export default class Authorizer {
-  static ANYWHERE = ANY_ADDRESS;
+  static EVERYWHERE = ANY_ADDRESS;
 
   instance: Contract;
   admin: SignerWithAddress;
@@ -72,7 +72,8 @@ export default class Authorizer {
     account: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).grantPermissions(this.toList(actions), this.toAddress(account), [Authorizer.ANYWHERE]);
+    const wheres = this.toList(actions).map(() => Authorizer.EVERYWHERE);
+    return this.with(params).grantPermissions(this.toList(actions), this.toAddress(account), wheres);
   }
 
   async revokePermissionsGlobally(
@@ -80,11 +81,13 @@ export default class Authorizer {
     account: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).revokePermissions(this.toList(actions), this.toAddress(account), [Authorizer.ANYWHERE]);
+    const wheres = this.toList(actions).map(() => Authorizer.EVERYWHERE);
+    return this.with(params).revokePermissions(this.toList(actions), this.toAddress(account), wheres);
   }
 
   async renouncePermissionsGlobally(actions: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
-    return this.with(params).renouncePermissions(this.toList(actions), [Authorizer.ANYWHERE]);
+    const wheres = this.toList(actions).map(() => Authorizer.EVERYWHERE);
+    return this.with(params).renouncePermissions(this.toList(actions), wheres);
   }
 
   permissionsFor(actions: NAry<string>, w: NAry<Account>): string[][] {
