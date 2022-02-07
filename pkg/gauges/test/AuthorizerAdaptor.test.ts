@@ -73,7 +73,7 @@ describe('AuthorizerAdaptor', () => {
 
     context('when caller is authorized locally on target', () => {
       sharedBeforeEach('authorize caller on target locally', async () => {
-        await authorizer.connect(admin).grantRoles([action], grantee.address, [vault.address]);
+        await authorizer.connect(admin).grantPermissions([action], grantee.address, [vault.address]);
       });
 
       it('performs the expected function call', async () => {
@@ -85,7 +85,7 @@ describe('AuthorizerAdaptor', () => {
 
     context('when caller is authorized locally on a different target', () => {
       sharedBeforeEach('authorize caller on different target locally', async () => {
-        await authorizer.connect(admin).grantRoles([action], grantee.address, [other.address]);
+        await authorizer.connect(admin).grantPermissions([action], grantee.address, [other.address]);
       });
 
       it('reverts', async () => {
