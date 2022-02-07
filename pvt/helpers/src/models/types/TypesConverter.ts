@@ -93,7 +93,7 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementSwapFeePercentage,
-      owner: params.owner,
+      owner: this.toAddress(params.owner),
       from: params.from,
       poolType,
     };

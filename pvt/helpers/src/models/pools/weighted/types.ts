@@ -26,7 +26,7 @@ export type RawWeightedPoolDeployment = {
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
   managementSwapFeePercentage?: BigNumberish;
-  owner?: string;
+  owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   vault?: Vault;

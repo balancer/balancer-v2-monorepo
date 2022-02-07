@@ -107,7 +107,7 @@ export default {
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
-            owner,
+            TypesConverter.toAddress(owner),
             swapEnabledOnStart,
           ],
           from,
