@@ -38,8 +38,8 @@ import "./interfaces/IBalancerToken.sol";
 contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
     using Math for uint256;
 
-    // TODO: set these constants appropriately
-    uint256 public constant INITIAL_RATE = 32165468432186542;
+    // Initial inflation rate of 145k BAL per week.
+    uint256 public constant INITIAL_RATE = (145000 * 1e18) / uint256(1 weeks); // BAL has 18 decimals
     uint256 public constant RATE_REDUCTION_TIME = 365 days;
     uint256 public constant RATE_REDUCTION_COEFFICIENT = 1189207115002721024; // 2 ** (1/4) * 1e18
     uint256 public constant RATE_DENOMINATOR = 1e18;

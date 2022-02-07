@@ -10,11 +10,15 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
-import { advanceToTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
+import { advanceToTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
+import { parseFixed } from '@ethersproject/bignumber';
 
 const DEFAULT_ADMIN_ROLE = ZERO_BYTES32;
 const MINTER_ROLE = solidityKeccak256(['string'], ['MINTER_ROLE']);
 const SNAPSHOT_ROLE = solidityKeccak256(['string'], ['SNAPSHOT_ROLE']);
+
+const INITIAL_RATE = parseFixed('145000', 18).div(WEEK);
+const RATE_REDUCTION_COEFFICIENT = BigNumber.from('1189207115002721024');
 
 describe('BalancerTokenAdmin', () => {
   let vault: Vault;
@@ -131,7 +135,7 @@ describe('BalancerTokenAdmin', () => {
 
             expect(await tokenAdmin.getStartEpochTime()).to.be.eq(timestamp);
             expect(await tokenAdmin.getStartEpochSupply()).to.be.eq(await token.totalSupply());
-            expect(await tokenAdmin.getInflationRate()).to.be.eq('32165468432186542');
+            expect(await tokenAdmin.getInflationRate()).to.be.eq(INITIAL_RATE);
           });
 
           it('it emits an MiningParametersUpdated event', async () => {
@@ -139,7 +143,7 @@ describe('BalancerTokenAdmin', () => {
             const receipt = await tx.wait();
 
             expectEvent.inReceipt(receipt, 'MiningParametersUpdated', {
-              rate: '32165468432186542',
+              rate: INITIAL_RATE,
               supply: await token.totalSupply(),
             });
           });
@@ -173,7 +177,7 @@ describe('BalancerTokenAdmin', () => {
           await advanceToTimestamp(startOfNextEpoch.add(1));
 
           const currentRate = await tokenAdmin.rate();
-          expectedRate = currentRate.mul(ONE).div('1189207115002721024');
+          expectedRate = currentRate.mul(ONE).div(RATE_REDUCTION_COEFFICIENT);
           expectedStartSupply = (await tokenAdmin.getStartEpochSupply()) + currentRate.mul(365 * DAY);
         });
 
