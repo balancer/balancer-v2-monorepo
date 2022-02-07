@@ -36,7 +36,7 @@ describe('AuthorizerAdaptor', () => {
 
     it('tracks authorizer changes in the vault', async () => {
       const action = await actionId(vault.instance, 'setAuthorizer');
-      await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+      await authorizer.connect(admin).grantRolesGlobally([action], admin.address);
 
       await vault.instance.connect(admin).setAuthorizer(other.address);
 
@@ -61,7 +61,7 @@ describe('AuthorizerAdaptor', () => {
 
     context('when caller is authorized globally', () => {
       sharedBeforeEach('authorize caller globally', async () => {
-        await authorizer.connect(admin).grantRoleGlobally(action, grantee.address);
+        await authorizer.connect(admin).grantRolesGlobally([action], grantee.address);
       });
 
       it('performs the expected function call', async () => {
@@ -72,7 +72,7 @@ describe('AuthorizerAdaptor', () => {
 
     context('when caller is authorized locally on target', () => {
       sharedBeforeEach('authorize caller on target locally', async () => {
-        await authorizer.connect(admin).grantRole(action, grantee.address, [vault.address]);
+        await authorizer.connect(admin).grantRoles([action], grantee.address, [vault.address]);
       });
 
       it('performs the expected function call', async () => {
@@ -84,7 +84,7 @@ describe('AuthorizerAdaptor', () => {
 
     context('when caller is authorized locally on a different target', () => {
       sharedBeforeEach('authorize caller on different target locally', async () => {
-        await authorizer.connect(admin).grantRole(action, grantee.address, [other.address]);
+        await authorizer.connect(admin).grantRoles([action], grantee.address, [other.address]);
       });
 
       it('reverts', async () => {

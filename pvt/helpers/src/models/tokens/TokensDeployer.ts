@@ -32,12 +32,12 @@ class TokensDeployer {
     if (symbol !== 'WETH') {
       instance = await deploy('v2-standalone-utils/TestToken', {
         from: sender,
-        args: [sender.address, 'Token', 'TKN', decimals],
+        args: ['Token', 'TKN', decimals],
       });
     } else {
       instance = await deploy('v2-standalone-utils/TestWETH', {
         from: sender,
-        args: [sender.address],
+        args: [],
       });
     }
 

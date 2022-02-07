@@ -18,11 +18,12 @@ import "@balancer-labs/v2-solidity-utils/contracts/test/MockLogCompression.sol";
 
 import "../../meta/StableOracleMath.sol";
 
-contract MockStableOracleMath is StableOracleMath, MockLogCompression {
-    function calcLogSpotPrice(
-        uint256 amplificationParameter,
-        uint256[] memory balances
-    ) external pure returns (int256) {
+contract MockStableOracleMath is MockLogCompression {
+    function calcLogSpotPrice(uint256 amplificationParameter, uint256[] memory balances)
+        external
+        pure
+        returns (int256)
+    {
         uint256 spotPrice = StableOracleMath._calcSpotPrice(amplificationParameter, balances[0], balances[1]);
         return LogCompression.toLowResLog(spotPrice);
     }

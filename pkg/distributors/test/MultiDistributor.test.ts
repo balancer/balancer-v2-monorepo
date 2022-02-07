@@ -42,7 +42,7 @@ describe('MultiDistributor', () => {
 
     // Authorise distributor to use users' vault token approvals
     const manageUserRole = await actionId(vault.instance, 'manageUserBalance');
-    await vault.grantRoleGlobally(manageUserRole, distributor);
+    await vault.grantRolesGlobally([manageUserRole], distributor);
 
     const stakeRole = await actionId(distributor.instance, 'stake');
     const stakeUsingVaultRole = await actionId(distributor.instance, 'stakeUsingVault');
@@ -50,11 +50,11 @@ describe('MultiDistributor', () => {
     const fundRole = await actionId(distributor.instance, 'fundDistribution');
     const setDurationRole = await actionId(distributor.instance, 'setDistributionDuration');
 
-    await vault.grantRoleGlobally(stakeRole, relayer);
-    await vault.grantRoleGlobally(stakeUsingVaultRole, relayer);
-    await vault.grantRoleGlobally(unstakeRole, relayer);
-    await vault.grantRoleGlobally(fundRole, relayer);
-    await vault.grantRoleGlobally(setDurationRole, relayer);
+    await vault.grantRolesGlobally([stakeRole], relayer);
+    await vault.grantRolesGlobally([stakeUsingVaultRole], relayer);
+    await vault.grantRolesGlobally([unstakeRole], relayer);
+    await vault.grantRolesGlobally([fundRole], relayer);
+    await vault.grantRolesGlobally([setDurationRole], relayer);
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -77,7 +77,7 @@ describe('MultiDistributor', () => {
     it('tracks authorizer changes in the vault', async () => {
       const { vault, authorizer, admin } = distributor;
       const action = await actionId(vault, 'setAuthorizer');
-      await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+      await authorizer.connect(admin).grantRolesGlobally([action], admin.address);
 
       await vault.connect(admin).setAuthorizer(user1.address);
 
