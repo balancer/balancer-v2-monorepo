@@ -58,10 +58,10 @@ contract ERC4626LinearPool is LinearPool {
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        // Rate between wrapped and their underlying token at _wrappedToken.decimals() scale
+        // Exchange rate between wrapped and underlying token with _wrappedToken.decimals() decimals of precision
         uint256 rate = IERC4626(getWrappedToken()).assetsPerShare();
 
-        // Upscale to e18
+        // This function returns a 18 decimal fixed point number so upscale to be as if _wrappedToken had 18 decimals
         return rate * _wrappedTokenRateScale;
     }
 }
