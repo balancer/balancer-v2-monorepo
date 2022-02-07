@@ -30,7 +30,7 @@ import "../interfaces/IBaseRelayerLibrary.sol";
 abstract contract ERC4626Wrapping is IBaseRelayerLibrary {
     using Address for address payable;
 
-    function wrapToken(
+    function wrapERC4626(
         IERC4626 wrappedToken,
         address sender,
         address recipient,
@@ -41,17 +41,16 @@ abstract contract ERC4626Wrapping is IBaseRelayerLibrary {
             amount = _getChainedReferenceValue(amount);
         }
 
-        IERC20 dynamicToken = IERC20(wrappedToken.asset());
+        IERC20 underlying = IERC20(wrappedToken.asset());
 
         // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
         // to be sourced from outside the relayer, we must first pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, dynamicToken, amount);
+            _pullToken(sender, underlying, amount);
         }
 
-        dynamicToken.approve(address(wrappedToken), amount);
-        // Use 0 for the referral code
+        underlying.approve(address(wrappedToken), amount);
         uint256 result = wrappedToken.deposit(amount, recipient);
 
         if (_isChainedReference(outputReference)) {
@@ -59,7 +58,7 @@ abstract contract ERC4626Wrapping is IBaseRelayerLibrary {
         }
     }
 
-    function unwrapToken(
+    function unwrapERC4626(
         IERC4626 wrappedToken,
         address sender,
         address recipient,
@@ -77,8 +76,7 @@ abstract contract ERC4626Wrapping is IBaseRelayerLibrary {
             _pullToken(sender, wrappedToken, amount);
         }
 
-        // No approval is needed here, as the Static Tokens are burned directly from the relayer's account
-        uint256 result = wrappedToken.redeem(amount, recipient, sender);
+        uint256 result = wrappedToken.redeem(amount, recipient, address(this));
 
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, result);

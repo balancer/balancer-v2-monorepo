@@ -68,11 +68,11 @@ describe('ERC4626LinearPool', function () {
       await wrappedTokenInstance.setRate(bn(1e6));
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
 
-      // We now double the reserve's normalised income to change the exchange rate to 2:1
+      // We now double the exchange rate to 2:1
       await wrappedTokenInstance.setRate(bn(2e6));
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2));
 
-      // We now double the reserve's normalised income to change the exchange rate to 1.234567:1.000000
+      // We now set the exchange rate to 1.234567:1.000000
       await wrappedTokenInstance.setRate(bn(1234567));
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1.234567));
     });
