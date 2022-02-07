@@ -1019,13 +1019,17 @@ describe('ManagedPool', function () {
 
       it('reverts if the vault is called directly', async () => {
         await expect(
-          vault.instance.connect(sender).exitPool(await pool.getPoolId(), sender.address, other.address, {
+          vault.instance.connect(owner).exitPool(await pool.getPoolId(), owner.address, other.address, {
             assets: allTokens.addresses,
             minAmountsOut: new Array(allTokens.length).fill(bn(0)),
             userData: ManagedPoolEncoder.exitForRemoveToken(0, fp(100)),
             toInternalBalance: false,
           })
         ).to.be.revertedWith('UNAUTHORIZED_EXIT');
+      });
+
+      it('reverts if the token is not in the pool', async () => {
+        await expect(pool.removeToken(owner, ZERO_ADDRESS, other.address)).to.be.revertedWith('INVALID_TOKEN');
       });
     });
 
