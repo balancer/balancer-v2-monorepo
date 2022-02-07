@@ -245,7 +245,8 @@ export default class Vault {
   async grantPermissionsGlobally(actionIds: string[], to?: Account): Promise<ContractTransaction> {
     if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
     if (!to) to = await this._defaultSender();
-    return this.authorizer.connect(this.admin).grantPermissions(actionIds, TypesConverter.toAddress(to), [ANY_ADDRESS]);
+    const wheres = actionIds.map(() => ANY_ADDRESS);
+    return this.authorizer.connect(this.admin).grantPermissions(actionIds, TypesConverter.toAddress(to), wheres);
   }
 
   async setRelayerApproval(user: SignerWithAddress, relayer: Account, approval: boolean): Promise<ContractTransaction> {

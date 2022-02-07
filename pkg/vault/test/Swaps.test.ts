@@ -552,7 +552,7 @@ describe('Swaps', () => {
                               const batch = await actionId(vault, 'batchSwap');
                               await authorizer
                                 .connect(admin)
-                                .grantPermissions([single, batch], other.address, [ANY_ADDRESS]);
+                                .grantPermissions([single, batch], other.address, [ANY_ADDRESS, ANY_ADDRESS]);
                             });
 
                             context('when the relayer is allowed by the user', () => {
@@ -591,7 +591,7 @@ describe('Swaps', () => {
                               const batch = await actionId(vault, 'batchSwap');
                               await authorizer
                                 .connect(admin)
-                                .revokePermissions([single, batch], other.address, [ANY_ADDRESS]);
+                                .revokePermissions([single, batch], other.address, [ANY_ADDRESS, ANY_ADDRESS]);
                             });
 
                             context('when the relayer is allowed by the user', () => {
@@ -1050,7 +1050,7 @@ describe('Swaps', () => {
                               const batch = await actionId(vault, 'batchSwap');
                               await authorizer
                                 .connect(admin)
-                                .grantPermissions([single, batch], other.address, [ANY_ADDRESS]);
+                                .grantPermissions([single, batch], other.address, [ANY_ADDRESS, ANY_ADDRESS]);
                             });
 
                             context('when the relayer is allowed by the user', () => {
@@ -1076,7 +1076,7 @@ describe('Swaps', () => {
                               const batch = await actionId(vault, 'batchSwap');
                               await authorizer
                                 .connect(admin)
-                                .revokePermissions([single, batch], other.address, [ANY_ADDRESS]);
+                                .revokePermissions([single, batch], other.address, [ANY_ADDRESS, ANY_ADDRESS]);
                             });
 
                             context('when the relayer is allowed by the user', () => {
