@@ -64,7 +64,7 @@ describe('Distribution Scheduler', () => {
 
   sharedBeforeEach('approve scheduler', async () => {
     const fundRole = await actionId(distributor.instance, 'fundDistribution');
-    await vault.grantRolesGlobally([fundRole], scheduler);
+    await vault.grantPermissionsGlobally([fundRole], scheduler);
 
     await vault.setRelayerApproval(distributionOwner, scheduler, true);
   });
