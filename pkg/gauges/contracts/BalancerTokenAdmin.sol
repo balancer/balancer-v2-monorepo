@@ -270,7 +270,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      * @notice Maximum allowable number of tokens in existence (claimed or unclaimed)
      */
     function _availableSupply() internal view returns (uint256) {
-        uint256 newSupplyFromCurrentEpoch = (block.timestamp.sub( _startEpochTime)).mul(_rate);
+        uint256 newSupplyFromCurrentEpoch = (block.timestamp.sub(_startEpochTime)).mul(_rate);
         return _startEpochSupply.add(newSupplyFromCurrentEpoch);
     }
 
