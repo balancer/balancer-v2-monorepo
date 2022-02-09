@@ -10,7 +10,7 @@ import { encodeExit, encodeJoin } from '@balancer-labs/v2-helpers/src/models/poo
 
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -313,7 +313,7 @@ describe('Asset Management', function () {
             context('when paused', () => {
               sharedBeforeEach('pause', async () => {
                 const action = await actionId(vault, 'setPaused');
-                await authorizer.connect(admin).grantRolesGlobally([action], admin.address);
+                await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
                 await vault.connect(admin).setPaused(true);
               });
 
@@ -438,7 +438,7 @@ describe('Asset Management', function () {
               context('when paused', () => {
                 sharedBeforeEach('pause', async () => {
                   const action = await actionId(vault, 'setPaused');
-                  await authorizer.connect(admin).grantRolesGlobally([action], admin.address);
+                  await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
                   await vault.connect(admin).setPaused(true);
                 });
 
@@ -598,7 +598,7 @@ describe('Asset Management', function () {
               context('when paused', () => {
                 sharedBeforeEach('pause', async () => {
                   const action = await actionId(vault, 'setPaused');
-                  await authorizer.connect(admin).grantRolesGlobally([action], admin.address);
+                  await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
                   await vault.connect(admin).setPaused(true);
                 });
 
