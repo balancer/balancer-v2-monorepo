@@ -69,7 +69,7 @@ export const setup = async (): Promise<{ data: SetupData; contracts: SetupContra
 
   // Authorise distributor to use users' vault token approvals
   const action = await actionId(vault.instance, 'manageUserBalance');
-  await vault.grantRolesGlobally([action], stakingContract);
+  await vault.grantPermissionsGlobally([action], stakingContract);
 
   await vault.setRelayerApproval(lp, stakingContract, true);
 

@@ -10,11 +10,15 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
-import { advanceToTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
+import { advanceToTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
+import { parseFixed } from '@ethersproject/bignumber';
 
 const DEFAULT_ADMIN_ROLE = ZERO_BYTES32;
 const MINTER_ROLE = solidityKeccak256(['string'], ['MINTER_ROLE']);
 const SNAPSHOT_ROLE = solidityKeccak256(['string'], ['SNAPSHOT_ROLE']);
+
+const INITIAL_RATE = parseFixed('145000', 18).div(WEEK);
+const RATE_REDUCTION_COEFFICIENT = BigNumber.from('1189207115002721024');
 
 describe('BalancerTokenAdmin', () => {
   let vault: Vault;
@@ -46,7 +50,7 @@ describe('BalancerTokenAdmin', () => {
 
     it('tracks authorizer changes in the vault', async () => {
       const action = await actionId(vault.instance, 'setAuthorizer');
-      await vault.grantRolesGlobally([action], admin.address);
+      await vault.grantPermissionsGlobally([action], admin.address);
 
       await vault.instance.connect(admin).setAuthorizer(other.address);
 
@@ -68,7 +72,7 @@ describe('BalancerTokenAdmin', () => {
     context('when the caller is authorised to call this function', () => {
       sharedBeforeEach('authorize caller', async () => {
         const action = await actionId(tokenAdmin, 'activate');
-        await vault.grantRolesGlobally([action], admin.address);
+        await vault.grantPermissionsGlobally([action], admin.address);
       });
 
       context('when BalancerTokenAdmin has been activated already', () => {
@@ -131,7 +135,7 @@ describe('BalancerTokenAdmin', () => {
 
             expect(await tokenAdmin.getStartEpochTime()).to.be.eq(timestamp);
             expect(await tokenAdmin.getStartEpochSupply()).to.be.eq(await token.totalSupply());
-            expect(await tokenAdmin.getInflationRate()).to.be.eq('32165468432186542');
+            expect(await tokenAdmin.getInflationRate()).to.be.eq(INITIAL_RATE);
           });
 
           it('it emits an MiningParametersUpdated event', async () => {
@@ -139,7 +143,7 @@ describe('BalancerTokenAdmin', () => {
             const receipt = await tx.wait();
 
             expectEvent.inReceipt(receipt, 'MiningParametersUpdated', {
-              rate: '32165468432186542',
+              rate: INITIAL_RATE,
               supply: await token.totalSupply(),
             });
           });
@@ -152,7 +156,7 @@ describe('BalancerTokenAdmin', () => {
     context('when BalancerTokenAdmin has been activated', () => {
       sharedBeforeEach('activate', async () => {
         const action = await actionId(tokenAdmin, 'activate');
-        await vault.grantRolesGlobally([action], admin.address);
+        await vault.grantPermissionsGlobally([action], admin.address);
 
         await token.connect(admin).grantRole(DEFAULT_ADMIN_ROLE, tokenAdmin.address);
         await tokenAdmin.connect(admin).activate();
@@ -173,7 +177,7 @@ describe('BalancerTokenAdmin', () => {
           await advanceToTimestamp(startOfNextEpoch.add(1));
 
           const currentRate = await tokenAdmin.rate();
-          expectedRate = currentRate.mul(ONE).div('1189207115002721024');
+          expectedRate = currentRate.mul(ONE).div(RATE_REDUCTION_COEFFICIENT);
           expectedStartSupply = (await tokenAdmin.getStartEpochSupply()) + currentRate.mul(365 * DAY);
         });
 
@@ -188,12 +192,18 @@ describe('BalancerTokenAdmin', () => {
         });
       });
     });
+
+    context('when BalancerTokenAdmin has not been activated', () => {
+      it('reverts', async () => {
+        await expect(tokenAdmin.updateMiningParameters()).to.be.revertedWith('ADD_OVERFLOW');
+      });
+    });
   });
 
   describe('mint', () => {
     sharedBeforeEach('activate BalancerTokenAdmin', async () => {
       const action = await actionId(tokenAdmin, 'activate');
-      await vault.grantRolesGlobally([action], admin.address);
+      await vault.grantPermissionsGlobally([action], admin.address);
 
       await token.connect(admin).grantRole(DEFAULT_ADMIN_ROLE, tokenAdmin.address);
       await tokenAdmin.connect(admin).activate();
@@ -208,7 +218,7 @@ describe('BalancerTokenAdmin', () => {
     context('when the caller is authorised to call this function', () => {
       sharedBeforeEach('activate', async () => {
         const action = await actionId(tokenAdmin, 'mint');
-        await vault.grantRolesGlobally([action], admin.address);
+        await vault.grantPermissionsGlobally([action], admin.address);
       });
 
       context('when mint does not exceed available supply', () => {
@@ -252,7 +262,7 @@ describe('BalancerTokenAdmin', () => {
         await token.connect(admin).grantRole(SNAPSHOT_ROLE, tokenAdmin.address);
 
         const action = await actionId(tokenAdmin, 'snapshot');
-        await vault.grantRolesGlobally([action], admin.address);
+        await vault.grantPermissionsGlobally([action], admin.address);
       });
 
       it('emits a Snapshot event', async () => {

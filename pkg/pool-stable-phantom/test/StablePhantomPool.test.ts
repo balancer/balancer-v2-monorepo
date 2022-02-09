@@ -751,7 +751,7 @@ describe('StablePhantomPool', () => {
 
           sharedBeforeEach('grant role to admin', async () => {
             const action = await actionId(pool.instance, 'setPriceRateCacheDuration');
-            await pool.vault.grantRolesGlobally([action], admin);
+            await pool.vault.grantPermissionsGlobally([action], admin);
           });
 
           const itUpdatesTheCacheDuration = () => {

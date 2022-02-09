@@ -82,7 +82,7 @@ event Supply:
 
 
 WEEK: constant(uint256) = 7 * 86400  # all future times are rounded by week
-MAXTIME: constant(uint256) = 4 * 365 * 86400  # 4 years
+MAXTIME: constant(uint256) = 365 * 86400  # 1 year
 MULTIPLIER: constant(uint256) = 10 ** 18
 
 TOKEN: immutable(address)

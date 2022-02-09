@@ -11,7 +11,7 @@ import { actionId } from '../misc/actions';
 import { deployedAt } from '../../contract';
 import { BigNumberish } from '../../numbers';
 import { Account, NAry, TxParams } from '../types/types';
-import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
+import { ANY_ADDRESS, MAX_UINT256, ZERO_ADDRESS } from '../../constants';
 import { ExitPool, JoinPool, RawVaultDeployment, MinimalSwap, GeneralSwap } from './types';
 import { Interface } from '@ethersproject/abi';
 
@@ -219,7 +219,7 @@ export default class Vault {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
-      await this.grantRolesGlobally([await actionId(feesCollector, 'setSwapFeePercentage')], this.admin);
+      await this.grantPermissionsGlobally([await actionId(feesCollector, 'setSwapFeePercentage')], this.admin);
     }
 
     const sender = from || this.admin;
@@ -234,7 +234,7 @@ export default class Vault {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
-      await this.grantRolesGlobally([await actionId(feesCollector, 'setFlashLoanFeePercentage')], this.admin);
+      await this.grantPermissionsGlobally([await actionId(feesCollector, 'setFlashLoanFeePercentage')], this.admin);
     }
 
     const sender = from || this.admin;
@@ -242,10 +242,11 @@ export default class Vault {
     return instance.setFlashLoanFeePercentage(flashLoanFeePercentage);
   }
 
-  async grantRolesGlobally(actionIds: string[], to?: Account): Promise<ContractTransaction> {
+  async grantPermissionsGlobally(actionIds: string[], to?: Account): Promise<ContractTransaction> {
     if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
     if (!to) to = await this._defaultSender();
-    return this.authorizer.connect(this.admin).grantRolesGlobally(actionIds, TypesConverter.toAddress(to));
+    const wheres = actionIds.map(() => ANY_ADDRESS);
+    return this.authorizer.connect(this.admin).grantPermissions(actionIds, TypesConverter.toAddress(to), wheres);
   }
 
   async setRelayerApproval(user: SignerWithAddress, relayer: Account, approval: boolean): Promise<ContractTransaction> {
