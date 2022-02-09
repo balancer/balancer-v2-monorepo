@@ -192,6 +192,12 @@ describe('BalancerTokenAdmin', () => {
         });
       });
     });
+
+    context('when BalancerTokenAdmin has not been activated', () => {
+      it('reverts', async () => {
+        await expect(tokenAdmin.updateMiningParameters()).to.be.revertedWith('ADD_OVERFLOW');
+      });
+    });
   });
 
   describe('mint', () => {
