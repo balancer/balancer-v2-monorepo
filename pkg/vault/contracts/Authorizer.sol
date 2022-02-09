@@ -14,8 +14,10 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
 
 import "./interfaces/IAuthorizer.sol";
 
@@ -29,12 +31,42 @@ import "./interfaces/IAuthorizer.sol";
  * manage permissions across multiple contracts and to natively handle timelocks.
  */
 contract Authorizer is IAuthorizer {
+    using Address for address;
+
+    uint256 public constant MAX_DELAY = 2 * (365 days);
     address public constant EVERYWHERE = address(-1);
 
     bytes32 public constant GRANT_PERMISSION = keccak256("GRANT_PERMISSION");
     bytes32 public constant REVOKE_PERMISSION = keccak256("REVOKE_PERMISSION");
+    bytes32 public constant EXECUTE_PERMISSION = keccak256("EXECUTE_PERMISSION");
+    bytes32 public constant SET_DELAY_PERMISSION = keccak256("SET_DELAY_PERMISSION");
 
-    mapping(bytes32 => bool) public hasPermission;
+    struct ScheduledAction {
+        address where;
+        bytes data;
+        bool executed;
+        bool protected;
+        uint256 executableAt;
+    }
+
+    ScheduledAction[] public scheduledActions;
+    mapping(bytes32 => bool) public permissionGranted;
+    mapping(bytes32 => uint256) public delays;
+
+    /**
+     * @dev Emitted when a new action with ID `id` is scheduled
+     */
+    event ActionScheduled(uint256 indexed id);
+
+    /**
+     * @dev Emitted when a new action with ID `id` is executed
+     */
+    event ActionExecuted(uint256 indexed id);
+
+    /**
+     * @dev Emitted when a new `delay` is set in order to perform `action`
+     */
+    event ActionDelaySet(bytes32 indexed action, uint256 delay);
 
     /**
      * @dev Emitted when `account` is granted permission to perform `action` in `where`.
@@ -44,7 +76,7 @@ contract Authorizer is IAuthorizer {
     /**
      * @dev Emitted when an `account`'s permission to perform `action` is revoked from `where`.
      */
-    event PermissionRevoked(bytes32 indexed action, address indexed account, address where);
+    event PermissionRevoked(bytes32 indexed action, address indexed account, address indexed where);
 
     constructor(address admin) {
         _grantPermission(GRANT_PERMISSION, admin, EVERYWHERE);
@@ -63,16 +95,85 @@ contract Authorizer is IAuthorizer {
     }
 
     /**
-     * @dev Tells whether `account` has permission to perform `action` in `where`
+     * @dev Tells whether `account` has explicit permission to perform `action` in `where`
+     */
+    function hasPermission(
+        bytes32 action,
+        address account,
+        address where
+    ) public view returns (bool) {
+        return
+            permissionGranted[permissionId(action, account, where)] ||
+            permissionGranted[permissionId(action, account, EVERYWHERE)];
+    }
+
+    /**
+     * @dev Tells whether `account` can perform `action` in `where`
      */
     function canPerform(
         bytes32 action,
         address account,
         address where
     ) public view override returns (bool) {
-        return
-            hasPermission[permissionId(action, account, where)] ||
-            hasPermission[permissionId(action, account, EVERYWHERE)];
+        return (delays[action] > 0) ? account == address(this) : hasPermission(action, account, where);
+    }
+
+    /**
+     * @dev Sets a new delay for `action`
+     */
+    function setDelay(bytes32 action, uint256 delay) external {
+        _require(msg.sender == address(this), Errors.SENDER_NOT_ALLOWED);
+        delays[action] = delay;
+        emit ActionDelaySet(action, delay);
+    }
+
+    /**
+     * @dev Schedules a delay change of `newDelay` for `action`
+     */
+    function scheduleDelayChange(
+        bytes32 action,
+        uint256 newDelay,
+        address[] memory executors
+    ) external returns (uint256 id) {
+        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
+        _authenticate(keccak256(abi.encodePacked(SET_DELAY_PERMISSION, action)), address(this));
+        uint256 actionDelay = delays[action];
+        bytes memory data = abi.encodeWithSelector(this.setDelay.selector, action, newDelay);
+        return _schedule(address(this), data, actionDelay, executors);
+    }
+
+    /**
+     * @dev Schedules a new action
+     */
+    function schedule(
+        address where,
+        bytes memory data,
+        address[] memory executors
+    ) external returns (uint256 id) {
+        require(where != address(this), "CANNOT_SCHEDULE_AUTHORIZER_ACTIONS");
+        bytes32 action = IAuthentication(where).getActionId(_decodeSelector(data));
+        _require(hasPermission(action, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
+        uint256 delay = delays[action];
+        require(delay > 0, "CANNOT_SCHEDULE_ACTION");
+        return _schedule(where, data, delay, executors);
+    }
+
+    /**
+     * @dev Executes action `id`
+     */
+    function execute(uint256 id) external returns (bytes memory result) {
+        require(id < scheduledActions.length, "ACTION_DOES_NOT_EXIST");
+        ScheduledAction storage scheduledAction = scheduledActions[id];
+        require(!scheduledAction.executed, "ACTION_ALREADY_EXECUTED");
+        // solhint-disable-next-line not-rely-on-time
+        require(block.timestamp >= scheduledAction.executableAt, "ACTION_NOT_EXECUTABLE");
+        if (scheduledAction.protected) {
+            _authenticate(_executeActionId(id), address(this));
+        }
+
+        scheduledAction.executed = true;
+        result = scheduledAction.where.functionCall(scheduledAction.data);
+        emit ActionExecuted(id);
     }
 
     /**
@@ -121,8 +222,8 @@ contract Authorizer is IAuthorizer {
         address where
     ) private {
         bytes32 permission = permissionId(action, account, where);
-        if (!hasPermission[permission]) {
-            hasPermission[permission] = true;
+        if (!permissionGranted[permission]) {
+            permissionGranted[permission] = true;
             emit PermissionGranted(action, account, where);
         }
     }
@@ -133,13 +234,39 @@ contract Authorizer is IAuthorizer {
         address where
     ) private {
         bytes32 permission = permissionId(action, account, where);
-        if (hasPermission[permission]) {
-            hasPermission[permission] = false;
+        if (permissionGranted[permission]) {
+            permissionGranted[permission] = false;
             emit PermissionRevoked(action, account, where);
+        }
+    }
+
+    function _schedule(
+        address where,
+        bytes memory data,
+        uint256 delay,
+        address[] memory executors
+    ) private returns (uint256 id) {
+        id = scheduledActions.length;
+        // solhint-disable-next-line not-rely-on-time
+        scheduledActions.push(ScheduledAction(where, data, false, executors.length > 0, block.timestamp + delay));
+        emit ActionScheduled(id);
+
+        bytes32 executeActionId = _executeActionId(id);
+        for (uint256 i = 0; i < executors.length; i++) {
+            _grantPermission(executeActionId, executors[i], address(this));
         }
     }
 
     function _authenticate(bytes32 action, address where) internal view {
         _require(canPerform(action, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
+    }
+
+    function _executeActionId(uint256 id) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(EXECUTE_PERMISSION, id));
+    }
+
+    function _decodeSelector(bytes memory data) internal pure returns (bytes4) {
+        if (data.length < 4) return bytes4(0);
+        return bytes4(data[0]) | (bytes4(data[1]) >> 8) | (bytes4(data[2]) >> 16) | (bytes4(data[3]) >> 24);
     }
 }

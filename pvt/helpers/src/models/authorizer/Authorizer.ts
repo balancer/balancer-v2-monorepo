@@ -1,4 +1,4 @@
-import { Contract, ContractTransaction } from 'ethers';
+import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { ANY_ADDRESS } from '../../constants';
@@ -6,6 +6,8 @@ import { AuthorizerDeployment } from './types';
 import { Account, NAry, TxParams } from '../types/types';
 
 import AuthorizerDeployer from './AuthorizerDeployer';
+import { BigNumberish } from '../../numbers';
+import * as expectEvent from "../../test/expectEvent";
 
 export default class Authorizer {
   static EVERYWHERE = ANY_ADDRESS;
@@ -22,6 +24,10 @@ export default class Authorizer {
     this.admin = admin;
   }
 
+  get address(): string {
+    return this.instance.address;
+  }
+
   async GRANT_PERMISSION(): Promise<string> {
     return this.instance.GRANT_PERMISSION();
   }
@@ -34,11 +40,37 @@ export default class Authorizer {
     return this.instance.permissionId(action, this.toAddress(account), this.toAddress(where));
   }
 
+  async delay(action: string): Promise<BigNumberish> {
+    return this.instance.delays(action);
+  }
+
+  async scheduledActions(
+    id: BigNumberish
+  ): Promise<{ executed: boolean; protected: boolean; executableAt: BigNumber; data: string; where: string }> {
+    return this.instance.scheduledActions(id);
+  }
+
   async canPerform(actions: NAry<string>, account: Account, wheres: NAry<Account>): Promise<boolean> {
     const options = this.permissionsFor(actions, wheres);
     const promises = options.map(([action, where]) => this.instance.canPerform(action, this.toAddress(account), where));
     const results = await Promise.all(promises);
     return results.every(Boolean);
+  }
+
+  async scheduleDelayChange(action: string, delay: number, executors: Account[], params?: TxParams): Promise<number> {
+    const receipt = await this.with(params).scheduleDelayChange(action, delay, this.toAddresses(executors));
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
+    return event.args.id;
+  }
+
+  async schedule(where: Account, data: string, executors: Account[], params?: TxParams): Promise<number> {
+    const receipt = await this.with(params).schedule(this.toAddress(where), data, this.toAddresses(executors));
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
+    return event.args.id;
+  }
+
+  async execute(id: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).execute(id);
   }
 
   async grantPermissions(
