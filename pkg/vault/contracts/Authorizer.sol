@@ -58,7 +58,7 @@ contract Authorizer is IAuthorizer {
     /**
      * @dev Emitted when a new action with ID `id` is scheduled
      */
-    event ActionScheduled(uint256 indexed id);
+    event ActionScheduled(bytes32 indexed action, uint256 indexed id);
 
     /**
      * @dev Emitted when an action with ID `id` is executed
@@ -143,11 +143,12 @@ contract Authorizer is IAuthorizer {
         address[] memory executors
     ) external returns (uint256 id) {
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
-        _authenticate(keccak256(abi.encodePacked(SET_DELAY_PERMISSION, action)), address(this));
+        bytes32 setDelayAction = keccak256(abi.encodePacked(SET_DELAY_PERMISSION, action));
+        _authenticate(setDelayAction, address(this));
 
         uint256 actionDelay = delays[action];
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, action, newDelay);
-        return _schedule(address(this), data, actionDelay, executors);
+        return _schedule(setDelayAction, address(this), data, actionDelay, executors);
     }
 
     /**
@@ -164,7 +165,7 @@ contract Authorizer is IAuthorizer {
 
         uint256 delay = delays[action];
         require(delay > 0, "CANNOT_SCHEDULE_ACTION");
-        return _schedule(where, data, delay, executors);
+        return _schedule(action, where, data, delay, executors);
     }
 
     /**
@@ -267,13 +268,14 @@ contract Authorizer is IAuthorizer {
     }
 
     function _schedule(
+        bytes32 action,
         address where,
         bytes memory data,
         uint256 delay,
         address[] memory executors
     ) private returns (uint256 id) {
         id = scheduledActions.length;
-        emit ActionScheduled(id);
+        emit ActionScheduled(action, id);
 
         // solhint-disable-next-line not-rely-on-time
         uint256 executableAt = block.timestamp + delay;
