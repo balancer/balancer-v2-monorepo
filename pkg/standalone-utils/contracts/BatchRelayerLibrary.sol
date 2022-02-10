@@ -36,7 +36,11 @@ contract BatchRelayerLibrary is
     VaultActions,
     VaultPermit
 {
-    constructor(IVault vault, IERC20 wstETH) BaseRelayerLibrary(vault) LidoWrapping(wstETH) {
+    constructor(
+        IVault vault,
+        IBalancerMinter balancerMinter,
+        IERC20 wstETH
+    ) BaseRelayerLibrary(vault) GaugeActions(balancerMinter) LidoWrapping(wstETH) {
         // solhint-disable-previous-line no-empty-blocks
     }
 }

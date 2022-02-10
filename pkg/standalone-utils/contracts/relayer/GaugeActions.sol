@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 
+import "@balancer-labs/v2-gauges/contracts/interfaces/IBalancerMinter.sol";
 import "@balancer-labs/v2-gauges/contracts/interfaces/ILiquidityGauge.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
@@ -29,6 +30,16 @@ import "../interfaces/IStaticATokenLM.sol";
  */
 abstract contract GaugeActions is IBaseRelayerLibrary {
     using Address for address payable;
+
+    IBalancerMinter private immutable _balancerMinter;
+
+    /**
+     * @dev The zero address may be passed as balancerMinter to safely disable features
+     *      which only exist on mainnet
+     */
+    constructor(IBalancerMinter balancerMinter) {
+        _balancerMinter = balancerMinter;
+    }
 
     function gaugeDeposit(
         ILiquidityGauge gauge,
@@ -90,6 +101,14 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
 
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, amount);
+        }
+    }
+
+    function gaugeMint(address[] calldata gauges, uint256 outputReference) external payable {
+        uint256 balMinted = _balancerMinter.mintManyFor(gauges, msg.sender);
+
+        if (_isChainedReference(outputReference)) {
+            _setChainedReferenceValue(outputReference, balMinted);
         }
     }
 }
