@@ -14,11 +14,15 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-standalone-utils/contracts/test/TestToken.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/misc/IERC4626.sol";
 
+import "@balancer-labs/v2-standalone-utils/contracts/test/TestToken.sol";
+
 contract MockERC4626Token is TestToken, IERC4626 {
-    uint256 private _rate = 1e27;
+    using FixedPoint for uint256;
+
+    uint256 private _rate = 1e18;
     address private immutable _mainToken;
 
     constructor(
@@ -28,7 +32,7 @@ contract MockERC4626Token is TestToken, IERC4626 {
         address mainToken
     ) TestToken(name, symbol, decimals) {
         _mainToken = mainToken;
-        _rate = 10 ** decimals;
+        _rate = 10 ** ERC20(mainToken).decimals();
     }
 
 
@@ -45,10 +49,10 @@ contract MockERC4626Token is TestToken, IERC4626 {
     }
 
     function deposit(uint256 assets, address) external view override returns (uint256) {
-        return assets/_rate;
+        return assets.divDown(_rate);
     }
 
     function redeem(uint256 shares, address, address) external view override returns (uint256) {
-        return shares*_rate;
+        return shares.mulDown(_rate);
     }
 }
