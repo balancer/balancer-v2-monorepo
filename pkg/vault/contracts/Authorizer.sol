@@ -44,7 +44,9 @@ contract Authorizer is IAuthorizer {
     struct ScheduledAction {
         address where;
         bytes data;
+        address sender;
         bool executed;
+        bool cancelled;
         bool protected;
         uint256 executableAt;
     }
@@ -59,9 +61,14 @@ contract Authorizer is IAuthorizer {
     event ActionScheduled(uint256 indexed id);
 
     /**
-     * @dev Emitted when a new action with ID `id` is executed
+     * @dev Emitted when an action with ID `id` is executed
      */
     event ActionExecuted(uint256 indexed id);
+
+    /**
+     * @dev Emitted when an action with ID `id` is cancelled
+     */
+    event ActionCancelled(uint256 indexed id);
 
     /**
      * @dev Emitted when a new `delay` is set in order to perform `action`
@@ -137,6 +144,7 @@ contract Authorizer is IAuthorizer {
     ) external returns (uint256 id) {
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
         _authenticate(keccak256(abi.encodePacked(SET_DELAY_PERMISSION, action)), address(this));
+
         uint256 actionDelay = delays[action];
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, action, newDelay);
         return _schedule(address(this), data, actionDelay, executors);
@@ -153,6 +161,7 @@ contract Authorizer is IAuthorizer {
         require(where != address(this), "CANNOT_SCHEDULE_AUTHORIZER_ACTIONS");
         bytes32 action = IAuthentication(where).getActionId(_decodeSelector(data));
         _require(hasPermission(action, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
+
         uint256 delay = delays[action];
         require(delay > 0, "CANNOT_SCHEDULE_ACTION");
         return _schedule(where, data, delay, executors);
@@ -165,6 +174,8 @@ contract Authorizer is IAuthorizer {
         require(id < scheduledActions.length, "ACTION_DOES_NOT_EXIST");
         ScheduledAction storage scheduledAction = scheduledActions[id];
         require(!scheduledAction.executed, "ACTION_ALREADY_EXECUTED");
+        require(!scheduledAction.cancelled, "ACTION_ALREADY_CANCELLED");
+
         // solhint-disable-next-line not-rely-on-time
         require(block.timestamp >= scheduledAction.executableAt, "ACTION_NOT_EXECUTABLE");
         if (scheduledAction.protected) {
@@ -174,6 +185,21 @@ contract Authorizer is IAuthorizer {
         scheduledAction.executed = true;
         result = scheduledAction.where.functionCall(scheduledAction.data);
         emit ActionExecuted(id);
+    }
+
+    /**
+     * @dev Cancels action `id`
+     */
+    function cancel(uint256 id) external {
+        require(id < scheduledActions.length, "ACTION_DOES_NOT_EXIST");
+        ScheduledAction storage scheduledAction = scheduledActions[id];
+
+        require(!scheduledAction.executed, "ACTION_ALREADY_EXECUTED");
+        require(!scheduledAction.cancelled, "ACTION_ALREADY_CANCELLED");
+        _require(msg.sender == scheduledAction.sender, Errors.SENDER_NOT_ALLOWED);
+
+        scheduledAction.cancelled = true;
+        emit ActionCancelled(id);
     }
 
     /**
@@ -247,9 +273,12 @@ contract Authorizer is IAuthorizer {
         address[] memory executors
     ) private returns (uint256 id) {
         id = scheduledActions.length;
-        // solhint-disable-next-line not-rely-on-time
-        scheduledActions.push(ScheduledAction(where, data, false, executors.length > 0, block.timestamp + delay));
         emit ActionScheduled(id);
+
+        // solhint-disable-next-line not-rely-on-time
+        uint256 executableAt = block.timestamp + delay;
+        bool protected = executors.length > 0;
+        scheduledActions.push(ScheduledAction(where, data, msg.sender, false, false, protected, executableAt));
 
         bytes32 executeActionId = _executeActionId(id);
         for (uint256 i = 0; i < executors.length; i++) {

@@ -46,7 +46,14 @@ export default class Authorizer {
 
   async scheduledActions(
     id: BigNumberish
-  ): Promise<{ executed: boolean; protected: boolean; executableAt: BigNumber; data: string; where: string }> {
+  ): Promise<{
+    executed: boolean;
+    cancelled: boolean;
+    protected: boolean;
+    executableAt: BigNumber;
+    data: string;
+    where: string;
+  }> {
     return this.instance.scheduledActions(id);
   }
 
@@ -71,6 +78,10 @@ export default class Authorizer {
 
   async execute(id: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
     return this.with(params).execute(id);
+  }
+
+  async cancel(id: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).cancel(id);
   }
 
   async grantPermissions(
