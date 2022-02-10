@@ -687,6 +687,13 @@ describe('Authorizer', () => {
               await authorizer.execute(id);
               expect(await authorizer.delay(action)).to.be.equal(delay);
             });
+
+            it('emits an event', async () => {
+              const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
+
+              const receipt = await authorizer.execute(id);
+              expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { action, delay });
+            });
           });
 
           context('when there was a previous delay set', () => {
@@ -716,6 +723,14 @@ describe('Authorizer', () => {
               await advanceTime(previousDelay);
               await authorizer.execute(id);
               expect(await authorizer.delay(action)).to.be.equal(delay);
+            });
+
+            it('emits an event', async () => {
+              const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
+
+              await advanceTime(previousDelay);
+              const receipt = await authorizer.execute(id);
+              expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { action, delay });
             });
           });
         });

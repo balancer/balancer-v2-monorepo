@@ -297,6 +297,7 @@ contract Authorizer is IAuthorizer {
     }
 
     function _decodeSelector(bytes memory data) internal pure returns (bytes4) {
+        // The bytes4 type is left-aligned and padded with zeros: we make use of that property to build the selector
         if (data.length < 4) return bytes4(0);
         return bytes4(data[0]) | (bytes4(data[1]) >> 8) | (bytes4(data[2]) >> 16) | (bytes4(data[3]) >> 24);
     }
