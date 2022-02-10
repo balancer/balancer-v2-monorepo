@@ -66,11 +66,11 @@ describe('ManagedPool', function () {
             });
 
             const finalWeights = toNormalizedWeights(WEIGHTS.slice(0, numTokens).map(bn));
-            await pool.instance.setWeightSum(finalWeights, fp(weightSum));
+            await pool.instance.setDenormWeightSum(finalWeights, fp(weightSum));
           });
 
           it('has the correct total weight', async () => {
-            expect(await pool.instance.getWeightSum()).to.equal(fp(weightSum));
+            expect(await pool.instance.getDenormWeightSum()).to.equal(fp(weightSum));
           });
 
           it('sets token weights', async () => {
@@ -616,7 +616,7 @@ describe('ManagedPool', function () {
               startTime = now.add(START_DELAY);
               endTime = startTime.add(UPDATE_DURATION);
 
-              await pool.instance.setWeightSum(startWeights, fp(weightSum));
+              await pool.instance.setDenormWeightSum(startWeights, fp(weightSum));
 
               await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
             });
