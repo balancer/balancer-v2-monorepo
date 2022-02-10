@@ -33,9 +33,9 @@ describe('ERC4626LinearPoolFactory', function () {
     factory = await deploy('ERC4626LinearPoolFactory', { args: [vault.address] });
     creationTime = await currentTimestamp();
 
-    mainToken = await Token.create('USD+');
+    mainToken = await Token.create({ symbol: 'USD+', decimals: 6 });
     const wrappedTokenInstance = await deploy('MockERC4626Token', {
-      args: ['stUSD+', 'stUSD+', 6, mainToken.address],
+      args: ['stUSD+', 'stUSD+', 12, mainToken.address],
     });
     wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
 

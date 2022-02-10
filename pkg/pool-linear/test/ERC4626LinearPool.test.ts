@@ -27,9 +27,9 @@ describe('ERC4626LinearPool', function () {
   });
 
   sharedBeforeEach('deploy tokens', async () => {
-    mainToken = await Token.create('USD+');
+    mainToken = await Token.create({ symbol: 'USD+', decimals: 6 });
     wrappedTokenInstance = await deploy('MockERC4626Token', {
-      args: ['stUSD+', 'stUSD+', 6, mainToken.address],
+      args: ['stUSD+', 'stUSD+', 12, mainToken.address],
     });
     wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
 
@@ -64,7 +64,7 @@ describe('ERC4626LinearPool', function () {
     });
 
     it('returns the expected value', async () => {
-      // Rate should be at wrapped token scale - 6
+      // Rate should be at main token scale - 6
       await wrappedTokenInstance.setRate(bn(1e6));
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
 
@@ -79,7 +79,7 @@ describe('ERC4626LinearPool', function () {
   });
 
   describe('constructor', () => {
-    it('reverts if the mainToken is not the mainToken of the wrappedToken', async () => {
+    it('reverts if the mainToken is not the asset of the wrappedToken', async () => {
       const otherToken = await Token.create('USDC');
 
       await expect(
