@@ -16,12 +16,13 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EIP712.sol";
 
 import "./interfaces/IBalancerTokenAdmin.sol";
 import "./interfaces/IGaugeController.sol";
 import "./interfaces/ILiquidityGauge.sol";
 
-contract BalancerMinter is ReentrancyGuard {
+contract BalancerMinter is ReentrancyGuard, EIP712 {
     using SafeMath for uint256;
 
     IBalancerTokenAdmin private immutable _tokenAdmin;
@@ -34,9 +35,25 @@ contract BalancerMinter is ReentrancyGuard {
     // minter -> user -> can mint?
     mapping(address => mapping(address => bool)) private _allowedMinter;
 
-    constructor(IBalancerTokenAdmin tokenAdmin, IGaugeController gaugeController) {
+    // Signature replay attack prevention for each user.
+    mapping(address => uint256) internal _nextNonce;
+
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 private immutable _SET_MINTER_APPROVAL_TYPEHASH = keccak256(
+        "SetMinterApproval(address minter,bool approval,uint256 nonce,uint256 deadline)"
+    );
+
+    constructor(IBalancerTokenAdmin tokenAdmin, IGaugeController gaugeController) EIP712("Balancer Minter", "1") {
         _tokenAdmin = tokenAdmin;
         _gaugeController = gaugeController;
+    }
+
+    function getDomainSeparator() external view returns (bytes32) {
+        return _domainSeparatorV4();
+    }
+
+    function getNextNonce(address user) external view returns (uint256) {
+        return _nextNonce[user];
     }
 
     /**
@@ -110,6 +127,35 @@ contract BalancerMinter is ReentrancyGuard {
      */
     function setMinterApproval(address minter, bool approval) public {
         _allowedMinter[minter][msg.sender] = approval;
+    }
+
+    /**
+     * @notice Set whether `minter` is approved to mint tokens on behalf of `user`, who has signed a message authorizing
+     * them.
+     */
+    function setMinterApprovalWithSignature(
+        address minter,
+        bool approval,
+        address user,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        // solhint-disable-next-line not-rely-on-time
+        require(deadline > block.timestamp, "Signature expired");
+
+        uint256 nonce = _nextNonce[user]++;
+
+        bytes32 structHash = keccak256(abi.encode(_SET_MINTER_APPROVAL_TYPEHASH, minter, approval, nonce, deadline));
+        bytes32 digest = _hashTypedDataV4(structHash);
+
+        address recoveredAddress = ecrecover(digest, v, r, s);
+
+        // ecrecover returns the zero address on recover failure, so we need to handle that explicitly.
+        require(recoveredAddress != address(0) && recoveredAddress == user, "Invalid signature");
+
+        _allowedMinter[minter][user] = approval;
     }
 
     // Internal functions
