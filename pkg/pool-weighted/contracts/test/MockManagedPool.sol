@@ -21,7 +21,11 @@ contract MockManagedPool is ManagedPool {
 
     constructor(NewPoolParams memory params) ManagedPool(params) {}
 
-    function setWeightSum(uint256[] memory normalizedWeights, uint256 weightSum) external {
-        _setWeightSum(normalizedWeights, weightSum);
+    function setDenormWeightSum(uint256[] memory normalizedWeights, uint256 weightSum) external {
+        _setDenormWeightSum(normalizedWeights, weightSum);
+    }
+
+    function getDenormWeightSum() external view returns (uint256) {
+        return _getDenormWeightSum();
     }
 }
