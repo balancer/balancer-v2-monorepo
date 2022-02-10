@@ -54,7 +54,7 @@ contract ERC4626LinearPool is LinearPool {
         // _getWrappedTokenRate is scaled e18, we may need to scale the assetsPerShare (in terms of asset decimals)
         uint256 tokenDecimals = ERC20(address(mainToken)).decimals();
         uint256 decimalsDifference = Math.sub(18, tokenDecimals);
-        _wrappedTokenRateScale = 10 ** decimalsDifference;
+        _wrappedTokenRateScale = 10**decimalsDifference;
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
