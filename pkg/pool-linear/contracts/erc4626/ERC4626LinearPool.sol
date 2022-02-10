@@ -51,17 +51,17 @@ contract ERC4626LinearPool is LinearPool {
     {
         _require(address(mainToken) == IERC4626(address(wrappedToken)).asset(), Errors.TOKENS_MISMATCH);
 
-        // _getWrappedTokenRate is scaled e18, we may need to scale the assetsPerShare (in terms of token decimals)
-        uint256 tokenDecimals = ERC20(address(wrappedToken)).decimals();
+        // _getWrappedTokenRate is scaled e18, we may need to scale the assetsPerShare (in terms of asset decimals)
+        uint256 tokenDecimals = ERC20(address(mainToken)).decimals();
         uint256 decimalsDifference = Math.sub(18, tokenDecimals);
-        _wrappedTokenRateScale = 10**decimalsDifference;
+        _wrappedTokenRateScale = 10 ** decimalsDifference;
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        // Exchange rate between wrapped and underlying token with _wrappedToken.decimals() decimals of precision
+        // Exchange rate between wrapped and underlying token with _mainToken.decimals() decimals of precision
         uint256 rate = IERC4626(getWrappedToken()).assetsPerShare();
 
-        // This function returns a 18 decimal fixed point number so upscale to be as if _wrappedToken had 18 decimals
+        // This function returns a 18 decimal fixed point number so upscale to be as if _mainToken had 18 decimals
         return rate * _wrappedTokenRateScale;
     }
 }
