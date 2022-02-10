@@ -111,4 +111,11 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
             _setChainedReferenceValue(outputReference, balMinted);
         }
     }
+
+    function gaugeClaimRewards(ILiquidityGauge[] calldata gauges) external payable {
+        uint256 numGauges = gauges.length;
+        for (uint256 i; i < numGauges; ++i) {
+            gauges[i].claim_rewards(msg.sender);
+        }
+    }
 }

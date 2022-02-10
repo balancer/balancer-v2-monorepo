@@ -32,4 +32,6 @@ interface ILiquidityGauge is IERC20 {
     function integrate_fraction(address user) external view returns (uint256);
 
     function user_checkpoint(address user) external returns (bool);
+
+    function claim_rewards(address user) external;
 }
