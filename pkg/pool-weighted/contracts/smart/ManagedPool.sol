@@ -95,7 +95,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _START_DENORM_WEIGHT_OFFSET = 0;
     uint256 private constant _END_DENORM_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 128;
-    
+
     // To store the weights compressed, but truly denormalized, they must be scaled by a fixed amount,
     // independent of the current `_denormWeightSum`
     uint256 private constant _MAX_DENORM_WEIGHT_SUM = 1e22; // FP 10,000
@@ -714,8 +714,14 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // Store decimal difference instead of actual scaling factor
         return
             tokenState
-                .insertUint64(_denormalizeWeight(startWeight).compress64(_MAX_DENORM_WEIGHT_SUM), _START_DENORM_WEIGHT_OFFSET)
-                .insertUint64(_denormalizeWeight(endWeight).compress64(_MAX_DENORM_WEIGHT_SUM), _END_DENORM_WEIGHT_OFFSET)
+                .insertUint64(
+                _denormalizeWeight(startWeight).compress64(_MAX_DENORM_WEIGHT_SUM),
+                _START_DENORM_WEIGHT_OFFSET
+            )
+                .insertUint64(
+                _denormalizeWeight(endWeight).compress64(_MAX_DENORM_WEIGHT_SUM),
+                _END_DENORM_WEIGHT_OFFSET
+            )
                 .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
     }
 
@@ -766,8 +772,12 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private view returns (uint256 finalWeight) {
-        uint256 startWeight = _normalizeWeight(tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT_SUM));
-        uint256 endWeight = _normalizeWeight(tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT_SUM));
+        uint256 startWeight = _normalizeWeight(
+            tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT_SUM)
+        );
+        uint256 endWeight = _normalizeWeight(
+            tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT_SUM)
+        );
 
         if (pctProgress == 0 || startWeight == endWeight) return startWeight;
         if (pctProgress >= FixedPoint.ONE) return endWeight;
