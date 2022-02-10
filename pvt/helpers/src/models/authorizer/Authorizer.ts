@@ -1,13 +1,13 @@
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import * as expectEvent from '../../test/expectEvent';
 import { ANY_ADDRESS } from '../../constants';
+import { BigNumberish } from '../../numbers';
 import { AuthorizerDeployment } from './types';
 import { Account, NAry, TxParams } from '../types/types';
 
 import AuthorizerDeployer from './AuthorizerDeployer';
-import { BigNumberish } from '../../numbers';
-import * as expectEvent from "../../test/expectEvent";
 
 export default class Authorizer {
   static EVERYWHERE = ANY_ADDRESS;
