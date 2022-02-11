@@ -43,6 +43,8 @@ contract BalancerMinter is ReentrancyGuard, EIP712 {
         "SetMinterApproval(address minter,bool approval,uint256 nonce,uint256 deadline)"
     );
 
+    event MinterApprovalSet(address indexed user, address indexed minter, bool approval);
+
     constructor(IBalancerTokenAdmin tokenAdmin, IGaugeController gaugeController) EIP712("Balancer Minter", "1") {
         _tokenAdmin = tokenAdmin;
         _gaugeController = gaugeController;
@@ -118,7 +120,7 @@ contract BalancerMinter is ReentrancyGuard, EIP712 {
     /**
      * @notice Whether `minter` is approved to mint tokens for `user`
      */
-    function approvedMinter(address minter, address user) external view returns (bool) {
+    function getMinterApproval(address minter, address user) external view returns (bool) {
         return _allowedMinter[minter][user];
     }
 
@@ -126,7 +128,7 @@ contract BalancerMinter is ReentrancyGuard, EIP712 {
      * @notice Set whether `minter` is approved to mint tokens on your behalf
      */
     function setMinterApproval(address minter, bool approval) public {
-        _allowedMinter[minter][msg.sender] = approval;
+        _setMinterApproval(minter, msg.sender, approval);
     }
 
     /**
@@ -155,7 +157,16 @@ contract BalancerMinter is ReentrancyGuard, EIP712 {
         // ecrecover returns the zero address on recover failure, so we need to handle that explicitly.
         require(recoveredAddress != address(0) && recoveredAddress == user, "Invalid signature");
 
+        _setMinterApproval(minter, user, approval);
+    }
+
+    function _setMinterApproval(
+        address minter,
+        address user,
+        bool approval
+    ) private {
         _allowedMinter[minter][user] = approval;
+        emit MinterApprovalSet(user, minter, approval);
     }
 
     // Internal functions

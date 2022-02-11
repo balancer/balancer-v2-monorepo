@@ -7,6 +7,7 @@ import { expect } from 'chai';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { BalancerMinterAuthorization } from '@balancer-labs/balancer-js';
 import { currentTimestamp, HOUR } from '@balancer-labs/v2-helpers/src/time';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('BalancerMinter', () => {
   let minterContract: Contract;
@@ -22,30 +23,32 @@ describe('BalancerMinter', () => {
 
   describe('set minter approval with signature', () => {
     context('with a valid signature', () => {
-      it('grants approval to a minter', async () => {
+      async function expectSetApproval(approval: boolean): Promise<void> {
         const { v, r, s, deadline } = await BalancerMinterAuthorization.signSetMinterApproval(
           minterContract,
           minter,
-          true,
+          approval,
           user
         );
 
-        await minterContract.setMinterApprovalWithSignature(minter.address, true, user.address, deadline, v, r, s);
+        const receipt = await (
+          await minterContract.setMinterApprovalWithSignature(minter.address, approval, user.address, deadline, v, r, s)
+        ).wait();
 
-        expect(await minterContract.allowed_to_mint_for(minter.address, user.address)).to.equal(true);
+        expect(await minterContract.getMinterApproval(minter.address, user.address)).to.equal(approval);
+        expectEvent.inReceipt(receipt, 'MinterApprovalSet', {
+          minter: minter.address,
+          user: user.address,
+          approval,
+        });
+      }
+
+      it('grants approval to a minter', async () => {
+        await expectSetApproval(true);
       });
 
       it('removes approval from a minter', async () => {
-        const { v, r, s, deadline } = await BalancerMinterAuthorization.signSetMinterApproval(
-          minterContract,
-          minter,
-          false,
-          user
-        );
-
-        await minterContract.setMinterApprovalWithSignature(minter.address, false, user.address, deadline, v, r, s);
-
-        expect(await minterContract.allowed_to_mint_for(minter.address, user.address)).to.equal(false);
+        await expectSetApproval(false);
       });
 
       it('rejects replayed signatures', async () => {
@@ -134,6 +137,27 @@ describe('BalancerMinter', () => {
 
         await expect(
           minterContract.setMinterApprovalWithSignature(minter.address, true, ZERO_ADDRESS, deadline, v, r, s)
+        ).to.be.revertedWith('Invalid signature');
+      });
+
+      it('rejects invalid signatures for the zero address', async () => {
+        const { v, s, deadline } = await BalancerMinterAuthorization.signSetMinterApproval(
+          minterContract,
+          minter,
+          true,
+          user
+        );
+
+        await expect(
+          minterContract.setMinterApprovalWithSignature(
+            minter.address,
+            true,
+            ZERO_ADDRESS,
+            deadline,
+            v,
+            '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
+            s
+          )
         ).to.be.revertedWith('Invalid signature');
       });
     });
