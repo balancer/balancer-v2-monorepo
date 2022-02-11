@@ -15,6 +15,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { forceSendEth } from './helpers/eth';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 const OP_KIND = {
   DEPOSIT_INTERNAL: 0,
@@ -308,7 +309,7 @@ describe('Internal Balance', () => {
       context('when the relayer is whitelisted by the authorizer', () => {
         sharedBeforeEach('grant permission to relayer', async () => {
           const action = await actionId(vault, 'manageUserBalance');
-          await authorizer.connect(admin).grantRoleGlobally(action, relayer.address);
+          await authorizer.connect(admin).grantPermissions([action], relayer.address, [ANY_ADDRESS]);
         });
 
         context('when the relayer is allowed to deposit by the user', () => {
@@ -649,7 +650,7 @@ describe('Internal Balance', () => {
       context('when the relayer is whitelisted by the authorizer', () => {
         sharedBeforeEach('grant permission to relayer', async () => {
           const action = await actionId(vault, 'manageUserBalance');
-          await authorizer.connect(admin).grantRoleGlobally(action, relayer.address);
+          await authorizer.connect(admin).grantPermissions([action], relayer.address, [ANY_ADDRESS]);
         });
 
         context('when the relayer is allowed by the user', () => {
@@ -962,7 +963,7 @@ describe('Internal Balance', () => {
       context('when the relayer is whitelisted by the authorizer', () => {
         sharedBeforeEach('grant permission to relayer', async () => {
           const action = await actionId(vault, 'manageUserBalance');
-          await authorizer.connect(admin).grantRoleGlobally(action, relayer.address);
+          await authorizer.connect(admin).grantPermissions([action], relayer.address, [ANY_ADDRESS]);
         });
 
         context('when the relayer is allowed by the user', () => {
@@ -1170,7 +1171,7 @@ describe('Internal Balance', () => {
       context('when the relayer is whitelisted by the authorizer', () => {
         sharedBeforeEach('grant permission to relayer', async () => {
           const action = await actionId(vault, 'manageUserBalance');
-          await authorizer.connect(admin).grantRoleGlobally(action, relayer.address);
+          await authorizer.connect(admin).grantPermissions([action], relayer.address, [ANY_ADDRESS]);
         });
 
         context('when the relayer is allowed to transfer by the user', () => {
@@ -1268,7 +1269,7 @@ describe('Internal Balance', () => {
 
     sharedBeforeEach('allow relayer', async () => {
       const action = await actionId(vault, 'manageUserBalance');
-      await authorizer.connect(admin).grantRoleGlobally(action, relayer.address);
+      await authorizer.connect(admin).grantPermissions([action], relayer.address, [ANY_ADDRESS]);
       await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
       await vault.connect(recipient).setRelayerApproval(recipient.address, relayer.address, true);
     });
@@ -1356,7 +1357,7 @@ describe('Internal Balance', () => {
 
       sharedBeforeEach('pause', async () => {
         const action = await actionId(vault, 'setPaused');
-        await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+        await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
         await vault.connect(admin).setPaused(true);
       });
 

@@ -23,12 +23,11 @@ contract MockStaticAToken is TestToken, IStaticAToken, ILendingPool {
     address private immutable _ASSET;
 
     constructor(
-        address admin,
         string memory name,
         string memory symbol,
         uint8 decimals,
         address underlyingAsset
-    ) TestToken(admin, name, symbol, decimals) {
+    ) TestToken(name, symbol, decimals) {
         _ASSET = underlyingAsset;
     }
 

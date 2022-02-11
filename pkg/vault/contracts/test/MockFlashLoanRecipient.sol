@@ -68,6 +68,7 @@ contract MockFlashLoanRecipient is IFlashLoanRecipient {
                 IVault(msg.sender).flashLoan(IFlashLoanRecipient(address(this)), tokens, amounts, userData);
             }
 
+            // The recipient will mint the fees it pays
             TestToken(address(token)).mint(address(this), repayInExcess ? feeAmount.add(1) : feeAmount);
 
             uint256 totalDebt = amount.add(feeAmount);

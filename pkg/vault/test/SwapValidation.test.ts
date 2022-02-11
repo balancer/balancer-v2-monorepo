@@ -13,7 +13,7 @@ import { BatchSwapStep, FundManagement, SwapKind } from '@balancer-labs/balancer
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { fromNow, MONTH } from '@balancer-labs/v2-helpers/src/time';
-import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 describe('Swap Validation', () => {
@@ -140,7 +140,7 @@ describe('Swap Validation', () => {
       context('when paused', () => {
         sharedBeforeEach('pause', async () => {
           const action = await actionId(vault, 'setPaused');
-          await authorizer.connect(admin).grantRoleGlobally(action, admin.address);
+          await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
           await vault.connect(admin).setPaused(true);
         });
 

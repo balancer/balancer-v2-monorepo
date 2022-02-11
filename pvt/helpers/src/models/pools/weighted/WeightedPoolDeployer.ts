@@ -107,7 +107,7 @@ export default {
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
-            owner,
+            TypesConverter.toAddress(owner),
             swapEnabledOnStart,
           ],
           from,
@@ -255,6 +255,7 @@ export default {
           canSetMustAllowlistLPs: true,
           canSetCircuitBreakers: true,
           canChangeTokens: true,
+          canChangeMgmtSwapFee: true,
         };
 
         const tx = await factory
