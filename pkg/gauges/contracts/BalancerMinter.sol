@@ -76,16 +76,16 @@ contract BalancerMinter is ReentrancyGuard, EIP712 {
      * @notice Mint everything which belongs to `msg.sender` and send to them
      * @param gauge `LiquidityGauge` address to get mintable amount from
      */
-    function mint(address gauge) external nonReentrant {
-        _mintFor(gauge, msg.sender);
+    function mint(address gauge) external nonReentrant returns (uint256) {
+        return _mintFor(gauge, msg.sender);
     }
 
     /**
      * @notice Mint everything which belongs to `msg.sender` across multiple gauges
      * @param gauges List of `LiquidityGauge` addresses
      */
-    function mintMany(address[] calldata gauges) external nonReentrant {
-        _mintForMany(gauges, msg.sender);
+    function mintMany(address[] calldata gauges) external nonReentrant returns (uint256) {
+        return _mintForMany(gauges, msg.sender);
     }
 
     /**
@@ -94,9 +94,9 @@ contract BalancerMinter is ReentrancyGuard, EIP712 {
      * @param gauge `LiquidityGauge` address to get mintable amount from
      * @param user Address to mint to
      */
-    function mintFor(address gauge, address user) external nonReentrant {
+    function mintFor(address gauge, address user) external nonReentrant returns (uint256) {
         require(_allowedMinter[msg.sender][user], "Caller not allowed to mint for user");
-        _mintFor(gauge, user);
+        return _mintFor(gauge, user);
     }
 
     /**
@@ -105,9 +105,9 @@ contract BalancerMinter is ReentrancyGuard, EIP712 {
      * @param gauges List of `LiquidityGauge` addresses
      * @param user Address to mint to
      */
-    function mintManyFor(address[] calldata gauges, address user) external nonReentrant {
+    function mintManyFor(address[] calldata gauges, address user) external nonReentrant returns (uint256) {
         require(_allowedMinter[msg.sender][user], "Caller not allowed to mint for user");
-        _mintForMany(gauges, user);
+        return _mintForMany(gauges, user);
     }
 
     /**
@@ -171,16 +171,14 @@ contract BalancerMinter is ReentrancyGuard, EIP712 {
 
     // Internal functions
 
-    function _mintFor(address gauge, address user) internal {
-        uint256 tokensToMint = _updateGauge(gauge, user);
+    function _mintFor(address gauge, address user) internal returns (uint256 tokensToMint) {
+        tokensToMint = _updateGauge(gauge, user);
         if (tokensToMint > 0) {
             _tokenAdmin.mint(user, tokensToMint);
         }
     }
 
-    function _mintForMany(address[] calldata gauges, address user) internal {
-        uint256 tokensToMint = 0;
-
+    function _mintForMany(address[] calldata gauges, address user) internal returns (uint256 tokensToMint) {
         uint256 length = gauges.length;
         for (uint256 i = 0; i < length; ++i) {
             tokensToMint = tokensToMint.add(_updateGauge(gauges[i], user));
