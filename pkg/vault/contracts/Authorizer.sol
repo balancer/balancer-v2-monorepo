@@ -44,7 +44,6 @@ contract Authorizer is IAuthorizer {
     struct ScheduledAction {
         address where;
         bytes data;
-        address sender;
         bool executed;
         bool cancelled;
         bool protected;
@@ -197,7 +196,9 @@ contract Authorizer is IAuthorizer {
 
         require(!scheduledAction.executed, "ACTION_ALREADY_EXECUTED");
         require(!scheduledAction.cancelled, "ACTION_ALREADY_CANCELLED");
-        _require(msg.sender == scheduledAction.sender, Errors.SENDER_NOT_ALLOWED);
+
+        bytes32 action = IAuthentication(scheduledAction.where).getActionId(_decodeSelector(scheduledAction.data));
+        _require(hasPermission(action, msg.sender, scheduledAction.where), Errors.SENDER_NOT_ALLOWED);
 
         scheduledAction.cancelled = true;
         emit ActionCancelled(id);
@@ -280,7 +281,7 @@ contract Authorizer is IAuthorizer {
         // solhint-disable-next-line not-rely-on-time
         uint256 executableAt = block.timestamp + delay;
         bool protected = executors.length > 0;
-        scheduledActions.push(ScheduledAction(where, data, msg.sender, false, false, protected, executableAt));
+        scheduledActions.push(ScheduledAction(where, data, false, false, protected, executableAt));
 
         bytes32 executeActionId = _executeActionId(id);
         for (uint256 i = 0; i < executors.length; i++) {

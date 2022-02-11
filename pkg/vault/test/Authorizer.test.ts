@@ -1112,7 +1112,7 @@ describe('Authorizer', () => {
     context('when the given id is valid', () => {
       let id: BigNumberish;
 
-      context('when the sender is the action creator', () => {
+      context('when the sender has permission for the requested action', () => {
         sharedBeforeEach('set sender', async () => {
           from = grantee;
         });
@@ -1155,7 +1155,7 @@ describe('Authorizer', () => {
         });
       });
 
-      context('when the sender is not the action creator', () => {
+      context('when the sender does not have permission for the requested action', () => {
         sharedBeforeEach('set sender', async () => {
           from = admin;
         });
