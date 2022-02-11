@@ -487,26 +487,26 @@ def change_gauge_weight(addr: address, weight: uint256):
     assert msg.sender == self.admin
     self._change_gauge_weight(addr, weight)
 
-
-@external
-def vote_for_gauge_weights(_gauge_addr: address, _user_weight: uint256):
+@internal
+def _vote_for_gauge_weights(_user: address, _gauge_addr: address, _user_weight: uint256):
     """
     @notice Allocate voting power for changing pool weights
-    @param _gauge_addr Gauge which `msg.sender` votes for
+    @param _user User to allocate voting power for
+    @param _gauge_addr Gauge which _user votes for
     @param _user_weight Weight for a gauge in bps (units of 0.01%). Minimal is 0.01%. Ignored if 0
     """
-    slope: uint256 = convert(VotingEscrow(VOTING_ESCROW).get_last_user_slope(msg.sender), uint256)
-    lock_end: uint256 = VotingEscrow(VOTING_ESCROW).locked__end(msg.sender)
+    slope: uint256 = convert(VotingEscrow(VOTING_ESCROW).get_last_user_slope(_user), uint256)
+    lock_end: uint256 = VotingEscrow(VOTING_ESCROW).locked__end(_user)
     _n_gauges: int128 = self.n_gauges
     next_time: uint256 = (block.timestamp + WEEK) / WEEK * WEEK
     assert lock_end > next_time, "Your token lock expires too soon"
     assert (_user_weight >= 0) and (_user_weight <= 10000), "You used all your voting power"
-    assert block.timestamp >= self.last_user_vote[msg.sender][_gauge_addr] + WEIGHT_VOTE_DELAY, "Cannot vote so often"
+    assert block.timestamp >= self.last_user_vote[_user][_gauge_addr] + WEIGHT_VOTE_DELAY, "Cannot vote so often"
 
     gauge_type: int128 = self.gauge_types_[_gauge_addr] - 1
     assert gauge_type >= 0, "Gauge not added"
     # Prepare slopes and biases in memory
-    old_slope: VotedSlope = self.vote_user_slopes[msg.sender][_gauge_addr]
+    old_slope: VotedSlope = self.vote_user_slopes[_user][_gauge_addr]
     old_dt: uint256 = 0
     if old_slope.end > next_time:
         old_dt = old_slope.end - next_time
@@ -520,9 +520,9 @@ def vote_for_gauge_weights(_gauge_addr: address, _user_weight: uint256):
     new_bias: uint256 = new_slope.slope * new_dt
 
     # Check and update powers (weights) used
-    power_used: uint256 = self.vote_user_power[msg.sender]
+    power_used: uint256 = self.vote_user_power[_user]
     power_used = power_used + new_slope.power - old_slope.power
-    self.vote_user_power[msg.sender] = power_used
+    self.vote_user_power[_user] = power_used
     assert (power_used >= 0) and (power_used <= 10000), 'Used too much power'
 
     ## Remove old and schedule new slope changes
@@ -551,13 +551,24 @@ def vote_for_gauge_weights(_gauge_addr: address, _user_weight: uint256):
 
     self._get_total()
 
-    self.vote_user_slopes[msg.sender][_gauge_addr] = new_slope
+    self.vote_user_slopes[_user][_gauge_addr] = new_slope
 
     # Record last action time
-    self.last_user_vote[msg.sender][_gauge_addr] = block.timestamp
+    self.last_user_vote[_user][_gauge_addr] = block.timestamp
 
-    log VoteForGauge(block.timestamp, msg.sender, _gauge_addr, _user_weight)
+    log VoteForGauge(block.timestamp, _user, _gauge_addr, _user_weight)
 
+@external
+@nonreentrant('lock')
+def vote_for_many_gauge_weights(_gauge_addrs: address[8], _user_weight: uint256[8]):
+    for i in range(8):
+        if _gauge_addrs[i] == ZERO_ADDRESS:
+            break
+        self._vote_for_gauge_weights(msg.sender, _gauge_addrs[i], _user_weight[i])
+
+@external
+def vote_for_gauge_weights(_gauge_addr: address, _user_weight: uint256):
+    self._vote_for_gauge_weights(msg.sender, _gauge_addr, _user_weight)
 
 @external
 @view
