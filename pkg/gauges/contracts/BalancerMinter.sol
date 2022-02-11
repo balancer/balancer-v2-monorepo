@@ -16,12 +16,13 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EIP712.sol";
 
 import "./interfaces/IBalancerTokenAdmin.sol";
 import "./interfaces/IGaugeController.sol";
 import "./interfaces/ILiquidityGauge.sol";
 
-contract BalancerMinter is ReentrancyGuard {
+contract BalancerMinter is ReentrancyGuard, EIP712 {
     using SafeMath for uint256;
 
     IBalancerTokenAdmin private immutable _tokenAdmin;
@@ -34,9 +35,27 @@ contract BalancerMinter is ReentrancyGuard {
     // minter -> user -> can mint?
     mapping(address => mapping(address => bool)) private _allowedMinter;
 
-    constructor(IBalancerTokenAdmin tokenAdmin, IGaugeController gaugeController) {
+    // Signature replay attack prevention for each user.
+    mapping(address => uint256) internal _nextNonce;
+
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 private immutable _SET_MINTER_APPROVAL_TYPEHASH = keccak256(
+        "SetMinterApproval(address minter,bool approval,uint256 nonce,uint256 deadline)"
+    );
+
+    event MinterApprovalSet(address indexed user, address indexed minter, bool approval);
+
+    constructor(IBalancerTokenAdmin tokenAdmin, IGaugeController gaugeController) EIP712("Balancer Minter", "1") {
         _tokenAdmin = tokenAdmin;
         _gaugeController = gaugeController;
+    }
+
+    function getDomainSeparator() external view returns (bytes32) {
+        return _domainSeparatorV4();
+    }
+
+    function getNextNonce(address user) external view returns (uint256) {
+        return _nextNonce[user];
     }
 
     /**
@@ -57,16 +76,16 @@ contract BalancerMinter is ReentrancyGuard {
      * @notice Mint everything which belongs to `msg.sender` and send to them
      * @param gauge `LiquidityGauge` address to get mintable amount from
      */
-    function mint(address gauge) external nonReentrant {
-        _mintFor(gauge, msg.sender);
+    function mint(address gauge) external nonReentrant returns (uint256) {
+        return _mintFor(gauge, msg.sender);
     }
 
     /**
      * @notice Mint everything which belongs to `msg.sender` across multiple gauges
      * @param gauges List of `LiquidityGauge` addresses
      */
-    function mintMany(address[] calldata gauges) external nonReentrant {
-        _mintForMany(gauges, msg.sender);
+    function mintMany(address[] calldata gauges) external nonReentrant returns (uint256) {
+        return _mintForMany(gauges, msg.sender);
     }
 
     /**
@@ -75,9 +94,9 @@ contract BalancerMinter is ReentrancyGuard {
      * @param gauge `LiquidityGauge` address to get mintable amount from
      * @param user Address to mint to
      */
-    function mintFor(address gauge, address user) external nonReentrant {
+    function mintFor(address gauge, address user) external nonReentrant returns (uint256) {
         require(_allowedMinter[msg.sender][user], "Caller not allowed to mint for user");
-        _mintFor(gauge, user);
+        return _mintFor(gauge, user);
     }
 
     /**
@@ -86,9 +105,9 @@ contract BalancerMinter is ReentrancyGuard {
      * @param gauges List of `LiquidityGauge` addresses
      * @param user Address to mint to
      */
-    function mintManyFor(address[] calldata gauges, address user) external nonReentrant {
+    function mintManyFor(address[] calldata gauges, address user) external nonReentrant returns (uint256) {
         require(_allowedMinter[msg.sender][user], "Caller not allowed to mint for user");
-        _mintForMany(gauges, user);
+        return _mintForMany(gauges, user);
     }
 
     /**
@@ -101,7 +120,7 @@ contract BalancerMinter is ReentrancyGuard {
     /**
      * @notice Whether `minter` is approved to mint tokens for `user`
      */
-    function approvedMinter(address minter, address user) external view returns (bool) {
+    function getMinterApproval(address minter, address user) external view returns (bool) {
         return _allowedMinter[minter][user];
     }
 
@@ -109,21 +128,57 @@ contract BalancerMinter is ReentrancyGuard {
      * @notice Set whether `minter` is approved to mint tokens on your behalf
      */
     function setMinterApproval(address minter, bool approval) public {
-        _allowedMinter[minter][msg.sender] = approval;
+        _setMinterApproval(minter, msg.sender, approval);
+    }
+
+    /**
+     * @notice Set whether `minter` is approved to mint tokens on behalf of `user`, who has signed a message authorizing
+     * them.
+     */
+    function setMinterApprovalWithSignature(
+        address minter,
+        bool approval,
+        address user,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        // solhint-disable-next-line not-rely-on-time
+        require(deadline > block.timestamp, "Signature expired");
+
+        uint256 nonce = _nextNonce[user]++;
+
+        bytes32 structHash = keccak256(abi.encode(_SET_MINTER_APPROVAL_TYPEHASH, minter, approval, nonce, deadline));
+        bytes32 digest = _hashTypedDataV4(structHash);
+
+        address recoveredAddress = ecrecover(digest, v, r, s);
+
+        // ecrecover returns the zero address on recover failure, so we need to handle that explicitly.
+        require(recoveredAddress != address(0) && recoveredAddress == user, "Invalid signature");
+
+        _setMinterApproval(minter, user, approval);
+    }
+
+    function _setMinterApproval(
+        address minter,
+        address user,
+        bool approval
+    ) private {
+        _allowedMinter[minter][user] = approval;
+        emit MinterApprovalSet(user, minter, approval);
     }
 
     // Internal functions
 
-    function _mintFor(address gauge, address user) internal {
-        uint256 tokensToMint = _updateGauge(gauge, user);
+    function _mintFor(address gauge, address user) internal returns (uint256 tokensToMint) {
+        tokensToMint = _updateGauge(gauge, user);
         if (tokensToMint > 0) {
             _tokenAdmin.mint(user, tokensToMint);
         }
     }
 
-    function _mintForMany(address[] calldata gauges, address user) internal {
-        uint256 tokensToMint = 0;
-
+    function _mintForMany(address[] calldata gauges, address user) internal returns (uint256 tokensToMint) {
         uint256 length = gauges.length;
         for (uint256 i = 0; i < length; ++i) {
             tokensToMint = tokensToMint.add(_updateGauge(gauges[i], user));
