@@ -41,7 +41,7 @@ interface IBalancerMinter {
 
     /**
      * @notice Mint tokens for `user`
-     * @dev Only possible when `msg.sender` has been approved via `toggleApproveMint`
+     * @dev Only possible when `msg.sender` has been approved by `user` to mint on their behalf
      * @param gauge `LiquidityGauge` address to get mintable amount from
      * @param user Address to mint to
      */
@@ -49,7 +49,7 @@ interface IBalancerMinter {
 
     /**
      * @notice Mint tokens for `user` across multiple gauges
-     * @dev Only possible when `msg.sender` has been approved via `toggleApproveMint`
+     * @dev Only possible when `msg.sender` has been approved by `user` to mint on their behalf
      * @param gauges List of `LiquidityGauge` addresses
      * @param user Address to mint to
      */
@@ -102,7 +102,7 @@ interface IBalancerMinter {
 
     /**
      * @notice Mint tokens for `user`
-     * @dev Only possible when `msg.sender` has been approved via `toggleApproveMint`
+     * @dev Only possible when `msg.sender` has been approved by `user` to mint on their behalf
      * @param gauge `LiquidityGauge` address to get mintable amount from
      * @param user Address to mint to
      */
