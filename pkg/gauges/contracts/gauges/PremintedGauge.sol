@@ -85,8 +85,8 @@ abstract contract PremintedGauge is ILiquidityGauge, ReentrancyGuard {
 
                 if (nextEpochTime >= periodTime && nextEpochTime < periodTime + 1 weeks) {
                     // If the period crosses an epoch, we calculate a reduction in the rate
-                    // using the same formula as used in `ERC20CRV`. We perform the calculation
-                    // locally instead of calling to `ERC20CRV.rate()` because we are generating
+                    // using the same formula as used in `BalancerTokenAdmin`. We perform the calculation
+                    // locally instead of calling to `BalancerTokenAdmin.rate()` because we are generating
                     // the emissions for the upcoming week, so there is a possibility the new
                     // rate has not yet been applied.
 
