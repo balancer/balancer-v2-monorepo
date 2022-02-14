@@ -28,6 +28,8 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
     IBalancerMinter private immutable _minter;
     IGaugeController private immutable _gaugeController;
 
+    event Checkpoint(uint256 periodTime, uint256 periodEmissions);
+
     // solhint-disable var-name-mixedcase
     uint256 private immutable _INITIAL_RATE;
     uint256 private immutable _RATE_REDUCTION_TIME;
@@ -41,8 +43,6 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
 
     uint256 private _emissions;
     bool public isKilled;
-
-    event PeriodEmission(uint256 periodStart, uint256 amount);
 
     constructor(IBalancerMinter minter) {
         IBalancerTokenAdmin tokenAdmin = IBalancerTokenAdmin(minter.getBalancerTokenAdmin());
@@ -110,7 +110,7 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
                     periodEmission = (gaugeWeight * rate * 1 weeks) / 10**18;
                 }
 
-                emit PeriodEmission(periodTime, periodEmission);
+                emit Checkpoint(periodTime, periodEmission);
                 newEmissions += periodEmission;
             }
 
