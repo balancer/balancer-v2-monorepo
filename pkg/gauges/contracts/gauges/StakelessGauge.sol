@@ -68,7 +68,7 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
         _startEpochTime = tokenAdmin.startEpochTimeWrite();
     }
 
-    function checkpoint() external nonReentrant returns (bool) {
+    function checkpoint() external payable nonReentrant returns (bool) {
         // TODO: Add a guard to checkpointing.
         uint256 lastPeriod = _period;
         uint256 currentPeriod = _currentPeriod();
