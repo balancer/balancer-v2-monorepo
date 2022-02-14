@@ -112,6 +112,17 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
         }
     }
 
+    function gaugeSetMinterApproval(
+        bool approval,
+        address user,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external payable {
+        _balancerMinter.setMinterApprovalWithSignature(address(this), approval, user, deadline, v, r, s);
+    }
+
     function gaugeClaimRewards(ILiquidityGauge[] calldata gauges) external payable {
         uint256 numGauges = gauges.length;
         for (uint256 i; i < numGauges; ++i) {

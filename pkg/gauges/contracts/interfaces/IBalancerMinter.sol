@@ -15,7 +15,6 @@
 pragma solidity ^0.7.0;
 
 interface IBalancerMinter {
-    
     event Minted(address indexed recipient, address gauge, uint256 minted);
 
     /**
@@ -70,6 +69,20 @@ interface IBalancerMinter {
      * @notice Set whether `minter` is approved to mint tokens on your behalf
      */
     function setMinterApproval(address minter, bool approval) external;
+
+    /**
+     * @notice Set whether `minter` is approved to mint tokens on behalf of `user`, who has signed a message authorizing
+     * them.
+     */
+    function setMinterApprovalWithSignature(
+        address minter,
+        bool approval,
+        address user,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
 
     // The below functions are near-duplicates of functions available above.
     // They are included for ABI compatibility with snake_casing as used in vyper contracts.

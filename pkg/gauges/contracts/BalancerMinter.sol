@@ -142,7 +142,7 @@ contract BalancerMinter is IBalancerMinter, ReentrancyGuard, EIP712 {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external {
+    ) external override {
         // solhint-disable-next-line not-rely-on-time
         require(deadline > block.timestamp, "Signature expired");
 
