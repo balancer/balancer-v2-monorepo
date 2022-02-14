@@ -45,8 +45,7 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
         ILiquidityGauge gauge,
         address sender,
         address recipient,
-        uint256 amount,
-        uint256 outputReference
+        uint256 amount
     ) external payable {
         if (_isChainedReference(amount)) {
             amount = _getChainedReferenceValue(amount);
@@ -64,18 +63,13 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
 
         bptToken.approve(address(gauge), amount);
         gauge.deposit(amount, recipient);
-
-        if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, amount);
-        }
     }
 
     function gaugeWithdraw(
         ILiquidityGauge gauge,
         address sender,
         address recipient,
-        uint256 amount,
-        uint256 outputReference
+        uint256 amount
     ) external payable {
         if (_isChainedReference(amount)) {
             amount = _getChainedReferenceValue(amount);
@@ -97,10 +91,6 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
             IERC20 bptToken = gauge.lp_token();
 
             bptToken.transfer(recipient, amount);
-        }
-
-        if (_isChainedReference(outputReference)) {
-            _setChainedReferenceValue(outputReference, amount);
         }
     }
 
