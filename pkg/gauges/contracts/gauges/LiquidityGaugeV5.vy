@@ -67,6 +67,9 @@ event Approval:
     _spender: indexed(address)
     _value: uint256
 
+event RewardDistributorUpdated:
+    reward_token: indexed(address)
+    distributor: address
 
 struct Reward:
     token: address
@@ -685,6 +688,7 @@ def add_reward(_reward_token: address, _distributor: address):
     self.reward_data[_reward_token].distributor = _distributor
     self.reward_tokens[reward_count] = _reward_token
     self.reward_count = reward_count + 1
+    log RewardDistributorUpdated(_reward_token, _distributor)
 
 
 @external
@@ -701,6 +705,7 @@ def set_reward_distributor(_reward_token: address, _distributor: address):
     assert _distributor != ZERO_ADDRESS
 
     self.reward_data[_reward_token].distributor = _distributor
+    log RewardDistributorUpdated(_reward_token, _distributor)
 
 
 @external
