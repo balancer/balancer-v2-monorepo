@@ -95,11 +95,13 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
                     // rate has not yet been applied.
 
                     // Calculate emission up until the epoch change
-                    periodEmission = (gaugeWeight * rate * (nextEpochTime - periodTime)) / 10**18;
+                    uint256 durationInCurrentEpoch = nextEpochTime - periodTime;
+                    periodEmission = (gaugeWeight * rate * durationInCurrentEpoch) / 10**18;
                     // Action the decrease in rate
                     rate = (rate * _RATE_DENOMINATOR) / _RATE_REDUCTION_COEFFICIENT;
                     // Calculate emission from epoch change to end of period
-                    periodEmission += (gaugeWeight * rate * (periodTime + 1 weeks - nextEpochTime)) / 10**18;
+                    uint256 durationInNewEpoch = 1 weeks - durationInCurrentEpoch;
+                    periodEmission += (gaugeWeight * rate * durationInNewEpoch) / 10**18;
 
                     _rate = rate;
                     _startEpochTime = nextEpochTime;
