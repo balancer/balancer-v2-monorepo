@@ -14,13 +14,20 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
+import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-interface IBalancerTokenAdmin {
+import "./IBalancerToken.sol";
+
+interface IBalancerTokenAdmin is IAuthentication {
+    function getVault() external view returns (IVault);
+
     /**
      * @notice Returns the address of the Balancer Governance Token
      */
-    function getBalancerToken() external view returns (IERC20);
+    function getBalancerToken() external view returns (IBalancerToken);
+
+    function activate() external;
 
     function mint(address to, uint256 amount) external;
 }
