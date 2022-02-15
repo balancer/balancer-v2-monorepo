@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "./relayer/BaseRelayerLibrary.sol";
 
 import "./relayer/AaveWrapping.sol";
+import "./relayer/GaugeActions.sol";
 import "./relayer/LidoWrapping.sol";
 import "./relayer/VaultActions.sol";
 import "./relayer/VaultPermit.sol";
@@ -27,8 +28,19 @@ import "./relayer/VaultPermit.sol";
  * @notice This contract is not a relayer by itself and calls into it directly will fail.
  * The associated relayer can be found by calling `getEntrypoint` on this contract.
  */
-contract BatchRelayerLibrary is BaseRelayerLibrary, AaveWrapping, LidoWrapping, VaultActions, VaultPermit {
-    constructor(IVault vault, IERC20 wstETH) BaseRelayerLibrary(vault) LidoWrapping(wstETH) {
+contract BatchRelayerLibrary is
+    BaseRelayerLibrary,
+    AaveWrapping,
+    GaugeActions,
+    LidoWrapping,
+    VaultActions,
+    VaultPermit
+{
+    constructor(
+        IVault vault,
+        IBalancerMinter balancerMinter,
+        IERC20 wstETH
+    ) BaseRelayerLibrary(vault) GaugeActions(balancerMinter) LidoWrapping(wstETH) {
         // solhint-disable-previous-line no-empty-blocks
     }
 }
