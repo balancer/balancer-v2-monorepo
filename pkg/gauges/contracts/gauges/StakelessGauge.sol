@@ -22,7 +22,7 @@ import "../interfaces/IBalancerTokenAdmin.sol";
 import "../interfaces/IGaugeController.sol";
 import "../interfaces/ILiquidityGauge.sol";
 
-abstract contract PremintedGauge is ILiquidityGauge, ReentrancyGuard {
+abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
     IERC20 internal immutable _balToken;
     IBalancerTokenAdmin private immutable _tokenAdmin;
     IBalancerMinter private immutable _minter;
