@@ -22,6 +22,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/misc/IERC4626.sol";
 import "../LinearPool.sol";
 
 contract ERC4626LinearPool is LinearPool {
+    using Math for uint256;
+
     uint256 private immutable _wrappedTokenRateScale;
 
     constructor(
@@ -51,17 +53,26 @@ contract ERC4626LinearPool is LinearPool {
     {
         _require(address(mainToken) == IERC4626(address(wrappedToken)).asset(), Errors.TOKENS_MISMATCH);
 
-        // _getWrappedTokenRate is scaled e18, we may need to scale the assetsPerShare (in terms of asset decimals)
-        uint256 tokenDecimals = ERC20(address(mainToken)).decimals();
-        uint256 decimalsDifference = Math.sub(18, tokenDecimals);
-        _wrappedTokenRateScale = 10**decimalsDifference;
+        // _getWrappedTokenRate is scaled e18, we may need to scale the totalAssets/totalSupply (in terms of asset decimals)
+        uint256 wrappedTokenDecimals = ERC20(address(wrappedToken)).decimals();
+        uint256 mainTokenDecimals = ERC20(address(mainToken)).decimals();
+        uint256 digitsDifference = Math.add(18, wrappedTokenDecimals).sub(mainTokenDecimals);
+        _wrappedTokenRateScale = 10**digitsDifference;
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        // Exchange rate between wrapped and underlying token with _mainToken.decimals() decimals of precision
-        uint256 rate = IERC4626(getWrappedToken()).assetsPerShare();
+        // at _mainToken.decimals() decimals of precision
+        uint256 totalMain = IERC4626(getWrappedToken()).totalAssets();
+        if (totalMain == 0) {
+            // on empty pool return 1:1 rate
+            return 10**18;
+        }
+
+        // as _wrappedToken.decimals() decimals of precision, potentially may be ZERO
+        uint256 totalWrapped = ERC20(getWrappedToken()).totalSupply();
 
         // This function returns a 18 decimal fixed point number so upscale to be as if _mainToken had 18 decimals
-        return rate * _wrappedTokenRateScale;
+        uint256 rate = _wrappedTokenRateScale.mul(totalMain).divDown(totalWrapped);
+        return rate;
     }
 }

@@ -33,7 +33,7 @@ describe('ERC4626LinearPool', function () {
     });
     wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
 
-    tokens = new TokenList([mainToken, wrappedToken]).sort();
+    tokens = new TokenList([mainToken]).sort();
 
     await tokens.mint({ to: [lp, trader], amount: fp(100) });
   });
@@ -64,17 +64,39 @@ describe('ERC4626LinearPool', function () {
     });
 
     it('returns the expected value', async () => {
-      // Rate should be at main token scale - 6
-      await wrappedTokenInstance.setRate(bn(1e6));
+      // Rate should be at wrapped token decimals main token decimals minus and upped to e18
+      // Ex. for main 6 and wrapped 12 it should be at 18-6+12=12 scale
+      await wrappedTokenInstance.setRate(bn(1e12));
+
+      await wrappedTokenInstance.deposit(bn(1e6), trader.address);
+      expect(await wrappedTokenInstance.totalSupply()).to.be.eq(bn(1e12));
+      expect(await wrappedTokenInstance.totalAssets()).to.be.eq(bn(1e6));
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
+
+      // await wrappedTokenInstance.connect(trader).approve(owner.address, bn(1e12));
+      await wrappedTokenInstance.redeem(bn(1e12), owner.address, trader.address);
+      expect(await wrappedTokenInstance.totalSupply()).to.be.eq(0);
+      expect(await wrappedTokenInstance.totalAssets()).to.be.eq(0);
+
+      // rate is e18 on empty pool
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
 
       // We now double the exchange rate to 2:1
-      await wrappedTokenInstance.setRate(bn(2e6));
+      await wrappedTokenInstance.setRate(bn(2e12));
+
+      await wrappedTokenInstance.deposit(bn(1e6), trader.address);
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2));
 
-      // We now set the exchange rate to 1.234567:1.000000
-      await wrappedTokenInstance.setRate(bn(1234567));
-      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1.234567));
+      // on rate 2:1 we got fewer shares
+      expect(await wrappedTokenInstance.totalSupply()).to.be.eq(bn(5e11));
+      await wrappedTokenInstance.redeem(bn(5e11), owner.address, trader.address);
+
+      // We now set the exchange rate to 1.25:1.00
+      await wrappedTokenInstance.setRate(bn(1250000000000));
+
+      await wrappedTokenInstance.deposit(bn(1e6), trader.address);
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1.25));
+      await wrappedTokenInstance.redeem(bn(800000000000), owner.address, trader.address);
     });
   });
 

@@ -22,7 +22,10 @@ import "@balancer-labs/v2-standalone-utils/contracts/test/TestToken.sol";
 contract MockERC4626Token is TestToken, IERC4626 {
     using FixedPoint for uint256;
 
+    // rate between wrapped and main tokens for deposit/redeem
     uint256 private _rate = 1e18;
+    uint256 private _rateScale = 1e18;
+    uint256 private _totalAssets;
     address private immutable _mainToken;
 
     constructor(
@@ -32,27 +35,34 @@ contract MockERC4626Token is TestToken, IERC4626 {
         address mainToken
     ) TestToken(name, symbol, decimals) {
         _mainToken = mainToken;
-        _rate = 10 ** ERC20(mainToken).decimals();
     }
 
-
+    // rate at e18 scale
     function setRate(uint256 newRate) external {
         _rate = newRate;
     }
 
-    function assetsPerShare() external view override returns (uint256){
-        return _rate;
+    function totalAssets() external view override returns (uint256){
+        return _totalAssets;
     }
 
     function asset() external view override returns (address){
         return _mainToken;
     }
 
-    function deposit(uint256 assets, address) external view override returns (uint256) {
-        return assets.divDown(_rate);
+    function deposit(uint256 assets, address receiver) external override returns (uint256) {
+        uint256 shares = assets.mulDown(_rateScale).divDown(_rate);
+        // need update to work with totalSupply
+        _mint(receiver, shares);
+        _totalAssets = _totalAssets.add(assets);
+        return shares;
     }
 
-    function redeem(uint256 shares, address, address) external view override returns (uint256) {
-        return shares.mulDown(_rate);
+    function redeem(uint256 shares, address, address owner) external override returns (uint256) {
+        uint256 assets = shares.mulDown(_rate).divDown(_rateScale);
+        // need update to work with totalSupply
+        _burn(owner, shares);
+        _totalAssets = _totalAssets.sub(assets);
+        return assets;
     }
 }

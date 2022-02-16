@@ -42,12 +42,13 @@ interface IERC4626 is IERC20 {
     ) external returns (uint256);
 
     /**
-     * @dev The current exchange rate of shares to assets, quoted per unit share.
-     */
-    function assetsPerShare() external view returns (uint256);
-
-    /**
      * @dev The address of the underlying token that the Vault uses for accounting, depositing, and withdrawing.
      */
     function asset() external view returns (address);
+
+    /**
+     * @dev Total amount of the underlying asset that is “managed” by Vault
+     **/
+    function totalAssets() external view returns (uint256);
+
 }
