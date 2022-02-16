@@ -40,6 +40,8 @@ abstract contract PremintedGauge is ILiquidityGauge, ReentrancyGuard {
     uint256 private _emissions;
     bool public isKilled;
 
+    event PeriodEmission(uint256 periodStart, uint256 amount);
+
     constructor(IBalancerMinter minter) {
         IBalancerTokenAdmin tokenAdmin = IBalancerTokenAdmin(minter.getBalancerTokenAdmin());
         IERC20 balToken = tokenAdmin.getBalancerToken();
@@ -104,7 +106,7 @@ abstract contract PremintedGauge is ILiquidityGauge, ReentrancyGuard {
                     periodEmission = (gaugeWeight * rate * 1 weeks) / 10**18;
                 }
 
-                //log PeriodEmission(period_time, period_emission)
+                emit PeriodEmission(periodTime, periodEmission);
                 newEmissions += periodEmission;
             }
 
