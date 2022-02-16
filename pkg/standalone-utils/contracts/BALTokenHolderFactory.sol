@@ -27,6 +27,8 @@ contract BALTokenHolderFactory is IBALTokenHolderFactory {
     IBalancerToken private immutable _balancerToken;
     IVault private immutable _vault;
 
+    mapping(address => bool) private _factoryCreatedHolders;
+
     event BALTokenHolderCreated(BALTokenHolder balTokenHolder, string name);
 
     constructor(IBalancerToken balancerToken, IVault vault) {
@@ -42,8 +44,14 @@ contract BALTokenHolderFactory is IBALTokenHolderFactory {
         return _vault;
     }
 
+    function isHolderFromFactory(address holder) external view override returns (bool) {
+        return _factoryCreatedHolders[holder];
+    }
+
     function create(string memory name) external override returns (IBALTokenHolder) {
         BALTokenHolder holder = new BALTokenHolder(getBalancerToken(), getVault(), name);
+
+        _factoryCreatedHolders[address(holder)] = true;
         emit BALTokenHolderCreated(holder, name);
 
         return holder;

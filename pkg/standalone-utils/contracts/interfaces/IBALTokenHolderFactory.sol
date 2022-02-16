@@ -23,5 +23,7 @@ interface IBALTokenHolderFactory {
 
     function getVault() external view returns (IVault);
 
+    function isHolderFromFactory(address holder) external view returns (bool);
+
     function create(string memory name) external returns (IBALTokenHolder);
 }

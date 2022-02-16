@@ -33,20 +33,20 @@ describe('BALTokenHolderFactory', function () {
     expect(await factory.getVault()).to.equal(vault.address);
   });
 
+  async function deployHolder(name: string): Promise<Contract> {
+    const receipt = await (await factory.create(name)).wait();
+    const {
+      args: { balTokenHolder: holder },
+    } = expectEvent.inReceipt(receipt, 'BALTokenHolderCreated', { name });
+
+    return await deployedAt('BALTokenHolder', holder);
+  }
+
   describe('creation', () => {
     it('emits an event', async () => {
       const receipt = await (await factory.create('holder')).wait();
       expectEvent.inReceipt(receipt, 'BALTokenHolderCreated', { name: 'holder' });
     });
-
-    async function deployHolder(name: string): Promise<Contract> {
-      const receipt = await (await factory.create(name)).wait();
-      const {
-        args: { balTokenHolder: holder },
-      } = expectEvent.inReceipt(receipt, 'BALTokenHolderCreated', { name });
-
-      return await deployedAt('BALTokenHolder', holder);
-    }
 
     it('creates a holder with the same BAL and vualt addresses', async () => {
       const holder = await deployHolder('holder');
@@ -65,6 +65,17 @@ describe('BALTokenHolderFactory', function () {
       const second = await deployHolder('second');
 
       expect(await actionId(first, 'withdrawFunds')).to.not.equal(await actionId(second, 'withdrawFunds'));
+    });
+  });
+
+  describe('is holder from factory', () => {
+    it('returns true for holders created by the factory', async () => {
+      const holder = await deployHolder('holder');
+      expect(await factory.isHolderFromFactory(holder.address)).to.equal(true);
+    });
+
+    it('returns false for other addresses', async () => {
+      expect(await factory.isHolderFromFactory(factory.address)).to.equal(false);
     });
   });
 });
