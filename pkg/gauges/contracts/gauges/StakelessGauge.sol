@@ -136,4 +136,8 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
         require(user == address(this), "Gauge can only mint for itself");
         return _emissions;
     }
+
+    function set_killed(bool _isKilled) external {
+        isKilled = _isKilled;
+    }
 }
