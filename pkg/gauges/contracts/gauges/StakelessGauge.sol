@@ -28,10 +28,12 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
     IBalancerMinter private immutable _minter;
     IGaugeController private immutable _gaugeController;
 
+    // solhint-disable var-name-mixedcase
     uint256 private immutable _INITIAL_RATE;
     uint256 private immutable _RATE_REDUCTION_TIME;
     uint256 private immutable _RATE_REDUCTION_COEFFICIENT;
     uint256 private immutable _RATE_DENOMINATOR;
+    // solhint-enable var-name-mixedcase
 
     uint256 private _rate;
     uint256 private _period;
@@ -59,7 +61,7 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
         // Because we calculate the rate locally, this gauge cannot
         // be used prior to the start of the first emission period
         uint256 rate = tokenAdmin.rate();
-        require(rate != 0);
+        require(rate != 0, "BalancerTokenAdmin not yet activated");
 
         _rate = rate;
         _period = _currentPeriod();
@@ -123,10 +125,13 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
     }
 
     function _currentPeriod() internal view returns (uint256) {
+        // solhint-disable-next-line not-rely-on-time
         return (block.timestamp / 1 weeks) - 1;
     }
 
     function _postMintAction(uint256 mintAmount) internal virtual;
+
+    // solhint-disable func-name-mixedcase
 
     function user_checkpoint(address) external pure override returns (bool) {
         return true;

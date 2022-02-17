@@ -17,6 +17,7 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
 interface IBalancerTokenAdmin {
+    // solhint-disable func-name-mixedcase
     function INITIAL_RATE() external view returns (uint256);
 
     function RATE_REDUCTION_TIME() external view returns (uint256);
@@ -24,6 +25,8 @@ interface IBalancerTokenAdmin {
     function RATE_REDUCTION_COEFFICIENT() external view returns (uint256);
 
     function RATE_DENOMINATOR() external view returns (uint256);
+
+    // solhint-enable func-name-mixedcase
 
     function getBalancerToken() external view returns (IERC20);
 
