@@ -31,7 +31,6 @@ export type RawWeightedPoolDeployment = {
   from?: SignerWithAddress;
   vault?: Vault;
   fromFactory?: boolean;
-  noProtocolFee?: boolean;
   poolType?: WeightedPoolType;
 };
 
@@ -42,7 +41,6 @@ export type WeightedPoolDeployment = {
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
-  noProtocolFee: boolean;
   poolType: WeightedPoolType;
   oracleEnabled: boolean;
   swapEnabledOnStart: boolean;

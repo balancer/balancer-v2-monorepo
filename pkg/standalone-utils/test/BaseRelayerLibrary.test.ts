@@ -9,7 +9,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 
@@ -148,7 +148,7 @@ describe('BaseRelayerLibrary', function () {
         sharedBeforeEach('authorise relayer', async () => {
           const setApprovalRole = await actionId(vault, 'setRelayerApproval');
           const authorizer = await deployedAt('v2-vault/Authorizer', await vault.getAuthorizer());
-          await authorizer.connect(admin).grantRolesGlobally([setApprovalRole], relayer.address);
+          await authorizer.connect(admin).grantPermissions([setApprovalRole], relayer.address, [ANY_ADDRESS]);
         });
 
         describe('when modifying its own approval', () => {

@@ -14,9 +14,10 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
 
 import "./interfaces/IAuthorizer.sol";
 
@@ -30,260 +31,275 @@ import "./interfaces/IAuthorizer.sol";
  * manage permissions across multiple contracts and to natively handle timelocks.
  */
 contract Authorizer is IAuthorizer {
-    using EnumerableSet for EnumerableSet.AddressSet;
+    using Address for address;
 
-    bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
-    address public constant GLOBAL_ROLE_ADMIN = address(0);
+    uint256 public constant MAX_DELAY = 2 * (365 days);
+    address public constant EVERYWHERE = address(-1);
 
-    struct RoleData {
-        EnumerableSet.AddressSet globalMembers;
-        mapping(address => EnumerableSet.AddressSet) membersByContract;
-        bytes32 adminRole;
+    bytes32 public constant GRANT_PERMISSION = keccak256("GRANT_PERMISSION");
+    bytes32 public constant REVOKE_PERMISSION = keccak256("REVOKE_PERMISSION");
+    bytes32 public constant EXECUTE_PERMISSION = keccak256("EXECUTE_PERMISSION");
+    bytes32 public constant SET_DELAY_PERMISSION = keccak256("SET_DELAY_PERMISSION");
+
+    struct ScheduledAction {
+        address where;
+        bytes data;
+        bool executed;
+        bool cancelled;
+        bool protected;
+        uint256 executableAt;
     }
 
-    mapping(bytes32 => RoleData) private _roles;
+    ScheduledAction[] public scheduledActions;
+    mapping(bytes32 => bool) public permissionGranted;
+    mapping(bytes32 => uint256) public delays;
 
     /**
-     * @dev Emitted when `newAdminRole` is set as ``role``'s admin role, replacing `previousAdminRole`
-     *
-     * `DEFAULT_ADMIN_ROLE` is the starting admin for all roles, despite
-     * {RoleAdminChanged} not being emitted signaling this.
-     *
-     * _Available since v3.1._
+     * @dev Emitted when a new action with ID `id` is scheduled
      */
-    event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole);
+    event ActionScheduled(bytes32 indexed action, uint256 indexed id);
 
     /**
-     * @dev Emitted when `account` is granted `role` in an specific contract `where`.
-     *
-     * `sender` is the account that originated the contract call
+     * @dev Emitted when an action with ID `id` is executed
      */
-    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender, address where);
+    event ActionExecuted(uint256 indexed id);
 
     /**
-     * @dev Emitted when `account` is granted `role` across all contracts.
-     *
-     * `sender` is the account that originated the contract call
+     * @dev Emitted when an action with ID `id` is cancelled
      */
-    event RoleGrantedGlobally(bytes32 indexed role, address indexed account, address indexed sender);
+    event ActionCancelled(uint256 indexed id);
 
     /**
-     * @dev Emitted when `account` is revoked `role` in an specific contract `where`.
-     *
-     * `sender` is the account that originated the contract call:
-     *   - if using `revokeRole`, it is the admin role bearer
-     *   - if using `renounceRole`, it is the role bearer (i.e. `account`)
+     * @dev Emitted when a new `delay` is set in order to perform `action`
      */
-    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender, address where);
+    event ActionDelaySet(bytes32 indexed action, uint256 delay);
 
     /**
-     * @dev Emitted when `account` is revoked `role` across all contracts.
-     *
-     * `sender` is the account that originated the contract call:
-     *   - if using `revokeRole`, it is the admin role bearer
-     *   - if using `renounceRole`, it is the role bearer (i.e. `account`)
+     * @dev Emitted when `account` is granted permission to perform `action` in `where`.
      */
-    event RoleRevokedGlobally(bytes32 indexed role, address indexed account, address indexed sender);
+    event PermissionGranted(bytes32 indexed action, address indexed account, address indexed where);
+
+    /**
+     * @dev Emitted when an `account`'s permission to perform `action` is revoked from `where`.
+     */
+    event PermissionRevoked(bytes32 indexed action, address indexed account, address indexed where);
 
     constructor(address admin) {
-        _grantRoleGlobally(DEFAULT_ADMIN_ROLE, admin);
+        _grantPermission(GRANT_PERMISSION, admin, EVERYWHERE);
+        _grantPermission(REVOKE_PERMISSION, admin, EVERYWHERE);
     }
 
     /**
-     * @dev Returns `true` if `account` has permission for `actionId` either globally or in specific `where`
+     * @dev Tells the permission ID for action `action`, account `account` and target `where`
+     */
+    function permissionId(
+        bytes32 action,
+        address account,
+        address where
+    ) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(action, account, where));
+    }
+
+    /**
+     * @dev Tells whether `account` has explicit permission to perform `action` in `where`
+     */
+    function hasPermission(
+        bytes32 action,
+        address account,
+        address where
+    ) public view returns (bool) {
+        return
+            permissionGranted[permissionId(action, account, where)] ||
+            permissionGranted[permissionId(action, account, EVERYWHERE)];
+    }
+
+    /**
+     * @dev Tells whether `account` can perform `action` in `where`
      */
     function canPerform(
-        bytes32 actionId,
+        bytes32 action,
         address account,
         address where
     ) public view override returns (bool) {
-        return
-            _roles[actionId].globalMembers.contains(account) ||
-            _roles[actionId].membersByContract[where].contains(account);
+        return (delays[action] > 0) ? account == address(this) : hasPermission(action, account, where);
     }
 
     /**
-     * @dev Returns `true` if `account` has been granted admin role for `role`
+     * @dev Sets a new delay for `action`
      */
-    function isAdmin(bytes32 role, address account) public view returns (bool) {
-        return canPerform(_roles[role].adminRole, account, GLOBAL_ROLE_ADMIN);
+    function setDelay(bytes32 action, uint256 delay) external {
+        _require(msg.sender == address(this), Errors.SENDER_NOT_ALLOWED);
+        delays[action] = delay;
+        emit ActionDelaySet(action, delay);
     }
 
     /**
-     * @dev Returns the number of accounts that have `role` as global permission. Can be used
-     * together with {getRoleGlobalMember} to enumerate all bearers of a role.
+     * @dev Schedules a delay change of `newDelay` for `action`
      */
-    function getRoleGlobalMemberCount(bytes32 role) public view returns (uint256) {
-        return _roles[role].globalMembers.length();
+    function scheduleDelayChange(
+        bytes32 action,
+        uint256 newDelay,
+        address[] memory executors
+    ) external returns (uint256 id) {
+        require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
+        bytes32 setDelayAction = keccak256(abi.encodePacked(SET_DELAY_PERMISSION, action));
+        _authenticate(setDelayAction, address(this));
+
+        uint256 actionDelay = delays[action];
+        bytes memory data = abi.encodeWithSelector(this.setDelay.selector, action, newDelay);
+        return _schedule(setDelayAction, address(this), data, actionDelay, executors);
     }
 
     /**
-     * @dev Returns one of the accounts that have `role` across contracts. `index` must be a
-     * value between 0 and {getRoleGlobalMemberCount}, non-inclusive.
-     *
-     * Role bearers are not sorted in any particular way, and their ordering may
-     * change at any point.
-     *
-     * WARNING: When using {getRoleGlobalMember} and {getRoleGlobalMemberCount}, make sure
-     * you perform all queries on the same block. See the following
-     * https://forum.openzeppelin.com/t/iterating-over-elements-on-enumerableset-in-openzeppelin-contracts/2296
-     * for more information.
+     * @dev Schedules a new action
      */
-    function getRoleGlobalMember(bytes32 role, uint256 index) public view returns (address) {
-        return _roles[role].globalMembers.at(index);
+    function schedule(
+        address where,
+        bytes memory data,
+        address[] memory executors
+    ) external returns (uint256 id) {
+        require(where != address(this), "CANNOT_SCHEDULE_AUTHORIZER_ACTIONS");
+        bytes32 action = IAuthentication(where).getActionId(_decodeSelector(data));
+        _require(hasPermission(action, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
+
+        uint256 delay = delays[action];
+        require(delay > 0, "CANNOT_SCHEDULE_ACTION");
+        return _schedule(action, where, data, delay, executors);
     }
 
     /**
-     * @dev Returns the number of accounts that have `role` as global permission. Can be used
-     * together with {getRoleGlobalMember} to enumerate all bearers of a role.
+     * @dev Executes action `id`
      */
-    function getRoleMemberCountByContract(bytes32 role, address where) public view returns (uint256) {
-        return _roles[role].membersByContract[where].length();
+    function execute(uint256 id) external returns (bytes memory result) {
+        require(id < scheduledActions.length, "ACTION_DOES_NOT_EXIST");
+        ScheduledAction storage scheduledAction = scheduledActions[id];
+        require(!scheduledAction.executed, "ACTION_ALREADY_EXECUTED");
+        require(!scheduledAction.cancelled, "ACTION_ALREADY_CANCELLED");
+
+        // solhint-disable-next-line not-rely-on-time
+        require(block.timestamp >= scheduledAction.executableAt, "ACTION_NOT_EXECUTABLE");
+        if (scheduledAction.protected) {
+            _authenticate(_executeActionId(id), address(this));
+        }
+
+        scheduledAction.executed = true;
+        result = scheduledAction.where.functionCall(scheduledAction.data);
+        emit ActionExecuted(id);
     }
 
     /**
-     * @dev Returns one of the accounts that have `role` in contract `where`. `index` must be a
-     * value between 0 and {getRoleMemberCountByContract}, non-inclusive.
-     *
-     * Role bearers are not sorted in any particular way, and their ordering may
-     * change at any point.
-     *
-     * WARNING: When using {getRoleMemberByContract} and {getRoleMemberCountByContract}, make sure
-     * you perform all queries on the same block. See the following
-     * https://forum.openzeppelin.com/t/iterating-over-elements-on-enumerableset-in-openzeppelin-contracts/2296
-     * for more information.
+     * @dev Cancels action `id`
      */
-    function getRoleMemberByContract(
-        bytes32 role,
-        uint256 index,
-        address where
-    ) public view returns (address) {
-        return _roles[role].membersByContract[where].at(index);
+    function cancel(uint256 id) external {
+        require(id < scheduledActions.length, "ACTION_DOES_NOT_EXIST");
+        ScheduledAction storage scheduledAction = scheduledActions[id];
+
+        require(!scheduledAction.executed, "ACTION_ALREADY_EXECUTED");
+        require(!scheduledAction.cancelled, "ACTION_ALREADY_CANCELLED");
+
+        bytes32 action = IAuthentication(scheduledAction.where).getActionId(_decodeSelector(scheduledAction.data));
+        _require(hasPermission(action, msg.sender, scheduledAction.where), Errors.SENDER_NOT_ALLOWED);
+
+        scheduledAction.cancelled = true;
+        emit ActionCancelled(id);
     }
 
     /**
-     * @dev Returns the admin role that controls `role`. See {grantRole} and
-     * {revokeRole}.
-     *
-     * To change a role's admin, use {_setRoleAdmin}.
+     * @dev Grants multiple permissions to a single account.
      */
-    function getRoleAdmin(bytes32 role) public view returns (bytes32) {
-        return _roles[role].adminRole;
-    }
-
-    /**
-     * @dev Grants multiple roles to a single account for a set of contracts.
-     */
-    function grantRoles(
-        bytes32[] memory roles,
+    function grantPermissions(
+        bytes32[] memory actions,
         address account,
-        address[] calldata where
+        address[] memory where
     ) external {
-        _require(where.length > 0, Errors.INPUT_LENGTH_MISMATCH);
-        for (uint256 i = 0; i < roles.length; i++) {
-            _require(isAdmin(roles[i], msg.sender), Errors.GRANT_SENDER_NOT_ADMIN);
-            for (uint256 j = 0; j < where.length; j++) {
-                _grantRole(roles[i], account, where[j]);
-            }
+        InputHelpers.ensureInputLengthMatch(actions.length, where.length);
+        for (uint256 i = 0; i < actions.length; i++) {
+            _authenticate(GRANT_PERMISSION, where[i]);
+            _grantPermission(actions[i], account, where[i]);
         }
     }
 
     /**
-     * @dev Grants multiple roles to a single account for all contracts.
+     * @dev Revokes multiple permissions from a single account
      */
-    function grantRolesGlobally(bytes32[] memory roles, address account) external {
-        for (uint256 i = 0; i < roles.length; i++) {
-            _require(isAdmin(roles[i], msg.sender), Errors.GRANT_SENDER_NOT_ADMIN);
-            _grantRoleGlobally(roles[i], account);
-        }
-    }
-
-    /**
-     * @dev Revokes multiple roles from a single account for a set of contracts.
-     */
-    function revokeRoles(
-        bytes32[] memory roles,
+    function revokePermissions(
+        bytes32[] memory actions,
         address account,
-        address[] calldata where
+        address[] memory where
     ) external {
-        _require(where.length > 0, Errors.INPUT_LENGTH_MISMATCH);
-        for (uint256 i = 0; i < roles.length; i++) {
-            _require(isAdmin(roles[i], msg.sender), Errors.REVOKE_SENDER_NOT_ADMIN);
-            _revokeRole(roles[i], account, where);
+        InputHelpers.ensureInputLengthMatch(actions.length, where.length);
+        for (uint256 i = 0; i < actions.length; i++) {
+            _authenticate(REVOKE_PERMISSION, where[i]);
+            _revokePermission(actions[i], account, where[i]);
         }
     }
 
     /**
-     * @dev Revokes multiple roles from a single account for all contracts.
+     * @dev Renounces from multiple permissions
      */
-    function revokeRolesGlobally(bytes32[] memory roles, address account) external {
-        for (uint256 i = 0; i < roles.length; i++) {
-            _require(isAdmin(roles[i], msg.sender), Errors.REVOKE_SENDER_NOT_ADMIN);
-            _revokeRoleGlobally(roles[i], account);
+    function renouncePermissions(bytes32[] memory actions, address[] memory where) external {
+        InputHelpers.ensureInputLengthMatch(actions.length, where.length);
+        for (uint256 i = 0; i < actions.length; i++) {
+            _revokePermission(actions[i], msg.sender, where[i]);
         }
     }
 
-    /**
-     * @dev Renounces from multiple `roles` for the sender for a set of contracts.
-     */
-    function renounceRoles(bytes32[] memory roles, address[] calldata where) public virtual {
-        _require(where.length > 0, Errors.INPUT_LENGTH_MISMATCH);
-        for (uint256 i = 0; i < roles.length; i++) {
-            _revokeRole(roles[i], msg.sender, where);
-        }
-    }
-
-    /**
-     * @dev Renounces from multiple `roles` for the sender for all contracts.
-     */
-    function renounceRolesGlobally(bytes32[] memory roles) public virtual {
-        for (uint256 i = 0; i < roles.length; i++) {
-            _revokeRoleGlobally(roles[i], msg.sender);
-        }
-    }
-
-    /**
-     * @dev Sets `adminRole` as ``role``'s admin role.
-     *
-     * Emits a {RoleAdminChanged} event.
-     */
-    function _setRoleAdmin(bytes32 role, bytes32 adminRole) internal virtual {
-        emit RoleAdminChanged(role, _roles[role].adminRole, adminRole);
-        _roles[role].adminRole = adminRole;
-    }
-
-    function _grantRole(
-        bytes32 role,
+    function _grantPermission(
+        bytes32 action,
         address account,
         address where
     ) private {
-        require(where != address(0), "Where can't be GLOBAL_ROLE_ADMIN");
-        if (_roles[role].membersByContract[where].add(account)) {
-            emit RoleGranted(role, account, msg.sender, where);
+        bytes32 permission = permissionId(action, account, where);
+        if (!permissionGranted[permission]) {
+            permissionGranted[permission] = true;
+            emit PermissionGranted(action, account, where);
         }
     }
 
-    function _grantRoleGlobally(bytes32 role, address account) private {
-        if (_roles[role].globalMembers.add(account)) {
-            emit RoleGrantedGlobally(role, account, msg.sender);
-        }
-    }
-
-    function _revokeRole(
-        bytes32 role,
+    function _revokePermission(
+        bytes32 action,
         address account,
-        address[] calldata where
+        address where
     ) private {
-        for (uint256 i = 0; i < where.length; i++) {
-            if (_roles[role].membersByContract[where[i]].remove(account)) {
-                emit RoleRevoked(role, account, msg.sender, where[i]);
-            }
+        bytes32 permission = permissionId(action, account, where);
+        if (permissionGranted[permission]) {
+            permissionGranted[permission] = false;
+            emit PermissionRevoked(action, account, where);
         }
     }
 
-    function _revokeRoleGlobally(bytes32 role, address account) private {
-        if (_roles[role].globalMembers.remove(account)) {
-            emit RoleRevokedGlobally(role, account, msg.sender);
+    function _schedule(
+        bytes32 action,
+        address where,
+        bytes memory data,
+        uint256 delay,
+        address[] memory executors
+    ) private returns (uint256 id) {
+        id = scheduledActions.length;
+        emit ActionScheduled(action, id);
+
+        // solhint-disable-next-line not-rely-on-time
+        uint256 executableAt = block.timestamp + delay;
+        bool protected = executors.length > 0;
+        scheduledActions.push(ScheduledAction(where, data, false, false, protected, executableAt));
+
+        bytes32 executeActionId = _executeActionId(id);
+        for (uint256 i = 0; i < executors.length; i++) {
+            _grantPermission(executeActionId, executors[i], address(this));
         }
+    }
+
+    function _authenticate(bytes32 action, address where) internal view {
+        _require(canPerform(action, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
+    }
+
+    function _executeActionId(uint256 id) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(EXECUTE_PERMISSION, id));
+    }
+
+    function _decodeSelector(bytes memory data) internal pure returns (bytes4) {
+        // The bytes4 type is left-aligned and padded with zeros: we make use of that property to build the selector
+        if (data.length < 4) return bytes4(0);
+        return bytes4(data[0]) | (bytes4(data[1]) >> 8) | (bytes4(data[2]) >> 16) | (bytes4(data[3]) >> 24);
     }
 }

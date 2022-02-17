@@ -11,7 +11,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
-import { ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 
 import { MultiDistributor } from '@balancer-labs/v2-helpers/src/models/distributor/MultiDistributor';
@@ -42,7 +42,7 @@ describe('MultiDistributor', () => {
 
     // Authorise distributor to use users' vault token approvals
     const manageUserRole = await actionId(vault.instance, 'manageUserBalance');
-    await vault.grantRolesGlobally([manageUserRole], distributor);
+    await vault.grantPermissionsGlobally([manageUserRole], distributor);
 
     const stakeRole = await actionId(distributor.instance, 'stake');
     const stakeUsingVaultRole = await actionId(distributor.instance, 'stakeUsingVault');
@@ -50,11 +50,11 @@ describe('MultiDistributor', () => {
     const fundRole = await actionId(distributor.instance, 'fundDistribution');
     const setDurationRole = await actionId(distributor.instance, 'setDistributionDuration');
 
-    await vault.grantRolesGlobally([stakeRole], relayer);
-    await vault.grantRolesGlobally([stakeUsingVaultRole], relayer);
-    await vault.grantRolesGlobally([unstakeRole], relayer);
-    await vault.grantRolesGlobally([fundRole], relayer);
-    await vault.grantRolesGlobally([setDurationRole], relayer);
+    await vault.grantPermissionsGlobally([stakeRole], relayer);
+    await vault.grantPermissionsGlobally([stakeUsingVaultRole], relayer);
+    await vault.grantPermissionsGlobally([unstakeRole], relayer);
+    await vault.grantPermissionsGlobally([fundRole], relayer);
+    await vault.grantPermissionsGlobally([setDurationRole], relayer);
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -77,7 +77,7 @@ describe('MultiDistributor', () => {
     it('tracks authorizer changes in the vault', async () => {
       const { vault, authorizer, admin } = distributor;
       const action = await actionId(vault, 'setAuthorizer');
-      await authorizer.connect(admin).grantRolesGlobally([action], admin.address);
+      await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
 
       await vault.connect(admin).setAuthorizer(user1.address);
 
