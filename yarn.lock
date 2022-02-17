@@ -278,9 +278,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v2-gauges@workspace:pkg/gauges":
+"@balancer-labs/v2-liquidity-mining@workspace:pkg/liquidity-mining":
   version: 0.0.0-use.local
-  resolution: "@balancer-labs/v2-gauges@workspace:pkg/gauges"
+  resolution: "@balancer-labs/v2-liquidity-mining@workspace:pkg/liquidity-mining"
   dependencies:
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"

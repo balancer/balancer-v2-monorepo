@@ -180,7 +180,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-distributors test
 
-  test-gauges:
+  test-liquidity-mining:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -200,7 +200,7 @@ jobs:
       - name: Compile
         run: yarn build
       - name: Test
-        run: yarn workspace @balancer-labs/v2-gauges test
+        run: yarn workspace @balancer-labs/v2-liquidity-mining test
 
   benchmark:
     runs-on: ubuntu-latest
