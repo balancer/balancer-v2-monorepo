@@ -48,7 +48,7 @@ describe('BALTokenHolderFactory', function () {
       expectEvent.inReceipt(receipt, 'BALTokenHolderCreated', { name: 'holder' });
     });
 
-    it('creates a holder with the same BAL and vualt addresses', async () => {
+    it('creates a holder with the same BAL and vault addresses', async () => {
       const holder = await deployHolder('holder');
 
       expect(await holder.getBalancerToken()).to.equal(BAL.address);

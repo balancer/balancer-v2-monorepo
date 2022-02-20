@@ -35,8 +35,8 @@ contract BALTokenHolder is IBALTokenHolder, Authentication {
         IVault vault,
         string memory name
     ) Authentication(bytes32(uint256(address(this)))) {
-        // BALTokenHolder is often deployed from a factory for conveniency, but it uses its own address instead that of
-        // the factory as a disambiguator to make sure the action IDs of all instances are unique, reducing likelihood
+        // BALTokenHolder is often deployed from a factory for convenience, but it uses its own address instead of
+        // the factory's as a disambiguator to make sure the action IDs of all instances are unique, reducing likelihood
         // of errors.
 
         _balancerToken = balancerToken;
