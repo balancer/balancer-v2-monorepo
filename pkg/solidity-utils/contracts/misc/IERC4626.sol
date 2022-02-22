@@ -50,5 +50,4 @@ interface IERC4626 is IERC20 {
      * @dev Total amount of the underlying asset that is “managed” by Vault
      **/
     function totalAssets() external view returns (uint256);
-
 }
