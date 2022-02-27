@@ -62,15 +62,17 @@ contract ERC4626LinearPool is LinearPool {
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
+        address wrappedToken = getWrappedToken();
+
         // at _mainToken.decimals() decimals of precision
-        uint256 totalMain = IERC4626(getWrappedToken()).totalAssets();
+        uint256 totalMain = IERC4626(wrappedToken).totalAssets();
         if (totalMain == 0) {
             // on empty pool return 1:1 rate
-            return 10**18;
+            return FixedPoint.ONE;
         }
 
         // as _wrappedToken.decimals() decimals of precision, potentially may be ZERO
-        uint256 totalWrapped = ERC20(getWrappedToken()).totalSupply();
+        uint256 totalWrapped = ERC20(wrappedToken).totalSupply();
 
         // This function returns a 18 decimal fixed point number so upscale to be as if _mainToken had 18 decimals
         uint256 rate = _wrappedTokenRateScale.mul(totalMain).divDown(totalWrapped);
