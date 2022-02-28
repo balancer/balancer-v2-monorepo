@@ -20,6 +20,7 @@ import "./relayer/BaseRelayerLibrary.sol";
 import "./relayer/AaveWrapping.sol";
 import "./relayer/GaugeActions.sol";
 import "./relayer/LidoWrapping.sol";
+import "./relayer/ERC4626Wrapping.sol";
 import "./relayer/VaultActions.sol";
 import "./relayer/VaultPermit.sol";
 
@@ -34,7 +35,8 @@ contract BatchRelayerLibrary is
     GaugeActions,
     LidoWrapping,
     VaultActions,
-    VaultPermit
+    VaultPermit,
+    ERC4626Wrapping
 {
     constructor(
         IVault vault,
