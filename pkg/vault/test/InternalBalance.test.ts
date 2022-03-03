@@ -15,7 +15,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { forceSendEth } from './helpers/eth';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
-import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 const OP_KIND = {
   DEPOSIT_INTERNAL: 0,
@@ -38,7 +38,7 @@ describe('Internal Balance', () => {
     tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
     weth = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
-    authorizer = await deploy('Authorizer', { args: [admin.address], ZERO_ADDRESS });
+    authorizer = await deploy('Authorizer', { args: [admin.address, ZERO_ADDRESS] });
     vault = await deploy('Vault', { args: [authorizer.address, weth.address, MONTH, MONTH] });
   });
 
