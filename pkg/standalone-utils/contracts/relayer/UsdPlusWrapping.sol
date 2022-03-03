@@ -30,6 +30,9 @@ import "../interfaces/IStaticUsdPlusToken.sol";
 abstract contract UsdPlusWrapping is IBaseRelayerLibrary {
     using Address for address payable;
 
+    /**
+     * @dev UsdcPlus -> staticUsdPlus
+     */
     function wrapUsdPlusDynamicToken(
         IStaticUsdPlusToken staticToken,
         address sender,
@@ -59,6 +62,9 @@ abstract contract UsdPlusWrapping is IBaseRelayerLibrary {
         }
     }
 
+    /**
+     * @dev staticUsdPlus -> UsdcPlus
+     */
     function unwrapUsdPlusStaticToken(
         IStaticUsdPlusToken staticToken,
         address sender,
