@@ -13,17 +13,20 @@ Take out from pool:
 - **lpToken -> usdPlus**: lpToken->{swap}->stUsdPlus->{unwrap}->usdPlus
 
 With ERC4626:
-- **usdc->stUsdPlus**: usdc->{deposit}->stUsdPlus
-- **stUsdPlus->usdc**: stUsdPlus->{redeem}->usdc
+- **usdPlus->stUsdPlus**: usdPlus->{deposit}->stUsdPlus
+- **stUsdPlus->usdPlus**: stUsdPlus->{redeem}->usdPlus
+
+---
 
 Where:
-- **{wrap}** - UsdPlusWrapping.wrapUsdPlusDynamicToken
-- **{unwrap}** - UsdPlusWrapping.unwrapUsdPlusStaticToken
+- **usdc** - ERC20 token
+- **usdPlus** - ERC20 token, rebased, 1:1 to usdc
+- **stUsdPlus** - ERC4626 wrapper over usdPlus, non rebased, have exchange rate to usdPlus
+
+ 
+- **{wrap}** - ERC4626Wrapping.wrapERC4626 over IERC4626.deposit
+- **{unwrap}** - ERC4626Wrapping.unwrapERC4626 over IERC4626.redeem
 - **{swap}** - Vault.swap
 - **{deposit}** - IERC4626.deposit
 - **{redeem}** - IERC4626.redeem
 
-
-**Note**: ERC4626 deposit and redeem functions may be used when user want to exchange 
-tokens but there are not enough in the pool. Also, it is useful when pool 
-need to be balanced/arbitraged.
