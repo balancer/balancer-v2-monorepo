@@ -19,9 +19,10 @@ import LinearPool from "@balancer-labs/v2-helpers/src/models/pools/linear/Linear
 import { RawLinearPoolDeployment } from "@balancer-labs/v2-helpers/src/models/pools/linear/types";
 import { sharedBeforeEach } from "@balancer-labs/v2-common/sharedBeforeEach";
 
-describe('UsdPlusWrapping', function () {
+describe('ERC4626Wrapping', function () {
 
-  let staticUsdPlus: Token, UsdPlus: Token, USDC: Token;
+  // erc4626 is wrappedToken for LinearPool
+  let erc4626: Token, erc4626Asset: Token, mainToken: Token;
   let senderUser: SignerWithAddress, recipientUser: SignerWithAddress, admin: SignerWithAddress,
     owner: SignerWithAddress;
   let vault: Vault;
@@ -36,17 +37,17 @@ describe('UsdPlusWrapping', function () {
   sharedBeforeEach('deploy Vault', async () => {
     vault = await Vault.create({ admin });
 
-    // need USDC
+    // need mainToken
     const USDCContract = await deploy('TestToken', { args: ['USDC', 'USDC', 6] });
-    USDC = new Token('USDC', 'USDC', 6, USDCContract);
+    mainToken = new Token('USDC', 'USDC', 6, USDCContract);
 
-    const UsdPlusContract = await deploy('TestToken', { args: ['UsdPlus', 'UsdPlus', 6] });
-    UsdPlus = new Token('UsdPlus', 'UsdPlus', 6, UsdPlusContract);
+    const erc4626AssetContract = await deploy('TestToken', { args: ['UsdPlus', 'UsdPlus', 6] });
+    erc4626Asset = new Token('UsdPlus', 'UsdPlus', 6, erc4626AssetContract);
 
-    const staticUsdPlusContract = await deploy('MockStaticUsdPlusToken', {
-      args: ['staticUsdPlus', 'staticUsdPlus', 6, USDC.address, UsdPlus.address]
+    const erc4626Contract = await deploy('MockERC4626Token', {
+      args: ['staticUsdPlus', 'staticUsdPlus', 6, erc4626Asset.address]
     });
-    staticUsdPlus = new Token('staticUsdPlus', 'staticUsdPlus', 6, staticUsdPlusContract);
+    erc4626 = new Token('staticUsdPlus', 'staticUsdPlus', 6, erc4626Contract);
 
   });
 
@@ -84,16 +85,16 @@ describe('UsdPlusWrapping', function () {
     return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
   }
 
-  // UsdcPlus -> staticUsdPlus
+  // erc4626Asset -> erc4626
   function encodeWrap(
-    usdPlus: Token,
+    wrappedToken: Token,
     sender: Account,
     recipient: Account,
     amount: BigNumberish,
     outputReference?: BigNumberish
   ): string {
-    return relayerLibrary.interface.encodeFunctionData('wrapUsdPlusDynamicToken', [
-      TypesConverter.toAddress(usdPlus),
+    return relayerLibrary.interface.encodeFunctionData('wrapERC4626', [
+      TypesConverter.toAddress(wrappedToken),
       TypesConverter.toAddress(sender),
       TypesConverter.toAddress(recipient),
       amount,
@@ -101,16 +102,16 @@ describe('UsdPlusWrapping', function () {
     ]);
   }
 
-  // staticUsdPlus -> UsdcPlus
+  // erc4626 -> erc4626Asset
   function encodeUnwrap(
-    staticToken: Token,
+    wrappedToken: Token,
     sender: Account,
     recipient: Account,
     amount: BigNumberish,
     outputReference?: BigNumberish
   ): string {
-    return relayerLibrary.interface.encodeFunctionData('unwrapUsdPlusStaticToken', [
-      TypesConverter.toAddress(staticToken),
+    return relayerLibrary.interface.encodeFunctionData('unwrapERC4626', [
+      TypesConverter.toAddress(wrappedToken),
       TypesConverter.toAddress(sender),
       TypesConverter.toAddress(recipient),
       amount,
@@ -140,31 +141,31 @@ describe('UsdPlusWrapping', function () {
     }
 
     sharedBeforeEach('deploy pool', async () => {
-      poolTokens = new TokenList([USDC, staticUsdPlus]).sort();
+      poolTokens = new TokenList([mainToken, erc4626]).sort();
 
       upperTarget = fp(2000);
-      await deployPool({ mainToken: USDC, wrappedToken: staticUsdPlus, upperTarget, vault }, false);
+      await deployPool({ mainToken: mainToken, wrappedToken: erc4626, upperTarget, vault }, false);
       await pool.initialize();
       poolId = pool.poolId;
 
-      // give USDC to user
-      await USDC.mint(senderUser, fp(10));
-      await USDC.approve(vault, MAX_UINT256, { from: senderUser });
+      // give mainToken to user
+      await mainToken.mint(senderUser, fp(10));
+      await mainToken.approve(vault, MAX_UINT256, { from: senderUser });
 
-      await UsdPlus.mint(senderUser, fp(10));
-      await UsdPlus.approve(vault, MAX_UINT256, { from: senderUser });
+      await erc4626Asset.mint(senderUser, fp(10));
+      await erc4626Asset.approve(vault, MAX_UINT256, { from: senderUser });
 
 
-      // Seed liquidity in pool 200 USDC and 150 staticUsdPlus
-      await USDC.mint(admin, fp(200));
-      await USDC.approve(vault, MAX_UINT256, { from: admin });
+      // Seed liquidity in pool 200 mainToken and 150 erc4626
+      await mainToken.mint(admin, fp(200));
+      await mainToken.approve(vault, MAX_UINT256, { from: admin });
 
-      await UsdPlus.mint(admin, fp(150));
-      await UsdPlus.approve(staticUsdPlus, MAX_UINT256, { from: admin });
+      await erc4626Asset.mint(admin, fp(150));
+      await erc4626Asset.approve(erc4626, MAX_UINT256, { from: admin });
 
       // should use wrap() for worked transfers
-      await staticUsdPlus.instance.connect(admin).wrap(TypesConverter.toAddress(admin), fp(150));
-      await staticUsdPlus.approve(vault, MAX_UINT256, { from: admin });
+      await erc4626.instance.connect(admin).deposit(fp(150), TypesConverter.toAddress(admin));
+      await erc4626.approve(vault, MAX_UINT256, { from: admin });
 
 
       const currentBalances = await pool.getBalances();
@@ -175,7 +176,7 @@ describe('UsdPlusWrapping', function () {
       await pool.vault.generalSwap({
         poolId,
         kind: SwapKind.GivenIn,
-        tokenIn: TypesConverter.toAddress(USDC),
+        tokenIn: TypesConverter.toAddress(mainToken),
         tokenOut: TypesConverter.toAddress(pool),
         amount: fp(200),
         data: "0x",
@@ -192,7 +193,7 @@ describe('UsdPlusWrapping', function () {
       await pool.vault.generalSwap({
         poolId,
         kind: SwapKind.GivenIn,
-        tokenIn: TypesConverter.toAddress(staticUsdPlus),
+        tokenIn: TypesConverter.toAddress(erc4626),
         tokenOut: TypesConverter.toAddress(pool),
         amount: fp(150),
         data: "0x",
@@ -246,23 +247,23 @@ describe('UsdPlusWrapping', function () {
         ]);
       }
 
-      describe('swap using UsdPlus as an input', () => {
+      describe('swap using erc4626Asset as an input', () => {
         let receipt: ContractReceipt;
         const amount = fp(1);
 
-        sharedBeforeEach('swap UsdPlus for USDC', async () => {
+        sharedBeforeEach('swap erc4626Asset for mainToken', async () => {
           receipt = await (
             await relayer.connect(senderUser).multicall([
-              // UsdPlus -> staticUsdPlus by wrapUsdPlusDynamicToken on UsdPlusWrapping
-              encodeWrap(staticUsdPlus, senderUser.address, relayer.address, amount, toChainedReference(0)),
+              // erc4626Asset -> erc4626 by wrapUsdPlusDynamicToken on UsdPlusWrapping
+              encodeWrap(erc4626, senderUser.address, relayer.address, amount, toChainedReference(0)),
               // approve vault to use tokens on relayer
-              encodeApprove(staticUsdPlus, MAX_UINT256),
-              // staticUsdPlus -> USDC by swap on LinearPool
+              encodeApprove(erc4626, MAX_UINT256),
+              // erc4626 -> mainToken by swap on LinearPool
               encodeSwap({
                 poolId,
                 kind: SwapKind.GivenIn,
-                tokenIn: staticUsdPlus,
-                tokenOut: USDC,
+                tokenIn: erc4626,
+                tokenOut: mainToken,
                 amount: toChainedReference(0),
                 sender: relayer,
                 recipient: recipientUser,
@@ -276,40 +277,40 @@ describe('UsdPlusWrapping', function () {
 
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId,
-            tokenIn: staticUsdPlus.address,
-            tokenOut: USDC.address,
+            tokenIn: erc4626.address,
+            tokenOut: mainToken.address,
           });
 
-          expectTransferEvent(receipt, { from: vault.address, to: recipientUser.address }, USDC);
+          expectTransferEvent(receipt, { from: vault.address, to: recipientUser.address }, mainToken);
         });
 
         it('does not leave dust on the relayer', async () => {
-          expect(await USDC.balanceOf(relayer)).to.be.eq(0);
-          expect(await UsdPlus.balanceOf(relayer)).to.be.eq(0);
-          expect(await staticUsdPlus.balanceOf(relayer)).to.be.eq(0);
+          expect(await mainToken.balanceOf(relayer)).to.be.eq(0);
+          expect(await erc4626Asset.balanceOf(relayer)).to.be.eq(0);
+          expect(await erc4626.balanceOf(relayer)).to.be.eq(0);
         });
       });
 
-      describe('swap using UsdPlus as an output', () => {
+      describe('swap using erc4626Asset as an output', () => {
         let receipt: ContractReceipt;
         const amount = fp(1);
 
-        sharedBeforeEach('swap USDC for UsdPlus', async () => {
+        sharedBeforeEach('swap mainToken for erc4626Asset', async () => {
           receipt = await (
             await relayer.connect(senderUser).multicall([
-              // USDC -> staticUsdPlus by swap on LinearPool
+              // mainToken -> erc4626 by swap on LinearPool
               encodeSwap({
                 poolId,
                 kind: SwapKind.GivenIn,
-                tokenIn: USDC,
-                tokenOut: staticUsdPlus,
+                tokenIn: mainToken,
+                tokenOut: erc4626,
                 amount,
                 sender: senderUser,
                 recipient: relayer,
                 outputReference: toChainedReference(0),
               }),
-              // staticUsdPlus -> UsdPlus by unwrapUsdPlusStaticToken on UsdPlusWrapping
-              encodeUnwrap(staticUsdPlus, relayer.address, recipientUser.address, toChainedReference(0)),
+              // erc4626 -> erc4626Asset by unwrapUsdPlusStaticToken on UsdPlusWrapping
+              encodeUnwrap(erc4626, relayer.address, recipientUser.address, toChainedReference(0)),
             ])
           ).wait();
         });
@@ -318,17 +319,17 @@ describe('UsdPlusWrapping', function () {
 
           expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
             poolId,
-            tokenIn: USDC.address,
-            tokenOut: staticUsdPlus.address,
+            tokenIn: mainToken.address,
+            tokenOut: erc4626.address,
           });
 
-          expectTransferEvent(receipt, { from: staticUsdPlus.address, to: recipientUser.address }, UsdPlus);
+          expectTransferEvent(receipt, { from: erc4626.address, to: recipientUser.address }, erc4626Asset);
         });
 
         it('does not leave dust on the relayer', async () => {
-          expect(await USDC.balanceOf(relayer)).to.be.eq(0);
-          expect(await UsdPlus.balanceOf(relayer)).to.be.eq(0);
-          expect(await staticUsdPlus.balanceOf(relayer)).to.be.eq(0);
+          expect(await mainToken.balanceOf(relayer)).to.be.eq(0);
+          expect(await erc4626Asset.balanceOf(relayer)).to.be.eq(0);
+          expect(await erc4626.balanceOf(relayer)).to.be.eq(0);
         });
       });
     });

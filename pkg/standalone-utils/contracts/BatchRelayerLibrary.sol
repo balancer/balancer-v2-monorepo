@@ -23,7 +23,6 @@ import "./relayer/LidoWrapping.sol";
 import "./relayer/ERC4626Wrapping.sol";
 import "./relayer/VaultActions.sol";
 import "./relayer/VaultPermit.sol";
-import "./relayer/UsdPlusWrapping.sol";
 
 /**
  * @title Batch Relayer Library
@@ -37,8 +36,7 @@ contract BatchRelayerLibrary is
     LidoWrapping,
     VaultActions,
     VaultPermit,
-    ERC4626Wrapping,
-    UsdPlusWrapping
+    ERC4626Wrapping
 {
     constructor(
         IVault vault,
