@@ -22,8 +22,7 @@ library WeightedPoolUserData {
     enum ExitKind {
         EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
         EXACT_BPT_IN_FOR_TOKENS_OUT,
-        BPT_IN_FOR_EXACT_TOKENS_OUT,
-        MANAGEMENT_FEE_TOKENS_OUT // for ManagedPool
+        BPT_IN_FOR_EXACT_TOKENS_OUT
     }
 
     function joinKind(bytes memory self) internal pure returns (JoinKind) {
