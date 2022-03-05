@@ -100,6 +100,9 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
     uint256 private _managementSwapFeePercentage;
 
+    // Cache protocol swap fee percentage, since we need it on swaps, but it is not passed in then
+    uint256 private _cachedProtocolSwapFeePercentage;
+
     // Event declarations
 
     event GradualWeightUpdateScheduled(
@@ -154,6 +157,9 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // Validate and set initial fee
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
 
+        // Set initial value of the protocolSwapFeePercentage; can be updated externally if it changes
+        _cachedProtocolSwapFeePercentage = params.vault.getProtocolFeesCollector().getSwapFeePercentage();
+
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(
             currentTime,
@@ -168,6 +174,10 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // If true, only addresses on the manager-controlled allowlist may join the pool.
         _setMustAllowlistLPs(params.mustAllowlistLPs);
+    }
+
+    function updateCachedProtocolSwapFeePercentage() external {
+        _cachedProtocolSwapFeePercentage = getVault().getProtocolFeesCollector().getSwapFeePercentage();
     }
 
     /**
