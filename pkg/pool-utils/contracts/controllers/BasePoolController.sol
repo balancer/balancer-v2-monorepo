@@ -181,7 +181,7 @@ contract BasePoolController is IBasePoolController {
      * It means the pool address must be in storage vs immutable, but this is acceptable for infrequent admin
      * operations.
      */
-    function initialize(address poolAddress) external virtual override {
+    function initialize(address poolAddress) public virtual override {
         // This can only be called once - and the owner of the pool must be this contract
         _require(
             pool == address(0) && BasePoolAuthorization(poolAddress).getOwner() == address(this),
