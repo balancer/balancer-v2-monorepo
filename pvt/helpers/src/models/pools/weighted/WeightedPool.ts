@@ -205,6 +205,10 @@ export default class WeightedPool {
     return this.instance.getManagementSwapFeePercentage();
   }
 
+  async getManagementAumFeePercentage(): Promise<BigNumber> {
+    return this.instance.getManagementAumFeePercentage();
+  }
+
   async getNormalizedWeights(): Promise<BigNumber[]> {
     return this.instance.getNormalizedWeights();
   }
@@ -647,6 +651,14 @@ export default class WeightedPool {
   ): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
     return pool.setManagementSwapFeePercentage(managementFee);
+  }
+
+  async setManagementAumFeePercentage(
+    from: SignerWithAddress,
+    managementFee: BigNumberish
+  ): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.setManagementAumFeePercentage(managementFee);
   }
 
   async addAllowedAddress(from: SignerWithAddress, member: string): Promise<ContractTransaction> {

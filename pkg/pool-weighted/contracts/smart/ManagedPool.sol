@@ -66,6 +66,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
 
+    uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 1e17; // 10%
+
     // Use the _miscData slot in BasePool
     // First 64 bits are reserved for the swap fee
     //
@@ -102,6 +104,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
     uint256 private _managementSwapFeePercentage;
 
+    uint256 private _managementAumFeePercentage;
+
     // Event declarations
 
     event GradualWeightUpdateScheduled(
@@ -112,7 +116,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     );
     event SwapEnabledSet(bool swapEnabled);
     event MustAllowlistLPsSet(bool mustAllowlistLPs);
-    event ManagementFeePercentageChanged(uint256 managementFeePercentage);
+    event ManagementSwapFeePercentageChanged(uint256 managementSwapFeePercentage);
+    event ManagementAumFeePercentageChanged(uint256 managementAumFeePercentage);
     event ManagementFeesCollected(IERC20[] tokens, uint256[] amounts);
     event AllowlistAddressAdded(address indexed member);
     event AllowlistAddressRemoved(address indexed member);
@@ -204,6 +209,13 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
      */
     function getManagementSwapFeePercentage() public view returns (uint256) {
         return _managementSwapFeePercentage;
+    }
+
+    /**
+     * @dev Returns the management AUM fee percentage as a 18-decimals fixed point number.
+     */
+    function getManagementAumFeePercentage() public view returns (uint256) {
+        return _managementAumFeePercentage;
     }
 
     /**
@@ -350,10 +362,10 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     /**
-     * @dev Set the management fee percentage
+     * @dev Set the management fee percentages
      */
-    function setManagementSwapFeePercentage(uint256 managementFeePercentage) external authenticate whenNotPaused {
-        _setManagementSwapFeePercentage(managementFeePercentage);
+    function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) external authenticate whenNotPaused {
+        _setManagementSwapFeePercentage(managementSwapFeePercentage);
     }
 
     function _setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) private {
@@ -363,7 +375,21 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         );
 
         _managementSwapFeePercentage = managementSwapFeePercentage;
-        emit ManagementFeePercentageChanged(managementSwapFeePercentage);
+        emit ManagementSwapFeePercentageChanged(managementSwapFeePercentage);
+    }
+
+    function setManagementAumFeePercentage(uint256 managementAumFeePercentage) external authenticate whenNotPaused {
+        _setManagementAumFeePercentage(managementAumFeePercentage);
+    }
+
+    function _setManagementAumFeePercentage(uint256 managementAumFeePercentage) private {
+        _require(
+            managementAumFeePercentage <= _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE,
+            Errors.MAX_MANAGEMENT_AUM_FEE_PERCENTAGE
+        );
+
+        _managementAumFeePercentage = managementAumFeePercentage;
+        emit ManagementAumFeePercentageChanged(managementAumFeePercentage);
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -640,6 +666,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             (actionId == getActionId(ManagedPool.removeAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPool.setMustAllowlistLPs.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementSwapFeePercentage.selector)) ||
+            (actionId == getActionId(ManagedPool.setManagementAumFeePercentage.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
 
