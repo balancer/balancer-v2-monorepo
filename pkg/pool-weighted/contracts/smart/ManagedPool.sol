@@ -385,24 +385,29 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         normalizedWeights[0] = _getNormalizedWeight(request.tokenIn);
         normalizedWeights[1] = _getNormalizedWeight(request.tokenOut);
 
+        uint256[] memory preSwapBalances = new uint256[](2);
+        preSwapBalances[0] = _upscale(balanceTokenIn, scalingFactorTokenIn);
+        preSwapBalances[1] = _upscale(balanceTokenOut, scalingFactorTokenOut);
+
+        // Broken out only because of "stack too deep"
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            return _processSwapGivenIn(
-                request,
-                scalingFactorTokenIn,
-                scalingFactorTokenOut,
-                _upscale(balanceTokenIn, scalingFactorTokenIn), 
-                _upscale(balanceTokenOut, scalingFactorTokenOut),
-                normalizedWeights
-            );
+            return
+                _processSwapGivenIn(
+                    request,
+                    scalingFactorTokenIn,
+                    scalingFactorTokenOut,
+                    preSwapBalances,
+                    normalizedWeights
+                );
         } else {
-            return _processSwapGivenOut(
-                request,
-                scalingFactorTokenIn,
-                scalingFactorTokenOut,
-                _upscale(balanceTokenIn, scalingFactorTokenIn), 
-                _upscale(balanceTokenOut, scalingFactorTokenOut),
-                normalizedWeights
-            );
+            return
+                _processSwapGivenOut(
+                    request,
+                    scalingFactorTokenIn,
+                    scalingFactorTokenOut,
+                    preSwapBalances,
+                    normalizedWeights
+                );
         }
     }
 
@@ -410,8 +415,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         SwapRequest memory request,
         uint256 scalingFactorTokenIn,
         uint256 scalingFactorTokenOut,
-        uint256 upscaledBalanceTokenIn,
-        uint256 upscaledBalanceTokenOut,
+        uint256[] memory preSwapBalances,
         uint256[] memory normalizedWeights
     ) private returns (uint256) {
         // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
@@ -420,20 +424,18 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
         uint256 amountOut = WeightedMath._calcOutGivenIn(
-            upscaledBalanceTokenIn,
+            preSwapBalances[0],
             normalizedWeights[0],
-            upscaledBalanceTokenOut,
+            preSwapBalances[1],
             normalizedWeights[1],
             amountInMinusSwapFees
         );
 
-        _payProtocolAndManagementFees(
-            normalizedWeights,
-            upscaledBalanceTokenIn,
-            upscaledBalanceTokenOut,
-            upscaledBalanceTokenIn.add(request.amount),
-            upscaledBalanceTokenOut.sub(amountOut)
-        );
+        uint256[] memory postSwapBalances = new uint256[](2);
+        postSwapBalances[0] = preSwapBalances[0].add(request.amount);
+        postSwapBalances[1] = preSwapBalances[1].sub(amountOut);
+
+        _payProtocolAndManagementFees(false, normalizedWeights, preSwapBalances, postSwapBalances);
 
         // amountOut tokens are exiting the Pool, so we round down.
         return _downscaleDown(amountOut, scalingFactorTokenOut);
@@ -443,16 +445,15 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         SwapRequest memory request,
         uint256 scalingFactorTokenIn,
         uint256 scalingFactorTokenOut,
-        uint256 upscaledBalanceTokenIn,
-        uint256 upscaledBalanceTokenOut,
+        uint256[] memory preSwapBalances,
         uint256[] memory normalizedWeights
     ) private returns (uint256) {
         request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
         uint256 amountIn = WeightedMath._calcInGivenOut(
-            upscaledBalanceTokenIn,
+            preSwapBalances[0],
             normalizedWeights[0],
-            upscaledBalanceTokenOut,
+            preSwapBalances[1],
             normalizedWeights[1],
             request.amount
         );
@@ -463,23 +464,20 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
         uint256 amountInPlusSwapFees = _addSwapFeeAmount(amountIn);
 
-        _payProtocolAndManagementFees(
-            normalizedWeights,
-            upscaledBalanceTokenIn,
-            upscaledBalanceTokenOut,
-            _upscale(amountInPlusSwapFees, scalingFactorTokenIn),
-            upscaledBalanceTokenOut.sub(request.amount)
-        );
+        uint256[] memory postSwapBalances = new uint256[](2);
+        postSwapBalances[0] = _upscale(amountInPlusSwapFees, scalingFactorTokenIn);
+        postSwapBalances[1] = preSwapBalances[1].sub(request.amount);
+
+        _payProtocolAndManagementFees(false, normalizedWeights, preSwapBalances, postSwapBalances);
 
         return amountInPlusSwapFees;
     }
 
     function _payProtocolAndManagementFees(
+        bool isJoinExit,
         uint256[] memory normalizedWeights,
-        uint256 preSwapBalanceTokenIn,
-        uint256 preSwapBalanceTokenOut,
-        uint256 postSwapBalanceTokenIn,
-        uint256 postSwapBalanceTokenOut
+        uint256[] memory preSwapBalances,
+        uint256[] memory postSwapBalances
     ) private {
         // Calculate total BPT for the protocol and management fee
         // The management fee percentage applies to the remainder,
@@ -488,27 +486,24 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256 protocolFeePercentage = _cachedProtocolSwapFeePercentage;
         uint256 mgmtFeePercentage = _managementSwapFeePercentage;
 
-        // Fees are bounded, so we don't need checked math
-        uint256 totalFeePercentage =
-            protocolFeePercentage + (FixedPoint.ONE - protocolFeePercentage).mulDown(mgmtFeePercentage);
+        if (protocolFeePercentage == 0 && mgmtFeePercentage == 0) {
+            return;
+        }
 
-        uint256[] memory balances = new uint256[](2);
-        balances[0] = preSwapBalanceTokenIn;
-        balances[1] = preSwapBalanceTokenOut;
+        // Fees are bounded, so we don't need checked math
+        uint256 totalFeePercentage = protocolFeePercentage +
+            (FixedPoint.ONE - protocolFeePercentage).mulDown(mgmtFeePercentage);
 
         // No other balances are changing, so the other terms in the invariant will cancel out
         // when computing the ratio. So this partial invariant calculation is sufficient
-        uint256 previousInvariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
-
-        balances[0] = postSwapBalanceTokenIn;
-        balances[1] = postSwapBalanceTokenOut;
-
-        uint256 currentInvariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
-
         uint256 totalBptAmount = WeightedMath._calcDueProtocolSwapFeeBPTAmount(
             totalSupply(),
-            previousInvariant,
-            currentInvariant,
+            isJoinExit
+                ? _calculatePartialInvariant(normalizedWeights, preSwapBalances)
+                : WeightedMath._calculateInvariant(normalizedWeights, preSwapBalances),
+            isJoinExit
+                ? _calculatePartialInvariant(normalizedWeights, postSwapBalances)
+                : WeightedMath._calculateInvariant(normalizedWeights, postSwapBalances),
             totalFeePercentage
         );
 
@@ -519,11 +514,35 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // and the manager would get 0.25/0.75 (one-third)
         uint256 protocolBptAmount = totalBptAmount.mulUp(protocolFeePercentage.divUp(totalFeePercentage));
 
-        _payProtocolFees(protocolBptAmount);
+        if (protocolBptAmount > 0) {
+            _payProtocolFees(protocolBptAmount);
+        }
 
         // Pay the remainder in management fees
         // This goes to the controller, which needs to be able to withdraw them
-        _mintPoolTokens(getOwner(), totalBptAmount.sub(protocolBptAmount));
+        if (mgmtFeePercentage > 0) {
+            _mintPoolTokens(getOwner(), totalBptAmount.sub(protocolBptAmount));
+        }
+    }
+
+    // If called from a swap, the arrays will have two elements (tokenIn and tokenOut), and non-zero balances
+    // If called from a join/exit, balances will be set to zero if there is no change in that token, indicating
+    // we should skip that token in the calculation (since that term would cancel out when taking the ratio)
+    function _calculatePartialInvariant(uint256[] memory normalizedWeights, uint256[] memory balances)
+        internal
+        pure
+        returns (uint256 invariant)
+    {
+        invariant = FixedPoint.ONE;
+        for (uint256 i = 0; i < balances.length; i++) {
+            // Skip unchanged terms, marked by zero balances
+            if (balances[i] > 0) {
+                invariant = invariant.mulDown(balances[i].powDown(normalizedWeights[i]));
+            }
+        }
+
+        // Should not happen - weight would have to be zero
+        _require(invariant > 0, Errors.ZERO_INVARIANT);
     }
 
     // We override _onJoinPool and _onExitPool as we need to not compute the current invariant and calculate protocol
@@ -574,14 +593,50 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // If swaps are disabled, the only exit kind that is allowed is the proportional one (as all others involve
         // implicit swaps and alter token prices)
-        WeightedPoolUserData.ExitKind kind = userData.exitKind();
         _require(
-            getSwapEnabled() ||
-                kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+            getSwapEnabled() || userData.exitKind() == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
         return _doExit(balances, _getNormalizedWeights(), scalingFactors, userData);
+    }
+
+    function _processTaxableSwapAmounts(
+        bool isJoin,
+        uint256[] memory normalizedWeights,
+        uint256[] memory balances,
+        uint256[] memory taxableAmounts
+    ) internal virtual override {
+        // There could be 0's in taxable amounts, which would lead to a lot of unnecessary calculation
+        // if we just passed them through to WeightedMath. A zero taxable amount means the effective balance is
+        // unchanged, so the invariant ratio terms would therefore cancel out, and not need to be calculated.
+        // So just need to mark those by setting the balance to zero, and call `_calculatePartialInvariant`,
+        // which skips zero balance terms.
+        //
+        // The alternative is to generate "clean," smaller arrays here, but that would involve two iterations
+        // (counting the non-zeros to get the length, then creating and copying all the values) - and that is a
+        // lot more code than this less transparent method.
+        uint256[] memory postBalances = new uint256[](balances.length);
+        uint256 taxableAmount;
+
+        for (uint256 i = 0; i < balances.length; i++) {
+            taxableAmount = taxableAmounts[i];
+            // For joins and exits, many of the tokens might have zero in/out, so we can ignore these
+            // in the invariant calculation (saving gas)
+            if (taxableAmount == 0) {
+                balances[i] = 0;
+            } else {
+                postBalances[i] = (isJoin ? FixedPoint.add : FixedPoint.sub)(balances[i], taxableAmount);
+            }
+        }
+
+        if (isJoin) {
+            _payProtocolAndManagementFees(true, normalizedWeights, balances, postBalances);
+        } else if (_isNotPaused()) {
+            // Do nothing if it's paused (emergency exit)
+            // If it's an exit, the post invariant will be lower, so need to invert the order
+            _payProtocolAndManagementFees(true, normalizedWeights, postBalances, balances);
+        }
     }
 
     /**
