@@ -248,7 +248,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         _upscaleArray(amountsIn, scalingFactors);
 
-        (uint256 bptAmountOut, uint256[] memory swapFees) = WeightedMath._calcBptOutGivenExactTokensIn(
+        (uint256 bptAmountOut, uint256[] memory taxableAmounts) = WeightedMath._calcBptOutGivenExactTokensIn(
             balances,
             normalizedWeights,
             amountsIn,
@@ -256,8 +256,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             getSwapFeePercentage()
         );
 
-        // Note that swapFees is already upscaled
-        _processSwapFeeAmounts(swapFees);
+        // Note that taxableAmounts are already upscaled
+        _processTaxableSwapAmounts(true, normalizedWeights, balances, taxableAmounts);
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
@@ -274,7 +274,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
 
-        (uint256 amountIn, uint256 swapFee) = WeightedMath._calcTokenInGivenExactBptOut(
+        (uint256 amountIn, uint256 taxableAmount) = WeightedMath._calcTokenInGivenExactBptOut(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountOut,
@@ -282,8 +282,11 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             getSwapFeePercentage()
         );
 
-        // Note that swapFee is already upscaled
-        _processSwapFeeAmount(tokenIndex, swapFee);
+        // Note that taxableAmounts are already upscaled
+        uint256[] memory taxableAmounts = new uint256[](balances.length);
+        taxableAmounts[tokenIndex] = taxableAmount;
+
+        _processTaxableSwapAmounts(true, normalizedWeights, balances, taxableAmounts);
 
         // We join in a single token, so we initialize amountsIn with zeros
         uint256[] memory amountsIn = new uint256[](_getTotalTokens());
@@ -371,7 +374,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
 
-        (uint256 amountOut, uint256 swapFee) = WeightedMath._calcTokenOutGivenExactBptIn(
+        (uint256 amountOut, uint256 taxableAmount) = WeightedMath._calcTokenOutGivenExactBptIn(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountIn,
@@ -381,7 +384,11 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
         // Note that swapFee is already upscaled.
-        _processSwapFeeAmount(tokenIndex, swapFee);
+        //_processSwapFeeAmount(tokenIndex, swapFee);
+        uint256[] memory taxableAmounts = new uint256[](balances.length);
+        taxableAmounts[tokenIndex] = taxableAmount;
+
+        _processTaxableSwapAmounts(false, normalizedWeights, balances, taxableAmounts);
 
         // We exit in a single token, so we initialize amountsOut with zeros
         uint256[] memory amountsOut = new uint256[](_getTotalTokens());
@@ -420,7 +427,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens());
         _upscaleArray(amountsOut, scalingFactors);
 
-        (uint256 bptAmountIn, uint256[] memory swapFees) = WeightedMath._calcBptInGivenExactTokensOut(
+        (uint256 bptAmountIn, uint256[] memory taxableAmounts) = WeightedMath._calcBptInGivenExactTokensOut(
             balances,
             normalizedWeights,
             amountsOut,
@@ -430,8 +437,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
         // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
-        // Note that swapFee is already upscaled.
-        _processSwapFeeAmounts(swapFees);
+        // Note that taxableAmounts are already upscaled.
+        _processTaxableSwapAmounts(false, normalizedWeights, balances, taxableAmounts);
 
         return (bptAmountIn, amountsOut);
     }

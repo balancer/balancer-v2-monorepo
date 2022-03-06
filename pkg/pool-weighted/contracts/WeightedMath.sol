@@ -163,7 +163,7 @@ library WeightedMath {
             invariantRatioWithFees = invariantRatioWithFees.add(balanceRatiosWithFee[i].mulDown(normalizedWeights[i]));
         }
 
-        (uint256 invariantRatio, uint256[] memory swapFees) = _computeJoinExactTokensInInvariantRatio(
+        (uint256 invariantRatio, uint256[] memory taxableAmounts) = _computeJoinExactTokensInInvariantRatio(
             balances,
             normalizedWeights,
             amountsIn,
@@ -175,7 +175,7 @@ library WeightedMath {
         uint256 bptOut = (invariantRatio > FixedPoint.ONE)
             ? bptTotalSupply.mulDown(invariantRatio.sub(FixedPoint.ONE))
             : 0;
-        return (bptOut, swapFees);
+        return (bptOut, taxableAmounts);
     }
 
     /**
@@ -188,10 +188,10 @@ library WeightedMath {
         uint256[] memory balanceRatiosWithFee,
         uint256 invariantRatioWithFees,
         uint256 swapFeePercentage
-    ) private pure returns (uint256 invariantRatio, uint256[] memory swapFees) {
+    ) private pure returns (uint256 invariantRatio, uint256[] memory taxableAmounts) {
         // Swap fees are charged on all tokens that are being added in a larger proportion than the overall invariant
         // increase.
-        swapFees = new uint256[](amountsIn.length);
+        taxableAmounts = new uint256[](amountsIn.length);
         invariantRatio = FixedPoint.ONE;
 
         for (uint256 i = 0; i < balances.length; i++) {
@@ -203,7 +203,7 @@ library WeightedMath {
                 uint256 swapFee = taxableAmount.mulUp(swapFeePercentage);
 
                 amountInWithoutFee = nonTaxableAmount.add(taxableAmount.sub(swapFee));
-                swapFees[i] = swapFee;
+                taxableAmounts[i] = taxableAmount;
             } else {
                 amountInWithoutFee = amountsIn[i];
             }
@@ -220,7 +220,7 @@ library WeightedMath {
         uint256 bptAmountOut,
         uint256 bptTotalSupply,
         uint256 swapFeePercentage
-    ) internal pure returns (uint256 amountIn, uint256 swapFee) {
+    ) internal pure returns (uint256 amountIn, uint256 taxableAmount) {
         /******************************************************************************************
         // tokenInForExactBPTOut                                                                 //
         // a = amountIn                                                                          //
@@ -244,12 +244,12 @@ library WeightedMath {
         // We can now compute how much extra balance is being deposited and used in virtual swaps, and charge swap fees
         // accordingly.
         uint256 taxablePercentage = normalizedWeight.complement();
-        uint256 taxableAmount = amountInWithoutFee.mulUp(taxablePercentage);
+        taxableAmount = amountInWithoutFee.mulUp(taxablePercentage);
         uint256 nonTaxableAmount = amountInWithoutFee.sub(taxableAmount);
 
         uint256 taxableAmountPlusFees = taxableAmount.divUp(FixedPoint.ONE.sub(swapFeePercentage));
 
-        swapFee = taxableAmountPlusFees - taxableAmount;
+        //swapFee = taxableAmountPlusFees - taxableAmount;
         amountIn = nonTaxableAmount.add(taxableAmountPlusFees);
     }
 
@@ -296,7 +296,7 @@ library WeightedMath {
             );
         }
 
-        (uint256 invariantRatio, uint256[] memory swapFees) = _computeExitExactTokensOutInvariantRatio(
+        (uint256 invariantRatio, uint256[] memory taxableAmounts) = _computeExitExactTokensOutInvariantRatio(
             balances,
             normalizedWeights,
             amountsOut,
@@ -306,7 +306,7 @@ library WeightedMath {
         );
 
         uint256 bptIn = bptTotalSupply.mulUp(invariantRatio.complement());
-        return (bptIn, swapFees);
+        return (bptIn, taxableAmounts);
     }
 
     /**
@@ -319,8 +319,8 @@ library WeightedMath {
         uint256[] memory balanceRatiosWithoutFee,
         uint256 invariantRatioWithoutFees,
         uint256 swapFeePercentage
-    ) private pure returns (uint256 invariantRatio, uint256[] memory swapFees) {
-        swapFees = new uint256[](amountsOut.length);
+    ) private pure returns (uint256 invariantRatio, uint256[] memory taxableAmounts) {
+        taxableAmounts = new uint256[](amountsOut.length);
         invariantRatio = FixedPoint.ONE;
 
         for (uint256 i = 0; i < balances.length; i++) {
@@ -330,10 +330,9 @@ library WeightedMath {
             uint256 amountOutWithFee;
             if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
                 uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithoutFees.complement());
-                uint256 taxableAmount = amountsOut[i].sub(nonTaxableAmount);
-                uint256 taxableAmountPlusFees = taxableAmount.divUp(FixedPoint.ONE.sub(swapFeePercentage));
+                taxableAmounts[i] = amountsOut[i].sub(nonTaxableAmount);
+                uint256 taxableAmountPlusFees = taxableAmounts[i].divUp(FixedPoint.ONE.sub(swapFeePercentage));
 
-                swapFees[i] = taxableAmountPlusFees - taxableAmount;
                 amountOutWithFee = nonTaxableAmount.add(taxableAmountPlusFees);
             } else {
                 amountOutWithFee = amountsOut[i];
@@ -351,7 +350,7 @@ library WeightedMath {
         uint256 bptAmountIn,
         uint256 bptTotalSupply,
         uint256 swapFeePercentage
-    ) internal pure returns (uint256 amountOut, uint256 swapFee) {
+    ) internal pure returns (uint256 amountOut, uint256 taxableAmount) {
         /*****************************************************************************************
         // exactBPTInForTokenOut                                                                //
         // a = amountOut                                                                        //
@@ -380,10 +379,10 @@ library WeightedMath {
 
         // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it
         // to 'token out'. This results in slightly larger price impact. Fees are rounded up.
-        uint256 taxableAmount = amountOutWithoutFee.mulUp(taxablePercentage);
+        taxableAmount = amountOutWithoutFee.mulUp(taxablePercentage);
         uint256 nonTaxableAmount = amountOutWithoutFee.sub(taxableAmount);
 
-        swapFee = taxableAmount.mulUp(swapFeePercentage);
+        uint256 swapFee = taxableAmount.mulUp(swapFeePercentage);
         amountOut = nonTaxableAmount.add(taxableAmount.sub(swapFee));
     }
 
