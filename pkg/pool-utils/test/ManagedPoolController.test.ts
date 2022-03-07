@@ -64,7 +64,7 @@ async function deployControllerAndPool(
   canSetMustAllowlistLPs = true,
   canSetCircuitBreakers = true,
   canChangeTokens = true,
-  canChangeMgmtSwapFee = true,
+  canChangeMgmtFees = true,
   swapEnabledOnStart = true
 ) {
   const basePoolRights: BasePoolRights = {
@@ -79,7 +79,7 @@ async function deployControllerAndPool(
     canSetMustAllowlistLPs: canSetMustAllowlistLPs,
     canSetCircuitBreakers: canSetCircuitBreakers,
     canChangeTokens: canChangeTokens,
-    canChangeMgmtSwapFee: canChangeMgmtSwapFee,
+    canChangeMgmtFees: canChangeMgmtFees,
   };
 
   poolController = await deploy('ManagedPoolController', {
@@ -328,8 +328,8 @@ describe('ManagedPoolController', function () {
       });
     });
 
-    context('with canChangeMgmtSwapFee set to false', () => {
-      sharedBeforeEach('deploy controller (canChangeMgmtSwapFee false)', async () => {
+    context('with canChangeMgmtFees set to false', () => {
+      sharedBeforeEach('deploy controller (canChangeMgmtFees false)', async () => {
         await deployControllerAndPool(true, true, true, true, true, false, true, true, false);
         await poolController.initialize(pool.address);
       });
@@ -394,8 +394,8 @@ describe('ManagedPoolController', function () {
       });
     });
 
-    context('with canChangeMgmtSwapFee set to false', () => {
-      sharedBeforeEach('deploy controller (canChangeMgmtSwapFee false)', async () => {
+    context('with canChangeMgmtFees set to false', () => {
+      sharedBeforeEach('deploy controller (canChangeMgmtFees false)', async () => {
         await deployControllerAndPool(true, true, true, true, true, false, false, false, false);
       });
 

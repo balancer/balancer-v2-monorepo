@@ -38,7 +38,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
         bool canSetMustAllowlistLPs;
         bool canSetCircuitBreakers;
         bool canChangeTokens;
-        bool canChangeMgmtSwapFee;
+        bool canChangeMgmtFees;
     }
 
     // The minimum weight change duration could be replaced with more sophisticated rate-limiting.
@@ -58,7 +58,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 5;
     uint256 private constant _CIRCUIT_BREAKERS_OFFSET = 6;
     uint256 private constant _CHANGE_TOKENS_OFFSET = 7;
-    uint256 private constant _CHANGE_MGMT_SWAP_FEE_OFFSET = 8;
+    uint256 private constant _CHANGE_MGMT_FEES_OFFSET = 8;
 
     /**
      * @dev Pass in the `BasePoolRights` and `ManagedPoolRights` structures, to form the complete set of
@@ -88,7 +88,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
         // Needed to avoid "stack too deep"
         return
             permissions
-                .insertBool(managedRights.canChangeMgmtSwapFee, _CHANGE_MGMT_SWAP_FEE_OFFSET)
+                .insertBool(managedRights.canChangeMgmtFees, _CHANGE_MGMT_FEES_OFFSET)
                 .insertBool(managedRights.canChangeTokens, _CHANGE_TOKENS_OFFSET)
                 .insertBool(managedRights.canSetCircuitBreakers, _CIRCUIT_BREAKERS_OFFSET);
     }
@@ -139,7 +139,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
      * @dev Getter for the canChangeManagementSwapFeePercentage permission.
      */
     function canChangeManagementSwapFeePercentage() public view returns (bool) {
-        return _controllerState.decodeBool(_CHANGE_MGMT_SWAP_FEE_OFFSET);
+        return _controllerState.decodeBool(_CHANGE_MGMT_FEES_OFFSET);
     }
 
     /**

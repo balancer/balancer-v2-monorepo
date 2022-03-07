@@ -108,7 +108,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           canSetMustAllowlistLPs: true,
           canSetCircuitBreakers: true,
           canChangeTokens: true,
-          canChangeMgmtSwapFee: true,
+          canChangeMgmtFees: true,
         };
         params = [newPoolParams, basePoolRights, managedPoolRights, DAY];
         break;
