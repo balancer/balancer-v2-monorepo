@@ -37,7 +37,7 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
         uint256[] memory preBalances,
         uint256[] memory normalizedWeights,
         uint256 protocolSwapFeePercentage
-    ) internal virtual override {
+    ) internal virtual {
         // Before joins and exits, we measure the growth of the invariant compared to the invariant after the last join
         // or exit, which will have been caused by swap fees, and use it to mint BPT as protocol fees. This dillutes all
         // LPs, which means that new LPs will join the pool debt-free, and LPs exiting will pay their due befere
@@ -66,7 +66,7 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights
-    ) internal virtual override {
+    ) internal virtual {
         // After all joins and exits we store the post join/exit invariant in order to compute growth due to swap fees
         // in the next one.
 

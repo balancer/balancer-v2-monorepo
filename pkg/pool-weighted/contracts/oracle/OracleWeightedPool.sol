@@ -404,20 +404,35 @@ contract OracleWeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees, Po
 
     // InvariantGrowthProtocolFees
 
-    function _beforeJoinExit(
+    function _beforeJoin(
         uint256[] memory preBalances,
         uint256[] memory normalizedWeights,
         uint256 protocolSwapFeePercentage
-    ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
+    ) internal virtual override {
         InvariantGrowthProtocolFees._beforeJoinExit(preBalances, normalizedWeights, protocolSwapFeePercentage);
     }
 
-    function _afterJoinExit(
-        bool isJoin,
+    function _beforeExit(
+        uint256[] memory preBalances,
+        uint256[] memory normalizedWeights,
+        uint256 protocolSwapFeePercentage
+    ) internal virtual override {
+        InvariantGrowthProtocolFees._beforeJoinExit(preBalances, normalizedWeights, protocolSwapFeePercentage);
+    }
+
+    function _afterJoin(
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights
-    ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
-        InvariantGrowthProtocolFees._afterJoinExit(isJoin, preBalances, balanceDeltas, normalizedWeights);
+    ) internal virtual override {
+        InvariantGrowthProtocolFees._afterJoinExit(true, preBalances, balanceDeltas, normalizedWeights);
+    }
+
+    function _afterExit(
+        uint256[] memory preBalances,
+        uint256[] memory balanceDeltas,
+        uint256[] memory normalizedWeights
+    ) internal virtual override {
+        InvariantGrowthProtocolFees._afterJoinExit(false, preBalances, balanceDeltas, normalizedWeights);
     }
 }
