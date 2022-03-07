@@ -14,17 +14,21 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+
+import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "./interfaces/IAuthorizerAdaptor.sol";
 import "./interfaces/IGaugeController.sol";
 import "./interfaces/ILiquidityGauge.sol";
 import "./interfaces/ILiquidityGaugeFactory.sol";
 
-contract GaugeAdder is ReentrancyGuard {
+contract GaugeAdder is Authentication, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    IVault private immutable _vault;
     IGaugeController private immutable _gaugeController;
     IAuthorizerAdaptor private _authorizerAdaptor;
 
@@ -37,16 +41,27 @@ contract GaugeAdder is ReentrancyGuard {
 
     event GaugeFactoryAdded(GaugeType indexed gaugeType, ILiquidityGaugeFactory gaugeFactory);
 
-    constructor(IGaugeController gaugeController, IAuthorizerAdaptor authorizerAdaptor) {
+    constructor(IGaugeController gaugeController, IAuthorizerAdaptor authorizerAdaptor)
+        Authentication(bytes32(uint256(address(this))))
+    {
+        // GaugeAdder is a singleton, so it simply uses its own address to disambiguate action identifiers
+        _vault = authorizerAdaptor.getVault();
         _gaugeController = gaugeController;
         _authorizerAdaptor = authorizerAdaptor;
     }
 
     /**
-     * @notice Returns the address of the Gauge Controller
+     * @notice Returns the Balancer Vault
      */
-    function getGaugeController() external view returns (address) {
-        return address(_gaugeController);
+    function getVault() public view returns (IVault) {
+        return _vault;
+    }
+
+    /**
+     * @notice Returns the Balancer Vault's current authorizer.
+     */
+    function getAuthorizer() public view returns (IAuthorizer) {
+        return getVault().getAuthorizer();
     }
 
     /**
@@ -57,7 +72,14 @@ contract GaugeAdder is ReentrancyGuard {
     }
 
     /**
-     * @notice Returns whether `gauge` has been deployed by one of the listed factories for the gauge type `gaugeType` 
+     * @notice Returns the address of the Gauge Controller
+     */
+    function getGaugeController() external view returns (address) {
+        return address(_gaugeController);
+    }
+
+    /**
+     * @notice Returns whether `gauge` has been deployed by one of the listed factories for the gauge type `gaugeType`
      */
     function isGaugeFromValidFactory(address gauge, GaugeType gaugeType) public view returns (bool) {
         EnumerableSet.AddressSet storage gaugeFactories = _gaugeFactoriesByType[gaugeType];
@@ -121,6 +143,10 @@ contract GaugeAdder is ReentrancyGuard {
     }
 
     // Internal functions
+
+    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
+        return getAuthorizer().canPerform(actionId, account, address(this));
+    }
 
     /**
      * @dev Adds `gauge` to the GaugeController with type `gaugeType` and an initial weight of zero
