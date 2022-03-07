@@ -204,7 +204,7 @@ contract Authorizer is IAuthorizer {
     }
 
     /**
-     * @dev Grants multiple permissions to a single account.
+     * @dev Grants multiple permissions to a single account
      */
     function grantPermissions(
         bytes32[] memory actions,
@@ -216,6 +216,20 @@ contract Authorizer is IAuthorizer {
             _require(canPerform(GRANT_PERMISSION, msg.sender, where[i]), Errors.SENDER_NOT_ALLOWED);
             _grantPermission(actions[i], account, where[i]);
         }
+    }
+
+    /**
+     * @dev Schedules a grant permission to a single account
+     */
+    function scheduleGrantPermission(
+        bytes32 action,
+        address account,
+        address where,
+        address[] memory executors
+    ) external returns (uint256 id) {
+        _require(hasPermission(GRANT_PERMISSION, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
+        bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _arr(action), account, _arr(where));
+        return _schedule(GRANT_PERMISSION, address(this), data, delays[GRANT_PERMISSION], executors);
     }
 
     /**
@@ -231,6 +245,20 @@ contract Authorizer is IAuthorizer {
             _require(canPerform(REVOKE_PERMISSION, msg.sender, where[i]), Errors.SENDER_NOT_ALLOWED);
             _revokePermission(actions[i], account, where[i]);
         }
+    }
+
+    /**
+     * @dev Schedules a revoke permission for a single account
+     */
+    function scheduleRevokePermission(
+        bytes32 action,
+        address account,
+        address where,
+        address[] memory executors
+    ) external returns (uint256 id) {
+        _require(hasPermission(REVOKE_PERMISSION, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
+        bytes memory data = abi.encodeWithSelector(this.revokePermissions.selector, _arr(action), account, _arr(where));
+        return _schedule(REVOKE_PERMISSION, address(this), data, delays[REVOKE_PERMISSION], executors);
     }
 
     /**
@@ -296,5 +324,15 @@ contract Authorizer is IAuthorizer {
         // The bytes4 type is left-aligned and padded with zeros: we make use of that property to build the selector
         if (data.length < 4) return bytes4(0);
         return bytes4(data[0]) | (bytes4(data[1]) >> 8) | (bytes4(data[2]) >> 16) | (bytes4(data[3]) >> 24);
+    }
+
+    function _arr(bytes32 item) private pure returns (bytes32[] memory result) {
+        result = new bytes32[](1);
+        result[0] = item;
+    }
+
+    function _arr(address item) private pure returns (address[] memory result) {
+        result = new address[](1);
+        result[0] = item;
     }
 }
