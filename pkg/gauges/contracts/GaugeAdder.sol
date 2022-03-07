@@ -104,7 +104,7 @@ contract GaugeAdder is Authentication, ReentrancyGuard {
     /**
      * @notice Adds a new gauge to the GaugeController for the "Ethereum" type.
      */
-    function addEthereumGauge(address gauge) external {
+    function addEthereumGauge(address gauge) external authenticate {
         _addGauge(gauge, GaugeType.Ethereum);
     }
 
@@ -113,7 +113,7 @@ contract GaugeAdder is Authentication, ReentrancyGuard {
      * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
      * It should not be called with the address of the gauge which is deployed on Polygon
      */
-    function addPolygonGauge(address rootGauge) external {
+    function addPolygonGauge(address rootGauge) external authenticate {
         _addGauge(rootGauge, GaugeType.Polygon);
     }
 
@@ -122,14 +122,14 @@ contract GaugeAdder is Authentication, ReentrancyGuard {
      * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
      * It should not be called with the address of the gauge which is deployed on Arbitrum
      */
-    function addArbitrumGauge(address rootGauge) external {
+    function addArbitrumGauge(address rootGauge) external authenticate {
         _addGauge(rootGauge, GaugeType.Arbitrum);
     }
 
     /**
      * @notice Adds `factory` as an allowlisted factory contract for gauges with type `gaugeType`.
      */
-    function addGaugeFactory(ILiquidityGaugeFactory factory, GaugeType gaugeType) external {
+    function addGaugeFactory(ILiquidityGaugeFactory factory, GaugeType gaugeType) external authenticate {
         // Casting is safe as n_gauge_types return value is >= 0.
         require(uint256(gaugeType) < uint256(_gaugeController.n_gauge_types()), "Invalid gauge type");
 
