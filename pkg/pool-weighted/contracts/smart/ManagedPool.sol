@@ -728,11 +728,19 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     // Join/exit callbacks
 
-    function _beforeJoin(uint256[] memory, uint256[] memory, uint256) internal virtual override {
+    function _beforeJoin(
+        uint256[] memory,
+        uint256[] memory,
+        uint256
+    ) internal virtual override {
         collectAumManagementFees();
     }
 
-    function _afterExit(uint256[] memory, uint256[] memory, uint256[] memory) internal virtual override {
+    function _afterExit(
+        uint256[] memory,
+        uint256[] memory,
+        uint256[] memory
+    ) internal virtual override {
         collectAumManagementFees();
     }
 

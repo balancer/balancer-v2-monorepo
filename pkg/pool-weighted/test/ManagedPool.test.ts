@@ -63,6 +63,7 @@ describe('ManagedPool', function () {
             weights: WEIGHTS.slice(0, numTokens),
             swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
             managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+            managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
           });
         });
 
@@ -652,6 +653,7 @@ describe('ManagedPool', function () {
       let vault: Vault;
       const swapFeePercentage = fp(0.02);
       const managementSwapFeePercentage = fp(0.8);
+      const managementAumFeePercentage = fp(0.01);
 
       sharedBeforeEach('deploy pool', async () => {
         vault = await Vault.create();
@@ -665,6 +667,7 @@ describe('ManagedPool', function () {
           vault,
           swapFeePercentage,
           managementSwapFeePercentage,
+          managementAumFeePercentage,
         };
         pool = await WeightedPool.create(params);
       });
@@ -713,9 +716,9 @@ describe('ManagedPool', function () {
           });
 
           it('cannot be set above the maximum swap fee', async () => {
-            await expect(
-              pool.setManagementSwapFeePercentage(owner, fp(1.1))
-            ).to.be.revertedWith('MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE');
+            await expect(pool.setManagementSwapFeePercentage(owner, fp(1.1))).to.be.revertedWith(
+              'MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE'
+            );
           });
         });
       });
@@ -744,9 +747,9 @@ describe('ManagedPool', function () {
           });
 
           it('cannot be set above the maximum AUM fee', async () => {
-            await expect(
-              pool.setManagementAumFeePercentage(owner, fp(0.2))
-            ).to.be.revertedWith('MAX_MANAGEMENT_AUM_FEE_PERCENTAGE');
+            await expect(pool.setManagementAumFeePercentage(owner, fp(0.2))).to.be.revertedWith(
+              'MAX_MANAGEMENT_AUM_FEE_PERCENTAGE'
+            );
           });
         });
       });

@@ -171,7 +171,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     }
 
     /**
-     * @dev Called after any exit operation. Empty by default, but derived contracts may choose to add 
+     * @dev Called after any exit operation. Empty by default, but derived contracts may choose to add
      * custom behavior at these steps. This often has to do with protocol fee processing.
      *
      * balanceDeltas are the amounts out
