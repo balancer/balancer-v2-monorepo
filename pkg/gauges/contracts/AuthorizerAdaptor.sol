@@ -21,6 +21,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-vault/contracts/interfaces/IAuthorizer.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
+import "./interfaces/IAuthorizerAdaptor.sol";
+
 /**
  * @title Authorizer Adaptor
  * @notice This contract is intended to act as an adaptor between systems which expect a single admin address
@@ -31,7 +33,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
  * @dev When calculating the actionId to call a function on a target contract, it must be calculated as if it were
  * to be called on this adaptor. This can be done by passing the function selector to the `getActionId` function.
  */
-contract AuthorizerAdaptor is IAuthentication, ReentrancyGuard {
+contract AuthorizerAdaptor is IAuthorizerAdaptor, IAuthentication, ReentrancyGuard {
     using Address for address;
 
     bytes32 private immutable _actionIdDisambiguator;
@@ -87,7 +89,13 @@ contract AuthorizerAdaptor is IAuthentication, ReentrancyGuard {
      * @param data - Calldata to be sent to the target contract
      * @return The bytes encoded return value from the performed function call
      */
-    function performAction(address target, bytes calldata data) external payable nonReentrant returns (bytes memory) {
+    function performAction(address target, bytes calldata data)
+        external
+        payable
+        override
+        nonReentrant
+        returns (bytes memory)
+    {
         bytes4 selector;
 
         // We want to check that the caller is authorized to call the function on the target rather than this function.
