@@ -20,8 +20,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "./interfaces/ILiquidityGauge.sol";
+import "./interfaces/ILiquidityGaugeFactory.sol";
 
-contract LiquidityGaugeFactory is Authentication {
+contract LiquidityGaugeFactory is ILiquidityGaugeFactory, Authentication {
     IVault private immutable _vault;
     ILiquidityGauge private _gaugeImplementation;
     address private _authorizerAdaptor;
@@ -85,7 +86,7 @@ contract LiquidityGaugeFactory is Authentication {
     /**
      * @notice Returns true if `gauge` was created by this factory.
      */
-    function isGaugeFromFactory(address gauge) external view returns (bool) {
+    function isGaugeFromFactory(address gauge) external view override returns (bool) {
         return _isGaugeFromFactory[gauge];
     }
 
