@@ -104,7 +104,10 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
     uint256 private _managementSwapFeePercentage;
 
+    // This is an annual value
     uint256 private _managementAumFeePercentage;
+
+    uint256 private _lastAumFeeCollectionTimestamp;
 
     // Event declarations
 
@@ -136,6 +139,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         bool swapEnabledOnStart;
         bool mustAllowlistLPs;
         uint256 managementSwapFeePercentage;
+        uint256 managementAumFeePercentage;
     }
 
     constructor(NewPoolParams memory params)
@@ -159,8 +163,10 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // Double check it fits in 7 bits
         _require(_getTotalTokens() == totalTokens, Errors.MAX_TOKENS);
 
-        // Validate and set initial fee
+        // Validate and set initial fees
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
+
+        _setManagementAumFeePercentage(params.managementAumFeePercentage);
 
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(
@@ -181,6 +187,9 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // If true, only addresses on the manager-controlled allowlist may join the pool.
         _setMustAllowlistLPs(params.mustAllowlistLPs);
+
+        // initialize at deployment
+        _lastAumFeeCollectionTimestamp = block.timestamp;
     }
 
     /**
@@ -715,5 +724,36 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // A valid token can't be zero (must have non-zero weights)
         _require(tokenData != 0, Errors.INVALID_TOKEN);
+    }
+
+    // Join/exit callbacks
+
+    function _beforeJoin(uint256[] memory, uint256[] memory, uint256) internal virtual override {
+        collectAumManagementFees();
+    }
+
+    function _afterExit(uint256[] memory, uint256[] memory, uint256[] memory) internal virtual override {
+        collectAumManagementFees();
+    }
+
+    /**
+     * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
+     * joins and exits.
+     */
+    function collectAumManagementFees() public {
+        uint256 lastCollection = _lastAumFeeCollectionTimestamp;
+        uint256 currentTime = block.timestamp;
+
+        // Collect fees based on the time elapsed
+        if (currentTime > lastCollection) {
+            uint256 elapsedTime = currentTime - lastCollection;
+            uint256 proportion = _managementAumFeePercentage.divDown(_managementAumFeePercentage.complement());
+
+            uint256 aumBPT = totalSupply().mulDown(proportion).mulDown(elapsedTime.divDown(365 days));
+
+            _mintPoolTokens(getOwner(), aumBPT);
+
+            _lastAumFeeCollectionTimestamp = currentTime;
+        }
     }
 }
