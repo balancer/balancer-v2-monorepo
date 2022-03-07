@@ -33,6 +33,7 @@ describe('ManagedPool', function () {
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.7);
+  const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
   const NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.8);
   const NEW_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.02);
 
