@@ -19,5 +19,10 @@ pragma solidity ^0.7.0;
 // solhint-disable func-name-mixedcase
 
 interface IGaugeController {
+    function n_gauge_types() external view returns (int128);
+
     function gauge_types(address gauge) external view returns (uint256);
+
+    // Gauges are to be added with zero initial weight so the full signature is not required
+    function add_gauge(address gauge, int128 gaugeType) external;
 }
