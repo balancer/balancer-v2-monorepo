@@ -143,7 +143,7 @@ contract Authorizer is IAuthorizer {
     ) external returns (uint256 id) {
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
         bytes32 setDelayAction = keccak256(abi.encodePacked(SET_DELAY_PERMISSION, action));
-        _authenticate(setDelayAction, address(this));
+        _require(hasPermission(setDelayAction, msg.sender, address(this)), Errors.SENDER_NOT_ALLOWED);
 
         uint256 actionDelay = delays[action];
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, action, newDelay);
@@ -178,9 +178,8 @@ contract Authorizer is IAuthorizer {
 
         // solhint-disable-next-line not-rely-on-time
         require(block.timestamp >= scheduledAction.executableAt, "ACTION_NOT_EXECUTABLE");
-        if (scheduledAction.protected) {
-            _authenticate(_executeActionId(id), address(this));
-        }
+        bool isAllowed = !scheduledAction.protected || hasPermission(_executeActionId(id), msg.sender, address(this));
+        _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
 
         scheduledAction.executed = true;
         result = scheduledAction.where.functionCall(scheduledAction.data);
@@ -214,7 +213,7 @@ contract Authorizer is IAuthorizer {
     ) external {
         InputHelpers.ensureInputLengthMatch(actions.length, where.length);
         for (uint256 i = 0; i < actions.length; i++) {
-            _authenticate(GRANT_PERMISSION, where[i]);
+            _require(canPerform(GRANT_PERMISSION, msg.sender, where[i]), Errors.SENDER_NOT_ALLOWED);
             _grantPermission(actions[i], account, where[i]);
         }
     }
@@ -229,7 +228,7 @@ contract Authorizer is IAuthorizer {
     ) external {
         InputHelpers.ensureInputLengthMatch(actions.length, where.length);
         for (uint256 i = 0; i < actions.length; i++) {
-            _authenticate(REVOKE_PERMISSION, where[i]);
+            _require(canPerform(REVOKE_PERMISSION, msg.sender, where[i]), Errors.SENDER_NOT_ALLOWED);
             _revokePermission(actions[i], account, where[i]);
         }
     }
@@ -287,10 +286,6 @@ contract Authorizer is IAuthorizer {
         for (uint256 i = 0; i < executors.length; i++) {
             _grantPermission(executeActionId, executors[i], address(this));
         }
-    }
-
-    function _authenticate(bytes32 action, address where) internal view {
-        _require(hasPermission(action, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
     }
 
     function _executeActionId(uint256 id) internal pure returns (bytes32) {
