@@ -187,9 +187,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // If true, only addresses on the manager-controlled allowlist may join the pool.
         _setMustAllowlistLPs(params.mustAllowlistLPs);
-
-        // initialize at deployment
-        _lastAumFeeCollectionTimestamp = block.timestamp;
     }
 
     /**
@@ -733,7 +730,13 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] memory,
         uint256
     ) internal virtual override {
-        collectAumManagementFees();
+        if (_lastAumFeeCollectionTimestamp == 0) {
+            // Start the clock on `initializePool`
+            _lastAumFeeCollectionTimestamp = block.timestamp;
+        }
+        else {
+            collectAumManagementFees();
+        }
     }
 
     function _afterExit(
@@ -742,26 +745,40 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] memory
     ) internal virtual override {
         collectAumManagementFees();
-    }
+     }
 
     /**
      * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
      * joins and exits.
      */
-    function collectAumManagementFees() public {
+    function collectAumManagementFees() public whenNotPaused nonReentrant {
         uint256 lastCollection = _lastAumFeeCollectionTimestamp;
+        // Do nothing before initialization
+        if (lastCollection == 0) {
+            return;
+        }
+
         uint256 currentTime = block.timestamp;
 
         // Collect fees based on the time elapsed
         if (currentTime > lastCollection) {
             uint256 elapsedTime = currentTime - lastCollection;
-            uint256 proportion = _managementAumFeePercentage.divDown(_managementAumFeePercentage.complement());
+            // Similar to BPT swap fee calculation, collect fees equal to the AUM % after minting
+            // F is the AUM fee percentage, S is the totalSupply, and x is the amount to mint after 1 year:
+            // S + x = S + F(S + x)
+            // x = F(S + x)
+            // x(1 - F) = FS
+            // x = S * F/(1 - F); per annual time period
+            // Final value needs to be annualized: multiply by elapsedTime/(365 days)
+            uint256 feePct = _managementAumFeePercentage.divDown(_managementAumFeePercentage.complement());
+            uint256 timePeriodPct = elapsedTime.divDown(365 days);
 
-            uint256 aumBPT = totalSupply().mulDown(proportion).mulDown(elapsedTime.divDown(365 days));
+            uint256 aumBPT = totalSupply().mulDown(feePct).mulDown(timePeriodPct);
+
+            // Reset the collection timer to the current block
+            _lastAumFeeCollectionTimestamp = currentTime;
 
             _mintPoolTokens(getOwner(), aumBPT);
-
-            _lastAumFeeCollectionTimestamp = currentTime;
         }
     }
 }
