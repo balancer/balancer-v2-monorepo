@@ -36,6 +36,7 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementSwapFeePercentage,
+      managementAumFeePercentage,
     } = deployment;
 
     const poolId = await pool.getPoolId();
@@ -50,7 +51,8 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      managementSwapFeePercentage
+      managementSwapFeePercentage,
+      managementAumFeePercentage,
     );
   },
 
@@ -67,6 +69,7 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementSwapFeePercentage,
+      managementAumFeePercentage,
       owner,
       from,
     } = params;
@@ -131,6 +134,7 @@ export default {
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
               managementSwapFeePercentage: managementSwapFeePercentage,
+              managementAumFeePercentage: managementAumFeePercentage,
             },
           ],
           from,
@@ -169,6 +173,7 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementSwapFeePercentage,
+      managementAumFeePercentage,
       poolType,
       owner,
       from,
@@ -241,6 +246,7 @@ export default {
           swapEnabledOnStart: swapEnabledOnStart,
           mustAllowlistLPs: mustAllowlistLPs,
           managementSwapFeePercentage: managementSwapFeePercentage,
+          managementAumFeePercentage: managementAumFeePercentage,
         };
 
         const basePoolRights: BasePoolRights = {
@@ -255,7 +261,7 @@ export default {
           canSetMustAllowlistLPs: true,
           canSetCircuitBreakers: true,
           canChangeTokens: true,
-          canChangeMgmtSwapFee: true,
+          canChangeMgmtFees: true,
         };
 
         const tx = await factory

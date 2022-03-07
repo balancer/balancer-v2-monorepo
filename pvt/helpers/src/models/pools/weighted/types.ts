@@ -26,6 +26,7 @@ export type RawWeightedPoolDeployment = {
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
   managementSwapFeePercentage?: BigNumberish;
+  managementAumFeePercentage?: BigNumberish;
   owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -46,6 +47,7 @@ export type WeightedPoolDeployment = {
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
   managementSwapFeePercentage: BigNumberish;
+  managementAumFeePercentage: BigNumberish;
   owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -210,7 +212,7 @@ export type ManagedPoolRights = {
   canSetMustAllowlistLPs: boolean;
   canSetCircuitBreakers: boolean;
   canChangeTokens: boolean;
-  canChangeMgmtSwapFee: boolean;
+  canChangeMgmtFees: boolean;
 };
 
 export type ManagedPoolParams = {
@@ -227,4 +229,5 @@ export type ManagedPoolParams = {
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
   managementSwapFeePercentage: BigNumberish;
+  managementAumFeePercentage: BigNumberish;
 };

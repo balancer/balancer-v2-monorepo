@@ -65,6 +65,7 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementSwapFeePercentage,
+      managementAumFeePercentage,
       poolType,
     } = params;
     if (!params.owner) params.owner = ZERO_ADDRESS;
@@ -80,6 +81,7 @@ export default {
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
     if (managementSwapFeePercentage === undefined) managementSwapFeePercentage = fp(0);
+    if (managementAumFeePercentage === undefined) managementAumFeePercentage = fp(0);
     if (poolType === WeightedPoolType.ORACLE_WEIGHTED_POOL && tokens.length !== 2)
       throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
     return {
@@ -93,6 +95,7 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementSwapFeePercentage,
+      managementAumFeePercentage,
       owner: this.toAddress(params.owner),
       from: params.from,
       poolType,
