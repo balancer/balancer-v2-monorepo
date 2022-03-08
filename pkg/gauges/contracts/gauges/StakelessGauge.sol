@@ -43,7 +43,7 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
     uint256 private _startEpochTime;
 
     uint256 private _emissions;
-    bool public isKilled;
+    bool private _isKilled;
 
     constructor(IBalancerMinter minter) {
         IBalancerTokenAdmin tokenAdmin = IBalancerTokenAdmin(minter.getBalancerTokenAdmin());
@@ -118,7 +118,7 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
             _period = currentPeriod;
             _emissions += newEmissions;
 
-            if (newEmissions > 0 && !isKilled) {
+            if (newEmissions > 0 && !_isKilled) {
                 _minter.mint(address(this));
                 _postMintAction(newEmissions);
             }
@@ -145,8 +145,12 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
         return _emissions;
     }
 
-    function set_killed(bool _isKilled) external {
+    function is_killed() external view returns (bool) {
+        return _isKilled;
+    }
+
+    function set_killed(bool isKilled) external {
         require(msg.sender == _authorizerAdaptor, "SENDER_NOT_ALLOWED");
-        isKilled = _isKilled;
+        _isKilled = isKilled;
     }
 }
