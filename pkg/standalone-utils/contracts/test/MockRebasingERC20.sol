@@ -19,8 +19,8 @@ pragma solidity ^0.7.0;
 
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
-import { IERC20 } from "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
-import { SafeMath } from "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
 
 contract ERC20 is IERC20 {
     using SafeMath for uint256;

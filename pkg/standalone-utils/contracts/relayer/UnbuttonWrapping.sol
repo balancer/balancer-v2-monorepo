@@ -15,11 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import { Address } from "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import { IERC20 } from "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
-import { IBaseRelayerLibrary } from "../interfaces/IBaseRelayerLibrary.sol";
-import { IButtonWrapper } from "../interfaces/IButtonWrapper.sol";
+import "../interfaces/IBaseRelayerLibrary.sol";
+import "../interfaces/IButtonWrapper.sol";
 
 /**
  * @title UnbuttonWrapping
