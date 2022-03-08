@@ -43,8 +43,8 @@ contract UnbuttonAaveLinearPool is LinearPool {
         IVault vault,
         string memory name,
         string memory symbol,
-        IERC20 wAMPL,
-        IERC20 wAaveAMPL,
+        IERC20 mainToken,
+        IERC20 wrappedToken,
         uint256 upperTarget,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
@@ -55,8 +55,8 @@ contract UnbuttonAaveLinearPool is LinearPool {
             vault,
             name,
             symbol,
-            wAMPL,     // main token
-            wAaveAMPL, // wrapped token
+            mainToken,    // wAMPL
+            wrappedToken, // wAaveAMPL
             upperTarget,
             swapFeePercentage,
             pauseWindowDuration,
@@ -64,11 +64,14 @@ contract UnbuttonAaveLinearPool is LinearPool {
             owner
         )
     {
-        address mainUnderlying = IButtonWrapper(address(wAMPL))
+        // wAMPL.underlying() == AMPL
+        address mainUnderlying = IButtonWrapper(address(mainToken))
             .underlying();
 
+        // wAaveAMPL.underlying() == aaveAMPL
+        // aaveAMPL.UNDERLYING_ASSET_ADDRESS() == AMPL
         address wrappedUnderlying = 
-            IAToken(IButtonWrapper(address(wAaveAMPL)).underlying())
+            IAToken(IButtonWrapper(address(wrappedToken)).underlying())
             .UNDERLYING_ASSET_ADDRESS();
 
         _require(mainUnderlying == wrappedUnderlying, Errors.TOKENS_MISMATCH);
@@ -83,10 +86,10 @@ contract UnbuttonAaveLinearPool is LinearPool {
      *      query decimals for the main token or wrapped token.
      */
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        // 1e18 wAaveAMPL = r1 aAMPL
+        // 1e18 wAaveAMPL = r1 aaveAMPL
         uint256 r1 = IButtonWrapper(getWrappedToken()).wrapperToUnderlying(FixedPoint.ONE);
 
-        // r1 aAMPL = r1 AMPL (AMPL and aAMPL have a 1:1 exchange rate)
+        // r1 aaveAMPL = r1 AMPL (AMPL and aaveAMPL have a 1:1 exchange rate)
 
         // r1 AMPL = r2 wAMPL
         uint256 r2 = IButtonWrapper(getMainToken()).underlyingToWrapper(r1);
