@@ -15,22 +15,22 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IButtonWrapper.sol";
 import "../interfaces/IAToken.sol";
+import "../interfaces/IButtonWrapper.sol";
 import "../LinearPool.sol";
 
 /**
  * @title UnbuttonAaveLinearPool
- * 
+ *
  * @author @aalavandhan1984 (dev-support@fragments.org)
- * 
+ *
  * @notice This linear pool is between any Unbutton ERC-20 (eg, wrapped AMPL)
  *         and its corresponding Unbutton aToken (eg, wrapped aaveAMPL).
- * 
+ *
  * @dev In the comments we assume that the pool is between {wAMPL - wAaveAMPL};
  *      however this linear pool will support any rebasing token and its
  *      aToken counterpart both of which are wrapped using the unbutton wrapper.
- * 
+ *
  *      For the {wAMPL - wAaveAMPL} pool, the exchange rate is calculated based on:
  *        - the rate between wAMPL and AMPL
  *        - the rate between AMPL and aaveAMPL
@@ -55,7 +55,7 @@ contract UnbuttonAaveLinearPool is LinearPool {
             vault,
             name,
             symbol,
-            mainToken,    // wAMPL
+            mainToken, // wAMPL
             wrappedToken, // wAaveAMPL
             upperTarget,
             swapFeePercentage,
@@ -65,13 +65,11 @@ contract UnbuttonAaveLinearPool is LinearPool {
         )
     {
         // wAMPL.underlying() == AMPL
-        address mainUnderlying = IButtonWrapper(address(mainToken))
-            .underlying();
+        address mainUnderlying = IButtonWrapper(address(mainToken)).underlying();
 
         // wAaveAMPL.underlying() == aaveAMPL
         // aaveAMPL.UNDERLYING_ASSET_ADDRESS() == AMPL
-        address wrappedUnderlying = 
-            IAToken(IButtonWrapper(address(wrappedToken)).underlying())
+        address wrappedUnderlying = IAToken(IButtonWrapper(address(wrappedToken)).underlying())
             .UNDERLYING_ASSET_ADDRESS();
 
         _require(mainUnderlying == wrappedUnderlying, Errors.TOKENS_MISMATCH);
