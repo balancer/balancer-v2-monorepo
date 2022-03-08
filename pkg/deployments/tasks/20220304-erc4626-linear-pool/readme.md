@@ -4,6 +4,5 @@ Deployment of the `ERC4626LinearPoolFactory`, for Linear Pools with a ERC4626 wr
 
 ## Useful Files
 
-- [Ethereum mainnet addresses](./output/mainnet.json)
 - [Polygon mainnet addresses](./output/polygon.json)
 - [`ERC4626LinearPool` ABI](./abi/ERC4626LinearPool.json)
