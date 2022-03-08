@@ -15,6 +15,6 @@ contract MockAaveAMPLToken is MockUnbuttonERC20, IAToken {
     ) MockUnbuttonERC20(underlying_, name_, symbol_) { }
 
     function UNDERLYING_ASSET_ADDRESS() external view override returns (address) {
-        return underlying;
+        return _underlying;
     }
 }
