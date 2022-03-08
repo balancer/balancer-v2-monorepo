@@ -134,7 +134,7 @@ contract GaugeAdder is Authentication, ReentrancyGuard {
         require(uint256(gaugeType) < uint256(_gaugeController.n_gauge_types()), "Invalid gauge type");
 
         // Sanity check that calling `isGaugeFromFactory` won't revert
-        // require(!factory.isGaugeFromFactory(address(0)), "Invalid factory implementation");
+        require(!factory.isGaugeFromFactory(address(0)), "Invalid factory implementation");
 
         EnumerableSet.AddressSet storage gaugeFactories = _gaugeFactoriesByType[gaugeType];
         require(gaugeFactories.add(address(factory)), "Factory already added");

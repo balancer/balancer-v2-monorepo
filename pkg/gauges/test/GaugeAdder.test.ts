@@ -85,9 +85,9 @@ describe('GaugeAdder', () => {
   describe('addGaugeFactory', () => {
     context('when caller is not authorized', () => {
       it('reverts', async () => {
-        await expect(gaugeAdder.connect(other).addGaugeFactory(ZERO_ADDRESS, GaugeType.Ethereum)).to.be.revertedWith(
-          'SENDER_NOT_ALLOWED'
-        );
+        await expect(
+          gaugeAdder.connect(other).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum)
+        ).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
 
@@ -99,21 +99,21 @@ describe('GaugeAdder', () => {
 
       context('when gauge type does not exist on GaugeController', () => {
         it('reverts', async () => {
-          await expect(gaugeAdder.connect(admin).addGaugeFactory(ZERO_ADDRESS, GaugeType.Polygon)).to.be.revertedWith(
-            'Invalid gauge type'
-          );
+          await expect(
+            gaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Polygon)
+          ).to.be.revertedWith('Invalid gauge type');
         });
       });
 
       context('when gauge type exists on GaugeController', () => {
         context('when factory already exists on GaugeAdder', () => {
           sharedBeforeEach('add gauge factory', async () => {
-            await gaugeAdder.connect(admin).addGaugeFactory(ZERO_ADDRESS, GaugeType.Ethereum);
+            await gaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum);
           });
 
           it('reverts', async () => {
             await expect(
-              gaugeAdder.connect(admin).addGaugeFactory(ZERO_ADDRESS, GaugeType.Ethereum)
+              gaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum)
             ).to.be.revertedWith('Factory already added');
           });
         });
@@ -121,11 +121,11 @@ describe('GaugeAdder', () => {
         context("when factory doesn't already exists on GaugeAdder", () => {
           it('stores the new factory address');
           it('emits a GaugeFactoryAdded event', async () => {
-            const tx = await gaugeAdder.connect(admin).addGaugeFactory(ZERO_ADDRESS, GaugeType.Ethereum);
+            const tx = await gaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum);
             const receipt = await tx.wait();
             expectEvent.inReceipt(receipt, 'GaugeFactoryAdded', {
               gaugeType: GaugeType.Ethereum,
-              gaugeFactory: ZERO_ADDRESS,
+              gaugeFactory: gaugeFactory.address,
             });
           });
         });
