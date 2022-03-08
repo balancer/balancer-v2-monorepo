@@ -16,7 +16,7 @@ const amplFP = (n: number) => fp(n / 10 ** 9);
 const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
 
 export const setupWrappedTokens = async (w1Rate: BigNumberish, w2Rate: BigNumberish): Promise<[Token, Token]> => {
-  const [deployer, owner] = await ethers.getSigners();
+  const [deployer] = await ethers.getSigners();
   const deployerAddress = await deployer.getAddress();
 
   const ampl = await deploy('TestToken', {
@@ -48,11 +48,10 @@ export const setupWrappedTokens = async (w1Rate: BigNumberish, w2Rate: BigNumber
   await wAaveAMPLContract.connect(deployer).mint(fp(1));
 
   return [mainToken, wrappedToken];
-}
+};
 
 async function setupWrappedTokensAndLP(w1Rate: BigNumberish, w2Rate: BigNumberish): Promise<LinearPool> {
-  const [deployer, owner] = await ethers.getSigners();
-  const deployerAddress = await deployer.getAddress();
+  const [, owner] = await ethers.getSigners();
 
   const [mainToken, wrappedToken] = await setupWrappedTokens(w1Rate, w2Rate);
 

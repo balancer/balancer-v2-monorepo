@@ -8,7 +8,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { setupWrappedTokens } from './UnbuttonAaveLinearPool.test';
