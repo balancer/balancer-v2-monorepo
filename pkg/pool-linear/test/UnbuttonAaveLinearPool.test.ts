@@ -15,7 +15,7 @@ const amplFP = (n: number) => fp(n / 10 ** 9);
 
 const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
 
-async function setupWrappedTokensAndLP(w1Rate: BigNumberish, w2Rate: BigNumberish): Promise<LinearPool> {
+export const setupWrappedTokens = async (w1Rate: BigNumberish, w2Rate: BigNumberish): Promise<[Token, Token]> => {
   const [deployer, owner] = await ethers.getSigners();
   const deployerAddress = await deployer.getAddress();
 
@@ -40,12 +40,21 @@ async function setupWrappedTokensAndLP(w1Rate: BigNumberish, w2Rate: BigNumberis
   await aaveAMPLContract.connect(deployer).mint(amplFP(1000));
 
   const wAaveAMPLContract = await deploy('MockUnbuttonERC20', {
-    args: [aaveAMPLContract.address, 'Mock Wrapped Aave Ampleforth', 'wAAMPL'],
+    args: [aaveAMPLContract.address, 'Mock Wrapped Aave Ampleforth', 'wAaveAMPL'],
   });
   await aaveAMPLContract.approve(wAaveAMPLContract.address, MAX_UINT256, { from: deployerAddress });
   await wAaveAMPLContract.connect(deployer).initialize(w2Rate);
   const wrappedToken = await Token.deployedAt(wAaveAMPLContract.address);
   await wAaveAMPLContract.connect(deployer).mint(fp(1));
+
+  return [mainToken, wrappedToken];
+}
+
+async function setupWrappedTokensAndLP(w1Rate: BigNumberish, w2Rate: BigNumberish): Promise<LinearPool> {
+  const [deployer, owner] = await ethers.getSigners();
+  const deployerAddress = await deployer.getAddress();
+
+  const [mainToken, wrappedToken] = await setupWrappedTokens(w1Rate, w2Rate);
 
   const vault = await Vault.create();
   const poolContract = await deploy('UnbuttonAaveLinearPool', {
