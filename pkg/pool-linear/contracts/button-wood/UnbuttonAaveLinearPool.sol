@@ -15,8 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IButtonWrapper.sol";
+
 import "../interfaces/IAToken.sol";
-import "../interfaces/IButtonWrapper.sol";
 import "../LinearPool.sol";
 
 /**
