@@ -21,6 +21,8 @@ contract MockGaugeController is IGaugeController  {
     mapping(address => bool) private _validGauge;
     mapping(address => int128) private _gaugeType;
 
+    event NewGauge(address addr, int128 gauge_type, uint256 weight);
+
     function n_gauge_types() external view override returns (int128) {
         return _numGaugeTypes;
     }
@@ -34,6 +36,7 @@ contract MockGaugeController is IGaugeController  {
         require(!_validGauge[gauge]);
         require(gaugeType >= 0 && gaugeType < _numGaugeTypes);
         _validGauge[gauge] = true;
+        emit NewGauge(gauge, gaugeType, 0);
     }
 
     function add_type(string calldata) external {

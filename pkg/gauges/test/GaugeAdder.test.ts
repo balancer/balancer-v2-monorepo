@@ -21,6 +21,7 @@ describe('GaugeAdder', () => {
   let vault: Vault;
   let authorizer: Contract;
   let gaugeController: Contract;
+  let gaugeFactory: Contract;
   let adaptor: Contract;
   let gaugeAdder: Contract;
 
@@ -37,6 +38,8 @@ describe('GaugeAdder', () => {
 
     adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
     gaugeController = await deploy('MockGaugeController', {});
+
+    gaugeFactory = await deploy('MockLiquidityGaugeFactory');
     gaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address, adaptor.address] });
 
     await gaugeController.add_type('LiquidityMiningCommittee');
@@ -48,6 +51,13 @@ describe('GaugeAdder', () => {
     const action = await actionId(adaptor, 'add_gauge', gaugeController.interface);
     await vault.grantPermissionsGlobally([action], gaugeAdder);
   });
+
+  async function deployGauge(poolAddress: string): Promise<string> {
+    const tx = await gaugeFactory.create(poolAddress);
+    const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
+
+    return event.args.gauge;
+  }
 
   describe('constructor', () => {
     it('sets the vault address', async () => {
@@ -95,8 +105,8 @@ describe('GaugeAdder', () => {
         });
       });
 
-      context('when gauge type exists on gauge controller', () => {
-        context('when factory is a duplicate of an existing factory', () => {
+      context('when gauge type exists on GaugeController', () => {
+        context('when factory already exists on GaugeAdder', () => {
           sharedBeforeEach('add gauge factory', async () => {
             await gaugeAdder.connect(admin).addGaugeFactory(ZERO_ADDRESS, GaugeType.Ethereum);
           });
@@ -108,7 +118,7 @@ describe('GaugeAdder', () => {
           });
         });
 
-        context('when factory is not a duplicate of an existing factory', () => {
+        context("when factory doesn't already exists on GaugeAdder", () => {
           it('stores the new factory address');
           it('emits a GaugeFactoryAdded event', async () => {
             const tx = await gaugeAdder.connect(admin).addGaugeFactory(ZERO_ADDRESS, GaugeType.Ethereum);
@@ -124,12 +134,31 @@ describe('GaugeAdder', () => {
   });
 
   describe('isGaugeFromValidFactory', () => {
+    let gauge: string;
+
+    sharedBeforeEach('deploy gauge', async () => {
+      gauge = await deployGauge(ZERO_ADDRESS);
+    });
+
     context('when factory has been added to GaugeAdder', () => {
-      it('returns the expected value');
+      sharedBeforeEach('add gauge factory', async () => {
+        const action = await actionId(gaugeAdder, 'addGaugeFactory');
+        await vault.grantPermissionsGlobally([action], admin);
+
+        await gaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum);
+      });
+
+      it('returns the expected value', async () => {
+        expect(await gaugeAdder.isGaugeFromValidFactory(gauge, GaugeType.Ethereum)).to.be.true;
+        expect(await gaugeAdder.isGaugeFromValidFactory(gauge, GaugeType.Polygon)).to.be.false;
+        expect(await gaugeAdder.isGaugeFromValidFactory(gauge, GaugeType.Arbitrum)).to.be.false;
+      });
     });
 
     context('when factory has not been added to GaugeAdder', () => {
-      it('returns the expected value');
+      it('returns the expected value', async () => {
+        expect(await gaugeAdder.isGaugeFromValidFactory(gauge, GaugeType.Ethereum)).to.be.false;
+      });
     });
   });
 
@@ -153,7 +182,24 @@ describe('GaugeAdder', () => {
       });
 
       context('when gauge has been deployed from a valid factory', () => {
-        it('registers the gauge on the GaugeController');
+        sharedBeforeEach('add gauge factory', async () => {
+          const action = await actionId(gaugeAdder, 'addGaugeFactory');
+          await vault.grantPermissionsGlobally([action], admin);
+
+          await gaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum);
+        });
+
+        it('registers the gauge on the GaugeController', async () => {
+          const gauge = await deployGauge(ZERO_ADDRESS);
+
+          const tx = await gaugeAdder.connect(admin).addEthereumGauge(gauge);
+
+          expectEvent.inIndirectReceipt(await tx.wait(), gaugeController.interface, 'NewGauge', {
+            addr: gauge,
+            gauge_type: GaugeType.Ethereum,
+            weight: 0,
+          });
+        });
       });
     });
   });
