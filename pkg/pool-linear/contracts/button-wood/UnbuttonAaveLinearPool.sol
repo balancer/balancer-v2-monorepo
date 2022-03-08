@@ -25,13 +25,13 @@ import "../LinearPool.sol";
  * @author @aalavandhan1984 (dev-support@fragments.org)
  * 
  * @notice This linear pool is between any Unbutton ERC-20 (eg, wrapped AMPL)
- *         and it's corresponding Unbutton aToken (eg, wrapped aaveAMPL).
+ *         and its corresponding Unbutton aToken (eg, wrapped aaveAMPL).
  * 
- * @dev In the comments we assume that the pool is between {wAMPL - wAaveAMPL},
- *      however this linear pool will support any rebasing token and it's
+ * @dev In the comments we assume that the pool is between {wAMPL - wAaveAMPL};
+ *      however this linear pool will support any rebasing token and its
  *      aToken counterpart both of which are wrapped using the unbutton wrapper.
  * 
- *      For {the wAMPL - wAaveAMPL} pool, the exchange rate is calculated based on:
+ *      For the {wAMPL - wAaveAMPL} pool, the exchange rate is calculated based on:
  *        - the rate between wAMPL and AMPL
  *        - the rate between AMPL and aaveAMPL
  *        - the rate between wAaveAMPL and aaveAMPL
@@ -77,8 +77,8 @@ contract UnbuttonAaveLinearPool is LinearPool {
     /*
      * @dev This function returns the exchange rate between the main token and
      *      the wrapped token as a 18 decimal fixed point number.
-     *      In our case, its the exchange rate between wAMPL and wAaveAMPL.
-     *      (i.e. The number of wAMPL for each wAaveAMPL)
+     *      In our case, it's the exchange rate between wAMPL and wAaveAMPL
+     *      (i.e., the number of wAMPL for each wAaveAMPL).
      *      All UnbuttonTokens have 18 decimals, so it is not necessary to
      *      query decimals for the main token or wrapped token.
      */
