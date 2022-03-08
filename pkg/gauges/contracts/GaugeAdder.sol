@@ -79,6 +79,20 @@ contract GaugeAdder is Authentication, ReentrancyGuard {
     }
 
     /**
+     * @notice Returns the `index`'th factory for gauge type `gaugeType`
+     */
+    function getFactoryForGaugeType(GaugeType gaugeType, uint256 index) external view returns (address) {
+        return _gaugeFactoriesByType[gaugeType].at(index);
+    }
+
+    /**
+     * @notice Returns the number of factories for gauge type `gaugeType`
+     */
+    function getFactoryForGaugeTypeCount(GaugeType gaugeType) external view returns (uint256) {
+        return _gaugeFactoriesByType[gaugeType].length();
+    }
+
+    /**
      * @notice Returns whether `gauge` has been deployed by one of the listed factories for the gauge type `gaugeType`
      */
     function isGaugeFromValidFactory(address gauge, GaugeType gaugeType) public view returns (bool) {

@@ -119,7 +119,16 @@ describe('GaugeAdder', () => {
         });
 
         context("when factory doesn't already exists on GaugeAdder", () => {
-          it('stores the new factory address');
+          it('stores the new factory address', async () => {
+            expect(await gaugeAdder.getFactoryForGaugeTypeCount(GaugeType.Ethereum)).to.be.eq(0);
+            await expect(gaugeAdder.getFactoryForGaugeType(GaugeType.Ethereum, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
+
+            await gaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum);
+
+            expect(await gaugeAdder.getFactoryForGaugeTypeCount(GaugeType.Ethereum)).to.be.eq(1);
+            expect(await gaugeAdder.getFactoryForGaugeType(GaugeType.Ethereum, 0)).to.be.eq(gaugeFactory.address);
+          });
+
           it('emits a GaugeFactoryAdded event', async () => {
             const tx = await gaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum);
             const receipt = await tx.wait();
