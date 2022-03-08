@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 import "../interfaces/IGaugeController.sol";
 
-contract MockGaugeController is IGaugeController  {
+contract MockGaugeController is IGaugeController {
     int128 private _numGaugeTypes;
     mapping(address => bool) private _validGauge;
     mapping(address => int128) private _gaugeType;
