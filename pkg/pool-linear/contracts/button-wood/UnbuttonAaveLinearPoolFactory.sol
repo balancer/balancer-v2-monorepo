@@ -32,8 +32,8 @@ contract UnbuttonAaveLinearPoolFactory is BasePoolSplitCodeFactory, FactoryWideP
     function create(
         string memory name,
         string memory symbol,
-        IERC20 mainToken,
-        IERC20 wrappedToken,
+        IUnbuttonToken mainToken,
+        IUnbuttonToken wrappedToken,
         uint256 upperTarget,
         uint256 swapFeePercentage,
         address owner
