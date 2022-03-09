@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IButtonWrapper.sol";
+import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IUnbuttonToken.sol";
 
 import "../interfaces/IAToken.sol";
 import "../LinearPool.sol";
@@ -44,8 +44,8 @@ contract UnbuttonAaveLinearPool is LinearPool {
         IVault vault,
         string memory name,
         string memory symbol,
-        IERC20 mainToken,
-        IERC20 wrappedToken,
+        IUnbuttonToken mainToken,
+        IUnbuttonToken wrappedToken,
         uint256 upperTarget,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
@@ -66,12 +66,11 @@ contract UnbuttonAaveLinearPool is LinearPool {
         )
     {
         // wAMPL.underlying() == AMPL
-        address mainUnderlying = IButtonWrapper(address(mainToken)).underlying();
+        address mainUnderlying = mainToken.underlying();
 
         // wAaveAMPL.underlying() == aaveAMPL
         // aaveAMPL.UNDERLYING_ASSET_ADDRESS() == AMPL
-        address wrappedUnderlying = IAToken(IButtonWrapper(address(wrappedToken)).underlying())
-            .UNDERLYING_ASSET_ADDRESS();
+        address wrappedUnderlying = IAToken(wrappedToken.underlying()).UNDERLYING_ASSET_ADDRESS();
 
         _require(mainUnderlying == wrappedUnderlying, Errors.TOKENS_MISMATCH);
     }
@@ -86,12 +85,12 @@ contract UnbuttonAaveLinearPool is LinearPool {
      */
     function _getWrappedTokenRate() internal view override returns (uint256) {
         // 1e18 wAaveAMPL = r1 aaveAMPL
-        uint256 r1 = IButtonWrapper(getWrappedToken()).wrapperToUnderlying(FixedPoint.ONE);
+        uint256 r1 = IUnbuttonToken(getWrappedToken()).wrapperToUnderlying(FixedPoint.ONE);
 
         // r1 aaveAMPL = r1 AMPL (AMPL and aaveAMPL have a 1:1 exchange rate)
 
         // r1 AMPL = r2 wAMPL
-        uint256 r2 = IButtonWrapper(getMainToken()).underlyingToWrapper(r1);
+        uint256 r2 = IUnbuttonToken(getMainToken()).underlyingToWrapper(r1);
 
         // 1e18 wAaveAMPL = r2 wAMPL
         return r2;
