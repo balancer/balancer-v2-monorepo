@@ -14,22 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
-
-import "./IStakelessGauge.sol";
-
 // For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
 // naming convention.
 // solhint-disable func-name-mixedcase
 
-interface ILiquidityGauge is IStakelessGauge, IERC20 {
-    function initialize(address lpToken) external;
+interface IStakelessGauge {
+    function integrate_fraction(address user) external view returns (uint256);
 
-    function lp_token() external view returns (IERC20);
-
-    function deposit(uint256 value, address recipient) external;
-
-    function withdraw(uint256 value) external;
-
-    function claim_rewards(address user) external;
+    function user_checkpoint(address user) external returns (bool);
 }
