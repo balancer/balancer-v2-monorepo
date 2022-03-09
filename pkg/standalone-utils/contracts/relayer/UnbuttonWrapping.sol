@@ -39,7 +39,7 @@ abstract contract UnbuttonWrapping is IBaseRelayerLibrary {
     /// @param sender The address of recepient.
     /// @param uAmount The underling token amount to be deposited into the wrapper.
     /// @param outputReference Chained output reference.
-    function wrapUnbuttonWrapper(
+    function wrapUnbuttonToken(
         address wrapperToken,
         address sender,
         address recipient,
@@ -72,7 +72,7 @@ abstract contract UnbuttonWrapping is IBaseRelayerLibrary {
     /// @param sender The address of recepient.
     /// @param amount The amount of wrapped tokens to be burnt for underlying tokens.
     /// @param outputReference Chained output reference.
-    function unwrapUnbuttonWrapper(
+    function unwrapUnbuttonToken(
         address wrapperToken,
         address sender,
         address recipient,

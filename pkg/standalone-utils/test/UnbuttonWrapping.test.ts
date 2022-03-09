@@ -18,9 +18,6 @@ import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { Dictionary } from 'lodash';
 
-const startingMultiplier = 10000;
-const multiplierGranularity = 10000;
-
 const amplFP = (n: number) => fp(n / 10 ** 9);
 
 describe('UnbuttonWrapping', function () {
@@ -36,8 +33,8 @@ describe('UnbuttonWrapping', function () {
   sharedBeforeEach('deploy Vault', async () => {
     vault = await Vault.create({ admin });
 
-    const amplContract = await deploy('MockRebasingERC20', {
-      args: ['Mock Ampleforth', 'AMPL', 9, startingMultiplier, multiplierGranularity],
+    const amplContract = await deploy('TestToken', {
+      args: ['Mock Ampleforth', 'AMPL', 9],
     });
     ampl = new Token('Mock Ampleforth', 'AMPL', 9, amplContract);
 
@@ -46,16 +43,16 @@ describe('UnbuttonWrapping', function () {
     });
     wampl = new Token('wampl', 'wampl', 18, wamplContract);
 
-    await ampl.mint(admin, '1000');
+    await ampl.mint(admin, '1000', { from: admin });
     await ampl.instance.connect(admin).approve(wampl.address, '1000');
     await wampl.instance.connect(admin).initialize('1000000');
   });
 
   sharedBeforeEach('mint tokens to senderUser', async () => {
-    await ampl.mint(senderUser, amplFP(100));
+    await ampl.mint(senderUser, amplFP(100), { from: admin });
     await ampl.approve(vault.address, amplFP(100), { from: senderUser });
 
-    await ampl.mint(senderUser, amplFP(2500));
+    await ampl.mint(senderUser, amplFP(2500), { from: admin });
     await ampl.approve(wampl.address, amplFP(150), { from: senderUser });
 
     await wampl.instance.connect(senderUser).deposit(amplFP(150));
@@ -82,9 +79,9 @@ describe('UnbuttonWrapping', function () {
 
   const CHAINED_REFERENCE_PREFIX = 'ba10';
   function toChainedReference(key: BigNumberish): BigNumber {
-    // The full padded prefix is 66 characters long, with 64 hex characters and the 0x prefix.
+    // The full padded prefix is 66 characters long,
+    // with 64 hex characters and the 0x prefix.
     const paddedPrefix = `0x${CHAINED_REFERENCE_PREFIX}${'0'.repeat(64 - CHAINED_REFERENCE_PREFIX.length)}`;
-
     return BigNumber.from(paddedPrefix).add(key);
   }
 
@@ -98,7 +95,7 @@ describe('UnbuttonWrapping', function () {
     amount: BigNumberish,
     outputReference?: BigNumberish
   ): string {
-    return relayerLibrary.interface.encodeFunctionData('wrapUnbuttonWrapper', [
+    return relayerLibrary.interface.encodeFunctionData('wrapUnbuttonToken', [
       wampl.address,
       TypesConverter.toAddress(sender),
       TypesConverter.toAddress(recipient),
@@ -113,7 +110,7 @@ describe('UnbuttonWrapping', function () {
     amount: BigNumberish,
     outputReference?: BigNumberish
   ): string {
-    return relayerLibrary.interface.encodeFunctionData('unwrapUnbuttonWrapper', [
+    return relayerLibrary.interface.encodeFunctionData('unwrapUnbuttonToken', [
       wampl.address,
       TypesConverter.toAddress(sender),
       TypesConverter.toAddress(recipient),
@@ -383,10 +380,9 @@ describe('UnbuttonWrapping', function () {
 
       await WETH.mint(senderUser, fp(2));
       await WETH.approve(vault, MAX_UINT256, { from: senderUser });
-
       await WETH.mint(admin, fp(20));
 
-      await ampl.mint(admin, amplFP(6000));
+      await ampl.mint(admin, amplFP(6000), { from: admin });
       await ampl.approve(wampl, amplFP(6000), { from: admin });
       await wampl.instance.connect(admin).mint(fp(6));
 
