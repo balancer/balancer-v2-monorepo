@@ -14,8 +14,15 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+
 interface IBalancerMinter {
     event Minted(address indexed recipient, address gauge, uint256 minted);
+
+    /**
+     * @notice Returns the address of the Balancer Governance Token
+     */
+    function getBalancerToken() external view returns (IERC20);
 
     /**
      * @notice Returns the address of the Balancer Token Admin contract
