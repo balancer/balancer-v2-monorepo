@@ -6,6 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import Authorizer from '@balancer-labs/v2-helpers/src/models/authorizer/Authorizer';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
@@ -32,7 +33,7 @@ describe('Authorizer', () => {
     vault = await deploy('Vault', { args: [oldAuthorizer.address, ZERO_ADDRESS, 0, 0] });
     authorizer = await Authorizer.create({ admin, vault });
 
-    const setAuthorizerAction = await vault.getActionId(vault.interface.getSighash('setAuthorizer'));
+    const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
     await oldAuthorizer.grantPermissions(setAuthorizerAction, admin, vault, { from: admin });
     await vault.connect(admin).setAuthorizer(authorizer.address);
   });
@@ -678,7 +679,7 @@ describe('Authorizer', () => {
 
           context('when the delay is greater than or equal to the delay to set the authorizer in the vault', () => {
             sharedBeforeEach('set delay to set authorizer', async () => {
-              const setAuthorizerAction = await vault.getActionId(vault.interface.getSighash('setAuthorizer'));
+              const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
               const args = [SET_DELAY_PERMISSION, setAuthorizerAction];
               const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
               await authorizer.grantPermissions(setDelayAction, admin, authorizer, { from: admin });
@@ -817,7 +818,7 @@ describe('Authorizer', () => {
       context('when the sender has permission', () => {
         context('when the sender has permission for the requested action', () => {
           sharedBeforeEach('set action', async () => {
-            action = await vault.getActionId(vault.interface.getSighash('setAuthorizer'));
+            action = await actionId(vault, 'setAuthorizer');
           });
 
           context('when the sender has permission for the requested contract', () => {
@@ -949,7 +950,7 @@ describe('Authorizer', () => {
 
         context('when the sender has permissions for another action', () => {
           sharedBeforeEach('grant permission', async () => {
-            action = await vault.getActionId(vault.interface.getSighash('setRelayerApproval'));
+            action = await actionId(vault, 'setRelayerApproval');
             await authorizer.grantPermissions(action, grantee, vault, { from: admin });
           });
 
@@ -988,7 +989,7 @@ describe('Authorizer', () => {
     });
 
     sharedBeforeEach('grant set authorizer permission with delay', async () => {
-      const setAuthorizerAction = await vault.getActionId(vault.interface.getSighash('setAuthorizer'));
+      const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
       const args = [SET_DELAY_PERMISSION, setAuthorizerAction];
       const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
       await authorizer.grantPermissions(setDelayAction, admin, authorizer, { from: admin });
@@ -1117,7 +1118,7 @@ describe('Authorizer', () => {
     });
 
     sharedBeforeEach('grant set authorizer permission with delay', async () => {
-      const setAuthorizerAction = await vault.getActionId(vault.interface.getSighash('setAuthorizer'));
+      const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
       const args = [SET_DELAY_PERMISSION, setAuthorizerAction];
       const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
       await authorizer.grantPermissions(setDelayAction, admin, authorizer, { from: admin });
