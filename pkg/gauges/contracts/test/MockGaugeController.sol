@@ -16,11 +16,16 @@ pragma solidity ^0.7.0;
 
 import "../interfaces/IGaugeController.sol";
 
+// For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
+// naming convention.
+// solhint-disable func-name-mixedcase
+
 contract MockGaugeController is IGaugeController {
     int128 private _numGaugeTypes;
     mapping(address => bool) private _validGauge;
     mapping(address => int128) private _gaugeType;
 
+    // solhint-disable-next-line func-param-name-mixedcase, var-name-mixedcase
     event NewGauge(address addr, int128 gauge_type, uint256 weight);
 
     function n_gauge_types() external view override returns (int128) {
@@ -28,13 +33,13 @@ contract MockGaugeController is IGaugeController {
     }
 
     function gauge_types(address gauge) external view override returns (int128) {
-        require(_validGauge[gauge]);
+        require(_validGauge[gauge], "Gauge doesn't exist on controller");
         return _gaugeType[gauge];
     }
 
     function add_gauge(address gauge, int128 gaugeType) external override {
-        require(!_validGauge[gauge]);
-        require(gaugeType >= 0 && gaugeType < _numGaugeTypes);
+        require(!_validGauge[gauge], "Gauge already exists on controller");
+        require(gaugeType >= 0 && gaugeType < _numGaugeTypes, "Invalid gauge type");
         _validGauge[gauge] = true;
         emit NewGauge(gauge, gaugeType, 0);
     }
