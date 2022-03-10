@@ -4,7 +4,7 @@
 
 [![NPM Package](https://img.shields.io/npm/v/@balancer-labs/v2-liquidity-mining.svg)](https://www.npmjs.org/package/@balancer-labs/v2-liquidity-mining)
 
-This package contains the source code of Balancer V2's Liquditiy Mining system, which is composed of multiple contacts. Among those stand out the [`VotingEscrow`](./contracts/VotingEscrow.vy), the [`BalancerMinter`](./contracts/BalancerMinter.sol), and the [`GaugeController`](./contracts/GaugeController.vy)., as well as all [core interfaces](./contracts/interfaces).
+This package contains the source code of Balancer V2's Liquidity Mining system, which is composed of multiple contracts. Among those stand out the [`VotingEscrow`](./contracts/VotingEscrow.vy), the [`BalancerMinter`](./contracts/BalancerMinter.sol), and the [`GaugeController`](./contracts/GaugeController.vy)., as well as all [core interfaces](./contracts/interfaces).
 
 ## Overview
 
@@ -14,7 +14,7 @@ This system very closely mirrors that of Curve DAO: indeed, most of the smart co
 
 ### Balancer Token Admin
 
-An important job of the Liquidity Mining program is to provide upper bounds on all future minting of the Balancer Token. In Curve's case, these restrictions are embedded in the CRV token itself. The BAL token contract however lacks such constraints, allowing its admins to mint arbitrary amounts of BAL (up to a maximum total supply), so the CRV code had to be adapted.
+An important job of the Liquidity Mining program is to provide upper bounds on all future minting of the Balancer Token. In Curve's case, these restrictions are embedded in the CRV token itself. The BAL token contract however lacks such constraints, allowing its admins to mint arbitrary amounts of BAL, so the CRV code had to be adapted.
 
 BAL uses OpenZeppelin's `AccessControl` contracts to manage minting permissions over it, which makes it simple to setup a two-contract system that emulates the original CRV behavior. The `BalancerTokenAdmin` acts as the sole account in the entire network with BAL minting permission, creating a thin wrapper around BAL's mechanism with two added behaviors: a minting schedule is put into place, which creates an upper bound on the amount of BAL that can exist at any point in time, and minting authorization is delegated to the Balancer DAO via the `Authorizer` contract. Once `BalancerTokenAdmin` is setup, BAL's admin configuration becomes immutable, locking-in these constraints forever.
 
@@ -22,7 +22,7 @@ The source code that computes the amount of BAL available to be minted is a dire
 
 ### Balancer Minter
 
-The `BalancerMinter` is granted permission by the `Authorizer` to mint BAL (via `BalancerTokenAdmin`, which enforces the minting schedule). It does so by relying on the `GaugeController` to keep a registry of authorized gauge contracts, and then mints whatever token amounts the different gauges report. This means gauges are a single point of failure, since just one faulty gauge can cause for arbitrary amounts of BAL (up to the emissions limit) to be minted.
+The `BalancerMinter` is granted permission by the `Authorizer` to mint BAL (via `BalancerTokenAdmin`, which enforces the minting schedule). It does so by relying on the `GaugeController` to keep a registry of authorized gauge contracts, and then mints whatever token amounts the different gauges report. This means gauges are a single point of failure, since just one faulty gauge can cause for arbitrary amounts of BAL (up to the emissions limit) to be minted. This can only be mitigated through revoking the `BalancerMinter`'s permission to mint BAL, in effect shutting down all gauges.
 
 `BalancerMinter` is generally inspired by `CurveMinter`, though a few extra functions were added for convenience (such as `setMinterApprovalWithSignature`).
 
