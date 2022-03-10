@@ -290,7 +290,7 @@ contract Authorizer is IAuthorizer {
     }
 
     function _authenticate(bytes32 action, address where) internal view {
-        _require(canPerform(action, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
+        _require(hasPermission(action, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
     }
 
     function _executeActionId(uint256 id) internal pure returns (bytes32) {
