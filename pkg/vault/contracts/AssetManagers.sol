@@ -40,7 +40,8 @@ abstract contract AssetManagers is
     // Stores the Asset Manager for each token of each Pool.
     mapping(bytes32 => mapping(IERC20 => address)) internal _poolAssetManagers;
 
-    function managePoolBalance(PoolBalanceOp[] memory ops) external override nonReentrant whenNotPaused {
+    //todo add logic to handle nonReentrant
+    function managePoolBalance(PoolBalanceOp[] memory ops) external override whenNotPaused {
         // This variable could be declared inside the loop, but that causes the compiler to allocate memory on each
         // loop iteration, increasing gas costs.
         PoolBalanceOp memory op;
