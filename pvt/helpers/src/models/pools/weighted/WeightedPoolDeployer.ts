@@ -35,6 +35,7 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
+      paysProtocolFees,
       managementSwapFeePercentage,
     } = deployment;
 
@@ -50,6 +51,7 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
+      paysProtocolFees,
       managementSwapFeePercentage
     );
   },
@@ -66,6 +68,7 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
+      paysProtocolFees,
       managementSwapFeePercentage,
       owner,
       from,
@@ -130,6 +133,7 @@ export default {
               owner: owner,
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
+              paysProtocolFees: paysProtocolFees,
               managementSwapFeePercentage: managementSwapFeePercentage,
             },
           ],
@@ -168,6 +172,7 @@ export default {
       oracleEnabled,
       swapEnabledOnStart,
       mustAllowlistLPs,
+      paysProtocolFees,
       managementSwapFeePercentage,
       poolType,
       owner,
@@ -240,6 +245,7 @@ export default {
           owner: from?.address || ZERO_ADDRESS,
           swapEnabledOnStart: swapEnabledOnStart,
           mustAllowlistLPs: mustAllowlistLPs,
+          paysProtocolFees: paysProtocolFees,
           managementSwapFeePercentage: managementSwapFeePercentage,
         };
 

@@ -45,7 +45,7 @@ describe('BaseManagedPoolFactory', function () {
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
 
-  async function createPool(swapsEnabled = true, mustAllowlistLPs = false): Promise<Contract> {
+  async function createPool(swapsEnabled = true, mustAllowlistLPs = false, paysProtocolFees = true): Promise<Contract> {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
 
@@ -62,6 +62,7 @@ describe('BaseManagedPoolFactory', function () {
       owner: manager.address,
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
+      paysProtocolFees: paysProtocolFees,
       managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
     };
 
@@ -188,6 +189,18 @@ describe('BaseManagedPoolFactory', function () {
       const pool = await createPool(true, false);
 
       expect(await pool.getMustAllowlistLPs()).to.be.false;
+    });
+
+    it('pool will pay protocol fees', async () => {
+      const pool = await createPool(true, false);
+
+      expect(await pool.paysProtocolFees()).to.be.true;
+    });
+
+    it('pool created with protocol fees disabled', async () => {
+      const pool = await createPool(true, false, false);
+
+      expect(await pool.paysProtocolFees()).to.be.false;
     });
   });
 });

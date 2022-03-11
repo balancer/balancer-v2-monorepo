@@ -25,6 +25,7 @@ export type RawWeightedPoolDeployment = {
   oracleEnabled?: boolean;
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
+  paysProtocolFees?: boolean;
   managementSwapFeePercentage?: BigNumberish;
   owner?: Account;
   admin?: SignerWithAddress;
@@ -45,6 +46,7 @@ export type WeightedPoolDeployment = {
   oracleEnabled: boolean;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  paysProtocolFees: boolean;
   managementSwapFeePercentage: BigNumberish;
   owner?: string;
   admin?: SignerWithAddress;
@@ -226,5 +228,6 @@ export type ManagedPoolParams = {
   owner: string;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  paysProtocolFees: boolean;
   managementSwapFeePercentage: BigNumberish;
 };

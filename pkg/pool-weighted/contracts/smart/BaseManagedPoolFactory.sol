@@ -57,6 +57,7 @@ contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWin
                         owner: poolParams.owner,
                         swapEnabledOnStart: poolParams.swapEnabledOnStart,
                         mustAllowlistLPs: poolParams.mustAllowlistLPs,
+                        paysProtocolFees: poolParams.paysProtocolFees,
                         managementSwapFeePercentage: poolParams.managementSwapFeePercentage
                     })
                 )
