@@ -739,10 +739,10 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
-    function _afterExit(
+    function _beforeExit(
         uint256[] memory,
         uint256[] memory,
-        uint256[] memory
+        uint256
     ) internal virtual override {
         collectAumManagementFees();
      }
