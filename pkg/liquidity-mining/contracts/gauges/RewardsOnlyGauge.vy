@@ -14,6 +14,8 @@ implements: ERC20
 interface ERC20Extended:
     def symbol() -> String[26]: view
 
+interface ERC1271:
+    def isValidSignature(_hash: bytes32, _signature: Bytes[65]) -> bytes32: view
 
 event Deposit:
     provider: indexed(address)
@@ -42,6 +44,13 @@ event Approval:
 MAX_REWARDS: constant(uint256) = 8
 CLAIM_FREQUENCY: constant(uint256) = 3600
 
+# keccak256("isValidSignature(bytes32,bytes)")[:4] << 224
+ERC1271_MAGIC_VAL: constant(bytes32) = 0x1626ba7e00000000000000000000000000000000000000000000000000000000
+VERSION: constant(String[8]) = "v5.0.0"
+
+EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
+PERMIT_TYPEHASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
+
 lp_token: public(address)
 
 balanceOf: public(HashMap[address, uint256])
@@ -49,7 +58,11 @@ totalSupply: public(uint256)
 allowance: public(HashMap[address, HashMap[address, uint256]])
 
 name: public(String[64])
-symbol: public(String[32])
+symbol: public(String[40])
+
+# ERC2612
+DOMAIN_SEPARATOR: public(bytes32)
+nonces: public(HashMap[address, uint256])
 
 # For tracking external rewards
 reward_data: uint256
@@ -81,9 +94,15 @@ def __init__( _admin: address, _lp_token: address):
     @param _lp_token Liquidity Pool contract address
     """
 
-    symbol: String[26] = ERC20Extended(_lp_token).symbol()
-    self.name = concat("Curve.fi ", symbol, " RewardGauge Deposit")
+    symbol: String[32] = ERC20Extended(_lp_token).symbol()
+    name: String[64] = concat("Balancer ", symbol, " RewardGauge Deposit")
+
+    self.name = name
     self.symbol = concat(symbol, "-gauge")
+
+    self.DOMAIN_SEPARATOR = keccak256(
+        _abi_encode(EIP712_TYPEHASH, keccak256(name), keccak256(VERSION), chain.id, self)
+    )
 
     self.lp_token = _lp_token
     self.admin = _admin
@@ -379,6 +398,55 @@ def approve(_spender : address, _value : uint256) -> bool:
 
     return True
 
+@external
+def permit(
+    _owner: address,
+    _spender: address,
+    _value: uint256,
+    _deadline: uint256,
+    _v: uint8,
+    _r: bytes32,
+    _s: bytes32
+) -> bool:
+    """
+    @notice Approves spender by owner's signature to expend owner's tokens.
+        See https://eips.ethereum.org/EIPS/eip-2612.
+    @dev Inspired by https://github.com/yearn/yearn-vaults/blob/main/contracts/Vault.vy#L753-L793
+    @dev Supports smart contract wallets which implement ERC1271
+        https://eips.ethereum.org/EIPS/eip-1271
+    @param _owner The address which is a source of funds and has signed the Permit.
+    @param _spender The address which is allowed to spend the funds.
+    @param _value The amount of tokens to be spent.
+    @param _deadline The timestamp after which the Permit is no longer valid.
+    @param _v The bytes[64] of the valid secp256k1 signature of permit by owner
+    @param _r The bytes[0:32] of the valid secp256k1 signature of permit by owner
+    @param _s The bytes[32:64] of the valid secp256k1 signature of permit by owner
+    @return True, if transaction completes successfully
+    """
+    assert _owner != ZERO_ADDRESS
+    assert block.timestamp <= _deadline
+
+    nonce: uint256 = self.nonces[_owner]
+    digest: bytes32 = keccak256(
+        concat(
+            b"\x19\x01",
+            self.DOMAIN_SEPARATOR,
+            keccak256(_abi_encode(PERMIT_TYPEHASH, _owner, _spender, _value, nonce, _deadline))
+        )
+    )
+
+    if _owner.is_contract:
+        sig: Bytes[65] = concat(_abi_encode(_r, _s), slice(convert(_v, bytes32), 31, 1))
+        # reentrancy not a concern since this is a staticcall
+        assert ERC1271(_owner).isValidSignature(digest, sig) == ERC1271_MAGIC_VAL
+    else:
+        assert ecrecover(digest, convert(_v, uint256), convert(_r, uint256), convert(_s, uint256)) == _owner
+
+    self.allowance[_owner][_spender] = _value
+    self.nonces[_owner] = nonce + 1
+
+    log Approval(_owner, _spender, _value)
+    return True
 
 @external
 def increaseAllowance(_spender: address, _added_value: uint256) -> bool:
