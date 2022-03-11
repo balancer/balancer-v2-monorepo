@@ -1,4 +1,4 @@
-# @version 0.2.12
+# @version 0.3.1
 """
 @title Rewards-Only Gauge
 @author Curve Finance
