@@ -16,11 +16,11 @@ struct RewardToken:
     received: uint256
     paid: uint256
 
-
-owner: public(address)
-future_owner: public(address)
+BAL_TOKEN: immutable(address)
+AUTHORIZER_ADAPTOR: immutable(address)
 
 reward_receiver: public(address)
+
 reward_tokens: public(address[8])
 reward_count: public(uint256)
 reward_data: public(HashMap[address, RewardToken])
@@ -28,14 +28,12 @@ last_update_time: public(uint256)
 
 
 @external
-def __init__(_owner: address, _receiver: address, _reward: address):
-    self.owner = _owner
-    self.reward_receiver = _receiver
+def __init__(_bal_token: address, _authorizerAdaptor: address):
+    BAL_TOKEN = _bal_token
+    AUTHORIZER_ADAPTOR = _authorizerAdaptor
 
-    self.reward_tokens[0] = _reward
-    self.reward_count = 1
-    self.reward_data[_reward].distributor = _owner
-    self.reward_data[_reward].duration = 86400 * 7
+    # prevent initialization of implementation
+    self.reward_receiver = 0x000000000000000000000000000000000000dEaD
 
 
 @external
@@ -46,7 +44,7 @@ def add_reward(_token: address, _distributor: address, _duration: uint256):
     @param _distributor Address permitted to call `notify_reward_amount` for this token
     @param _duration Number of seconds that rewards of this token are streamed over
     """
-    assert msg.sender == self.owner  # dev: owner only
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: owner only
     assert self.reward_data[_token].distributor == ZERO_ADDRESS, "Reward token already added"
 
     idx: uint256 = self.reward_count
@@ -63,7 +61,7 @@ def remove_reward(_token: address):
     @dev Any remaining balance of the reward token is transferred to the owner
     @param _token Address of the reward token
     """
-    assert msg.sender == self.owner  # dev: only owner
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
     assert self.reward_data[_token].distributor != ZERO_ADDRESS, "Reward token not added"
 
     self.reward_data[_token] = empty(RewardToken)
@@ -119,7 +117,7 @@ def set_receiver(_receiver: address):
          rewards that are directly pushed to it (without a call to `get_reward`)
     @param _receiver Address of the reward receiver
     """
-    assert msg.sender == self.owner  # dev: only owner
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
     self.reward_receiver = _receiver
 
 
@@ -187,7 +185,7 @@ def set_reward_duration(_token: address, _duration: uint256):
     @param _token Address of the reward token
     @param _duration Number of seconds to distribute rewards over
     """
-    assert msg.sender == self.owner  # dev: only owner
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
     assert block.timestamp > self.reward_data[_token].period_finish, "Reward period still active"
     self.reward_data[_token].duration = _duration
 
@@ -199,27 +197,25 @@ def set_reward_distributor(_token: address, _distributor: address):
     @param _token Address of the reward token
     @param _distributor Reward distributor
     """
-    assert msg.sender == self.owner  # dev: only owner
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
     self.reward_data[_token].distributor = _distributor
 
+# Initializer
 
 @external
-def commit_transfer_ownership(_owner: address):
+def initialize(reward_receiver: address):
     """
-    @notice Initiate ownership tansfer of the contract
-    @param _owner Address to have ownership transferred to
+    @notice Contract constructor
+    @param reward_receiver RewardsOnlyGauge address
     """
-    assert msg.sender == self.owner  # dev: only owner
+    assert self.reward_receiver == ZERO_ADDRESS
+    
+    self.reward_receiver = reward_receiver
 
-    self.future_owner = _owner
-
-
-@external
-def accept_transfer_ownership():
-    """
-    @notice Accept a pending ownership transfer
-    """
-    owner: address = self.future_owner
-    assert msg.sender == owner  # dev: only new owner
-
-    self.owner = owner
+    # The first reward token will always be BAL, we then have the authorizer adaptor
+    # as the distributor to ensure that governance has the ability to distribute.
+    # The Authorizer adaptor can always update the distributor should Balancer governance wish.
+    self.reward_tokens[0] = BAL_TOKEN
+    self.reward_count = 1
+    self.reward_data[_reward].distributor = AUTHORIZER_ADAPTOR
+    self.reward_data[_reward].duration = 86400 * 7
