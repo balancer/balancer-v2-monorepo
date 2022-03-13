@@ -382,6 +382,9 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
+    // This code is only needed if we are charging protocol & management fees on join- and exitSwaps
+    // If we aren't doing that, all we need to do is override _onSwapGivenIn and _onSwapGivenOut
+    // to check permission, then forward to the base class, and all this goes away.
     function onSwap(
         SwapRequest memory request,
         uint256 balanceTokenIn,
