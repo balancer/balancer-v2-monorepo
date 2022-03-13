@@ -59,7 +59,7 @@ describe('ManagedPoolFactory', function () {
     canChangeSwapFee = true,
     swapsEnabled = true,
     mustAllowlistLPs = false,
-    paysProtocolFees = true,
+    paysProtocolFees = true
   ): Promise<Contract> {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;

@@ -218,7 +218,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     function paysProtocolFees() public view returns (bool) {
         return _getMiscData().decodeBool(_PAYS_PROTOCOL_FEES_OFFSET);
     }
-    
+
     /**
      * @dev Return start time, end time, and endWeights as an array.
      * Current weights should be retrieved via `getNormalizedWeights()`.

@@ -99,7 +99,7 @@ async function deployControllerAndPool(
     swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
     poolType: WeightedPoolType.MANAGED_POOL,
     swapEnabledOnStart: swapEnabledOnStart,
-    paysProtocolFees: paysProtocolFees
+    paysProtocolFees: paysProtocolFees,
   };
   pool = await WeightedPool.create(params);
 }
