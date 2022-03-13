@@ -175,9 +175,9 @@ describe('ManagedPoolController', function () {
       });
 
       it('reverts if non-manager sets the management fee', async () => {
-        await expect(poolController.connect(other).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE)).to.be.revertedWith(
-          'CALLER_IS_NOT_OWNER'
-        );
+        await expect(
+          poolController.connect(other).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE)
+        ).to.be.revertedWith('CALLER_IS_NOT_OWNER');
       });
     });
 
@@ -350,9 +350,9 @@ describe('ManagedPoolController', function () {
       });
 
       it('reverts if the manager tries to change the management fee', async () => {
-        await expect(poolController.connect(manager).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE)).to.be.revertedWith(
-          'UNAUTHORIZED_OPERATION'
-        );
+        await expect(
+          poolController.connect(manager).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE)
+        ).to.be.revertedWith('UNAUTHORIZED_OPERATION');
       });
     });
 
