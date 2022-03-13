@@ -733,8 +733,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         if (_lastAumFeeCollectionTimestamp == 0) {
             // Start the clock on `initializePool`
             _lastAumFeeCollectionTimestamp = block.timestamp;
-        }
-        else {
+        } else {
             collectAumManagementFees();
         }
     }
@@ -745,7 +744,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256
     ) internal virtual override {
         collectAumManagementFees();
-     }
+    }
 
     /**
      * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
