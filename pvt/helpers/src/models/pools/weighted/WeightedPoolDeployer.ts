@@ -52,7 +52,7 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementSwapFeePercentage,
-      managementAumFeePercentage,
+      managementAumFeePercentage
     );
   },
 
