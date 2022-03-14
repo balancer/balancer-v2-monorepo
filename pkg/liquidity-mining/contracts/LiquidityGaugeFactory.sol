@@ -24,26 +24,18 @@ import "./interfaces/ILiquidityGauge.sol";
 contract LiquidityGaugeFactory is Authentication {
     IVault private immutable _vault;
     ILiquidityGauge private _gaugeImplementation;
-    address private _authorizerAdaptor;
 
     mapping(address => bool) private _isGaugeFromFactory;
     mapping(address => address) private _poolGauge;
 
     event GaugeCreated(address indexed gauge, address indexed pool);
     event GaugeImplementationUpdated(address oldGaugeImplementation, address newGaugeImplementation);
-    event AuthorizerAdaptorUpdated(address oldAuthorizerAdaptor, address newAuthorizerAdaptor);
 
-    constructor(
-        IVault vault,
-        ILiquidityGauge gauge,
-        address authorizerAdaptor
-    ) Authentication(bytes32(uint256(address(this)))) {
+    constructor(IVault vault, ILiquidityGauge gauge) Authentication(bytes32(uint256(address(this)))) {
         _vault = vault;
         _gaugeImplementation = gauge;
-        _authorizerAdaptor = authorizerAdaptor;
 
         emit GaugeImplementationUpdated(address(0), address(gauge));
-        emit AuthorizerAdaptorUpdated(address(0), authorizerAdaptor);
     }
 
     /**
@@ -58,14 +50,6 @@ contract LiquidityGaugeFactory is Authentication {
      */
     function getAuthorizer() public view returns (IAuthorizer) {
         return getVault().getAuthorizer();
-    }
-
-    /**
-     * @notice Returns the address of the Authorizer adaptor contract.
-     * @dev This address has full admin powers over all gauges deployed by this factory.
-     */
-    function getAuthorizerAdaptor() external view returns (address) {
-        return _authorizerAdaptor;
     }
 
     /**
@@ -97,16 +81,6 @@ contract LiquidityGaugeFactory is Authentication {
 
         _gaugeImplementation = ILiquidityGauge(newGaugeImplementation);
         emit GaugeImplementationUpdated(currentGaugeImplementation, newGaugeImplementation);
-    }
-
-    /**
-     * @notice Sets the address of the adaptor used for administration of gauges.
-     */
-    function setAuthorizerAdaptor(address newAuthorizerAdaptor) external authenticate {
-        address currentAuthorizerAdaptor = address(_authorizerAdaptor);
-
-        _authorizerAdaptor = newAuthorizerAdaptor;
-        emit AuthorizerAdaptorUpdated(currentAuthorizerAdaptor, newAuthorizerAdaptor);
     }
 
     /**
