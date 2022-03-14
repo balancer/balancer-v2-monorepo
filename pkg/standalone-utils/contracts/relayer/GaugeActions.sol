@@ -17,8 +17,8 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 
-import "@balancer-labs/v2-gauges/contracts/interfaces/IBalancerMinter.sol";
-import "@balancer-labs/v2-gauges/contracts/interfaces/ILiquidityGauge.sol";
+import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerMinter.sol";
+import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/ILiquidityGauge.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "../interfaces/IBaseRelayerLibrary.sol";
