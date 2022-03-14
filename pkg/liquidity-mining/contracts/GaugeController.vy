@@ -160,7 +160,7 @@ def gauge_exists(_addr: address) -> bool:
     """
     @notice Get whether gauge already exists on GaugeController
     @param _addr Gauge address
-    @return boolean of Gauge existance
+    @return true if the gauge exists
     """
     gauge_type: int128 = self.gauge_types_[_addr]
     return gauge_type > 0
