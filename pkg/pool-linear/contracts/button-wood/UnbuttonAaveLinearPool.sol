@@ -15,23 +15,24 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IButtonWrapper.sol";
+import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IUnbuttonToken.sol";
+
 import "../interfaces/IAToken.sol";
 import "../LinearPool.sol";
 
 /**
  * @title UnbuttonAaveLinearPool
- * 
+ *
  * @author @aalavandhan1984 (dev-support@fragments.org)
- * 
+ *
  * @notice This linear pool is between any Unbutton ERC-20 (eg, wrapped AMPL)
- *         and it's corresponding Unbutton aToken (eg, wrapped aaveAMPL).
- * 
- * @dev In the comments we assume that the pool is between {wAMPL - wAaveAMPL},
- *      however this linear pool will support any rebasing token and it's
+ *         and its corresponding Unbutton aToken (eg, wrapped aaveAMPL).
+ *
+ * @dev In the comments we assume that the pool is between {wAMPL - wAaveAMPL};
+ *      however this linear pool will support any rebasing token and its
  *      aToken counterpart both of which are wrapped using the unbutton wrapper.
- * 
- *      For {the wAMPL - wAaveAMPL} pool, the exchange rate is calculated based on:
+ *
+ *      For the {wAMPL - wAaveAMPL} pool, the exchange rate is calculated based on:
  *        - the rate between wAMPL and AMPL
  *        - the rate between AMPL and aaveAMPL
  *        - the rate between wAaveAMPL and aaveAMPL
@@ -43,8 +44,8 @@ contract UnbuttonAaveLinearPool is LinearPool {
         IVault vault,
         string memory name,
         string memory symbol,
-        IERC20 wAMPL,
-        IERC20 wAaveAMPL,
+        IUnbuttonToken mainToken,
+        IUnbuttonToken wrappedToken,
         uint256 upperTarget,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
@@ -55,8 +56,8 @@ contract UnbuttonAaveLinearPool is LinearPool {
             vault,
             name,
             symbol,
-            wAMPL,     // main token
-            wAaveAMPL, // wrapped token
+            mainToken, // wAMPL
+            wrappedToken, // wAaveAMPL
             upperTarget,
             swapFeePercentage,
             pauseWindowDuration,
@@ -64,12 +65,12 @@ contract UnbuttonAaveLinearPool is LinearPool {
             owner
         )
     {
-        address mainUnderlying = IButtonWrapper(address(wAMPL))
-            .underlying();
+        // wAMPL.underlying() == AMPL
+        address mainUnderlying = mainToken.underlying();
 
-        address wrappedUnderlying = 
-            IAToken(IButtonWrapper(address(wAaveAMPL)).underlying())
-            .UNDERLYING_ASSET_ADDRESS();
+        // wAaveAMPL.underlying() == aaveAMPL
+        // aaveAMPL.UNDERLYING_ASSET_ADDRESS() == AMPL
+        address wrappedUnderlying = IAToken(wrappedToken.underlying()).UNDERLYING_ASSET_ADDRESS();
 
         _require(mainUnderlying == wrappedUnderlying, Errors.TOKENS_MISMATCH);
     }
@@ -77,19 +78,19 @@ contract UnbuttonAaveLinearPool is LinearPool {
     /*
      * @dev This function returns the exchange rate between the main token and
      *      the wrapped token as a 18 decimal fixed point number.
-     *      In our case, its the exchange rate between wAMPL and wAaveAMPL.
-     *      (i.e. The number of wAMPL for each wAaveAMPL)
+     *      In our case, it's the exchange rate between wAMPL and wAaveAMPL
+     *      (i.e., the number of wAMPL for each wAaveAMPL).
      *      All UnbuttonTokens have 18 decimals, so it is not necessary to
      *      query decimals for the main token or wrapped token.
      */
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        // 1e18 wAaveAMPL = r1 aAMPL
-        uint256 r1 = IButtonWrapper(getWrappedToken()).wrapperToUnderlying(FixedPoint.ONE);
+        // 1e18 wAaveAMPL = r1 aaveAMPL
+        uint256 r1 = IUnbuttonToken(getWrappedToken()).wrapperToUnderlying(FixedPoint.ONE);
 
-        // r1 aAMPL = r1 AMPL (AMPL and aAMPL have a 1:1 exchange rate)
+        // r1 aaveAMPL = r1 AMPL (AMPL and aaveAMPL have a 1:1 exchange rate)
 
         // r1 AMPL = r2 wAMPL
-        uint256 r2 = IButtonWrapper(getMainToken()).underlyingToWrapper(r1);
+        uint256 r2 = IUnbuttonToken(getMainToken()).underlyingToWrapper(r1);
 
         // 1e18 wAaveAMPL = r2 wAMPL
         return r2;
