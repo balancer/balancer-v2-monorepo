@@ -97,13 +97,4 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) internal virtual returns (uint256);
-
-    function _processTaxableSwapAmounts(
-        bool isJoin,
-        uint256[] memory normalizedWeights,
-        uint256[] memory balances,
-        uint256[] memory taxableAmounts
-    ) internal virtual {
-        // solhint-disable-previous-line no-empty-blocks
-    }
 }
