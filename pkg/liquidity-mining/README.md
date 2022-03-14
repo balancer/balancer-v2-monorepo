@@ -46,7 +46,7 @@ It is almost an exact copy of Curve's implementation, with the few differences b
 
 ### Voting Escrow
 
-`VotingEscrow` is the veBAL contract, which allows LPs to deposit and lock 80/20 BPT in exchange for veBAL.
+`VotingEscrow` is the veBAL contract, which allows LPs to deposit and lock 80/20 BPT in exchange for veBAL. The maximum lock time has been shortened from 4 years to 1 year.
 
 It is almost an exact copy of Curve's implementation, with the few differences being usage of a newer version of the Vyper compiler, replacement of storage variables for the new `immutable` type, and removal of dummy functions introduced for Aragon compatibility.
 
