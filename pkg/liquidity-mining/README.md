@@ -24,13 +24,13 @@ The source code that computes the amount of BAL available to be minted is a dire
 
 The `BalancerMinter` is granted permission by the `Authorizer` to mint BAL (via `BalancerTokenAdmin`, which enforces the minting schedule). It does so by relying on the `GaugeController` to keep a registry of authorized gauge contracts, and then mints whatever token amounts the different gauges report. This means gauges are a single point of failure, since just one faulty gauge can cause for arbitrary amounts of BAL (up to the emissions limit) to be minted. This can only be mitigated through revoking the `BalancerMinter`'s permission to mint BAL, in effect shutting down all gauges.
 
-`BalancerMinter` is generally inspired by `CurveMinter`, though a few extra functions were added for convenience (such as `setMinterApprovalWithSignature`).
+`BalancerMinter` is generally inspired by `CurveMinter`, although a few extra functions were added for convenience (such as `setMinterApprovalWithSignature`).
 
 ### Authorizer Adaptor
 
 Curve relies greatly on contract admin accounts, and so favors a single-admin pattern in all of its contracts. On the other hand, Balancer's access control solution is the `Authorizer` contract, which holds all permissions in the network, and is queried by other contracts when permissioned actions are performed. In order to solve this discrepancy without modifying Curve's source code nor changing how Balancer's authorizations work, the `AuthorizerAdaptor` contract was created.
 
-This singleton entity is meant to be setup as the admin of all of these single-admin contracts. It adapts their behavior to the `Authorizer` pattern by implementing the `performAction` function, which lets any account cause the Adaptor to make any external call, as long as the caller has been granted permission in the `Authorizer` to do so.
+This singleton entity is meant to be setup as the admin of all of these single-admin contracts. It adapts their behavior to the `Authorizer` pattern by implementing the `performAction` function, which forwards on arbitrary external calls while enforcing that the caller has permissions on the `Authorizer` to make the provided function call to the target contract. Contracts which have the `AuthorizerAdaptor` set as their admin then inherit the `Authorizer`'s access control mechanism.
 
 ### Gauge Controller
 
