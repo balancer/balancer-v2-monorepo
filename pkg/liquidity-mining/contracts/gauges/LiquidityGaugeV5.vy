@@ -26,9 +26,6 @@ interface ERC20Extended:
 interface ERC1271:
     def isValidSignature(_hash: bytes32, _signature: Bytes[65]) -> bytes32: view
 
-interface Factory:
-    def getAuthorizerAdaptor() -> address: view
-
 interface Minter:
     def getBalancerTokenAdmin() -> address: view
     def getGaugeController() -> address: view
@@ -94,6 +91,7 @@ PERMIT_TYPEHASH: constant(bytes32) = keccak256("Permit(address owner,address spe
 
 BAL_TOKEN_ADMIN: immutable(address)
 BAL_VAULT: immutable(address)
+AUTHORIZER_ADAPTOR: immutable(address)
 GAUGE_CONTROLLER: immutable(address)
 MINTER: immutable(address)
 VOTING_ESCROW: immutable(address)
@@ -113,7 +111,6 @@ DOMAIN_SEPARATOR: public(bytes32)
 nonces: public(HashMap[address, uint256])
 
 # Gauge
-factory: public(address)
 lp_token: public(address)
 
 is_killed: public(bool)
@@ -158,7 +155,7 @@ integrate_inv_supply: public(uint256[100000000000000000000000000000])  # bump ep
 
 
 @external
-def __init__(minter: address, veBoostProxy: address):
+def __init__(minter: address, veBoostProxy: address, authorizerAdaptor: address):
     """
     @param minter Address of minter contract
     @param veBoostProxy Address of boost delegation contract
@@ -167,6 +164,7 @@ def __init__(minter: address, veBoostProxy: address):
     balTokenAdmin: address = Minter(minter).getBalancerTokenAdmin()
     BAL_TOKEN_ADMIN = balTokenAdmin
     BAL_VAULT = TokenAdmin(balTokenAdmin).getVault()
+    AUTHORIZER_ADAPTOR = authorizerAdaptor
     GAUGE_CONTROLLER = gaugeController
     MINTER = minter
     VOTING_ESCROW = Controller(gaugeController).voting_escrow()
@@ -680,7 +678,7 @@ def add_reward(_reward_token: address, _distributor: address):
     @param _distributor Address permitted to fund this contract with the reward token
     """
     assert _distributor != ZERO_ADDRESS
-    assert msg.sender == Factory(self.factory).getAuthorizerAdaptor()  # dev: only owner
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
 
     reward_count: uint256 = self.reward_count
     assert reward_count < MAX_REWARDS
@@ -701,7 +699,7 @@ def set_reward_distributor(_reward_token: address, _distributor: address):
     """
     current_distributor: address = self.reward_data[_reward_token].distributor
 
-    assert msg.sender == current_distributor or msg.sender == Factory(self.factory).getAuthorizerAdaptor()
+    assert msg.sender == current_distributor or msg.sender == AUTHORIZER_ADAPTOR
     assert current_distributor != ZERO_ADDRESS
     assert _distributor != ZERO_ADDRESS
 
@@ -716,7 +714,7 @@ def set_killed(_is_killed: bool):
     @dev When killed, the gauge always yields a rate of 0 and so cannot mint BAL
     @param _is_killed Killed status to set
     """
-    assert msg.sender == Factory(self.factory).getAuthorizerAdaptor()  # dev: only owner
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
 
     self.is_killed = _is_killed
 
@@ -836,7 +834,6 @@ def initialize(_lp_token: address):
     assert self.lp_token == ZERO_ADDRESS
 
     self.lp_token = _lp_token
-    self.factory = msg.sender
 
     symbol: String[32] = ERC20Extended(_lp_token).symbol()
     name: String[64] = concat("Balancer ", symbol, " Gauge Deposit")
