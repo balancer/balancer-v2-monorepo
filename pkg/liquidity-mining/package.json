@@ -1,13 +1,13 @@
 {
-  "name": "@balancer-labs/v2-gauges",
+  "name": "@balancer-labs/v2-liquidity-mining",
   "version": "1.0.0",
-  "description": "Balancer V2 gauge system",
+  "description": "Balancer V2 Liquidity Mining system",
   "license": "GPL-3.0-only",
-  "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/gauges#readme",
+  "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/liquidity-mining#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo.git",
-    "directory": "pkg/gauges"
+    "directory": "pkg/liquidity-mining"
   },
   "bugs": {
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"

@@ -18,7 +18,8 @@ describe('BalancerMinter', () => {
   });
 
   sharedBeforeEach(async () => {
-    minterContract = await deploy('BalancerMinter', { args: [ZERO_ADDRESS, ZERO_ADDRESS] });
+    const balancerTokenAdmin = await deploy('BalancerTokenAdmin', { args: [ZERO_ADDRESS, ZERO_ADDRESS] });
+    minterContract = await deploy('BalancerMinter', { args: [balancerTokenAdmin.address, ZERO_ADDRESS] });
   });
 
   describe('set minter approval with signature', () => {
