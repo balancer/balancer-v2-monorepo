@@ -382,181 +382,26 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         }
     }
 
-    // This code is only needed if we are charging protocol & management fees on join- and exitSwaps
-    // If we aren't doing that, all we need to do is override _onSwapGivenIn and _onSwapGivenOut
-    // to check permission, then forward to the base class, and all this goes away.
-    function onSwap(
-        SwapRequest memory request,
-        uint256 balanceTokenIn,
-        uint256 balanceTokenOut
-    ) public virtual override onlyVault(request.poolId) returns (uint256) {
+    // Swap overrides - revert unless swaps are enabled
+
+    function _onSwapGivenIn(
+        SwapRequest memory swapRequest,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) internal override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
-        uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
-
-        uint256[] memory normalizedWeights = new uint256[](2);
-        normalizedWeights[0] = _getNormalizedWeight(request.tokenIn);
-        normalizedWeights[1] = _getNormalizedWeight(request.tokenOut);
-
-        uint256[] memory preSwapBalances = new uint256[](2);
-        preSwapBalances[0] = _upscale(balanceTokenIn, scalingFactorTokenIn);
-        preSwapBalances[1] = _upscale(balanceTokenOut, scalingFactorTokenOut);
-
-        // Broken out only because of "stack too deep"
-        if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            return
-                _processSwapGivenIn(
-                    request,
-                    scalingFactorTokenIn,
-                    scalingFactorTokenOut,
-                    preSwapBalances,
-                    normalizedWeights
-                );
-        } else {
-            return
-                _processSwapGivenOut(
-                    request,
-                    scalingFactorTokenIn,
-                    scalingFactorTokenOut,
-                    preSwapBalances,
-                    normalizedWeights
-                );
-        }
+        return super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
 
-    function _processSwapGivenIn(
-        SwapRequest memory request,
-        uint256 scalingFactorTokenIn,
-        uint256 scalingFactorTokenOut,
-        uint256[] memory preSwapBalances,
-        uint256[] memory normalizedWeights
-    ) private returns (uint256) {
-        // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
-        uint256 amountInMinusSwapFees = _subtractSwapFeeAmount(request.amount);
-        amountInMinusSwapFees = _upscale(amountInMinusSwapFees, scalingFactorTokenIn);
-        request.amount = _upscale(request.amount, scalingFactorTokenIn);
+    function _onSwapGivenOut(
+        SwapRequest memory swapRequest,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) internal override returns (uint256) {
+        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        uint256 amountOut = WeightedMath._calcOutGivenIn(
-            preSwapBalances[0],
-            normalizedWeights[0],
-            preSwapBalances[1],
-            normalizedWeights[1],
-            amountInMinusSwapFees
-        );
-
-        uint256[] memory postSwapBalances = new uint256[](2);
-        postSwapBalances[0] = preSwapBalances[0].add(request.amount);
-        postSwapBalances[1] = preSwapBalances[1].sub(amountOut);
-
-        _payProtocolAndManagementFees(false, normalizedWeights, preSwapBalances, postSwapBalances);
-
-        // amountOut tokens are exiting the Pool, so we round down.
-        return _downscaleDown(amountOut, scalingFactorTokenOut);
-    }
-
-    function _processSwapGivenOut(
-        SwapRequest memory request,
-        uint256 scalingFactorTokenIn,
-        uint256 scalingFactorTokenOut,
-        uint256[] memory preSwapBalances,
-        uint256[] memory normalizedWeights
-    ) private returns (uint256) {
-        request.amount = _upscale(request.amount, scalingFactorTokenOut);
-
-        uint256 amountIn = WeightedMath._calcInGivenOut(
-            preSwapBalances[0],
-            normalizedWeights[0],
-            preSwapBalances[1],
-            normalizedWeights[1],
-            request.amount
-        );
-
-        // amountIn tokens are entering the Pool, so we round up.
-        amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
-
-        // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-        uint256 amountInPlusSwapFees = _addSwapFeeAmount(amountIn);
-
-        uint256[] memory postSwapBalances = new uint256[](2);
-        postSwapBalances[0] = _upscale(amountInPlusSwapFees, scalingFactorTokenIn);
-        postSwapBalances[1] = preSwapBalances[1].sub(request.amount);
-
-        _payProtocolAndManagementFees(false, normalizedWeights, preSwapBalances, postSwapBalances);
-
-        return amountInPlusSwapFees;
-    }
-
-    function _payProtocolAndManagementFees(
-        bool isJoinExit,
-        uint256[] memory normalizedWeights,
-        uint256[] memory preSwapBalances,
-        uint256[] memory postSwapBalances
-    ) private {
-        // Calculate total BPT for the protocol and management fee
-        // The management fee percentage applies to the remainder,
-        // after the protocol fee has been collected.
-        // So totalFee = protocolFee + (1 - protocolFee) * managementFee
-        uint256 protocolFeePercentage = paysProtocolFees() ? _cachedProtocolSwapFeePercentage : 0;
-        uint256 mgmtFeePercentage = _managementSwapFeePercentage;
-
-        if (protocolFeePercentage == 0 && mgmtFeePercentage == 0) {
-            return;
-        }
-
-        // Fees are bounded, so we don't need checked math
-        uint256 totalFeePercentage = protocolFeePercentage +
-            (FixedPoint.ONE - protocolFeePercentage).mulDown(mgmtFeePercentage);
-
-        // No other balances are changing, so the other terms in the invariant will cancel out
-        // when computing the ratio. So this partial invariant calculation is sufficient
-        uint256 totalBptAmount = WeightedMath._calcDueProtocolSwapFeeBPTAmount(
-            totalSupply(),
-            isJoinExit
-                ? _calculatePartialInvariant(normalizedWeights, preSwapBalances)
-                : WeightedMath._calculateInvariant(normalizedWeights, preSwapBalances),
-            isJoinExit
-                ? _calculatePartialInvariant(normalizedWeights, postSwapBalances)
-                : WeightedMath._calculateInvariant(normalizedWeights, postSwapBalances),
-            totalFeePercentage
-        );
-
-        // Calculate the portion of the total fee due the protocol
-        // If both fees were 50%, the protocol would take 50% first.
-        // Then the manager would take 50% of the remaining 50% (or 25%), for a total fee of 75%
-        // The protocol would then earn 0.5/0.75 (two-thirds) of the total fee,
-        // and the manager would get 0.25/0.75 (one-third)
-        uint256 protocolBptAmount = totalBptAmount.mulUp(protocolFeePercentage.divUp(totalFeePercentage));
-
-        if (protocolBptAmount > 0) {
-            _payProtocolFees(protocolBptAmount);
-        }
-
-        // Pay the remainder in management fees
-        // This goes to the controller, which needs to be able to withdraw them
-        if (mgmtFeePercentage > 0) {
-            _mintPoolTokens(getOwner(), totalBptAmount.sub(protocolBptAmount));
-        }
-    }
-
-    // If called from a swap, the arrays will have two elements (tokenIn and tokenOut), and non-zero balances
-    // If called from a join/exit, balances will be set to zero if there is no change in that token, indicating
-    // we should skip that token in the calculation (since that term would cancel out when taking the ratio)
-    function _calculatePartialInvariant(uint256[] memory normalizedWeights, uint256[] memory balances)
-        internal
-        pure
-        returns (uint256 invariant)
-    {
-        invariant = FixedPoint.ONE;
-        for (uint256 i = 0; i < balances.length; i++) {
-            // Skip unchanged terms, marked by zero balances
-            if (balances[i] > 0) {
-                invariant = invariant.mulDown(balances[i].powDown(normalizedWeights[i]));
-            }
-        }
-
-        // Should not happen - weight would have to be zero
-        _require(invariant > 0, Errors.ZERO_INVARIANT);
+        return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
 
     // We override _onJoinPool and _onExitPool as we need to not compute the current invariant and calculate protocol
@@ -613,44 +458,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         );
 
         return _doExit(balances, _getNormalizedWeights(), scalingFactors, userData);
-    }
-
-    function _processTaxableSwapAmounts(
-        bool isJoin,
-        uint256[] memory normalizedWeights,
-        uint256[] memory balances,
-        uint256[] memory taxableAmounts
-    ) internal virtual override {
-        // There could be 0's in taxable amounts, which would lead to a lot of unnecessary calculation
-        // if we just passed them through to WeightedMath. A zero taxable amount means the effective balance is
-        // unchanged, so the invariant ratio terms would therefore cancel out, and not need to be calculated.
-        // So just need to mark those by setting the balance to zero, and call `_calculatePartialInvariant`,
-        // which skips zero balance terms.
-        //
-        // The alternative is to generate "clean," smaller arrays here, but that would involve two iterations
-        // (counting the non-zeros to get the length, then creating and copying all the values) - and that is a
-        // lot more code than this less transparent method.
-        uint256[] memory postBalances = new uint256[](balances.length);
-        uint256 taxableAmount;
-
-        for (uint256 i = 0; i < balances.length; i++) {
-            taxableAmount = taxableAmounts[i];
-            // For joins and exits, many of the tokens might have zero in/out, so we can ignore these
-            // in the invariant calculation (saving gas)
-            if (taxableAmount == 0) {
-                balances[i] = 0;
-            } else {
-                postBalances[i] = (isJoin ? FixedPoint.add : FixedPoint.sub)(balances[i], taxableAmount);
-            }
-        }
-
-        if (isJoin) {
-            _payProtocolAndManagementFees(true, normalizedWeights, balances, postBalances);
-        } else if (_isNotPaused()) {
-            // Do nothing if it's paused (emergency exit)
-            // If it's an exit, the post invariant will be lower, so need to invert the order
-            _payProtocolAndManagementFees(true, normalizedWeights, postBalances, balances);
-        }
     }
 
     /**
