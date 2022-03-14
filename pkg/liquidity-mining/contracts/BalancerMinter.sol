@@ -26,6 +26,7 @@ import "./interfaces/ILiquidityGauge.sol";
 contract BalancerMinter is IBalancerMinter, ReentrancyGuard, EIP712 {
     using SafeMath for uint256;
 
+    IERC20 private immutable _token;
     IBalancerTokenAdmin private immutable _tokenAdmin;
     IGaugeController private immutable _gaugeController;
 
@@ -45,6 +46,7 @@ contract BalancerMinter is IBalancerMinter, ReentrancyGuard, EIP712 {
     event MinterApprovalSet(address indexed user, address indexed minter, bool approval);
 
     constructor(IBalancerTokenAdmin tokenAdmin, IGaugeController gaugeController) EIP712("Balancer Minter", "1") {
+        _token = tokenAdmin.getBalancerToken();
         _tokenAdmin = tokenAdmin;
         _gaugeController = gaugeController;
     }
@@ -55,6 +57,13 @@ contract BalancerMinter is IBalancerMinter, ReentrancyGuard, EIP712 {
 
     function getNextNonce(address user) external view returns (uint256) {
         return _nextNonce[user];
+    }
+
+    /**
+     * @notice Returns the address of the Balancer Governance Token
+     */
+    function getBalancerToken() external view override returns (IERC20) {
+        return _token;
     }
 
     /**
