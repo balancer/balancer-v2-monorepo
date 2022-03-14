@@ -154,6 +154,16 @@ def apply_transfer_ownership():
     self.admin = _admin
     log ApplyOwnership(_admin)
 
+@external
+@view
+def gauge_exists(_addr: address) -> bool:
+    """
+    @notice Get whether gauge already exists on GaugeController
+    @param _addr Gauge address
+    @return boolean of Gauge existance
+    """
+    gauge_type: int128 = self.gauge_types_[_addr]
+    return gauge_type > 0
 
 @external
 @view
