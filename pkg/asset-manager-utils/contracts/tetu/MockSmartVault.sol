@@ -15,6 +15,8 @@ pragma solidity ^0.7.0;
 import "./ISmartVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
+import "hardhat/console.sol";
+
 contract MockSmartVault is ISmartVault {
 
     address underlying;
@@ -24,7 +26,8 @@ contract MockSmartVault is ISmartVault {
     }
 
     function deposit(uint256 amount) external override {
-        IERC20(underlying).transfer(address(this), amount);
+        console.log("MockSmartVault deposit");
+        IERC20(underlying).transferFrom(address(msg.sender), address(this), amount);
     }
 
     function withdraw(uint256 numberOfShares) external override {

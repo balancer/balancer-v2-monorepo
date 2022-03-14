@@ -1,84 +1,91 @@
-import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
-import { expect } from 'chai';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import {config, ethers, hardhatArguments} from 'hardhat';
+import {Contract} from 'ethers';
+import {expect} from 'chai';
+import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
-import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import {bn, fp} from '@balancer-labs/v2-helpers/src/numbers';
+import {MAX_UINT256} from '@balancer-labs/v2-helpers/src/constants';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
+import {deploy, deployedAt} from '@balancer-labs/v2-helpers/src/contract';
+import {PoolSpecialization, WeightedPoolEncoder} from '@balancer-labs/balancer-js';
+import {advanceTime} from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { MultiDistributor } from '@balancer-labs/v2-helpers/src/models/distributor/MultiDistributor';
+import {MultiDistributor} from '@balancer-labs/v2-helpers/src/models/distributor/MultiDistributor';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import {actionId} from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import {encodeInvestmentConfig} from "./helpers/rebalance";
+import {ManagedPoolParams} from "@balancer-labs/v2-helpers/src/models/pools/weighted/types";
+import * as expectEvent from "@balancer-labs/v2-helpers/src/test/expectEvent";
+import {encodeExit, encodeJoin} from "@balancer-labs/v2-helpers/src/models/pools/mockPool";
 
-const tokenInitialBalance = bn(200e18);
+const tokenInitialBalance = bn(100e18);
 
 const setup = async () => {
-  const [, admin, lp, other] = await ethers.getSigners();
+  const [signer, lp, other] = await ethers.getSigners();
+  const tokens = await TokenList.create(['DAI', 'MKR'], {sorted: true});
 
-  const tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
+  // let c = config;
+  // // c.networks.hardhat.gas = 50_000_000;
+  // console.log(c);
 
   // Deploy Balancer Vault
-  const vault = await Vault.create({ admin });
+  const vault = await Vault.create();
 
   // Deploy mocked TetuVault
-  const tetuVault = await deploy('MockSmartVault', { args: [tokens.get(0).address] });
+  const tetuVault = await deploy('MockSmartVault', {args: [tokens.get(0).address]});
+
+
+  // /Users/anatseuski/work/balancer-v2-monorepo/node_modules/@balancer-labs/v2-vault/contracts/test/MockSmartPool.sol
+
+  // Deploy mocked pool
+  const pool = await deploy('v2-vault/MockSmartPool', {
+    args: [vault.address, PoolSpecialization.GeneralPool],
+  });
+  const poolId = await pool.getPoolId();
+  console.log('poolId ', poolId);
 
   // Deploy Asset manager
   const assetManager = await deploy('TetuVaultAssetManager', {
-    args: [vault.address, tetuVault.address, tokens.DAI.address],
+    args: [vault.address, tetuVault.address, tokens.get(0).address],
   });
+
+  console.log("AM addr: ", assetManager.address);
 
   // Assign assetManager to the DAI token, and other to the other token
   const assetManagers = [assetManager.address, other.address];
-
-  // Deploy Pool
-  const args = [
-    vault.address,
-    'Test Pool',
-    'TEST',
-    tokens.addresses,
-    [fp(0.5), fp(0.5)],
-    assetManagers,
-    fp(0.0001),
-    0,
-    0,
-    admin.address,
-  ];
-
-  const pool = await deploy('v2-pool-weighted/WeightedPool', {
-    args,
-  });
-  const poolId = await pool.getPoolId();
-
-  console.log('poolId ', poolId);
-
-  // Deploy staking contract for pool
-  // const distributor = await MultiDistributor.create(vault);
-
-  // Authorise distributor to use users' vault token approvals
-  // const action = await actionId(vault.instance, 'manageUserBalance');
-  // await vault.grantPermissionsGlobally([action], distributor);
-
-  // await vault.setRelayerApproval(lp, distributor, true);
-
   await assetManager.initialize(poolId);
 
-  await tokens.mint({ to: lp, amount: tokenInitialBalance });
-  await tokens.approve({ to: vault.address, from: [lp] });
+  await tokens.mint({to: lp, amount: tokenInitialBalance});
+  await tokens.approve({to: vault.address, from: [lp]});
 
   const assets = tokens.addresses;
+  console.log("assets ", assets);
+
+  await pool.registerTokens(assets, assetManagers);
+
+  const ud = encodeJoin(
+    assets.map(() => 1000),
+    assets.map(() => 0)
+  );
+
   await vault.instance.connect(lp).joinPool(poolId, lp.address, lp.address, {
-    assets: tokens.addresses,
-    maxAmountsIn: Array(assets.length).fill(MAX_UINT256),
+    assets: assets,
+    maxAmountsIn: assets.map(() => MAX_UINT256),
     fromInternalBalance: false,
-    userData: WeightedPoolEncoder.joinInit(Array(assets.length).fill(tokenInitialBalance)),
+    userData: ud,
   });
+
+  const config = {
+    targetPercentage: fp(0.5),
+    upperCriticalPercentage: fp(0.6),
+    lowerCriticalPercentage: fp(0.4),
+  };
+
+  await pool.setAssetManagerPoolConfig(assetManager.address, encodeInvestmentConfig(config));
+  await assetManager.rebalance(poolId, false);
+
 
   return {
     data: {
@@ -86,10 +93,7 @@ const setup = async () => {
     },
     contracts: {
       assetManager,
-      // distributor,
-      // lendingPool,
       tokens,
-      // stkAave: await Token.deployedAt(stkAave.address),
       pool,
       vault,
     },
@@ -98,41 +102,28 @@ const setup = async () => {
 
 describe('Tetu Asset manager', function () {
   let vault: Vault, assetManager: Contract, distributor: MultiDistributor, pool: Contract, stkAave: Token;
-
-  let lp: SignerWithAddress, other: SignerWithAddress;
+  let poolId: string;
+  let lp: SignerWithAddress, other: SignerWithAddress, admin: SignerWithAddress;
 
   before('deploy base contracts', async () => {
-    [, , lp, other] = await ethers.getSigners();
+    const [signer, lp, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('set up asset manager', async () => {
-    const { contracts } = await setup();
+    const {contracts} = await setup();
 
     assetManager = contracts.assetManager;
     vault = contracts.vault;
     pool = contracts.pool;
-    // distributor = contracts.distributor;
-    // stkAave = contracts.stkAave;
+    poolId = await pool.getPoolId();
   });
 
-  describe('claimRewards', () => {
-    let id: string;
-    const rewardAmount = fp(1);
+  describe('key path', () => {
+    // let id: string;
+    // const rewardAmount = fp(1);
 
     // beforeEach(async () => {
-    //   // const bpt = await Token.deployedAt(pool.address);
-    //   // const bptBalance = await bpt.balanceOf(lp);
     //
-    //   // await pool.connect(lp).approve(distributor.address, bptBalance);
-    //
-    //   // id = await distributor.getDistributionId(bpt, stkAave, assetManager.address);
-    //
-    //   // await distributor.subscribe(id, { from: lp });
-    //   // await distributor.stake(bpt, bptBalance.mul(3).div(4), lp, lp, { from: lp });
-    //   //
-    //   // // Stake half of the BPT to another address
-    //   // await distributor.subscribe(id, { from: other });
-    //   // await distributor.stake(bpt, bptBalance.div(4), lp, other, { from: lp });
     // });
 
     // it('sends expected amount of stkAave to the rewards contract', async () => {
@@ -151,8 +142,51 @@ describe('Tetu Asset manager', function () {
     //   expect(expectedReward.sub(actualReward).abs()).to.be.lte(100);
     // });
 
-    it('Go go go', async () => {
-      console.log('todo!');
+    // it('Go go go', async () => {
+    //   console.log('todo!');
+    // });
+
+    it('AM should NOT return error when withdraw more funds than in vault', async () => {
+      //todo fix
+      const [signer, lp, other] = await ethers.getSigners();
+
+
+      await assetManager.rebalance(poolId, false);
+      // after re balance 50 usdc should be invested by AM and 50 usdc available in the vault
+
+      // const balBefore = await TokenUtils.balanceOf(MaticAddresses.USDC_TOKEN, investor.address);
+      // console.log("Bal before ", balBefore.toString());
+
+      const vaultTokenInfo = await vault.getPoolTokens(poolId);
+
+      console.log("vaultTokenInfo");
+      console.log(vaultTokenInfo.balances[0].toString());
+      console.log(vaultTokenInfo.balances[1].toString());
+
+
+      const tx = await vault.instance.connect(lp).exitPool(poolId, lp.address, lp.address, {
+        assets: vaultTokenInfo.tokens,
+        minAmountsOut: Array(vaultTokenInfo.tokens.length).fill(0),
+        toInternalBalance: false,
+        userData: encodeExit([bn(600), bn(0)], Array(vaultTokenInfo.tokens.length).fill(0)),
+      });
+
+      //
+      // const receipt = await tx.wait();
+      // const gasUsed = receipt.gasUsed;
+      // console.log("gasUsed ", gasUsed.toString());
+      //
+
+
+      const vaultTokenInfoAfter = await vault.getPoolTokens(poolId);
+
+      console.log("vaultTokenInfoAfter");
+      console.log(vaultTokenInfoAfter.balances[0].toString());
+      console.log(vaultTokenInfoAfter.balances[1].toString());
+
+
     });
+
+
   });
 });

@@ -21,6 +21,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "./BalanceAllocation.sol";
 import "../PoolRegistry.sol";
 
+import "hardhat/console.sol";
+
 abstract contract TwoTokenPoolsBalance is PoolRegistry {
     using BalanceAllocation for bytes32;
 
@@ -304,9 +306,14 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
      * - `token` must be registered in the Pool
      */
     function _getTwoTokenPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
+
         // We can't just read the balance of token, because we need to know the full pair in order to compute the pair
         // hash and access the balance mapping. We therefore rely on `_getTwoTokenPoolBalances`.
         (, IERC20 tokenA, bytes32 balanceA, IERC20 tokenB, bytes32 balanceB) = _getTwoTokenPoolBalances(poolId);
+
+//        console.log("balanceA %s", uint(balanceA));
+//        console.log("balanceB %s", uint(balanceB));
+//        console.log("token %s", address(token));
 
         if (token == tokenA) {
             return balanceA;

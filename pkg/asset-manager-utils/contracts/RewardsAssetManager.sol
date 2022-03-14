@@ -22,6 +22,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "./IAssetManager.sol";
 
+import "hardhat/console.sol";
+
+
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
@@ -289,6 +292,7 @@ abstract contract RewardsAssetManager is IAssetManager {
      * @param amount - the amount of tokens to withdraw back to the pool
      */
     function capitalOut(bytes32 pId, uint256 amount) external override withCorrectPool(pId) onlyPoolRebalancer {
+        console.log("TAM: capitalOut: %s", amount);
         _capitalOut(amount);
     }
 }

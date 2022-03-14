@@ -61,11 +61,11 @@ contract TetuVaultAssetManager is RewardsAssetManager {
         uint256 balance = IERC20(underlying).balanceOf(address(this));
         console.log("invest balance: %s", balance);
 
-        if (amount < balance) {
-            balance = amount;
+        if (amount > balance) {
+            amount = balance;
         }
         IERC20(underlying).approve(tetuVault, 0);
-        IERC20(underlying).approve(tetuVault, balance);
+        IERC20(underlying).approve(tetuVault, amount);
 
         // invest to tetuVault
         console.log("invest deposit");
@@ -74,8 +74,8 @@ contract TetuVaultAssetManager is RewardsAssetManager {
 
         ISmartVault(tetuVault).deposit(balance);
         console.log("invest > AUM: %s", _getAUM());
-        console.log("invested %s of  %s", balance, underlying);
-        return balance;
+        console.log("invested %s of  %s", amount, underlying);
+        return amount;
     }
 
     /**
@@ -84,7 +84,7 @@ contract TetuVaultAssetManager is RewardsAssetManager {
      * @return the number of tokens to return to the tetuVault
      */
     function _divest(uint256 amountUnderlying, uint256) internal override returns (uint256) {
-        amountUnderlying = amountUnderlying + 100;
+        console.log("_divest amount: %s", amountUnderlying);
 
         amountUnderlying = Math.min(amountUnderlying, _getAUM());
         console.log("_divest request amountUnderlying: %s", amountUnderlying);
