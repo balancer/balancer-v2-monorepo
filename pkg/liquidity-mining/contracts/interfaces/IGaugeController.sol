@@ -19,7 +19,7 @@ pragma solidity ^0.7.0;
 // solhint-disable func-name-mixedcase
 
 interface IGaugeController {
-    function add_type(byte[64] calldata name, uint256 weight) external;
-    
+    function add_type(bytes1[64] calldata name, uint256 weight) external;
+
     function gauge_types(address gauge) external view returns (uint256);
 }

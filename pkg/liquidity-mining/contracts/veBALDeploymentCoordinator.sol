@@ -125,7 +125,10 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         // so we don't need to renounce this permission.
 
         // Step 2: grant BalancerMinter authority to mint BAL, as part of the Liquidity Mining program.
-        authorizer.grantRole(_balancerTokenAdmin.getActionId(IBalancerTokenAdmin.mint.selector), address(_balancerMinter));
+        authorizer.grantRole(
+            _balancerTokenAdmin.getActionId(IBalancerTokenAdmin.mint.selector),
+            address(_balancerMinter)
+        );
 
         // Step 3: setup the Liquidity Mining program by creating the different gauge types on the Gauge Controller.
         //
