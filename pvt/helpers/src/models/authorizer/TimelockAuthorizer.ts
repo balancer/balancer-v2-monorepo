@@ -50,7 +50,7 @@ export default class TimelockAuthorizer {
   }
 
   async delay(action: string): Promise<BigNumberish> {
-    return this.instance.delays(action);
+    return this.instance.delaysPerActionId(action);
   }
 
   async scheduledActions(
@@ -76,13 +76,13 @@ export default class TimelockAuthorizer {
   async scheduleDelayChange(action: string, delay: number, executors: Account[], params?: TxParams): Promise<number> {
     const receipt = await this.with(params).scheduleDelayChange(action, delay, this.toAddresses(executors));
     const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
-    return event.args.id;
+    return event.args.scheduledActionId;
   }
 
   async schedule(where: Account, data: string, executors: Account[], params?: TxParams): Promise<number> {
     const receipt = await this.with(params).schedule(this.toAddress(where), data, this.toAddresses(executors));
     const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
-    return event.args.id;
+    return event.args.scheduledActionId;
   }
 
   async scheduleGrantPermission(
@@ -100,7 +100,7 @@ export default class TimelockAuthorizer {
     );
 
     const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
-    return event.args.id;
+    return event.args.scheduledActionId;
   }
 
   async scheduleRevokePermission(
@@ -118,7 +118,7 @@ export default class TimelockAuthorizer {
     );
 
     const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
-    return event.args.id;
+    return event.args.scheduledActionId;
   }
 
   async execute(id: BigNumberish, params?: TxParams): Promise<ContractTransaction> {

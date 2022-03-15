@@ -159,7 +159,7 @@ describe('TimelockAuthorizer', () => {
 
             ACTIONS.forEach((action, i) => {
               expectEvent.inReceipt(receipt, 'PermissionGranted', {
-                action,
+                actionId: action,
                 account: grantee.address,
                 where: WHERE[i],
               });
@@ -254,7 +254,7 @@ describe('TimelockAuthorizer', () => {
 
             ACTIONS.forEach((action, i) => {
               expectEvent.inReceipt(receipt, 'PermissionGranted', {
-                action,
+                actionId: action,
                 account: grantee.address,
                 where: WHERE[i],
               });
@@ -301,7 +301,7 @@ describe('TimelockAuthorizer', () => {
 
           for (const action of ACTIONS) {
             expectEvent.inReceipt(receipt, 'PermissionGranted', {
-              action,
+              actionId: action,
               account: grantee.address,
               where: TimelockAuthorizer.EVERYWHERE,
             });
@@ -332,7 +332,7 @@ describe('TimelockAuthorizer', () => {
 
             for (const action of ACTIONS) {
               expectEvent.inReceipt(receipt, 'PermissionGranted', {
-                action,
+                actionId: action,
                 account: grantee.address,
                 where: TimelockAuthorizer.EVERYWHERE,
               });
@@ -425,7 +425,7 @@ describe('TimelockAuthorizer', () => {
 
               ACTIONS.forEach((action, i) => {
                 expectEvent.inReceipt(receipt, 'PermissionRevoked', {
-                  action,
+                  actionId: action,
                   account: grantee.address,
                   where: WHERE[i],
                 });
@@ -571,7 +571,7 @@ describe('TimelockAuthorizer', () => {
 
             for (const action of ACTIONS) {
               expectEvent.inReceipt(receipt, 'PermissionRevoked', {
-                action,
+                actionId: action,
                 account: grantee.address,
                 where: TimelockAuthorizer.EVERYWHERE,
               });
@@ -764,7 +764,7 @@ describe('TimelockAuthorizer', () => {
                 const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
 
                 const receipt = await authorizer.execute(id);
-                expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { action, delay });
+                expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { actionId: action, delay });
               });
             });
 
@@ -802,7 +802,7 @@ describe('TimelockAuthorizer', () => {
 
                 await advanceTime(previousDelay);
                 const receipt = await authorizer.execute(id);
-                expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { action, delay });
+                expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { actionId: action, delay });
               });
             });
           });
@@ -911,7 +911,7 @@ describe('TimelockAuthorizer', () => {
                   await advanceTime(delay);
 
                   const receipt = await authorizer.execute(id);
-                  expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { id });
+                  expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { scheduledActionId: id });
 
                   const scheduledAction = await authorizer.scheduledActions(id);
                   expect(scheduledAction.executed).to.be.true;
@@ -958,7 +958,7 @@ describe('TimelockAuthorizer', () => {
                   await expect(authorizer.execute(id, { from: grantee })).to.be.revertedWith('SENDER_NOT_ALLOWED');
 
                   const receipt = await authorizer.execute(id, { from: executors[0] });
-                  expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { id });
+                  expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { scheduledActionId: id });
 
                   const scheduledAction = await authorizer.scheduledActions(id);
                   expect(scheduledAction.executed).to.be.true;
@@ -1080,7 +1080,7 @@ describe('TimelockAuthorizer', () => {
               it('emits an event', async () => {
                 const receipt = await authorizer.execute(id, { from });
 
-                expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { id });
+                expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { scheduledActionId: id });
               });
 
               it('cannot be executed twice', async () => {
@@ -1191,7 +1191,7 @@ describe('TimelockAuthorizer', () => {
           it('emits an event', async () => {
             const receipt = await authorizer.cancel(id, { from });
 
-            expectEvent.inReceipt(await receipt.wait(), 'ActionCancelled', { id });
+            expectEvent.inReceipt(await receipt.wait(), 'ActionCancelled', { scheduledActionId: id });
           });
 
           it('cannot be cancelled twice', async () => {
