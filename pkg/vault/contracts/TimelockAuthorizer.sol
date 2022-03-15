@@ -23,15 +23,16 @@ import "./interfaces/IAuthorizer.sol";
 import "./interfaces/IVault.sol";
 
 /**
- * @dev Basic Authorizer implementation, based on OpenZeppelin's Access Control.
+ * @dev Basic Authorizer implementation using timelocks.
  *
  * Users are allowed to perform actions if they have the role with the same identifier. In this sense, roles are not
  * being truly used as such, since they each map to a single action identifier.
  *
- * This temporary implementation is expected to be replaced soon after launch by a more sophisticated one, able to
- * manage permissions across multiple contracts and to natively handle timelocks.
+ * This Authorizer implementation allows defining a delay per action identifier. If a delay is set for an action, users
+ * are now allowed to schedule an action that will be executed in the future by the Authorizer instead of executing it
+ * themselves directly.
  */
-contract Authorizer is IAuthorizer {
+contract TimelockAuthorizer is IAuthorizer {
     using Address for address;
 
     uint256 public constant MAX_DELAY = 2 * (365 days);

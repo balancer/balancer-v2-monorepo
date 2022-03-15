@@ -1,27 +1,27 @@
 import { ethers } from 'hardhat';
 import { Interface } from 'ethers/lib/utils';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
+import { getSigner } from '@balancer-labs/v2-deployments/dist/src/signers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '../../test/expectEvent';
 import { ANY_ADDRESS } from '../../constants';
 import { BigNumberish } from '../../numbers';
-import { AuthorizerDeployment } from './types';
+import { TimelockAuthorizerDeployment } from './types';
 
 import { Account, NAry, TxParams } from '../types/types';
-import AuthorizerDeployer from './AuthorizerDeployer';
-import { getSigner } from '@balancer-labs/v2-deployments/dist/src/signers';
+import TimelockAuthorizerDeployer from './TimelockAuthorizerDeployer';
 
 const SET_DELAY_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['SET_DELAY_PERMISSION']);
 
-export default class Authorizer {
+export default class TimelockAuthorizer {
   static EVERYWHERE = ANY_ADDRESS;
 
   instance: Contract;
   admin: SignerWithAddress;
 
-  static async create(deployment: AuthorizerDeployment = {}): Promise<Authorizer> {
-    return AuthorizerDeployer.deploy(deployment);
+  static async create(deployment: TimelockAuthorizerDeployment = {}): Promise<TimelockAuthorizer> {
+    return TimelockAuthorizerDeployer.deploy(deployment);
   }
 
   constructor(instance: Contract, admin: SignerWithAddress) {
@@ -160,7 +160,7 @@ export default class Authorizer {
     account: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    const wheres = this.toList(actions).map(() => Authorizer.EVERYWHERE);
+    const wheres = this.toList(actions).map(() => TimelockAuthorizer.EVERYWHERE);
     return this.with(params).grantPermissions(this.toList(actions), this.toAddress(account), wheres);
   }
 
@@ -169,12 +169,12 @@ export default class Authorizer {
     account: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    const wheres = this.toList(actions).map(() => Authorizer.EVERYWHERE);
+    const wheres = this.toList(actions).map(() => TimelockAuthorizer.EVERYWHERE);
     return this.with(params).revokePermissions(this.toList(actions), this.toAddress(account), wheres);
   }
 
   async renouncePermissionsGlobally(actions: NAry<string>, params: TxParams): Promise<ContractTransaction> {
-    const wheres = this.toList(actions).map(() => Authorizer.EVERYWHERE);
+    const wheres = this.toList(actions).map(() => TimelockAuthorizer.EVERYWHERE);
     return this.with(params).renouncePermissions(this.toList(actions), wheres);
   }
 

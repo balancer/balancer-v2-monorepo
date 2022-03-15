@@ -4,15 +4,15 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import Authorizer from '@balancer-labs/v2-helpers/src/models/authorizer/Authorizer';
+import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 
-describe('Authorizer', () => {
-  let authorizer: Authorizer, vault: Contract;
+describe('TimelockAuthorizer', () => {
+  let authorizer: TimelockAuthorizer, vault: Contract;
   let admin: SignerWithAddress, grantee: SignerWithAddress, from: SignerWithAddress;
 
   before('setup signers', async () => {
@@ -23,15 +23,15 @@ describe('Authorizer', () => {
   const ACTION_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
   const ACTIONS = [ACTION_1, ACTION_2];
 
-  const EVERYWHERE = Authorizer.EVERYWHERE;
+  const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
   const WHERE = [ethers.Wallet.createRandom().address, ethers.Wallet.createRandom().address];
   const NOT_WHERE = ethers.Wallet.createRandom().address;
 
   sharedBeforeEach('deploy authorizer', async () => {
-    const oldAuthorizer = await Authorizer.create({ admin });
+    const oldAuthorizer = await TimelockAuthorizer.create({ admin });
 
     vault = await deploy('Vault', { args: [oldAuthorizer.address, ZERO_ADDRESS, 0, 0] });
-    authorizer = await Authorizer.create({ admin, vault });
+    authorizer = await TimelockAuthorizer.create({ admin, vault });
 
     const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
     await oldAuthorizer.grantPermissions(setAuthorizerAction, admin, vault, { from: admin });
@@ -303,7 +303,7 @@ describe('Authorizer', () => {
             expectEvent.inReceipt(receipt, 'PermissionGranted', {
               action,
               account: grantee.address,
-              where: Authorizer.EVERYWHERE,
+              where: TimelockAuthorizer.EVERYWHERE,
             });
           }
         });
@@ -334,7 +334,7 @@ describe('Authorizer', () => {
               expectEvent.inReceipt(receipt, 'PermissionGranted', {
                 action,
                 account: grantee.address,
-                where: Authorizer.EVERYWHERE,
+                where: TimelockAuthorizer.EVERYWHERE,
               });
             }
           });
@@ -573,7 +573,7 @@ describe('Authorizer', () => {
               expectEvent.inReceipt(receipt, 'PermissionRevoked', {
                 action,
                 account: grantee.address,
-                where: Authorizer.EVERYWHERE,
+                where: TimelockAuthorizer.EVERYWHERE,
               });
             }
           });
@@ -850,10 +850,10 @@ describe('Authorizer', () => {
 
   describe('schedule', () => {
     let where: Contract, action: string, data: string, executors: SignerWithAddress[];
-    let anotherVault: Contract, newAuthorizer: Authorizer;
+    let anotherVault: Contract, newAuthorizer: TimelockAuthorizer;
 
     sharedBeforeEach('deploy sample instances', async () => {
-      newAuthorizer = await Authorizer.create({ admin });
+      newAuthorizer = await TimelockAuthorizer.create({ admin });
       anotherVault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
     });
 
@@ -1028,10 +1028,10 @@ describe('Authorizer', () => {
 
   describe('execute', () => {
     const delay = DAY;
-    let executors: SignerWithAddress[], newAuthorizer: Authorizer;
+    let executors: SignerWithAddress[], newAuthorizer: TimelockAuthorizer;
 
     sharedBeforeEach('deploy sample instances', async () => {
-      newAuthorizer = await Authorizer.create({ admin });
+      newAuthorizer = await TimelockAuthorizer.create({ admin });
     });
 
     sharedBeforeEach('grant set authorizer permission with delay', async () => {
@@ -1151,10 +1151,10 @@ describe('Authorizer', () => {
 
   describe('cancel', () => {
     const delay = DAY;
-    let executors: SignerWithAddress[], newAuthorizer: Authorizer;
+    let executors: SignerWithAddress[], newAuthorizer: TimelockAuthorizer;
 
     sharedBeforeEach('deploy sample instances', async () => {
-      newAuthorizer = await Authorizer.create({ admin });
+      newAuthorizer = await TimelockAuthorizer.create({ admin });
     });
 
     sharedBeforeEach('grant set authorizer permission with delay', async () => {
