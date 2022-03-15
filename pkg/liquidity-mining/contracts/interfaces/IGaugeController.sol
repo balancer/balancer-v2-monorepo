@@ -21,5 +21,11 @@ pragma solidity ^0.7.0;
 interface IGaugeController {
     function add_type(bytes1[64] calldata name, uint256 weight) external;
 
+    function change_type_weight(int128 typeId, uint256 weight) external;
+
+    function n_gauge_types() external view returns (int128);
+
     function gauge_types(address gauge) external view returns (uint256);
+
+    function admin() external view returns (address);
 }
