@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-asset-manager-utils/contracts/IAssetManager.sol";
 
 import "../BaseWeightedPool.sol";
 import "./WeightCompression.sol";
@@ -25,7 +26,7 @@ import "./WeightCompression.sol";
 /**
  * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping.
  */
-contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
+contract UnseededLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     // LiquidityBootstrappingPool change their weights over time: these periods are expected to be long enough (e.g.
     // days) that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -34,43 +35,33 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     using WordCodec for bytes32;
     using WeightCompression for uint256;
 
-    // LBPs often involve only two tokens - we support up to four since we're able to pack the entire config in a single
-    // storage slot.
-    uint256 private constant _MAX_LBP_TOKENS = 4;
-
     // State variables
 
-    uint256 private immutable _totalTokens;
-
-    IERC20 internal immutable _token0;
-    IERC20 internal immutable _token1;
-    IERC20 internal immutable _token2;
-    IERC20 internal immutable _token3;
+    IERC20 internal immutable _projectToken;
+    IERC20 internal immutable _reserveToken;
 
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
     // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
 
-    uint256 internal immutable _scalingFactor0;
-    uint256 internal immutable _scalingFactor1;
-    uint256 internal immutable _scalingFactor2;
-    uint256 internal immutable _scalingFactor3;
+    uint256 internal immutable _projectScalingFactor;
+    uint256 internal immutable _reserveScalingFactor;
 
     // For gas optimization, store start/end weights and timestamps in one bytes32
     // Start weights need to be high precision, since restarting the update resets them to "spot"
     // values. Target end weights do not need as much precision.
-    // [     32 bits   |     32 bits     |      64 bits     |      124 bits      |    3 bits    |     1 bit    ]
-    // [ end timestamp | start timestamp | 4x16 end weights | 4x31 start weights |   not used   | swap enabled ]
-    // |MSB                                                                                                 LSB|
+    // [ 63 bits |   1 bit      |    32 bits    |     32 bits     |      64 bits     |      64 bits       ]
+    // [ unused  | swap enabled | end timestamp | start timestamp | 2x32 end weights | 2x32 start weights ]
+    // |MSB                                                                                            LSB|
 
     bytes32 private _poolState;
 
     // Offsets for data elements in _poolState
-    uint256 private constant _SWAP_ENABLED_OFFSET = 0;
-    uint256 private constant _START_WEIGHT_OFFSET = 4;
-    uint256 private constant _END_WEIGHT_OFFSET = 128;
-    uint256 private constant _START_TIME_OFFSET = 192;
-    uint256 private constant _END_TIME_OFFSET = 224;
+    uint256 private constant _START_WEIGHT_OFFSET = 0;
+    uint256 private constant _END_WEIGHT_OFFSET = 64;
+    uint256 private constant _START_TIME_OFFSET = 128;
+    uint256 private constant _END_TIME_OFFSET = 160;
+    uint256 private constant _SWAP_ENABLED_OFFSET = 192;
 
     // Event declarations
 
@@ -82,52 +73,63 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] endWeights
     );
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        IERC20[] memory tokens,
-        uint256[] memory normalizedWeights,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner,
-        bool swapEnabledOnStart
-    )
+    struct NewPoolParams {
+        IVault vault;
+        string name;
+        string symbol;
+        IERC20 projectToken;
+        IERC20 reserveToken;
+        uint256 projectWeight;
+        uint256 reserveWeight;
+        IAssetManager reserveAssetManager;
+        uint256 swapFeePercentage;
+        address owner;
+        bool swapEnabledOnStart;
+    }
+
+    constructor(NewPoolParams memory params, uint256 pauseWindowDuration, uint256 bufferPeriodDuration)
         BaseWeightedPool(
-            vault,
-            name,
-            symbol,
-            tokens,
-            new address[](tokens.length), // Pass the zero address: LBPs can't have asset managers
-            swapFeePercentage,
+            params.vault,
+            params.name,
+            params.symbol,
+            _tokenArray(params.projectToken, params.reserveToken),
+            _assetManagerArray(params.reserveAssetManager),
+            params.swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
-            owner
+            params.owner
         )
     {
-        uint256 totalTokens = tokens.length;
-        InputHelpers.ensureInputLengthMatch(totalTokens, normalizedWeights.length);
+        _projectToken = params.projectToken;
+        _reserveToken = params.reserveToken;
 
-        _totalTokens = totalTokens;
-
-        // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _token0 = tokens[0];
-        _token1 = tokens[1];
-        _token2 = totalTokens > 2 ? tokens[2] : IERC20(0);
-        _token3 = totalTokens > 3 ? tokens[3] : IERC20(0);
-
-        _scalingFactor0 = _computeScalingFactor(tokens[0]);
-        _scalingFactor1 = _computeScalingFactor(tokens[1]);
-        _scalingFactor2 = totalTokens > 2 ? _computeScalingFactor(tokens[2]) : 0;
-        _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(tokens[3]) : 0;
+        _projectScalingFactor = _computeScalingFactor(params.projectToken);
+        _reserveScalingFactor = _computeScalingFactor(params.reserveToken);
 
         uint256 currentTime = block.timestamp;
+        uint256[] memory normalizedWeights = new uint256[](2);
+        normalizedWeights[0] = params.projectWeight;
+        normalizedWeights[1] = params.reserveWeight;
 
         _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights);
 
         // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction)
-        _setSwapEnabled(swapEnabledOnStart);
+        _setSwapEnabled(params.swapEnabledOnStart);
+    }
+
+    function _tokenArray(IERC20 projectToken, IERC20 reserveToken) private pure returns (IERC20[] memory) {
+        IERC20[] memory tokens = new IERC20[](2);
+        tokens[0] = projectToken;
+        tokens[1] = reserveToken;
+
+        return tokens;
+    }
+
+    function _assetManagerArray(IAssetManager reserveAssetManager) private pure returns (address[] memory) {
+        address[] memory assetManagers = new address[](2);
+        assetManagers[1] = address(reserveAssetManager);
+
+        return assetManagers;
     }
 
     // External functions
@@ -157,12 +159,10 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         startTime = poolState.decodeUint32(_START_TIME_OFFSET);
         endTime = poolState.decodeUint32(_END_TIME_OFFSET);
-        uint256 totalTokens = _getTotalTokens();
-        endWeights = new uint256[](totalTokens);
+        endWeights = new uint256[](2);
 
-        for (uint256 i = 0; i < totalTokens; i++) {
-            endWeights[i] = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).uncompress16();
-        }
+        endWeights[0] = poolState.decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
+        endWeights[1] = poolState.decodeUint32(_END_WEIGHT_OFFSET + 32).uncompress32();
     }
 
     /**
@@ -174,14 +174,14 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
     /**
      * @dev Schedule a gradual weight change, from the current weights to the given endWeights,
-     * over startTime to endTime
+     * over startTime to endTime. Keep interface the same, even though we know there are only two.
      */
     function updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
         uint256[] memory endWeights
     ) external authenticate whenNotPaused nonReentrant {
-        InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
+        InputHelpers.ensureInputLengthMatch(2, endWeights.length);
 
         // If the start time is in the past, "fast forward" to start now
         // This avoids discontinuities in the weight curve. Otherwise, if you set the start/end times with
@@ -197,25 +197,12 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     // Internal functions
 
     function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
-        uint256 i;
-
-        // First, convert token address to a token index
-
-        // prettier-ignore
-        if (token == _token0) { i = 0; }
-        else if (token == _token1) { i = 1; }
-        else if (token == _token2) { i = 2; }
-        else if (token == _token3) { i = 3; }
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-
-        return _getNormalizedWeightByIndex(i, _poolState);
+        return _getNormalizedWeightByIndex(token == _projectToken ? 0 : 1, _poolState);
     }
 
     function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
-        uint256 startWeight = poolState.decodeUint31(_START_WEIGHT_OFFSET + i * 31).uncompress31();
-        uint256 endWeight = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).uncompress16();
+        uint256 startWeight = poolState.decodeUint32(_START_WEIGHT_OFFSET + i * 32).uncompress32();
+        uint256 endWeight = poolState.decodeUint32(_END_WEIGHT_OFFSET + i * 32).uncompress32();
 
         uint256 pctProgress = _calculateWeightChangeProgress(poolState);
 
@@ -223,20 +210,11 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory) {
-        uint256 totalTokens = _getTotalTokens();
-        uint256[] memory normalizedWeights = new uint256[](totalTokens);
-
+        uint256[] memory normalizedWeights = new uint256[](2);
         bytes32 poolState = _poolState;
 
-        // prettier-ignore
-        {
-            normalizedWeights[0] = _getNormalizedWeightByIndex(0, poolState);
-            normalizedWeights[1] = _getNormalizedWeightByIndex(1, poolState);
-            if (totalTokens == 2) return normalizedWeights;
-            normalizedWeights[2] = _getNormalizedWeightByIndex(2, poolState);
-            if (totalTokens == 3) return normalizedWeights;
-            normalizedWeights[3] = _getNormalizedWeightByIndex(3, poolState);
-        }
+        normalizedWeights[0] = _getNormalizedWeightByIndex(0, poolState);
+        normalizedWeights[1] = _getNormalizedWeightByIndex(1, poolState);
 
         return normalizedWeights;
     }
@@ -254,6 +232,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     ) internal override returns (uint256, uint256[] memory) {
         // Only the owner can initialize the pool
         _require(sender == getOwner(), Errors.CALLER_IS_NOT_LBP_OWNER);
+
+        //TODO - check if there's an asset manager
 
         return super._onInitializePool(poolId, sender, recipient, scalingFactors, userData);
     }
@@ -293,6 +273,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     ) internal override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
+        //TODO BPT fees
+
         return super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
 
@@ -303,6 +285,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     ) internal override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
+        //TODO BPT fees
+
         return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
     }
 
@@ -311,8 +295,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
      */
     function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
         return
-            (actionId == getActionId(LiquidityBootstrappingPool.setSwapEnabled.selector)) ||
-            (actionId == getActionId(LiquidityBootstrappingPool.updateWeightsGradually.selector)) ||
+            (actionId == getActionId(UnseededLiquidityBootstrappingPool.setSwapEnabled.selector)) ||
+            (actionId == getActionId(UnseededLiquidityBootstrappingPool.updateWeightsGradually.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
 
@@ -359,8 +343,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             newPoolState = newPoolState
-                .insertUint31(startWeights[i].compress31(), _START_WEIGHT_OFFSET + i * 31)
-                .insertUint16(endWeight.compress16(), _END_WEIGHT_OFFSET + i * 16);
+                .insertUint32(startWeights[i].compress32(), _START_WEIGHT_OFFSET + i * 32)
+                .insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET + i * 32);
 
             normalizedSum = normalizedSum.add(endWeight);
         }
@@ -395,35 +379,27 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _getMaxTokens() internal pure override returns (uint256) {
-        return _MAX_LBP_TOKENS;
+        return 2;
     }
 
-    function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _totalTokens;
+    function _getTotalTokens() internal pure virtual override returns (uint256) {
+        return 2;
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        // prettier-ignore
-        if (token == _token0) { return _scalingFactor0; }
-        else if (token == _token1) { return _scalingFactor1; }
-        else if (token == _token2) { return _scalingFactor2; }
-        else if (token == _token3) { return _scalingFactor3; }
-        else {
+        if (token == _projectToken) {
+            return _projectScalingFactor;
+        } else if (token == _reserveToken) {
+            return _reserveScalingFactor;
+        } else {
             _revert(Errors.INVALID_TOKEN);
         }
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        uint256 totalTokens = _getTotalTokens();
-        uint256[] memory scalingFactors = new uint256[](totalTokens);
-
-        // prettier-ignore
-        {
-            scalingFactors[0] = _scalingFactor0;
-            scalingFactors[1] = _scalingFactor1;
-            if (totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
-            if (totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
-        }
+        uint256[] memory scalingFactors = new uint256[](2);
+        scalingFactors[0] = _projectScalingFactor;
+        scalingFactors[1] = _reserveScalingFactor;
 
         return scalingFactors;
     }
