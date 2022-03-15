@@ -40,6 +40,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
     IBalancerTokenAdmin private immutable _balancerTokenAdmin;
 
     IVault private immutable _vault;
+    IAuthorizerAdaptor private immutable _authorizerAdaptor;
     IBalancerToken private immutable _balancerToken;
     IBalancerMinter private immutable _balancerMinter;
     IGaugeController private immutable _gaugeController;
@@ -66,7 +67,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
     uint256 public constant POLYGON_TYPE = 3;
     uint256 public constant ARBITRUM_TYPE = 4;
 
-    constructor(IBalancerMinter balancerMinter, uint256 activationScheduledTime)
+    constructor(IBalancerMinter balancerMinter, IAuthorizerAdaptor authorizerAdaptor, uint256 activationScheduledTime)
         Authentication(bytes32(uint256(address(this))))
     {
         // veBALDeploymentCoordinator is a singleton, so it simply uses its own address to disambiguate action identifiers
@@ -77,6 +78,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
 
         _balancerTokenAdmin = balancerTokenAdmin;
         _vault = balancerTokenAdmin.getVault();
+        _authorizerAdaptor = authorizerAdaptor;
         _balancerToken = balancerTokenAdmin.getBalancerToken();
         _balancerMinter = balancerMinter;
         _gaugeController = IGaugeController(balancerMinter.getGaugeController());
@@ -99,8 +101,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
     }
 
     function getAuthorizerAdaptor() public view returns (IAuthorizerAdaptor) {
-        // TODO: store this properly, we shouldn't rely on the GaugeController to store this
-        return IAuthorizerAdaptor(_gaugeController.admin());
+        return _authorizerAdaptor;
     }
 
     function getBalancerTokenAdmin() external view returns (IBalancerTokenAdmin) {
