@@ -22,31 +22,38 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.
 
 import "./LiquidityBootstrappingPool.sol";
 
-contract SeededLiquidityBootstrappingPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-    constructor(IVault vault)
-        BasePoolSplitCodeFactory(vault, type(AssetManagedLiquidityBootstrappingPool).creationCode)
-    {
+contract LiquidityBootstrappingPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(LiquidityBootstrappingPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
-     * @dev Deploys a new `AssetManagedLiquidityBootstrappingPool`.
+     * @dev Deploys a new `LiquidityBootstrappingPool`.
      */
-    function create(AssetManagedLiquidityBootstrappingPool.NewPoolParams memory poolParams)
-        external
-        returns (address pool)
-    {
+    function create(
+        string memory name,
+        string memory symbol,
+        IERC20[] memory tokens,
+        uint256[] memory weights,
+        uint256 swapFeePercentage,
+        address owner,
+        bool swapEnabledOnStart
+    ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
         return
             _create(
                 abi.encode(
-                    poolParams,
                     getVault(),
+                    name,
+                    symbol,
+                    tokens,
+                    weights,
+                    swapFeePercentage,
                     pauseWindowDuration,
                     bufferPeriodDuration,
-                    msg.sender, // manager
-                    address(0) // no asset manager
+                    owner,
+                    swapEnabledOnStart
                 )
             );
     }

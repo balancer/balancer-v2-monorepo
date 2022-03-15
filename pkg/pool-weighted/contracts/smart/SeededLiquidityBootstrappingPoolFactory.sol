@@ -19,45 +19,35 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
-import "@balancer-labs/v2-pool-utils/contracts/controllers/AssetManagedLiquidityBootstrappingPoolController.sol";
-import "@balancer-labs/v2-asset-manager-utils/contracts/aave/IPoolAddressesProvider.sol";
 
 import "./AssetManagedLiquidityBootstrappingPool.sol";
 
-contract UnseededLiquidityBootstrappingPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+contract SeededLiquidityBootstrappingPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
     constructor(IVault vault)
         BasePoolSplitCodeFactory(vault, type(AssetManagedLiquidityBootstrappingPool).creationCode)
     {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function create(
-        AssetManagedLiquidityBootstrappingPool.NewPoolParams calldata poolParams,
-        BasePoolController.BasePoolRights calldata basePoolRights,
-        IPoolAddressesProvider addressesProvider,
-        address manager
-    ) external returns (address pool) {
-        BasePoolController poolController = new AssetManagedLiquidityBootstrappingPoolController(
-            basePoolRights,
-            addressesProvider,
-            getVault(),
-            poolParams.reserveToken,
-            manager
-        );
-
+    /**
+     * @dev Deploys a new `AssetManagedLiquidityBootstrappingPool`.
+     */
+    function create(AssetManagedLiquidityBootstrappingPool.NewPoolParams memory poolParams)
+        external
+        returns (address pool)
+    {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        pool = _create(
-            abi.encode(
-                poolParams,
-                getVault(),
-                pauseWindowDuration,
-                bufferPeriodDuration,
-                address(poolController), // owner
-                address(poolController) // asset manager
-            )
-        );
-
-        poolController.initialize(pool);
+        return
+            _create(
+                abi.encode(
+                    poolParams,
+                    getVault(),
+                    pauseWindowDuration,
+                    bufferPeriodDuration,
+                    msg.sender, // manager
+                    address(0) // no asset manager
+                )
+            );
     }
 }
