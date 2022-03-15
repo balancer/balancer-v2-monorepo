@@ -137,6 +137,17 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         require(_balancerToken.hasRole(_balancerToken.DEFAULT_ADMIN_ROLE(), address(this)), "Not BAL admin");
         require(authorizer.canPerform(bytes32(0), address(this), address(0)), "Not Authorizer admin");
 
+        // Also require that Balancer governance holds all relevant admin rights
+        IAuthorizerAdaptor authorizerAdaptor = getAuthorizerAdaptor();
+        require(
+            _gaugeController.voting_escrow().admin() == address(authorizerAdaptor),
+            "VotingEscrow not owned by AuthorizerAdaptor"
+        );
+        require(
+            _gaugeController.admin() == address(authorizerAdaptor),
+            "GaugeController not owned by AuthorizerAdaptor"
+        );
+
         // Sanity checks
         require(_gaugeController.n_gauge_types() == 0, "Gauge types already set");
 
@@ -165,7 +176,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         {
             // Admin functions on the Gauge Controller have to be called via the the AuthorizerAdaptor, which acts as
             // its admin.
-            IAuthorizerAdaptor authorizerAdaptor = getAuthorizerAdaptor();
+
             // Note that the current Authorizer ignores the 'where' parameter, so we don't need to (cannot) indicate
             // that this permission should only be granted on the gauge controller itself.
             authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_type.selector), address(this));
