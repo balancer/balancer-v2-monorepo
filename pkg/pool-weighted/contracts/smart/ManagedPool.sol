@@ -119,33 +119,35 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     event AllowlistAddressRemoved(address indexed member);
 
     struct NewPoolParams {
-        IVault vault;
         string name;
         string symbol;
         IERC20[] tokens;
         uint256[] normalizedWeights;
         address[] assetManagers;
         uint256 swapFeePercentage;
-        uint256 pauseWindowDuration;
-        uint256 bufferPeriodDuration;
-        address owner;
         bool swapEnabledOnStart;
         bool mustAllowlistLPs;
         bool paysProtocolFees;
         uint256 managementSwapFeePercentage;
     }
 
-    constructor(NewPoolParams memory params)
+    constructor(
+        NewPoolParams memory params,
+        IVault vault,
+        address owner,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration
+    )
         BaseWeightedPool(
-            params.vault,
+            vault,
             params.name,
             params.symbol,
             params.tokens,
             params.assetManagers,
             params.swapFeePercentage,
-            params.pauseWindowDuration,
-            params.bufferPeriodDuration,
-            params.owner
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner
         )
     {
         uint256 totalTokens = params.tokens.length;
@@ -160,7 +162,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
 
         // Set initial value of the protocolSwapFeePercentage; can be updated externally if it changes
-        _cachedProtocolSwapFeePercentage = params.vault.getProtocolFeesCollector().getSwapFeePercentage();
+        _cachedProtocolSwapFeePercentage = vault.getProtocolFeesCollector().getSwapFeePercentage();
 
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(

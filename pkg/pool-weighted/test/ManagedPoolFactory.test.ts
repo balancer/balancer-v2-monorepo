@@ -65,16 +65,12 @@ describe('ManagedPoolFactory', function () {
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
 
     const newPoolParams: ManagedPoolParams = {
-      vault: vault.address,
       name: NAME,
       symbol: SYMBOL,
       tokens: tokens.addresses,
       normalizedWeights: WEIGHTS,
       assetManagers: assetManagers,
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-      pauseWindowDuration: BASE_PAUSE_WINDOW_DURATION,
-      bufferPeriodDuration: BASE_PAUSE_WINDOW_DURATION,
-      owner: manager.address,
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
       paysProtocolFees: paysProtocolFees,
@@ -99,7 +95,7 @@ describe('ManagedPoolFactory', function () {
     const receipt = await (
       await factory
         .connect(manager)
-        .create(newPoolParams, basePoolRights, managedPoolRights, MIN_WEIGHT_CHANGE_DURATION)
+        .create(newPoolParams, basePoolRights, managedPoolRights, MIN_WEIGHT_CHANGE_DURATION, manager.address)
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
