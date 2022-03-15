@@ -159,7 +159,7 @@ contract BalancerTokenAdmin is IBalancerTokenAdmin, Authentication, ReentrancyGu
      * @notice Mint BAL tokens subject to the defined inflation schedule
      * @dev Callable only by addresses defined in the Balancer Authorizer contract
      */
-    function mint(address to, uint256 amount) external authenticate {
+    function mint(address to, uint256 amount) external override authenticate {
         // Check if we've passed into a new epoch such that we should calculate available supply with a smaller rate.
         if (block.timestamp >= _startEpochTime.add(RATE_REDUCTION_TIME)) {
             _updateMiningParameters();
