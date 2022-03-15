@@ -36,19 +36,19 @@ contract veBALDeploymentCoordinator {
     DeploymentStage private _currentDeploymentStage;
     uint256 private immutable _activationScheduledTime;
 
-    uint256 public LM_COMMITTEE_WEIGHT = 10e16; // 10%
-    uint256 public VEBAL_WEIGHT = 10e16; // 10%
-    uint256 public ETHEREUM_WEIGHT = 56e16; // 56%
-    uint256 public POLYGON_WEIGHT = 17e16; // 17%
-    uint256 public ARBITRUM_WEIGHT = 7e16; // 7%
+    uint256 public constant LM_COMMITTEE_WEIGHT = 10e16; // 10%
+    uint256 public constant VEBAL_WEIGHT = 10e16; // 10%
+    uint256 public constant ETHEREUM_WEIGHT = 56e16; // 56%
+    uint256 public constant POLYGON_WEIGHT = 17e16; // 17%
+    uint256 public constant ARBITRUM_WEIGHT = 7e16; // 7%
 
     // Gauge type IDs are allocated sequentially, and since we know all gauge types will be created by this contract, we
     // know these will be the resulting types.
-    uint256 public LM_COMITTEE_TYPE = 0;
-    uint256 public VEBAL_TYPE = 1;
-    uint256 public ETHEREUM_TYPE = 2;
-    uint256 public POLYGON_TYPE = 3;
-    uint256 public ARBITRUM_TYPE = 4;
+    uint256 public constant LM_COMITTEE_TYPE = 0;
+    uint256 public constant VEBAL_TYPE = 1;
+    uint256 public constant ETHEREUM_TYPE = 2;
+    uint256 public constant POLYGON_TYPE = 3;
+    uint256 public constant ARBITRUM_TYPE = 4;
 
     struct EthereumGauge {
         address pool;
