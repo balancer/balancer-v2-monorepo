@@ -132,7 +132,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
     function performFirstStage() external authenticate nonReentrant {
         // Check internal state
         require(block.timestamp >= _activationScheduledTime, "Not ready for activation");
-        require(_currentDeploymentStage == DeploymentStage.PENDING, "First steap already performed");
+        require(_currentDeploymentStage == DeploymentStage.PENDING, "First step already performed");
 
         // Check external state: we need admin permission on both the BAL token and the Authorizer
         ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
