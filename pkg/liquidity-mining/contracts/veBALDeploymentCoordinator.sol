@@ -98,6 +98,11 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         return getVault().getAuthorizer();
     }
 
+    function getAuthorizerAdaptor() public view returns (IAuthorizerAdaptor) {
+        // TODO: store this properly, we shouldn't rely on the GaugeController to store this
+        return IAuthorizerAdaptor(_gaugeController.admin());
+    }
+
     function getBalancerTokenAdmin() external view returns (IBalancerTokenAdmin) {
         return _balancerTokenAdmin;
     }
@@ -159,7 +164,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         {
             // Admin functions on the Gauge Controller have to be called via the the AuthorizerAdaptor, which acts as
             // its admin.
-            IAuthorizerAdaptor authorizerAdaptor = IAuthorizerAdaptor(_gaugeController.admin());
+            IAuthorizerAdaptor authorizerAdaptor = getAuthorizerAdaptor();
             // Note that the current Authorizer ignores the 'where' parameter, so we don't need to (cannot) indicate
             // that this permission should only be granted on the gauge controller itself.
             authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_type.selector), address(this));
@@ -204,7 +209,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         // holders vote for them.
         // Admin functions on the Gauge Controller have to be called via the the AuthorizerAdaptor, which acts as its
         // admin.
-        IAuthorizerAdaptor authorizerAdaptor = IAuthorizerAdaptor(_gaugeController.admin());
+        IAuthorizerAdaptor authorizerAdaptor = getAuthorizerAdaptor();
         // Note that the current Authorizer ignores the 'where' parameter, so we don't need to (cannot) indicate
         // that this permission should only be granted on the gauge controller itself.
         ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
@@ -232,9 +237,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
     }
 
     function _addGaugeType(IGaugeController gaugeController, string memory name) private {
-        IAuthorizerAdaptor authorizerAdaptor = IAuthorizerAdaptor(_gaugeController.admin());
-
-        authorizerAdaptor.performAction(
+        getAuthorizerAdaptor().performAction(
             address(gaugeController),
             abi.encodeWithSelector(IGaugeController.add_type.selector, name, 0)
         );
@@ -245,9 +248,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         uint256 typeId,
         uint256 weight
     ) private {
-        IAuthorizerAdaptor authorizerAdaptor = IAuthorizerAdaptor(_gaugeController.admin());
-
-        authorizerAdaptor.performAction(
+        getAuthorizerAdaptor().performAction(
             address(gaugeController),
             abi.encodeWithSelector(IGaugeController.change_type_weight.selector, typeId, weight)
         );
