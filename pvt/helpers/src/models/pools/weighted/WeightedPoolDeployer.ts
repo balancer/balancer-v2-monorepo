@@ -16,7 +16,7 @@ import {
   WeightedPoolType,
 } from './types';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
+import { DAY } from '@balancer-labs/v2-helpers/src/time';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -135,7 +135,7 @@ export default {
             vault.address,
             owner,
             pauseWindowDuration,
-            bufferPeriodDuration
+            bufferPeriodDuration,
           ],
           from,
         });
