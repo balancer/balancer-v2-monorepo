@@ -50,29 +50,9 @@ contract veBALDeploymentCoordinator {
     uint256 public constant POLYGON_TYPE = 3;
     uint256 public constant ARBITRUM_TYPE = 4;
 
-    struct EthereumGauge {
-        address pool;
-        IERC20[] tokens;
-    }
-
-    struct veBALDeploymentConfig {
-        ILiquidityGaugeFactory singleRecipientGaugeFactory;
-        // create lm, vebal gauges with corresponding type. also merkle gauge with type and weights equal to poly+arbi
-
-        ILiquidityGaugeFactory ethereumGaugeFactory;
-        EthereumGauge[] ethereumGauges;
-        ILiquidityGaugeFactory polygonGaugeFactory;
-        ILiquidityGaugeFactory arbitrumGaugeFactory;
-        IGaugeAdder gaugeAdder;
-    }
-
-    veBALDeploymentConfig private _config;
-
-    constructor(
-        IBalancerMinter balancerMinter,
-        uint256 activationScheduledTime,
-        GaugeType[] memory gaugeTypes
-    ) Authentication(bytes32(uint256(address(this)))) {
+    constructor(IBalancerMinter balancerMinter, uint256 activationScheduledTime)
+        Authentication(bytes32(uint256(address(this))))
+    {
         // veBALDeploymentCoordinator is a singleton, so it simply uses its own address to disambiguate action identifiers
 
         _currentDeploymentStage = DeploymentStage.PENDING;
@@ -85,10 +65,6 @@ contract veBALDeploymentCoordinator {
         _balancerMinter = balancerMinter;
 
         _activationScheduledTime = activationScheduledTime;
-
-        for (uint256 i = 0; i < gaugeTypes.length; ++i) {
-            _config.gaugeTypes.push(gaugeTypes[i]);
-        }
     }
 
     function getBalancerTokenAdmin() external view returns (IBalancerTokenAdmin) {
@@ -105,10 +81,6 @@ contract veBALDeploymentCoordinator {
 
     function getActivationScheduledTime() external view returns (uint256) {
         return _activationScheduledTime;
-    }
-
-    function getGaugeTypes() external view returns (GaugeTypes[] memory) {
-        return _gaugeTypes;
     }
 
     function performFirstStage() external nonReentrant {
