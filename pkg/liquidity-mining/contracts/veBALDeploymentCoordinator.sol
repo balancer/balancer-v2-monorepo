@@ -176,9 +176,6 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         // to migrate to the new system before it is fully activated. The gauge type weights will be set to their actual
         // values on the last stage of deployment.
         {
-            // Admin functions on the Gauge Controller have to be called via the the AuthorizerAdaptor, which acts as
-            // its admin.
-
             // Note that the current Authorizer ignores the 'where' parameter, so we don't need to (cannot) indicate
             // that this permission should only be granted on the gauge controller itself.
             authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_type.selector), address(this));
