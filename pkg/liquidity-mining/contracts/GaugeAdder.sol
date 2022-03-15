@@ -20,26 +20,17 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "./interfaces/IAuthorizerAdaptor.sol";
-import "./interfaces/IGaugeController.sol";
-import "./interfaces/ILiquidityGauge.sol";
-import "./interfaces/ILiquidityGaugeFactory.sol";
+import "./interfaces/IGaugeAdder.sol";
 
-contract GaugeAdder is Authentication, ReentrancyGuard {
+contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     IVault private immutable _vault;
     IGaugeController private immutable _gaugeController;
     IAuthorizerAdaptor private _authorizerAdaptor;
 
-    // TODO: Ensure that these align with the types as set on the GaugeController
-    // Failure to do so will result in an irrecoverably broken GaugeController state.
-    enum GaugeType { LiquidityMiningCommittee, veBAL, Ethereum, Polygon, Arbitrum }
-
     // Mapping from gauge type to a list of address for approved factories for that type
     mapping(GaugeType => EnumerableSet.AddressSet) internal _gaugeFactoriesByType;
-
-    event GaugeFactoryAdded(GaugeType indexed gaugeType, ILiquidityGaugeFactory gaugeFactory);
 
     constructor(IGaugeController gaugeController, IAuthorizerAdaptor authorizerAdaptor)
         Authentication(bytes32(uint256(address(this))))
@@ -81,21 +72,21 @@ contract GaugeAdder is Authentication, ReentrancyGuard {
     /**
      * @notice Returns the `index`'th factory for gauge type `gaugeType`
      */
-    function getFactoryForGaugeType(GaugeType gaugeType, uint256 index) external view returns (address) {
+    function getFactoryForGaugeType(GaugeType gaugeType, uint256 index) external view override returns (address) {
         return _gaugeFactoriesByType[gaugeType].at(index);
     }
 
     /**
      * @notice Returns the number of factories for gauge type `gaugeType`
      */
-    function getFactoryForGaugeTypeCount(GaugeType gaugeType) external view returns (uint256) {
+    function getFactoryForGaugeTypeCount(GaugeType gaugeType) external view override returns (uint256) {
         return _gaugeFactoriesByType[gaugeType].length();
     }
 
     /**
      * @notice Returns whether `gauge` has been deployed by one of the listed factories for the gauge type `gaugeType`
      */
-    function isGaugeFromValidFactory(address gauge, GaugeType gaugeType) public view returns (bool) {
+    function isGaugeFromValidFactory(address gauge, GaugeType gaugeType) public view override returns (bool) {
         EnumerableSet.AddressSet storage gaugeFactories = _gaugeFactoriesByType[gaugeType];
         uint256 gaugeFactoriesLength = gaugeFactories.length();
 
@@ -118,7 +109,7 @@ contract GaugeAdder is Authentication, ReentrancyGuard {
     /**
      * @notice Adds a new gauge to the GaugeController for the "Ethereum" type.
      */
-    function addEthereumGauge(address gauge) external authenticate {
+    function addEthereumGauge(address gauge) external override authenticate {
         _addGauge(gauge, GaugeType.Ethereum);
     }
 
@@ -127,7 +118,7 @@ contract GaugeAdder is Authentication, ReentrancyGuard {
      * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
      * It should not be called with the address of the gauge which is deployed on Polygon
      */
-    function addPolygonGauge(address rootGauge) external authenticate {
+    function addPolygonGauge(address rootGauge) external override authenticate {
         _addGauge(rootGauge, GaugeType.Polygon);
     }
 
@@ -136,14 +127,14 @@ contract GaugeAdder is Authentication, ReentrancyGuard {
      * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
      * It should not be called with the address of the gauge which is deployed on Arbitrum
      */
-    function addArbitrumGauge(address rootGauge) external authenticate {
+    function addArbitrumGauge(address rootGauge) external override authenticate {
         _addGauge(rootGauge, GaugeType.Arbitrum);
     }
 
     /**
      * @notice Adds `factory` as an allowlisted factory contract for gauges with type `gaugeType`.
      */
-    function addGaugeFactory(ILiquidityGaugeFactory factory, GaugeType gaugeType) external authenticate {
+    function addGaugeFactory(ILiquidityGaugeFactory factory, GaugeType gaugeType) external override authenticate {
         // Casting is safe as n_gauge_types return value is >= 0.
         require(uint256(gaugeType) < uint256(_gaugeController.n_gauge_types()), "Invalid gauge type");
 
