@@ -17,6 +17,7 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
+import "./interfaces/IBalancerMinter.sol";
 import "./interfaces/IBalancerTokenAdmin.sol";
 
 // https://vote.balancer.fi/#/proposal/0x9fe19c491cf90ed2e3ed9c15761c43d39fd1fb732a940aba8058ff69787ee90a
@@ -25,7 +26,7 @@ contract veBALDeploymentCoordinator {
 
     IVault private immutable _vault;
     IBalancerToken private immutable _balancerToken;
-    address private immutable _balancerMinter;
+    IBalancerMinter private immutable _balancerMinter;
 
     enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE }
 
@@ -69,7 +70,7 @@ contract veBALDeploymentCoordinator {
 
     constructor(
         IBalancerTokenAdmin balancerTokenAdmin,
-        address balancerMinter,
+        IBalancerMinter balancerMinter,
         uint256 activationScheduledTime,
         GaugeType[] memory gaugeTypes
     ) Authentication(bytes32(uint256(address(this)))) {
@@ -94,7 +95,7 @@ contract veBALDeploymentCoordinator {
         return _balancerTokenAdmin;
     }
 
-    function getBalancerMinter() external view returns (address) {
+    function getBalancerMinter() external view returns (IBalancerMinter) {
         return _balancerMinter;
     }
 
@@ -135,7 +136,7 @@ contract veBALDeploymentCoordinator {
         // so we don't need to renounce this permission.
 
         // Step 2: grant BalancerMinter authority to mint BAL, as part of the Liquidity Mining program.
-        authorizer.grantRole(_balancerTokenAdmin.getActionId(IBalancerTokenAdmin.mint.selector), _balancerMinter);
+        authorizer.grantRole(_balancerTokenAdmin.getActionId(IBalancerTokenAdmin.mint.selector), address(_balancerMinter));
 
         // Step 3: setup the Liquidity Mining program by creating the different gauge types on the Gauge Controller.
         //
