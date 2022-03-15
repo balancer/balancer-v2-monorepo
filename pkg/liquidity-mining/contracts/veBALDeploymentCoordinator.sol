@@ -14,6 +14,7 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
@@ -21,7 +22,7 @@ import "./interfaces/IBalancerMinter.sol";
 import "./interfaces/IBalancerTokenAdmin.sol";
 
 // https://vote.balancer.fi/#/proposal/0x9fe19c491cf90ed2e3ed9c15761c43d39fd1fb732a940aba8058ff69787ee90a
-contract veBALDeploymentCoordinator {
+contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
     IBalancerTokenAdmin private immutable _balancerTokenAdmin;
 
     IVault private immutable _vault;
@@ -65,6 +66,20 @@ contract veBALDeploymentCoordinator {
         _balancerMinter = balancerMinter;
 
         _activationScheduledTime = activationScheduledTime;
+    }
+
+    /**
+     * @notice Returns the Balancer Vault.
+     */
+    function getVault() public view returns (IVault) {
+        return _vault;
+    }
+
+    /**
+     * @notice Returns the Balancer Vault's current authorizer.
+     */
+    function getAuthorizer() public view returns (IAuthorizer) {
+        return getVault().getAuthorizer();
     }
 
     function getBalancerTokenAdmin() external view returns (IBalancerTokenAdmin) {
@@ -211,5 +226,9 @@ contract veBALDeploymentCoordinator {
             gaugeController,
             abi.encodeWithSelector(IGaugeController.change_type_weight.selector, typeId, weight)
         );
+    }
+
+    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
+        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 }
