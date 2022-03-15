@@ -127,7 +127,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         return _activationScheduledTime;
     }
 
-    function performFirstStage() external nonReentrant {
+    function performFirstStage() external authenticate nonReentrant {
         // Check internal state
         require(block.timestamp >= _activationScheduledTime, "Not ready for activation");
         require(_currentDeploymentStage == DeploymentStage.PENDING, "First steap already performed");
@@ -201,6 +201,9 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         _currentDeploymentStage = DeploymentStage.FIRST_STAGE_DONE;
     }
 
+    /**
+     * @dev This is purposefully left without access control to ensure that it is activated at the correct time.
+     */
     function performSecondStage() external nonReentrant {
         // Check delay from first stage
         require(_currentDeploymentStage == DeploymentStage.FIRST_STAGE_DONE, "First steap already performed");
