@@ -147,7 +147,7 @@ contract Authorizer is IAuthorizer {
 
         uint256 actionDelay = delays[action];
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, action, newDelay);
-        return _schedule(setDelayAction, address(this), data, actionDelay, executors);
+        return _scheduleWithDelay(setDelayAction, address(this), data, actionDelay, executors);
     }
 
     /**
@@ -161,10 +161,7 @@ contract Authorizer is IAuthorizer {
         require(where != address(this), "CANNOT_SCHEDULE_AUTHORIZER_ACTIONS");
         bytes32 action = IAuthentication(where).getActionId(_decodeSelector(data));
         _require(hasPermission(action, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
-
-        uint256 delay = delays[action];
-        require(delay > 0, "CANNOT_SCHEDULE_ACTION");
-        return _schedule(action, where, data, delay, executors);
+        return _schedule(action, where, data, executors);
     }
 
     /**
@@ -229,7 +226,7 @@ contract Authorizer is IAuthorizer {
     ) external returns (uint256 id) {
         _require(hasPermission(GRANT_PERMISSION, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
         bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _arr(action), account, _arr(where));
-        return _schedule(GRANT_PERMISSION, address(this), data, delays[GRANT_PERMISSION], executors);
+        return _schedule(GRANT_PERMISSION, address(this), data, executors);
     }
 
     /**
@@ -258,7 +255,7 @@ contract Authorizer is IAuthorizer {
     ) external returns (uint256 id) {
         _require(hasPermission(REVOKE_PERMISSION, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
         bytes memory data = abi.encodeWithSelector(this.revokePermissions.selector, _arr(action), account, _arr(where));
-        return _schedule(REVOKE_PERMISSION, address(this), data, delays[REVOKE_PERMISSION], executors);
+        return _schedule(REVOKE_PERMISSION, address(this), data, executors);
     }
 
     /**
@@ -296,6 +293,17 @@ contract Authorizer is IAuthorizer {
     }
 
     function _schedule(
+        bytes32 action,
+        address where,
+        bytes memory data,
+        address[] memory executors
+    ) private returns (uint256 id) {
+        uint256 delay = delays[action];
+        require(delay > 0, "CANNOT_SCHEDULE_ACTION");
+        return _scheduleWithDelay(action, where, data, delay, executors);
+    }
+
+    function _scheduleWithDelay(
         bytes32 action,
         address where,
         bytes memory data,
