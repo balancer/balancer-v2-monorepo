@@ -195,6 +195,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         IAuthorizerAdaptor authorizerAdaptor = _gaugeController.admin();
         // Note that the current Authorizer ignores the 'where' parameter, so we don't need to (cannot) indicate
         // that this permission should only be granted on the gauge controller itself.
+        IAuthorizer authorizer = _vault.getAuthorizer();
         authorizer.grantRole(
             authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector),
             address(this)
@@ -212,7 +213,6 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         );
 
         // The entire system is now fully setup, and we can renounce permissions over the Authorizer
-        IAuthorizer authorizer = _vault.getAuthorizer();
         authorizer.renounceRole(authorizer.DEFAULT_ADMIN_ROLE(), address(this));
 
         secondStageActivationTime = block.timestamp;
