@@ -44,7 +44,7 @@ contract veBALDeploymentCoordinator {
 
     // Gauge type IDs are allocated sequentially, and since we know all gauge types will be created by this contract, we
     // know these will be the resulting types.
-    uint256 public constant LM_COMITTEE_TYPE = 0;
+    uint256 public constant LM_COMMITTEE_TYPE = 0;
     uint256 public constant VEBAL_TYPE = 1;
     uint256 public constant ETHEREUM_TYPE = 2;
     uint256 public constant POLYGON_TYPE = 3;
