@@ -14,12 +14,14 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
+
 import "./IAuthorizerAdaptor.sol";
 import "./IGaugeController.sol";
 import "./ILiquidityGauge.sol";
 import "./ILiquidityGaugeFactory.sol";
 
-interface IGaugeAdder {
+interface IGaugeAdder is IAuthentication {
     // TODO: Ensure that these align with the types as set on the GaugeController
     // Failure to do so will result in an irrecoverably broken GaugeController state.
     enum GaugeType { LiquidityMiningCommittee, veBAL, Ethereum, Polygon, Arbitrum }
