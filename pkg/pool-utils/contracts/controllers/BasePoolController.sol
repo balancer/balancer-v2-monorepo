@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 
 import "../BasePoolAuthorization.sol";
 import "../interfaces/IBasePoolController.sol";
@@ -133,6 +134,13 @@ contract BasePoolController is IBasePoolController {
      */
     function getManager() public view returns (address) {
         return _manager;
+    }
+
+    /**
+     * @dev Getter for the underlying poolId.
+     */
+    function getPoolId() public view returns (bytes32) {
+        return IBasePool(pool).getPoolId();
     }
 
     /**
