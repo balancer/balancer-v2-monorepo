@@ -18,6 +18,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
+import "./interfaces/IAuthorizerAdaptor.sol";
+import "./interfaces/IGaugeController.sol";
 import "./interfaces/IBalancerMinter.sol";
 import "./interfaces/IBalancerTokenAdmin.sol";
 
