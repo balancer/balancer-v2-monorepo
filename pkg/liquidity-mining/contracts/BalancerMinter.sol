@@ -69,8 +69,8 @@ contract BalancerMinter is IBalancerMinter, ReentrancyGuard, EIP712 {
     /**
      * @notice Returns the address of the Balancer Token Admin contract
      */
-    function getBalancerTokenAdmin() external view override returns (address) {
-        return address(_tokenAdmin);
+    function getBalancerTokenAdmin() external view override returns (IBalancerTokenAdmin) {
+        return _tokenAdmin;
     }
 
     /**
