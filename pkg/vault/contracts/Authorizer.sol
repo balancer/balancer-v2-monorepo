@@ -51,7 +51,8 @@ contract Authorizer is IAuthorizer {
         uint256 executableAt;
     }
 
-    IAuthentication public immutable vault;
+    IAuthentication private immutable _vault;
+
     ScheduledAction[] public scheduledActions;
     mapping(bytes32 => bool) public permissionGranted;
     mapping(bytes32 => uint256) public delays;
@@ -86,10 +87,14 @@ contract Authorizer is IAuthorizer {
      */
     event PermissionRevoked(bytes32 indexed action, address indexed account, address indexed where);
 
-    constructor(address _admin, IAuthentication _vault) {
-        vault = _vault;
-        _grantPermission(GRANT_PERMISSION, _admin, EVERYWHERE);
-        _grantPermission(REVOKE_PERMISSION, _admin, EVERYWHERE);
+    constructor(address admin, IAuthentication vault) {
+        _vault = vault;
+        _grantPermission(GRANT_PERMISSION, admin, EVERYWHERE);
+        _grantPermission(REVOKE_PERMISSION, admin, EVERYWHERE);
+    }
+
+    function getVault() external view returns (address) {
+        return address(_vault);
     }
 
     /**
@@ -133,7 +138,7 @@ contract Authorizer is IAuthorizer {
     function setDelay(bytes32 action, uint256 delay) external {
         _require(msg.sender == address(this), Errors.SENDER_NOT_ALLOWED);
 
-        bytes32 setAuthorizerId = vault.getActionId(IVault.setAuthorizer.selector);
+        bytes32 setAuthorizerId = _vault.getActionId(IVault.setAuthorizer.selector);
         require(action == setAuthorizerId || delay <= delays[setAuthorizerId], "DELAY_EXCEEDS_SET_AUTHORIZER");
 
         delays[action] = delay;
