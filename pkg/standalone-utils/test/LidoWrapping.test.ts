@@ -22,6 +22,7 @@ import {
   setChainedReferenceContents,
   toChainedReference,
 } from './helpers/chainedReferences';
+import { expectTransferEvent } from './helpers/tokenTransfer';
 
 describe('LidoWrapping', function () {
   let stETH: Token, wstETH: Token;
