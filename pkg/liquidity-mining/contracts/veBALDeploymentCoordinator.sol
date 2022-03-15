@@ -67,9 +67,11 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
     uint256 public constant POLYGON_TYPE = 3;
     uint256 public constant ARBITRUM_TYPE = 4;
 
-    constructor(IBalancerMinter balancerMinter, IAuthorizerAdaptor authorizerAdaptor, uint256 activationScheduledTime)
-        Authentication(bytes32(uint256(address(this))))
-    {
+    constructor(
+        IBalancerMinter balancerMinter,
+        IAuthorizerAdaptor authorizerAdaptor,
+        uint256 activationScheduledTime
+    ) Authentication(bytes32(uint256(address(this)))) {
         // veBALDeploymentCoordinator is a singleton, so it simply uses its own address to disambiguate action identifiers
 
         _currentDeploymentStage = DeploymentStage.PENDING;
@@ -187,10 +189,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
             _addGaugeType(_gaugeController, "Polygon");
             _addGaugeType(_gaugeController, "Arbitrum");
 
-            authorizer.revokeRole(
-                authorizerAdaptor.getActionId(IGaugeController.add_type.selector),
-                address(this)
-            );
+            authorizer.revokeRole(authorizerAdaptor.getActionId(IGaugeController.add_type.selector), address(this));
         }
 
         // Step 4: create gauges for the single-gauge gauge types
