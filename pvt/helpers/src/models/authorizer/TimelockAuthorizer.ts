@@ -12,8 +12,6 @@ import { TimelockAuthorizerDeployment } from './types';
 import { Account, NAry, TxParams } from '../types/types';
 import TimelockAuthorizerDeployer from './TimelockAuthorizerDeployer';
 
-const SET_DELAY_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['SET_DELAY_PERMISSION']);
-
 export default class TimelockAuthorizer {
   static EVERYWHERE = ANY_ADDRESS;
 
@@ -37,12 +35,16 @@ export default class TimelockAuthorizer {
     return this.instance.interface;
   }
 
-  async GRANT_PERMISSION(): Promise<string> {
-    return this.instance.GRANT_PERMISSION();
+  async GRANT_ACTION_ID(): Promise<string> {
+    return this.instance.GRANT_ACTION_ID();
   }
 
-  async REVOKE_PERMISSION(): Promise<string> {
-    return this.instance.REVOKE_PERMISSION();
+  async REVOKE_ACTION_ID(): Promise<string> {
+    return this.instance.REVOKE_ACTION_ID();
+  }
+
+  async SCHEDULE_DELAY_ACTION_ID(): Promise<string> {
+    return this.instance.SCHEDULE_DELAY_ACTION_ID();
   }
 
   async permissionId(action: string, account: Account, where: Account): Promise<string> {
@@ -180,7 +182,8 @@ export default class TimelockAuthorizer {
 
   async setDelay(action: string, delay: number, params?: TxParams): Promise<void> {
     const from = params?.from ?? (await getSigner());
-    const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [SET_DELAY_PERMISSION, action]);
+    const SCHEDULE_DELAY_ACTION_ID = await this.SCHEDULE_DELAY_ACTION_ID();
+    const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [SCHEDULE_DELAY_ACTION_ID, action]);
     await this.grantPermissions(setDelayAction, this.toAddress(from), this, params);
     const id = await this.scheduleDelayChange(action, delay, [], params);
     await this.execute(id);

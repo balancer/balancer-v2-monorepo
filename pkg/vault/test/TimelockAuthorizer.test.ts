@@ -39,90 +39,87 @@ describe('TimelockAuthorizer', () => {
   });
 
   describe('admin', () => {
-    let GRANT_PERMISSION: string, REVOKE_PERMISSION: string;
+    let GRANT_ACTION_ID: string, REVOKE_ACTION_ID: string;
 
     sharedBeforeEach('set constants', async () => {
-      GRANT_PERMISSION = await authorizer.GRANT_PERMISSION();
-      REVOKE_PERMISSION = await authorizer.REVOKE_PERMISSION();
+      GRANT_ACTION_ID = await authorizer.GRANT_ACTION_ID();
+      REVOKE_ACTION_ID = await authorizer.REVOKE_ACTION_ID();
     });
 
     it('defines its permissions correctly', async () => {
-      expect(GRANT_PERMISSION).to.be.equal(ethers.utils.solidityKeccak256(['string'], ['GRANT_PERMISSION']));
-      expect(REVOKE_PERMISSION).to.be.equal(ethers.utils.solidityKeccak256(['string'], ['REVOKE_PERMISSION']));
-
       const expectedGrantId = ethers.utils.solidityKeccak256(
         ['bytes32', 'address', 'address'],
-        [GRANT_PERMISSION, admin.address, EVERYWHERE]
+        [GRANT_ACTION_ID, admin.address, EVERYWHERE]
       );
-      expect(await authorizer.permissionId(GRANT_PERMISSION, admin, EVERYWHERE)).to.be.equal(expectedGrantId);
+      expect(await authorizer.permissionId(GRANT_ACTION_ID, admin, EVERYWHERE)).to.be.equal(expectedGrantId);
 
       const expectedRevokeId = ethers.utils.solidityKeccak256(
         ['bytes32', 'address', 'address'],
-        [REVOKE_PERMISSION, admin.address, EVERYWHERE]
+        [REVOKE_ACTION_ID, admin.address, EVERYWHERE]
       );
-      expect(await authorizer.permissionId(REVOKE_PERMISSION, admin, EVERYWHERE)).to.be.equal(expectedRevokeId);
+      expect(await authorizer.permissionId(REVOKE_ACTION_ID, admin, EVERYWHERE)).to.be.equal(expectedRevokeId);
     });
 
     it('can grant permissions everywhere', async () => {
-      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, WHERE)).to.be.true;
-      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, EVERYWHERE)).to.be.true;
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, admin, WHERE)).to.be.true;
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, admin, EVERYWHERE)).to.be.true;
     });
 
     it('can revoke permissions everywhere', async () => {
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, WHERE)).to.be.true;
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, EVERYWHERE)).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, admin, WHERE)).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, admin, EVERYWHERE)).to.be.true;
     });
 
     it('can grant permission to other address to grant permissions for a custom contract', async () => {
-      await authorizer.grantPermissions(GRANT_PERMISSION, grantee, WHERE[0], { from: admin });
+      await authorizer.grantPermissions(GRANT_ACTION_ID, grantee, WHERE[0], { from: admin });
 
-      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, WHERE[0])).to.be.true;
-      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, EVERYWHERE)).to.be.false;
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE[0])).to.be.true;
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE)).to.be.false;
     });
 
     it('can grant permission to other address to grant permissions everywhere', async () => {
-      await authorizer.grantPermissionsGlobally(GRANT_PERMISSION, grantee, { from: admin });
+      await authorizer.grantPermissionsGlobally(GRANT_ACTION_ID, grantee, { from: admin });
 
-      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, WHERE)).to.be.true;
-      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, EVERYWHERE)).to.be.true;
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE)).to.be.true;
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE)).to.be.true;
     });
 
     it('can grant permission to other address to revoke permissions for a custom contract', async () => {
-      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, WHERE[0], { from: admin });
+      await authorizer.grantPermissions(REVOKE_ACTION_ID, grantee, WHERE[0], { from: admin });
 
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, WHERE[0])).to.be.true;
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, EVERYWHERE)).to.be.false;
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE[0])).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE)).to.be.false;
     });
 
     it('can grant permission to other address to revoke permissions everywhere', async () => {
-      await authorizer.grantPermissionsGlobally(REVOKE_PERMISSION, grantee, { from: admin });
+      await authorizer.grantPermissionsGlobally(REVOKE_ACTION_ID, grantee, { from: admin });
 
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, WHERE)).to.be.true;
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, EVERYWHERE)).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE)).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE)).to.be.true;
     });
 
     it('can have their global permissions revoked by an authorized address for any contract', async () => {
-      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, EVERYWHERE, { from: admin });
+      await authorizer.grantPermissions(REVOKE_ACTION_ID, grantee, EVERYWHERE, { from: admin });
 
-      await authorizer.revokePermissions(GRANT_PERMISSION, admin, EVERYWHERE, { from: grantee });
-      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, WHERE)).to.be.false;
-      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, EVERYWHERE)).to.be.false;
+      await authorizer.revokePermissions(GRANT_ACTION_ID, admin, EVERYWHERE, { from: grantee });
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, admin, WHERE)).to.be.false;
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, admin, EVERYWHERE)).to.be.false;
 
-      await authorizer.revokePermissions(REVOKE_PERMISSION, admin, EVERYWHERE, { from: grantee });
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, WHERE)).to.be.false;
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, EVERYWHERE)).to.be.false;
+      await authorizer.revokePermissions(REVOKE_ACTION_ID, admin, EVERYWHERE, { from: grantee });
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, admin, WHERE)).to.be.false;
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, admin, EVERYWHERE)).to.be.false;
     });
 
     it('cannot have their global permissions revoked by an authorized address for a specific contract', async () => {
-      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, WHERE[0], { from: admin });
-      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, WHERE[1], { from: admin });
+      await authorizer.grantPermissions(REVOKE_ACTION_ID, grantee, WHERE[0], { from: admin });
+      await authorizer.grantPermissions(REVOKE_ACTION_ID, grantee, WHERE[1], { from: admin });
 
       await expect(
-        authorizer.revokePermissions(GRANT_PERMISSION, admin, EVERYWHERE, { from: grantee })
+        authorizer.revokePermissions(GRANT_ACTION_ID, admin, EVERYWHERE, { from: grantee })
       ).to.be.revertedWith('SENDER_NOT_ALLOWED');
 
       await expect(
-        authorizer.revokePermissions(REVOKE_PERMISSION, admin, EVERYWHERE, { from: grantee })
+        authorizer.revokePermissions(REVOKE_ACTION_ID, admin, EVERYWHERE, { from: grantee })
       ).to.be.revertedWith('SENDER_NOT_ALLOWED');
     });
   });
@@ -169,12 +166,16 @@ describe('TimelockAuthorizer', () => {
 
         context('when there is a delay set to grant permissions', () => {
           const delay = DAY;
-          const GRANT_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['GRANT_PERMISSION']);
+          let GRANT_ACTION_ID: string;
+
+          sharedBeforeEach('set constants', async () => {
+            GRANT_ACTION_ID = await authorizer.GRANT_ACTION_ID();
+          });
 
           sharedBeforeEach('set delay', async () => {
             const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
             await authorizer.setDelay(setAuthorizerAction, delay * 2, { from: admin });
-            await authorizer.setDelay(GRANT_PERMISSION, delay, { from: admin });
+            await authorizer.setDelay(GRANT_ACTION_ID, delay, { from: admin });
           });
 
           it('reverts', async () => {
@@ -435,12 +436,16 @@ describe('TimelockAuthorizer', () => {
 
           context('when there is a delay set to grant permissions', () => {
             const delay = DAY;
-            const REVOKE_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['REVOKE_PERMISSION']);
+            let REVOKE_ACTION_ID: string;
+
+            sharedBeforeEach('set constants', async () => {
+              REVOKE_ACTION_ID = await authorizer.REVOKE_ACTION_ID();
+            });
 
             sharedBeforeEach('set delay', async () => {
               const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
               await authorizer.setDelay(setAuthorizerAction, delay * 2, { from: admin });
-              await authorizer.setDelay(REVOKE_PERMISSION, delay, { from: admin });
+              await authorizer.setDelay(REVOKE_ACTION_ID, delay, { from: admin });
             });
 
             it('reverts', async () => {
@@ -713,10 +718,11 @@ describe('TimelockAuthorizer', () => {
 
   describe('setDelay', () => {
     const action = ACTION_1;
-    const SET_DELAY_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['SET_DELAY_PERMISSION']);
 
     const grantPermission = async (actionId: string) => {
-      const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [SET_DELAY_PERMISSION, actionId]);
+      const SCHEDULE_DELAY_ACTION_ID = await authorizer.SCHEDULE_DELAY_ACTION_ID();
+      const args = [SCHEDULE_DELAY_ACTION_ID, actionId];
+      const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
       await authorizer.grantPermissions(setDelayAction, admin, authorizer, { from: admin });
     };
 
