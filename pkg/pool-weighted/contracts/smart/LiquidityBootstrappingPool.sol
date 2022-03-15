@@ -26,7 +26,7 @@ import "./WeightCompression.sol";
 /**
  * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping.
  */
-contract UnseededLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
+contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     // LiquidityBootstrappingPool change their weights over time: these periods are expected to be long enough (e.g.
     // days) that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -63,6 +63,9 @@ contract UnseededLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard
     uint256 private constant _END_TIME_OFFSET = 160;
     uint256 private constant _SWAP_ENABLED_OFFSET = 192;
 
+    // Cache protocol swap fee percentage, since we need it on swaps, but it is not passed in then
+    uint256 private _cachedProtocolSwapFeePercentage;
+
     // Event declarations
 
     event SwapEnabledSet(bool swapEnabled);
@@ -74,30 +77,34 @@ contract UnseededLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard
     );
 
     struct NewPoolParams {
-        IVault vault;
         string name;
         string symbol;
         IERC20 projectToken;
         IERC20 reserveToken;
         uint256 projectWeight;
         uint256 reserveWeight;
-        IAssetManager reserveAssetManager;
         uint256 swapFeePercentage;
-        address owner;
         bool swapEnabledOnStart;
     }
 
-    constructor(NewPoolParams memory params, uint256 pauseWindowDuration, uint256 bufferPeriodDuration)
+    constructor(
+        NewPoolParams memory params,
+        IVault vault,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration,
+        address owner,
+        address reserveAssetManager
+    )
         BaseWeightedPool(
-            params.vault,
+            vault,
             params.name,
             params.symbol,
             _tokenArray(params.projectToken, params.reserveToken),
-            _assetManagerArray(params.reserveAssetManager),
+            _assetManagerArray(reserveAssetManager),
             params.swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
-            params.owner
+            owner
         )
     {
         _projectToken = params.projectToken;
@@ -115,6 +122,9 @@ contract UnseededLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard
 
         // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction)
         _setSwapEnabled(params.swapEnabledOnStart);
+
+        // Set initial value of the protocolSwapFeePercentage; can be updated externally if it changes
+        _cachedProtocolSwapFeePercentage = vault.getProtocolFeesCollector().getSwapFeePercentage();
     }
 
     function _tokenArray(IERC20 projectToken, IERC20 reserveToken) private pure returns (IERC20[] memory) {
@@ -125,14 +135,22 @@ contract UnseededLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard
         return tokens;
     }
 
-    function _assetManagerArray(IAssetManager reserveAssetManager) private pure returns (address[] memory) {
+    function _assetManagerArray(address reserveAssetManager) private pure returns (address[] memory) {
         address[] memory assetManagers = new address[](2);
-        assetManagers[1] = address(reserveAssetManager);
+        assetManagers[1] = reserveAssetManager;
 
         return assetManagers;
     }
 
     // External functions
+
+    function updateCachedProtocolSwapFeePercentage() external {
+        _cachedProtocolSwapFeePercentage = getVault().getProtocolFeesCollector().getSwapFeePercentage();
+    }
+
+    function getReserveToken() external view returns (IERC20) {
+        return _reserveToken;
+    }
 
     /**
      * @dev Tells whether swaps are enabled or not for the given pool.
@@ -233,8 +251,6 @@ contract UnseededLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard
         // Only the owner can initialize the pool
         _require(sender == getOwner(), Errors.CALLER_IS_NOT_LBP_OWNER);
 
-        //TODO - check if there's an asset manager
-
         return super._onInitializePool(poolId, sender, recipient, scalingFactors, userData);
     }
 
@@ -266,28 +282,135 @@ contract UnseededLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard
 
     // Swap overrides - revert unless swaps are enabled
 
-    function _onSwapGivenIn(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) internal override returns (uint256) {
+    function onSwap(
+        SwapRequest memory request,
+        uint256 balanceTokenIn,
+        uint256 balanceTokenOut
+    ) public virtual override onlyVault(request.poolId) returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        //TODO BPT fees
+        uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
+        uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
-        return super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        uint256[] memory normalizedWeights = new uint256[](2);
+        normalizedWeights[0] = _getNormalizedWeight(request.tokenIn);
+        normalizedWeights[1] = _getNormalizedWeight(request.tokenOut);
+
+        uint256[] memory preSwapBalances = new uint256[](2);
+        preSwapBalances[0] = _upscale(balanceTokenIn, scalingFactorTokenIn);
+        preSwapBalances[1] = _upscale(balanceTokenOut, scalingFactorTokenOut);
+
+        // Broken out only because of "stack too deep"
+        if (request.kind == IVault.SwapKind.GIVEN_IN) {
+            return
+                _processSwapGivenIn(
+                    request,
+                    scalingFactorTokenIn,
+                    scalingFactorTokenOut,
+                    preSwapBalances,
+                    normalizedWeights
+                );
+        } else {
+            return
+                _processSwapGivenOut(
+                    request,
+                    scalingFactorTokenIn,
+                    scalingFactorTokenOut,
+                    preSwapBalances,
+                    normalizedWeights
+                );
+        }
     }
 
-    function _onSwapGivenOut(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) internal override returns (uint256) {
-        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
+    function _processSwapGivenIn(
+        SwapRequest memory request,
+        uint256 scalingFactorTokenIn,
+        uint256 scalingFactorTokenOut,
+        uint256[] memory preSwapBalances,
+        uint256[] memory normalizedWeights
+    ) private returns (uint256) {
+        // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
+        uint256 amountInMinusSwapFees = _subtractSwapFeeAmount(request.amount);
+        amountInMinusSwapFees = _upscale(amountInMinusSwapFees, scalingFactorTokenIn);
+        request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
-        //TODO BPT fees
+        uint256 amountOut = WeightedMath._calcOutGivenIn(
+            preSwapBalances[0],
+            normalizedWeights[0],
+            preSwapBalances[1],
+            normalizedWeights[1],
+            amountInMinusSwapFees
+        );
 
-        return super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        uint256[] memory postSwapBalances = new uint256[](2);
+        postSwapBalances[0] = preSwapBalances[0].add(request.amount);
+        postSwapBalances[1] = preSwapBalances[1].sub(amountOut);
+
+        _payLbpProtocolFees(normalizedWeights, preSwapBalances, postSwapBalances);
+
+        // amountOut tokens are exiting the Pool, so we round down.
+        return _downscaleDown(amountOut, scalingFactorTokenOut);
+    }
+
+    function _processSwapGivenOut(
+        SwapRequest memory request,
+        uint256 scalingFactorTokenIn,
+        uint256 scalingFactorTokenOut,
+        uint256[] memory preSwapBalances,
+        uint256[] memory normalizedWeights
+    ) private returns (uint256) {
+        request.amount = _upscale(request.amount, scalingFactorTokenOut);
+
+        uint256 amountIn = WeightedMath._calcInGivenOut(
+            preSwapBalances[0],
+            normalizedWeights[0],
+            preSwapBalances[1],
+            normalizedWeights[1],
+            request.amount
+        );
+
+        // amountIn tokens are entering the Pool, so we round up.
+        amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
+
+        // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
+        uint256 amountInPlusSwapFees = _addSwapFeeAmount(amountIn);
+
+        uint256[] memory postSwapBalances = new uint256[](2);
+        postSwapBalances[0] = _upscale(amountInPlusSwapFees, scalingFactorTokenIn);
+        postSwapBalances[1] = preSwapBalances[1].sub(request.amount);
+
+        _payLbpProtocolFees(normalizedWeights, preSwapBalances, postSwapBalances);
+
+        return amountInPlusSwapFees;
+    }
+
+    function _payLbpProtocolFees(
+        uint256[] memory normalizedWeights,
+        uint256[] memory preSwapBalances,
+        uint256[] memory postSwapBalances
+    ) private {
+        // Calculate total BPT for the protocol and management fee
+        // The management fee percentage applies to the remainder,
+        // after the protocol fee has been collected.
+        // So totalFee = protocolFee + (1 - protocolFee) * managementFee
+        uint256 protocolFeePercentage = _cachedProtocolSwapFeePercentage;
+
+        if (protocolFeePercentage == 0) {
+            return;
+        }
+
+        // No other balances are changing, so the other terms in the invariant will cancel out
+        // when computing the ratio. So this partial invariant calculation is sufficient
+        uint256 bptFeeAmount = WeightedMath._calcDueProtocolSwapFeeBPTAmount(
+            totalSupply(),
+            WeightedMath._calculateInvariant(normalizedWeights, preSwapBalances),
+            WeightedMath._calculateInvariant(normalizedWeights, postSwapBalances),
+            protocolFeePercentage
+        );
+
+        if (bptFeeAmount > 0) {
+            _payProtocolFees(bptFeeAmount);
+        }
     }
 
     /**
@@ -295,8 +418,8 @@ contract UnseededLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard
      */
     function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
         return
-            (actionId == getActionId(UnseededLiquidityBootstrappingPool.setSwapEnabled.selector)) ||
-            (actionId == getActionId(UnseededLiquidityBootstrappingPool.updateWeightsGradually.selector)) ||
+            (actionId == getActionId(AssetManagedLiquidityBootstrappingPool.setSwapEnabled.selector)) ||
+            (actionId == getActionId(AssetManagedLiquidityBootstrappingPool.updateWeightsGradually.selector)) ||
             super._isOwnerOnlyAction(actionId);
     }
 
