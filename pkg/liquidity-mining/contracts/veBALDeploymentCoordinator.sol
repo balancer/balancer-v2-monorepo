@@ -127,7 +127,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         require(_currentDeploymentStage == DeploymentStage.PENDING, "First steap already performed");
 
         // Check external state: we need admin permission on both the BAL token and the Authorizer
-        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(_vault.getAuthorizer()));
+        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
         require(_balancerToken.hasRole(_balancerToken.DEFAULT_ADMIN_ROLE(), address(this)), "Not BAL admin");
         require(authorizer.canPerform(bytes32(0), address(this), address(0)), "Not Authorizer admin");
 
@@ -207,7 +207,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         IAuthorizerAdaptor authorizerAdaptor = IAuthorizerAdaptor(_gaugeController.admin());
         // Note that the current Authorizer ignores the 'where' parameter, so we don't need to (cannot) indicate
         // that this permission should only be granted on the gauge controller itself.
-        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(_vault.getAuthorizer()));
+        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
         authorizer.grantRole(
             authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector),
             address(this)
