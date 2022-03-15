@@ -38,6 +38,10 @@ interface ICurrentAuthorizer is IAuthorizer {
     function revokeRole(bytes32 role, address account) external;
 }
 
+interface IEthereumLiquidityGaugeFactory is ILiquidityGaugeFactory {
+    function deploy(address pool) external returns (ILiquidityGauge);
+}
+
 // https://vote.balancer.fi/#/proposal/0x9fe19c491cf90ed2e3ed9c15761c43d39fd1fb732a940aba8058ff69787ee90a
 // solhint-disable-next-line contract-name-camelcase
 contract veBALDeploymentCoordinator is ReentrancyGuard {
@@ -48,6 +52,10 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     IBalancerToken private immutable _balancerToken;
     IBalancerMinter private immutable _balancerMinter;
     IGaugeController private immutable _gaugeController;
+    IGaugeAdder private immutable _gaugeAdder;
+    IEthereumLiquidityGaugeFactory private immutable _ethereumGaugeFactory;
+
+    address[] private _initialPools;
 
     enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE }
 
@@ -67,6 +75,9 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     constructor(
         IBalancerMinter balancerMinter,
         IAuthorizerAdaptor authorizerAdaptor,
+        IGaugeAdder gaugeAdder,
+        IEthereumLiquidityGaugeFactory ethereumGaugeFactory,
+        address[] memory initialPools,
         uint256 activationScheduledTime,
         uint256 secondStageDelay
     ) {
@@ -80,6 +91,10 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         _balancerToken = balancerTokenAdmin.getBalancerToken();
         _balancerMinter = balancerMinter;
         _gaugeController = IGaugeController(balancerMinter.getGaugeController());
+        _gaugeAdder = gaugeAdder;
+        _ethereumGaugeFactory = ethereumGaugeFactory;
+
+        _initialPools = initialPools;
 
         _activationScheduledTime = activationScheduledTime;
         _secondStageDelay = secondStageDelay;
@@ -187,19 +202,42 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
             authorizer.revokeRole(authorizerAdaptor.getActionId(IGaugeController.add_type.selector), address(this));
         }
 
-        // Step 4: create gauges for the single-gauge gauge types
+        // Step 5: setup the GaugeAdder contract to be in charge of adding gauges to the Gauge Controller.
+        //
+        // The GaugeAdder contract performs checks on addresses being added to the Gauge Controller to ensure
+        // that they have been deployed by a factory contract which has been associated with the gauge type
+        // to which the proposed gauge is being added. This is intended to prevent common mistakes when adding gauges.
+
+        authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(_gaugeAdder));
+
+        // Step 6: create gauges for a preselected list of pools on Ethereum.
+
+        // Allowlist the provided LiquidityGaugeFactory on the GaugeAdder so its gauges may be added to the "Ethereum" gauge type.
+        {
+            authorizer.grantRole(_gaugeAdder.getActionId(IGaugeAdder.addGaugeFactory.selector), address(this));
+
+            _gaugeAdder.addGaugeFactory(_ethereumGaugeFactory, IGaugeAdder.GaugeType.Ethereum);
+
+            authorizer.revokeRole(_gaugeAdder.getActionId(IGaugeAdder.addGaugeFactory.selector), address(this));
+        }
+
+        // Deploy initial gauges and add them to the Gauge Controller
+        {
+            authorizer.grantRole(_gaugeAdder.getActionId(IGaugeAdder.addEthereumGauge.selector), address(this));
+
+            uint256 poolsLength = _initialPools.length;
+            for (uint256 i = 0; i < poolsLength; i++) {
+                ILiquidityGauge gauge = _ethereumGaugeFactory.deploy(_initialPools[i]);
+                _gaugeAdder.addEthereumGauge(address(gauge));
+            }
+
+            authorizer.revokeRole(_gaugeAdder.getActionId(IGaugeAdder.addEthereumGauge.selector), address(this));
+        }
+
+        // Step 6: create gauges for the single-gauge gauge types
         //
         // The LM committee and veBAL gauge types will have a single gauge of the single-recipient gauge kind
 
-        // grant self power to add gauges
-        // deploy lm, vebal, merkle gauges. add gauges to gauge controller
-
-        // grant gauge adder authority over controller
-        // grant self power over guage adder
-        // add l1 and l2 factories to gauge adder
-        // deploy l1 and l2 gauges, add to controller via gauge adder
-
-        // add tokens to l1 and l2 gauges
         // grant batch relayer permissions
 
         firstStageActivationTime = block.timestamp;
