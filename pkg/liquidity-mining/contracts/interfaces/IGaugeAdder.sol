@@ -32,6 +32,7 @@ interface IGaugeAdder is IAuthentication {
      * @notice Returns the `index`'th factory for gauge type `gaugeType`
      */
     function getFactoryForGaugeType(GaugeType gaugeType, uint256 index) external view returns (address);
+
     /**
      * @notice Returns the number of factories for gauge type `gaugeType`
      */
@@ -53,6 +54,7 @@ interface IGaugeAdder is IAuthentication {
      * It should not be called with the address of the gauge which is deployed on Polygon
      */
     function addPolygonGauge(address rootGauge) external;
+
     /**
      * @notice Adds a new gauge to the GaugeController for the "Arbitrum" type.
      * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
