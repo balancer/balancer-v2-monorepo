@@ -12,7 +12,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';

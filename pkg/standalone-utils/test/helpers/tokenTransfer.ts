@@ -6,6 +6,7 @@ export function expectTransferEvent(
   receipt: ContractReceipt,
   args: { from?: string; to?: string; value?: BigNumberish },
   token: Token
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): any {
   return expectEvent.inIndirectReceipt(receipt, token.instance.interface, 'Transfer', args, token.address);
 }

@@ -5,7 +5,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
