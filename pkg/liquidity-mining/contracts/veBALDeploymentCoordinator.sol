@@ -23,6 +23,18 @@ import "./interfaces/IGaugeController.sol";
 import "./interfaces/IBalancerMinter.sol";
 import "./interfaces/IBalancerTokenAdmin.sol";
 
+/**
+ * @dev The currently deployed Authorizer has a different interface relative to the Authorizer in the monorepo
+ * for granting/revoking roles(referred to as permissions in the new Authorizer) and so we require a one-off interface
+ */
+interface ICurrentAuthorizer is IAuthorizer {
+    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+
+    function grantRole(bytes32 role, address account) external;
+
+    function revokeRole(bytes32 role, address account) external;
+}
+
 // https://vote.balancer.fi/#/proposal/0x9fe19c491cf90ed2e3ed9c15761c43d39fd1fb732a940aba8058ff69787ee90a
 contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
     IBalancerTokenAdmin private immutable _balancerTokenAdmin;
@@ -115,7 +127,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         require(_currentDeploymentStage == DeploymentStage.PENDING, "First steap already performed");
 
         // Check external state: we need admin permission on both the BAL token and the Authorizer
-        IAuthorizer authorizer = _vault.getAuthorizer();
+        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(_vault.getAuthorizer()));
         require(_balancerToken.hasRole(_balancerToken.DEFAULT_ADMIN_ROLE(), address(this)), "Not BAL admin");
         require(authorizer.canPerform(bytes32(0), address(this), address(0)), "Not Authorizer admin");
 
@@ -158,7 +170,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
             _addGaugeType(_gaugeController, "Polygon");
             _addGaugeType(_gaugeController, "Arbitrum");
 
-            authorizer.revokePermission(
+            authorizer.revokeRole(
                 authorizerAdaptor.getActionId(IGaugeController.add_type.selector),
                 address(this)
             );
@@ -195,7 +207,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         IAuthorizerAdaptor authorizerAdaptor = _gaugeController.admin();
         // Note that the current Authorizer ignores the 'where' parameter, so we don't need to (cannot) indicate
         // that this permission should only be granted on the gauge controller itself.
-        IAuthorizer authorizer = _vault.getAuthorizer();
+        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(_vault.getAuthorizer()));
         authorizer.grantRole(
             authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector),
             address(this)
@@ -207,13 +219,13 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         _setGaugeTypeWeight(_gaugeController, POLYGON_TYPE, POLYGON_WEIGHT);
         _setGaugeTypeWeight(_gaugeController, ARBITRUM_TYPE, ARBITRUM_WEIGHT);
 
-        authorizer.revokePermission(
+        authorizer.revokeRole(
             authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector),
             address(this)
         );
 
         // The entire system is now fully setup, and we can renounce permissions over the Authorizer
-        authorizer.renounceRole(authorizer.DEFAULT_ADMIN_ROLE(), address(this));
+        authorizer.revokeRole(authorizer.DEFAULT_ADMIN_ROLE(), address(this));
 
         secondStageActivationTime = block.timestamp;
         _currentDeploymentStage = DeploymentStage.SECOND_STAGE_DONE;
