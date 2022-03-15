@@ -30,6 +30,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
     IVault private immutable _vault;
     IBalancerToken private immutable _balancerToken;
     IBalancerMinter private immutable _balancerMinter;
+    IGaugeController private immutable _gaugeController;
 
     enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE }
 
@@ -66,6 +67,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         _vault = balancerTokenAdmin.getVault();
         _balancerToken = balancerTokenAdmin.getBalancerToken();
         _balancerMinter = balancerMinter;
+        _gaugeController = IGaugeController(balancerMinter.getGaugeController());
 
         _activationScheduledTime = activationScheduledTime;
     }
@@ -92,6 +94,13 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         return _balancerMinter;
     }
 
+    /**
+     * @notice Returns the address of the Gauge Controller
+     */
+    function getGaugeController() external view returns (IGaugeController) {
+        return _gaugeController;
+    }
+
     function getCurrentDeploymentStage() external view returns (DeploymentStage) {
         return _currentDeploymentStage;
     }
@@ -111,8 +120,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         require(authorizer.canPerform(bytes32(0), address(this), address(0)), "Not Authorizer admin");
 
         // Sanity checks
-        IGaugeController gaugeController = _balancerMinter.getGaugeController();
-        require(gaugeController.n_gauge_types() == 0, "Gauge types already set");
+        require(_gaugeController.n_gauge_types() == 0, "Gauge types already set");
 
         // Step 1: trigger BAL token admin migration, locking the BAL emissions forever.
         //
@@ -139,16 +147,16 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         {
             // Admin functions on the Gauge Controller have to be called via the the AuthorizerAdaptor, which acts as
             // its admin.
-            IAuthorizerAdaptor authorizerAdaptor = gaugeController.admin();
+            IAuthorizerAdaptor authorizerAdaptor = _gaugeController.admin();
             // Note that the current Authorizer ignores the 'where' parameter, so we don't need to (cannot) indicate
             // that this permission should only be granted on the gauge controller itself.
             authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_type.selector), address(this));
 
-            _addGaugeType(gaugeController, "Liquidity Mining Committee");
-            _addGaugeType(gaugeController, "veBAL");
-            _addGaugeType(gaugeController, "Ethereum");
-            _addGaugeType(gaugeController, "Polygon");
-            _addGaugeType(gaugeController, "Arbitrum");
+            _addGaugeType(_gaugeController, "Liquidity Mining Committee");
+            _addGaugeType(_gaugeController, "veBAL");
+            _addGaugeType(_gaugeController, "Ethereum");
+            _addGaugeType(_gaugeController, "Polygon");
+            _addGaugeType(_gaugeController, "Arbitrum");
 
             authorizer.revokePermission(
                 authorizerAdaptor.getActionId(IGaugeController.add_type.selector),
@@ -184,7 +192,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         // holders vote for them.
         // Admin functions on the Gauge Controller have to be called via the the AuthorizerAdaptor, which acts as its
         // admin.
-        IAuthorizerAdaptor authorizerAdaptor = gaugeController.admin();
+        IAuthorizerAdaptor authorizerAdaptor = _gaugeController.admin();
         // Note that the current Authorizer ignores the 'where' parameter, so we don't need to (cannot) indicate
         // that this permission should only be granted on the gauge controller itself.
         authorizer.grantRole(
@@ -192,11 +200,11 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
             address(this)
         );
 
-        _setGaugeTypeWeight(gaugeController, LM_COMMITTEE_TYPE, LM_COMMITTEE_WEIGHT);
-        _setGaugeTypeWeight(gaugeController, VEBAL_TYPE, VEBAL_WEIGHT);
-        _setGaugeTypeWeight(gaugeController, ETHEREUM_TYPE, ETHEREUM_WEIGHT);
-        _setGaugeTypeWeight(gaugeController, POLYGON_TYPE, POLYGON_WEIGHT);
-        _setGaugeTypeWeight(gaugeController, ARBITRUM_TYPE, ARBITRUM_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, LM_COMMITTEE_TYPE, LM_COMMITTEE_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, VEBAL_TYPE, VEBAL_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, ETHEREUM_TYPE, ETHEREUM_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, POLYGON_TYPE, POLYGON_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, ARBITRUM_TYPE, ARBITRUM_WEIGHT);
 
         authorizer.revokePermission(
             authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector),
