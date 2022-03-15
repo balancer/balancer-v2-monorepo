@@ -69,7 +69,6 @@ contract veBALDeploymentCoordinator {
     veBALDeploymentConfig private _config;
 
     constructor(
-        IBalancerTokenAdmin balancerTokenAdmin,
         IBalancerMinter balancerMinter,
         uint256 activationScheduledTime,
         GaugeType[] memory gaugeTypes
@@ -78,8 +77,9 @@ contract veBALDeploymentCoordinator {
 
         _currentDeploymentStage = DeploymentStage.PENDING;
 
-        _balancerTokenAdmin = balancerTokenAdmin;
+        IBalancerTokenAdmin balancerTokenAdmin = balancerMinter.getBalancerTokenAdmin();
 
+        _balancerTokenAdmin = balancerTokenAdmin;
         _vault = balancerTokenAdmin.getVault();
         _balancerToken = balancerTokenAdmin.getBalancerToken();
         _balancerMinter = balancerMinter;
