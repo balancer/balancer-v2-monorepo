@@ -52,6 +52,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
 
     DeploymentStage private _currentDeploymentStage;
     uint256 private immutable _activationScheduledTime;
+    uint256 private immutable _secondStageDelay;
 
     uint256 public constant LM_COMMITTEE_WEIGHT = 10e16; // 10%
     uint256 public constant VEBAL_WEIGHT = 10e16; // 10%
@@ -70,7 +71,8 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
     constructor(
         IBalancerMinter balancerMinter,
         IAuthorizerAdaptor authorizerAdaptor,
-        uint256 activationScheduledTime
+        uint256 activationScheduledTime,
+        uint256 secondStageDelay
     ) Authentication(bytes32(uint256(address(this)))) {
         // veBALDeploymentCoordinator is a singleton, so it simply uses its own address to disambiguate action identifiers
 
@@ -86,6 +88,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         _gaugeController = IGaugeController(balancerMinter.getGaugeController());
 
         _activationScheduledTime = activationScheduledTime;
+        _secondStageDelay = secondStageDelay;
     }
 
     /**
@@ -127,6 +130,10 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
 
     function getActivationScheduledTime() external view returns (uint256) {
         return _activationScheduledTime;
+    }
+
+    function getSecondStageDelay() external view returns (uint256) {
+        return _secondStageDelay;
     }
 
     function performFirstStage() external authenticate nonReentrant {
@@ -214,7 +221,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
     function performSecondStage() external nonReentrant {
         // Check delay from first stage
         require(_currentDeploymentStage == DeploymentStage.FIRST_STAGE_DONE, "First steap already performed");
-        require(block.timestamp >= (firstStageActivationTime + 8 days), "Not ready for activation");
+        require(block.timestamp >= (firstStageActivationTime + _secondStageDelay), "Not ready for activation");
 
         // We can now set the actual weights for each gauge type, causing gauges to have non-zero weights once veBAL
         // holders vote for them.
