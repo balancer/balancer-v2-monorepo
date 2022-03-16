@@ -20,6 +20,6 @@ export default {
   kovan: {
     AuthorizerAdaptor,
     BalancerTokenAdmin,
-    BPT: '',
+    BPT: '0xDC2EcFDf2688f92c85064bE0b929693ACC6dBcA6',
   },
 };

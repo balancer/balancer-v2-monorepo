@@ -4,6 +4,6 @@ export type TestBalancerTokenDeployment = {
 
 export default {
   kovan: {
-    Admin: '',
+    Admin: '0x77777512272eDA91589b62FC8506E607DEA0BB08',
   },
 };

@@ -5,7 +5,7 @@ export type BalancerTokenAdminDeployment = {
   Vault: string;
 };
 
-const TestBAL = new Task('2021xxxx-test-balancer-token');
+const TestBALTask = new Task('2022xxxx-test-balancer-token');
 const Vault = new Task('20210418-vault');
 
 export default {
@@ -14,7 +14,7 @@ export default {
     Vault,
   },
   kovan: {
-    BAL: TestBAL,
+    BAL: TestBALTask.output({ network: 'kovan' }).TestBalancerToken,
     Vault,
   },
 };
