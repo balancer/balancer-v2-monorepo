@@ -18,9 +18,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-
-import "./interfaces/IBalancerToken.sol";
+import "./interfaces/IBalancerTokenAdmin.sol";
 
 // solhint-disable not-rely-on-time
 
@@ -35,7 +33,7 @@ import "./interfaces/IBalancerToken.sol";
  * in order to know how much BAL a gauge is allowed to mint. As this does not exist within the BAL token itself
  * it is defined here, we must then wrap the token's minting functionality in order for this to be meaningful.
  */
-contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
+contract BalancerTokenAdmin is IBalancerTokenAdmin, Authentication, ReentrancyGuard {
     using Math for uint256;
 
     // Initial inflation rate of 145k BAL per week.
@@ -55,23 +53,23 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
     uint256 private _startEpochSupply;
     uint256 private _rate;
 
-    constructor(IVault vault, IERC20 token) Authentication(bytes32(uint256(address(this)))) {
+    constructor(IVault vault, IBalancerToken balancerToken) Authentication(bytes32(uint256(address(this)))) {
         // BalancerTokenAdmin is a singleton, so it simply uses its own address to disambiguate action identifiers
-        _balancerToken = IBalancerToken(address(token));
+        _balancerToken = balancerToken;
         _vault = vault;
     }
 
     /**
      * @dev Returns the Balancer token.
      */
-    function getBalancerToken() external view returns (IERC20) {
+    function getBalancerToken() external view override returns (IBalancerToken) {
         return _balancerToken;
     }
 
     /**
      * @notice Returns the Balancer Vault.
      */
-    function getVault() public view returns (IVault) {
+    function getVault() public view override returns (IVault) {
         return _vault;
     }
 
@@ -86,7 +84,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      * @notice Initiate BAL token inflation schedule
      * @dev Reverts if contract does not have sole minting powers over BAL (and no other minters can be added).
      */
-    function activate() external nonReentrant authenticate {
+    function activate() external override nonReentrant authenticate {
         require(_startEpochTime == type(uint256).max, "Already activated");
 
         // We need to check that this contract can't be bypassed to mint more BAL in the future.
@@ -161,7 +159,7 @@ contract BalancerTokenAdmin is Authentication, ReentrancyGuard {
      * @notice Mint BAL tokens subject to the defined inflation schedule
      * @dev Callable only by addresses defined in the Balancer Authorizer contract
      */
-    function mint(address to, uint256 amount) external authenticate {
+    function mint(address to, uint256 amount) external override authenticate {
         // Check if we've passed into a new epoch such that we should calculate available supply with a smaller rate.
         if (block.timestamp >= _startEpochTime.add(RATE_REDUCTION_TIME)) {
             _updateMiningParameters();
