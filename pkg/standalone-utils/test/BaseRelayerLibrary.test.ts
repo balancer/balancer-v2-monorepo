@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { BigNumber, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -12,6 +12,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ANY_ADDRESS, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { toChainedReference } from './helpers/chainedReferences';
 
 describe('BaseRelayerLibrary', function () {
   let vault: Contract;
@@ -45,15 +46,6 @@ describe('BaseRelayerLibrary', function () {
   });
 
   describe('chained references', () => {
-    const CHAINED_REFERENCE_PREFIX = 'ba10';
-
-    function toChainedReference(key: BigNumberish): BigNumber {
-      // The full padded prefix is 66 characters long, with 64 hex characters and the 0x prefix.
-      const paddedPrefix = `0x${CHAINED_REFERENCE_PREFIX}${'0'.repeat(64 - CHAINED_REFERENCE_PREFIX.length)}`;
-
-      return BigNumber.from(paddedPrefix).add(key);
-    }
-
     it('identifies immediate amounts', async () => {
       expect(await relayerLibrary.isChainedReference(5)).to.equal(false);
     });
