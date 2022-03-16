@@ -23,11 +23,14 @@ import "./interfaces/IGaugeController.sol";
 import "./interfaces/IBalancerMinter.sol";
 import "./interfaces/IBalancerTokenAdmin.sol";
 
+// solhint-disable not-rely-on-time
+
 /**
  * @dev The currently deployed Authorizer has a different interface relative to the Authorizer in the monorepo
  * for granting/revoking roles(referred to as permissions in the new Authorizer) and so we require a one-off interface
  */
 interface ICurrentAuthorizer is IAuthorizer {
+    // solhint-disable-next-line func-name-mixedcase
     function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
 
     function grantRole(bytes32 role, address account) external;
@@ -36,6 +39,7 @@ interface ICurrentAuthorizer is IAuthorizer {
 }
 
 // https://vote.balancer.fi/#/proposal/0x9fe19c491cf90ed2e3ed9c15761c43d39fd1fb732a940aba8058ff69787ee90a
+// solhint-disable-next-line contract-name-camelcase
 contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
     IBalancerTokenAdmin private immutable _balancerTokenAdmin;
 
@@ -74,7 +78,8 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         uint256 activationScheduledTime,
         uint256 secondStageDelay
     ) Authentication(bytes32(uint256(address(this)))) {
-        // veBALDeploymentCoordinator is a singleton, so it simply uses its own address to disambiguate action identifiers
+        // veBALDeploymentCoordinator is a singleton,
+        // so it simply uses its own address to disambiguate action identifiers
 
         _currentDeploymentStage = DeploymentStage.PENDING;
 
