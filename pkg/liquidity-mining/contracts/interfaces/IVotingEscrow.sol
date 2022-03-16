@@ -14,20 +14,10 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+// For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
+// naming convention.
+// solhint-disable func-name-mixedcase
 
-import "./IBalancerToken.sol";
-
-interface IBalancerTokenAdmin is IAuthentication {
-    function getVault() external view returns (IVault);
-
-    /**
-     * @notice Returns the address of the Balancer Governance Token
-     */
-    function getBalancerToken() external view returns (IBalancerToken);
-
-    function activate() external;
-
-    function mint(address to, uint256 amount) external;
+interface IVotingEscrow {
+    function admin() external view returns (address);
 }

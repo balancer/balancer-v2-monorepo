@@ -57,13 +57,6 @@ CREATE_LOCK_TYPE: constant(int128) = 1
 INCREASE_LOCK_AMOUNT: constant(int128) = 2
 INCREASE_UNLOCK_TIME: constant(int128) = 3
 
-
-event CommitOwnership:
-    admin: address
-
-event ApplyOwnership:
-    admin: address
-
 event Deposit:
     provider: indexed(address)
     value: uint256
@@ -86,6 +79,7 @@ MAXTIME: constant(uint256) = 365 * 86400  # 1 year
 MULTIPLIER: constant(uint256) = 10 ** 18
 
 TOKEN: immutable(address)
+AUTHORIZER_ADAPTOR: immutable(address) # Authorizer Adaptor
 
 NAME: immutable(String[64])
 SYMBOL: immutable(String[32])
@@ -105,20 +99,20 @@ slope_changes: public(HashMap[uint256, int128])  # time -> signed slope change
 future_smart_wallet_checker: public(address)
 smart_wallet_checker: public(address)
 
-admin: public(address)  # Can and will be a smart contract
-future_admin: public(address)
-
 
 @external
-def __init__(token_addr: address, _name: String[64], _symbol: String[32]):
+def __init__(token_addr: address, _name: String[64], _symbol: String[32], _authorizer_adaptor: address):
     """
     @notice Contract constructor
     @param token_addr `ERC20CRV` token address
     @param _name Token name
     @param _symbol Token symbol
+    @param _authorizer_adaptor `AuthorizerAdaptor` contract address
     """
-    self.admin = msg.sender
+    assert _authorizer_adaptor != ZERO_ADDRESS
+
     TOKEN = token_addr
+    AUTHORIZER_ADAPTOR = _authorizer_adaptor
     self.point_history[0].blk = block.number
     self.point_history[0].ts = block.timestamp
 
@@ -150,27 +144,9 @@ def decimals() -> uint256:
     return DECIMALS
 
 @external
-def commit_transfer_ownership(addr: address):
-    """
-    @notice Transfer ownership of VotingEscrow contract to `addr`
-    @param addr Address to have ownership transferred to
-    """
-    assert msg.sender == self.admin  # dev: admin only
-    self.future_admin = addr
-    log CommitOwnership(addr)
-
-
-@external
-def apply_transfer_ownership():
-    """
-    @notice Apply ownership transfer
-    """
-    assert msg.sender == self.admin  # dev: admin only
-    _admin: address = self.future_admin
-    assert _admin != ZERO_ADDRESS  # dev: admin not set
-    self.admin = _admin
-    log ApplyOwnership(_admin)
-
+@view
+def admin() -> address:
+    return AUTHORIZER_ADAPTOR
 
 @external
 def commit_smart_wallet_checker(addr: address):
@@ -178,7 +154,7 @@ def commit_smart_wallet_checker(addr: address):
     @notice Set an external contract to check for approved smart contract wallets
     @param addr Address of Smart contract checker
     """
-    assert msg.sender == self.admin
+    assert msg.sender == AUTHORIZER_ADAPTOR
     self.future_smart_wallet_checker = addr
 
 
@@ -187,7 +163,7 @@ def apply_smart_wallet_checker():
     """
     @notice Apply setting external contract to check approved smart contract wallets
     """
-    assert msg.sender == self.admin
+    assert msg.sender == AUTHORIZER_ADAPTOR
     self.smart_wallet_checker = self.future_smart_wallet_checker
 
 
