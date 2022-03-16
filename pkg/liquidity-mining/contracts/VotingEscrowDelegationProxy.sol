@@ -81,6 +81,7 @@ contract VotingEscrowDelegationProxy is Authentication {
      * @param user The user to query the adjusted veBAL balance of
      * @return veBAL balance
      */
+    // solhint-disable-next-line func-name-mixedcase
     function adjusted_balance_of(address user) external view returns (uint256) {
         return _adjustedBalanceOf(user);
     }
