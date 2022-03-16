@@ -244,7 +244,7 @@ library WeightedMath {
         uint256 taxableAmount = amountInWithoutFee.mulUp(normalizedWeight.complement());
         uint256 nonTaxableAmount = amountInWithoutFee.sub(taxableAmount);
 
-        uint256 taxableAmountPlusFees = taxableAmount.divUp(FixedPoint.ONE.sub(swapFeePercentage));
+        uint256 taxableAmountPlusFees = taxableAmount.divUp(swapFeePercentage.complement());
 
         return nonTaxableAmount.add(taxableAmountPlusFees);
     }
@@ -325,7 +325,7 @@ library WeightedMath {
             if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
                 uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithoutFees.complement());
                 uint256 taxableAmount = amountsOut[i].sub(nonTaxableAmount);
-                uint256 taxableAmountPlusFees = taxableAmount.divUp(FixedPoint.ONE.sub(swapFeePercentage));
+                uint256 taxableAmountPlusFees = taxableAmount.divUp(swapFeePercentage.complement());
 
                 amountOutWithFee = nonTaxableAmount.add(taxableAmountPlusFees);
             } else {
@@ -374,9 +374,9 @@ library WeightedMath {
         // to 'token out'. This results in slightly larger price impact. Fees are rounded up.
         uint256 taxableAmount = amountOutWithoutFee.mulUp(normalizedWeight.complement());
         uint256 nonTaxableAmount = amountOutWithoutFee.sub(taxableAmount);
-        uint256 swapFee = taxableAmount.mulUp(swapFeePercentage);
+        uint256 taxableAmountMinusFees = taxableAmount.mulUp(swapFeePercentage.complement());
 
-        return nonTaxableAmount.add(taxableAmount.sub(swapFee));
+        return nonTaxableAmount.add(taxableAmountMinusFees);
     }
 
     function _calcTokensOutGivenExactBptIn(
@@ -443,9 +443,6 @@ library WeightedMath {
         // We compute protocol fee * (growth - 1) / growth, as we'll use that value twice.
         uint256 k = protocolSwapFeePercentage.mulDown(growth.sub(FixedPoint.ONE)).divDown(growth);
 
-        uint256 numerator = totalSupply.mulDown(k);
-        uint256 denominator = FixedPoint.ONE.sub(k);
-
-        return numerator.divDown(denominator);
+        return totalSupply.mulDown(k).divDown(k.complement());
     }
 }

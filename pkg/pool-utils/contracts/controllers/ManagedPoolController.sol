@@ -97,7 +97,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
         super.initialize(poolAddress);
 
         // Need to approve transferring pool tokens in order to collect management fees
-        IERC20(pool).approve(address(this), uint256(-1));
+        IERC20(pool).approve(address(this), type(uint256).max);
     }
 
     /**
