@@ -85,7 +85,7 @@ contract AssetManagedLiquidityBootstrappingPoolController is
 
     /**
      * @dev Call this function instead of the usual `joinPool` (init). It will borrow the necessary amount
-     * of reserve tokens using an AAVE flashloan. 
+     * of reserve tokens using an AAVE flashloan.
      */
     function fundPool(uint256[] memory initialBalances) external onlyManager {
         // ensure the manager has enough balance for the fee
