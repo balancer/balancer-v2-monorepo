@@ -23,6 +23,24 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "../interfaces/IControlledLiquidityBootstrappingPool.sol";
 import "./BasePoolController.sol";
 
+/**
+ * @notice Controller for an unseeded LiquidityBootstrappingPool. It also serves as the asset manager.
+ * Using the `UnseededLiquidityBootstrappingPoolFactory` will deploy this controller and a pool.
+ * After the contracts are deployed by the factory, the manager can call `fundPool` on the controller
+ * with the initial balances. This funds the pool using the manager's pool tokens. The reserve tokens
+ * will be supplied using an AAVE flashloan, then immediately withdrawn using the asset manager
+ * functionality to repay the loan.
+ *
+ * The result is an apparently fully funded pool, but with a zero cash balance in the reserve token.
+ * This means project tokens cannot be "sold back" into the pool - at least until enough are sold to
+ * build up the real balance.
+ *
+ * Note that there is a flash loan fee, so the manager will need enough reserve tokens to pay it (and
+ * must approve the controller to pull them during the `fundPool` call). The amount of the fee can be
+ * calculated using the `getFlashLoanFeePercentage` function on the controller.
+ *
+ * The controller can then be used by the manager for regular LBP functions.
+ */
 contract AssetManagedLiquidityBootstrappingPoolController is
     BasePoolController,
     IControlledLiquidityBootstrappingPool,
@@ -38,26 +56,37 @@ contract AssetManagedLiquidityBootstrappingPoolController is
     uint256 private immutable _flashLoanFeePercentage;
     IERC20 private immutable _reserveToken;
     IVault private immutable _vault;
+    bool private immutable _projectTokenFirst;
 
     constructor(
         BasePoolRights memory baseRights,
         IPoolAddressesProvider addressesProvider,
         IVault vault,
         IERC20 reserveToken,
+        bool projectTokenFirst,
         address manager
     ) BasePoolController(encodePermissions(baseRights), manager) {
-        _addressesProvider = addressesProvider;
         IPool pool = IPool(addressesProvider.getPool());
+
+        _addressesProvider = addressesProvider;
         _lendingPool = pool;
         _flashLoanFeePercentage = uint256(pool.FLASHLOAN_PREMIUM_TOTAL()).divUp(10000);
         _reserveToken = reserveToken;
+        _projectTokenFirst = projectTokenFirst;
         _vault = vault;
     }
 
+    /**
+     * @dev Getter for the flash loan fee percentage (adjusted from basis points)
+     */
     function getFlashLoanFeePercentage() external view returns (uint256) {
         return _flashLoanFeePercentage;
     }
 
+    /**
+     * @dev Call this function instead of the usual `joinPool` (init). It will borrow the necessary amount
+     * of reserve tokens using an AAVE flashloan. 
+     */
     function fundPool(uint256[] memory initialBalances) external onlyManager {
         // ensure the manager has enough balance for the fee
         uint256 flashLoanFeeAmount = initialBalances[1].mulUp(_flashLoanFeePercentage);
@@ -73,12 +102,15 @@ contract AssetManagedLiquidityBootstrappingPoolController is
         _lendingPool.flashLoanSimple(
             address(this), // hold funds in the controller (= pool owner)
             address(_reserveToken),
-            initialBalances[1],
+            initialBalances[_projectTokenFirst ? 1 : 0], // reserve token balance
             abi.encode(initialBalances), // pass initial balances as parameters
             0 // do we have a referral code?
         );
     }
 
+    /**
+     * @dev This function is called by AAVE when the loan funds are available.
+     */
     function executeOperation(
         address asset,
         uint256 amount,
@@ -89,7 +121,7 @@ contract AssetManagedLiquidityBootstrappingPoolController is
         // Can only be called by this contract
         _require(initiator == address(this), Errors.SENDER_NOT_ALLOWED);
 
-        // Transfer the fee from the owner
+        // Transfer the flashloan fee from the manager
         IERC20(asset).transferFrom(getManager(), address(this), premium);
 
         // At this point, we have the loan funds plus the fee, and are ready to fund the pool
@@ -104,11 +136,10 @@ contract AssetManagedLiquidityBootstrappingPoolController is
             fromInternalBalance: false
         });
 
-        // Fund the pool
-        _vault.joinPool(getPoolId(), address(this), address(this), request);
+        // Fund the pool; pull the tokens from this contract, send BPT to the manager
+        _vault.joinPool(getPoolId(), address(this), getManager(), request);
 
-        // Withdraw the borrowed seed funds
-        // Controller is the asset manager!
+        // Withdraw the borrowed seed funds (this contract is also the asset manager)
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
         ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, getPoolId(), IERC20(asset), amount);
         _vault.managePoolBalance(ops);
@@ -128,6 +159,8 @@ contract AssetManagedLiquidityBootstrappingPoolController is
     function POOL() external view override returns (IPool) {
         return _lendingPool;
     }
+
+    // LBP functions
 
     function setSwapEnabled(bool swapEnabled) external override onlyManager withBoundPool {
         IControlledLiquidityBootstrappingPool(pool).setSwapEnabled(swapEnabled);

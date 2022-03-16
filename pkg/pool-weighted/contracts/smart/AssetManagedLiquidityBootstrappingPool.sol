@@ -24,7 +24,9 @@ import "../BaseWeightedPool.sol";
 import "./WeightCompression.sol";
 
 /**
- * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping.
+ * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping: potentially without
+ * requiring seed funds. The pool is linmited to two tokens, explicitly identified as the project and reserve
+ * tokens, and the reserve token can have an asset manager. It also pays protocol fees in BPT.
  */
 contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     // LiquidityBootstrappingPool change their weights over time: these periods are expected to be long enough (e.g.
@@ -40,6 +42,9 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
     IERC20 internal immutable _projectToken;
     IERC20 internal immutable _reserveToken;
 
+    // True if the index of the project token is zero
+    bool internal immutable _projectFirst;
+
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
     // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
@@ -48,8 +53,7 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
     uint256 internal immutable _reserveScalingFactor;
 
     // For gas optimization, store start/end weights and timestamps in one bytes32
-    // Start weights need to be high precision, since restarting the update resets them to "spot"
-    // values. Target end weights do not need as much precision.
+    // Start weights need to be high precision, since restarting the update resets them to "spot" values.
     // [ 63 bits |   1 bit      |    32 bits    |     32 bits     |      64 bits     |      64 bits       ]
     // [ unused  | swap enabled | end timestamp | start timestamp | 2x32 end weights | 2x32 start weights ]
     // |MSB                                                                                            LSB|
@@ -63,7 +67,7 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
     uint256 private constant _END_TIME_OFFSET = 160;
     uint256 private constant _SWAP_ENABLED_OFFSET = 192;
 
-    // Cache protocol swap fee percentage, since we need it on swaps, but it is not passed in then
+    // Cache the protocol swap fee percentage, since we need it on swaps, but it is not passed in then
     uint256 private _cachedProtocolSwapFeePercentage;
 
     // Event declarations
@@ -100,7 +104,7 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
             params.name,
             params.symbol,
             _tokenArray(params.projectToken, params.reserveToken),
-            _assetManagerArray(reserveAssetManager),
+            _assetManagerArray(reserveAssetManager, params.projectToken < params.reserveToken),
             params.swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -115,8 +119,12 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
 
         uint256 currentTime = block.timestamp;
         uint256[] memory normalizedWeights = new uint256[](2);
-        normalizedWeights[0] = params.projectWeight;
-        normalizedWeights[1] = params.reserveWeight;
+        // The tokens must be ordered; determine the index of the project token
+        bool projectFirst = params.projectToken < params.reserveToken;
+        _projectFirst = projectFirst;
+
+        normalizedWeights[projectFirst ? 0 : 1] = params.projectWeight;
+        normalizedWeights[projectFirst ? 1 : 0] = params.reserveWeight;
 
         _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights);
 
@@ -129,15 +137,21 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
 
     function _tokenArray(IERC20 projectToken, IERC20 reserveToken) private pure returns (IERC20[] memory) {
         IERC20[] memory tokens = new IERC20[](2);
-        tokens[0] = projectToken;
-        tokens[1] = reserveToken;
+        bool projectFirst = projectToken < reserveToken;
+
+        tokens[projectFirst ? 0 : 1] = projectToken;
+        tokens[projectFirst ? 1 : 0] = reserveToken;
 
         return tokens;
     }
 
-    function _assetManagerArray(address reserveAssetManager) private pure returns (address[] memory) {
+    function _assetManagerArray(address reserveAssetManager, bool projectTokenFirst)
+        private
+        pure
+        returns (address[] memory)
+    {
         address[] memory assetManagers = new address[](2);
-        assetManagers[1] = reserveAssetManager;
+        assetManagers[projectTokenFirst ? 1 : 0] = reserveAssetManager;
 
         return assetManagers;
     }
@@ -146,10 +160,6 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
 
     function updateCachedProtocolSwapFeePercentage() external {
         _cachedProtocolSwapFeePercentage = getVault().getProtocolFeesCollector().getSwapFeePercentage();
-    }
-
-    function getReserveToken() external view returns (IERC20) {
-        return _reserveToken;
     }
 
     /**
@@ -215,7 +225,17 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
     // Internal functions
 
     function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
-        return _getNormalizedWeightByIndex(token == _projectToken ? 0 : 1, _poolState);
+        uint256 tokenIndex;
+
+        if (token == _projectToken) {
+            tokenIndex = _isProjectTokenFirst() ? 0 : 1;
+        } else if (token == _reserveToken) {
+            tokenIndex = _isProjectTokenFirst() ? 1 : 0;
+        } else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+
+        return _getNormalizedWeightByIndex(tokenIndex, _poolState);
     }
 
     function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
@@ -408,9 +428,7 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
             protocolFeePercentage
         );
 
-        if (bptFeeAmount > 0) {
-            _payProtocolFees(bptFeeAmount);
-        }
+        _payProtocolFees(bptFeeAmount);
     }
 
     /**
@@ -505,7 +523,7 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
         return 2;
     }
 
-    function _getTotalTokens() internal pure virtual override returns (uint256) {
+    function _getTotalTokens() internal pure override returns (uint256) {
         return 2;
     }
 
@@ -521,9 +539,14 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
         uint256[] memory scalingFactors = new uint256[](2);
-        scalingFactors[0] = _projectScalingFactor;
-        scalingFactors[1] = _reserveScalingFactor;
+
+        scalingFactors[_isProjectTokenFirst() ? 0 : 1] = _projectScalingFactor;
+        scalingFactors[_isProjectTokenFirst() ? 1 : 0] = _reserveScalingFactor;
 
         return scalingFactors;
+    }
+
+    function _isProjectTokenFirst() private view returns (bool) {
+        return _projectFirst;
     }
 }

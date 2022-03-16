@@ -42,6 +42,7 @@ contract UnseededLiquidityBootstrappingPoolFactory is BasePoolSplitCodeFactory, 
             addressesProvider,
             getVault(),
             poolParams.reserveToken,
+            poolParams.projectToken < poolParams.reserveToken,
             manager
         );
 
