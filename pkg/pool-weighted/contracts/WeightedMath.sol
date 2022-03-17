@@ -428,20 +428,14 @@ library WeightedMath {
 
         // Assuming the Pool is balanced and token weights have not changed, a growth of the invariant translates into
         // proportional growth of all token balances. The protocol is due a percentage of that growth: more precisely,
-        // it is due `fee * (growth - 1) * balance / growth` for each token.
+        // it is due `k = protocol fee * (growth - 1) * balance / growth` for each token.
         // We compute the amount of BPT to mint for the protocol that would allow it to proportionally exit the Pool and
         // receive these balances. Note that the total BPT supply will increase when minting, so we need to account for
         // this in order to compute the percentage of Pool ownership the protocol will have.
 
         // The formula is:
         //
-        //            supply * protocol fee * (growth - 1)
-        //                     ---------------------------
-        //                              growth
-        // toMint = --------------------------------------
-        //            1 - protocol fee * (growth - 1)
-        //                ---------------------------
-        //                          growth
+        // toMint = supply * k / (1 - k)
         //
 
         // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less in protocol

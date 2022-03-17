@@ -76,8 +76,8 @@ contract BalancerMinter is IBalancerMinter, ReentrancyGuard, EIP712 {
     /**
      * @notice Returns the address of the Gauge Controller
      */
-    function getGaugeController() external view override returns (address) {
-        return address(_gaugeController);
+    function getGaugeController() external view override returns (IGaugeController) {
+        return _gaugeController;
     }
 
     /**

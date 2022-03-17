@@ -6,12 +6,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import Authorizer from '@balancer-labs/v2-helpers/src/models/authorizer/Authorizer';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 
 describe('Authorizer', () => {
-  let authorizer: Authorizer;
+  let authorizer: Authorizer, vault: Contract;
   let admin: SignerWithAddress, grantee: SignerWithAddress, from: SignerWithAddress;
 
   before('setup signers', async () => {
@@ -27,7 +28,14 @@ describe('Authorizer', () => {
   const NOT_WHERE = ethers.Wallet.createRandom().address;
 
   sharedBeforeEach('deploy authorizer', async () => {
-    authorizer = await Authorizer.create({ admin });
+    const oldAuthorizer = await Authorizer.create({ admin });
+
+    vault = await deploy('Vault', { args: [oldAuthorizer.address, ZERO_ADDRESS, 0, 0] });
+    authorizer = await Authorizer.create({ admin, vault });
+
+    const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+    await oldAuthorizer.grantPermissions(setAuthorizerAction, admin, vault, { from: admin });
+    await vault.connect(admin).setAuthorizer(authorizer.address);
   });
 
   describe('admin', () => {
@@ -669,68 +677,82 @@ describe('Authorizer', () => {
             expectedData = authorizer.instance.interface.encodeFunctionData('setDelay', [action, delay]);
           });
 
-          context('when there was no previous delay', () => {
-            it('schedules a delay change', async () => {
-              const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
-
-              const scheduledAction = await authorizer.scheduledActions(id);
-              expect(scheduledAction.executed).to.be.false;
-              expect(scheduledAction.data).to.be.equal(expectedData);
-              expect(scheduledAction.where).to.be.equal(authorizer.address);
-              expect(scheduledAction.protected).to.be.false;
-              expect(scheduledAction.executableAt).to.be.at.most(await currentTimestamp());
+          context('when the delay is greater than or equal to the delay to set the authorizer in the vault', () => {
+            sharedBeforeEach('set delay to set authorizer', async () => {
+              const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+              await authorizer.setDelay(setAuthorizerAction, delay, { from: admin });
             });
 
-            it('can be executed immediately', async () => {
-              const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
+            context('when there was no previous delay', () => {
+              it('schedules a delay change', async () => {
+                const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
 
-              await authorizer.execute(id);
-              expect(await authorizer.delay(action)).to.be.equal(delay);
+                const scheduledAction = await authorizer.scheduledActions(id);
+                expect(scheduledAction.executed).to.be.false;
+                expect(scheduledAction.data).to.be.equal(expectedData);
+                expect(scheduledAction.where).to.be.equal(authorizer.address);
+                expect(scheduledAction.protected).to.be.false;
+                expect(scheduledAction.executableAt).to.be.at.most(await currentTimestamp());
+              });
+
+              it('can be executed immediately', async () => {
+                const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
+
+                await authorizer.execute(id);
+                expect(await authorizer.delay(action)).to.be.equal(delay);
+              });
+
+              it('emits an event', async () => {
+                const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
+
+                const receipt = await authorizer.execute(id);
+                expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { action, delay });
+              });
             });
 
-            it('emits an event', async () => {
-              const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
+            context('when there was a previous delay set', () => {
+              const previousDelay = delay / 2;
 
-              const receipt = await authorizer.execute(id);
-              expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { action, delay });
+              sharedBeforeEach('set previous delay', async () => {
+                const id = await authorizer.scheduleDelayChange(action, previousDelay, [], { from: admin });
+                await authorizer.execute(id);
+              });
+
+              it('schedules a delay change', async () => {
+                const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
+
+                const scheduledAction = await authorizer.scheduledActions(id);
+                expect(scheduledAction.executed).to.be.false;
+                expect(scheduledAction.data).to.be.equal(expectedData);
+                expect(scheduledAction.where).to.be.equal(authorizer.address);
+                expect(scheduledAction.protected).to.be.false;
+                expect(scheduledAction.executableAt).to.be.at.most((await currentTimestamp()).add(previousDelay));
+              });
+
+              it('cannot be executed immediately', async () => {
+                const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
+
+                await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_EXECUTABLE');
+
+                await advanceTime(previousDelay);
+                await authorizer.execute(id);
+                expect(await authorizer.delay(action)).to.be.equal(delay);
+              });
+
+              it('emits an event', async () => {
+                const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
+
+                await advanceTime(previousDelay);
+                const receipt = await authorizer.execute(id);
+                expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { action, delay });
+              });
             });
           });
 
-          context('when there was a previous delay set', () => {
-            const previousDelay = delay * 2;
-
-            sharedBeforeEach('set previous delay', async () => {
-              const id = await authorizer.scheduleDelayChange(action, previousDelay, [], { from: admin });
-              await authorizer.execute(id);
-            });
-
-            it('schedules a delay change', async () => {
+          context('when the delay is not greater than the delay to set the authorizer in the vault', () => {
+            it('reverts on execution', async () => {
               const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
-
-              const scheduledAction = await authorizer.scheduledActions(id);
-              expect(scheduledAction.executed).to.be.false;
-              expect(scheduledAction.data).to.be.equal(expectedData);
-              expect(scheduledAction.where).to.be.equal(authorizer.address);
-              expect(scheduledAction.protected).to.be.false;
-              expect(scheduledAction.executableAt).to.be.at.most((await currentTimestamp()).add(previousDelay));
-            });
-
-            it('cannot be executed immediately', async () => {
-              const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
-
-              await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_EXECUTABLE');
-
-              await advanceTime(previousDelay);
-              await authorizer.execute(id);
-              expect(await authorizer.delay(action)).to.be.equal(delay);
-            });
-
-            it('emits an event', async () => {
-              const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
-
-              await advanceTime(previousDelay);
-              const receipt = await authorizer.execute(id);
-              expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { action, delay });
+              await expect(authorizer.execute(id)).to.be.revertedWith('DELAY_EXCEEDS_SET_AUTHORIZER');
             });
           });
         });
@@ -770,13 +792,10 @@ describe('Authorizer', () => {
 
   describe('schedule', () => {
     let where: Contract, action: string, data: string, executors: SignerWithAddress[];
-    let vault: Contract, anotherVault: Contract, newAuthorizer: Authorizer;
-
-    const SET_DELAY_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['SET_DELAY_PERMISSION']);
+    let anotherVault: Contract, newAuthorizer: Authorizer;
 
     sharedBeforeEach('deploy sample instances', async () => {
       newAuthorizer = await Authorizer.create({ admin });
-      vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
       anotherVault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
     });
 
@@ -793,7 +812,7 @@ describe('Authorizer', () => {
       context('when the sender has permission', () => {
         context('when the sender has permission for the requested action', () => {
           sharedBeforeEach('set action', async () => {
-            action = await vault.getActionId(vault.interface.getSighash('setAuthorizer'));
+            action = await actionId(vault, 'setAuthorizer');
           });
 
           context('when the sender has permission for the requested contract', () => {
@@ -805,11 +824,7 @@ describe('Authorizer', () => {
               const delay = DAY * 5;
 
               sharedBeforeEach('set delay', async () => {
-                const args = [SET_DELAY_PERMISSION, action];
-                const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
-                await authorizer.grantPermissions(setDelayAction, admin, authorizer, { from: admin });
-                const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
-                await authorizer.execute(id);
+                await authorizer.setDelay(action, delay, { from: admin });
               });
 
               context('when no executors are specified', () => {
@@ -925,7 +940,7 @@ describe('Authorizer', () => {
 
         context('when the sender has permissions for another action', () => {
           sharedBeforeEach('grant permission', async () => {
-            action = await vault.getActionId(vault.interface.getSighash('setRelayerApproval'));
+            action = await actionId(vault, 'setRelayerApproval');
             await authorizer.grantPermissions(action, grantee, vault, { from: admin });
           });
 
@@ -955,22 +970,15 @@ describe('Authorizer', () => {
 
   describe('execute', () => {
     const delay = DAY;
-    let executors: SignerWithAddress[], vault: Contract, newAuthorizer: Authorizer;
-
-    const SET_DELAY_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['SET_DELAY_PERMISSION']);
+    let executors: SignerWithAddress[], newAuthorizer: Authorizer;
 
     sharedBeforeEach('deploy sample instances', async () => {
       newAuthorizer = await Authorizer.create({ admin });
-      vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
     });
 
     sharedBeforeEach('grant set authorizer permission with delay', async () => {
-      const setAuthorizerAction = await vault.getActionId(vault.interface.getSighash('setAuthorizer'));
-      const args = [SET_DELAY_PERMISSION, setAuthorizerAction];
-      const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
-      await authorizer.grantPermissions(setDelayAction, admin, authorizer, { from: admin });
-      const id = await authorizer.scheduleDelayChange(setAuthorizerAction, delay, [], { from: admin });
-      await authorizer.execute(id);
+      const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+      await authorizer.setDelay(setAuthorizerAction, delay, { from: admin });
       await authorizer.grantPermissions(setAuthorizerAction, grantee, vault, { from: admin });
     });
 
@@ -1085,22 +1093,15 @@ describe('Authorizer', () => {
 
   describe('cancel', () => {
     const delay = DAY;
-    let executors: SignerWithAddress[], vault: Contract, newAuthorizer: Authorizer;
-
-    const SET_DELAY_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['SET_DELAY_PERMISSION']);
+    let executors: SignerWithAddress[], newAuthorizer: Authorizer;
 
     sharedBeforeEach('deploy sample instances', async () => {
       newAuthorizer = await Authorizer.create({ admin });
-      vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
     });
 
     sharedBeforeEach('grant set authorizer permission with delay', async () => {
-      const setAuthorizerAction = await vault.getActionId(vault.interface.getSighash('setAuthorizer'));
-      const args = [SET_DELAY_PERMISSION, setAuthorizerAction];
-      const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
-      await authorizer.grantPermissions(setDelayAction, admin, authorizer, { from: admin });
-      const id = await authorizer.scheduleDelayChange(setAuthorizerAction, delay, [], { from: admin });
-      await authorizer.execute(id);
+      const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+      await authorizer.setDelay(setAuthorizerAction, delay, { from: admin });
       await authorizer.grantPermissions(setAuthorizerAction, grantee, vault, { from: admin });
     });
 

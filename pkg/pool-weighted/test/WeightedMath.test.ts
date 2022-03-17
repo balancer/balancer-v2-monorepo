@@ -217,7 +217,7 @@ describe('WeightedMath', function () {
         const currentBalances = [bn(35e18), bn(700e18)];
 
         const protocolSwapFeePercentage = fp(0.3);
-        // The procol is due 30% of the 10 extra tokens in token A (3 tokens), and 30% of the 200 extra tokens in token B
+        // The protocol is due 30% of the 10 extra tokens in token A (3 tokens), and 30% of the 200 extra tokens in token B
         // (60 tokens).
 
         const totalSupply = fp(100);
