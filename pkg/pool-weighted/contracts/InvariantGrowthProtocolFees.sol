@@ -72,7 +72,10 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
 
         // Compute the post balances by adding or removing the deltas. Note that we're allowed to mutate preBalances.
         for (uint256 i = 0; i < preBalances.length; ++i) {
-            preBalances[i] = (isJoin ? SafeMath.add : SafeMath.sub)(preBalances[i], balanceDeltas[i]);
+            // Cannot optimize calls with a function selector: there are 2- and 3-argument versions of SafeMath.sub
+            preBalances[i] = isJoin
+                ? SafeMath.add(preBalances[i], balanceDeltas[i])
+                : SafeMath.sub(preBalances[i], balanceDeltas[i]);
         }
 
         uint256 postJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
