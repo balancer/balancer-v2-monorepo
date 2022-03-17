@@ -45,15 +45,16 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
     uint256 private _emissions;
     bool private _isKilled;
 
-    constructor(IBalancerMinter minter, address authorizerAdaptor) {
+    constructor(IBalancerMinter minter) {
         IBalancerTokenAdmin tokenAdmin = IBalancerTokenAdmin(minter.getBalancerTokenAdmin());
         IERC20 balToken = tokenAdmin.getBalancerToken();
+        IGaugeController gaugeController = minter.getGaugeController();
 
         _balToken = balToken;
         _tokenAdmin = tokenAdmin;
         _minter = minter;
-        _gaugeController = minter.getGaugeController();
-        _authorizerAdaptor = authorizerAdaptor;
+        _gaugeController = gaugeController;
+        _authorizerAdaptor = gaugeController.admin();
 
         _INITIAL_RATE = tokenAdmin.INITIAL_RATE();
         _RATE_REDUCTION_TIME = tokenAdmin.RATE_REDUCTION_TIME();
