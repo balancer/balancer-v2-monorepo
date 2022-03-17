@@ -2,10 +2,12 @@ import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { deploy } from '../../contract';
+import { ZERO_ADDRESS } from '../../constants';
+import { RawVaultDeployment, VaultDeployment } from './types';
+
 import Vault from './Vault';
 import TypesConverter from '../types/TypesConverter';
-import { deploy } from '../../contract';
-import { RawVaultDeployment, VaultDeployment } from './types';
 import TokensDeployer from '../tokens/TokensDeployer';
 
 export default {
@@ -33,6 +35,6 @@ export default {
   },
 
   async _deployAuthorizer(admin: SignerWithAddress, from?: SignerWithAddress): Promise<Contract> {
-    return deploy('v2-vault/Authorizer', { args: [admin.address], from });
+    return deploy('v2-vault/Authorizer', { args: [admin.address, ZERO_ADDRESS], from });
   },
 };

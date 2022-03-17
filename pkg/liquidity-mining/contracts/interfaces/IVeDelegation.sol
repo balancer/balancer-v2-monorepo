@@ -19,5 +19,6 @@ pragma solidity ^0.7.0;
 // solhint-disable func-name-mixedcase
 
 interface IVeDelegation {
+    // solhint-disable-next-line func-name-mixedcase
     function adjusted_balance_of(address user) external view returns (uint256);
 }

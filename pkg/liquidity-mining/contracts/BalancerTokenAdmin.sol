@@ -37,10 +37,10 @@ contract BalancerTokenAdmin is IBalancerTokenAdmin, Authentication, ReentrancyGu
     using Math for uint256;
 
     // Initial inflation rate of 145k BAL per week.
-    uint256 public constant INITIAL_RATE = (145000 * 1e18) / uint256(1 weeks); // BAL has 18 decimals
-    uint256 public constant RATE_REDUCTION_TIME = 365 days;
-    uint256 public constant RATE_REDUCTION_COEFFICIENT = 1189207115002721024; // 2 ** (1/4) * 1e18
-    uint256 public constant RATE_DENOMINATOR = 1e18;
+    uint256 public constant override INITIAL_RATE = (145000 * 1e18) / uint256(1 weeks); // BAL has 18 decimals
+    uint256 public constant override RATE_REDUCTION_TIME = 365 days;
+    uint256 public constant override RATE_REDUCTION_COEFFICIENT = 1189207115002721024; // 2 ** (1/4) * 1e18
+    uint256 public constant override RATE_DENOMINATOR = 1e18;
 
     IVault private immutable _vault;
     IBalancerToken private immutable _balancerToken;
@@ -226,7 +226,7 @@ contract BalancerTokenAdmin is IBalancerTokenAdmin, Authentication, ReentrancyGu
      * @notice Get timestamp of the current mining epoch start while simultaneously updating mining parameters
      * @return Timestamp of the current epoch
      */
-    function startEpochTimeWrite() external returns (uint256) {
+    function startEpochTimeWrite() external override returns (uint256) {
         return _startEpochTimeWrite();
     }
 
@@ -356,7 +356,7 @@ contract BalancerTokenAdmin is IBalancerTokenAdmin, Authentication, ReentrancyGu
     // They are included for ABI compatibility with snake_casing as used in vyper contracts.
     // solhint-disable func-name-mixedcase
 
-    function rate() external view returns (uint256) {
+    function rate() external view override returns (uint256) {
         return _rate;
     }
 
