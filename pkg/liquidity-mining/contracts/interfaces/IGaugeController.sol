@@ -14,6 +14,7 @@
 
 pragma solidity ^0.7.0;
 
+import "./IAuthorizerAdaptor.sol";
 import "./IVotingEscrow.sol";
 
 // For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
@@ -38,5 +39,5 @@ interface IGaugeController {
 
     function gauge_types(address gauge) external view returns (int128);
 
-    function admin() external view returns (address);
+    function admin() external view returns (IAuthorizerAdaptor);
 }

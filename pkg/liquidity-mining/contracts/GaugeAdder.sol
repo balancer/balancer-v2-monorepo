@@ -32,10 +32,12 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
     // Mapping from gauge type to a list of address for approved factories for that type
     mapping(GaugeType => EnumerableSet.AddressSet) internal _gaugeFactoriesByType;
 
-    constructor(IGaugeController gaugeController, IAuthorizerAdaptor authorizerAdaptor)
+    constructor(IGaugeController gaugeController)
         Authentication(bytes32(uint256(address(this))))
     {
         // GaugeAdder is a singleton, so it simply uses its own address to disambiguate action identifiers
+        IAuthorizerAdaptor authorizerAdaptor = gaugeController.admin();
+        
         _vault = authorizerAdaptor.getVault();
         _gaugeController = gaugeController;
         _authorizerAdaptor = authorizerAdaptor;

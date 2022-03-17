@@ -49,7 +49,7 @@ contract MockGaugeController is IGaugeController {
     }
 
 
-    function admin() external view override returns (address) {}
+    function admin() external view override returns (IAuthorizerAdaptor) {}
 
     function voting_escrow() external view override returns (IVotingEscrow) {}
 

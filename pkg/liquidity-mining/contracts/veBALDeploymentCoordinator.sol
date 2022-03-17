@@ -147,11 +147,11 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         // Also require that Balancer governance holds all relevant admin rights
         IAuthorizerAdaptor authorizerAdaptor = getAuthorizerAdaptor();
         require(
-            _gaugeController.voting_escrow().admin() == address(authorizerAdaptor),
+            _gaugeController.voting_escrow().admin() == authorizerAdaptor,
             "VotingEscrow not owned by AuthorizerAdaptor"
         );
         require(
-            _gaugeController.admin() == address(authorizerAdaptor),
+            _gaugeController.admin() == authorizerAdaptor,
             "GaugeController not owned by AuthorizerAdaptor"
         );
 
