@@ -48,7 +48,7 @@ export type WeightedPoolDeployment = {
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
   managementSwapFeePercentage: BigNumberish;
-  reserveAssetManager: string,
+  reserveAssetManager: string;
   owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -236,7 +236,7 @@ export type AMLiquidityBootstrappingPoolParams = {
   name: string;
   symbol: string;
   projectToken: string;
-  reserveToken: string,
+  reserveToken: string;
   projectWeight: BigNumberish;
   reserveWeight: BigNumberish;
   swapFeePercentage: BigNumberish;
