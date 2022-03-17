@@ -14,6 +14,7 @@ import {
   RawWeightedPoolDeployment,
   WeightedPoolDeployment,
   WeightedPoolType,
+  AMLiquidityBootstrappingPoolParams,
 } from './types';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
@@ -36,6 +37,7 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementSwapFeePercentage,
+      reserveAssetManager,
     } = deployment;
 
     const poolId = await pool.getPoolId();
@@ -50,7 +52,8 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      managementSwapFeePercentage
+      managementSwapFeePercentage,
+      reserveAssetManager
     );
   },
 
@@ -67,6 +70,7 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementSwapFeePercentage,
+      reserveAssetManager,
       owner,
       from,
     } = params;
@@ -109,6 +113,29 @@ export default {
             bufferPeriodDuration,
             TypesConverter.toAddress(owner),
             swapEnabledOnStart,
+          ],
+          from,
+        });
+        break;
+      }
+      case WeightedPoolType.AM_LIQUIDITY_BOOTSTRAPPING_POOL: {
+        result = deploy('v2-pool-weighted/AssetManagedLiquidityBootstrappingPool', {
+          args: [
+            {
+              name: NAME,
+              symbol: SYMBOL,
+              projectToken: tokens.get(0).address,
+              reserveToken: tokens.get(1).address,
+              projectWeight: weights[0],
+              reserveWeight: weights[1],
+              swapFeePercentage: swapFeePercentage,
+              swapEnabledOnStart: swapEnabledOnStart,
+            },
+            vault.address,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            TypesConverter.toAddress(owner),
+            reserveAssetManager,
           ],
           from,
         });
@@ -214,6 +241,29 @@ export default {
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
         result = deployedAt('v2-pool-weighted/LiquidityBootstrappingPool', event.args.pool);
+        break;
+      }
+      case WeightedPoolType.AM_LIQUIDITY_BOOTSTRAPPING_POOL: {
+        const factory = await deploy('v2-pool-weighted/SeededLiquidityBootstrappingPoolFactory', {
+          args: [vault.address],
+          from,
+        });
+
+        const newPoolParams: AMLiquidityBootstrappingPoolParams = {
+          name: NAME,
+          symbol: SYMBOL,
+          projectToken: tokens.get(0).address,
+          reserveToken: tokens.get(1).address,
+          projectWeight: weights[0],
+          reserveWeight: weights[1],
+          swapFeePercentage: swapFeePercentage,
+          swapEnabledOnStart: swapEnabledOnStart,
+        };
+
+        const tx = await factory.create(newPoolParams);
+        const receipt = await tx.wait();
+        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+        result = deployedAt('v2-pool-weighted/AssetManagedLiquidityBootstrappingPool', event.args.pool);
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {

@@ -17,11 +17,11 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-import "@balancer-labs/v2-pool-utils/contracts/dodo/IDODOCallee.sol";
-import "@balancer-labs/v2-pool-utils/contracts/dodo/IDODO.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "../interfaces/IControlledLiquidityBootstrappingPool.sol";
+import "../interfaces/IDODOCallee.sol";
+import "../interfaces/IDODO.sol";
 import "./BasePoolController.sol";
 
 /**

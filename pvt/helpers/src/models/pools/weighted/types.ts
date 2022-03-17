@@ -12,6 +12,7 @@ export enum WeightedPoolType {
   WEIGHTED_POOL = 0,
   ORACLE_WEIGHTED_POOL,
   LIQUIDITY_BOOTSTRAPPING_POOL,
+  AM_LIQUIDITY_BOOTSTRAPPING_POOL,
   MANAGED_POOL,
 }
 
@@ -26,6 +27,7 @@ export type RawWeightedPoolDeployment = {
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
   managementSwapFeePercentage?: BigNumberish;
+  reserveAssetManager?: string;
   owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -46,6 +48,7 @@ export type WeightedPoolDeployment = {
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
   managementSwapFeePercentage: BigNumberish;
+  reserveAssetManager: string,
   owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -227,4 +230,15 @@ export type ManagedPoolParams = {
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
   managementSwapFeePercentage: BigNumberish;
+};
+
+export type AMLiquidityBootstrappingPoolParams = {
+  name: string;
+  symbol: string;
+  projectToken: string;
+  reserveToken: string,
+  projectWeight: BigNumberish;
+  reserveWeight: BigNumberish;
+  swapFeePercentage: BigNumberish;
+  swapEnabledOnStart: boolean;
 };
