@@ -27,7 +27,7 @@ interface IGaugeController {
 
     function voting_escrow() external view returns (IVotingEscrow);
 
-    function add_type(bytes1[64] calldata name, uint256 weight) external;
+    function add_type(string calldata name, uint256 weight) external;
 
     function change_type_weight(int128 typeId, uint256 weight) external;
 
