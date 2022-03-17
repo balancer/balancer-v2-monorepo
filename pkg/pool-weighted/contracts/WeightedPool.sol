@@ -124,7 +124,7 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
 
         _totalTokens = numTokens;
 
-        // Ensure each normalized weight is above them minimum
+        // Ensure each normalized weight is above the minimum
         uint256 normalizedSum = 0;
         for (uint8 i = 0; i < numTokens; i++) {
             uint256 normalizedWeight = normalizedWeights[i];
