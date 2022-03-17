@@ -146,7 +146,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * @dev Called before any join or exit operation (including initialization). Empty by default, but derived contracts
      * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
      *
-     * If isJoin is true, balanceDeltas are the amounts in, and they are the amounts out otherwise.
+     * If isJoin is true, balanceDeltas are the amounts in: otherwise they are the amounts out.
      *
      * This function is free to mutate the `preBalances` array.
      */
