@@ -14,7 +14,6 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
@@ -40,7 +39,7 @@ interface ICurrentAuthorizer is IAuthorizer {
 
 // https://vote.balancer.fi/#/proposal/0x9fe19c491cf90ed2e3ed9c15761c43d39fd1fb732a940aba8058ff69787ee90a
 // solhint-disable-next-line contract-name-camelcase
-contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
+contract veBALDeploymentCoordinator is ReentrancyGuard {
     IBalancerTokenAdmin private immutable _balancerTokenAdmin;
 
     IVault private immutable _vault;
@@ -77,10 +76,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         IAuthorizerAdaptor authorizerAdaptor,
         uint256 activationScheduledTime,
         uint256 secondStageDelay
-    ) Authentication(bytes32(uint256(address(this)))) {
-        // veBALDeploymentCoordinator is a singleton,
-        // so it simply uses its own address to disambiguate action identifiers
-
+    ) {
         _currentDeploymentStage = DeploymentStage.PENDING;
 
         IBalancerTokenAdmin balancerTokenAdmin = balancerMinter.getBalancerTokenAdmin();
@@ -141,7 +137,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         return _secondStageDelay;
     }
 
-    function performFirstStage() external authenticate nonReentrant {
+    function performFirstStage() external nonReentrant {
         // Check internal state
         require(block.timestamp >= _activationScheduledTime, "Not ready for activation");
         require(_currentDeploymentStage == DeploymentStage.PENDING, "First step already performed");
@@ -220,9 +216,6 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         _currentDeploymentStage = DeploymentStage.FIRST_STAGE_DONE;
     }
 
-    /**
-     * @dev This is purposefully left without access control to ensure that it is activated at the correct time.
-     */
     function performSecondStage() external nonReentrant {
         // Check delay from first stage
         require(_currentDeploymentStage == DeploymentStage.FIRST_STAGE_DONE, "First steap already performed");
@@ -275,9 +268,5 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
             address(gaugeController),
             abi.encodeWithSelector(IGaugeController.change_type_weight.selector, typeId, weight)
         );
-    }
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 }
