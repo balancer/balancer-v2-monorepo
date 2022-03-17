@@ -22,8 +22,6 @@ import "./ILiquidityGauge.sol";
 import "./ILiquidityGaugeFactory.sol";
 
 interface IGaugeAdder is IAuthentication {
-    // TODO: Ensure that these align with the types as set on the GaugeController
-    // Failure to do so will result in an irrecoverably broken GaugeController state.
     enum GaugeType { LiquidityMiningCommittee, veBAL, Ethereum, Polygon, Arbitrum }
 
     event GaugeFactoryAdded(GaugeType indexed gaugeType, ILiquidityGaugeFactory gaugeFactory);
