@@ -41,7 +41,7 @@ import "./BasePoolController.sol";
  *
  * The controller can then be used by the manager for regular LBP functions.
  */
-contract AssetManagedLiquidityBootstrappingPoolController is
+contract AaveAssetManagedLBPController is
     BasePoolController,
     IControlledLiquidityBootstrappingPool,
     IFlashLoanSimpleReceiver
