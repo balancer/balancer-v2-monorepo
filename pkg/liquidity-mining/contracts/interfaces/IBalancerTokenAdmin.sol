@@ -20,14 +20,32 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "./IBalancerToken.sol";
 
 interface IBalancerTokenAdmin is IAuthentication {
-    function getVault() external view returns (IVault);
+    // solhint-disable func-name-mixedcase
+    function INITIAL_RATE() external view returns (uint256);
+
+    function RATE_REDUCTION_TIME() external view returns (uint256);
+
+    function RATE_REDUCTION_COEFFICIENT() external view returns (uint256);
+
+    function RATE_DENOMINATOR() external view returns (uint256);
+
+    // solhint-enable func-name-mixedcase
 
     /**
      * @notice Returns the address of the Balancer Governance Token
      */
     function getBalancerToken() external view returns (IBalancerToken);
 
+    /**
+     * @notice Returns the Balancer Vault.
+     */
+    function getVault() external view returns (IVault);
+
     function activate() external;
+
+    function rate() external view returns (uint256);
+
+    function startEpochTimeWrite() external returns (uint256);
 
     function mint(address to, uint256 amount) external;
 }
