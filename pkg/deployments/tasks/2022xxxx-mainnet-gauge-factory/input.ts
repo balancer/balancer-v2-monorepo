@@ -13,16 +13,8 @@ const Vault = new Task('20210418-vault');
 const VotingEscrowDelegationProxy = new Task('2022xxxx-ve-delegation');
 
 export default {
-  mainnet: {
-    AuthorizerAdaptor,
-    BalancerMinter,
-    Vault,
-    VotingEscrowDelegationProxy,
-  },
-  kovan: {
-    AuthorizerAdaptor,
-    BalancerMinter,
-    Vault,
-    VotingEscrowDelegationProxy,
-  },
+  AuthorizerAdaptor,
+  BalancerMinter,
+  Vault,
+  VotingEscrowDelegationProxy,
 };

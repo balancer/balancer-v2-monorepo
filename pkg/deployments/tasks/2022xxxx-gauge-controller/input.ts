@@ -15,11 +15,11 @@ export default {
   mainnet: {
     AuthorizerAdaptor,
     BalancerTokenAdmin,
-    BPT: '0x5c6Ee304399DBdB9C8Ef030aB642B10820DB8F56',
+    BPT: '0x5c6Ee304399DBdB9C8Ef030aB642B10820DB8F56', // BPT of the canonical 80-20 BAL-WETH Pool
   },
   kovan: {
     AuthorizerAdaptor,
     BalancerTokenAdmin,
-    BPT: '0xDC2EcFDf2688f92c85064bE0b929693ACC6dBcA6',
+    BPT: '0xDC2EcFDf2688f92c85064bE0b929693ACC6dBcA6', // BPT of an 80-20 BAL-WETH Pool using test BAL
   },
 };
