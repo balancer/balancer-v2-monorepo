@@ -29,7 +29,7 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
     IGaugeController private immutable _gaugeController;
     address private immutable _authorizerAdaptor;
 
-    event Checkpoint(uint256 periodTime, uint256 periodEmissions);
+    event Checkpoint(uint256 indexed periodTime, uint256 periodEmissions);
 
     // solhint-disable var-name-mixedcase
     uint256 private immutable _INITIAL_RATE;
