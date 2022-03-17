@@ -105,6 +105,7 @@ def __init__(_voting_escrow: address, _authorizer_adaptor: address):
     """
     @notice Contract constructor
     @param _voting_escrow `VotingEscrow` contract address
+    @param _authorizer_adaptor `AuthorizerAdaptor` contract address
     """
     assert _voting_escrow != ZERO_ADDRESS
     assert _authorizer_adaptor != ZERO_ADDRESS
