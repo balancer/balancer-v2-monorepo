@@ -33,7 +33,7 @@ import "./interfaces/IAuthorizerAdaptor.sol";
  * @dev When calculating the actionId to call a function on a target contract, it must be calculated as if it were
  * to be called on this adaptor. This can be done by passing the function selector to the `getActionId` function.
  */
-contract AuthorizerAdaptor is IAuthorizerAdaptor, IAuthentication, ReentrancyGuard {
+contract AuthorizerAdaptor is IAuthorizerAdaptor, ReentrancyGuard {
     using Address for address;
 
     bytes32 private immutable _actionIdDisambiguator;

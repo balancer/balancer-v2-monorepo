@@ -15,8 +15,9 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
 
-interface IAuthorizerAdaptor {
+interface IAuthorizerAdaptor is IAuthentication {
     /**
      * @notice Returns the Balancer Vault
      */

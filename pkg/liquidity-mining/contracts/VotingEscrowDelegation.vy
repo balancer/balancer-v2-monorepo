@@ -93,7 +93,7 @@ MAX_PCT: constant(uint256) = 10_000
 WEEK: constant(uint256) = 86400 * 7
 
 VOTING_ESCROW: immutable(address)  # Voting escrow
-
+AUTHORIZER_ADAPTOR: immutable(address)  # Authorizer Adaptor
 
 balanceOf: public(HashMap[address, uint256])
 getApproved: public(HashMap[uint256, address])
@@ -118,9 +118,6 @@ total_minted: public(HashMap[address, uint256])
 # address => timestamp => # of delegations expiring
 account_expiries: public(HashMap[address, HashMap[uint256, uint256]])
 
-admin: public(address)  # Can and will be a smart contract
-future_admin: public(address)
-
 # The grey list - per-user black and white lists
 # users can make this a blacklist or a whitelist - defaults to blacklist
 # gray_list[_receiver][_delegator]
@@ -133,13 +130,13 @@ grey_list: public(HashMap[address, HashMap[address, bool]])
 
 
 @external
-def __init__(_voting_escrow: address, _name: String[32], _symbol: String[32], _base_uri: String[128]):
+def __init__(_voting_escrow: address, _name: String[32], _symbol: String[32], _base_uri: String[128], _authorizer_adaptor: address):
     VOTING_ESCROW = _voting_escrow
+    AUTHORIZER_ADAPTOR = _authorizer_adaptor
+
     self.name = _name
     self.symbol = _symbol
     self.base_uri = _base_uri
-
-    self.admin = msg.sender
 
 
 @internal
@@ -985,28 +982,7 @@ def get_token_id(_delegator: address, _id: uint256) -> uint256:
     assert _id < 2 ** 96  # dev: invalid _id
     return shift(convert(_delegator, uint256), 96) + _id
 
-
-@external
-def commit_transfer_ownership(_addr: address):
-    """
-    @notice Transfer ownership of contract to `addr`
-    @param _addr Address to have ownership transferred to
-    """
-    assert msg.sender == self.admin  # dev: admin only
-    self.future_admin = _addr
-
-
-@external
-def accept_transfer_ownership():
-    """
-    @notice Accept admin role, only callable by future admin
-    """
-    future_admin: address = self.future_admin
-    assert msg.sender == future_admin
-    self.admin = future_admin
-
-
 @external
 def set_base_uri(_base_uri: String[128]):
-    assert msg.sender == self.admin
+    assert msg.sender == AUTHORIZER_ADAPTOR
     self.base_uri = _base_uri

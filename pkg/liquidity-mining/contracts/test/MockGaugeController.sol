@@ -44,7 +44,19 @@ contract MockGaugeController is IGaugeController {
         emit NewGauge(gauge, gaugeType, 0);
     }
 
-    function add_type(string calldata) external {
+    function add_type(string calldata, uint256) external override {
         _numGaugeTypes += 1;
     }
+
+
+    function admin() external view override returns (address) {}
+
+    function voting_escrow() external view override returns (IVotingEscrow) {}
+
+    function checkpoint_gauge(address) external override {}
+
+    function gauge_relative_weight(address, uint256) external view override returns (uint256) {}
+
+    function change_type_weight(int128, uint256) external override {}
+
 }

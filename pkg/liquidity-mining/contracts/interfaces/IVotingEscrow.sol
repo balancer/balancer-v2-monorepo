@@ -14,29 +14,10 @@
 
 pragma solidity ^0.7.0;
 
-import "./IVotingEscrow.sol";
-
 // For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
 // naming convention.
 // solhint-disable func-name-mixedcase
 
-interface IGaugeController {
-    function checkpoint_gauge(address gauge) external;
-
-    function gauge_relative_weight(address gauge, uint256 time) external returns (uint256);
-
-    function voting_escrow() external view returns (IVotingEscrow);
-
-    function add_type(string calldata name, uint256 weight) external;
-
-    function change_type_weight(int128 typeId, uint256 weight) external;
-
-    // Gauges are to be added with zero initial weight so the full signature is not required
-    function add_gauge(address gauge, int128 gaugeType) external;
-
-    function n_gauge_types() external view returns (int128);
-
-    function gauge_types(address gauge) external view returns (int128);
-
+interface IVotingEscrow {
     function admin() external view returns (address);
 }
