@@ -19,6 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableMap.so
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import "../BaseWeightedPool.sol";
 import "../WeightedPoolUserData.sol";
@@ -396,34 +397,24 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
-        uint256[] memory normalizedWeights = new uint256[](2);
-        normalizedWeights[0] = _getNormalizedWeight(request.tokenIn);
-        normalizedWeights[1] = _getNormalizedWeight(request.tokenOut);
+        uint256[] memory normalizedWeights = ArrayHelpers.arrayFill(
+            _getNormalizedWeight(request.tokenIn),
+            _getNormalizedWeight(request.tokenOut)
+        );
 
-        uint256[] memory preSwapBalances = new uint256[](2);
-        preSwapBalances[0] = _upscale(balanceTokenIn, scalingFactorTokenIn);
-        preSwapBalances[1] = _upscale(balanceTokenOut, scalingFactorTokenOut);
+        uint256[] memory preSwapBalances = ArrayHelpers.arrayFill(
+            _upscale(balanceTokenIn, scalingFactorTokenIn),
+            _upscale(balanceTokenOut, scalingFactorTokenOut)
+        );
 
-        // Broken out only because of "stack too deep"
-        if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            return
-                _processSwapGivenIn(
-                    request,
-                    scalingFactorTokenIn,
-                    scalingFactorTokenOut,
-                    preSwapBalances,
-                    normalizedWeights
-                );
-        } else {
-            return
-                _processSwapGivenOut(
-                    request,
-                    scalingFactorTokenIn,
-                    scalingFactorTokenOut,
-                    preSwapBalances,
-                    normalizedWeights
-                );
-        }
+        return
+            (request.kind == IVault.SwapKind.GIVEN_IN ? _processSwapGivenIn : _processSwapGivenOut)(
+                request,
+                scalingFactorTokenIn,
+                scalingFactorTokenOut,
+                preSwapBalances,
+                normalizedWeights
+            );
     }
 
     function _processSwapGivenIn(
@@ -446,9 +437,10 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             amountInMinusSwapFees
         );
 
-        uint256[] memory postSwapBalances = new uint256[](2);
-        postSwapBalances[0] = preSwapBalances[0].add(request.amount);
-        postSwapBalances[1] = preSwapBalances[1].sub(amountOut);
+        uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
+            preSwapBalances[0].add(request.amount),
+            preSwapBalances[1].sub(amountOut)
+        );
 
         _payProtocolAndManagementFees(normalizedWeights, preSwapBalances, postSwapBalances);
 
@@ -479,9 +471,10 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
         uint256 amountInPlusSwapFees = _addSwapFeeAmount(amountIn);
 
-        uint256[] memory postSwapBalances = new uint256[](2);
-        postSwapBalances[0] = _upscale(amountInPlusSwapFees, scalingFactorTokenIn);
-        postSwapBalances[1] = preSwapBalances[1].sub(request.amount);
+        uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
+            _upscale(amountInPlusSwapFees, scalingFactorTokenIn),
+            preSwapBalances[1].sub(request.amount)
+        );
 
         _payProtocolAndManagementFees(normalizedWeights, preSwapBalances, postSwapBalances);
 

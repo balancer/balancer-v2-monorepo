@@ -95,9 +95,6 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
 
     function initialize(address poolAddress) public virtual override {
         super.initialize(poolAddress);
-
-        // Need to approve transferring pool tokens in order to collect management fees
-        IERC20(pool).approve(address(this), type(uint256).max);
     }
 
     /**
@@ -212,7 +209,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
      * @dev Transfer any BPT management fees from this contract to the recipient
      */
     function withdrawCollectedManagementFees(address recipient) external virtual override onlyManager withBoundPool {
-        IERC20(pool).transferFrom(address(this), recipient, IERC20(pool).balanceOf(address(this)));
+        IERC20(pool).transfer(recipient, IERC20(pool).balanceOf(address(this)));
     }
 
     /**
