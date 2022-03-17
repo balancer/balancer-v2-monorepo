@@ -9,9 +9,10 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { ANY_ADDRESS, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+
 import { encodeInvestmentConfig } from './helpers/rebalance';
 
 describe('RebalancingRelayer', function () {
@@ -31,7 +32,7 @@ describe('RebalancingRelayer', function () {
     const WETH = await Token.create('WETH');
     tokens = new TokenList([DAI, WETH].sort());
 
-    authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
+    authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address, ZERO_ADDRESS] });
     vault = await deploy('v2-vault/Vault', { args: [authorizer.address, tokens.WETH.address, 0, 0] });
     relayer = await deploy('RebalancingRelayer', { args: [vault.address] });
 

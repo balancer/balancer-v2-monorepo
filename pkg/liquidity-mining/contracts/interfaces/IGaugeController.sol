@@ -21,9 +21,13 @@ import "./IVotingEscrow.sol";
 // solhint-disable func-name-mixedcase
 
 interface IGaugeController {
+    function checkpoint_gauge(address gauge) external returns (uint256);
+
+    function gauge_relative_weight(address gauge, uint256 time) external returns (uint256);
+
     function voting_escrow() external view returns (IVotingEscrow);
 
-    function add_type(bytes1[64] calldata name, uint256 weight) external;
+    function add_type(string calldata name, uint256 weight) external;
 
     function change_type_weight(int128 typeId, uint256 weight) external;
 
