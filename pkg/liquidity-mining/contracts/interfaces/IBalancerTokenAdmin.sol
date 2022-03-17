@@ -14,9 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
+import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-interface IBalancerTokenAdmin {
+import "./IBalancerToken.sol";
+
+interface IBalancerTokenAdmin is IAuthentication {
     // solhint-disable func-name-mixedcase
     function INITIAL_RATE() external view returns (uint256);
 
@@ -28,7 +31,17 @@ interface IBalancerTokenAdmin {
 
     // solhint-enable func-name-mixedcase
 
-    function getBalancerToken() external view returns (IERC20);
+    /**
+     * @notice Returns the address of the Balancer Governance Token
+     */
+    function getBalancerToken() external view returns (IBalancerToken);
+
+    /**
+     * @notice Returns the Balancer Vault.
+     */
+    function getVault() external view returns (IVault);
+
+    function activate() external;
 
     function rate() external view returns (uint256);
 

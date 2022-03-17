@@ -14,11 +14,14 @@
 
 pragma solidity ^0.7.0;
 
-// For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
-// naming convention.
-// solhint-disable func-name-mixedcase
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
 
-interface IVeDelegation {
-    // solhint-disable-next-line func-name-mixedcase
-    function adjusted_balance_of(address user) external view returns (uint256);
+interface IAuthorizerAdaptor is IAuthentication {
+    /**
+     * @notice Performs an arbitrary function call on a target contract, provided the caller is authorized to do so.
+     * @param target - Address of the contract to be called
+     * @param data - Calldata to be sent to the target contract
+     * @return The bytes encoded return value from the performed function call
+     */
+    function performAction(address target, bytes calldata data) external payable returns (bytes memory);
 }
