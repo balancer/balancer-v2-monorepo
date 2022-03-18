@@ -449,6 +449,6 @@ library WeightedMath {
         uint256 numerator = totalSupply.mulDown(k);
         uint256 denominator = FixedPoint.ONE.sub(k);
 
-        return denominator == 0 ? 0 : (numerator / denominator);
+        return denominator == 0 ? 0 : numerator.divDown(denominator);
     }
 }
