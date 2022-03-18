@@ -170,17 +170,11 @@ describe('Authorizer', () => {
         context('when there is a delay set to grant permissions', () => {
           const delay = DAY;
           const GRANT_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['GRANT_PERMISSION']);
-          const SET_DELAY_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['SET_DELAY_PERMISSION']);
 
           sharedBeforeEach('set delay', async () => {
             const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
             await authorizer.setDelay(setAuthorizerAction, delay * 2, { from: admin });
-
-            const args = [SET_DELAY_PERMISSION, GRANT_PERMISSION];
-            const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
-            await authorizer.grantPermissions(setDelayAction, admin, authorizer, { from });
-            const id = await authorizer.scheduleDelayChange(GRANT_PERMISSION, delay, [], { from });
-            await authorizer.execute(id);
+            await authorizer.setDelay(GRANT_PERMISSION, delay, { from: admin });
           });
 
           it('reverts', async () => {
@@ -442,17 +436,11 @@ describe('Authorizer', () => {
           context('when there is a delay set to grant permissions', () => {
             const delay = DAY;
             const REVOKE_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['REVOKE_PERMISSION']);
-            const SET_DELAY_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['SET_DELAY_PERMISSION']);
 
             sharedBeforeEach('set delay', async () => {
               const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
               await authorizer.setDelay(setAuthorizerAction, delay * 2, { from: admin });
-
-              const args = [SET_DELAY_PERMISSION, REVOKE_PERMISSION];
-              const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
-              await authorizer.grantPermissions(setDelayAction, admin, authorizer, { from });
-              const id = await authorizer.scheduleDelayChange(REVOKE_PERMISSION, delay, [], { from });
-              await authorizer.execute(id);
+              await authorizer.setDelay(REVOKE_PERMISSION, delay, { from: admin });
             });
 
             it('reverts', async () => {
