@@ -29,6 +29,7 @@ contract SingleRecipientGauge is ISingleRecipientLiquidityGauge, StakelessGauge 
     }
 
     function initialize(address recipient) external override {
+        // This will revert in all calls except the first one
         __StakelessGauge_init();
 
         _recipient = recipient;

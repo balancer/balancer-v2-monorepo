@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
 import "./SingleRecipientGauge.sol";
 
-contract LiquidityGaugeFactory {
+contract SingleRecipientLiquidityGaugeFactory {
     ISingleRecipientLiquidityGauge private _gaugeImplementation;
 
     mapping(address => bool) private _isGaugeFromFactory;
