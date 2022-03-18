@@ -150,10 +150,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
             _gaugeController.voting_escrow().admin() == authorizerAdaptor,
             "VotingEscrow not owned by AuthorizerAdaptor"
         );
-        require(
-            _gaugeController.admin() == authorizerAdaptor,
-            "GaugeController not owned by AuthorizerAdaptor"
-        );
+        require(_gaugeController.admin() == authorizerAdaptor, "GaugeController not owned by AuthorizerAdaptor");
 
         // Sanity checks
         require(_gaugeController.n_gauge_types() == 0, "Gauge types already set");

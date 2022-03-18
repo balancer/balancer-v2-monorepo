@@ -48,15 +48,23 @@ contract MockGaugeController is IGaugeController {
         _numGaugeTypes += 1;
     }
 
+    function admin() external view override returns (IAuthorizerAdaptor) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
-    function admin() external view override returns (IAuthorizerAdaptor) {}
+    function voting_escrow() external view override returns (IVotingEscrow) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
-    function voting_escrow() external view override returns (IVotingEscrow) {}
+    function checkpoint_gauge(address) external override {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
-    function checkpoint_gauge(address) external override {}
+    function gauge_relative_weight(address, uint256) external view override returns (uint256) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
-    function gauge_relative_weight(address, uint256) external view override returns (uint256) {}
-
-    function change_type_weight(int128, uint256) external override {}
-
+    function change_type_weight(int128, uint256) external override {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }
