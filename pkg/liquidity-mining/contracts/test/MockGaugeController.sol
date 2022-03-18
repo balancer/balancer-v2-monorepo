@@ -25,8 +25,14 @@ contract MockGaugeController is IGaugeController {
     mapping(address => bool) private _validGauge;
     mapping(address => int128) private _gaugeType;
 
+    IAuthorizerAdaptor public override admin;
+
     // solhint-disable-next-line func-param-name-mixedcase, var-name-mixedcase
     event NewGauge(address addr, int128 gauge_type, uint256 weight);
+
+    constructor(IAuthorizerAdaptor authorizerAdaptor) {
+        admin = authorizerAdaptor;
+    }
 
     function n_gauge_types() external view override returns (int128) {
         return _numGaugeTypes;
@@ -46,10 +52,6 @@ contract MockGaugeController is IGaugeController {
 
     function add_type(string calldata, uint256) external override {
         _numGaugeTypes += 1;
-    }
-
-    function admin() external view override returns (IAuthorizerAdaptor) {
-        // solhint-disable-previous-line no-empty-blocks
     }
 
     function voting_escrow() external view override returns (IVotingEscrow) {

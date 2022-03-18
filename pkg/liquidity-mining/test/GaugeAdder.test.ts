@@ -37,14 +37,14 @@ describe('GaugeAdder', () => {
     authorizer = vault.authorizer;
 
     adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
-    gaugeController = await deploy('MockGaugeController', {});
+    gaugeController = await deploy('MockGaugeController', { args: [adaptor.address] });
 
     gaugeFactory = await deploy('MockLiquidityGaugeFactory');
-    gaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address, adaptor.address] });
+    gaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address] });
 
-    await gaugeController.add_type('LiquidityMiningCommittee');
-    await gaugeController.add_type('veBAL');
-    await gaugeController.add_type('Ethereum');
+    await gaugeController.add_type('LiquidityMiningCommittee', 0);
+    await gaugeController.add_type('veBAL', 0);
+    await gaugeController.add_type('Ethereum', 0);
   });
 
   sharedBeforeEach('set up permissions', async () => {
