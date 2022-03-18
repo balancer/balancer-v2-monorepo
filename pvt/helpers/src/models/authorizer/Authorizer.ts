@@ -1,4 +1,5 @@
 import { ethers } from 'hardhat';
+import { Interface } from 'ethers/lib/utils';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -6,8 +7,8 @@ import * as expectEvent from '../../test/expectEvent';
 import { ANY_ADDRESS } from '../../constants';
 import { BigNumberish } from '../../numbers';
 import { AuthorizerDeployment } from './types';
-import { Account, NAry, TxParams } from '../types/types';
 
+import { Account, NAry, TxParams } from '../types/types';
 import AuthorizerDeployer from './AuthorizerDeployer';
 import { getSigner } from '@balancer-labs/v2-deployments/dist/src/signers';
 
@@ -30,6 +31,10 @@ export default class Authorizer {
 
   get address(): string {
     return this.instance.address;
+  }
+
+  get interface(): Interface {
+    return this.instance.interface;
   }
 
   async GRANT_PERMISSION(): Promise<string> {
@@ -76,6 +81,42 @@ export default class Authorizer {
 
   async schedule(where: Account, data: string, executors: Account[], params?: TxParams): Promise<number> {
     const receipt = await this.with(params).schedule(this.toAddress(where), data, this.toAddresses(executors));
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
+    return event.args.id;
+  }
+
+  async scheduleGrantPermission(
+    action: string,
+    account: Account,
+    where: Account,
+    executors: Account[],
+    params?: TxParams
+  ): Promise<number> {
+    const receipt = await this.with(params).scheduleGrantPermission(
+      action,
+      this.toAddress(account),
+      this.toAddress(where),
+      this.toAddresses(executors)
+    );
+
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
+    return event.args.id;
+  }
+
+  async scheduleRevokePermission(
+    action: string,
+    account: Account,
+    where: Account,
+    executors: Account[],
+    params?: TxParams
+  ): Promise<number> {
+    const receipt = await this.with(params).scheduleRevokePermission(
+      action,
+      this.toAddress(account),
+      this.toAddress(where),
+      this.toAddresses(executors)
+    );
+
     const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
     return event.args.id;
   }
