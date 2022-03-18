@@ -321,25 +321,14 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
         preSwapBalances[1] = _upscale(balanceTokenOut, scalingFactorTokenOut);
 
         // Broken out only because of "stack too deep"
-        if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            return
-                _processSwapGivenIn(
-                    request,
-                    scalingFactorTokenIn,
-                    scalingFactorTokenOut,
-                    preSwapBalances,
-                    normalizedWeights
-                );
-        } else {
-            return
-                _processSwapGivenOut(
-                    request,
-                    scalingFactorTokenIn,
-                    scalingFactorTokenOut,
-                    preSwapBalances,
-                    normalizedWeights
-                );
-        }
+        return
+            (request.kind == IVault.SwapKind.GIVEN_IN ? _processSwapGivenIn : _processSwapGivenOut)(
+                request,
+                scalingFactorTokenIn,
+                scalingFactorTokenOut,
+                preSwapBalances,
+                normalizedWeights
+            );
     }
 
     function _processSwapGivenIn(

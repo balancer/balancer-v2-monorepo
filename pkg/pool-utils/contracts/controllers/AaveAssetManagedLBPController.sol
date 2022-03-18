@@ -150,6 +150,21 @@ contract AaveAssetManagedLBPController is
         return true;
     }
 
+    /**
+     * @dev The initial funding results in a non-zero managed balance. When the cash balance is greater,
+     * this function can be called to return the managed funds to cash.
+     * If there is a managed balance, and the cash balance is greater, convert the managed balance to cash.
+     */
+    function restorePool() external {
+        (uint256 cash, uint256 managed, , )  = _vault.getPoolTokenInfo(getPoolId(), _reserveToken);
+
+        if (managed > 0 && cash >= managed) {
+            IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
+            ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, getPoolId(), _reserveToken, managed);
+            _vault.managePoolBalance(ops);
+        }
+    }
+
     // solhint-disable-next-line func-name-mixedcase
     function ADDRESSES_PROVIDER() external view override returns (IPoolAddressesProvider) {
         return _addressesProvider;
