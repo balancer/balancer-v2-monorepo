@@ -31,7 +31,7 @@ contract ERC4626LinearPool is LinearPool {
         string memory name,
         string memory symbol,
         IERC20 mainToken,
-        IERC20 wrappedToken,
+        IERC4626 wrappedToken,
         uint256 upperTarget,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
@@ -67,29 +67,23 @@ contract ERC4626LinearPool is LinearPool {
         // whereas mainToken is DAI. But the 1:1 relationship holds, and
         // the pool is still valid.
 
-        // _getWrappedTokenRate is scaled e18, so we may need to scale totalAssets/totalSupply
+        // _getWrappedTokenRate is scaled e18, so we may need to scale IERC4626.convertToAssets()
         uint256 wrappedTokenDecimals = ERC20(address(wrappedToken)).decimals();
         uint256 mainTokenDecimals = ERC20(address(mainToken)).decimals();
-        uint256 digitsDifference = Math.add(18, wrappedTokenDecimals).sub(mainTokenDecimals);
+        uint256 digitsDifference = wrappedTokenDecimals.sub(mainTokenDecimals);
         _wrappedTokenRateScale = 10**digitsDifference;
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        address wrappedToken = getWrappedToken();
+        IERC4626 wrappedToken = IERC4626(getWrappedToken());
 
-        // At _mainToken.decimals() precision, potentially may be ZERO
-        uint256 totalMain = IERC4626(wrappedToken).totalAssets();
-
-        // At _wrappedToken.decimals() precision, potentially may be ZERO
-        uint256 totalWrapped = ERC20(wrappedToken).totalSupply();
-
-        // On empty pool return 1:1 rate
-        if (totalMain == 0 || totalWrapped == 0) {
-            return FixedPoint.ONE;
-        }
+        // Main token wei per 1e18 wrapped token wei
+        // Has decimals of: 18 - wrappedDecimals + mainDecimals
+        uint256 assetsPerShare = wrappedToken.convertToAssets(FixedPoint.ONE);
 
         // This function returns a 18 decimal fixed point number
-        uint256 rate = _wrappedTokenRateScale.mul(totalMain).divDown(totalWrapped);
+        // To convert to 18 decimals, scale by: wrappedDecimals - mainDecimals
+        uint256 rate = _wrappedTokenRateScale.mul(assetsPerShare);
         return rate;
     }
 }
