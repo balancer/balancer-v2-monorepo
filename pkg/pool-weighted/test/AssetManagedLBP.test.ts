@@ -247,7 +247,7 @@ describe('AssetManagedLiquidityBootstrappingPool', function () {
               // startWeights must equal "weights" above - just not using fp to keep math simple
               const startWeights = [0.9, 0.1];
               const endWeights = [0.1, 0.9];
-              
+
               function getEndWeights(pct: number): BigNumber[] {
                 const intermediateWeights = Array<BigNumber>(weights.length);
 
