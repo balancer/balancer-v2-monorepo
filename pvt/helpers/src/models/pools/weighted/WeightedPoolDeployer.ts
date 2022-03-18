@@ -266,6 +266,35 @@ export default {
         result = deployedAt('v2-pool-weighted/AssetManagedLiquidityBootstrappingPool', event.args.pool);
         break;
       }
+      case WeightedPoolType.UNSEEDED_AM_LIQUIDITY_BOOTSTRAPPING_POOL: {
+        const factory = await deploy('v2-pool-weighted/UnseededLiquidityBootstrappingPoolFactory', {
+          args: [vault.address],
+          from,
+        });
+
+        const newPoolParams: AMLiquidityBootstrappingPoolParams = {
+          name: NAME,
+          symbol: SYMBOL,
+          projectToken: tokens.get(0).address,
+          reserveToken: tokens.get(1).address,
+          projectWeight: weights[0],
+          reserveWeight: weights[1],
+          swapFeePercentage: swapFeePercentage,
+          swapEnabledOnStart: swapEnabledOnStart,
+        };
+
+        const basePoolRights: BasePoolRights = {
+          canTransferOwnership: true,
+          canChangeSwapFee: true,
+          canUpdateMetadata: true,
+        };
+
+        const tx = await factory.create(newPoolParams, basePoolRights, from?.address);
+        const receipt = await tx.wait();
+        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+        result = deployedAt('v2-pool-weighted/AssetManagedLiquidityBootstrappingPool', event.args.pool);
+        break;
+      }
       case WeightedPoolType.MANAGED_POOL: {
         const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
           args: [vault.address],

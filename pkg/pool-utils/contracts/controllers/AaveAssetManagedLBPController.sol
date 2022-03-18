@@ -136,6 +136,14 @@ contract AaveAssetManagedLBPController is
             fromInternalBalance: false
         });
 
+        // Pull project tokens from the manager
+        uint256 projectTokenIndex = _projectTokenFirst ? 0 : 1;
+
+        tokens[projectTokenIndex].transferFrom(getManager(), address(this), initialBalances[projectTokenIndex]);
+
+        tokens[0].approve(address(_vault), initialBalances[0]);
+        tokens[1].approve(address(_vault), initialBalances[1]);
+
         // Fund the pool; pull the tokens from this contract, send BPT to the manager
         _vault.joinPool(getPoolId(), address(this), getManager(), request);
 
@@ -156,7 +164,7 @@ contract AaveAssetManagedLBPController is
      * If there is a managed balance, and the cash balance is greater, convert the managed balance to cash.
      */
     function restorePool() external {
-        (uint256 cash, uint256 managed, , )  = _vault.getPoolTokenInfo(getPoolId(), _reserveToken);
+        (uint256 cash, uint256 managed, , ) = _vault.getPoolTokenInfo(getPoolId(), _reserveToken);
 
         if (managed > 0 && cash >= managed) {
             IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);

@@ -133,6 +133,10 @@ contract DodoAssetManagedLBPController is BasePoolController, IControlledLiquidi
 
         // At this point, we have the loan funds, and are ready to fund the pool
         (IERC20[] memory tokens, , ) = _vault.getPoolTokens(getPoolId());
+        uint256 projectTokenIndex = _projectTokenFirst ? 0 : 1;
+
+        // Pull project tokens from the manager
+        tokens[projectTokenIndex].transferFrom(getManager(), address(this), initialBalances[projectTokenIndex]);
 
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
             assets: _asIAsset(tokens),
@@ -140,6 +144,9 @@ contract DodoAssetManagedLBPController is BasePoolController, IControlledLiquidi
             userData: abi.encode(JoinKind.INIT, initialBalances),
             fromInternalBalance: false
         });
+
+        tokens[0].approve(address(_vault), initialBalances[0]);
+        tokens[1].approve(address(_vault), initialBalances[1]);
 
         // Fund the pool; pull the tokens from this contract, send BPT to the manager
         _vault.joinPool(getPoolId(), address(this), getManager(), request);
@@ -151,6 +158,21 @@ contract DodoAssetManagedLBPController is BasePoolController, IControlledLiquidi
 
         // Return funds
         IERC20(_getReserveToken()).transfer(flashloanPool, loanAmount);
+    }
+
+    /**
+     * @dev The initial funding results in a non-zero managed balance. When the cash balance is greater,
+     * this function can be called to return the managed funds to cash.
+     * If there is a managed balance, and the cash balance is greater, convert the managed balance to cash.
+     */
+    function restorePool() external {
+        (uint256 cash, uint256 managed, , ) = _vault.getPoolTokenInfo(getPoolId(), _reserveToken);
+
+        if (managed > 0 && cash >= managed) {
+            IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
+            ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, getPoolId(), _reserveToken, managed);
+            _vault.managePoolBalance(ops);
+        }
     }
 
     // LBP functions

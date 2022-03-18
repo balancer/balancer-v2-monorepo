@@ -19,7 +19,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
-import "@balancer-labs/v2-pool-utils/contracts/controllers/AaveAssetManagedLBPController.sol";
+import "@balancer-labs/v2-pool-utils/contracts/controllers/DodoAssetManagedLBPController.sol";
 import "@balancer-labs/v2-asset-manager-utils/contracts/aave/IPoolAddressesProvider.sol";
 
 import "./AssetManagedLiquidityBootstrappingPool.sol";
@@ -34,12 +34,10 @@ contract UnseededLiquidityBootstrappingPoolFactory is BasePoolSplitCodeFactory, 
     function create(
         AssetManagedLiquidityBootstrappingPool.NewPoolParams calldata poolParams,
         BasePoolController.BasePoolRights calldata basePoolRights,
-        IPoolAddressesProvider addressesProvider,
         address manager
     ) external returns (address pool) {
-        BasePoolController poolController = new AaveAssetManagedLBPController(
+        BasePoolController poolController = new DodoAssetManagedLBPController(
             basePoolRights,
-            addressesProvider,
             getVault(),
             poolParams.reserveToken,
             poolParams.projectToken < poolParams.reserveToken,
