@@ -51,7 +51,7 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
 
         uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
 
-        uint256 toMint = WeightedMath._calcDueProtocolSwapFeeBPTAmount(
+        uint256 toMint = WeightedMath._calcDueProtocolSwapFeeBptAmount(
             totalSupply(),
             _lastPostJoinExitInvariant,
             preJoinExitInvariant,
