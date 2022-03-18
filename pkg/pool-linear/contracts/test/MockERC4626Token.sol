@@ -42,27 +42,43 @@ contract MockERC4626Token is TestToken, IERC4626 {
         _rate = newRate;
     }
 
-    function totalAssets() external view override returns (uint256){
+    function totalAssets() external view override returns (uint256) {
         return _totalAssets;
     }
 
-    function asset() external view override returns (address){
+    function asset() external view override returns (address) {
         return _mainToken;
     }
 
+    function convertToAssets(uint256 shares) external view override returns (uint256) {
+        return _convertToAssets(shares);
+    }
+
+    function convertToShares(uint256 assets) external view override returns (uint256) {
+        return _convertToShares(assets);
+    }
+
     function deposit(uint256 assets, address receiver) external override returns (uint256) {
-        uint256 shares = assets.mulDown(_rateScale).divDown(_rate);
-        // need update to work with totalSupply
+        uint256 shares = _convertToShares(assets);
         _mint(receiver, shares);
         _totalAssets = _totalAssets.add(assets);
         return shares;
     }
 
     function redeem(uint256 shares, address, address owner) external override returns (uint256) {
-        uint256 assets = shares.mulDown(_rate).divDown(_rateScale);
-        // need update to work with totalSupply
+        uint256 assets = _convertToAssets(shares);
         _burn(owner, shares);
         _totalAssets = _totalAssets.sub(assets);
         return assets;
+    }
+
+    function _convertToAssets(uint256 shares) private view returns (uint256) {
+        uint256 assets = shares.mulDown(_rate).divDown(_rateScale);
+        return assets;
+    }
+
+    function _convertToShares(uint256 assets) private view returns (uint256) {
+        uint256 shares = assets.mulDown(_rateScale).divDown(_rate);
+        return shares;
     }
 }
