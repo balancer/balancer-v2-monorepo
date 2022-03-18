@@ -503,7 +503,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // No other balances are changing, so the other terms in the invariant will cancel out
         // when computing the ratio. So this partial invariant calculation is sufficient
-        uint256 totalBptAmount = WeightedMath._calcDueProtocolSwapFeeBPTAmount(
+        uint256 totalBptAmount = WeightedMath._calcDueProtocolSwapFeeBptAmount(
             totalSupply(),
             WeightedMath._calculateInvariant(normalizedWeights, preSwapBalances),
             WeightedMath._calculateInvariant(normalizedWeights, postSwapBalances),

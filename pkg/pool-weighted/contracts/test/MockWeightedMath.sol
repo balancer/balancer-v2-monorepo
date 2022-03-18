@@ -128,7 +128,7 @@ contract MockWeightedMath {
         uint256 protocolSwapFeePercentage
     ) external pure returns (uint256) {
         return
-            WeightedMath._calcDueProtocolSwapFeeBPTAmount(
+            WeightedMath._calcDueProtocolSwapFeeBptAmount(
                 totalSupply,
                 previousInvariant,
                 currentInvariant,
