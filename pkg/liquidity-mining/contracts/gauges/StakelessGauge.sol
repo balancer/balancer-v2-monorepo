@@ -20,9 +20,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "../interfaces/IBalancerMinter.sol";
 import "../interfaces/IBalancerTokenAdmin.sol";
 import "../interfaces/IGaugeController.sol";
-import "../interfaces/IStakelessGauge.sol";
+import "../interfaces/ILiquidityGauge.sol";
 
-abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
+abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
     IERC20 internal immutable _balToken;
     IBalancerTokenAdmin private immutable _tokenAdmin;
     IBalancerMinter private immutable _minter;
@@ -154,11 +154,11 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
         return _emissions;
     }
 
-    function is_killed() external view returns (bool) {
+    function is_killed() external view override returns (bool) {
         return _isKilled;
     }
 
-    function set_killed(bool isKilled) external {
+    function set_killed(bool isKilled) external override {
         require(msg.sender == _authorizerAdaptor, "SENDER_NOT_ALLOWED");
         _isKilled = isKilled;
     }
