@@ -1,13 +1,13 @@
 import { Contract } from 'ethers';
 
-import { bn, decimal, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import {
   calculateInvariant,
   calcInGivenOut,
   calcOutGivenIn,
-  calculateOneTokenSwapFeeAmount,
+  calculateBPTSwapFeeFeeAmount,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 import { expect } from 'chai';
 
@@ -208,98 +208,67 @@ describe('WeightedMath', function () {
   });
 
   context('protocol swap fees', () => {
-    context('two tokens', () => {
+    context('with invariant growth', () => {
       it('returns protocol swap fees', async () => {
         const normalizedWeights = [bn(0.3e18), bn(0.7e18)];
-        const balances = [bn(10e18), bn(11e18)];
-        const lastInvariant = bn(10e18);
-        const tokenIndex = 1;
+        const lastBalances = [bn(25e18), bn(500e18)];
 
-        const currentInvariant = calculateInvariant(balances, normalizedWeights);
-        const protocolSwapFeePercentage = fp(0.1);
+        // Both balances increase by 40%
+        const currentBalances = [bn(35e18), bn(700e18)];
 
-        const result = await mock.calculateDueTokenProtocolSwapFeeAmount(
-          balances[tokenIndex],
-          normalizedWeights[tokenIndex],
+        const protocolSwapFeePercentage = fp(0.3);
+        // The protocol is due 30% of the 10 extra tokens in token A (3 tokens), and 30% of the 200 extra tokens in token B
+        // (60 tokens).
+
+        const totalSupply = fp(100);
+
+        const lastInvariant = calculateInvariant(lastBalances, normalizedWeights);
+        const currentInvariant = calculateInvariant(currentBalances, normalizedWeights);
+
+        const toMint = await mock.calculateDueProtocolSwapFeeBPTAmount(
+          totalSupply,
           lastInvariant,
           currentInvariant,
           protocolSwapFeePercentage
         );
 
-        const expectedFeeAmount = calculateOneTokenSwapFeeAmount(
-          balances,
-          normalizedWeights,
+        // The BPT to mint should be such that it'd let the protocol claim the tokens it is due if exiting proportionally
+        const protocolPoolOwnership = toMint.mul(FP_SCALING_FACTOR).div(totalSupply.add(toMint)); // The BPT supply grows
+
+        const tokenAFeeAmount = currentBalances[0].mul(protocolPoolOwnership).div(FP_SCALING_FACTOR);
+        const tokenBFeeAmount = currentBalances[1].mul(protocolPoolOwnership).div(FP_SCALING_FACTOR);
+
+        expectEqualWithError(tokenAFeeAmount, bn(3e18), MAX_RELATIVE_ERROR);
+        expectEqualWithError(tokenBFeeAmount, bn(60e18), MAX_RELATIVE_ERROR);
+
+        // The TS helper outputs the same value
+
+        const expectedToMint = calculateBPTSwapFeeFeeAmount(
+          totalSupply,
           lastInvariant,
-          tokenIndex
+          currentInvariant,
+          protocolSwapFeePercentage
         );
-        const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFeePercentage).div(1e18));
 
-        expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
-      });
-
-      context('with large accumulated fees', () => {
-        it('caps the invariant growth', async () => {
-          const normalizedWeights = [bn(0.3e18), bn(0.7e18)];
-          const balances = [bn(10e18), bn(11e18)];
-          const tokenIndex = 1;
-
-          const currentInvariant = calculateInvariant(balances, normalizedWeights);
-          const protocolSwapFeePercentage = fp(0.1);
-
-          // The last to current ratio is 1:2, which is larger than the math libraries can handle. This will be capped
-          // to 0.7:1.
-          const lastInvariant = currentInvariant.div(2);
-          const cappedLastInvariant = currentInvariant.mul(fp(0.7)).div(fp(1));
-
-          const result = await mock.calculateDueTokenProtocolSwapFeeAmount(
-            balances[tokenIndex],
-            normalizedWeights[tokenIndex],
-            lastInvariant,
-            currentInvariant,
-            protocolSwapFeePercentage
-          );
-
-          const expectedFeeAmount = calculateOneTokenSwapFeeAmount(
-            balances,
-            normalizedWeights,
-            cappedLastInvariant,
-            tokenIndex
-          );
-          const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFeePercentage).div(1e18));
-
-          expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
-        });
+        expectEqualWithError(toMint, fp(expectedToMint), MAX_RELATIVE_ERROR);
       });
     });
 
-    context('three tokens', () => {
-      it('returns protocol swap fees', async () => {
-        const normalizedWeights = [bn(0.3e18), bn(0.2e18), bn(0.5e18)];
-        const balances = [bn(10e18), bn(11e18), bn(12e18)];
-        const lastInvariant = bn(10e18);
-        const tokenIndex = 2;
+    context('with smaller invariant', async () => {
+      const protocolSwapFeePercentage = fp(0.3);
+      const totalSupply = fp(100);
 
-        const currentInvariant = calculateInvariant(balances, normalizedWeights);
-        const protocolSwapFeePercentage = fp(0.1);
+      const lastInvariant = fp(300);
+      const currentInvariant = fp(299);
 
-        const result = await mock.calculateDueTokenProtocolSwapFeeAmount(
-          balances[tokenIndex],
-          normalizedWeights[tokenIndex],
-          lastInvariant,
-          currentInvariant,
-          protocolSwapFeePercentage
-        );
+      const toMint = await mock.calculateDueProtocolSwapFeeBPTAmount(
+        totalSupply,
+        lastInvariant,
+        currentInvariant,
+        protocolSwapFeePercentage
+      );
 
-        const expectedFeeAmount = calculateOneTokenSwapFeeAmount(
-          balances,
-          normalizedWeights,
-          lastInvariant,
-          tokenIndex
-        );
-        const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFeePercentage).div(1e18));
-
-        expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
-      });
+      expect(toMint).to.equal(0);
     });
   });
 });
