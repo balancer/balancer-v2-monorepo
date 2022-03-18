@@ -414,15 +414,20 @@ library WeightedMath {
         return amountsOut;
     }
 
-    function _calcDueProtocolSwapFeeBPTAmount(
+    function _calcDueProtocolSwapFeeBptAmount(
         uint256 totalSupply,
         uint256 previousInvariant,
         uint256 currentInvariant,
         uint256 protocolSwapFeePercentage
     ) internal pure returns (uint256) {
-        if (currentInvariant <= previousInvariant) {
-            // This shouldn't happen outside of rounding errors, but have this safeguard nonetheless to prevent the Pool
-            // from entering a locked state in which joins and exits revert while computing accumulated swap fees.
+        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less in protocol
+        // fees to the Vault.
+        uint256 growth = currentInvariant.divDown(previousInvariant);
+
+        // Shortcut in case there was no growth when comparing the current against the previous invariant.
+        // This shouldn't happen outside of rounding errors, but have this safeguard nonetheless to prevent the Pool
+        // from entering a locked state in which joins and exits revert while computing accumulated swap fees.
+        if (growth <= FixedPoint.ONE) {
             return 0;
         }
 
@@ -436,18 +441,14 @@ library WeightedMath {
         // The formula is:
         //
         // toMint = supply * k / (1 - k)
-        //
-
-        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less in protocol
-        // fees to the Vault.
-        uint256 growth = currentInvariant.divDown(previousInvariant);
 
         // We compute protocol fee * (growth - 1) / growth, as we'll use that value twice.
-        uint256 k = protocolSwapFeePercentage.mulDown(growth.sub(FixedPoint.ONE)).divDown(growth);
+        // There is no need to use SafeMath since we already checked growth is strictly greater than one.
+        uint256 k = protocolSwapFeePercentage.mulDown(growth - FixedPoint.ONE).divDown(growth);
 
         uint256 numerator = totalSupply.mulDown(k);
-        uint256 denominator = FixedPoint.ONE.sub(k);
+        uint256 denominator = k.complement();
 
-        return numerator.divDown(denominator);
+        return denominator == 0 ? 0 : numerator.divDown(denominator);
     }
 }
