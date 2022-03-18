@@ -426,7 +426,7 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
 
         // No other balances are changing, so the other terms in the invariant will cancel out
         // when computing the ratio. So this partial invariant calculation is sufficient
-        uint256 bptFeeAmount = WeightedMath._calcDueProtocolSwapFeeBPTAmount(
+        uint256 bptFeeAmount = WeightedMath._calcDueProtocolSwapFeeBptAmount(
             totalSupply(),
             WeightedMath._calculateInvariant(normalizedWeights, preSwapBalances),
             WeightedMath._calculateInvariant(normalizedWeights, postSwapBalances),
