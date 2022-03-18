@@ -158,7 +158,7 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
         return _isKilled;
     }
 
-    function set_killed(bool isKilled) external {
+    function set_killed(bool isKilled) external override {
         require(msg.sender == address(_authorizerAdaptor), "SENDER_NOT_ALLOWED");
         _isKilled = isKilled;
     }
