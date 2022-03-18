@@ -241,25 +241,6 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         return normalizedWeights;
     }
 
-    function _getNormalizedWeightsAndMaxWeightIndex()
-        internal
-        view
-        override
-        returns (uint256[] memory normalizedWeights, uint256 maxWeightTokenIndex)
-    {
-        normalizedWeights = _getNormalizedWeights();
-
-        maxWeightTokenIndex = 0;
-        uint256 maxNormalizedWeight = normalizedWeights[0];
-
-        for (uint256 i = 1; i < normalizedWeights.length; i++) {
-            if (normalizedWeights[i] > maxNormalizedWeight) {
-                maxWeightTokenIndex = i;
-                maxNormalizedWeight = normalizedWeights[i];
-            }
-        }
-    }
-
     // Pool callback functions
 
     // Prevent any account other than the owner from joining the pool
@@ -286,15 +267,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {
+    ) internal override returns (uint256, uint256[] memory) {
         // Only the owner can add liquidity; block public LPs
         _require(sender == getOwner(), Errors.CALLER_IS_NOT_LBP_OWNER);
 

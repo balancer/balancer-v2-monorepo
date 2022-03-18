@@ -48,14 +48,14 @@ contract AuthorizerAdaptor is IAuthorizerAdaptor, ReentrancyGuard {
     /**
      * @notice Returns the Balancer Vault
      */
-    function getVault() public view returns (IVault) {
+    function getVault() public view override returns (IVault) {
         return _vault;
     }
 
     /**
      * @notice Returns the Authorizer
      */
-    function getAuthorizer() public view returns (IAuthorizer) {
+    function getAuthorizer() public view override returns (IAuthorizer) {
         return getVault().getAuthorizer();
     }
 
