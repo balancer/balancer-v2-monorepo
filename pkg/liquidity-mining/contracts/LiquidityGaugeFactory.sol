@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "./interfaces/ILiquidityGauge.sol";
+import "./interfaces/IStakingLiquidityGauge.sol";
 import "./interfaces/ILiquidityGaugeFactory.sol";
 
 contract LiquidityGaugeFactory is ILiquidityGaugeFactory, Authentication {
@@ -104,7 +104,7 @@ contract LiquidityGaugeFactory is ILiquidityGaugeFactory, Authentication {
 
         address gauge = Clones.clone(gaugeImplementation);
 
-        ILiquidityGauge(gauge).initialize(pool);
+        IStakingLiquidityGauge(gauge).initialize(pool);
 
         _isGaugeFromFactory[gauge] = true;
         _poolGauge[pool] = gauge;
