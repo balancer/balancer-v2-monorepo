@@ -14,9 +14,20 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
 
 interface IAuthorizerAdaptor is IAuthentication {
+    /**
+     * @notice Returns the Balancer Vault
+     */
+    function getVault() external view returns (IVault);
+
+    /**
+     * @notice Returns the Authorizer
+     */
+    function getAuthorizer() external view returns (IAuthorizer);
+
     /**
      * @notice Performs an arbitrary function call on a target contract, provided the caller is authorized to do so.
      * @param target - Address of the contract to be called

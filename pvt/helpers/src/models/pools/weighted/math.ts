@@ -188,6 +188,28 @@ export function calculateOneTokenSwapFeeAmount(
   return toFp(accruedFees);
 }
 
+export function calculateBPTSwapFeeFeeAmount(
+  fpBptTotalSupply: BigNumberish,
+  lastInvariant: BigNumberish,
+  currentInvariant: BigNumberish,
+  fpProtocolSwapFeePercentage: BigNumberish
+): Decimal {
+  if (currentInvariant <= lastInvariant) {
+    return decimal(1);
+  }
+
+  const growth = decimal(currentInvariant).div(decimal(lastInvariant));
+
+  const k = fromFp(fpProtocolSwapFeePercentage)
+    .mul(growth.sub(decimal(1)))
+    .div(growth);
+
+  const numerator = fromFp(fpBptTotalSupply).mul(k);
+  const denominator = decimal(1).sub(k);
+
+  return numerator.div(denominator);
+}
+
 export function calculateMaxOneTokenSwapFeeAmount(
   fpBalances: BigNumberish[],
   fpWeights: BigNumberish[],

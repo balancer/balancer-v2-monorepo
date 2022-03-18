@@ -14,11 +14,11 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "./interfaces/IAuthorizerAdaptor.sol";
+import "./interfaces/IGaugeAdder.sol";
 import "./interfaces/IGaugeController.sol";
 import "./interfaces/IBalancerMinter.sol";
 import "./interfaces/IBalancerTokenAdmin.sol";
@@ -40,7 +40,7 @@ interface ICurrentAuthorizer is IAuthorizer {
 
 // https://vote.balancer.fi/#/proposal/0x9fe19c491cf90ed2e3ed9c15761c43d39fd1fb732a940aba8058ff69787ee90a
 // solhint-disable-next-line contract-name-camelcase
-contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
+contract veBALDeploymentCoordinator is ReentrancyGuard {
     IBalancerTokenAdmin private immutable _balancerTokenAdmin;
 
     IVault private immutable _vault;
@@ -64,23 +64,12 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
     uint256 public constant POLYGON_WEIGHT = 17e16; // 17%
     uint256 public constant ARBITRUM_WEIGHT = 7e16; // 7%
 
-    // Gauge type IDs are allocated sequentially, and since we know all gauge types will be created by this contract, we
-    // know these will be the resulting types.
-    uint256 public constant LM_COMMITTEE_TYPE = 0;
-    uint256 public constant VEBAL_TYPE = 1;
-    uint256 public constant ETHEREUM_TYPE = 2;
-    uint256 public constant POLYGON_TYPE = 3;
-    uint256 public constant ARBITRUM_TYPE = 4;
-
     constructor(
         IBalancerMinter balancerMinter,
         IAuthorizerAdaptor authorizerAdaptor,
         uint256 activationScheduledTime,
         uint256 secondStageDelay
-    ) Authentication(bytes32(uint256(address(this)))) {
-        // veBALDeploymentCoordinator is a singleton,
-        // so it simply uses its own address to disambiguate action identifiers
-
+    ) {
         _currentDeploymentStage = DeploymentStage.PENDING;
 
         IBalancerTokenAdmin balancerTokenAdmin = balancerMinter.getBalancerTokenAdmin();
@@ -141,7 +130,7 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         return _secondStageDelay;
     }
 
-    function performFirstStage() external authenticate nonReentrant {
+    function performFirstStage() external nonReentrant {
         // Check internal state
         require(block.timestamp >= _activationScheduledTime, "Not ready for activation");
         require(_currentDeploymentStage == DeploymentStage.PENDING, "First step already performed");
@@ -154,13 +143,10 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         // Also require that Balancer governance holds all relevant admin rights
         IAuthorizerAdaptor authorizerAdaptor = getAuthorizerAdaptor();
         require(
-            _gaugeController.voting_escrow().admin() == address(authorizerAdaptor),
+            _gaugeController.voting_escrow().admin() == authorizerAdaptor,
             "VotingEscrow not owned by AuthorizerAdaptor"
         );
-        require(
-            _gaugeController.admin() == address(authorizerAdaptor),
-            "GaugeController not owned by AuthorizerAdaptor"
-        );
+        require(_gaugeController.admin() == authorizerAdaptor, "GaugeController not owned by AuthorizerAdaptor");
 
         // Sanity checks
         require(_gaugeController.n_gauge_types() == 0, "Gauge types already set");
@@ -220,9 +206,6 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
         _currentDeploymentStage = DeploymentStage.FIRST_STAGE_DONE;
     }
 
-    /**
-     * @dev This is purposefully left without access control to ensure that it is activated at the correct time.
-     */
     function performSecondStage() external nonReentrant {
         // Check delay from first stage
         require(_currentDeploymentStage == DeploymentStage.FIRST_STAGE_DONE, "First steap already performed");
@@ -241,11 +224,11 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
             address(this)
         );
 
-        _setGaugeTypeWeight(_gaugeController, LM_COMMITTEE_TYPE, LM_COMMITTEE_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, VEBAL_TYPE, VEBAL_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, ETHEREUM_TYPE, ETHEREUM_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, POLYGON_TYPE, POLYGON_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, ARBITRUM_TYPE, ARBITRUM_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.LiquidityMiningCommittee, LM_COMMITTEE_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.veBAL, VEBAL_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.Ethereum, ETHEREUM_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.Polygon, POLYGON_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.Arbitrum, ARBITRUM_WEIGHT);
 
         authorizer.revokeRole(
             authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector),
@@ -268,16 +251,12 @@ contract veBALDeploymentCoordinator is Authentication, ReentrancyGuard {
 
     function _setGaugeTypeWeight(
         IGaugeController gaugeController,
-        uint256 typeId,
+        IGaugeAdder.GaugeType typeId,
         uint256 weight
     ) private {
         getAuthorizerAdaptor().performAction(
             address(gaugeController),
-            abi.encodeWithSelector(IGaugeController.change_type_weight.selector, typeId, weight)
+            abi.encodeWithSelector(IGaugeController.change_type_weight.selector, int128(typeId), weight)
         );
-    }
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 }
