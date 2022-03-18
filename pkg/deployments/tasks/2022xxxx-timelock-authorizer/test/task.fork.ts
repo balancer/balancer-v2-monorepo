@@ -2,12 +2,14 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
+import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+
 import Task from '../../../src/task';
+import { impersonate } from '../../../src/signers';
 import { getForkedNetwork } from '../../../src/test';
+import { AuthorizerDeployment } from '../../20210418-authorizer/input';
 import { TimelockAuthorizerDeployment } from '../input';
-import { actionId } from "@balancer-labs/v2-helpers/src/models/misc/actions";
-import { impersonate } from "../../../src/signers";
-import { AuthorizerDeployment } from "../../20210418-authorizer/input";
 
 describe.only('TimelockAuthorizer', function () {
   let input: TimelockAuthorizerDeployment;
@@ -33,7 +35,7 @@ describe.only('TimelockAuthorizer', function () {
     oldAuthorizer = await authorizerTask.instanceAt('Authorizer', await migrator.oldAuthorizer());
 
     const authorizerInput = authorizerTask.input() as AuthorizerDeployment;
-    const multisig = await impersonate(authorizerInput.admin);
+    const multisig = await impersonate(authorizerInput.admin, fp(100));
     const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
     await oldAuthorizer.connect(multisig).grantRolesToMany([setAuthorizerActionId], [migrator.address]);
   });
