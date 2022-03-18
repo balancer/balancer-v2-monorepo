@@ -134,34 +134,63 @@ describe('Authorizer', () => {
       });
 
       context('when the target does not have the permission granted', () => {
-        it('grants permission to perform the requested actions for the requested contracts', async () => {
-          await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
+        context('when there is no delay set to grant permissions', () => {
+          it('grants permission to perform the requested actions for the requested contracts', async () => {
+            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
 
-          expect(await authorizer.canPerform(ACTIONS[0], grantee, WHERE[0])).to.be.true;
-          expect(await authorizer.canPerform(ACTIONS[1], grantee, WHERE[1])).to.be.true;
-        });
+            expect(await authorizer.canPerform(ACTIONS[0], grantee, WHERE[0])).to.be.true;
+            expect(await authorizer.canPerform(ACTIONS[1], grantee, WHERE[1])).to.be.true;
+          });
 
-        it('does not grant permission to perform the requested actions everywhere', async () => {
-          await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
+          it('does not grant permission to perform the requested actions everywhere', async () => {
+            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
 
-          expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
-        });
+            expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
+          });
 
-        it('does not grant permission to perform the requested actions for other contracts', async () => {
-          await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
+          it('does not grant permission to perform the requested actions for other contracts', async () => {
+            await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
 
-          expect(await authorizer.canPerform(ACTIONS, grantee, NOT_WHERE)).to.be.false;
-        });
+            expect(await authorizer.canPerform(ACTIONS, grantee, NOT_WHERE)).to.be.false;
+          });
 
-        it('emits an event', async () => {
-          const receipt = await (await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from })).wait();
+          it('emits an event', async () => {
+            const receipt = await (await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from })).wait();
 
-          ACTIONS.forEach((action, i) => {
-            expectEvent.inReceipt(receipt, 'PermissionGranted', {
-              action,
-              account: grantee.address,
-              where: WHERE[i],
+            ACTIONS.forEach((action, i) => {
+              expectEvent.inReceipt(receipt, 'PermissionGranted', {
+                action,
+                account: grantee.address,
+                where: WHERE[i],
+              });
             });
+          });
+        });
+
+        context('when there is a delay set to grant permissions', () => {
+          const delay = DAY;
+          const GRANT_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['GRANT_PERMISSION']);
+
+          sharedBeforeEach('set delay', async () => {
+            const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+            await authorizer.setDelay(setAuthorizerAction, delay * 2, { from: admin });
+            await authorizer.setDelay(GRANT_PERMISSION, delay, { from: admin });
+          });
+
+          it('reverts', async () => {
+            await expect(authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from })).to.be.revertedWith(
+              'SENDER_NOT_ALLOWED'
+            );
+          });
+
+          it('can schedule a grant permission', async () => {
+            const id = await authorizer.scheduleGrantPermission(ACTION_1, grantee, WHERE[0], [], { from });
+
+            await advanceTime(delay);
+            await authorizer.execute(id, { from });
+
+            expect(await authorizer.canPerform(ACTIONS[0], grantee, WHERE[0])).to.be.true;
+            expect(await authorizer.canPerform(ACTIONS[1], grantee, WHERE[1])).to.be.false;
           });
         });
       });
@@ -378,27 +407,56 @@ describe('Authorizer', () => {
             await authorizer.grantPermissions(ACTIONS, grantee, WHERE, { from });
           });
 
-          it('revokes the requested permission for the requested contracts', async () => {
-            await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from });
+          context('when there is no delay set to grant permissions', () => {
+            it('revokes the requested permission for the requested contracts', async () => {
+              await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from });
 
-            expect(await authorizer.canPerform(ACTIONS, grantee, WHERE)).to.be.false;
-          });
+              expect(await authorizer.canPerform(ACTIONS, grantee, WHERE)).to.be.false;
+            });
 
-          it('still cannot perform the requested actions everywhere', async () => {
-            await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from });
+            it('still cannot perform the requested actions everywhere', async () => {
+              await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from });
 
-            expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
-          });
+              expect(await authorizer.canPerform(ACTIONS, grantee, EVERYWHERE)).to.be.false;
+            });
 
-          it('emits an event', async () => {
-            const receipt = await (await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from })).wait();
+            it('emits an event', async () => {
+              const receipt = await (await authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from })).wait();
 
-            ACTIONS.forEach((action, i) => {
-              expectEvent.inReceipt(receipt, 'PermissionRevoked', {
-                action,
-                account: grantee.address,
-                where: WHERE[i],
+              ACTIONS.forEach((action, i) => {
+                expectEvent.inReceipt(receipt, 'PermissionRevoked', {
+                  action,
+                  account: grantee.address,
+                  where: WHERE[i],
+                });
               });
+            });
+          });
+
+          context('when there is a delay set to grant permissions', () => {
+            const delay = DAY;
+            const REVOKE_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['REVOKE_PERMISSION']);
+
+            sharedBeforeEach('set delay', async () => {
+              const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+              await authorizer.setDelay(setAuthorizerAction, delay * 2, { from: admin });
+              await authorizer.setDelay(REVOKE_PERMISSION, delay, { from: admin });
+            });
+
+            it('reverts', async () => {
+              await expect(authorizer.revokePermissions(ACTIONS, grantee, WHERE, { from })).to.be.revertedWith(
+                'SENDER_NOT_ALLOWED'
+              );
+            });
+
+            it('can schedule a revoke permission', async () => {
+              const id = await authorizer.scheduleRevokePermission(ACTION_1, grantee, WHERE[0], [], { from });
+
+              await advanceTime(delay);
+              await authorizer.execute(id, { from });
+
+              expect(await authorizer.canPerform(ACTIONS[0], grantee, WHERE[0])).to.be.false;
+              expect(await authorizer.canPerform(ACTIONS[1], grantee, WHERE[1])).to.be.true;
             });
           });
         });
@@ -1006,7 +1064,7 @@ describe('Authorizer', () => {
             });
 
             context('when the delay has passed', () => {
-              sharedBeforeEach('set sender', async () => {
+              sharedBeforeEach('advance time', async () => {
                 await advanceTime(delay);
               });
 

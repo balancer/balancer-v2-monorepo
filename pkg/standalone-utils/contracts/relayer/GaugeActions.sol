@@ -18,11 +18,10 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerMinter.sol";
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/ILiquidityGauge.sol";
+import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IStakingLiquidityGauge.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "../interfaces/IBaseRelayerLibrary.sol";
-import "../interfaces/IStaticATokenLM.sol";
 
 /**
  * @title GaugeActions
@@ -42,7 +41,7 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
     }
 
     function gaugeDeposit(
-        ILiquidityGauge gauge,
+        IStakingLiquidityGauge gauge,
         address sender,
         address recipient,
         uint256 amount
@@ -66,7 +65,7 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
     }
 
     function gaugeWithdraw(
-        ILiquidityGauge gauge,
+        IStakingLiquidityGauge gauge,
         address sender,
         address recipient,
         uint256 amount
@@ -79,7 +78,7 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
         // to be sourced from outside the relayer, we must first pull them here.
         if (sender != address(this)) {
             require(sender == msg.sender, "Incorrect sender");
-            _pullToken(sender, gauge, amount);
+            _pullToken(sender, IERC20(gauge), amount);
         }
 
         // No approval is needed here, as the gauge Tokens are burned directly from the relayer's account.
@@ -113,7 +112,7 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
         _balancerMinter.setMinterApprovalWithSignature(address(this), approval, user, deadline, v, r, s);
     }
 
-    function gaugeClaimRewards(ILiquidityGauge[] calldata gauges) external payable {
+    function gaugeClaimRewards(IStakingLiquidityGauge[] calldata gauges) external payable {
         uint256 numGauges = gauges.length;
         for (uint256 i; i < numGauges; ++i) {
             gauges[i].claim_rewards(msg.sender);
