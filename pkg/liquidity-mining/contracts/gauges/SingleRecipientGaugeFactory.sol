@@ -57,7 +57,7 @@ contract SingleRecipientLiquidityGaugeFactory {
         ISingleRecipientLiquidityGauge(gauge).initialize(recipient);
 
         _isGaugeFromFactory[gauge] = true;
-        emit GaugeCreated(gauge, recipient);
+        emit SingleRecipientGaugeCreated(gauge, recipient);
 
         return gauge;
     }
