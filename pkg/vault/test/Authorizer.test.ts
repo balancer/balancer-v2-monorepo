@@ -173,6 +173,9 @@ describe('Authorizer', () => {
           const SET_DELAY_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['SET_DELAY_PERMISSION']);
 
           sharedBeforeEach('set delay', async () => {
+            const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+            await authorizer.setDelay(setAuthorizerAction, delay * 2, { from: admin });
+
             const args = [SET_DELAY_PERMISSION, GRANT_PERMISSION];
             const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
             await authorizer.grantPermissions(setDelayAction, admin, authorizer, { from });
@@ -442,6 +445,9 @@ describe('Authorizer', () => {
             const SET_DELAY_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['SET_DELAY_PERMISSION']);
 
             sharedBeforeEach('set delay', async () => {
+              const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+              await authorizer.setDelay(setAuthorizerAction, delay * 2, { from: admin });
+
               const args = [SET_DELAY_PERMISSION, REVOKE_PERMISSION];
               const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
               await authorizer.grantPermissions(setDelayAction, admin, authorizer, { from });
