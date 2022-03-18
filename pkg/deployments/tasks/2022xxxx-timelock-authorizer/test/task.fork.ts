@@ -11,7 +11,7 @@ import { getForkedNetwork } from '../../../src/test';
 import { AuthorizerDeployment } from '../../20210418-authorizer/input';
 import { TimelockAuthorizerDeployment } from '../input';
 
-describe.only('TimelockAuthorizer', function () {
+describe('TimelockAuthorizer', function () {
   let input: TimelockAuthorizerDeployment;
   let migrator: Contract, vault: Contract, newAuthorizer: Contract, oldAuthorizer: Contract;
   let EVERYWHERE: string, GRANT_ACTION_ID: string, REVOKE_ACTION_ID: string, DEFAULT_ADMIN_ROLE: string;
