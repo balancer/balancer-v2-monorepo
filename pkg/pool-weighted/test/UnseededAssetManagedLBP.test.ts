@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
@@ -43,7 +43,7 @@ describe('Unseeded AssetManagedLiquidityBootstrappingPool', function () {
         from: manager,
       };
       pool = await WeightedPool.create(params);
-      poolController = await deployedAt('DodoAssetManagedLBPController', await pool.getOwner());
+      poolController = await deployedAt('AssetManagedLBPController', await pool.getOwner());
     });
 
     it('has no asset manager on the project token', async () => {
@@ -57,15 +57,7 @@ describe('Unseeded AssetManagedLiquidityBootstrappingPool', function () {
     });
 
     describe('fund pool', () => {
-      let flashloanPool: Contract;
-
-      sharedBeforeEach('deploy Dodo pool', async () => {
-        flashloanPool = await deploy('v2-pool-utils/MockDodoPool', {
-          args: [tokens.get(0).address, tokens.get(1).address],
-        });
-
-        // The pool needs tokens to borrow
-        tokens.mint({ to: [flashloanPool], amount: fp(1000000) });
+      sharedBeforeEach('mint base tokens', async () => {
         // The manager needs to have the base tokens
         tokens.get(0).mint(manager, fp(1000));
       });
@@ -74,7 +66,7 @@ describe('Unseeded AssetManagedLiquidityBootstrappingPool', function () {
         // Need to allow the pool controller to pull tokens
         await tokens.get(0).approve(poolController, initialBalances[0], { from: manager });
 
-        await poolController.connect(manager).fundPool(flashloanPool.address, initialBalances);
+        await poolController.connect(manager).fundPool(initialBalances);
 
         const { balances } = await vault.getPoolTokens(await pool.getPoolId());
         expect(balances[1]).to.equal(initialBalances[1]);

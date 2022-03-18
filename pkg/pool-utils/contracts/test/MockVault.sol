@@ -70,6 +70,28 @@ contract MockVault is IPoolSwapStructs {
         }
     }
 
+    // Needed to add this for AssetManagedLBPs to work with the mocked Vault
+    function getPoolTokenInfo(bytes32 poolId, IERC20 token)
+        external
+        view
+        returns (
+            uint256 cash,
+            uint256 managed,
+            uint256 lastChangeBlock,
+            address assetManager
+        )
+    {
+        Pool storage pool = pools[poolId];
+        for (uint256 i = 0; i < pool.tokens.length; i++) {
+            if (pool.tokens[i] == token) {
+                cash = pool.balances[token];
+                managed = 0;
+                lastChangeBlock = block.number;
+                assetManager = address(0);
+            }
+        }
+    }
+
     function registerPool(IVault.PoolSpecialization) external view returns (bytes32) {
         // solhint-disable-previous-line no-empty-blocks
     }

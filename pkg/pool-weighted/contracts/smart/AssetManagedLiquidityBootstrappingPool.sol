@@ -43,7 +43,7 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
     IERC20 internal immutable _reserveToken;
 
     // True if the index of the project token is zero
-    bool internal immutable _projectFirst;
+    bool internal immutable _projectTokenFirst;
 
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
@@ -120,11 +120,11 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
         uint256 currentTime = block.timestamp;
         uint256[] memory normalizedWeights = new uint256[](2);
         // The tokens must be ordered; determine the index of the project token
-        bool projectFirst = params.projectToken < params.reserveToken;
-        _projectFirst = projectFirst;
+        bool projectTokenFirst = params.projectToken < params.reserveToken;
+        _projectTokenFirst = projectTokenFirst;
 
-        normalizedWeights[projectFirst ? 0 : 1] = params.projectWeight;
-        normalizedWeights[projectFirst ? 1 : 0] = params.reserveWeight;
+        normalizedWeights[projectTokenFirst ? 0 : 1] = params.projectWeight;
+        normalizedWeights[projectTokenFirst ? 1 : 0] = params.reserveWeight;
 
         _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights);
 
@@ -137,10 +137,10 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
 
     function _tokenArray(IERC20 projectToken, IERC20 reserveToken) private pure returns (IERC20[] memory) {
         IERC20[] memory tokens = new IERC20[](2);
-        bool projectFirst = projectToken < reserveToken;
+        bool projectTokenFirst = projectToken < reserveToken;
 
-        tokens[projectFirst ? 0 : 1] = projectToken;
-        tokens[projectFirst ? 1 : 0] = reserveToken;
+        tokens[projectTokenFirst ? 0 : 1] = projectToken;
+        tokens[projectTokenFirst ? 1 : 0] = reserveToken;
 
         return tokens;
     }
@@ -259,7 +259,9 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
 
     // Pool callback functions
 
-    // Prevent any account other than the owner from joining the pool
+    // Prevent any account other than the owner from joining the pool.
+    // If the pool is unseeded, there will be a managed balance for the reserve token.
+    // In this case, zero out the reserve token in amountsIn, so that the Vault does not attempt to pull them
 
     function _onInitializePool(
         bytes32 poolId,
@@ -271,7 +273,21 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
         // Only the owner can initialize the pool
         _require(sender == getOwner(), Errors.CALLER_IS_NOT_LBP_OWNER);
 
-        return super._onInitializePool(poolId, sender, recipient, scalingFactors, userData);
+        (uint256 bptAmountOut, uint256[] memory amountsIn) = super._onInitializePool(
+            poolId,
+            sender,
+            recipient,
+            scalingFactors,
+            userData
+        );
+
+        // If there is a managed balance, the pool is unseeded, so we do not want to pull in any reserve tokens
+        (, uint256 managed, , ) = getVault().getPoolTokenInfo(poolId, _reserveToken);
+        if (managed > 0) {
+            amountsIn[_isProjectTokenFirst() ? 1 : 0] = 0;
+        }
+
+        return (bptAmountOut, amountsIn);
     }
 
     function _onJoinPool(
@@ -536,6 +552,6 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
     }
 
     function _isProjectTokenFirst() private view returns (bool) {
-        return _projectFirst;
+        return _projectTokenFirst;
     }
 }

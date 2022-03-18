@@ -11,15 +11,13 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
 describe('AssetManagedLiquidityBootstrappingPool', function () {
+  const MAX_TOKENS = 2;
   let owner: SignerWithAddress, other: SignerWithAddress;
+  let tokens: TokenList;
 
   before('setup signers', async () => {
     [, owner, other] = await ethers.getSigners();
   });
-
-  const MAX_TOKENS = 2;
-
-  let tokens: TokenList;
 
   sharedBeforeEach('deploy tokens', async () => {
     // Because they are sorted, 0 is always the projectToken, and 1 is the reserveToken
