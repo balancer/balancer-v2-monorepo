@@ -14,16 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-// For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
-// naming convention.
-// solhint-disable func-name-mixedcase
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
-interface ILiquidityGauge {
-    function integrate_fraction(address user) external view returns (uint256);
+import "./IButtonWrapper.sol";
 
-    function user_checkpoint(address user) external returns (bool);
-
-    function is_killed() external view returns (bool);
-
-    function set_killed(bool isKilled) external;
+// Balancer only supports ERC20 tokens, so we use this intermediate interface
+// to enforce ERC20-ness of UnbuttonTokens.
+interface IUnbuttonToken is IButtonWrapper, IERC20 {
+    // solhint-disable-previous-line no-empty-blocks
 }

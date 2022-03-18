@@ -675,7 +675,7 @@ export function itBehavesAsWeightedPool(
     });
 
     context('without balance changes', () => {
-      it('joins and exits do not accumulate fees', async () => {
+      it('no protocol fees on joins and exits', async () => {
         let joinResult = await pool.joinGivenIn({ from: lp, amountsIn: fp(100), protocolFeePercentage });
         expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
 
@@ -699,31 +699,20 @@ export function itBehavesAsWeightedPool(
       });
     });
 
-    context('with previous swap', () => {
-      let currentBalances: BigNumber[], expectedDueProtocolFeeAmounts: BigNumber[];
+    context('with balance changes', () => {
+      let currentBalances: BigNumber[];
 
-      sharedBeforeEach('simulate doubled initial balances ', async () => {
+      sharedBeforeEach('simulate doubled initial balances', async () => {
         // 4/3 of the initial balances
         currentBalances = initialBalances.map((balance) => balance.mul(4).div(3));
       });
 
-      sharedBeforeEach('compute expected due protocol fees', async () => {
-        const paidTokenIndex = pool.weights.indexOf(pool.maxWeight);
-        const protocolFeeAmount = await pool.estimateSwapFeeAmount(
-          paidTokenIndex,
-          protocolFeePercentage,
-          currentBalances
-        );
-        expectedDueProtocolFeeAmounts = ZEROS.map((n, i) => (i === paidTokenIndex ? protocolFeeAmount : n));
-      });
-
-      it('pays swap protocol fees on join exact tokens in for BPT out', async () => {
+      it('no protocol fees on join exact tokens in for BPT out', async () => {
         const result = await pool.joinGivenIn({ from: lp, amountsIn: fp(1), currentBalances, protocolFeePercentage });
-
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
+        expect(result.dueProtocolFeeAmounts).to.be.zeros;
       });
 
-      it('pays swap protocol fees on exit exact BPT in for one token out', async () => {
+      it('no protocol fees on exit exact BPT in for one token out', async () => {
         const result = await pool.singleExitGivenIn({
           from: lp,
           bptIn: fp(0.5),
@@ -732,10 +721,10 @@ export function itBehavesAsWeightedPool(
           protocolFeePercentage,
         });
 
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
+        expect(result.dueProtocolFeeAmounts).to.be.zeros;
       });
 
-      it('pays swap protocol fees on exit exact BPT in for all tokens out', async () => {
+      it('no protocol fees on exit exact BPT in for all tokens out', async () => {
         const result = await pool.multiExitGivenIn({
           from: lp,
           bptIn: fp(1),
@@ -743,10 +732,10 @@ export function itBehavesAsWeightedPool(
           protocolFeePercentage,
         });
 
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
+        expect(result.dueProtocolFeeAmounts).to.be.zeros;
       });
 
-      it('pays swap protocol fees on exit BPT In for exact tokens out', async () => {
+      it('no protocol fees on exit BPT In for exact tokens out', async () => {
         const result = await pool.exitGivenOut({
           from: lp,
           amountsOut: fp(1),
@@ -754,69 +743,7 @@ export function itBehavesAsWeightedPool(
           protocolFeePercentage,
         });
 
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
-      });
-
-      it('does not charges fee on exit if paused', async () => {
-        await pool.pause();
-
-        const exitResult = await pool.multiExitGivenIn({ from: lp, bptIn: fp(0.5), protocolFeePercentage });
-        expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
-      });
-    });
-
-    context('with swap and exceeded min invariant ratio', () => {
-      let currentBalances: BigNumber[], expectedDueProtocolFeeAmounts: BigNumber[];
-
-      sharedBeforeEach('simulate doubled initial balances ', async () => {
-        // twice the initial balances
-        currentBalances = initialBalances.map((balance) => balance.mul(2));
-      });
-
-      sharedBeforeEach('compute expected due protocol fees', async () => {
-        const paidTokenIndex = pool.weights.indexOf(pool.maxWeight);
-        const feeAmount = await pool.estimateMaxSwapFeeAmount(paidTokenIndex, protocolFeePercentage, currentBalances);
-        expectedDueProtocolFeeAmounts = ZEROS.map((n, i) => (i === paidTokenIndex ? feeAmount : n));
-      });
-
-      it('pays swap protocol fees on join exact tokens in for BPT out', async () => {
-        const result = await pool.joinGivenIn({ from: lp, amountsIn: fp(1), currentBalances, protocolFeePercentage });
-
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
-      });
-
-      it('pays swap protocol fees on exit exact BPT in for one token out', async () => {
-        const result = await pool.singleExitGivenIn({
-          from: lp,
-          bptIn: fp(0.5),
-          token: 0,
-          currentBalances,
-          protocolFeePercentage,
-        });
-
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
-      });
-
-      it('pays swap protocol fees on exit exact BPT in for all tokens out', async () => {
-        const result = await pool.multiExitGivenIn({
-          from: lp,
-          bptIn: fp(1),
-          currentBalances,
-          protocolFeePercentage,
-        });
-
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
-      });
-
-      it('pays swap protocol fees on exit BPT In for exact tokens out', async () => {
-        const result = await pool.exitGivenOut({
-          from: lp,
-          amountsOut: fp(1),
-          currentBalances,
-          protocolFeePercentage,
-        });
-
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
+        expect(result.dueProtocolFeeAmounts).to.be.zeros;
       });
     });
   });

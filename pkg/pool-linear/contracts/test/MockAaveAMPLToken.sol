@@ -12,18 +12,22 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+// https://github.com/buttonwood-protocol/button-wrappers/blob/main/contracts/UnbuttonToken.sol
+
 pragma solidity ^0.7.0;
 
-// For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
-// naming convention.
-// solhint-disable func-name-mixedcase
+import "@balancer-labs/v2-standalone-utils/contracts/test/MockUnbuttonERC20.sol";
 
-interface ILiquidityGauge {
-    function integrate_fraction(address user) external view returns (uint256);
+import "../interfaces/IAToken.sol";
 
-    function user_checkpoint(address user) external returns (bool);
+contract MockAaveAMPLToken is MockUnbuttonERC20, IAToken {
+     constructor(
+        address underlying_,
+        string memory name_,
+        string memory symbol_
+    ) MockUnbuttonERC20(underlying_, name_, symbol_) { }
 
-    function is_killed() external view returns (bool);
-
-    function set_killed(bool isKilled) external;
+    function UNDERLYING_ASSET_ADDRESS() external view override returns (address) {
+        return _underlying;
+    }
 }

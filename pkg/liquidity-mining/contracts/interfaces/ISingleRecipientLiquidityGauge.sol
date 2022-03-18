@@ -14,16 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-// For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
-// naming convention.
-// solhint-disable func-name-mixedcase
+import "./ILiquidityGauge.sol";
 
-interface ILiquidityGauge {
-    function integrate_fraction(address user) external view returns (uint256);
-
-    function user_checkpoint(address user) external returns (bool);
-
-    function is_killed() external view returns (bool);
-
-    function set_killed(bool isKilled) external;
+interface ISingleRecipientLiquidityGauge is ILiquidityGauge {
+    function initialize(address recipient) external;
 }
