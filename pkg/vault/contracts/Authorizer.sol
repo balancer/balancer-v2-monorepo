@@ -20,6 +20,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
 
 import "./interfaces/IAuthorizer.sol";
+import "./interfaces/IVault.sol";
 
 /**
  * @dev Basic Authorizer implementation, based on OpenZeppelin's Access Control.
@@ -49,6 +50,8 @@ contract Authorizer is IAuthorizer {
         bool protected;
         uint256 executableAt;
     }
+
+    IAuthentication private immutable _vault;
 
     ScheduledAction[] public scheduledActions;
     mapping(bytes32 => bool) public permissionGranted;
@@ -84,9 +87,14 @@ contract Authorizer is IAuthorizer {
      */
     event PermissionRevoked(bytes32 indexed action, address indexed account, address indexed where);
 
-    constructor(address admin) {
+    constructor(address admin, IAuthentication vault) {
+        _vault = vault;
         _grantPermission(GRANT_PERMISSION, admin, EVERYWHERE);
         _grantPermission(REVOKE_PERMISSION, admin, EVERYWHERE);
+    }
+
+    function getVault() external view returns (address) {
+        return address(_vault);
     }
 
     /**
@@ -129,6 +137,10 @@ contract Authorizer is IAuthorizer {
      */
     function setDelay(bytes32 action, uint256 delay) external {
         _require(msg.sender == address(this), Errors.SENDER_NOT_ALLOWED);
+
+        bytes32 setAuthorizerId = _vault.getActionId(IVault.setAuthorizer.selector);
+        require(action == setAuthorizerId || delay <= delays[setAuthorizerId], "DELAY_EXCEEDS_SET_AUTHORIZER");
+
         delays[action] = delay;
         emit ActionDelaySet(action, delay);
     }

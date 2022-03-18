@@ -14,7 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "./IBalancerTokenAdmin.sol";
+import "./IGaugeController.sol";
 
 interface IBalancerMinter {
     event Minted(address indexed recipient, address gauge, uint256 minted);
@@ -27,12 +28,12 @@ interface IBalancerMinter {
     /**
      * @notice Returns the address of the Balancer Token Admin contract
      */
-    function getBalancerTokenAdmin() external view returns (address);
+    function getBalancerTokenAdmin() external view returns (IBalancerTokenAdmin);
 
     /**
      * @notice Returns the address of the Gauge Controller
      */
-    function getGaugeController() external view returns (address);
+    function getGaugeController() external view returns (IGaugeController);
 
     /**
      * @notice Mint everything which belongs to `msg.sender` and send to them
