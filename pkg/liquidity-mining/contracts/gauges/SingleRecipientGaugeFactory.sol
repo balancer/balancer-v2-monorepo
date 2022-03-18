@@ -24,7 +24,7 @@ contract SingleRecipientLiquidityGaugeFactory {
 
     mapping(address => bool) private _isGaugeFromFactory;
 
-    event GaugeCreated(address indexed gauge, address indexed recipient);
+    event SingleRecipientGaugeCreated(address indexed gauge, address indexed recipient);
 
     constructor(IBalancerMinter minter) {
         _gaugeImplementation = new SingleRecipientGauge(minter);
