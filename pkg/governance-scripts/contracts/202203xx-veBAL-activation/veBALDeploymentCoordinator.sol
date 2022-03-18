@@ -17,10 +17,10 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "./interfaces/IAuthorizerAdaptor.sol";
-import "./interfaces/IGaugeController.sol";
-import "./interfaces/IBalancerMinter.sol";
-import "./interfaces/IBalancerTokenAdmin.sol";
+import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IAuthorizerAdaptor.sol";
+import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeController.sol";
+import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerMinter.sol";
+import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerTokenAdmin.sol";
 
 // solhint-disable not-rely-on-time
 
