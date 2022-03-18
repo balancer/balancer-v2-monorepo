@@ -18,6 +18,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IAuthorizerAdaptor.sol";
+import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeAdder.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeController.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerMinter.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerTokenAdmin.sol";
@@ -62,14 +63,6 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     uint256 public constant ETHEREUM_WEIGHT = 56e16; // 56%
     uint256 public constant POLYGON_WEIGHT = 17e16; // 17%
     uint256 public constant ARBITRUM_WEIGHT = 7e16; // 7%
-
-    // Gauge type IDs are allocated sequentially, and since we know all gauge types will be created by this contract, we
-    // know these will be the resulting types.
-    uint256 public constant LM_COMMITTEE_TYPE = 0;
-    uint256 public constant VEBAL_TYPE = 1;
-    uint256 public constant ETHEREUM_TYPE = 2;
-    uint256 public constant POLYGON_TYPE = 3;
-    uint256 public constant ARBITRUM_TYPE = 4;
 
     constructor(
         IBalancerMinter balancerMinter,
@@ -150,13 +143,10 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         // Also require that Balancer governance holds all relevant admin rights
         IAuthorizerAdaptor authorizerAdaptor = getAuthorizerAdaptor();
         require(
-            _gaugeController.voting_escrow().admin() == address(authorizerAdaptor),
+            _gaugeController.voting_escrow().admin() == authorizerAdaptor,
             "VotingEscrow not owned by AuthorizerAdaptor"
         );
-        require(
-            _gaugeController.admin() == address(authorizerAdaptor),
-            "GaugeController not owned by AuthorizerAdaptor"
-        );
+        require(_gaugeController.admin() == authorizerAdaptor, "GaugeController not owned by AuthorizerAdaptor");
 
         // Sanity checks
         require(_gaugeController.n_gauge_types() == 0, "Gauge types already set");
@@ -234,11 +224,11 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
             address(this)
         );
 
-        _setGaugeTypeWeight(_gaugeController, LM_COMMITTEE_TYPE, LM_COMMITTEE_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, VEBAL_TYPE, VEBAL_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, ETHEREUM_TYPE, ETHEREUM_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, POLYGON_TYPE, POLYGON_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, ARBITRUM_TYPE, ARBITRUM_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.LiquidityMiningCommittee, LM_COMMITTEE_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.veBAL, VEBAL_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.Ethereum, ETHEREUM_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.Polygon, POLYGON_WEIGHT);
+        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.Arbitrum, ARBITRUM_WEIGHT);
 
         authorizer.revokeRole(
             authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector),
@@ -261,12 +251,12 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
 
     function _setGaugeTypeWeight(
         IGaugeController gaugeController,
-        uint256 typeId,
+        IGaugeAdder.GaugeType typeId,
         uint256 weight
     ) private {
         getAuthorizerAdaptor().performAction(
             address(gaugeController),
-            abi.encodeWithSelector(IGaugeController.change_type_weight.selector, typeId, weight)
+            abi.encodeWithSelector(IGaugeController.change_type_weight.selector, int128(typeId), weight)
         );
     }
 }

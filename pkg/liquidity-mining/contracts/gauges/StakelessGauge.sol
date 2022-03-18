@@ -27,7 +27,7 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
     IBalancerTokenAdmin private immutable _tokenAdmin;
     IBalancerMinter private immutable _minter;
     IGaugeController private immutable _gaugeController;
-    address private immutable _authorizerAdaptor;
+    IAuthorizerAdaptor private immutable _authorizerAdaptor;
 
     event Checkpoint(uint256 indexed periodTime, uint256 periodEmissions);
 
@@ -72,7 +72,7 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
     }
 
     function checkpoint() external payable nonReentrant returns (bool) {
-        require(msg.sender == _authorizerAdaptor, "SENDER_NOT_ALLOWED");
+        require(msg.sender == address(_authorizerAdaptor), "SENDER_NOT_ALLOWED");
         uint256 lastPeriod = _period;
         uint256 currentPeriod = _currentPeriod();
 
@@ -152,7 +152,7 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
     }
 
     function set_killed(bool isKilled) external {
-        require(msg.sender == _authorizerAdaptor, "SENDER_NOT_ALLOWED");
+        require(msg.sender == address(_authorizerAdaptor), "SENDER_NOT_ALLOWED");
         _isKilled = isKilled;
     }
 }
