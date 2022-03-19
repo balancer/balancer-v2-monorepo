@@ -46,28 +46,25 @@ describe('BaseManagedPoolFactory', function () {
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
 
-  async function createPool(swapsEnabled = true, mustAllowlistLPs = false): Promise<Contract> {
+  async function createPool(swapsEnabled = true, mustAllowlistLPs = false, paysProtocolFees = true): Promise<Contract> {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
 
     const newPoolParams: ManagedPoolParams = {
-      vault: vault.address,
       name: NAME,
       symbol: SYMBOL,
       tokens: tokens.addresses,
       normalizedWeights: WEIGHTS,
       assetManagers: assetManagers,
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-      pauseWindowDuration: BASE_PAUSE_WINDOW_DURATION,
-      bufferPeriodDuration: BASE_PAUSE_WINDOW_DURATION,
-      owner: manager.address,
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
+      paysProtocolFees: paysProtocolFees,
       managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
     };
 
-    const receipt = await (await factory.connect(manager).create(newPoolParams)).wait();
+    const receipt = await (await factory.connect(manager).create(newPoolParams, manager.address)).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     return deployedAt('ManagedPool', event.args.pool);
@@ -194,6 +191,18 @@ describe('BaseManagedPoolFactory', function () {
       const pool = await createPool(true, false);
 
       expect(await pool.getMustAllowlistLPs()).to.be.false;
+    });
+
+    it('pool will pay protocol fees', async () => {
+      const pool = await createPool(true, false);
+
+      expect(await pool.paysProtocolFees()).to.be.true;
+    });
+
+    it('pool created with protocol fees disabled', async () => {
+      const pool = await createPool(true, false, false);
+
+      expect(await pool.paysProtocolFees()).to.be.false;
     });
   });
 });

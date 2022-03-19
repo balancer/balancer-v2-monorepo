@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { MINUTE, DAY, advanceTime, currentTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -11,9 +11,8 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
-import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { ManagedPoolEncoder, SwapKind } from '@balancer-labs/balancer-js';
+import { SwapKind } from '@balancer-labs/balancer-js';
 
 import { range } from 'lodash';
 
@@ -650,7 +649,83 @@ describe('ManagedPool', function () {
       });
     });
 
-    describe('management fees', () => {
+    describe.skip('BPT protocol fees', () => {
+      let protocolFeesCollector: Contract;
+      let vault: Vault;
+      const swapFeePercentage = fp(0.02);
+      const managementSwapFeePercentage = fp(0.8);
+
+      sharedBeforeEach('deploy pool', async () => {
+        vault = await Vault.create();
+        protocolFeesCollector = await vault.getFeesCollector();
+
+        const params = {
+          tokens: poolTokens,
+          weights: poolWeights,
+          owner: owner.address,
+          poolType: WeightedPoolType.MANAGED_POOL,
+          swapEnabledOnStart: true,
+          vault,
+          swapFeePercentage,
+          managementSwapFeePercentage,
+        };
+        pool = await WeightedPool.create(params);
+      });
+
+      sharedBeforeEach('initialize pool', async () => {
+        await poolTokens.mint({ to: owner, amount: fp(100) });
+        await poolTokens.approve({ from: owner, to: await pool.getVault() });
+        await pool.init({ from: owner, initialBalances });
+      });
+
+      it('protocol fees are initially zero', async () => {
+        const bptFeeBalance = await pool.balanceOf(protocolFeesCollector.address);
+
+        expect(bptFeeBalance).to.equal(0);
+      });
+
+      describe('pays protocol fees on swap', () => {
+        context('on swap given in', () => {
+          it('pays fees on swap given in', async () => {
+            expect(true).to.be.true;
+          });
+        });
+
+        context('on swap given out', () => {
+          it('pays fees on swap given out', async () => {
+            expect(true).to.be.true;
+          });
+        });
+
+        context('on join swap', () => {
+          it('pays fees on join swap', async () => {
+            expect(true).to.be.true;
+          });
+        });
+
+        context('on exit swap', () => {
+          it('pays fees on exit swap', async () => {
+            expect(true).to.be.true;
+          });
+        });
+      });
+
+      describe('does not pay on proportional join/exit', () => {
+        context('on proportional join', () => {
+          it('does not pay fees on proportional join', async () => {
+            expect(true).to.be.true;
+          });
+        });
+
+        context('on proportional exit', () => {
+          it('does not pay fees on proportional exit', async () => {
+            expect(true).to.be.true;
+          });
+        });
+      });
+    });
+
+    describe.skip('management fees', () => {
       let vault: Vault;
       const swapFeePercentage = fp(0.02);
       const managementSwapFeePercentage = fp(0.8);
@@ -686,14 +761,7 @@ describe('ManagedPool', function () {
         expect(fees.amounts).to.deep.equal(new Array(poolTokens.length).fill(bn(0)));
       });
 
-      it('collected fees are reported in the same order as in the vault', async () => {
-        const { tokenAddresses: feeTokenAddresses } = await pool.getCollectedManagementFees();
-        const { tokens: vaultTokenAddresses } = await vault.getPoolTokens(await pool.getPoolId());
-
-        expect(feeTokenAddresses).to.deep.equal(vaultTokenAddresses);
-      });
-
-      describe('set management swap fee', () => {
+      describe('set management fee', () => {
         context('when the sender is not the owner', () => {
           it('non-owners cannot set the management swap fee', async () => {
             await expect(
@@ -826,204 +894,6 @@ describe('ManagedPool', function () {
             // The fee was charged in the second token (in)
             expect(actualFees[1]).to.be.equalWithError(expectedManagementFee, 0.001);
             expect(actualFees.filter((_, i) => i != 1)).to.be.zeros;
-          });
-        });
-
-        describe('joins', () => {
-          it('collects management fees on joinswap given in', async () => {
-            const amountsIn = new Array(poolTokens.length).fill(bn(0));
-            amountsIn[1] = fp(0.01);
-            amountsIn[2] = fp(0.01);
-
-            await pool.joinGivenIn({ from: owner, amountsIn });
-
-            const { amounts: actualFees } = await pool.getCollectedManagementFees();
-            // There should be non-zero collected fees on the second and third tokens
-            expect(actualFees[1]).to.be.gt(0);
-            expect(actualFees[2]).to.be.gt(0);
-            expect(actualFees.filter((_, i) => i != 1 && i != 2)).to.be.zeros;
-          });
-
-          it('collects management fees on joinswap given out', async () => {
-            await pool.joinGivenOut({ from: owner, bptOut: fp(0.5), token: 1 });
-
-            const { amounts: actualFees } = await pool.getCollectedManagementFees();
-            // There should be non-zero collected fees on the second token
-            expect(actualFees[1]).to.be.gt(0);
-            expect(actualFees.filter((_, i) => i != 1)).to.be.zeros;
-          });
-
-          it('does not collect management fees on proportional joins', async () => {
-            await pool.joinAllGivenOut({ from: owner, bptOut: fp(0.5) });
-
-            const { amounts: actualFees } = await pool.getCollectedManagementFees();
-            expect(actualFees).to.be.zeros;
-          });
-        });
-
-        describe('exits', () => {
-          it('collects management fees on exitswap given in', async () => {
-            const amountsOut = new Array(poolTokens.length).fill(bn(0));
-            amountsOut[1] = fp(0.01);
-            amountsOut[2] = fp(0.01);
-
-            await pool.exitGivenOut({ from: owner, amountsOut });
-
-            const { amounts: actualFees } = await pool.getCollectedManagementFees();
-            // There should be non-zero collected fees on the second and third tokens
-            expect(actualFees[1]).to.be.gt(0);
-            expect(actualFees[2]).to.be.gt(0);
-            expect(actualFees.filter((_, i) => i != 1 && i != 2)).to.be.zeros;
-          });
-
-          it('collects management fees on exitswap given in', async () => {
-            await pool.singleExitGivenIn({ from: owner, bptIn: fp(0.1), token: 1 });
-
-            const { amounts: actualFees } = await pool.getCollectedManagementFees();
-            // There should be non-zero collected fees on the second token
-            expect(actualFees[1]).to.be.gt(0);
-            expect(actualFees.filter((_, i) => i != 1)).to.be.zeros;
-          });
-
-          it('does not collect management fees on proportional exits', async () => {
-            await pool.multiExitGivenIn({ from: owner, bptIn: fp(0.1) });
-
-            const { amounts: actualFees } = await pool.getCollectedManagementFees();
-            expect(actualFees).to.be.zeros;
-          });
-        });
-
-        it('accumulates management fees with existing ones', async () => {
-          const singleSwap = {
-            poolId: await pool.getPoolId(),
-            kind: SwapKind.GivenIn,
-            assetIn: poolTokens.first.address,
-            assetOut: poolTokens.second.address,
-            amount: fp(0.01),
-            userData: '0x',
-          };
-          const funds = {
-            sender: owner.address,
-            fromInternalBalance: false,
-            recipient: other.address,
-            toInternalBalance: false,
-          };
-          const limit = 0; // Minimum amount out
-          const deadline = MAX_UINT256;
-
-          const expectedSwapFee = singleSwap.amount.mul(swapFeePercentage).div(fp(1));
-          const expectedManagementFee = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
-
-          // The swap fee depends exclusively on the amount in on swaps given in, so we can simply perform the same swap
-          // twice and expect to get twice the expected amount of collected fees.
-
-          await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
-          await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
-
-          const { amounts: actualFees } = await pool.getCollectedManagementFees();
-          // The fee was charged in the first token (in)
-          expect(actualFees[0]).to.be.equalWithError(expectedManagementFee.mul(2), 0.001);
-          expect(actualFees.filter((_, i) => i != 0)).to.be.zeros;
-        });
-      });
-
-      describe('collection by owner', () => {
-        context('when the sender is not the owner', () => {
-          it('reverts', async () => {
-            await expect(pool.withdrawCollectedManagementFees(other)).to.be.revertedWith('SENDER_NOT_ALLOWED');
-          });
-        });
-
-        context('when the sender is the owner', () => {
-          beforeEach('set sender to owner', () => {
-            sender = owner;
-          });
-
-          context('with collected fees', () => {
-            let feeTokenSymbol: string;
-            let managementFeeAmount: BigNumber;
-
-            sharedBeforeEach('cause fees to be collected', async () => {
-              const singleSwap = {
-                poolId: await pool.getPoolId(),
-                kind: SwapKind.GivenIn,
-                assetIn: poolTokens.first.address,
-                assetOut: poolTokens.second.address,
-                amount: fp(0.01),
-                userData: '0x',
-              };
-              const funds = {
-                sender: owner.address,
-                fromInternalBalance: false,
-                recipient: other.address,
-                toInternalBalance: false,
-              };
-              const limit = 0; // Minimum amount out
-              const deadline = MAX_UINT256;
-
-              await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
-
-              const expectedSwapFee = singleSwap.amount.mul(swapFeePercentage).div(fp(1));
-              managementFeeAmount = expectedSwapFee.mul(managementSwapFeePercentage).div(fp(1));
-              feeTokenSymbol = pool.tokens.first.symbol; // Fees are collected in the token in
-            });
-
-            it('management fees can be collected to any account', async () => {
-              await expectBalanceChange(() => pool.withdrawCollectedManagementFees(sender, other), poolTokens, {
-                account: other,
-                changes: {
-                  [feeTokenSymbol]: managementFeeAmount,
-                },
-              });
-            });
-
-            it('collection emits an event', async () => {
-              const expectedFees = new Array(poolTokens.length).fill(bn(0));
-              expectedFees[poolTokens.findIndexBySymbol(feeTokenSymbol)] = managementFeeAmount;
-
-              const receipt = await (await pool.withdrawCollectedManagementFees(sender, other)).wait();
-              expectEvent.inReceipt(receipt, 'ManagementFeesCollected', {
-                tokens: poolTokens.addresses,
-                amounts: expectedFees,
-              });
-            });
-
-            it('reverts if the vault is called directly', async () => {
-              await expect(
-                vault.instance.connect(sender).exitPool(await pool.getPoolId(), sender.address, other.address, {
-                  assets: poolTokens.addresses,
-                  minAmountsOut: new Array(poolTokens.length).fill(bn(0)),
-                  userData: ManagedPoolEncoder.exitForManagementFees(),
-                  toInternalBalance: false,
-                })
-              ).to.be.revertedWith('UNAUTHORIZED_EXIT');
-            });
-
-            context('after collection', () => {
-              sharedBeforeEach('collect fees', async () => {
-                await pool.withdrawCollectedManagementFees(sender, other);
-              });
-
-              it('there are no collected fees', async () => {
-                const { amounts: fees } = await pool.getCollectedManagementFees();
-                expect(fees).to.be.zeros;
-              });
-            });
-
-            context('while swaps are disabled', () => {
-              sharedBeforeEach('disable swaps', async () => {
-                await pool.setSwapEnabled(sender, false);
-              });
-
-              it('management fees can be collected', async () => {
-                await expectBalanceChange(() => pool.withdrawCollectedManagementFees(sender, other), poolTokens, {
-                  account: other,
-                  changes: {
-                    [feeTokenSymbol]: managementFeeAmount,
-                  },
-                });
-              });
-            });
           });
         });
       });

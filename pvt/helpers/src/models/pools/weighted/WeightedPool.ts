@@ -67,6 +67,7 @@ export default class WeightedPool {
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  paysProtocolFees: boolean;
   managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
 
@@ -86,7 +87,8 @@ export default class WeightedPool {
     swapEnabledOnStart: boolean,
     mustAllowlistLPs: boolean,
     managementSwapFeePercentage: BigNumberish,
-    managementAumFeePercentage: BigNumberish
+    managementAumFeePercentage: BigNumberish,
+    paysProtocolFees: boolean,
   ) {
     this.instance = instance;
     this.poolId = poolId;
@@ -98,6 +100,7 @@ export default class WeightedPool {
     this.poolType = poolType;
     this.swapEnabledOnStart = swapEnabledOnStart;
     this.mustAllowlistLPs = mustAllowlistLPs;
+    this.paysProtocolFees = paysProtocolFees;
     this.managementSwapFeePercentage = managementSwapFeePercentage;
     this.managementAumFeePercentage = managementAumFeePercentage;
   }

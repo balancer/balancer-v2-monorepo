@@ -93,6 +93,10 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
                 .insertBool(managedRights.canSetCircuitBreakers, _CIRCUIT_BREAKERS_OFFSET);
     }
 
+    function initialize(address poolAddress) public virtual override {
+        super.initialize(poolAddress);
+    }
+
     /**
      * @dev Getter for the canChangeWeights permission.
      */
@@ -202,10 +206,10 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
     }
 
     /**
-     * @dev Pass a call to ManagedPool's withdrawCollectedManagementFees through to the underlying pool.
+     * @dev Transfer any BPT management fees from this contract to the recipient
      */
     function withdrawCollectedManagementFees(address recipient) external virtual override onlyManager withBoundPool {
-        IControlledManagedPool(pool).withdrawCollectedManagementFees(recipient);
+        IERC20(pool).transfer(recipient, IERC20(pool).balanceOf(address(this)));
     }
 
     /**

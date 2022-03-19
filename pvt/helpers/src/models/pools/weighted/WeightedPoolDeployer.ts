@@ -16,7 +16,7 @@ import {
   WeightedPoolType,
 } from './types';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
+import { DAY } from '@balancer-labs/v2-helpers/src/time';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -35,6 +35,7 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
+      paysProtocolFees,
       managementSwapFeePercentage,
       managementAumFeePercentage,
     } = deployment;
@@ -53,6 +54,7 @@ export default {
       mustAllowlistLPs,
       managementSwapFeePercentage,
       managementAumFeePercentage
+      paysProtocolFees,
     );
   },
 
@@ -68,6 +70,7 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
+      paysProtocolFees,
       managementSwapFeePercentage,
       managementAumFeePercentage,
       owner,
@@ -121,21 +124,22 @@ export default {
         result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
             {
-              vault: vault.address,
               name: NAME,
               symbol: SYMBOL,
               tokens: tokens.addresses,
               normalizedWeights: weights,
               swapFeePercentage: swapFeePercentage,
               assetManagers: assetManagers,
-              pauseWindowDuration: pauseWindowDuration,
-              bufferPeriodDuration: bufferPeriodDuration,
-              owner: owner,
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
+              paysProtocolFees: paysProtocolFees,
               managementSwapFeePercentage: managementSwapFeePercentage,
               managementAumFeePercentage: managementAumFeePercentage,
             },
+            vault.address,
+            owner,
+            pauseWindowDuration,
+            bufferPeriodDuration,
           ],
           from,
         });
@@ -172,6 +176,7 @@ export default {
       oracleEnabled,
       swapEnabledOnStart,
       mustAllowlistLPs,
+      paysProtocolFees,
       managementSwapFeePercentage,
       managementAumFeePercentage,
       poolType,
@@ -233,18 +238,15 @@ export default {
         });
 
         const newPoolParams: ManagedPoolParams = {
-          vault: vault.address,
           name: NAME,
           symbol: SYMBOL,
           tokens: tokens.addresses,
           normalizedWeights: weights,
           assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
           swapFeePercentage: swapFeePercentage,
-          pauseWindowDuration: MONTH * 3,
-          bufferPeriodDuration: MONTH,
-          owner: from?.address || ZERO_ADDRESS,
           swapEnabledOnStart: swapEnabledOnStart,
           mustAllowlistLPs: mustAllowlistLPs,
+          paysProtocolFees: paysProtocolFees,
           managementSwapFeePercentage: managementSwapFeePercentage,
           managementAumFeePercentage: managementAumFeePercentage,
         };
@@ -266,7 +268,7 @@ export default {
 
         const tx = await factory
           .connect(from || ZERO_ADDRESS)
-          .create(newPoolParams, basePoolRights, managedPoolRights, DAY);
+          .create(newPoolParams, basePoolRights, managedPoolRights, DAY, from?.address || ZERO_ADDRESS);
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
         result = deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);

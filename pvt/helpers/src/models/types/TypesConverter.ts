@@ -64,6 +64,7 @@ export default {
       oracleEnabled,
       swapEnabledOnStart,
       mustAllowlistLPs,
+      paysProtocolFees,
       managementSwapFeePercentage,
       managementAumFeePercentage,
       poolType,
@@ -80,6 +81,7 @@ export default {
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
+    if (undefined == paysProtocolFees) paysProtocolFees = true;
     if (managementSwapFeePercentage === undefined) managementSwapFeePercentage = fp(0);
     if (managementAumFeePercentage === undefined) managementAumFeePercentage = fp(0);
     if (poolType === WeightedPoolType.ORACLE_WEIGHTED_POOL && tokens.length !== 2)
@@ -94,6 +96,7 @@ export default {
       oracleEnabled,
       swapEnabledOnStart,
       mustAllowlistLPs,
+      paysProtocolFees,
       managementSwapFeePercentage,
       managementAumFeePercentage,
       owner: this.toAddress(params.owner),

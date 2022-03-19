@@ -32,7 +32,6 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
     event Checkpoint(uint256 indexed periodTime, uint256 periodEmissions);
 
     // solhint-disable var-name-mixedcase
-    uint256 private immutable _INITIAL_RATE;
     uint256 private immutable _RATE_REDUCTION_TIME;
     uint256 private immutable _RATE_REDUCTION_COEFFICIENT;
     uint256 private immutable _RATE_DENOMINATOR;
@@ -56,19 +55,27 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
         _gaugeController = gaugeController;
         _authorizerAdaptor = gaugeController.admin();
 
-        _INITIAL_RATE = tokenAdmin.INITIAL_RATE();
         _RATE_REDUCTION_TIME = tokenAdmin.RATE_REDUCTION_TIME();
         _RATE_REDUCTION_COEFFICIENT = tokenAdmin.RATE_REDUCTION_COEFFICIENT();
         _RATE_DENOMINATOR = tokenAdmin.RATE_DENOMINATOR();
 
+        // Prevent initialisation of implementation contract
+        // Choice of `type(uint256).max` prevents implementation from being checkpointed
+        _period = type(uint256).max;
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function __StakelessGauge_init() internal {
+        require(_period == 0, "Already initialized");
+
         // Because we calculate the rate locally, this gauge cannot
         // be used prior to the start of the first emission period
-        uint256 rate = tokenAdmin.rate();
+        uint256 rate = _tokenAdmin.rate();
         require(rate != 0, "BalancerTokenAdmin not yet activated");
 
         _rate = rate;
         _period = _currentPeriod();
-        _startEpochTime = tokenAdmin.startEpochTimeWrite();
+        _startEpochTime = _tokenAdmin.startEpochTimeWrite();
     }
 
     function checkpoint() external payable nonReentrant returns (bool) {
@@ -147,11 +154,11 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
         return _emissions;
     }
 
-    function is_killed() external view returns (bool) {
+    function is_killed() external view override returns (bool) {
         return _isKilled;
     }
 
-    function set_killed(bool isKilled) external {
+    function set_killed(bool isKilled) external override {
         require(msg.sender == address(_authorizerAdaptor), "SENDER_NOT_ALLOWED");
         _isKilled = isKilled;
     }

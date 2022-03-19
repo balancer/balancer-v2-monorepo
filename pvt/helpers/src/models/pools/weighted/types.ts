@@ -25,6 +25,7 @@ export type RawWeightedPoolDeployment = {
   oracleEnabled?: boolean;
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
+  paysProtocolFees?: boolean;
   managementSwapFeePercentage?: BigNumberish;
   managementAumFeePercentage?: BigNumberish;
   owner?: Account;
@@ -46,6 +47,7 @@ export type WeightedPoolDeployment = {
   oracleEnabled: boolean;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  paysProtocolFees: boolean;
   managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
   owner?: string;
@@ -216,18 +218,15 @@ export type ManagedPoolRights = {
 };
 
 export type ManagedPoolParams = {
-  vault: string;
   name: string;
   symbol: string;
   tokens: string[];
   normalizedWeights: BigNumberish[];
   assetManagers: string[];
   swapFeePercentage: BigNumberish;
-  pauseWindowDuration: number;
-  bufferPeriodDuration: number;
-  owner: string;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  paysProtocolFees: boolean;
   managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
 };

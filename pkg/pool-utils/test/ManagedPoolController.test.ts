@@ -65,7 +65,8 @@ async function deployControllerAndPool(
   canSetCircuitBreakers = true,
   canChangeTokens = true,
   canChangeMgmtFees = true,
-  swapEnabledOnStart = true
+  swapEnabledOnStart = true,
+  paysProtocolFees = true
 ) {
   const basePoolRights: BasePoolRights = {
     canTransferOwnership: canTransfer,
@@ -98,6 +99,7 @@ async function deployControllerAndPool(
     swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
     poolType: WeightedPoolType.MANAGED_POOL,
     swapEnabledOnStart: swapEnabledOnStart,
+    paysProtocolFees: paysProtocolFees,
   };
   pool = await WeightedPool.create(params);
 }
@@ -410,7 +412,7 @@ describe('ManagedPoolController', function () {
     });
 
     context('with canChangeMgmtFees set to false', () => {
-      sharedBeforeEach('deploy controller (canChangeManagementFees false)', async () => {
+      sharedBeforeEach('deploy controller (canChangeMgmtFees false)', async () => {
         await deployControllerAndPool(true, true, true, true, true, false, false, false, false);
       });
 
