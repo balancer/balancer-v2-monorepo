@@ -221,21 +221,23 @@ contract AssetManagedLBPController is BasePoolController {
         // Br and Bp are the reserve and project balances, respectively
         // Wr and Wp are the corresponding weights
         //
-        // So the spot price is given by: Br/Wr / Bp/Wp = Br/Wr * Wp/Bp = Br/Bp * Wp/Wr
+        // So the spot price is given by: Br/Wr / Bp/Wp = Br/Wr * Wp/Bp = Br/Wr * Wp/Bp
         // Br is make of up the real cash balance plus the "virtual" managed balance
         // When we set the managed balance to 0, Br will decrease:
         // Bc = Br - Bv (new balance = old balance - virtual balance)
         //
-        // So if we think of the spot price as a weight ratio (Wp/Wr) times a balance ratio (Br/Bp),
-        // The balance ratio will decrease, since Bc < Br, which neans the weight ratio must increase
-        // The old ratio was (Wp/Wr), so the new ratio r = Wp/Wr * Br/Bc
+        // Let the new weights be Wr' and Wp'; the new spot is the Bc/Wr' * Wp'/Bp
+        // The new spot price must equal the old spot price, so:
+        // Br/Wr * Wp/Bp = Bc/Wr' * Wp'/Bp
+        // And of course, Wr' + Wp' = 1, so we have two equations and two unknowns
+        // Wp' = 1 - Wr', so:
+        // Br/Wr * Wp/Bp = Bc/Wr' * (1 - Wr')/Bp
         //
-        // Since we are decreasing the reserve balance, the weight of the reserve token should go down,
-        // and the weight of the project token should go up. Since Wp + Wr = 1, the deltas should be the same.
-        // So r = (Wp + d)/(Wr - d)
-        // Then d = (rWr - Wp)/(r + 1)
-        //
-        // Decreasing Br to Bc, and adjusting each weight by d, will result in the same spot prices
+        // Solving for Wr':
+        // Br/Bc * Wp/Wr = (1 - Wr')/Wr'
+        // Everything on the left side is known, so set k = Br/Bc * Wp/Wr
+        // k = (1 - Wr')/Wr'
+        // Wr' = 1/(k + 1), and then Wp' = 1 - Wr'
 
         (, uint256[] memory balances, ) = _vault.getPoolTokens(getPoolId());
         uint256[] memory normalizedWeights = IControlledLiquidityBootstrappingPool(pool).getNormalizedWeights();
@@ -252,17 +254,12 @@ contract AssetManagedLBPController is BasePoolController {
         uint256 denominator = reserveTokenWeight.mulUp(
             _upscale(reserveCashAmount, scalingFactors[_getReserveTokenIndex()])
         );
-        uint256 r = numerator.divDown(denominator);
-
-        // Calculate the weight delta (d)
-        numerator = r.mulUp(reserveTokenWeight).sub(projectTokenWeight);
-        denominator = r.add(FixedPoint.ONE);
-
-        uint256 d = numerator.divDown(denominator);
+        
+        uint256 k = numerator.divDown(denominator);
 
         endWeights = new uint256[](2);
-        endWeights[_getProjectTokenIndex()] = projectTokenWeight.add(d);
-        endWeights[_getReserveTokenIndex()] = endWeights[_getProjectTokenIndex()].complement();
+        endWeights[_getReserveTokenIndex()] = FixedPoint.ONE.divDown(FixedPoint.ONE.add(k));
+        endWeights[_getProjectTokenIndex()] = endWeights[_getReserveTokenIndex()].complement();
     }
 
     function _getProjectTokenIndex() private view returns (uint256) {
