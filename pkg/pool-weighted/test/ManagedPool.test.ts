@@ -14,7 +14,6 @@ import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativ
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { ManagedPoolEncoder, SwapKind } from '@balancer-labs/balancer-js';
-import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 
 import { range } from 'lodash';
 
@@ -64,9 +63,6 @@ describe('ManagedPool', function () {
               swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
               managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
             });
-
-            const finalWeights = toNormalizedWeights(WEIGHTS.slice(0, numTokens).map(bn));
-            await pool.instance.setDenormWeightSum(finalWeights, fp(weightSum));
           });
 
           it('has the correct total weight', async () => {
@@ -93,8 +89,6 @@ describe('ManagedPool', function () {
   }
 
   itComputesWeightsAndScalingFactors();
-  itComputesWeightsAndScalingFactors(3.25);
-  itComputesWeightsAndScalingFactors(0.25);
 
   context('with invalid creation parameters', () => {
     it('fails with < 2 tokens', async () => {
@@ -576,7 +570,7 @@ describe('ManagedPool', function () {
           });
         });
 
-        function itHandlesWeightUpdates(weightSum = 1): void {
+        function itHandlesWeightUpdates(): void {
           context('with valid parameters (ongoing weight update)', () => {
             // startWeights must equal "weights" above - just not using fp to keep math simple
             const startWeights = [...poolWeights];
@@ -611,8 +605,6 @@ describe('ManagedPool', function () {
               now = await currentTimestamp();
               startTime = now.add(START_DELAY);
               endTime = startTime.add(UPDATE_DURATION);
-
-              await pool.instance.setDenormWeightSum(startWeights, fp(weightSum));
 
               await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
             });
@@ -663,8 +655,6 @@ describe('ManagedPool', function () {
         }
 
         itHandlesWeightUpdates();
-        itHandlesWeightUpdates(101);
-        itHandlesWeightUpdates(0.3);
       });
     });
 

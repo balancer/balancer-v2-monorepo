@@ -367,29 +367,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
      * @dev Getter for the sum of all weights. In initially FixedPoint.ONE, it can be higher or lower
      * as a result of adds and removes.
      */
-    function _getDenormWeightSum() internal view returns (uint256) {
+    function getDenormWeightSum() public view returns (uint256) {
         return _denormWeightSum;
-    }
-
-    /**
-     * @dev Placeholder function for testing. Adding or removing a token may cause the total weight to
-     * diverge from ONE.
-     */
-    function _setDenormWeightSum(uint256[] memory normalizedWeights, uint256 denormWeightSum) internal {
-        InputHelpers.ensureInputLengthMatch(_getTotalTokens(), normalizedWeights.length);
-        _require(denormWeightSum > WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
-
-        if (denormWeightSum == _denormWeightSum) {
-            return;
-        }
-
-        _denormWeightSum = denormWeightSum;
-
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-
-        uint256 currentTime = block.timestamp;
-
-        _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights, tokens);
     }
 
     /**
