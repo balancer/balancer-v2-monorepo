@@ -24,4 +24,8 @@ interface IControlledLiquidityBootstrappingPool is IControlledPool {
     ) external;
 
     function setSwapEnabled(bool swapEnabled) external;
+
+    function getNormalizedWeights() external returns (uint256[] memory);
+
+    function getScalingFactors() external returns (uint256[] memory);
 }

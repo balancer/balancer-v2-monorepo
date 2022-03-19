@@ -40,17 +40,18 @@ import "./BasePoolController.sol";
  *
  * The controller can then be used by the manager for regular LBP functions.
  */
-contract AssetManagedLBPController is BasePoolController, IControlledLiquidityBootstrappingPool {
+contract AssetManagedLBPController is BasePoolController {
     using FixedPoint for uint256;
 
     // WeightedPoolUserData type - duplicating here to avoid a circular dependency
-    enum JoinKind { INIT }
+    enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT }
+
+    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT }
 
     IVault private immutable _vault;
     IERC20 private immutable _reserveToken;
     uint256 private immutable _projectTokenIndex;
     uint256 private immutable _reserveTokenIndex;
-    uint256 private _virtualReserveAmount;
 
     constructor(
         BasePoolRights memory baseRights,
@@ -66,12 +67,13 @@ contract AssetManagedLBPController is BasePoolController, IControlledLiquidityBo
     }
 
     /**
-     * @dev Call this function instead of the usual `joinPool` (init). It will borrow the necessary amount
-     * of reserve tokens using a DODO flashloan.
+     * @dev Call this function instead of the usual `joinPool` (init). It will set the managed balance equal to what
+     * would otherwise be deposited in case, so that pool initialization and trading work. Initially, project tokens
+     * cannot be "sold back" into the pool, since the cash balance is zero. Withdrawing liquidity would also fail,
+     * if the cash balance is insufficient.
      */
-    function fundPool(uint256[] memory initialBalances) external onlyManager {
+    function fundPool(uint256[] memory initialBalances) external onlyManager withBoundPool {
         uint256 virtualAmount = initialBalances[_getReserveTokenIndex()];
-        _virtualReserveAmount = virtualAmount;
 
         // Set the total to the virtual balance we need
         IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
@@ -103,31 +105,164 @@ contract AssetManagedLBPController is BasePoolController, IControlledLiquidityBo
 
         // Fund the pool; pull the tokens from this contract, send BPT to the manager
         _vault.joinPool(getPoolId(), address(this), getManager(), request);
+
+        // Sanity check that the funding worked
+        (, uint256[] memory balances, ) = _vault.getPoolTokens(getPoolId());
+
+        _require(balances[_getReserveTokenIndex()] == virtualAmount, Errors.INVALID_INITIALIZATION);
     }
 
     /**
-     * @dev The initial funding results in a non-zero managed balance. When the cash balance is greater,
-     * this function can be called to return the managed funds to cash.
-     * If there is a managed balance, and the cash balance is greater, convert the managed balance to cash.
+     * @dev Allow manager to add liquidity in any desired proportion.
      */
-    function restorePool() external {
-        (uint256 cash, uint256 managed, , ) = _vault.getPoolTokenInfo(getPoolId(), _reserveToken);
+    function addLiquidity(uint256[] memory amountsIn, uint256 minBptOut) external onlyManager withBoundPool {
+        (IERC20[] memory tokens, , ) = _vault.getPoolTokens(getPoolId());
 
-        if (managed > 0 && cash >= _getVirtualReserveAmount()) {
-            IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
-            ops[0] = IVault.PoolBalanceOp(
-                IVault.PoolBalanceOpKind.DEPOSIT,
-                getPoolId(),
-                _reserveToken,
-                _getVirtualReserveAmount()
+        if (amountsIn[_getProjectTokenIndex()] > 0) {
+            tokens[_getProjectTokenIndex()].transferFrom(
+                getManager(),
+                address(this),
+                amountsIn[_getProjectTokenIndex()]
             );
 
-            _vault.managePoolBalance(ops);
+            tokens[_getProjectTokenIndex()].approve(address(_vault), amountsIn[_getProjectTokenIndex()]);
         }
+
+        if (amountsIn[_getReserveTokenIndex()] > 0) {
+            tokens[_getReserveTokenIndex()].transferFrom(
+                getManager(),
+                address(this),
+                amountsIn[_getReserveTokenIndex()]
+            );
+
+            tokens[_getReserveTokenIndex()].approve(address(_vault), amountsIn[_getReserveTokenIndex()]);
+        }
+
+        IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
+            assets: _asIAsset(tokens),
+            maxAmountsIn: amountsIn,
+            userData: abi.encode(JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minBptOut),
+            fromInternalBalance: false
+        });
+
+        _vault.joinPool(getPoolId(), address(this), getManager(), request);
     }
 
-    function _getVirtualReserveAmount() private view returns (uint256) {
-        return _virtualReserveAmount;
+    /**
+     * @dev Allow the manager to remove liquidity proportionally.
+     */
+    function removeLiquidity(
+        uint256 bptAmountIn,
+        uint256[] memory minAmountsOut,
+        address recipient
+    ) external onlyManager withBoundPool {
+        // Pull BPT from manager
+        IERC20(pool).transferFrom(getManager(), address(this), bptAmountIn);
+
+        IERC20(pool).approve(address(_vault), bptAmountIn);
+
+        (IERC20[] memory tokens, , ) = _vault.getPoolTokens(getPoolId());
+        IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
+            assets: _asIAsset(tokens),
+            minAmountsOut: minAmountsOut,
+            userData: abi.encode(ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn),
+            toInternalBalance: false
+        });
+
+        _vault.exitPool(getPoolId(), address(this), payable(recipient), request);
+    }
+
+    /**
+     * @dev The initial funding results in a non-zero managed balance. This allows the pool to "sell" project tokens
+     * for the reserve immediately, though removing liquidity or selling project tokens "back" to the pool would fail
+     * until there was a sufficient cash balance.
+     *
+     * The total balance is the sum of the cash and managed balances, which means the price of the project token in
+     * terms of the reserve will be artificially higher, in proportion to the amount "borrowed" in the beginning.
+     *
+     * At any time, the manager can "repay" the initial "loan" by setting the managed funds to zero. It also adjusts
+     * weights instantaneously, to keep prices constant. Since this would effectively stop any ongoing weight change,
+     * managers might do this at the end of the sale: though they could always restart the original schedule, if it's
+     * done in the middle for some reason.
+     */
+    function repaySeedFunds(bool rebalance) external onlyManager withBoundPool {
+        (uint256 cash, uint256 managed, , ) = _vault.getPoolTokenInfo(getPoolId(), _reserveToken);
+
+        // If there is no managed balance, nothing to do
+        // Cash must be > 0, or the total balance would be zero, which is invalid
+        if (managed == 0 || cash == 0) {
+            return;
+        }
+
+        if (rebalance) {
+            // Calculate weight adjustment necessary to compensate for removing the managed balance
+            uint256[] memory endWeights = _calculateNewWeights(cash);
+
+            // solhint-disable-next-line not-rely-on-time
+            uint256 currentTime = block.timestamp;
+
+            // Update weights (instantaneously)
+            IControlledLiquidityBootstrappingPool(pool).updateWeightsGradually(currentTime, currentTime, endWeights);
+        } else {
+            // If we are not rebalancing, prices will change, so halt trading
+            IControlledLiquidityBootstrappingPool(pool).setSwapEnabled(false);
+        }
+
+        // Set managed balance to zero
+        IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
+        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, getPoolId(), _reserveToken, 0);
+
+        _vault.managePoolBalance(ops);
+    }
+
+    // Returns the weights required to compensate for removing the managed reserve balance
+    function _calculateNewWeights(uint256 reserveCashAmount) private returns (uint256[] memory endWeights) {
+        // The spot price of the project token in terms of the reserve should remain constant
+        // Br and Bp are the reserve and project balances, respectively
+        // Wr and Wp are the corresponding weights
+        //
+        // So the spot price is given by: Br/Wr / Bp/Wp = Br/Wr * Wp/Bp = Br/Bp * Wp/Wr
+        // Br is make of up the real cash balance plus the "virtual" managed balance
+        // When we set the managed balance to 0, Br will decrease:
+        // Bc = Br - Bv (new balance = old balance - virtual balance)
+        //
+        // So if we think of the spot price as a weight ratio (Wp/Wr) times a balance ratio (Br/Bp),
+        // The balance ratio will decrease, since Bc < Br, which neans the weight ratio must increase
+        // The old ratio was (Wp/Wr), so the new ratio r = Wp/Wr * Br/Bc
+        //
+        // Since we are decreasing the reserve balance, the weight of the reserve token should go down,
+        // and the weight of the project token should go up. Since Wp + Wr = 1, the deltas should be the same.
+        // So r = (Wp + d)/(Wr - d)
+        // Then d = (rWr - Wp)/(r + 1)
+        //
+        // Decreasing Br to Bc, and adjusting each weight by d, will result in the same spot prices
+
+        (, uint256[] memory balances, ) = _vault.getPoolTokens(getPoolId());
+        uint256[] memory normalizedWeights = IControlledLiquidityBootstrappingPool(pool).getNormalizedWeights();
+        uint256[] memory scalingFactors = IControlledLiquidityBootstrappingPool(pool).getScalingFactors();
+
+        uint256 projectTokenWeight = normalizedWeights[_getProjectTokenIndex()];
+        uint256 reserveTokenWeight = normalizedWeights[_getReserveTokenIndex()];
+
+        // Calculate the new weight ratio (r)
+        // r = Wp*Br / Wr*Bc (multiply first, for greater accuracy)
+        uint256 numerator = projectTokenWeight.mulDown(
+            _upscale(balances[_getReserveTokenIndex()], scalingFactors[_getReserveTokenIndex()])
+        );
+        uint256 denominator = reserveTokenWeight.mulUp(
+            _upscale(reserveCashAmount, scalingFactors[_getReserveTokenIndex()])
+        );
+        uint256 r = numerator.divDown(denominator);
+
+        // Calculate the weight delta (d)
+        numerator = r.mulUp(reserveTokenWeight).sub(projectTokenWeight);
+        denominator = r.add(FixedPoint.ONE);
+
+        uint256 d = numerator.divDown(denominator);
+
+        endWeights = new uint256[](2);
+        endWeights[_getProjectTokenIndex()] = projectTokenWeight.add(d);
+        endWeights[_getReserveTokenIndex()] = endWeights[_getProjectTokenIndex()].complement();
     }
 
     function _getProjectTokenIndex() private view returns (uint256) {
@@ -138,9 +273,21 @@ contract AssetManagedLBPController is BasePoolController, IControlledLiquidityBo
         return _reserveTokenIndex;
     }
 
+    function _getReserveToken() private view returns (IERC20) {
+        return _reserveToken;
+    }
+
+    /**
+     * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
+     * scaling or not. (Copied from BasePool, where it is internal.)
+     */
+    function _upscale(uint256 amount, uint256 scalingFactor) private pure returns (uint256) {
+        return FixedPoint.mulDown(amount, scalingFactor);
+    }
+
     // LBP functions
 
-    function setSwapEnabled(bool swapEnabled) external override onlyManager withBoundPool {
+    function setSwapEnabled(bool swapEnabled) external onlyManager withBoundPool {
         IControlledLiquidityBootstrappingPool(pool).setSwapEnabled(swapEnabled);
     }
 
@@ -148,11 +295,7 @@ contract AssetManagedLBPController is BasePoolController, IControlledLiquidityBo
         uint256 startTime,
         uint256 endTime,
         uint256[] memory endWeights
-    ) external override onlyManager withBoundPool {
+    ) external onlyManager withBoundPool {
         IControlledLiquidityBootstrappingPool(pool).updateWeightsGradually(startTime, endTime, endWeights);
-    }
-
-    function _getReserveToken() private view returns (IERC20) {
-        return _reserveToken;
     }
 }

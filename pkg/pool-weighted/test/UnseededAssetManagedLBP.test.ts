@@ -21,7 +21,7 @@ describe('Unseeded AssetManagedLiquidityBootstrappingPool', function () {
 
   sharedBeforeEach('deploy tokens', async () => {
     // Because they are sorted, 0 is always the projectToken, and 1 is the reserveToken
-    tokens = await TokenList.create(MAX_TOKENS, { sorted: true });
+    tokens = await TokenList.create(MAX_TOKENS, { sorted: true, varyDecimals: true });
     await tokens.mint({ to: [other], amount: fp(200) });
   });
 
@@ -60,6 +60,8 @@ describe('Unseeded AssetManagedLiquidityBootstrappingPool', function () {
       sharedBeforeEach('mint base tokens', async () => {
         // The manager needs to have the base tokens
         tokens.get(0).mint(manager, fp(1000));
+        // And some reserve tokens to add liquidity
+        tokens.get(1).mint(manager, fp(10));
       });
 
       it('funds the pool', async () => {
@@ -71,7 +73,12 @@ describe('Unseeded AssetManagedLiquidityBootstrappingPool', function () {
         const { balances } = await vault.getPoolTokens(await pool.getPoolId());
         expect(balances[1]).to.equal(initialBalances[1]);
 
-        await poolController.restorePool();
+        // Need a non-zero cash balance for this to work
+        await tokens.get(1).approve(poolController, fp(5), { from: manager });
+
+        await poolController.connect(manager).addLiquidity([0, fp(5)], 0);
+
+        await poolController.connect(manager).repaySeedFunds(true);
       });
     });
   });
