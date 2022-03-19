@@ -88,7 +88,7 @@ export default class WeightedPool {
     mustAllowlistLPs: boolean,
     managementSwapFeePercentage: BigNumberish,
     managementAumFeePercentage: BigNumberish,
-    paysProtocolFees: boolean,
+    paysProtocolFees: boolean
   ) {
     this.instance = instance;
     this.poolId = poolId;

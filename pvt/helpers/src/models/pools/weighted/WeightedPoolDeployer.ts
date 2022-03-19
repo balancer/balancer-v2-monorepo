@@ -35,9 +35,9 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      paysProtocolFees,
       managementSwapFeePercentage,
       managementAumFeePercentage,
+      paysProtocolFees,
     } = deployment;
 
     const poolId = await pool.getPoolId();
@@ -53,8 +53,8 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementSwapFeePercentage,
-      managementAumFeePercentage
-      paysProtocolFees,
+      managementAumFeePercentage,
+      paysProtocolFees
     );
   },
 
@@ -70,9 +70,9 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      paysProtocolFees,
       managementSwapFeePercentage,
       managementAumFeePercentage,
+      paysProtocolFees,
       owner,
       from,
     } = params;
