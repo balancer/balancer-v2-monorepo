@@ -254,7 +254,7 @@ contract AssetManagedLBPController is BasePoolController {
         uint256 denominator = reserveTokenWeight.mulUp(
             _upscale(reserveCashAmount, scalingFactors[_getReserveTokenIndex()])
         );
-        
+
         uint256 k = numerator.divDown(denominator);
 
         endWeights = new uint256[](2);
