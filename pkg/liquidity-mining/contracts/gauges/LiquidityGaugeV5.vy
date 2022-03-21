@@ -706,17 +706,23 @@ def set_reward_distributor(_reward_token: address, _distributor: address):
     self.reward_data[_reward_token].distributor = _distributor
     log RewardDistributorUpdated(_reward_token, _distributor)
 
-
 @external
-def set_killed(_is_killed: bool):
+def killGauge():
     """
-    @notice Set the killed status for this contract
-    @dev When killed, the gauge always yields a rate of 0 and so cannot mint BAL
-    @param _is_killed Killed status to set
+    @notice Kills the gauge so it always yields a rate of 0 and so cannot mint BAL
     """
     assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
 
-    self.is_killed = _is_killed
+    self.is_killed = True
+
+@external
+def unkillGauge():
+    """
+    @notice Unkills the gauge so it can mint BAL again
+    """
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
+
+    self.is_killed = False
 
 
 # View Methods
