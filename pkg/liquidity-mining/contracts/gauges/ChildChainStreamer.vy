@@ -36,6 +36,22 @@ def __init__(_bal_token: address, _authorizerAdaptor: address):
     self.reward_receiver = 0x000000000000000000000000000000000000dEaD
 
 
+@internal
+def _add_reward(_token: address, _distributor: address, _duration: uint256):
+    """
+    @notice Add a reward token
+    @param _token Address of the reward token
+    @param _distributor Address permitted to call `notify_reward_amount` for this token
+    @param _duration Number of seconds that rewards of this token are streamed over
+    """
+    assert self.reward_data[_token].distributor == ZERO_ADDRESS, "Reward token already added"
+
+    idx: uint256 = self.reward_count
+    self.reward_tokens[idx] = _token
+    self.reward_count = idx + 1
+    self.reward_data[_token].distributor = _distributor
+    self.reward_data[_token].duration = _duration
+
 @external
 def add_reward(_token: address, _distributor: address, _duration: uint256):
     """
@@ -45,14 +61,7 @@ def add_reward(_token: address, _distributor: address, _duration: uint256):
     @param _duration Number of seconds that rewards of this token are streamed over
     """
     assert msg.sender == AUTHORIZER_ADAPTOR  # dev: owner only
-    assert self.reward_data[_token].distributor == ZERO_ADDRESS, "Reward token already added"
-
-    idx: uint256 = self.reward_count
-    self.reward_tokens[idx] = _token
-    self.reward_count = idx + 1
-    self.reward_data[_token].distributor = _distributor
-    self.reward_data[_token].duration = _duration
-
+    self._add_reward(_token, _distributor, _duration)
 
 @external
 def remove_reward(_token: address):
@@ -215,7 +224,4 @@ def initialize(reward_receiver: address):
     # The first reward token will always be BAL, we then have the authorizer adaptor
     # as the distributor to ensure that governance has the ability to distribute.
     # The Authorizer adaptor can always update the distributor should Balancer governance wish.
-    self.reward_tokens[0] = BAL_TOKEN
-    self.reward_count = 1
-    self.reward_data[_reward].distributor = AUTHORIZER_ADAPTOR
-    self.reward_data[_reward].duration = 86400 * 7
+    self._add_reward(BAL_TOKEN, AUTHORIZER_ADAPTOR, 86400 * 7)
