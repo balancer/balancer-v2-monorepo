@@ -770,7 +770,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             // x = S * F/(1 - F); per annual time period
             // Final value needs to be annualized: multiply by elapsedTime/(365 days)
             uint256 feePct = _managementAumFeePercentage.divDown(_managementAumFeePercentage.complement());
-            uint256 timePeriodPct = elapsedTime.divDown(365 days);
+            // Elapsed time is not FixedPoint. We know the denominator is non-zero, so can use simple division operator
+            uint256 timePeriodPct = elapsedTime / 365 days;
 
             uint256 aumBPT = totalSupply().mulDown(feePct).mulDown(timePeriodPct);
 
