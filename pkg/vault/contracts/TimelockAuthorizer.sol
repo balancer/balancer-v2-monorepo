@@ -365,7 +365,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     function _getExecuteActionId(uint256 scheduledExecutionId) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(bytes32(uint256(address(this))), this.execute.selector, scheduledExecutionId));
+        return
+            keccak256(abi.encodePacked(bytes32(uint256(address(this))), this.execute.selector, scheduledExecutionId));
     }
 
     function _decodeSelector(bytes memory data) internal pure returns (bytes4) {
