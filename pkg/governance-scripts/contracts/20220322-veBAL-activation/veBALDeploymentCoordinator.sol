@@ -253,21 +253,28 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
             authorizer.revokeRole(_gaugeAdder.getActionId(IGaugeAdder.addEthereumGauge.selector), address(this));
         }
 
-        // Step 6: create gauges for the single-gauge gauge types
+        // Step 6: create gauges for the single-recipient gauge types
         //
-        // The LM committee and veBAL gauge types will have a single gauge of the single-recipient gauge kind
+        // The LM committee gauge will be permanent however the gauges for veBAL, Polygon and Arbitrum types are temporary
+        // These three gauges will in time be retired and replaced with new gauge implementations which automate the distribution
+        // of BAL to BPT stakers on other networks and veBAL holders.
+        //
         {
             authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
 
+            // Permanent
             ILiquidityGauge LMCommitteeGauge = _singleRecipientGaugeFactory.deploy(_recipients[0]);
             _addGauge(LMCommitteeGauge, IGaugeAdder.GaugeType.LiquidityMiningCommittee);
 
+            // Temporary
             ILiquidityGauge tempVeBALGauge = _singleRecipientGaugeFactory.deploy(_recipients[1]);
             _addGauge(tempVeBALGauge, IGaugeAdder.GaugeType.veBAL);
 
+            // Temporary
             ILiquidityGauge tempPolygonGauge = _singleRecipientGaugeFactory.deploy(_recipients[2]);
             _addGauge(tempPolygonGauge, IGaugeAdder.GaugeType.Polygon);
 
+            // Temporary
             ILiquidityGauge tempArbitrumGauge = _singleRecipientGaugeFactory.deploy(_recipients[3]);
             _addGauge(tempArbitrumGauge, IGaugeAdder.GaugeType.Arbitrum);
 
