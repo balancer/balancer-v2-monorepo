@@ -40,7 +40,6 @@ abstract contract AssetManagers is
     // Stores the Asset Manager for each token of each Pool.
     mapping(bytes32 => mapping(IERC20 => address)) internal _poolAssetManagers;
 
-    //todo add logic to handle nonReentrant
     function managePoolBalance(PoolBalanceOp[] memory ops) external override whenNotPaused {
         // This variable could be declared inside the loop, but that causes the compiler to allocate memory on each
         // loop iteration, increasing gas costs.
@@ -52,7 +51,7 @@ abstract contract AssetManagers is
 
             bytes32 poolId = op.poolId;
             _ensureRegisteredPool(poolId);
-
+            _ensureActivatedPool(poolId);
             IERC20 token = op.token;
             _require(_isTokenRegistered(poolId, token), Errors.TOKEN_NOT_REGISTERED);
             _require(_poolAssetManagers[poolId][token] == msg.sender, Errors.SENDER_NOT_ASSET_MANAGER);

@@ -26,8 +26,6 @@ import "./Fees.sol";
 import "./PoolTokens.sol";
 import "./UserBalance.sol";
 import "./interfaces/IBasePool.sol";
-import "hardhat/console.sol";
-
 
 /**
  * @dev Stores the Asset Managers (by Pool and token), and implements the top level Asset Manager and Pool interfaces,
@@ -194,6 +192,10 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
                 _getProtocolSwapFeePercentage(),
                 change.userData
             );
+
+        // need to update balances as Asset manager could update values
+        IERC20[] memory tokens = _translateToIERC20(change.assets);
+        balances = _validateTokensAndGetBalances(poolId, tokens);
 
         InputHelpers.ensureInputLengthMatch(balances.length, amountsInOrOut.length, dueProtocolFeeAmounts.length);
 

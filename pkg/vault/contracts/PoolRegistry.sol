@@ -29,6 +29,9 @@ abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
     // types.
     mapping(bytes32 => bool) private _isPoolRegistered;
 
+    // Each pool should be activated before usage.
+    mapping(bytes32 => bool) private _isPoolActivated;
+
     // We keep an increasing nonce to make Pool IDs unique. It is interpreted as a `uint80`, but storing it as a
     // `uint256` results in reduced bytecode on reads and writes due to the lack of masking.
     uint256 private _nextPoolNonce;
@@ -38,6 +41,14 @@ abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
      */
     modifier withRegisteredPool(bytes32 poolId) {
         _ensureRegisteredPool(poolId);
+        _;
+    }
+
+    /**
+     * @dev Reverts unless `poolId` corresponds to a registered Pool.
+     */
+    modifier withActivatedPool(bytes32 poolId) {
+        _ensureActivatedPool(poolId);
         _;
     }
 
@@ -57,12 +68,30 @@ abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
     }
 
     /**
+     * @dev Reverts unless `poolId` corresponds to a active Pool.
+     */
+    function _ensureActivatedPool(bytes32 poolId) internal view {
+        _require(_isPoolActivated[poolId], Errors.INACTIVE_POOL_ID);
+    }
+
+
+    /**
      * @dev Reverts unless `poolId` corresponds to a registered Pool, and the caller is the Pool's contract.
      */
     function _ensurePoolIsSender(bytes32 poolId) private view {
         _ensureRegisteredPool(poolId);
+        _ensureActivatedPool(poolId);
         _require(msg.sender == _getPoolAddress(poolId), Errors.CALLER_NOT_POOL);
     }
+
+    function setPoolActivated(bytes32 poolId) public
+        nonReentrant
+        withRegisteredPool(poolId)
+        authenticate
+    {
+        _isPoolActivated[poolId] = true;
+    }
+
 
     function registerPool(PoolSpecialization specialization)
         external
@@ -91,6 +120,7 @@ abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
         view
         override
         withRegisteredPool(poolId)
+        withActivatedPool(poolId)
         returns (address, PoolSpecialization)
     {
         return (_getPoolAddress(poolId), _getPoolSpecialization(poolId));

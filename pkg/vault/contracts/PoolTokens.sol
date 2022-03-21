@@ -87,6 +87,7 @@ abstract contract PoolTokens is ReentrancyGuard, PoolRegistry, AssetManagers {
         view
         override
         withRegisteredPool(poolId)
+        withActivatedPool(poolId)
         returns (
             IERC20[] memory tokens,
             uint256[] memory balances,
@@ -103,6 +104,7 @@ abstract contract PoolTokens is ReentrancyGuard, PoolRegistry, AssetManagers {
         view
         override
         withRegisteredPool(poolId)
+        withActivatedPool(poolId)
         returns (
             uint256 cash,
             uint256 managed,

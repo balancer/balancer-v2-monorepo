@@ -24,8 +24,6 @@ import "../interfaces/IGeneralPool.sol";
 import "../interfaces/IMinimalSwapInfoPool.sol";
 import "../interfaces/IVault.sol";
 
-import "hardhat/console.sol";
-
 contract MockSmartPool is IGeneralPool, IMinimalSwapInfoPool {
     using FixedPoint for uint256;
 
@@ -109,26 +107,11 @@ contract MockSmartPool is IGeneralPool, IMinimalSwapInfoPool {
 
 
         (IERC20[] memory tokens,,) = this.getPoolTokes();
-        for (uint i = 0; i < tokens.length; i++) {
-           console.log("Token %s : %s", i, address(tokens[i]));
-        }
 
         (uint256 cash, uint256 managed, uint256 lastChangeBlock, address assetManager) = this.getTokenInfo(tokens[0]);
-        console.log("cash %s", cash);
-        console.log("managed %s", managed);
-        console.log("assetManager %s", assetManager);
 
-
-        for (uint i = 0; i < amountsOut.length; i++) {
-           console.log("amountsOut %s : %s", i, amountsOut[i]);
-        }
-        for (uint i = 0; i < dueProtocolFeeAmounts.length; i++) {
-           console.log("dueProtocolFeeAmounts %s : %s", i, dueProtocolFeeAmounts[i]);
-        }
         if (amountsOut[0] > cash){
             uint delta = amountsOut[0] - cash;
-            console.log("delta %s", delta);
-//            IAssetManager(assetManager).capitalOut(poolId, cashNeeded - cash);
             IAssetManager(assetManager).capitalOut(getPoolId(), delta);
         }
 
@@ -158,8 +141,6 @@ contract MockSmartPool is IGeneralPool, IMinimalSwapInfoPool {
         uint256,
         uint256
     ) external view override returns (uint256 amount) {
-        console.log("onSwap1 called");
-
         return
             swapRequest.kind == IVault.SwapKind.GIVEN_IN
                 ? swapRequest.amount.mulDown(_multiplier)
@@ -172,8 +153,6 @@ contract MockSmartPool is IGeneralPool, IMinimalSwapInfoPool {
         uint256,
         uint256
     ) external view override returns (uint256) {
-        console.log("onSwap2 called");
-
         return
             swapRequest.kind == IVault.SwapKind.GIVEN_IN
                 ? swapRequest.amount.mulDown(_multiplier)

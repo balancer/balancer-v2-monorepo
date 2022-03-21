@@ -213,6 +213,7 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
             // The token might not be registered because the Pool itself is not registered. We check this to provide a
             // more accurate revert reason.
             _ensureRegisteredPool(poolId);
+            _ensureActivatedPool(poolId);
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }
 

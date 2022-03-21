@@ -403,6 +403,7 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
             // The tokens might not be registered because the Pool itself is not registered. We check this to provide a
             // more accurate revert reason.
             _ensureRegisteredPool(request.poolId);
+            _ensureActivatedPool(request.poolId);
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }
 

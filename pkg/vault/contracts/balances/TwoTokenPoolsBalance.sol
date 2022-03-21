@@ -21,8 +21,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "./BalanceAllocation.sol";
 import "../PoolRegistry.sol";
 
-import "hardhat/console.sol";
-
 abstract contract TwoTokenPoolsBalance is PoolRegistry {
     using BalanceAllocation for bytes32;
 
@@ -372,6 +370,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
             // The tokens might not be registered because the Pool itself is not registered. We check this to provide a
             // more accurate revert reason.
             _ensureRegisteredPool(poolId);
+            _ensureActivatedPool(poolId);
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }
 

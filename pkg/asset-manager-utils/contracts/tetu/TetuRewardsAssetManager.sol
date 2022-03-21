@@ -19,21 +19,20 @@ import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRelayedBasePool.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-
-import "./IAssetManager.sol";
+import "../IAssetManager.sol";
 
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 /**
- * @title RewardsAssetManager
- * @dev RewardsAssetManager is owned by a single pool such that any
+ * @title TetuRewardsAssetManager
+ * @dev TetuRewardsAssetManager is owned by a single pool such that any
  * rewards received by the Asset Manager may be distributed to LPs
  *
- * Note: any behaviour to claim these rewards must be implemented in a derived contract
+ * Note: this contract has small modification of RewardsAssetManager related to _capitalOut function
  */
-abstract contract RewardsAssetManager is IAssetManager {
+abstract contract TetuRewardsAssetManager is IAssetManager {
     using Math for uint256;
 
     IVault private immutable _vault;
@@ -146,11 +145,10 @@ abstract contract RewardsAssetManager is IAssetManager {
     function _capitalIn(uint256 amount) private {
         uint256 aum = _getAUM();
 
-        IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
-        // Update the vault with new managed balance accounting for returns
-        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, _poolId, getToken(), aum);
+        IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
+
         // Pull funds from the vault
-        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, _poolId, getToken(), amount);
+        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, _poolId, getToken(), amount);
 
         getVault().managePoolBalance(ops);
 
@@ -165,11 +163,10 @@ abstract contract RewardsAssetManager is IAssetManager {
         uint256 aum = _getAUM();
         uint256 tokensOut = _divest(amount, aum);
 
-        IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
-        // Update the vault with new managed balance accounting for returns
-        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.UPDATE, _poolId, getToken(), aum);
+        IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
+
         // Send funds back to the vault
-        ops[1] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, _poolId, getToken(), tokensOut);
+        ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.DEPOSIT, _poolId, getToken(), tokensOut);
 
         getVault().managePoolBalance(ops);
     }
@@ -289,7 +286,8 @@ abstract contract RewardsAssetManager is IAssetManager {
      * @param pId - the poolId of the pool to withdraw funds back to
      * @param amount - the amount of tokens to withdraw back to the pool
      */
-    function capitalOut(bytes32 pId, uint256 amount) external override withCorrectPool(pId) onlyPoolRebalancer {
+//    function capitalOut(bytes32 pId, uint256 amount) external override withCorrectPool(pId) onlyPoolRebalancer { //todo
+    function capitalOut(bytes32 pId, uint256 amount) external override withCorrectPool(pId){
         _capitalOut(amount);
     }
 }
