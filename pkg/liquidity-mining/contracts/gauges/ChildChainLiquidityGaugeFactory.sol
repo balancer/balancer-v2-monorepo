@@ -15,7 +15,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
@@ -34,7 +33,7 @@ interface IChildChainStreamer {
     function initialize(address gauge) external;
 }
 
-contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory, Authentication {
+contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory {
     // RewardsOnlyGauge expects the claim function selector to be left padded with zeros.
     // We then shift right 28 bytes so that the function selector (top 4 bytes) sits in the lowest 4 bytes.
     bytes32 private constant _CLAIM_SIG = keccak256("get_reward()") >> (28 * 8);
@@ -54,7 +53,7 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory, Authenticati
         IVault vault,
         ILiquidityGauge gauge,
         IChildChainStreamer childChainStreamer
-    ) Authentication(bytes32(uint256(address(this)))) {
+    ) {
         _vault = vault;
         _gaugeImplementation = gauge;
         _childChainStreamerImplementation = childChainStreamer;
@@ -143,11 +142,5 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory, Authenticati
         emit GaugeCreated(gauge, pool);
 
         return gauge;
-    }
-
-    // Authorization
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 }
