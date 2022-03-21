@@ -47,7 +47,7 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory {
     mapping(address => address) private _poolGauge;
     mapping(address => address) private _gaugeStreamer;
 
-    event RewardsOnlyGaugeCreated(address indexed gauge, address indexed pool);
+    event RewardsOnlyGaugeCreated(address indexed gauge, address indexed pool, address streamer);
 
     constructor(
         IVault vault,
@@ -139,7 +139,7 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory {
         _isGaugeFromFactory[gauge] = true;
         _poolGauge[pool] = gauge;
         _gaugeStreamer[gauge] = streamer;
-        emit RewardsOnlyGaugeCreated(gauge, pool);
+        emit RewardsOnlyGaugeCreated(gauge, pool, streamer);
 
         return gauge;
     }
