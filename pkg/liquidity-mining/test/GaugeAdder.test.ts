@@ -172,9 +172,15 @@ describe('GaugeAdder', () => {
   });
 
   describe('addEthereumGauge', () => {
+    let gauge: string;
+
+    sharedBeforeEach('deploy gauge', async () => {
+      gauge = await deployGauge(ZERO_ADDRESS);
+    });
+
     context('when caller is not authorized', () => {
       it('reverts', async () => {
-        await expect(gaugeAdder.connect(other).addEthereumGauge(ZERO_ADDRESS)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(gaugeAdder.connect(other).addEthereumGauge(gauge)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
 
@@ -186,7 +192,7 @@ describe('GaugeAdder', () => {
 
       context('when gauge has not been deployed from a valid factory', () => {
         it('reverts', async () => {
-          await expect(gaugeAdder.connect(admin).addEthereumGauge(ZERO_ADDRESS)).to.be.revertedWith('Invalid gauge');
+          await expect(gaugeAdder.connect(admin).addEthereumGauge(gauge)).to.be.revertedWith('Invalid gauge');
         });
       });
 
@@ -199,8 +205,6 @@ describe('GaugeAdder', () => {
         });
 
         it('registers the gauge on the GaugeController', async () => {
-          const gauge = await deployGauge(ZERO_ADDRESS);
-
           const tx = await gaugeAdder.connect(admin).addEthereumGauge(gauge);
 
           expectEvent.inIndirectReceipt(await tx.wait(), gaugeController.interface, 'NewGauge', {
