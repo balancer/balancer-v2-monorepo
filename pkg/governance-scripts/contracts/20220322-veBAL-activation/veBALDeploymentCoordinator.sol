@@ -178,11 +178,11 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
             // that this permission should only be granted on the gauge controller itself.
             authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_type.selector), address(this));
 
-            _addGaugeType(_gaugeController, "Liquidity Mining Committee");
-            _addGaugeType(_gaugeController, "veBAL");
-            _addGaugeType(_gaugeController, "Ethereum");
-            _addGaugeType(_gaugeController, "Polygon");
-            _addGaugeType(_gaugeController, "Arbitrum");
+            _addGaugeType("Liquidity Mining Committee");
+            _addGaugeType("veBAL");
+            _addGaugeType("Ethereum");
+            _addGaugeType("Polygon");
+            _addGaugeType("Arbitrum");
 
             authorizer.revokeRole(authorizerAdaptor.getActionId(IGaugeController.add_type.selector), address(this));
         }
@@ -224,11 +224,11 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
             address(this)
         );
 
-        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.LiquidityMiningCommittee, LM_COMMITTEE_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.veBAL, VEBAL_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.Ethereum, ETHEREUM_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.Polygon, POLYGON_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.Arbitrum, ARBITRUM_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.LiquidityMiningCommittee, LM_COMMITTEE_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.veBAL, VEBAL_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Ethereum, ETHEREUM_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Polygon, POLYGON_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Arbitrum, ARBITRUM_WEIGHT);
 
         authorizer.revokeRole(
             authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector),
@@ -242,20 +242,16 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         _currentDeploymentStage = DeploymentStage.SECOND_STAGE_DONE;
     }
 
-    function _addGaugeType(IGaugeController gaugeController, string memory name) private {
+    function _addGaugeType(string memory name) private {
         getAuthorizerAdaptor().performAction(
-            address(gaugeController),
+            address(_gaugeController),
             abi.encodeWithSelector(IGaugeController.add_type.selector, name, 0)
         );
     }
 
-    function _setGaugeTypeWeight(
-        IGaugeController gaugeController,
-        IGaugeAdder.GaugeType typeId,
-        uint256 weight
-    ) private {
+    function _setGaugeTypeWeight(IGaugeAdder.GaugeType typeId, uint256 weight) private {
         getAuthorizerAdaptor().performAction(
-            address(gaugeController),
+            address(_gaugeController),
             abi.encodeWithSelector(IGaugeController.change_type_weight.selector, int128(typeId), weight)
         );
     }
