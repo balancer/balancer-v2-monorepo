@@ -27,6 +27,8 @@ interface IRewardsOnlyGauge {
         address streamer,
         bytes32 claimSignature
     ) external;
+
+    function lp_token() external view returns (IERC20);
 }
 
 interface IChildChainStreamer {
@@ -113,6 +115,13 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory {
      */
     function isStreamerFromFactory(address streamer) external view returns (bool) {
         return _isStreamerFromFactory[streamer];
+    }
+
+    /**
+     * @notice Returns the address of the pool which `gauge` belongs.
+     */
+    function getGaugePool(address gauge) external view returns (IERC20) {
+        return IRewardsOnlyGauge(gauge).lp_token();
     }
 
     /**
