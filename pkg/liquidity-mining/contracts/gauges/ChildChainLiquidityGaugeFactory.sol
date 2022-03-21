@@ -1,0 +1,148 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
+
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
+import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+
+import "../interfaces/ILiquidityGauge.sol";
+import "../interfaces/ILiquidityGaugeFactory.sol";
+
+interface IRewardsOnlyGauge {
+    function initialize(address pool) external;
+}
+
+interface IChildChainStreamer {
+    function initialize(address gauge) external;
+}
+
+contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory, Authentication {
+    IVault private immutable _vault;
+    ILiquidityGauge private immutable _gaugeImplementation;
+    address private immutable _childChainStreamerImplementation;
+
+    mapping(address => bool) private _isGaugeFromFactory;
+    mapping(address => bool) private _isStreamerFromFactory;
+    mapping(address => address) private _poolGauge;
+    mapping(address => address) private _gaugeStreamer;
+
+    event GaugeCreated(address indexed gauge, address indexed pool);
+
+    constructor(
+        IVault vault,
+        ILiquidityGauge gauge,
+        address childChainStreamer
+    ) Authentication(bytes32(uint256(address(this)))) {
+        _vault = vault;
+        _gaugeImplementation = gauge;
+        _childChainStreamerImplementation = childChainStreamer;
+    }
+
+    /**
+     * @dev Returns the address of the Vault.
+     */
+    function getVault() public view returns (IVault) {
+        return _vault;
+    }
+
+    /**
+     * @dev Returns the address of the Vault's Authorizer.
+     */
+    function getAuthorizer() public view returns (IAuthorizer) {
+        return getVault().getAuthorizer();
+    }
+
+    /**
+     * @notice Returns the address of the implementation used for gauge deployments.
+     */
+    function getGaugeImplementation() public view returns (ILiquidityGauge) {
+        return _gaugeImplementation;
+    }
+
+    /**
+     * @notice Returns the address of the implementation used for streamer deployments.
+     */
+    function getChildChainStreamerImplementation() public view returns (address) {
+        return _childChainStreamerImplementation;
+    }
+
+    /**
+     * @notice Returns the address of the gauge belonging to `pool`.
+     */
+    function getPoolGauge(address pool) external view returns (ILiquidityGauge) {
+        return ILiquidityGauge(_poolGauge[pool]);
+    }
+
+    /**
+     * @notice Returns true if `gauge` was created by this factory.
+     */
+    function isGaugeFromFactory(address gauge) external view override returns (bool) {
+        return _isGaugeFromFactory[gauge];
+    }
+
+    /**
+     * @notice Returns the address of the streamer belonging to `gauge`.
+     */
+    function getGaugeStreamer(address gauge) external view returns (address) {
+        return _gaugeStreamer[gauge];
+    }
+
+    /**
+     * @notice Returns true if `streamer` was created by this factory.
+     */
+    function isStreamerFromFactory(address streamer) external view returns (bool) {
+        return _isStreamerFromFactory[streamer];
+    }
+
+    /**
+     * @notice Deploys a new gauge for a Balancer pool.
+     * @dev As anyone can register arbitrary Balancer pools with the Vault,
+     * it's impossible to prove onchain that `pool` is a "valid" deployment.
+     *
+     * Care must be taken to ensure that gauges deployed from this factory are
+     * suitable before they are added to the GaugeController.
+     *
+     * This factory disallows deploying multiple gauges for a single pool.
+     * @param pool The address of the pool for which to deploy a gauge
+     * @return The address of the deployed gauge
+     */
+    function create(address pool) external returns (address) {
+        require(_poolGauge[pool] == address(0), "Gauge already exists");
+
+        address gaugeImplementation = address(getGaugeImplementation());
+
+        address gauge = Clones.clone(gaugeImplementation);
+        IRewardsOnlyGauge(gauge).initialize(pool);
+
+        // A ChildChainStreamer contract is necessary if we want to receive BAL rewards from mainnet
+        address streamer = Clones.clone(_childChainStreamerImplementation);
+        IChildChainStreamer(streamer).initialize(gauge);
+
+        _isGaugeFromFactory[gauge] = true;
+        _poolGauge[pool] = gauge;
+        _gaugeStreamer[gauge] = streamer;
+        emit GaugeCreated(gauge, pool);
+
+        return gauge;
+    }
+
+    // Authorization
+
+    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
+        return getAuthorizer().canPerform(actionId, account, address(this));
+    }
+}
