@@ -16,12 +16,15 @@ struct RewardToken:
     received: uint256
     paid: uint256
 
+MAX_REWARDS: constant(uint256) = 8
+WEEK: constant(uint256) = 7 * 86400
+
 BAL_TOKEN: immutable(address)
 AUTHORIZER_ADAPTOR: immutable(address)
 
 reward_receiver: public(address)
 
-reward_tokens: public(address[8])
+reward_tokens: public(address[MAX_REWARDS])
 reward_count: public(uint256)
 reward_data: public(HashMap[address, RewardToken])
 last_update_time: public(uint256)
@@ -88,7 +91,7 @@ def remove_reward(_token: address):
         assert convert(response, bool)
 
     idx: uint256 = self.reward_count - 1
-    for i in range(8):
+    for i in range(MAX_REWARDS):
         if self.reward_tokens[i] == _token:
             self.reward_tokens[i] = self.reward_tokens[idx]
             self.reward_tokens[idx] = ZERO_ADDRESS
@@ -224,4 +227,4 @@ def initialize(reward_receiver: address):
     # The first reward token will always be BAL, we then have the authorizer adaptor
     # as the distributor to ensure that governance has the ability to distribute.
     # The Authorizer adaptor can always update the distributor should Balancer governance wish.
-    self._add_reward(BAL_TOKEN, AUTHORIZER_ADAPTOR, 86400 * 7)
+    self._add_reward(BAL_TOKEN, AUTHORIZER_ADAPTOR, WEEK)
