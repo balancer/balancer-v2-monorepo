@@ -120,19 +120,6 @@ def _update_reward(_token: address, _last_update: uint256):
             if len(response) != 0:
                 assert convert(response, bool)
 
-
-@external
-def set_receiver(_receiver: address):
-    """
-    @notice Set the reward receiver
-    @dev When the receiver is a smart contract, it must be capable of recognizing
-         rewards that are directly pushed to it (without a call to `get_reward`)
-    @param _receiver Address of the reward receiver
-    """
-    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
-    self.reward_receiver = _receiver
-
-
 @external
 def get_reward():
     """
