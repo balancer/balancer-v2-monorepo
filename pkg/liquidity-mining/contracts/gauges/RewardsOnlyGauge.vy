@@ -25,12 +25,6 @@ event Withdraw:
     provider: indexed(address)
     value: uint256
 
-event CommitOwnership:
-    admin: address
-
-event ApplyOwnership:
-    admin: address
-
 event Transfer:
     _from: indexed(address)
     _to: indexed(address)
@@ -51,8 +45,10 @@ VERSION: constant(String[8]) = "v5.0.0"
 EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
 PERMIT_TYPEHASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 
-lp_token: public(address)
 BAL_VAULT: immutable(address)
+AUTHORIZER_ADAPTOR: immutable(address)
+
+lp_token: public(address)
 
 balanceOf: public(HashMap[address, uint256])
 totalSupply: public(uint256)
@@ -83,33 +79,19 @@ reward_integral_for: public(HashMap[address, HashMap[address, uint256]])
 # user -> [uint128 claimable amount][uint128 claimed amount]
 claim_data: HashMap[address, HashMap[address, uint256]]
 
-admin: public(address)
-future_admin: public(address)  # Can and will be a smart contract
-
 
 @external
-def __init__(_admin: address, _lp_token: address, _vault: address):
+def __init__(_vault: address, _authorizerAdaptor: address):
     """
     @notice Contract constructor
-    @param _admin Admin who can kill the gauge
-    @param _lp_token Liquidity Pool contract address
     @param _vault Balancer Vault contract address
     """
 
-    symbol: String[32] = ERC20Extended(_lp_token).symbol()
-    name: String[64] = concat("Balancer ", symbol, " RewardGauge Deposit")
-
-    self.name = name
-    self.symbol = concat(symbol, "-gauge")
-
-    self.DOMAIN_SEPARATOR = keccak256(
-        _abi_encode(EIP712_TYPEHASH, keccak256(name), keccak256(VERSION), chain.id, self)
-    )
-
-    self.lp_token = _lp_token
     BAL_VAULT = _vault
-    self.admin = _admin
+    AUTHORIZER_ADAPTOR = _authorizerAdaptor
 
+    # prevent initialization of implementation
+    self.lp_token = 0x000000000000000000000000000000000000dEaD
 
 @view
 @external
@@ -523,7 +505,7 @@ def set_rewards(_reward_contract: address, _claim_sig: bytes32, _reward_tokens: 
                           this array must begin with the already-set reward
                           token addresses.
     """
-    assert msg.sender == self.admin
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
 
     lp_token: address = self.lp_token
     current_reward_contract: address = convert(self.reward_data % 2**160, address)
@@ -550,26 +532,24 @@ def set_rewards(_reward_contract: address, _claim_sig: bytes32, _reward_tokens: 
         # do an initial checkpoint to verify that claims are working
         self._checkpoint_rewards(ZERO_ADDRESS, total_supply, False, ZERO_ADDRESS)
 
+# Initializer
 
 @external
-def commit_transfer_ownership(addr: address):
+def initialize(_lp_token: address):
     """
-    @notice Transfer ownership of GaugeController to `addr`
-    @param addr Address to have ownership transferred to
+    @notice Contract constructor
+    @param _lp_token Liquidity Pool contract address
     """
-    assert msg.sender == self.admin  # dev: admin only
+    assert self.lp_token == ZERO_ADDRESS
 
-    self.future_admin = addr
-    log CommitOwnership(addr)
+    self.lp_token = _lp_token
 
+    symbol: String[32] = ERC20Extended(_lp_token).symbol()
+    name: String[64] = concat("Balancer ", symbol, " RewardGauge Deposit")
 
-@external
-def accept_transfer_ownership():
-    """
-    @notice Accept a pending ownership transfer
-    """
-    _admin: address = self.future_admin
-    assert msg.sender == _admin  # dev: future admin only
+    self.name = name
+    self.symbol = concat(symbol, "-gauge")
 
-    self.admin = _admin
-    log ApplyOwnership(_admin)
+    self.DOMAIN_SEPARATOR = keccak256(
+        _abi_encode(EIP712_TYPEHASH, keccak256(name), keccak256(VERSION), chain.id, self)
+    )
