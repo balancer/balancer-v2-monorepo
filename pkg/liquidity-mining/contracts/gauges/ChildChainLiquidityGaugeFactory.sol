@@ -41,7 +41,7 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory, Authenticati
 
     IVault private immutable _vault;
     ILiquidityGauge private immutable _gaugeImplementation;
-    address private immutable _childChainStreamerImplementation;
+    IChildChainStreamer private immutable _childChainStreamerImplementation;
 
     mapping(address => bool) private _isGaugeFromFactory;
     mapping(address => bool) private _isStreamerFromFactory;
@@ -53,7 +53,7 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory, Authenticati
     constructor(
         IVault vault,
         ILiquidityGauge gauge,
-        address childChainStreamer
+        IChildChainStreamer childChainStreamer
     ) Authentication(bytes32(uint256(address(this)))) {
         _vault = vault;
         _gaugeImplementation = gauge;
@@ -77,14 +77,14 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory, Authenticati
     /**
      * @notice Returns the address of the implementation used for gauge deployments.
      */
-    function getGaugeImplementation() public view returns (ILiquidityGauge) {
+    function getGaugeImplementation() external view returns (ILiquidityGauge) {
         return _gaugeImplementation;
     }
 
     /**
      * @notice Returns the address of the implementation used for streamer deployments.
      */
-    function getChildChainStreamerImplementation() public view returns (address) {
+    function getChildChainStreamerImplementation() external view returns (IChildChainStreamer) {
         return _childChainStreamerImplementation;
     }
 
@@ -131,14 +131,10 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory, Authenticati
     function create(address pool) external returns (address) {
         require(_poolGauge[pool] == address(0), "Gauge already exists");
 
-        address gaugeImplementation = address(getGaugeImplementation());
+        address gauge = Clones.clone(address(_gaugeImplementation));
+        address streamer = Clones.clone(address(_childChainStreamerImplementation));
 
-        address gauge = Clones.clone(gaugeImplementation);
-
-        // A ChildChainStreamer contract is necessary if we want to receive BAL rewards from mainnet
-        address streamer = Clones.clone(_childChainStreamerImplementation);
         IChildChainStreamer(streamer).initialize(gauge);
-
         IRewardsOnlyGauge(gauge).initialize(pool, streamer, _CLAIM_SIG);
 
         _isGaugeFromFactory[gauge] = true;
