@@ -26,6 +26,7 @@ contract MockGaugeController is IGaugeController {
     mapping(address => int128) private _gaugeType;
 
     IAuthorizerAdaptor public override admin;
+    // solhint-disable-next-line var-name-mixedcase
     IVotingEscrow public override voting_escrow;
 
     // solhint-disable-next-line func-param-name-mixedcase, var-name-mixedcase
