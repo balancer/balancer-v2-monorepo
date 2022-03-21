@@ -28,15 +28,15 @@ import "./interfaces/IVault.sol";
  * Users are allowed to perform actions if they have the permission to do so.
  *
  * This Authorizer implementation allows defining a delay per action identifier. If a delay is set for an action, users
- * are now allowed to schedule an action that will be executed in the future by the Authorizer instead of executing it
- * themselves directly.
+ * are now allowed to schedule an execution that will be triggered in the future by the Authorizer instead of executing
+ * it themselves directly.
  *
  * Glossary:
  * - Action: Op that can be performed to a target contract. These are identified by a unique bytes32 `actionId` defined
  *   by each target contract following `IAuthentication#getActionId`.
- * - Scheduled action: The Authorizer can define different delays per `actionId` in order to determine that a specific
- *   time window must pass before these can be executed. When a delay is set for an `actionId`, actions must be
- *   scheduled. These actions are identified with an unsigned integer called `scheduledActionId`.
+ * - Scheduled execution: The Authorizer can define different delays per `actionId` in order to determine that a
+ *   specific time window must pass before these can be executed. When a delay is set for an `actionId`, executions
+ *   must be scheduled. These executions are identified with an unsigned integer called `scheduledExecutionId`.
  * - Permission: Unique identifier to refer to a user (who) that is allowed to perform an action (what) in a specific
  *   target contract (where). This identifier is called `permissionId` and is computed as
  *   `keccak256(actionId, account, where)`.
@@ -47,7 +47,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     uint256 public constant MAX_DELAY = 2 * (365 days);
     address public constant EVERYWHERE = address(-1);
 
-    struct ScheduledAction {
+    struct ScheduledExecution {
         address where;
         bytes data;
         bool executed;
@@ -62,24 +62,24 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     bytes32 public immutable SCHEDULE_DELAY_ACTION_ID;
 
     IAuthentication private immutable _vault;
-    ScheduledAction[] public scheduledActions;
+    ScheduledExecution[] public scheduledExecutions;
     mapping(bytes32 => bool) public isPermissionGranted;
     mapping(bytes32 => uint256) public delaysPerActionId;
 
     /**
      * @dev Emitted when a new action `actionId` is scheduled
      */
-    event ActionScheduled(bytes32 indexed actionId, uint256 indexed scheduledActionId);
+    event ExecutionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
 
     /**
      * @dev Emitted when an action `actionId` is executed
      */
-    event ActionExecuted(uint256 indexed scheduledActionId);
+    event ActionExecuted(uint256 indexed scheduledExecutionId);
 
     /**
      * @dev Emitted when an action `actionId` is cancelled
      */
-    event ActionCancelled(uint256 indexed scheduledActionId);
+    event ActionCancelled(uint256 indexed scheduledExecutionId);
 
     /**
      * @dev Emitted when a new `delay` is set in order to perform action `actionId`
@@ -173,10 +173,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         bytes32 actionId,
         uint256 newDelay,
         address[] memory executors
-    ) external returns (uint256 scheduledActionId) {
+    ) external returns (uint256 scheduledExecutionId) {
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
         bytes32 scheduleDelayActionId = keccak256(abi.encodePacked(SCHEDULE_DELAY_ACTION_ID, actionId));
         _require(hasPermission(scheduleDelayActionId, msg.sender, address(this)), Errors.SENDER_NOT_ALLOWED);
+
+        // The delay change is scheduled to execute after the current delay for the action has elapsed. This is
+        // critical, as otherwise it'd be possible to execute an action with a delay shorter than its current one
+        // by first changing it to a smaller (or zero) value.
 
         uint256 actionDelay = delaysPerActionId[actionId];
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);
@@ -190,7 +194,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where,
         bytes memory data,
         address[] memory executors
-    ) external returns (uint256 scheduledActionId) {
+    ) external returns (uint256 scheduledExecutionId) {
         require(where != address(this), "CANNOT_SCHEDULE_AUTHORIZER_ACTIONS");
         bytes32 actionId = IAuthentication(where).getActionId(_decodeSelector(data));
         _require(hasPermission(actionId, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
@@ -198,40 +202,42 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
-     * @dev Executes a scheduled action `scheduledActionId`
+     * @dev Executes a scheduled action `scheduledExecutionId`
      */
-    function execute(uint256 scheduledActionId) external returns (bytes memory result) {
-        require(scheduledActionId < scheduledActions.length, "ACTION_DOES_NOT_EXIST");
-        ScheduledAction storage scheduledAction = scheduledActions[scheduledActionId];
-        require(!scheduledAction.executed, "ACTION_ALREADY_EXECUTED");
-        require(!scheduledAction.cancelled, "ACTION_ALREADY_CANCELLED");
+    function execute(uint256 scheduledExecutionId) external returns (bytes memory result) {
+        require(scheduledExecutionId < scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
+        ScheduledExecution storage scheduledExecution = scheduledExecutions[scheduledExecutionId];
+        require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
+        require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
 
         // solhint-disable-next-line not-rely-on-time
-        require(block.timestamp >= scheduledAction.executableAt, "ACTION_NOT_EXECUTABLE");
-        bytes32 executeActionId = _getExecuteActionId(scheduledActionId);
-        bool isAllowed = !scheduledAction.protected || hasPermission(executeActionId, msg.sender, address(this));
+        require(block.timestamp >= scheduledExecution.executableAt, "ACTION_NOT_EXECUTABLE");
+        bytes32 executeActionId = _getExecuteActionId(scheduledExecutionId);
+        bool isAllowed = !scheduledExecution.protected || hasPermission(executeActionId, msg.sender, address(this));
         _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
 
-        scheduledAction.executed = true;
-        result = scheduledAction.where.functionCall(scheduledAction.data);
-        emit ActionExecuted(scheduledActionId);
+        scheduledExecution.executed = true;
+        result = scheduledExecution.where.functionCall(scheduledExecution.data);
+        emit ActionExecuted(scheduledExecutionId);
     }
 
     /**
-     * @dev Cancels a scheduled action `scheduledActionId`
+     * @dev Cancels a scheduled action `scheduledExecutionId`
      */
-    function cancel(uint256 scheduledActionId) external {
-        require(scheduledActionId < scheduledActions.length, "ACTION_DOES_NOT_EXIST");
-        ScheduledAction storage scheduledAction = scheduledActions[scheduledActionId];
+    function cancel(uint256 scheduledExecutionId) external {
+        require(scheduledExecutionId < scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
+        ScheduledExecution storage scheduledExecution = scheduledExecutions[scheduledExecutionId];
 
-        require(!scheduledAction.executed, "ACTION_ALREADY_EXECUTED");
-        require(!scheduledAction.cancelled, "ACTION_ALREADY_CANCELLED");
+        require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
+        require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
 
-        bytes32 actionId = IAuthentication(scheduledAction.where).getActionId(_decodeSelector(scheduledAction.data));
-        _require(hasPermission(actionId, msg.sender, scheduledAction.where), Errors.SENDER_NOT_ALLOWED);
+        // The permission to cancel a scheduled action is the same one used to schedule it
+        IAuthentication target = IAuthentication(scheduledExecution.where);
+        bytes32 actionId = target.getActionId(_decodeSelector(scheduledExecution.data));
+        _require(hasPermission(actionId, msg.sender, scheduledExecution.where), Errors.SENDER_NOT_ALLOWED);
 
-        scheduledAction.cancelled = true;
-        emit ActionCancelled(scheduledActionId);
+        scheduledExecution.cancelled = true;
+        emit ActionCancelled(scheduledExecutionId);
     }
 
     /**
@@ -257,7 +263,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address account,
         address where,
         address[] memory executors
-    ) external returns (uint256 scheduledActionId) {
+    ) external returns (uint256 scheduledExecutionId) {
         _require(hasPermission(GRANT_ACTION_ID, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
         bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _ar(actionId), account, _ar(where));
         return _schedule(GRANT_ACTION_ID, address(this), data, executors);
@@ -286,7 +292,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address account,
         address where,
         address[] memory executors
-    ) external returns (uint256 scheduledActionId) {
+    ) external returns (uint256 scheduledExecutionId) {
         _require(hasPermission(REVOKE_ACTION_ID, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
         bytes memory data = abi.encodeWithSelector(this.revokePermissions.selector, _ar(actionId), account, _ar(where));
         return _schedule(REVOKE_ACTION_ID, address(this), data, executors);
@@ -331,7 +337,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where,
         bytes memory data,
         address[] memory executors
-    ) private returns (uint256 scheduledActionId) {
+    ) private returns (uint256 scheduledExecutionId) {
         uint256 delay = delaysPerActionId[actionId];
         require(delay > 0, "CANNOT_SCHEDULE_ACTION");
         return _scheduleWithDelay(actionId, where, data, delay, executors);
@@ -343,23 +349,23 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         bytes memory data,
         uint256 delay,
         address[] memory executors
-    ) private returns (uint256 scheduledActionId) {
-        scheduledActionId = scheduledActions.length;
-        emit ActionScheduled(actionId, scheduledActionId);
+    ) private returns (uint256 scheduledExecutionId) {
+        scheduledExecutionId = scheduledExecutions.length;
+        emit ExecutionScheduled(actionId, scheduledExecutionId);
 
         // solhint-disable-next-line not-rely-on-time
         uint256 executableAt = block.timestamp + delay;
         bool protected = executors.length > 0;
-        scheduledActions.push(ScheduledAction(where, data, false, false, protected, executableAt));
+        scheduledExecutions.push(ScheduledExecution(where, data, false, false, protected, executableAt));
 
-        bytes32 executeActionId = _getExecuteActionId(scheduledActionId);
+        bytes32 executeActionId = _getExecuteActionId(scheduledExecutionId);
         for (uint256 i = 0; i < executors.length; i++) {
             _grantPermission(executeActionId, executors[i], address(this));
         }
     }
 
-    function _getExecuteActionId(uint256 scheduledActionId) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(bytes32(uint256(address(this))), this.execute.selector, scheduledActionId));
+    function _getExecuteActionId(uint256 scheduledExecutionId) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(bytes32(uint256(address(this))), this.execute.selector, scheduledExecutionId));
     }
 
     function _decodeSelector(bytes memory data) internal pure returns (bytes4) {

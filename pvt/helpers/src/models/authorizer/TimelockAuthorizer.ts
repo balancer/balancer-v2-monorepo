@@ -55,7 +55,7 @@ export default class TimelockAuthorizer {
     return this.instance.delaysPerActionId(action);
   }
 
-  async scheduledActions(
+  async scheduledExecutions(
     id: BigNumberish
   ): Promise<{
     executed: boolean;
@@ -65,7 +65,7 @@ export default class TimelockAuthorizer {
     data: string;
     where: string;
   }> {
-    return this.instance.scheduledActions(id);
+    return this.instance.scheduledExecutions(id);
   }
 
   async canPerform(actions: NAry<string>, account: Account, wheres: NAry<Account>): Promise<boolean> {
@@ -77,14 +77,14 @@ export default class TimelockAuthorizer {
 
   async scheduleDelayChange(action: string, delay: number, executors: Account[], params?: TxParams): Promise<number> {
     const receipt = await this.with(params).scheduleDelayChange(action, delay, this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
-    return event.args.scheduledActionId;
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    return event.args.scheduledExecutionId;
   }
 
   async schedule(where: Account, data: string, executors: Account[], params?: TxParams): Promise<number> {
     const receipt = await this.with(params).schedule(this.toAddress(where), data, this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
-    return event.args.scheduledActionId;
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    return event.args.scheduledExecutionId;
   }
 
   async scheduleGrantPermission(
@@ -101,8 +101,8 @@ export default class TimelockAuthorizer {
       this.toAddresses(executors)
     );
 
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
-    return event.args.scheduledActionId;
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    return event.args.scheduledExecutionId;
   }
 
   async scheduleRevokePermission(
@@ -119,8 +119,8 @@ export default class TimelockAuthorizer {
       this.toAddresses(executors)
     );
 
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
-    return event.args.scheduledActionId;
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    return event.args.scheduledExecutionId;
   }
 
   async execute(id: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
