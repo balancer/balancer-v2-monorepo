@@ -23,7 +23,11 @@ import "../interfaces/ILiquidityGauge.sol";
 import "../interfaces/ILiquidityGaugeFactory.sol";
 
 interface IRewardsOnlyGauge {
-    function initialize(address pool) external;
+    function initialize(
+        address pool,
+        address streamer,
+        bytes32 claimSignature
+    ) external;
 }
 
 interface IChildChainStreamer {
@@ -31,6 +35,10 @@ interface IChildChainStreamer {
 }
 
 contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory, Authentication {
+    // RewardsOnlyGauge expects the claim function selector to be left padded with zeros.
+    // We then shift right 28 bytes so that the function selector (top 4 bytes) sits in the lowest 4 bytes.
+    bytes32 private constant _CLAIM_SIG = keccak256("get_reward()") >> (28 * 8);
+
     IVault private immutable _vault;
     ILiquidityGauge private immutable _gaugeImplementation;
     address private immutable _childChainStreamerImplementation;
@@ -126,11 +134,12 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory, Authenticati
         address gaugeImplementation = address(getGaugeImplementation());
 
         address gauge = Clones.clone(gaugeImplementation);
-        IRewardsOnlyGauge(gauge).initialize(pool);
 
         // A ChildChainStreamer contract is necessary if we want to receive BAL rewards from mainnet
         address streamer = Clones.clone(_childChainStreamerImplementation);
         IChildChainStreamer(streamer).initialize(gauge);
+
+        IRewardsOnlyGauge(gauge).initialize(pool, streamer, _CLAIM_SIG);
 
         _isGaugeFromFactory[gauge] = true;
         _poolGauge[pool] = gauge;

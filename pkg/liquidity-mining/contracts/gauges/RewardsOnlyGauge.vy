@@ -45,6 +45,7 @@ VERSION: constant(String[8]) = "v5.0.0"
 EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
 PERMIT_TYPEHASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 
+BAL_TOKEN: immutable(address)
 BAL_VAULT: immutable(address)
 AUTHORIZER_ADAPTOR: immutable(address)
 
@@ -81,12 +82,13 @@ claim_data: HashMap[address, HashMap[address, uint256]]
 
 
 @external
-def __init__(_vault: address, _authorizerAdaptor: address):
+def __init__(_bal_token: address, _vault: address, _authorizerAdaptor: address):
     """
     @notice Contract constructor
     @param _vault Balancer Vault contract address
     """
 
+    BAL_TOKEN = _bal_token
     BAL_VAULT = _vault
     AUTHORIZER_ADAPTOR = _authorizerAdaptor
 
@@ -486,10 +488,8 @@ def decreaseAllowance(_spender: address, _subtracted_value: uint256) -> bool:
 
     return True
 
-
-@external
-@nonreentrant('lock')
-def set_rewards(_reward_contract: address, _claim_sig: bytes32, _reward_tokens: address[MAX_REWARDS]):
+@internal
+def _set_rewards(_reward_contract: address, _claim_sig: bytes32, _reward_tokens: address[MAX_REWARDS]):
     """
     @notice Set the active reward contract
     @dev A reward contract cannot be set while this contract has no deposits
@@ -505,8 +505,6 @@ def set_rewards(_reward_contract: address, _claim_sig: bytes32, _reward_tokens: 
                           this array must begin with the already-set reward
                           token addresses.
     """
-    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
-
     lp_token: address = self.lp_token
     current_reward_contract: address = convert(self.reward_data % 2**160, address)
     total_supply: uint256 = self.totalSupply
@@ -532,10 +530,31 @@ def set_rewards(_reward_contract: address, _claim_sig: bytes32, _reward_tokens: 
         # do an initial checkpoint to verify that claims are working
         self._checkpoint_rewards(ZERO_ADDRESS, total_supply, False, ZERO_ADDRESS)
 
+@external
+@nonreentrant('lock')
+def set_rewards(_reward_contract: address, _claim_sig: bytes32, _reward_tokens: address[MAX_REWARDS]):
+    """
+    @notice Set the active reward contract
+    @dev A reward contract cannot be set while this contract has no deposits
+    @param _reward_contract Reward contract address. Set to ZERO_ADDRESS to
+                            disable staking.
+    @param _claim_sig Four byte selectors for staking, withdrawing and claiming,
+                 left padded with zero bytes. If the reward contract can
+                 be claimed from but does not require staking, the staking
+                 and withdraw selectors should be set to 0x00
+    @param _reward_tokens List of claimable reward tokens. New reward tokens
+                          may be added but they cannot be removed. When calling
+                          this function to unset or modify a reward contract,
+                          this array must begin with the already-set reward
+                          token addresses.
+    """
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
+    self._set_rewards(_reward_contract, _claim_sig, _reward_tokens)
+
 # Initializer
 
 @external
-def initialize(_lp_token: address):
+def initialize(_lp_token: address, _reward_contract: address, _claim_sig: bytes32):
     """
     @notice Contract constructor
     @param _lp_token Liquidity Pool contract address
@@ -553,3 +572,8 @@ def initialize(_lp_token: address):
     self.DOMAIN_SEPARATOR = keccak256(
         _abi_encode(EIP712_TYPEHASH, keccak256(name), keccak256(VERSION), chain.id, self)
     )
+
+    # Initialise connection to ChildChainStreamer contract
+    reward_tokens: address[MAX_REWARDS] = empty(address[MAX_REWARDS])
+    reward_tokens[0] = BAL_TOKEN
+    self._set_rewards(_reward_contract, _claim_sig, reward_tokens)
