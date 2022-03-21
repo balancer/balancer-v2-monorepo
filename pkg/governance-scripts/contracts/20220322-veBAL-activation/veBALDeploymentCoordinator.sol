@@ -42,6 +42,10 @@ interface IEthereumLiquidityGaugeFactory is ILiquidityGaugeFactory {
     function deploy(address pool) external returns (ILiquidityGauge);
 }
 
+interface ISingleRecipientLiquidityGaugeFactory is ILiquidityGaugeFactory {
+    function deploy(address recipient) external returns (ILiquidityGauge);
+}
+
 // https://vote.balancer.fi/#/proposal/0x9fe19c491cf90ed2e3ed9c15761c43d39fd1fb732a940aba8058ff69787ee90a
 // solhint-disable-next-line contract-name-camelcase
 contract veBALDeploymentCoordinator is ReentrancyGuard {
@@ -54,8 +58,10 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     IGaugeController private immutable _gaugeController;
     IGaugeAdder private immutable _gaugeAdder;
     IEthereumLiquidityGaugeFactory private immutable _ethereumGaugeFactory;
+    ISingleRecipientLiquidityGaugeFactory private immutable _singleRecipientGaugeFactory;
 
     address[] private _initialPools;
+    address[4] private _recipients;
 
     enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE }
 
@@ -77,7 +83,9 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         IAuthorizerAdaptor authorizerAdaptor,
         IGaugeAdder gaugeAdder,
         IEthereumLiquidityGaugeFactory ethereumGaugeFactory,
+        ISingleRecipientLiquidityGaugeFactory singleRecipientGaugeFactory,
         address[] memory initialPools,
+        address[4] memory recipients,
         uint256 activationScheduledTime,
         uint256 secondStageDelay
     ) {
@@ -87,6 +95,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         for (uint256 i = 1; i < poolsLength; i++) {
             _require(initialPools[i - 1] < initialPools[i], Errors.UNSORTED_ARRAY);
         }
+        // We do not apply a similar protection for `recipients` as they must be sorted
+        // to match the desired gauge types (LMCommittee, veBAL, Polygon, Arbitrum)
 
         _currentDeploymentStage = DeploymentStage.PENDING;
 
@@ -100,8 +110,10 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         _gaugeController = IGaugeController(balancerMinter.getGaugeController());
         _gaugeAdder = gaugeAdder;
         _ethereumGaugeFactory = ethereumGaugeFactory;
+        _singleRecipientGaugeFactory = singleRecipientGaugeFactory;
 
         _initialPools = initialPools;
+        _recipients = recipients;
 
         _activationScheduledTime = activationScheduledTime;
         _secondStageDelay = secondStageDelay;
@@ -244,6 +256,23 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         // Step 6: create gauges for the single-gauge gauge types
         //
         // The LM committee and veBAL gauge types will have a single gauge of the single-recipient gauge kind
+        {
+            authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
+
+            ILiquidityGauge LMCommitteeGauge = _singleRecipientGaugeFactory.deploy(_recipients[0]);
+            _addGauge(LMCommitteeGauge, IGaugeAdder.GaugeType.LiquidityMiningCommittee);
+
+            ILiquidityGauge tempVeBALGauge = _singleRecipientGaugeFactory.deploy(_recipients[1]);
+            _addGauge(tempVeBALGauge, IGaugeAdder.GaugeType.veBAL);
+
+            ILiquidityGauge tempPolygonGauge = _singleRecipientGaugeFactory.deploy(_recipients[2]);
+            _addGauge(tempPolygonGauge, IGaugeAdder.GaugeType.Polygon);
+
+            ILiquidityGauge tempArbitrumGauge = _singleRecipientGaugeFactory.deploy(_recipients[3]);
+            _addGauge(tempArbitrumGauge, IGaugeAdder.GaugeType.Arbitrum);
+
+            authorizer.revokeRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
+        }
 
         // grant batch relayer permissions
 
@@ -285,6 +314,13 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
 
         secondStageActivationTime = block.timestamp;
         _currentDeploymentStage = DeploymentStage.SECOND_STAGE_DONE;
+    }
+
+    function _addGauge(ILiquidityGauge gauge, IGaugeAdder.GaugeType gaugeType) private {
+        getAuthorizerAdaptor().performAction(
+            address(_gaugeController),
+            abi.encodeWithSelector(IGaugeController.add_gauge.selector, gauge, gaugeType)
+        );
     }
 
     function _addGaugeType(string memory name) private {
