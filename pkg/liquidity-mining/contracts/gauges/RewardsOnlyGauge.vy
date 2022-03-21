@@ -10,6 +10,17 @@ from vyper.interfaces import ERC20
 
 implements: ERC20
 
+struct RewardToken:
+    distributor: address
+    period_finish: uint256
+    rate: uint256
+    duration: uint256
+    received: uint256
+    paid: uint256
+
+interface Streamer:
+    def reward_data(_token: address) -> RewardToken: view
+    def last_update_time() -> uint256: view
 
 interface ERC20Extended:
     def symbol() -> String[26]: view
@@ -34,6 +45,14 @@ event Approval:
     _owner: indexed(address)
     _spender: indexed(address)
     _value: uint256
+
+struct Reward:
+    token: address
+    distributor: address
+    period_finish: uint256
+    rate: uint256
+    last_update: uint256
+    integral: uint256
 
 MAX_REWARDS: constant(uint256) = 8
 CLAIM_FREQUENCY: constant(uint256) = 3600
@@ -63,7 +82,7 @@ DOMAIN_SEPARATOR: public(bytes32)
 nonces: public(HashMap[address, uint256])
 
 # For tracking external rewards
-reward_data: uint256
+_reward_data: uint256
 reward_tokens: public(address[MAX_REWARDS])
 reward_balances: public(HashMap[address, uint256])
 # claimant -> default reward receiver
@@ -124,11 +143,11 @@ def _checkpoint_rewards(_user: address, _total_supply: uint256, _claim: bool, _r
     """
     # claim from reward contract
 
-    reward_data: uint256 = self.reward_data
+    reward_data: uint256 = self._reward_data
     if _total_supply != 0 and reward_data != 0 and block.timestamp > shift(reward_data, -160) + CLAIM_FREQUENCY:
         reward_contract: address = convert(reward_data % 2**160, address)
         raw_call(reward_contract, self.claim_sig)  # dev: bad claim sig
-        self.reward_data = convert(reward_contract, uint256) + shift(block.timestamp, 160)
+        self._reward_data = convert(reward_contract, uint256) + shift(block.timestamp, 160)
 
     receiver: address = _receiver
     if _claim and receiver == ZERO_ADDRESS:
@@ -195,7 +214,7 @@ def reward_contract() -> address:
     @notice Address of the reward contract providing non-CRV incentives for this gauge
     @dev Returns `ZERO_ADDRESS` if there is no reward contract active
     """
-    return convert(self.reward_data % 2**160, address)
+    return convert(self._reward_data % 2**160, address)
 
 
 @view
@@ -205,7 +224,7 @@ def last_claim() -> uint256:
     @notice Epoch timestamp of the last call to claim from `reward_contract`
     @dev Rewards are claimed at most once per hour in order to reduce gas costs
     """
-    return shift(self.reward_data, -160)
+    return shift(self._reward_data, -160)
 
 
 @view
@@ -233,6 +252,21 @@ def claimable_reward(_addr: address, _token: address) -> uint256:
     @return uint256 Claimable reward token amount
     """
     return shift(self.claim_data[_addr][_token], -128)
+
+@view
+@external
+def reward_data(_token: address) -> Reward:
+    reward_contract: address = convert(self._reward_data % 2**160, address)
+    reward_token: RewardToken = Streamer(reward_contract).reward_data(_token)
+    last_update_time: uint256 = Streamer(reward_contract).last_update_time()
+    return Reward({
+        token: _token,
+        distributor: reward_token.distributor,
+        period_finish: reward_token.period_finish,
+        rate: reward_token.rate,
+        last_update: last_update_time,
+        integral: self.reward_integral[_token]
+    })
 
 
 @external
@@ -286,7 +320,7 @@ def deposit(_value: uint256, _addr: address = msg.sender, _claim_rewards: bool =
     @param _addr Address to deposit for
     """
     if _value != 0:
-        reward_contract: address = convert(self.reward_data % 2**160, address)
+        reward_contract: address = convert(self._reward_data % 2**160, address)
         total_supply: uint256 = self.totalSupply
 
         self._checkpoint_rewards(_addr, total_supply, _claim_rewards, ZERO_ADDRESS)
@@ -311,7 +345,7 @@ def withdraw(_value: uint256, _claim_rewards: bool = False):
     @param _value Number of tokens to withdraw
     """
     if _value != 0:
-        reward_contract: address = convert(self.reward_data % 2**160, address)
+        reward_contract: address = convert(self._reward_data % 2**160, address)
         total_supply: uint256 = self.totalSupply
 
         self._checkpoint_rewards(msg.sender, total_supply, _claim_rewards, ZERO_ADDRESS)
@@ -329,7 +363,7 @@ def withdraw(_value: uint256, _claim_rewards: bool = False):
 
 @internal
 def _transfer(_from: address, _to: address, _value: uint256):
-    reward_contract: address = convert(self.reward_data % 2**160, address)
+    reward_contract: address = convert(self._reward_data % 2**160, address)
 
     if _value != 0:
         total_supply: uint256 = self.totalSupply
@@ -506,7 +540,7 @@ def _set_rewards(_reward_contract: address, _claim_sig: bytes32, _reward_tokens:
                           token addresses.
     """
     lp_token: address = self.lp_token
-    current_reward_contract: address = convert(self.reward_data % 2**160, address)
+    current_reward_contract: address = convert(self._reward_data % 2**160, address)
     total_supply: uint256 = self.totalSupply
     self._checkpoint_rewards(ZERO_ADDRESS, total_supply, False, ZERO_ADDRESS)
 
@@ -514,7 +548,7 @@ def _set_rewards(_reward_contract: address, _claim_sig: bytes32, _reward_tokens:
         assert _reward_tokens[0] != ZERO_ADDRESS  # dev: no reward token
         assert _reward_contract.is_contract  # dev: not a contract
 
-    self.reward_data = convert(_reward_contract, uint256)
+    self._reward_data = convert(_reward_contract, uint256)
     self.claim_sig = slice(_claim_sig, 28, 4)
     for i in range(MAX_REWARDS):
         current_token: address = self.reward_tokens[i]
