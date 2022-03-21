@@ -81,6 +81,13 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         uint256 activationScheduledTime,
         uint256 secondStageDelay
     ) {
+        // Only a single gauge may exist for a given pool so repeated pool addresses
+        // will cause the activation to fail
+        uint256 poolsLength = initialPools.length;
+        for (uint256 i = 1; i < poolsLength; i++) {
+            _require(initialPools[i - 1] < initialPools[i], Errors.UNSORTED_ARRAY);
+        }
+
         _currentDeploymentStage = DeploymentStage.PENDING;
 
         IBalancerTokenAdmin balancerTokenAdmin = balancerMinter.getBalancerTokenAdmin();
