@@ -47,6 +47,12 @@ contract FeeDistributor is ReentrancyGuard {
         _timeCursor = startTime;
     }
 
+
+    // Internal functions
+
+    /**
+     * @dev Calculate the amount of `token` to be distributed to `_votingEscrow` holders since the last checkpoint.
+     */
     function _checkpointToken(IERC20 token) internal {
         uint256 tokenBalance = token.balanceOf(address(this));
         uint256 tokensToDistribute = tokenBalance - _tokenLastBalance[token];
@@ -89,6 +95,9 @@ contract FeeDistributor is ReentrancyGuard {
         }
     }
 
+    /**
+     * @dev Cache the `user`'s balance of `_votingEscrow` at the beginning of each new week
+     */
     function _checkpointUserBalance(address user) internal {
         // Minimal user_epoch is 0 (if user had no point)
         uint256 userEpoch = 0;
