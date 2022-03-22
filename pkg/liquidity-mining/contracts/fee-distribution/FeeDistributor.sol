@@ -15,11 +15,15 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "../interfaces/IVotingEscrow.sol";
 
 contract FeeDistributor is ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
     IVotingEscrow private immutable _votingEscrow;
 
     uint256 private immutable _startTime;
@@ -37,6 +41,7 @@ contract FeeDistributor is ReentrancyGuard {
     mapping(address => uint256) private _userTimeCursor;
     mapping(address => uint256) private _userLastEpochCheckpointed;
     mapping(address => mapping(uint256 => uint256)) private _userBalanceAtTimestamp;
+    mapping(address => mapping(IERC20 => uint256)) private _userTokenTimeCursor;
 
     constructor(IVotingEscrow votingEscrow, uint256 startTime) {
         _votingEscrow = votingEscrow;
@@ -46,7 +51,41 @@ contract FeeDistributor is ReentrancyGuard {
         _timeCursor = startTime;
     }
 
+    function claimToken(address user, IERC20 token) external returns (uint256) {
+        _checkpointTotalSupply();
+        _checkpointToken(token);
+        _checkpointUserBalance(user);
+
+        uint256 amount = _claimToken(user, token);
+        return amount;
+    }
+
     // Internal functions
+
+    function _claimToken(address user, IERC20 token) internal returns (uint256) {
+        uint256 userTimeCursor = _userTokenTimeCursor[user][token];
+        uint256 globalTimeCursor = _tokenTimeCursor[token];
+        mapping(uint256 => uint256) storage tokensPerWeek = _tokensPerWeek[token];
+        mapping(uint256 => uint256) storage userBalanceAtTimestamp = _userBalanceAtTimestamp[user];
+
+        uint256 amount;
+        for (uint256 i = 0; i < 20; ++i) {
+            if (userTimeCursor >= globalTimeCursor) break;
+
+            amount +=
+                (tokensPerWeek[userTimeCursor] * userBalanceAtTimestamp[userTimeCursor]) /
+                _veSupplyCache[userTimeCursor];
+            userTimeCursor += 1 weeks;
+        }
+        _userTokenTimeCursor[user][token] = userTimeCursor;
+
+        if (amount > 0) {
+            _tokenLastBalance[token] -= amount;
+            token.safeTransfer(user, amount);
+        }
+
+        return amount;
+    }
 
     /**
      * @dev Calculate the amount of `token` to be distributed to `_votingEscrow` holders since the last checkpoint.
@@ -180,6 +219,7 @@ contract FeeDistributor is ReentrancyGuard {
     function _checkpointTotalSupply() internal {
         uint256 timeCursor = _timeCursor;
         uint256 weekStart = _roundDownTimestamp(block.timestamp);
+
         _votingEscrow.checkpoint();
 
         // Step through the each week and cache the total supply at beginning of week on this contract
