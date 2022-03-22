@@ -161,6 +161,10 @@ contract FeeDistributor is ReentrancyGuard {
             // First checkpoint for user so need to do the initial binary search
             userEpoch = _findTimestampUserEpoch(user, _startTime, maxUserEpoch);
         } else {
+            if (weekCursor == _roundDownTimestamp(block.timestamp)){
+                // User has checkpointed this week already so perform early return
+                return;
+            }
             // Otherwise use the value saved from last time
             userEpoch = _userLastEpochCheckpointed[user];
         }
@@ -226,6 +230,9 @@ contract FeeDistributor is ReentrancyGuard {
     function _checkpointTotalSupply() internal {
         uint256 timeCursor = _timeCursor;
         uint256 weekStart = _roundDownTimestamp(block.timestamp);
+        
+        // We've already checkpointed up to this week so perform early return
+        if (timeCursor >= weekStart) return;
 
         _votingEscrow.checkpoint();
 
