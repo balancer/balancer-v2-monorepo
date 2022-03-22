@@ -252,8 +252,11 @@ contract FeeDistributor is ReentrancyGuard {
         uint256 timeCursor = _timeCursor;
         uint256 weekStart = _roundDownTimestamp(block.timestamp);
         
-        // We've already checkpointed up to this week so perform early return
-        if (timeCursor >= weekStart) return;
+        // We expect `timeCursor == weekStart + 1 weeks` when fully up to date.
+        if (timeCursor >= weekStart) {
+            // We've already checkpointed up to this week so perform early return
+            return;
+        }
 
         _votingEscrow.checkpoint();
 
@@ -278,6 +281,7 @@ contract FeeDistributor is ReentrancyGuard {
 
             timeCursor += 1 weeks;
         }
+        // Update state to the end of the current week (`weekStart` + 1 weeks)
         _timeCursor = timeCursor;
     }
 
