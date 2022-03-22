@@ -49,16 +49,21 @@ contract FeeDistributor is ReentrancyGuard {
     constructor(IVotingEscrow votingEscrow, uint256 startTime) {
         _votingEscrow = votingEscrow;
 
+        require(startTime >= _roundUpTimestamp(block.timestamp), "Must start after current week");
         startTime = _roundDownTimestamp(startTime);
         _startTime = startTime;
         _timeCursor = startTime;
     }
 
     function checkpointToken(IERC20 token) external {
+        // Prevent someone from assigning tokens to an inaccessible week.
+        require(block.timestamp > _startTime, "Fee distribution has not started yet");
         _checkpointToken(token, true);
     }
 
     function claimToken(address user, IERC20 token) external returns (uint256) {
+        // Prevent someone from assigning tokens to an inaccessible week.
+        require(block.timestamp > _startTime, "Fee distribution has not started yet");
         _checkpointTotalSupply();
         _checkpointToken(token, false);
         _checkpointUserBalance(user);
