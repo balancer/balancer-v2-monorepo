@@ -33,7 +33,6 @@ contract FeeDistributor is ReentrancyGuard {
     mapping(IERC20 => uint256) private _tokenLastBalance;
     mapping(IERC20 => mapping(uint256 => uint256)) private _tokensPerWeek;
 
-
     // User State
     mapping(address => uint256) private _userTimeCursor;
     mapping(address => uint256) private _userLastEpochCheckpointed;
@@ -46,7 +45,6 @@ contract FeeDistributor is ReentrancyGuard {
         _startTime = startTime;
         _timeCursor = startTime;
     }
-
 
     // Internal functions
 
@@ -68,24 +66,28 @@ contract FeeDistributor is ReentrancyGuard {
         // Distribute `tokensToDistribute` evenly across the time period from `lastTokenTime` to now.
         // These tokens are assigned to weeks proportionally to how much of this period falls into each week.
         mapping(uint256 => uint256) storage tokensPerWeek = _tokensPerWeek[token];
-        for (uint256 i = 0; i < 20; ++i){
+        for (uint256 i = 0; i < 20; ++i) {
             nextWeek = thisWeek + 1 weeks;
-            if (block.timestamp < nextWeek){
+            if (block.timestamp < nextWeek) {
                 // `thisWeek` is now the beginning of the current week, i.e. this is the final iteration.
-                if (timeSinceLastCheckpoint == 0 && block.timestamp == lastTokenTime){
+                if (timeSinceLastCheckpoint == 0 && block.timestamp == lastTokenTime) {
                     tokensPerWeek[thisWeek] += tokensToDistribute;
                 } else {
-                    tokensPerWeek[thisWeek] += tokensToDistribute * (block.timestamp - lastTokenTime) / timeSinceLastCheckpoint;
+                    tokensPerWeek[thisWeek] +=
+                        (tokensToDistribute * (block.timestamp - lastTokenTime)) /
+                        timeSinceLastCheckpoint;
                 }
                 // As we've caught up to the present then we should now break
                 break;
             } else {
                 // We've gone a full week or more without checkpointing so need to distribute tokens to previous weeks
-                if (timeSinceLastCheckpoint == 0 && nextWeek == lastTokenTime){
+                if (timeSinceLastCheckpoint == 0 && nextWeek == lastTokenTime) {
                     // It shouldn't be possible to enter this block
                     tokensPerWeek[thisWeek] += tokensToDistribute;
                 } else {
-                    tokensPerWeek[thisWeek] += tokensToDistribute * (nextWeek - lastTokenTime) / timeSinceLastCheckpoint;
+                    tokensPerWeek[thisWeek] +=
+                        (tokensToDistribute * (nextWeek - lastTokenTime)) /
+                        timeSinceLastCheckpoint;
                 }
             }
 
@@ -135,26 +137,26 @@ contract FeeDistributor is ReentrancyGuard {
         }
 
         IVotingEscrow.Point memory oldUserPoint;
-        for (uint256 i = 0; i < 50; ++i){
-
-            if (weekCursor >= userPoint.ts && userEpoch <= maxUserEpoch){
+        for (uint256 i = 0; i < 50; ++i) {
+            if (weekCursor >= userPoint.ts && userEpoch <= maxUserEpoch) {
                 // The week being considered lies inside the user epoch described by `userPoint`.
                 // We then shift it into `oldUserPoint` and query the Point for the next user epoch.
                 // We do this because we need to know the end timestamp for the epoch.
                 userEpoch += 1;
                 oldUserPoint = userPoint;
-                if (userEpoch > maxUserEpoch){
-                    userPoint = IVotingEscrow.Point(0,0,0,0);
+                if (userEpoch > maxUserEpoch) {
+                    userPoint = IVotingEscrow.Point(0, 0, 0, 0);
                 } else {
                     userPoint = _votingEscrow.user_point_history(user, userEpoch);
                 }
-
             } else {
                 // The week being considered lies inside the user epoch described by `oldUserPoint`
                 // we can then use it to calculate the user's balance at the beginning of the week.
-                
+
                 int128 dt = int128(weekCursor - oldUserPoint.ts);
-                uint256 userBalance = oldUserPoint.bias > oldUserPoint.slope * dt ? uint256(oldUserPoint.bias - oldUserPoint.slope * dt) : 0;
+                uint256 userBalance = oldUserPoint.bias > oldUserPoint.slope * dt
+                    ? uint256(oldUserPoint.bias - oldUserPoint.slope * dt)
+                    : 0;
 
                 // User's lock has expired and they haven't relocked yet.
                 if (userBalance == 0 && userEpoch > maxUserEpoch) break;
@@ -181,19 +183,19 @@ contract FeeDistributor is ReentrancyGuard {
         _votingEscrow.checkpoint();
 
         // Step through the each week and cache the total supply at beginning of week on this contract
-        for (uint256 i = 0; i < 20; ++i){
+        for (uint256 i = 0; i < 20; ++i) {
             if (timeCursor > weekStart) break;
 
             uint256 epoch = _findTimestampEpoch(timeCursor);
             IVotingEscrow.Point memory pt = _votingEscrow.point_history(epoch);
-            
+
             int128 dt = 0;
             if (timeCursor > pt.ts) {
                 // If the point is at 0 epoch, it can actually be earlier than the first deposit
                 // Then make dt 0
                 dt = int128(timeCursor - pt.ts);
             }
-            
+
             // Set supply as max(pt.bias - pt.slope * dt, 0)
             if (pt.bias > pt.slope * dt) {
                 _veSupplyCache[timeCursor] = uint256(pt.bias - pt.slope * dt);
@@ -212,11 +214,11 @@ contract FeeDistributor is ReentrancyGuard {
     function _findTimestampEpoch(uint256 timestamp) internal view returns (uint256) {
         uint256 min = 0;
         uint256 max = _votingEscrow.epoch();
-        
+
         // Perform binary search through epochs to find epoch containing `timestamp`
-        for(uint256 i = 0; i < 128; ++i){
+        for (uint256 i = 0; i < 128; ++i) {
             if (min >= max) break;
-            
+
             // +2 avoids getting stuck in min == mid < max
             uint256 mid = (min + max + 2) / 2;
             IVotingEscrow.Point memory pt = _votingEscrow.point_history(mid);
@@ -232,14 +234,18 @@ contract FeeDistributor is ReentrancyGuard {
     /**
      * @dev Return the user epoch number for `user` corresponding to the provided `timestamp`
      */
-    function _findTimestampUserEpoch(address user, uint256 timestamp, uint256 maxUserEpoch) internal view returns (uint256) {
+    function _findTimestampUserEpoch(
+        address user,
+        uint256 timestamp,
+        uint256 maxUserEpoch
+    ) internal view returns (uint256) {
         uint256 min = 0;
         uint256 max = maxUserEpoch;
-        
+
         // Perform binary search through epochs to find epoch containing `timestamp`
-        for(uint256 i = 0; i < 128; ++i){
+        for (uint256 i = 0; i < 128; ++i) {
             if (min >= max) break;
-            
+
             // +2 avoids getting stuck in min == mid < max
             uint256 mid = (min + max + 2) / 2;
             IVotingEscrow.Point memory pt = _votingEscrow.user_point_history(user, mid);
@@ -255,14 +261,14 @@ contract FeeDistributor is ReentrancyGuard {
     /**
      * @dev Rounds the provided timestamp down to the beginning of the previous week (Thurs 00:00 UTC)
      */
-    function _roundDownTimestamp(uint256 timestamp) pure private returns (uint256) {
+    function _roundDownTimestamp(uint256 timestamp) private pure returns (uint256) {
         return (timestamp / 1 weeks) * 1 weeks;
     }
 
     /**
      * @dev Rounds the provided timestamp up to the beginning of the next week (Thurs 00:00 UTC)
      */
-    function _roundUpTimestamp(uint256 timestamp) pure private returns (uint256) {
+    function _roundUpTimestamp(uint256 timestamp) private pure returns (uint256) {
         return _roundDownTimestamp(timestamp + 1 weeks - 1);
     }
 }
