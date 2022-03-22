@@ -25,5 +25,7 @@ interface ILiquidityGauge {
 
     function is_killed() external view returns (bool);
 
-    function set_killed(bool isKilled) external;
+    function killGauge() external;
+
+    function unkillGauge() external;
 }
