@@ -54,6 +54,10 @@ contract FeeDistributor is ReentrancyGuard {
         _timeCursor = startTime;
     }
 
+    function checkpointToken(IERC20 token) external {
+        _checkpointToken(token, true);
+    }
+
     function claimToken(address user, IERC20 token) external returns (uint256) {
         _checkpointTotalSupply();
         _checkpointToken(token, false);
