@@ -170,6 +170,9 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // Validate and set initial fee
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
 
+        // Initialize the denorm weight sum to the initial normalized weight sum of ONE
+        _denormWeightSum = FixedPoint.ONE;
+
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(
             currentTime,
@@ -178,10 +181,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             params.normalizedWeights,
             params.tokens
         );
-
-        // Initialize the denorm weight sum to the initial normalized weight sum of ONE
-        // `_startGradualWeightChange` will revert if the sum is not exactly ONE
-        _denormWeightSum = FixedPoint.ONE;
 
         // Initialize the accrued management fees map with the Pool's tokens and zero collected fees.
         for (uint256 i = 0; i < totalTokens; ++i) {
