@@ -158,8 +158,19 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
         return _isKilled;
     }
 
-    function set_killed(bool isKilled) external override {
+    /**
+     * @notice Kills the gauge so it cannot mint BAL
+     */
+    function killGauge() external override {
         require(msg.sender == address(_authorizerAdaptor), "SENDER_NOT_ALLOWED");
-        _isKilled = isKilled;
+        _isKilled = true;
+    }
+
+    /**
+     * @notice Unkills the gauge so it can mint BAL again
+     */
+    function unkillGauge() external override {
+        require(msg.sender == address(_authorizerAdaptor), "SENDER_NOT_ALLOWED");
+        _isKilled = false;
     }
 }
