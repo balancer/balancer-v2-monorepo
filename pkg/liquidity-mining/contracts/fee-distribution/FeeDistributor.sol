@@ -69,6 +69,10 @@ contract FeeDistributor is ReentrancyGuard {
 
     // Internal functions
 
+    /**
+     * @dev It is required that both the global, token and user state have been properly checkpointed
+     * before calling this function.
+     */
     function _claimToken(address user, IERC20 token) internal returns (uint256) {
         uint256 userTimeCursor = _getUserTokenTimeCursor(user, token);
         uint256 globalTimeCursor = _tokenTimeCursor[token];
