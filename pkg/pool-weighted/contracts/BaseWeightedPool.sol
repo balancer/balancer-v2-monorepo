@@ -236,7 +236,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         _beforeJoin(balances, normalizedWeights, protocolSwapFeePercentage);
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
             balances,
-            _getNormalizedWeights(),
+            normalizedWeights,
             scalingFactors,
             userData
         );
@@ -352,7 +352,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         _beforeExit(balances, normalizedWeights, protocolSwapFeePercentage);
         (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
             balances,
-            _getNormalizedWeights(),
+            normalizedWeights,
             scalingFactors,
             userData
         );

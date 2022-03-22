@@ -690,14 +690,9 @@ export default class WeightedPool {
     return this.instance.isAllowedAddress(member);
   }
 
-  async withdrawCollectedManagementFees(
-    from: SignerWithAddress,
-    recipient?: SignerWithAddress
-  ): Promise<ContractTransaction> {
-    if (recipient === undefined) recipient = from;
-
+  async collectAumManagementFees(from: SignerWithAddress): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    return pool.withdrawCollectedManagementFees(recipient.address);
+    return pool.collectAumManagementFees();
   }
 
   async updateWeightsGradually(
@@ -713,10 +708,5 @@ export default class WeightedPool {
   async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualUpdateParams> {
     const pool = from ? this.instance.connect(from) : this.instance;
     return await pool.getGradualWeightUpdateParams();
-  }
-
-  async getCollectedManagementFees(): Promise<TokenCollectedFees> {
-    const result = await this.instance.getCollectedManagementFees();
-    return { amounts: result.collectedFees, tokenAddresses: result.tokens };
   }
 }

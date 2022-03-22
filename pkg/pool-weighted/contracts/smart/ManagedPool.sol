@@ -124,6 +124,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     event MustAllowlistLPsSet(bool mustAllowlistLPs);
     event ManagementSwapFeePercentageChanged(uint256 managementSwapFeePercentage);
     event ManagementAumFeePercentageChanged(uint256 managementAumFeePercentage);
+    event ManagementAumFeeCollected(uint256 bptAmount);
     event AllowlistAddressAdded(address indexed member);
     event AllowlistAddressRemoved(address indexed member);
 
@@ -565,12 +566,12 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     // Additionally, we also check that only non-swap join and exit kinds are allowed while swaps are disabled.
 
     function _onJoinPool(
-        bytes32,
+        bytes32 poolId,
         address sender,
-        address,
+        address recipient,
         uint256[] memory balances,
-        uint256,
-        uint256,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
     )
@@ -589,16 +590,26 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // Check allowlist for LPs, if applicable
         _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
-        return _doJoin(balances, _getNormalizedWeights(), scalingFactors, userData);
+        return
+            super._onJoinPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                scalingFactors,
+                userData
+            );
     }
 
     function _onExitPool(
-        bytes32,
-        address,
-        address,
+        bytes32 poolId,
+        address sender,
+        address recipient,
         uint256[] memory balances,
-        uint256,
-        uint256,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
@@ -612,7 +623,17 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
-        return _doExit(balances, _getNormalizedWeights(), scalingFactors, userData);
+        return
+            super._onExitPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                scalingFactors,
+                userData
+            );
     }
 
     /**
@@ -730,11 +751,18 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] memory,
         uint256
     ) internal virtual override {
+        collectAumManagementFees();
+    }
+
+    // This is called during `_onInitializePool`
+    function _afterJoin(
+        uint256[] memory,
+        uint256[] memory,
+        uint256[] memory
+    ) internal virtual override {
         if (_lastAumFeeCollectionTimestamp == 0) {
             // Start the clock on `initializePool`
             _lastAumFeeCollectionTimestamp = block.timestamp;
-        } else {
-            collectAumManagementFees();
         }
     }
 
@@ -770,15 +798,15 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             // x = S * F/(1 - F); per annual time period
             // Final value needs to be annualized: multiply by elapsedTime/(365 days)
             uint256 feePct = _managementAumFeePercentage.divDown(_managementAumFeePercentage.complement());
-            // Elapsed time is not FixedPoint. We know the denominator is non-zero, so can use simple division operator
-            uint256 timePeriodPct = elapsedTime / 365 days;
+            uint256 timePeriodPct = elapsedTime.mulUp(FixedPoint.ONE).divDown(365 days);
+            uint256 bptAmount = totalSupply().mulDown(feePct).mulDown(timePeriodPct);
 
-            uint256 aumBPT = totalSupply().mulDown(feePct).mulDown(timePeriodPct);
+            emit ManagementAumFeeCollected(bptAmount);
 
             // Reset the collection timer to the current block
             _lastAumFeeCollectionTimestamp = currentTime;
 
-            _mintPoolTokens(getOwner(), aumBPT);
+            _mintPoolTokens(getOwner(), bptAmount);
         }
     }
 }
