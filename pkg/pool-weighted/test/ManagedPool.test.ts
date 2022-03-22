@@ -64,6 +64,7 @@ describe('ManagedPool', function () {
               weights: WEIGHTS.slice(0, numTokens),
               swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
               managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+              managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
             });
           });
 
