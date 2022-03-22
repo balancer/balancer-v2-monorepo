@@ -41,52 +41,6 @@ contract FeeDistributor is ReentrancyGuard {
         _timeCursor = startTime;
     }
 
-    /**
-     * @dev Return the epoch number corresponding to the provided timestamp
-     */
-    function _findTimestampEpoch(uint256 timestamp) internal view returns (uint256) {
-        uint256 min = 0;
-        uint256 max = _votingEscrow.epoch();
-        
-        // Perform binary search through epochs to find epoch containing `timestamp`
-        for(uint256 i = 0; i < 128; ++i){
-            if (min >= max) break;
-            
-            // +2 avoids getting stuck in min == mid < max
-            uint256 mid = (min + max + 2) / 2;
-            IVotingEscrow.Point memory pt = _votingEscrow.point_history(mid);
-            if (pt.ts <= timestamp) {
-                min = mid;
-            } else {
-                max = mid - 1;
-            }
-        }
-        return min;
-    }
-
-    /**
-     * @dev Return the user epoch number for `user` corresponding to the provided `timestamp`
-     */
-    function _findTimestampUserEpoch(address user, uint256 timestamp, uint256 maxUserEpoch) internal view returns (uint256) {
-        uint256 min = 0;
-        uint256 max = maxUserEpoch;
-        
-        // Perform binary search through epochs to find epoch containing `timestamp`
-        for(uint256 i = 0; i < 128; ++i){
-            if (min >= max) break;
-            
-            // +2 avoids getting stuck in min == mid < max
-            uint256 mid = (min + max + 2) / 2;
-            IVotingEscrow.Point memory pt = _votingEscrow.user_point_history(user, mid);
-            if (pt.ts <= timestamp) {
-                min = mid;
-            } else {
-                max = mid - 1;
-            }
-        }
-        return min;
-    }
-
     function _checkpointUserBalance(address user) internal {
         // Minimal user_epoch is 0 (if user had no point)
         uint256 userEpoch = 0;
@@ -191,6 +145,54 @@ contract FeeDistributor is ReentrancyGuard {
             timeCursor += 1 weeks;
         }
         _timeCursor = timeCursor;
+    }
+
+    // Helper functions
+
+    /**
+     * @dev Return the epoch number corresponding to the provided timestamp
+     */
+    function _findTimestampEpoch(uint256 timestamp) internal view returns (uint256) {
+        uint256 min = 0;
+        uint256 max = _votingEscrow.epoch();
+        
+        // Perform binary search through epochs to find epoch containing `timestamp`
+        for(uint256 i = 0; i < 128; ++i){
+            if (min >= max) break;
+            
+            // +2 avoids getting stuck in min == mid < max
+            uint256 mid = (min + max + 2) / 2;
+            IVotingEscrow.Point memory pt = _votingEscrow.point_history(mid);
+            if (pt.ts <= timestamp) {
+                min = mid;
+            } else {
+                max = mid - 1;
+            }
+        }
+        return min;
+    }
+
+    /**
+     * @dev Return the user epoch number for `user` corresponding to the provided `timestamp`
+     */
+    function _findTimestampUserEpoch(address user, uint256 timestamp, uint256 maxUserEpoch) internal view returns (uint256) {
+        uint256 min = 0;
+        uint256 max = maxUserEpoch;
+        
+        // Perform binary search through epochs to find epoch containing `timestamp`
+        for(uint256 i = 0; i < 128; ++i){
+            if (min >= max) break;
+            
+            // +2 avoids getting stuck in min == mid < max
+            uint256 mid = (min + max + 2) / 2;
+            IVotingEscrow.Point memory pt = _votingEscrow.user_point_history(user, mid);
+            if (pt.ts <= timestamp) {
+                min = mid;
+            } else {
+                max = mid - 1;
+            }
+        }
+        return min;
     }
 
     /**
