@@ -221,7 +221,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
             authorizer.revokeRole(authorizerAdaptor.getActionId(IGaugeController.add_type.selector), address(this));
         }
 
-        // Step 5: setup the GaugeAdder contract to be in charge of adding gauges to the Gauge Controller.
+        // Step 4: setup the GaugeAdder contract to be in charge of adding gauges to the Gauge Controller.
         //
         // The GaugeAdder contract performs checks on addresses being added to the Gauge Controller to ensure
         // that they have been deployed by a factory contract which has been associated with the gauge type
@@ -229,7 +229,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
 
         authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(_gaugeAdder));
 
-        // Step 6: create gauges for a preselected list of pools on Ethereum.
+        // Step 5: create gauges for a preselected list of pools on Ethereum.
 
         // Allowlist the provided LiquidityGaugeFactory on the GaugeAdder
         // so its gauges may be added to the "Ethereum" gauge type.
@@ -258,9 +258,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         //
         // The LM committee gauge will be remain as a SingleRecipientGauge permanently,
         // however the gauges for veBAL, Polygon and Arbitrum types are temporary pending an automated solution.
-        // These three gauges will in time be retired and replaced with new gauge implementations
+        // These three gauges will in time be retired (killed) and replaced with new gauge implementations
         // which automate the distribution of BAL to BPT stakers on other networks and veBAL holders.
-        //
         {
             authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
 
