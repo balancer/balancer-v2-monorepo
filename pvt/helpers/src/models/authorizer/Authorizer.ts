@@ -1,3 +1,5 @@
+import { ethers } from 'hardhat';
+import { Interface } from 'ethers/lib/utils';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -5,9 +7,12 @@ import * as expectEvent from '../../test/expectEvent';
 import { ANY_ADDRESS } from '../../constants';
 import { BigNumberish } from '../../numbers';
 import { AuthorizerDeployment } from './types';
-import { Account, NAry, TxParams } from '../types/types';
 
+import { Account, NAry, TxParams } from '../types/types';
 import AuthorizerDeployer from './AuthorizerDeployer';
+import { getSigner } from '@balancer-labs/v2-deployments/dist/src/signers';
+
+const SET_DELAY_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['SET_DELAY_PERMISSION']);
 
 export default class Authorizer {
   static EVERYWHERE = ANY_ADDRESS;
@@ -26,6 +31,10 @@ export default class Authorizer {
 
   get address(): string {
     return this.instance.address;
+  }
+
+  get interface(): Interface {
+    return this.instance.interface;
   }
 
   async GRANT_PERMISSION(): Promise<string> {
@@ -72,6 +81,42 @@ export default class Authorizer {
 
   async schedule(where: Account, data: string, executors: Account[], params?: TxParams): Promise<number> {
     const receipt = await this.with(params).schedule(this.toAddress(where), data, this.toAddresses(executors));
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
+    return event.args.id;
+  }
+
+  async scheduleGrantPermission(
+    action: string,
+    account: Account,
+    where: Account,
+    executors: Account[],
+    params?: TxParams
+  ): Promise<number> {
+    const receipt = await this.with(params).scheduleGrantPermission(
+      action,
+      this.toAddress(account),
+      this.toAddress(where),
+      this.toAddresses(executors)
+    );
+
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
+    return event.args.id;
+  }
+
+  async scheduleRevokePermission(
+    action: string,
+    account: Account,
+    where: Account,
+    executors: Account[],
+    params?: TxParams
+  ): Promise<number> {
+    const receipt = await this.with(params).scheduleRevokePermission(
+      action,
+      this.toAddress(account),
+      this.toAddress(where),
+      this.toAddresses(executors)
+    );
+
     const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
     return event.args.id;
   }
@@ -128,9 +173,17 @@ export default class Authorizer {
     return this.with(params).revokePermissions(this.toList(actions), this.toAddress(account), wheres);
   }
 
-  async renouncePermissionsGlobally(actions: NAry<string>, params?: TxParams): Promise<ContractTransaction> {
+  async renouncePermissionsGlobally(actions: NAry<string>, params: TxParams): Promise<ContractTransaction> {
     const wheres = this.toList(actions).map(() => Authorizer.EVERYWHERE);
     return this.with(params).renouncePermissions(this.toList(actions), wheres);
+  }
+
+  async setDelay(action: string, delay: number, params?: TxParams): Promise<void> {
+    const from = params?.from ?? (await getSigner());
+    const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [SET_DELAY_PERMISSION, action]);
+    await this.grantPermissions(setDelayAction, this.toAddress(from), this, params);
+    const id = await this.scheduleDelayChange(action, delay, [], params);
+    await this.execute(id);
   }
 
   permissionsFor(actions: NAry<string>, w: NAry<Account>): string[][] {
