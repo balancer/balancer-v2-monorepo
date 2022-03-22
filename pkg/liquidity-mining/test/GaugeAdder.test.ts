@@ -37,7 +37,7 @@ describe('GaugeAdder', () => {
     authorizer = vault.authorizer;
 
     adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
-    gaugeController = await deploy('MockGaugeController', { args: [adaptor.address] });
+    gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
 
     gaugeFactory = await deploy('MockLiquidityGaugeFactory');
     gaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address] });
