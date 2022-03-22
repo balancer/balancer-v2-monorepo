@@ -112,7 +112,7 @@ contract FeeDistributor is ReentrancyGuard {
             // If it's the first time we're checkpointing this token then start distributing from now.
             // Also mark at which timestamp users should start attempt to claim this token from.
             lastTokenTime = block.timestamp;
-            _tokenStartTime[token] = block.timestamp;
+            _tokenStartTime[token] = _roundDownTimestamp(block.timestamp);
         }
         uint256 timeSinceLastCheckpoint = block.timestamp - lastTokenTime;
         
