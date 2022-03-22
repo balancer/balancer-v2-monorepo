@@ -129,10 +129,9 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
         // We then check here to see if the new gauge's pool already has a gauge on the Gauge Controller
         address pool = address(gauge.lp_token());
         require(_poolGauge[pool] == ILiquidityGauge(0), "Duplicate gauge");
+        _poolGauge[pool] = gauge;
 
         _addGauge(address(gauge), GaugeType.Ethereum);
-
-        _poolGauge[pool] = gauge;
     }
 
     /**
