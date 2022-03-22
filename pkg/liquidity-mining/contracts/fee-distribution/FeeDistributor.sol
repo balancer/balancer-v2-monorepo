@@ -35,6 +35,7 @@ contract FeeDistributor is ReentrancyGuard {
     mapping(uint256 => uint256) private _veSupplyCache;
 
     // Token State
+    mapping(IERC20 => uint256) private _tokenStartTime;
     mapping(IERC20 => uint256) private _tokenTimeCursor;
     mapping(IERC20 => uint256) private _tokenLastBalance;
     mapping(IERC20 => mapping(uint256 => uint256)) private _tokensPerWeek;
@@ -65,7 +66,7 @@ contract FeeDistributor is ReentrancyGuard {
     // Internal functions
 
     function _claimToken(address user, IERC20 token) internal returns (uint256) {
-        uint256 userTimeCursor = _userTokenTimeCursor[user][token];
+        uint256 userTimeCursor = _getUserTokenTimeCursor(user, token);
         uint256 globalTimeCursor = _tokenTimeCursor[token];
         mapping(uint256 => uint256) storage tokensPerWeek = _tokensPerWeek[token];
         mapping(uint256 => uint256) storage userBalanceAtTimestamp = _userBalanceAtTimestamp[user];
@@ -94,6 +95,12 @@ contract FeeDistributor is ReentrancyGuard {
      */
     function _checkpointToken(IERC20 token, bool force) internal {
         uint256 lastTokenTime = _tokenTimeCursor[token];
+        if (lastTokenTime == 0) {
+            // If it's the first time we're checkpointing this token then start distributing from now.
+            // Also mark at which timestamp users should start attempt to claim this token from.
+            lastTokenTime = block.timestamp;
+            _tokenStartTime[token] = block.timestamp;
+        }
         uint256 timeSinceLastCheckpoint = block.timestamp - lastTokenTime;
         
         if (!force && timeSinceLastCheckpoint < _TOKEN_CHECKPOINT_DEADLINE){
@@ -261,6 +268,15 @@ contract FeeDistributor is ReentrancyGuard {
     }
 
     // Helper functions
+
+    /**
+     * @dev Wrapper around `_userTokenTimeCursor` which returns the start timestamp for `token`
+     * if `user` has not attempted to interact with it previously.
+     */
+    function _getUserTokenTimeCursor(address user, IERC20 token) internal view returns (uint256) {
+        uint256 userTimeCursor = _userTokenTimeCursor[user][token];
+        return userTimeCursor > 0 ? userTimeCursor : _tokenStartTime[token];
+    }
 
     /**
      * @dev Return the epoch number corresponding to the provided timestamp
