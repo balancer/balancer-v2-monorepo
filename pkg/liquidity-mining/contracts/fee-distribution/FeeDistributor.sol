@@ -28,6 +28,10 @@ contract FeeDistributor is ReentrancyGuard {
     mapping(uint256 => uint256) private _veSupplyCache;
     uint256 private _lastTokenTime;
 
+    // User State
+    mapping(address => uint256) private _userTimeCursor;
+    mapping(address => uint256) private _userLastEpochCheckpointed;
+    mapping(address => mapping(uint256 => uint256)) private _userBalanceAtTimestamp;
 
     constructor(IVotingEscrow votingEscrow, uint256 startTime) {
         _votingEscrow = votingEscrow;
@@ -48,6 +52,7 @@ contract FeeDistributor is ReentrancyGuard {
         for(uint256 i = 0; i < 128; ++i){
             if (min >= max) break;
             
+            // +2 avoids getting stuck in min == mid < max
             uint256 mid = (min + max + 2) / 2;
             IVotingEscrow.Point memory pt = _votingEscrow.point_history(mid);
             if (pt.ts <= timestamp) {
@@ -57,6 +62,103 @@ contract FeeDistributor is ReentrancyGuard {
             }
         }
         return min;
+    }
+
+    /**
+     * @dev Return the user epoch number for `user` corresponding to the provided `timestamp`
+     */
+    function _findTimestampUserEpoch(address user, uint256 timestamp, uint256 maxUserEpoch) internal view returns (uint256) {
+        uint256 min = 0;
+        uint256 max = maxUserEpoch;
+        
+        // Perform binary search through epochs to find epoch containing `timestamp`
+        for(uint256 i = 0; i < 128; ++i){
+            if (min >= max) break;
+            
+            // +2 avoids getting stuck in min == mid < max
+            uint256 mid = (min + max + 2) / 2;
+            IVotingEscrow.Point memory pt = _votingEscrow.user_point_history(user, mid);
+            if (pt.ts <= timestamp) {
+                min = mid;
+            } else {
+                max = mid - 1;
+            }
+        }
+        return min;
+    }
+
+    function _checkpointUserBalance(address user) internal {
+        // Minimal user_epoch is 0 (if user had no point)
+        uint256 userEpoch = 0;
+        uint256 maxUserEpoch = _votingEscrow.user_point_epoch(user);
+
+        // If user has never locked then they won't receive fees
+        if (maxUserEpoch == 0) return;
+
+        // weekCursor represents the timestamp of the beginning of the week from which we
+        // start checkpointing the user's VotingEscrow balance.
+        uint256 weekCursor = _userTimeCursor[user];
+        if (weekCursor == 0) {
+            // First checkpoint for user so need to do the initial binary search
+            userEpoch = _findTimestampUserEpoch(user, _startTime, maxUserEpoch);
+        } else {
+            // Otherwise use the value saved from last time
+            userEpoch = _userLastEpochCheckpointed[user];
+        }
+
+        if (userEpoch == 0) {
+            userEpoch = 1;
+        }
+
+        IVotingEscrow.Point memory userPoint = _votingEscrow.user_point_history(user, userEpoch);
+
+        // If this is the first checkpoint for the user, calculate the first week they're eligible for.
+        // i.e. the timestamp of the first Thursday after they locked.
+        if (weekCursor == 0) {
+            weekCursor = _roundUpTimestamp(userPoint.ts);
+        }
+
+        // Sanity check - can't claim fees from before fee distribution started.
+        if (weekCursor < _startTime) {
+            weekCursor = _startTime;
+        }
+
+        IVotingEscrow.Point memory oldUserPoint;
+        for (uint256 i = 0; i < 50; ++i){
+
+            if (weekCursor >= userPoint.ts && userEpoch <= maxUserEpoch){
+                // The week being considered lies inside the user epoch described by `userPoint`.
+                // We then shift it into `oldUserPoint` and query the Point for the next user epoch.
+                // We do this because we need to know the end timestamp for the epoch.
+                userEpoch += 1;
+                oldUserPoint = userPoint;
+                if (userEpoch > maxUserEpoch){
+                    userPoint = IVotingEscrow.Point(0,0,0,0);
+                } else {
+                    userPoint = _votingEscrow.user_point_history(user, userEpoch);
+                }
+
+            } else {
+                // The week being considered lies inside the user epoch described by `oldUserPoint`
+                // we can then use it to calculate the user's balance at the beginning of the week.
+                
+                int128 dt = int128(weekCursor - oldUserPoint.ts);
+                uint256 userBalance = oldUserPoint.bias > oldUserPoint.slope * dt ? uint256(oldUserPoint.bias - oldUserPoint.slope * dt) : 0;
+
+                // User's lock has expired and they haven't relocked yet.
+                if (userBalance == 0 && userEpoch > maxUserEpoch) break;
+
+                // User had a nonzero lock and so is eligible to collect fees.
+                if (userBalance > 0) {
+                    _userBalanceAtTimestamp[user][weekCursor] = userBalance;
+                }
+            }
+
+            weekCursor += 1 weeks;
+        }
+
+        _userLastEpochCheckpointed[user] = userEpoch - 1;
+        _userTimeCursor[user] = weekCursor;
     }
 
     /**
@@ -96,5 +198,12 @@ contract FeeDistributor is ReentrancyGuard {
      */
     function _roundDownTimestamp(uint256 timestamp) pure private returns (uint256) {
         return (timestamp / 1 weeks) * 1 weeks;
+    }
+
+    /**
+     * @dev Rounds the provided timestamp up to the beginning of the next week (Thurs 00:00 UTC)
+     */
+    function _roundUpTimestamp(uint256 timestamp) pure private returns (uint256) {
+        return _roundDownTimestamp(timestamp + 1 weeks - 1);
     }
 }
