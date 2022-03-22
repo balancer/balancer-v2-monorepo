@@ -176,6 +176,7 @@ contract FeeDistributor is ReentrancyGuard {
             userEpoch = _userLastEpochCheckpointed[user];
         }
 
+        // Epoch 0 is always empty so bump onto the next one so that we start on a valid epoch.
         if (userEpoch == 0) {
             userEpoch = 1;
         }
