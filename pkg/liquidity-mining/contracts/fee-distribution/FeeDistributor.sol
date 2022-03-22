@@ -24,6 +24,8 @@ import "../interfaces/IVotingEscrow.sol";
 contract FeeDistributor is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
+    uint256 private constant _TOKEN_CHECKPOINT_DEADLINE = 1 days;
+
     IVotingEscrow private immutable _votingEscrow;
 
     uint256 private immutable _startTime;
@@ -53,7 +55,7 @@ contract FeeDistributor is ReentrancyGuard {
 
     function claimToken(address user, IERC20 token) external returns (uint256) {
         _checkpointTotalSupply();
-        _checkpointToken(token);
+        _checkpointToken(token, false);
         _checkpointUserBalance(user);
 
         uint256 amount = _claimToken(user, token);
@@ -90,14 +92,19 @@ contract FeeDistributor is ReentrancyGuard {
     /**
      * @dev Calculate the amount of `token` to be distributed to `_votingEscrow` holders since the last checkpoint.
      */
-    function _checkpointToken(IERC20 token) internal {
+    function _checkpointToken(IERC20 token, bool force) internal {
+        uint256 lastTokenTime = _tokenTimeCursor[token];
+        uint256 timeSinceLastCheckpoint = block.timestamp - lastTokenTime;
+        
+        if (!force && timeSinceLastCheckpoint < _TOKEN_CHECKPOINT_DEADLINE){
+            // We can prevent a lot of SSTORES by only checkpointing tokens at a minimum interval
+            return;
+        }
+        _tokenTimeCursor[token] = block.timestamp;
+
         uint256 tokenBalance = token.balanceOf(address(this));
         uint256 tokensToDistribute = tokenBalance - _tokenLastBalance[token];
         _tokenLastBalance[token] = tokenBalance;
-
-        uint256 lastTokenTime = _tokenTimeCursor[token];
-        uint256 timeSinceLastCheckpoint = block.timestamp - lastTokenTime;
-        _tokenTimeCursor[token] = block.timestamp;
 
         uint256 thisWeek = _roundDownTimestamp(lastTokenTime);
         uint256 nextWeek = 0;
