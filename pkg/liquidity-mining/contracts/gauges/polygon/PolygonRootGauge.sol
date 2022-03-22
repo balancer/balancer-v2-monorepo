@@ -30,6 +30,7 @@ contract PolygonRootGauge is ISingleRecipientLiquidityGauge, StakelessGauge {
     IPolygonRootChainManager private immutable _polygonRootChainManager;
     address private immutable _polygonERC20Predicate;
 
+    // This value is kept in storage and not made immutable to allow for this contract to be proxyable
     address private _recipient;
 
     constructor(
