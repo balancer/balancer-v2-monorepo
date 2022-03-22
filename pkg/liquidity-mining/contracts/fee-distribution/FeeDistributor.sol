@@ -22,13 +22,16 @@ import "../interfaces/IVotingEscrow.sol";
 contract FeeDistributor is ReentrancyGuard {
     IVotingEscrow private immutable _votingEscrow;
 
-    // Global State
     uint256 private immutable _startTime;
+
+    // Global State
     uint256 private _timeCursor;
     mapping(uint256 => uint256) private _veSupplyCache;
-    uint256 private _lastTokenTime;
-    uint256 private _tokenLastBalance;
-    mapping(uint256 => uint256) private _tokensPerWeek;
+
+    // Token State
+    mapping(IERC20 => uint256) private _tokenTimeCursor;
+    mapping(IERC20 => uint256) private _tokenLastBalance;
+    mapping(IERC20 => mapping(uint256 => uint256)) private _tokensPerWeek;
 
 
     // User State
@@ -46,38 +49,37 @@ contract FeeDistributor is ReentrancyGuard {
 
     function _checkpointToken(IERC20 token) internal {
         uint256 tokenBalance = token.balanceOf(address(this));
-        uint256 tokensToDistribute = tokenBalance - _tokenLastBalance;
-        _tokenLastBalance = tokenBalance;
+        uint256 tokensToDistribute = tokenBalance - _tokenLastBalance[token];
+        _tokenLastBalance[token] = tokenBalance;
 
-        uint256 lastTokenTime = _lastTokenTime;
+        uint256 lastTokenTime = _tokenTimeCursor[token];
         uint256 timeSinceLastCheckpoint = block.timestamp - lastTokenTime;
-        _lastTokenTime = block.timestamp;
+        _tokenTimeCursor[token] = block.timestamp;
 
         uint256 thisWeek = _roundDownTimestamp(lastTokenTime);
         uint256 nextWeek = 0;
 
-        bool checkpointedThisBlock = timeSinceLastCheckpoint == 0;
-
         // Distribute `tokensToDistribute` evenly across the time period from `lastTokenTime` to now.
         // These tokens are assigned to weeks proportionally to how much of this period falls into each week.
+        mapping(uint256 => uint256) storage tokensPerWeek = _tokensPerWeek[token];
         for (uint256 i = 0; i < 20; ++i){
             nextWeek = thisWeek + 1 weeks;
             if (block.timestamp < nextWeek){
                 // `thisWeek` is now the beginning of the current week, i.e. this is the final iteration.
-                if (checkpointedThisBlock && block.timestamp == lastTokenTime){
-                    _tokensPerWeek[thisWeek] += tokensToDistribute;
+                if (timeSinceLastCheckpoint == 0 && block.timestamp == lastTokenTime){
+                    tokensPerWeek[thisWeek] += tokensToDistribute;
                 } else {
-                    _tokensPerWeek[thisWeek] += tokensToDistribute * (block.timestamp - lastTokenTime) / timeSinceLastCheckpoint;
+                    tokensPerWeek[thisWeek] += tokensToDistribute * (block.timestamp - lastTokenTime) / timeSinceLastCheckpoint;
                 }
                 // As we've caught up to the present then we should now break
                 break;
             } else {
                 // We've gone a full week or more without checkpointing so need to distribute tokens to previous weeks
-                if (checkpointedThisBlock && nextWeek == lastTokenTime){
+                if (timeSinceLastCheckpoint == 0 && nextWeek == lastTokenTime){
                     // It shouldn't be possible to enter this block
-                    _tokensPerWeek[thisWeek] += tokensToDistribute;
+                    tokensPerWeek[thisWeek] += tokensToDistribute;
                 } else {
-                    _tokensPerWeek[thisWeek] += tokensToDistribute * (nextWeek - lastTokenTime) / timeSinceLastCheckpoint;
+                    tokensPerWeek[thisWeek] += tokensToDistribute * (nextWeek - lastTokenTime) / timeSinceLastCheckpoint;
                 }
             }
 
