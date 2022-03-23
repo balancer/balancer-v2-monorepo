@@ -24,19 +24,16 @@ import "./interfaces/ILiquidityGaugeFactory.sol";
 
 contract LiquidityGaugeFactory is ILiquidityGaugeFactory, Authentication {
     IVault private immutable _vault;
-    ILiquidityGauge private _gaugeImplementation;
+    ILiquidityGauge private immutable _gaugeImplementation;
 
     mapping(address => bool) private _isGaugeFromFactory;
     mapping(address => address) private _poolGauge;
 
     event GaugeCreated(address indexed gauge, address indexed pool);
-    event GaugeImplementationUpdated(address oldGaugeImplementation, address newGaugeImplementation);
 
     constructor(IVault vault, ILiquidityGauge gauge) Authentication(bytes32(uint256(address(this)))) {
         _vault = vault;
         _gaugeImplementation = gauge;
-
-        emit GaugeImplementationUpdated(address(0), address(gauge));
     }
 
     /**
@@ -75,16 +72,6 @@ contract LiquidityGaugeFactory is ILiquidityGaugeFactory, Authentication {
     }
 
     /**
-     * @notice Sets the address of the gauge implementation to be used for future deployments
-     */
-    function setGaugeImplementation(address newGaugeImplementation) external authenticate {
-        address currentGaugeImplementation = address(_gaugeImplementation);
-
-        _gaugeImplementation = ILiquidityGauge(newGaugeImplementation);
-        emit GaugeImplementationUpdated(currentGaugeImplementation, newGaugeImplementation);
-    }
-
-    /**
      * @notice Deploys a new gauge for a Balancer pool.
      * @dev As anyone can register arbitrary Balancer pools with the Vault,
      * it's impossible to prove onchain that `pool` is a "valid" deployment.
@@ -99,10 +86,7 @@ contract LiquidityGaugeFactory is ILiquidityGaugeFactory, Authentication {
     function create(address pool) external returns (address) {
         require(_poolGauge[pool] == address(0), "Gauge already exists");
 
-        address gaugeImplementation = address(getGaugeImplementation());
-        require(gaugeImplementation != address(0), "Gauge deployment halted");
-
-        address gauge = Clones.clone(gaugeImplementation);
+        address gauge = Clones.clone(address(_gaugeImplementation));
 
         IStakingLiquidityGauge(gauge).initialize(pool);
 
