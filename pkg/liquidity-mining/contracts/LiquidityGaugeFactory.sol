@@ -15,15 +15,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "./interfaces/IStakingLiquidityGauge.sol";
 import "./interfaces/ILiquidityGaugeFactory.sol";
 
-contract LiquidityGaugeFactory is ILiquidityGaugeFactory, Authentication {
-    IVault private immutable _vault;
+contract LiquidityGaugeFactory is ILiquidityGaugeFactory {
     ILiquidityGauge private immutable _gaugeImplementation;
 
     mapping(address => bool) private _isGaugeFromFactory;
@@ -31,23 +28,8 @@ contract LiquidityGaugeFactory is ILiquidityGaugeFactory, Authentication {
 
     event GaugeCreated(address indexed gauge, address indexed pool);
 
-    constructor(IVault vault, ILiquidityGauge gauge) Authentication(bytes32(uint256(address(this)))) {
-        _vault = vault;
+    constructor(ILiquidityGauge gauge) {
         _gaugeImplementation = gauge;
-    }
-
-    /**
-     * @dev Returns the address of the Vault.
-     */
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
-
-    /**
-     * @dev Returns the address of the Vault's Authorizer.
-     */
-    function getAuthorizer() public view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
     }
 
     /**
@@ -95,11 +77,5 @@ contract LiquidityGaugeFactory is ILiquidityGaugeFactory, Authentication {
         emit GaugeCreated(gauge, pool);
 
         return gauge;
-    }
-
-    // Authorization
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 }
