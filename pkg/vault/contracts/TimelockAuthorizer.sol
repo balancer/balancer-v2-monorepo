@@ -74,12 +74,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     /**
      * @dev Emitted when an action `actionId` is executed
      */
-    event ActionExecuted(uint256 indexed scheduledExecutionId);
+    event ExecutionExecuted(uint256 indexed scheduledExecutionId);
 
     /**
      * @dev Emitted when an action `actionId` is cancelled
      */
-    event ActionCancelled(uint256 indexed scheduledExecutionId);
+    event ExecutionCancelled(uint256 indexed scheduledExecutionId);
 
     /**
      * @dev Emitted when a new `delay` is set in order to perform action `actionId`
@@ -218,7 +218,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
         scheduledExecution.executed = true;
         result = scheduledExecution.where.functionCall(scheduledExecution.data);
-        emit ActionExecuted(scheduledExecutionId);
+        emit ExecutionExecuted(scheduledExecutionId);
     }
 
     /**
@@ -237,7 +237,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         _require(hasPermission(actionId, msg.sender, scheduledExecution.where), Errors.SENDER_NOT_ALLOWED);
 
         scheduledExecution.cancelled = true;
-        emit ActionCancelled(scheduledExecutionId);
+        emit ExecutionCancelled(scheduledExecutionId);
     }
 
     /**
