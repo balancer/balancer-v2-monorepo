@@ -15,7 +15,14 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
 interface IBALTokenHolder is IAuthentication {
     function withdrawFunds(address recipient, uint256 amount) external;
+
+    function sweepTokens(
+        IERC20 token,
+        address recipient,
+        uint256 amount
+    ) external;
 }

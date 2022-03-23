@@ -22,6 +22,13 @@ import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerToken.s
 
 import "./interfaces/IBALTokenHolder.sol";
 
+/**
+ * @dev This contract simply holds the BAL token and delegates to Balancer Governance the permission to withdraw it. It
+ * is intended to serve as the recipient of automated BAL minting via the liquidity mining gauges, allowing for the
+ * final recipient of the funds to be configurable without having to alter the gauges themselves.
+ *
+ * There is also a separate auxiliary function to sweep any non-BAL tokens sent here by mistake.
+ */
 contract BALTokenHolder is IBALTokenHolder, Authentication {
     using SafeERC20 for IERC20;
 
@@ -66,5 +73,14 @@ contract BALTokenHolder is IBALTokenHolder, Authentication {
 
     function withdrawFunds(address recipient, uint256 amount) external override authenticate {
         IERC20(_balancerToken).safeTransfer(recipient, amount);
+    }
+
+    function sweepTokens(
+        IERC20 token,
+        address recipient,
+        uint256 amount
+    ) external override authenticate {
+        require(token != _balancerToken, "Cannot sweep BAL");
+        IERC20(token).safeTransfer(recipient, amount);
     }
 }
