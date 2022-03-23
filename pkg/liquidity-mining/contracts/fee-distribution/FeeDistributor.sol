@@ -55,13 +55,13 @@ contract FeeDistributor is ReentrancyGuard {
         _timeCursor = startTime;
     }
 
-    function checkpointToken(IERC20 token) external {
+    function checkpointToken(IERC20 token) external nonReentrant {
         // Prevent someone from assigning tokens to an inaccessible week.
         require(block.timestamp > _startTime, "Fee distribution has not started yet");
         _checkpointToken(token, true);
     }
 
-    function claimToken(address user, IERC20 token) external returns (uint256) {
+    function claimToken(address user, IERC20 token) external nonReentrant returns (uint256) {
         // Prevent someone from assigning tokens to an inaccessible week.
         require(block.timestamp > _startTime, "Fee distribution has not started yet");
         _checkpointTotalSupply();
