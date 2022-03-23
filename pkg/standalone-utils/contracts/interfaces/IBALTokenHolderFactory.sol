@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-import "@balancer-labs/v2-gauges/contracts/interfaces/IBalancerToken.sol";
+import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerToken.sol";
 import "./IBALTokenHolder.sol";
 
 interface IBALTokenHolderFactory {
