@@ -139,7 +139,7 @@ describe('BaseRelayerLibrary', function () {
       context('when relayer is authorised by governance', () => {
         sharedBeforeEach('authorise relayer', async () => {
           const setApprovalRole = await actionId(vault, 'setRelayerApproval');
-          const authorizer = await deployedAt('v2-vault/Authorizer', await vault.getAuthorizer());
+          const authorizer = await deployedAt('v2-vault/TimelockAuthorizer', await vault.getAuthorizer());
           await authorizer.connect(admin).grantPermissions([setApprovalRole], relayer.address, [ANY_ADDRESS]);
         });
 
