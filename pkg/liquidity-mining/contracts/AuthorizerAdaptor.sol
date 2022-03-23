@@ -69,7 +69,7 @@ contract AuthorizerAdaptor is IAuthorizerAdaptor, ReentrancyGuard {
 
     /**
      * @notice Returns the action ID associated with calling a given function through this adaptor
-     * @dev The contracts managed by this adaptor do not have action ID disambiguators we use the adaptor's globally.
+     * @dev As the contracts managed by this adaptor don't have action ID disambiguators, we use the adaptor's globally.
      * This means that contracts with the same function selector will have a matching action ID:
      * if granularity is required then permissions must not be granted globally in the Authorizer.
      *
