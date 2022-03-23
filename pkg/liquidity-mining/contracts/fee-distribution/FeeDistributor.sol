@@ -119,12 +119,12 @@ contract FeeDistributor is ReentrancyGuard {
             _tokenStartTime[token] = _roundDownTimestamp(block.timestamp);
         } else {
             timeSinceLastCheckpoint = block.timestamp - lastTokenTime;
-            if (!force && timeSinceLastCheckpoint < _TOKEN_CHECKPOINT_DEADLINE){
+            if (!force && timeSinceLastCheckpoint < _TOKEN_CHECKPOINT_DEADLINE) {
                 // We can prevent a lot of SSTORES by only checkpointing tokens at a minimum interval
                 return;
             }
-        } 
-        
+        }
+
         _tokenTimeCursor[token] = block.timestamp;
 
         uint256 tokenBalance = token.balanceOf(address(this));
@@ -188,7 +188,7 @@ contract FeeDistributor is ReentrancyGuard {
             // First checkpoint for user so need to do the initial binary search
             userEpoch = _findTimestampUserEpoch(user, _startTime, maxUserEpoch);
         } else {
-            if (weekCursor == _roundDownTimestamp(block.timestamp)){
+            if (weekCursor == _roundDownTimestamp(block.timestamp)) {
                 // User has checkpointed this week already so perform early return
                 return;
             }
@@ -258,7 +258,7 @@ contract FeeDistributor is ReentrancyGuard {
     function _checkpointTotalSupply() internal {
         uint256 timeCursor = _timeCursor;
         uint256 weekStart = _roundDownTimestamp(block.timestamp);
-        
+
         // We expect `timeCursor == weekStart + 1 weeks` when fully up to date.
         if (timeCursor >= weekStart) {
             // We've already checkpointed up to this week so perform early return
