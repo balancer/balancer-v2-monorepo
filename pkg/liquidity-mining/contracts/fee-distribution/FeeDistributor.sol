@@ -108,18 +108,20 @@ contract FeeDistributor is ReentrancyGuard {
      */
     function _checkpointToken(IERC20 token, bool force) internal {
         uint256 lastTokenTime = _tokenTimeCursor[token];
+        uint256 timeSinceLastCheckpoint;
         if (lastTokenTime == 0) {
             // If it's the first time we're checkpointing this token then start distributing from now.
             // Also mark at which timestamp users should start attempt to claim this token from.
             lastTokenTime = block.timestamp;
             _tokenStartTime[token] = _roundDownTimestamp(block.timestamp);
-        }
-        uint256 timeSinceLastCheckpoint = block.timestamp - lastTokenTime;
+        } else {
+            timeSinceLastCheckpoint = block.timestamp - lastTokenTime;
+            if (!force && timeSinceLastCheckpoint < _TOKEN_CHECKPOINT_DEADLINE){
+                // We can prevent a lot of SSTORES by only checkpointing tokens at a minimum interval
+                return;
+            }
+        } 
         
-        if (!force && timeSinceLastCheckpoint < _TOKEN_CHECKPOINT_DEADLINE){
-            // We can prevent a lot of SSTORES by only checkpointing tokens at a minimum interval
-            return;
-        }
         _tokenTimeCursor[token] = block.timestamp;
 
         uint256 tokenBalance = token.balanceOf(address(this));
