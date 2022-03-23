@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
-import { bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, fromFp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { MINUTE, DAY, advanceTime, currentTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
@@ -841,10 +841,30 @@ describe('ManagedPool', function () {
             });
 
             it(`removes the token with index ${tokenIndex}; swap enabled: ${swapEnabled}`, async () => {
+              const expectedDenormWeightSum = fp(1).sub(threeTokenWeights[tokenIndex]);
+              const expectedEndWeights: BigNumber[] = [fp(0), fp(0)];
+              let j = 0;
+
+              // Remaining weights should scale up
+              for (let i = 0; i < 3; i++) {
+                if (i != tokenIndex) {
+                  expectedEndWeights[j] = fp(fromFp(threeTokenWeights[i]).div(fromFp(expectedDenormWeightSum)));
+                  j += 1;
+                }
+              }
+
               await pool.removeToken(sender, threeTokens.get(tokenIndex).address, other.address);
 
               expect(await pool.instance.getTotalTokens()).to.equal(2);
               const poolTokens = await pool.getTokens();
+
+              // Check that weight sum is updated
+              expect(await pool.instance.getDenormWeightSum()).to.equalWithError(expectedDenormWeightSum, 0.000001);
+
+              // Check that weights are scaled
+              const normalizedWeights = await pool.getNormalizedWeights();
+              expect(normalizedWeights[0]).to.equalWithError(expectedEndWeights[0], 0.000001);
+              expect(normalizedWeights[1]).to.equalWithError(expectedEndWeights[1], 0.000001);
 
               expect(poolTokens.tokens.length).to.equal(tokensRemaining.length);
               for (const tokenAddress in poolTokens.tokens) {
