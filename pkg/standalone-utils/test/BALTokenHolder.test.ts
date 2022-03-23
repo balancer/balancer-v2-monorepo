@@ -54,7 +54,7 @@ describe('BALTokenHolder', function () {
   describe('withdrawFunds', () => {
     context('when the caller is authorized', () => {
       sharedBeforeEach(async () => {
-        const authorizer = await deployedAt('v2-vault/Authorizer', await vault.instance.getAuthorizer());
+        const authorizer = await deployedAt('v2-vault/TimelockAuthorizer', await vault.instance.getAuthorizer());
         const withdrawActionId = await actionId(holder, 'withdrawFunds');
         await authorizer.connect(admin).grantPermissions([withdrawActionId], authorized.address, [holder.address]);
       });
