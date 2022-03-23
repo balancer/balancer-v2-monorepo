@@ -11,7 +11,7 @@ import { Contract } from 'ethers';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 
-describe.only('BALTokenHolder', function () {
+describe('BALTokenHolder', function () {
   let tokens: TokenList;
   let BAL: Token, DAI: Token;
   let vault: Vault;
