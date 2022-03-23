@@ -307,7 +307,7 @@ contract FeeDistributor is ReentrancyGuard {
         uint256 weekStart = _roundDownTimestamp(block.timestamp);
 
         // We expect `timeCursor == weekStart + 1 weeks` when fully up to date.
-        if (timeCursor >= weekStart) {
+        if (timeCursor > weekStart) {
             // We've already checkpointed up to this week so perform early return
             return;
         }
