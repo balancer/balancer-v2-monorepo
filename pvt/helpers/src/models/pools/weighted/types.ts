@@ -193,11 +193,6 @@ export type GradualUpdateParams = {
   endWeights: BigNumber[];
 };
 
-export type TokenCollectedFees = {
-  amounts: BigNumber[];
-  tokenAddresses: string[];
-};
-
 export type BasePoolRights = {
   canTransferOwnership: boolean;
   canChangeSwapFee: boolean;

@@ -34,7 +34,6 @@ import {
   GradualUpdateParams,
   WeightedPoolType,
   VoidResult,
-  TokenCollectedFees,
 } from './types';
 import {
   calculateInvariant,
