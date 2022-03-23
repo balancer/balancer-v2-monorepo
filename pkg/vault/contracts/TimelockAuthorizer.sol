@@ -67,17 +67,17 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     mapping(bytes32 => uint256) public delaysPerActionId;
 
     /**
-     * @dev Emitted when a new action `actionId` is scheduled
+     * @dev Emitted when a new execution `scheduledExecutionId` is scheduled
      */
     event ExecutionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
 
     /**
-     * @dev Emitted when an action `actionId` is executed
+     * @dev Emitted when an execution `scheduledExecutionId` is executed
      */
     event ExecutionExecuted(uint256 indexed scheduledExecutionId);
 
     /**
-     * @dev Emitted when an action `actionId` is cancelled
+     * @dev Emitted when an execution `scheduledExecutionId` is cancelled
      */
     event ExecutionCancelled(uint256 indexed scheduledExecutionId);
 
