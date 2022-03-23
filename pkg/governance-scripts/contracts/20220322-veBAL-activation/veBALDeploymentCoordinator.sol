@@ -22,6 +22,7 @@ import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeAdder.sol"
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeController.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerMinter.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerTokenAdmin.sol";
+import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IBALTokenHolderFactory.sol";
 
 // solhint-disable not-rely-on-time
 
@@ -59,6 +60,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     IGaugeAdder private immutable _gaugeAdder;
     IEthereumLiquidityGaugeFactory private immutable _ethereumGaugeFactory;
     ISingleRecipientLiquidityGaugeFactory private immutable _singleRecipientGaugeFactory;
+    IBALTokenHolderFactory private immutable _balTokenHolderFactory;
 
     address[] private _initialPools;
     address[4] private _recipients;
@@ -84,6 +86,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         IGaugeAdder gaugeAdder,
         IEthereumLiquidityGaugeFactory ethereumGaugeFactory,
         ISingleRecipientLiquidityGaugeFactory singleRecipientGaugeFactory,
+        IBALTokenHolderFactory balTokenHolderFactory,
         address[] memory initialPools,
         address[4] memory recipients,
         uint256 activationScheduledTime,
@@ -111,6 +114,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         _gaugeAdder = gaugeAdder;
         _ethereumGaugeFactory = ethereumGaugeFactory;
         _singleRecipientGaugeFactory = singleRecipientGaugeFactory;
+        _balTokenHolderFactory = balTokenHolderFactory;
 
         _initialPools = initialPools;
         _recipients = recipients;
@@ -129,8 +133,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     /**
      * @notice Returns the Balancer Vault's current authorizer.
      */
-    function getAuthorizer() public view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
+    function getAuthorizer() public view returns (ICurrentAuthorizer) {
+        return ICurrentAuthorizer(address(getVault().getAuthorizer()));
     }
 
     function getAuthorizerAdaptor() public view returns (IAuthorizerAdaptor) {
@@ -170,7 +174,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         require(_currentDeploymentStage == DeploymentStage.PENDING, "First step already performed");
 
         // Check external state: we need admin permission on both the BAL token and the Authorizer
-        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
+        ICurrentAuthorizer authorizer = getAuthorizer();
         require(_balancerToken.hasRole(_balancerToken.DEFAULT_ADMIN_ROLE(), address(this)), "Not BAL admin");
         require(authorizer.canPerform(bytes32(0), address(this), address(0)), "Not Authorizer admin");
 
@@ -264,20 +268,32 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
             authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
 
             // Permanent
-            ILiquidityGauge LMCommitteeGauge = _singleRecipientGaugeFactory.deploy(_recipients[0]);
-            _addGauge(LMCommitteeGauge, IGaugeAdder.GaugeType.LiquidityMiningCommittee);
+            _createSingleRecipientGauge(
+                IGaugeAdder.GaugeType.LiquidityMiningCommittee,
+                "Liquidity Mining Committee BAL Holder",
+                _recipients[0]
+            );
 
             // Temporary
-            ILiquidityGauge tempVeBALGauge = _singleRecipientGaugeFactory.deploy(_recipients[1]);
-            _addGauge(tempVeBALGauge, IGaugeAdder.GaugeType.veBAL);
+            _createSingleRecipientGauge(
+                IGaugeAdder.GaugeType.veBAL,
+                "Temporary veBAL Liquidity Mining BAL Holder",
+                _recipients[1]
+            );
 
             // Temporary
-            ILiquidityGauge tempPolygonGauge = _singleRecipientGaugeFactory.deploy(_recipients[2]);
-            _addGauge(tempPolygonGauge, IGaugeAdder.GaugeType.Polygon);
+            _createSingleRecipientGauge(
+                IGaugeAdder.GaugeType.Polygon,
+                "Temporary Polygon Liquidity Mining BAL Holder",
+                _recipients[2]
+            );
 
             // Temporary
-            ILiquidityGauge tempArbitrumGauge = _singleRecipientGaugeFactory.deploy(_recipients[3]);
-            _addGauge(tempArbitrumGauge, IGaugeAdder.GaugeType.Arbitrum);
+            _createSingleRecipientGauge(
+                IGaugeAdder.GaugeType.Arbitrum,
+                "Temporary Arbitrum Liquidity Mining BAL Holder",
+                _recipients[3]
+            );
 
             authorizer.revokeRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
         }
@@ -300,7 +316,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         IAuthorizerAdaptor authorizerAdaptor = getAuthorizerAdaptor();
         // Note that the current Authorizer ignores the 'where' parameter, so we don't need to (cannot) indicate
         // that this permission should only be granted on the gauge controller itself.
-        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
+        ICurrentAuthorizer authorizer = getAuthorizer();
         authorizer.grantRole(
             authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector),
             address(this)
@@ -343,5 +359,16 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
             address(_gaugeController),
             abi.encodeWithSelector(IGaugeController.change_type_weight.selector, int128(typeId), weight)
         );
+    }
+
+    function _createSingleRecipientGauge(
+        IGaugeAdder.GaugeType gaugeType,
+        string memory name,
+        address recipient
+    ) private {
+        IBALTokenHolder holder = _balTokenHolderFactory.create(name);
+        ILiquidityGauge gauge = _singleRecipientGaugeFactory.deploy(address(holder));
+        _addGauge(gauge, gaugeType);
+        getAuthorizer().grantRole(holder.getActionId(IBALTokenHolder.withdrawFunds.selector), recipient);
     }
 }
