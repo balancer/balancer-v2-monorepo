@@ -80,13 +80,16 @@ contract FeeDistributor is ReentrancyGuard {
      */
     function _claimToken(address user, IERC20 token) internal returns (uint256) {
         uint256 userTimeCursor = _getUserTokenTimeCursor(user, token);
-        uint256 globalTimeCursor = _tokenTimeCursor[token];
+        // We round `_tokenTimeCursor` down so it represents the beginning of the first incomplete week.
+        uint256 currentActiveWeek = _roundDownTimestamp(_tokenTimeCursor[token]);
         mapping(uint256 => uint256) storage tokensPerWeek = _tokensPerWeek[token];
         mapping(uint256 => uint256) storage userBalanceAtTimestamp = _userBalanceAtTimestamp[user];
 
         uint256 amount;
         for (uint256 i = 0; i < 20; ++i) {
-            if (userTimeCursor >= globalTimeCursor) break;
+            // We only want to claim for complete weeks so break once we reach `currentActiveWeek`.
+            // This is as `tokensPerWeek[currentActiveWeek]` will continue to grow over the week.
+            if (userTimeCursor >= currentActiveWeek) break;
 
             amount +=
                 (tokensPerWeek[userTimeCursor] * userBalanceAtTimestamp[userTimeCursor]) /
@@ -127,6 +130,8 @@ contract FeeDistributor is ReentrancyGuard {
         uint256 tokenBalance = token.balanceOf(address(this));
         uint256 tokensToDistribute = tokenBalance - _tokenLastBalance[token];
         _tokenLastBalance[token] = tokenBalance;
+
+        if (tokensToDistribute == 0) return;
 
         uint256 thisWeek = _roundDownTimestamp(lastTokenTime);
         uint256 nextWeek = 0;
