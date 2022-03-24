@@ -341,29 +341,6 @@ contract FeeDistributor is ReentrancyGuard {
     }
 
     /**
-     * @dev Return the epoch number corresponding to the provided timestamp
-     */
-    function _findTimestampEpoch(uint256 timestamp) internal view returns (uint256) {
-        uint256 min = 0;
-        uint256 max = _votingEscrow.epoch();
-
-        // Perform binary search through epochs to find epoch containing `timestamp`
-        for (uint256 i = 0; i < 128; ++i) {
-            if (min >= max) break;
-
-            // +2 avoids getting stuck in min == mid < max
-            uint256 mid = (min + max + 2) / 2;
-            IVotingEscrow.Point memory pt = _votingEscrow.point_history(mid);
-            if (pt.ts <= timestamp) {
-                min = mid;
-            } else {
-                max = mid - 1;
-            }
-        }
-        return min;
-    }
-
-    /**
      * @dev Return the user epoch number for `user` corresponding to the provided `timestamp`
      */
     function _findTimestampUserEpoch(
