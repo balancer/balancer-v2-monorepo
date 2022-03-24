@@ -332,7 +332,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v2-liquidity-mining@workspace:pkg/liquidity-mining":
+"@balancer-labs/v2-liquidity-mining@workspace:*, @balancer-labs/v2-liquidity-mining@workspace:pkg/liquidity-mining":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-liquidity-mining@workspace:pkg/liquidity-mining"
   dependencies:
@@ -624,6 +624,7 @@ __metadata:
     "@balancer-labs/balancer-js": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-liquidity-mining": "workspace:*"
     "@balancer-labs/v2-pool-utils": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@balancer-labs/v2-vault": "workspace:*"

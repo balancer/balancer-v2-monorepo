@@ -21,6 +21,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "./interfaces/IGaugeAdder.sol";
+import "./interfaces/IStakingLiquidityGauge.sol";
 
 contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -31,6 +32,8 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
 
     // Mapping from gauge type to a list of address for approved factories for that type
     mapping(GaugeType => EnumerableSet.AddressSet) internal _gaugeFactoriesByType;
+    // Mapping from mainnet BPT addresses to canonical liquidity gauge as listed on the GaugeController
+    mapping(address => ILiquidityGauge) internal _poolGauge;
 
     constructor(IGaugeController gaugeController) Authentication(bytes32(uint256(address(this)))) {
         // GaugeAdder is a singleton, so it simply uses its own address to disambiguate action identifiers
@@ -67,6 +70,17 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
      */
     function getGaugeController() external view returns (address) {
         return address(_gaugeController);
+    }
+
+    /**
+     * @notice Returns the gauge corresponding to a Balancer pool `pool` on Ethereum mainnet.
+     * Only returns gauges which have been added to the Gauge Controller.
+     * @dev Gauge Factories also implement a `getPoolGauge` function which maps pools to gauges which it has deployed.
+     * This function provides global information by using which gauge has been added to the Gauge Controller
+     * to represent the canonical gauge for a given pool address.
+     */
+    function getPoolGauge(address pool) external view override returns (ILiquidityGauge) {
+        return _poolGauge[pool];
     }
 
     /**
@@ -109,8 +123,15 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
     /**
      * @notice Adds a new gauge to the GaugeController for the "Ethereum" type.
      */
-    function addEthereumGauge(address gauge) external override authenticate {
-        _addGauge(gauge, GaugeType.Ethereum);
+    function addEthereumGauge(IStakingLiquidityGauge gauge) external override authenticate {
+        // Each gauge factory prevents deploying multiple gauges for the same Balancer pool
+        // however two separate factories can each deploy their own gauge for the same pool.
+        // We then check here to see if the new gauge's pool already has a gauge on the Gauge Controller
+        address pool = address(gauge.lp_token());
+        require(_poolGauge[pool] == ILiquidityGauge(0), "Duplicate gauge");
+        _poolGauge[pool] = gauge;
+
+        _addGauge(address(gauge), GaugeType.Ethereum);
     }
 
     /**

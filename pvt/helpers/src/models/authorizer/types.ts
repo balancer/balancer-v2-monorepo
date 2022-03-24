@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { Account } from '../types/types';
 
-export type AuthorizerDeployment = {
+export type TimelockAuthorizerDeployment = {
   vault?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;

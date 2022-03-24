@@ -4,7 +4,7 @@ This contract activates the veBAL tokenomics system.
 
 ## Governance proposal
 
-*awaiting link for snapshot proposal*
+https://snapshot.org/#/balancer.eth/proposal/0xc93aa02ea7153a53d124189567ba19aa28663c499cdbfa60fe9bf35bf574d2a7
 
 ### Context
 
