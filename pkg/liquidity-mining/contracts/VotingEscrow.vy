@@ -487,10 +487,10 @@ def withdraw():
 @view
 def find_block_epoch(_block: uint256, max_epoch: uint256) -> uint256:
     """
-    @notice Binary search to estimate timestamp for block number
+    @notice Binary search to find epoch containing block number
     @param _block Block to find
     @param max_epoch Don't go beyond this epoch
-    @return Approximate timestamp for block
+    @return Epoch which contains _block
     """
     # Binary search
     _min: uint256 = 0
