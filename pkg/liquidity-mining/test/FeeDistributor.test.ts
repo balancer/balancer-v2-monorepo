@@ -39,10 +39,10 @@ describe.only('FeeDistributor', () => {
 
   let startTime: BigNumber;
 
-  let user: SignerWithAddress;
+  let user: SignerWithAddress, other: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, user] = await ethers.getSigners();
+    [, user, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy fee distributor', async () => {
@@ -66,6 +66,10 @@ describe.only('FeeDistributor', () => {
     const lockTimestamp = Math.floor(new Date().getTime() / 1000) + 365 * DAY;
 
     await votingEscrow.connect(user).create_lock(bptAmount, lockTimestamp);
+
+    await bpt.mint(other, bptAmount);
+    await bpt.approve(votingEscrow, bptAmount, { from: other });
+    await votingEscrow.connect(other).create_lock(bptAmount, lockTimestamp);
 
     expect(await votingEscrow['balanceOf(address)'](user.address)).to.be.gt(0, 'zero veBAL balance');
     expect(await votingEscrow['totalSupply()']()).to.be.gt(0, 'zero veBAL supply');
@@ -371,7 +375,7 @@ describe.only('FeeDistributor', () => {
           expectEvent.inReceipt(await tx.wait(), 'TokensClaimed', {
             user: user.address,
             token: token.address,
-            amount: tokensAmount,
+            amount: tokensAmount.div(2),
             userTokenTimeCursor: thisWeek,
           });
         });
@@ -385,10 +389,16 @@ describe.only('FeeDistributor', () => {
 
         it('subtracts the number of tokens claimed from the cached balance', async () => {
           const previousTokenLastBalance = await feeDistributor.getTokenLastBalance(token.address);
-          await feeDistributor.claimToken(user.address, token.address);
+          const tx = await feeDistributor.claimToken(user.address, token.address);
           const newTokenLastBalance = await feeDistributor.getTokenLastBalance(token.address);
 
-          expect(newTokenLastBalance).to.be.eq(previousTokenLastBalance.sub(tokensAmount));
+          const {
+            args: { amount },
+          } = expectEvent.inReceipt(await tx.wait(), 'TokensClaimed', {
+            user: user.address,
+            token: token.address,
+          });
+          expect(newTokenLastBalance).to.be.eq(previousTokenLastBalance.sub(amount));
         });
       });
     });
