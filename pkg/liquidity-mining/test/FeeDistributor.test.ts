@@ -32,6 +32,12 @@ async function getReceiptTimestamp(receipt: ContractReceipt | Promise<ContractRe
   return block.timestamp;
 }
 
+function expectTimestampsMatch(timestamp: BigNumberish, expectedTimestamp: BigNumberish): void {
+  const weekNumber = BigNumber.from(timestamp).div(WEEK).toNumber();
+  const expectedWeekNumber = BigNumber.from(expectedTimestamp).div(WEEK).toNumber();
+  expect(timestamp, `Timestamp is ${weekNumber - expectedWeekNumber} weeks off`).to.be.eq(expectedTimestamp);
+}
+
 describe.only('FeeDistributor', () => {
   let bpt: Token;
   let votingEscrow: Contract;
@@ -94,19 +100,19 @@ describe.only('FeeDistributor', () => {
     });
 
     it('sets the time cursor to the expected value', async () => {
-      expect(await feeDistributor.getTimeCursor()).to.be.eq(startTime);
+      expectTimestampsMatch(await feeDistributor.getTimeCursor(), startTime);
     });
   });
 
   describe('checkpoint', () => {
     context('when startTime has not passed', () => {
       it('does nothing', async () => {
-        expect(await feeDistributor.getTimeCursor()).to.be.eq(startTime);
+        expectTimestampsMatch(await feeDistributor.getTimeCursor(), startTime);
         expect(await feeDistributor.getTotalSupplyAtTimestamp(startTime)).to.be.eq(0);
 
         await feeDistributor.checkpoint();
 
-        expect(await feeDistributor.getTimeCursor()).to.be.eq(startTime);
+        expectTimestampsMatch(await feeDistributor.getTimeCursor(), startTime);
         expect(await feeDistributor.getTotalSupplyAtTimestamp(startTime)).to.be.eq(0);
       });
     });
@@ -118,7 +124,9 @@ describe.only('FeeDistributor', () => {
       sharedBeforeEach('advance time past startTime', async () => {
         await advanceToTimestamp(startTime);
 
-        start = await currentTimestamp();
+        await feeDistributor.checkpoint();
+
+        start = roundUpTimestamp(await currentTimestamp());
       });
 
       function testCheckpoint() {
@@ -132,7 +140,7 @@ describe.only('FeeDistributor', () => {
         });
 
         it('advances the global time cursor to the start of the next week', async () => {
-          expect(await feeDistributor.getTimeCursor()).to.be.eq(startTime);
+          expectTimestampsMatch(await feeDistributor.getTimeCursor(), start);
 
           const tx = await feeDistributor.checkpoint();
 
@@ -141,7 +149,7 @@ describe.only('FeeDistributor', () => {
           // then we also go to the end of the week as we can read the current balance
           const nextWeek = roundUpTimestamp(txTimestamp + 1);
 
-          expect(await feeDistributor.getTimeCursor()).to.be.eq(nextWeek);
+          expectTimestampsMatch(await feeDistributor.getTimeCursor(), nextWeek);
         });
 
         it('stores the VotingEscrow supply at the start of each week', async () => {
@@ -169,23 +177,23 @@ describe.only('FeeDistributor', () => {
   describe('checkpointUser', () => {
     context('when startTime has not passed', () => {
       it('does not advance the user time cursor past startTime', async () => {
-        expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(0);
+        expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), 0);
 
         await feeDistributor.checkpointUser(user.address);
 
-        expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(startTime);
+        expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), startTime);
 
         await feeDistributor.checkpointUser(user.address);
 
-        expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(startTime);
+        expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), startTime);
       });
 
       it("does not write a value for user's balance at startTime", async () => {
-        expect(await feeDistributor.getUserBalanceAtTimestamp(user.address, startTime)).to.be.eq(0);
+        expectTimestampsMatch(await feeDistributor.getUserBalanceAtTimestamp(user.address, startTime), 0);
 
         await feeDistributor.checkpointUser(user.address);
 
-        expect(await feeDistributor.getUserBalanceAtTimestamp(user.address, startTime)).to.be.eq(0);
+        expectTimestampsMatch(await feeDistributor.getUserBalanceAtTimestamp(user.address, startTime), 0);
       });
     });
 
@@ -213,7 +221,7 @@ describe.only('FeeDistributor', () => {
         });
 
         it("advances the user's time cursor to the start of the next week", async () => {
-          expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(0);
+          expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), 0);
 
           const tx = await feeDistributor.checkpointUser(user.address);
 
@@ -222,7 +230,7 @@ describe.only('FeeDistributor', () => {
           // then we also go to the end of the week as we can read the current balance
           const nextWeek = roundUpTimestamp(txTimestamp + 1);
 
-          expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(nextWeek);
+          expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), nextWeek);
         });
 
         it("stores the user's balance at the start of each week", async () => {
@@ -274,7 +282,7 @@ describe.only('FeeDistributor', () => {
 
         const tokenTimeCursor = await feeDistributor.getTokenTimeCursor(token.address);
         const txTimestamp = await getReceiptTimestamp(tx.wait());
-        expect(tokenTimeCursor).to.be.eq(txTimestamp);
+        expectTimestampsMatch(tokenTimeCursor, txTimestamp);
       });
 
       context("when FeeDistributor hasn't received new tokens", () => {
@@ -333,16 +341,16 @@ describe.only('FeeDistributor', () => {
         const tx = await feeDistributor.claimToken(user.address, token.address);
 
         // Global
-        expect(await feeDistributor.getTimeCursor()).to.be.eq(nextWeek);
+        expectTimestampsMatch(await feeDistributor.getTimeCursor(), nextWeek);
 
         // Token
         // This only works as it is the first token checkpoint. Calls for the next day won't checkpoint
         const tokenTimeCursor = await feeDistributor.getTokenTimeCursor(token.address);
         const txTimestamp = await getReceiptTimestamp(tx.wait());
-        expect(tokenTimeCursor).to.be.eq(txTimestamp);
+        expectTimestampsMatch(tokenTimeCursor, txTimestamp);
 
         // User
-        expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(nextWeek);
+        expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), nextWeek);
       });
 
       context('when there are no tokens to distribute to user', () => {
@@ -384,7 +392,7 @@ describe.only('FeeDistributor', () => {
           const thisWeek = roundDownTimestamp(await currentTimestamp());
 
           await feeDistributor.claimToken(user.address, token.address);
-          expect(await feeDistributor.getUserTokenTimeCursor(user.address, token.address)).to.be.eq(thisWeek);
+          expectTimestampsMatch(await feeDistributor.getUserTokenTimeCursor(user.address, token.address), thisWeek);
         });
 
         it('subtracts the number of tokens claimed from the cached balance', async () => {
