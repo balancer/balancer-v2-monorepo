@@ -30,6 +30,8 @@ contract FeeDistributor is ReentrancyGuard {
 
     uint256 private immutable _startTime;
 
+    event TokensClaimed(address user, IERC20 token, uint256 amount, uint256 userTokenTimeCursor);
+
     // Global State
     uint256 private _timeCursor;
     mapping(uint256 => uint256) private _veSupplyCache;
@@ -141,6 +143,7 @@ contract FeeDistributor is ReentrancyGuard {
         if (amount > 0) {
             _tokenLastBalance[token] -= amount;
             token.safeTransfer(user, amount);
+            emit TokensClaimed(user, token, amount, userTimeCursor);
         }
 
         return amount;
