@@ -1,27 +1,25 @@
 import { ethers } from 'hardhat';
 import { Interface } from 'ethers/lib/utils';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
+import { getSigner } from '@balancer-labs/v2-deployments/dist/src/signers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '../../test/expectEvent';
 import { ANY_ADDRESS } from '../../constants';
 import { BigNumberish } from '../../numbers';
-import { AuthorizerDeployment } from './types';
+import { TimelockAuthorizerDeployment } from './types';
 
 import { Account, NAry, TxParams } from '../types/types';
-import AuthorizerDeployer from './AuthorizerDeployer';
-import { getSigner } from '@balancer-labs/v2-deployments/dist/src/signers';
+import TimelockAuthorizerDeployer from './TimelockAuthorizerDeployer';
 
-const SET_DELAY_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['SET_DELAY_PERMISSION']);
-
-export default class Authorizer {
+export default class TimelockAuthorizer {
   static EVERYWHERE = ANY_ADDRESS;
 
   instance: Contract;
   admin: SignerWithAddress;
 
-  static async create(deployment: AuthorizerDeployment = {}): Promise<Authorizer> {
-    return AuthorizerDeployer.deploy(deployment);
+  static async create(deployment: TimelockAuthorizerDeployment = {}): Promise<TimelockAuthorizer> {
+    return TimelockAuthorizerDeployer.deploy(deployment);
   }
 
   constructor(instance: Contract, admin: SignerWithAddress) {
@@ -37,12 +35,16 @@ export default class Authorizer {
     return this.instance.interface;
   }
 
-  async GRANT_PERMISSION(): Promise<string> {
-    return this.instance.GRANT_PERMISSION();
+  async GRANT_ACTION_ID(): Promise<string> {
+    return this.instance.GRANT_ACTION_ID();
   }
 
-  async REVOKE_PERMISSION(): Promise<string> {
-    return this.instance.REVOKE_PERMISSION();
+  async REVOKE_ACTION_ID(): Promise<string> {
+    return this.instance.REVOKE_ACTION_ID();
+  }
+
+  async SCHEDULE_DELAY_ACTION_ID(): Promise<string> {
+    return this.instance.SCHEDULE_DELAY_ACTION_ID();
   }
 
   async permissionId(action: string, account: Account, where: Account): Promise<string> {
@@ -50,10 +52,10 @@ export default class Authorizer {
   }
 
   async delay(action: string): Promise<BigNumberish> {
-    return this.instance.delays(action);
+    return this.instance.delaysPerActionId(action);
   }
 
-  async scheduledActions(
+  async scheduledExecutions(
     id: BigNumberish
   ): Promise<{
     executed: boolean;
@@ -63,7 +65,7 @@ export default class Authorizer {
     data: string;
     where: string;
   }> {
-    return this.instance.scheduledActions(id);
+    return this.instance.scheduledExecutions(id);
   }
 
   async canPerform(actions: NAry<string>, account: Account, wheres: NAry<Account>): Promise<boolean> {
@@ -75,14 +77,14 @@ export default class Authorizer {
 
   async scheduleDelayChange(action: string, delay: number, executors: Account[], params?: TxParams): Promise<number> {
     const receipt = await this.with(params).scheduleDelayChange(action, delay, this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
-    return event.args.id;
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    return event.args.scheduledExecutionId;
   }
 
   async schedule(where: Account, data: string, executors: Account[], params?: TxParams): Promise<number> {
     const receipt = await this.with(params).schedule(this.toAddress(where), data, this.toAddresses(executors));
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
-    return event.args.id;
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    return event.args.scheduledExecutionId;
   }
 
   async scheduleGrantPermission(
@@ -99,8 +101,8 @@ export default class Authorizer {
       this.toAddresses(executors)
     );
 
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
-    return event.args.id;
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    return event.args.scheduledExecutionId;
   }
 
   async scheduleRevokePermission(
@@ -117,8 +119,8 @@ export default class Authorizer {
       this.toAddresses(executors)
     );
 
-    const event = expectEvent.inReceipt(await receipt.wait(), 'ActionScheduled');
-    return event.args.id;
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    return event.args.scheduledExecutionId;
   }
 
   async execute(id: BigNumberish, params?: TxParams): Promise<ContractTransaction> {
@@ -160,7 +162,7 @@ export default class Authorizer {
     account: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    const wheres = this.toList(actions).map(() => Authorizer.EVERYWHERE);
+    const wheres = this.toList(actions).map(() => TimelockAuthorizer.EVERYWHERE);
     return this.with(params).grantPermissions(this.toList(actions), this.toAddress(account), wheres);
   }
 
@@ -169,18 +171,19 @@ export default class Authorizer {
     account: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    const wheres = this.toList(actions).map(() => Authorizer.EVERYWHERE);
+    const wheres = this.toList(actions).map(() => TimelockAuthorizer.EVERYWHERE);
     return this.with(params).revokePermissions(this.toList(actions), this.toAddress(account), wheres);
   }
 
   async renouncePermissionsGlobally(actions: NAry<string>, params: TxParams): Promise<ContractTransaction> {
-    const wheres = this.toList(actions).map(() => Authorizer.EVERYWHERE);
+    const wheres = this.toList(actions).map(() => TimelockAuthorizer.EVERYWHERE);
     return this.with(params).renouncePermissions(this.toList(actions), wheres);
   }
 
   async setDelay(action: string, delay: number, params?: TxParams): Promise<void> {
     const from = params?.from ?? (await getSigner());
-    const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [SET_DELAY_PERMISSION, action]);
+    const SCHEDULE_DELAY_ACTION_ID = await this.SCHEDULE_DELAY_ACTION_ID();
+    const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [SCHEDULE_DELAY_ACTION_ID, action]);
     await this.grantPermissions(setDelayAction, this.toAddress(from), this, params);
     const id = await this.scheduleDelayChange(action, delay, [], params);
     await this.execute(id);
