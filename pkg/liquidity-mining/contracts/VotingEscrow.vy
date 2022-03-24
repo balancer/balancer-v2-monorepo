@@ -527,6 +527,29 @@ def find_timestamp_epoch(_timestamp: uint256, max_epoch: uint256) -> uint256:
             _max = _mid - 1
     return _min
 
+@internal
+@view
+def find_block_user_epoch(_addr: address, _block: uint256, max_epoch: uint256) -> uint256:
+    """
+    @notice Binary search to find epoch for block number
+    @param _addr User for which to find user epoch for
+    @param _block Block to find
+    @param max_epoch Don't go beyond this epoch
+    @return Epoch which contains _block
+    """
+    # Binary search
+    _min: uint256 = 0
+    _max: uint256 = max_epoch
+    for i in range(128):  # Will be always enough for 128-bit numbers
+        if _min >= _max:
+            break
+        _mid: uint256 = (_min + _max + 1) / 2
+        if self.user_point_history[_addr][_mid].blk <= _block:
+            _min = _mid
+        else:
+            _max = _mid - 1
+    return _min
+
 @external
 @view
 def balanceOf(addr: address, _t: uint256 = block.timestamp) -> uint256:
@@ -562,19 +585,8 @@ def balanceOfAt(addr: address, _block: uint256) -> uint256:
     # reference yet
     assert _block <= block.number
 
-    # Binary search
-    _min: uint256 = 0
-    _max: uint256 = self.user_point_epoch[addr]
-    for i in range(128):  # Will be always enough for 128-bit numbers
-        if _min >= _max:
-            break
-        _mid: uint256 = (_min + _max + 1) / 2
-        if self.user_point_history[addr][_mid].blk <= _block:
-            _min = _mid
-        else:
-            _max = _mid - 1
-
-    upoint: Point = self.user_point_history[addr][_min]
+    _user_epoch: uint256 = self.find_block_user_epoch(addr, _block, self.user_point_epoch[addr])
+    upoint: Point = self.user_point_history[addr][_user_epoch]
 
     max_epoch: uint256 = self.epoch
     _epoch: uint256 = self.find_block_epoch(_block, max_epoch)
