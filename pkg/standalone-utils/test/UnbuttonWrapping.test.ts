@@ -69,7 +69,7 @@ describe('UnbuttonWrapping', function () {
         actionId(vault.instance, action)
       )
     );
-    const authorizer = await deployedAt('v2-vault/Authorizer', await vault.instance.getAuthorizer());
+    const authorizer = await deployedAt('v2-vault/TimelockAuthorizer', await vault.instance.getAuthorizer());
     const wheres = relayerActionIds.map(() => ANY_ADDRESS);
     await authorizer.connect(admin).grantPermissions(relayerActionIds, relayer.address, wheres);
 
