@@ -243,9 +243,9 @@ contract FeeDistributor is ReentrancyGuard {
                 if (userBalance > 0) {
                     _userBalanceAtTimestamp[user][weekCursor] = userBalance;
                 }
-            }
 
-            weekCursor += 1 weeks;
+                weekCursor += 1 weeks;
+            }
         }
 
         _userLastEpochCheckpointed[user] = userEpoch - 1;
