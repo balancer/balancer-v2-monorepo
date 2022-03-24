@@ -216,6 +216,10 @@ contract FeeDistributor is ReentrancyGuard {
 
         IVotingEscrow.Point memory oldUserPoint;
         for (uint256 i = 0; i < 50; ++i) {
+            if (weekCursor > block.timestamp) {
+                break;
+            }
+
             if (weekCursor >= userPoint.ts && userEpoch <= maxUserEpoch) {
                 // The week being considered lies inside the user epoch described by `userPoint`.
                 // We then shift it into `oldUserPoint` and query the Point for the next user epoch.
