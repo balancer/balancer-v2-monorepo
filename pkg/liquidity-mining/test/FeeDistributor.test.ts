@@ -118,58 +118,79 @@ describe.only('FeeDistributor', () => {
     });
 
     context('when startTime has passed', () => {
-      let start: BigNumber;
-      let end: BigNumber;
-
       sharedBeforeEach('advance time past startTime', async () => {
         await advanceToTimestamp(startTime);
-
-        await feeDistributor.checkpoint();
-
-        start = roundUpTimestamp(await currentTimestamp());
       });
 
-      function testCheckpoint() {
-        let numWeeks: number;
-        let checkpointTimestamps: BigNumber[];
+      context('when the contract has already been checkpointed', () => {
+        let nextWeek: BigNumber;
 
-        sharedBeforeEach('advance time to end of period to checkpoint', async () => {
-          numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(start)).div(WEEK).toNumber();
-          checkpointTimestamps = Array.from({ length: numWeeks }, (_, i) => roundDownTimestamp(start).add(i * WEEK));
-          await advanceToTimestamp(end);
-        });
-
-        it('advances the global time cursor to the start of the next week', async () => {
-          expectTimestampsMatch(await feeDistributor.getTimeCursor(), start);
-
+        sharedBeforeEach('checkpoint contract', async () => {
+          // We checkpoint the contract so that the next time
+          // we call this function there will be no update to perform.
           const tx = await feeDistributor.checkpoint();
-
-          const txTimestamp = await getReceiptTimestamp(tx.wait());
-          // Add 1 as if the transaction falls exactly on the beginning of the week
-          // then we also go to the end of the week as we can read the current balance
-          const nextWeek = roundUpTimestamp(txTimestamp + 1);
-
-          expectTimestampsMatch(await feeDistributor.getTimeCursor(), nextWeek);
+          nextWeek = roundUpTimestamp(await getReceiptTimestamp(tx.wait()));
         });
 
-        it('stores the VotingEscrow supply at the start of each week', async () => {
-          for (let i = 0; i < numWeeks; i++) {
-            expect(await feeDistributor.getTotalSupplyAtTimestamp(checkpointTimestamps[i])).to.be.eq(0);
-          }
+        it('nothing happens', async () => {
+          expectTimestampsMatch(await feeDistributor.getTimeCursor(), nextWeek);
 
           await feeDistributor.checkpoint();
 
-          for (let i = 0; i < numWeeks; i++) {
-            await expectConsistentTotalSupply(checkpointTimestamps[i]);
-          }
+          expectTimestampsMatch(await feeDistributor.getTimeCursor(), nextWeek);
         });
-      }
+      });
 
-      context("when the contract hasn't checkpointed in a small number of weeks", () => {
-        sharedBeforeEach('set end timestamp', async () => {
-          end = start.add(8 * WEEK - 1);
+      context('when the contract has not been checkpointed this week', () => {
+        let start: BigNumber;
+        let end: BigNumber;
+
+        sharedBeforeEach('advance time past startTime', async () => {
+          start = roundUpTimestamp(await currentTimestamp());
         });
-        testCheckpoint();
+
+        function testCheckpoint() {
+          let numWeeks: number;
+          let checkpointTimestamps: BigNumber[];
+
+          sharedBeforeEach('advance time to end of period to checkpoint', async () => {
+            numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(start)).div(WEEK).toNumber();
+            checkpointTimestamps = Array.from({ length: numWeeks }, (_, i) => roundDownTimestamp(start).add(i * WEEK));
+            await advanceToTimestamp(end);
+          });
+
+          it('advances the global time cursor to the start of the next week', async () => {
+            expectTimestampsMatch(await feeDistributor.getTimeCursor(), start);
+
+            const tx = await feeDistributor.checkpoint();
+
+            const txTimestamp = await getReceiptTimestamp(tx.wait());
+            // Add 1 as if the transaction falls exactly on the beginning of the week
+            // then we also go to the end of the week as we can read the current balance
+            const nextWeek = roundUpTimestamp(txTimestamp + 1);
+
+            expectTimestampsMatch(await feeDistributor.getTimeCursor(), nextWeek);
+          });
+
+          it('stores the VotingEscrow supply at the start of each week', async () => {
+            for (let i = 0; i < numWeeks; i++) {
+              expect(await feeDistributor.getTotalSupplyAtTimestamp(checkpointTimestamps[i])).to.be.eq(0);
+            }
+
+            await feeDistributor.checkpoint();
+
+            for (let i = 0; i < numWeeks; i++) {
+              await expectConsistentTotalSupply(checkpointTimestamps[i]);
+            }
+          });
+        }
+
+        context("when the contract hasn't checkpointed in a small number of weeks", () => {
+          sharedBeforeEach('set end timestamp', async () => {
+            end = start.add(8 * WEEK - 1);
+          });
+          testCheckpoint();
+        });
       });
     });
   });
@@ -198,60 +219,81 @@ describe.only('FeeDistributor', () => {
     });
 
     context('when startTime has passed', () => {
-      let start: BigNumber;
-      let end: BigNumber;
+      context('when the user has already been checkpointed', () => {
+        let nextWeek: BigNumber;
 
-      sharedBeforeEach('advance time past startTime', async () => {
-        await advanceToTimestamp(startTime);
-
-        start = await currentTimestamp();
-      });
-
-      function testCheckpoint() {
-        // These tests will begin to fail as we increase the number of weeks which we are checkpointing
-        // This is as `_checkpointUserBalance` is limited to perform at most 50 iterations minus the number
-        // of user epochs in the period being checkpointed.
-        let numWeeks: number;
-        let checkpointTimestamps: BigNumber[];
-
-        sharedBeforeEach('advance time to end of period to checkpoint', async () => {
-          numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(start)).div(WEEK).toNumber();
-          checkpointTimestamps = Array.from({ length: numWeeks }, (_, i) => roundDownTimestamp(start).add(i * WEEK));
-          await advanceToTimestamp(end);
-        });
-
-        it("advances the user's time cursor to the start of the next week", async () => {
-          expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), 0);
-
+        sharedBeforeEach('checkpoint contract', async () => {
+          // We checkpoint the contract so that the next time
+          // we call this function there will be no update to perform.
           const tx = await feeDistributor.checkpointUser(user.address);
-
-          const txTimestamp = await getReceiptTimestamp(tx.wait());
-          // Add 1 as if the transaction falls exactly on the beginning of the week
-          // then we also go to the end of the week as we can read the current balance
-          const nextWeek = roundUpTimestamp(txTimestamp + 1);
-
-          expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), nextWeek);
+          nextWeek = roundUpTimestamp(await getReceiptTimestamp(tx.wait()));
         });
 
-        it("stores the user's balance at the start of each week", async () => {
-          for (let i = 0; i < numWeeks; i++) {
-            expect(await feeDistributor.getUserBalanceAtTimestamp(user.address, checkpointTimestamps[i])).to.be.eq(0);
-          }
+        it('nothing happens', async () => {
+          expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), nextWeek);
 
           await feeDistributor.checkpointUser(user.address);
 
-          for (let i = 0; i < numWeeks; i++) {
-            await expectConsistentUserBalance(user, checkpointTimestamps[i]);
-          }
+          expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), nextWeek);
         });
-      }
+      });
 
-      context("when user hasn't checkpointed in a small number of weeks", () => {
-        sharedBeforeEach('set end timestamp', async () => {
-          //
-          end = start.add(8 * WEEK - 1);
+      context('when the user has not been checkpointed this week', () => {
+        let start: BigNumber;
+        let end: BigNumber;
+
+        sharedBeforeEach('advance time past startTime', async () => {
+          await advanceToTimestamp(startTime);
+
+          start = await currentTimestamp();
         });
-        testCheckpoint();
+
+        function testCheckpoint() {
+          // These tests will begin to fail as we increase the number of weeks which we are checkpointing
+          // This is as `_checkpointUserBalance` is limited to perform at most 50 iterations minus the number
+          // of user epochs in the period being checkpointed.
+          let numWeeks: number;
+          let checkpointTimestamps: BigNumber[];
+
+          sharedBeforeEach('advance time to end of period to checkpoint', async () => {
+            numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(start)).div(WEEK).toNumber();
+            checkpointTimestamps = Array.from({ length: numWeeks }, (_, i) => roundDownTimestamp(start).add(i * WEEK));
+            await advanceToTimestamp(end);
+          });
+
+          it("advances the user's time cursor to the start of the next week", async () => {
+            expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), 0);
+
+            const tx = await feeDistributor.checkpointUser(user.address);
+
+            const txTimestamp = await getReceiptTimestamp(tx.wait());
+            // Add 1 as if the transaction falls exactly on the beginning of the week
+            // then we also go to the end of the week as we can read the current balance
+            const nextWeek = roundUpTimestamp(txTimestamp + 1);
+
+            expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), nextWeek);
+          });
+
+          it("stores the user's balance at the start of each week", async () => {
+            for (let i = 0; i < numWeeks; i++) {
+              expect(await feeDistributor.getUserBalanceAtTimestamp(user.address, checkpointTimestamps[i])).to.be.eq(0);
+            }
+
+            await feeDistributor.checkpointUser(user.address);
+
+            for (let i = 0; i < numWeeks; i++) {
+              await expectConsistentUserBalance(user, checkpointTimestamps[i]);
+            }
+          });
+        }
+
+        context("when user hasn't checkpointed in a small number of weeks", () => {
+          sharedBeforeEach('set end timestamp', async () => {
+            //
+            end = start.add(8 * WEEK - 1);
+          });
+          testCheckpoint();
+        });
       });
     });
   });
