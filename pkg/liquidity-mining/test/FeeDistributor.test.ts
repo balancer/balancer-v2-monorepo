@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
@@ -19,6 +19,12 @@ const roundDownTimestamp = (timestamp: BigNumberish): BigNumber => {
 const roundUpTimestamp = (timestamp: BigNumberish): BigNumber => {
   return roundDownTimestamp(BigNumber.from(timestamp).add(WEEK).sub(1));
 };
+
+async function getReceiptTimestamp(receipt: ContractReceipt | Promise<ContractReceipt>): Promise<number> {
+  const blockHash = (await receipt).blockHash;
+  const block = await ethers.provider.getBlock(blockHash);
+  return block.timestamp;
+}
 
 describe.only('FeeDistributor', () => {
   let bpt: Token;
@@ -164,6 +170,65 @@ describe.only('FeeDistributor', () => {
         await feeDistributor.checkpointUser(user.address);
 
         await expectConsistentUserBalance(user, startTime);
+      });
+    });
+  });
+
+  describe.only('checkpointToken', () => {
+    let token: Token;
+    const tokensAmount = parseFixed('1', 18);
+
+    sharedBeforeEach('Deploy protocol fee token', async () => {
+      token = await Token.create('FEE');
+    });
+
+    context('when startTime has not passed', () => {
+      it('reverts', async () => {
+        await expect(feeDistributor.checkpointToken(ANY_ADDRESS)).to.be.revertedWith(
+          'Fee distribution has not started yet'
+        );
+      });
+    });
+
+    context('when startTime has passed', () => {
+      sharedBeforeEach('advance time past startTime', async () => {
+        await advanceToTimestamp(startTime.add(100));
+      });
+
+      it("updates the token's time cursor to the current timestamp", async () => {
+        const tx = await feeDistributor.checkpointToken(token.address);
+
+        const tokenTimeCursor = await feeDistributor.getTokenTimeCursor(token.address);
+        const txTimestamp = await getReceiptTimestamp(tx.wait());
+        expect(tokenTimeCursor).to.be.eq(txTimestamp);
+      });
+
+      context("when FeeDistributor hasn't received new tokens", () => {
+        sharedBeforeEach('send tokens and checkpoint', async () => {
+          await token.mint(feeDistributor, tokensAmount);
+          await feeDistributor.checkpointToken(token.address);
+        });
+
+        it('maintains the same cached balance', async () => {
+          const expectedTokenLastBalance = await feeDistributor.getTokenLastBalance(token.address);
+          await feeDistributor.checkpointToken(token.address);
+
+          expect(await feeDistributor.getTokenLastBalance(token.address)).to.be.eq(expectedTokenLastBalance);
+        });
+      });
+
+      context('when FeeDistributor has received new tokens', () => {
+        sharedBeforeEach('send tokens', async () => {
+          await token.mint(feeDistributor, tokensAmount);
+        });
+
+        it('updates the cached balance by the amount of new tokens received', async () => {
+          const previousTokenLastBalance = await feeDistributor.getTokenLastBalance(token.address);
+          await feeDistributor.checkpointToken(token.address);
+          const newTokenLastBalance = await feeDistributor.getTokenLastBalance(token.address);
+
+          expect(newTokenLastBalance.sub(previousTokenLastBalance)).to.be.eq(tokensAmount);
+        });
       });
     });
   });
