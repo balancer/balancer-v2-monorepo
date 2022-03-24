@@ -318,19 +318,9 @@ contract FeeDistributor is ReentrancyGuard {
         for (uint256 i = 0; i < 20; ++i) {
             if (timeCursor > weekStart) break;
 
-            uint256 epoch = _findTimestampEpoch(timeCursor);
-            IVotingEscrow.Point memory pt = _votingEscrow.point_history(epoch);
-
-            int128 dt = 0;
-            if (timeCursor > pt.ts) {
-                // If the point is at 0 epoch, it can actually be earlier than the first deposit
-                // Then make dt 0
-                dt = int128(timeCursor - pt.ts);
-            }
-
-            // Set supply as max(pt.bias - pt.slope * dt, 0)
-            if (pt.bias > pt.slope * dt) {
-                _veSupplyCache[timeCursor] = uint256(pt.bias - pt.slope * dt);
+            uint256 supplySnapshot = _votingEscrow.totalSupply(timeCursor);
+            if (supplySnapshot > 0) {
+                _veSupplyCache[timeCursor] = supplySnapshot;
             }
 
             timeCursor += 1 weeks;
