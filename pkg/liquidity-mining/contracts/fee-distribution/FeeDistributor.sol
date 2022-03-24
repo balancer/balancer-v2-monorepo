@@ -86,6 +86,15 @@ contract FeeDistributor is ReentrancyGuard {
     function getTokenLastBalance(IERC20 token) external view returns (uint256) {
         return _tokenLastBalance[token];
     }
+
+    function checkpoint() external nonReentrant {
+        _checkpointTotalSupply();
+    }
+
+    function checkpointUser(address user) external nonReentrant {
+        _checkpointUserBalance(user);
+    }
+
     function checkpointToken(IERC20 token) external nonReentrant {
         // Prevent someone from assigning tokens to an inaccessible week.
         require(block.timestamp > _startTime, "Fee distribution has not started yet");
