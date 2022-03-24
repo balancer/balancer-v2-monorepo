@@ -160,7 +160,7 @@ describe.only('FeeDistributor', () => {
         await advanceToTimestamp(startTime.add(100));
       });
 
-      it('advances the global time cursor', async () => {
+      it('advances the global time cursor to the start of the next week', async () => {
         const nextWeek = roundUpTimestamp(await currentTimestamp());
 
         expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(0);
