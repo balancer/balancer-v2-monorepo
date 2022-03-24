@@ -55,6 +55,37 @@ contract FeeDistributor is ReentrancyGuard {
         _timeCursor = startTime;
     }
 
+    function getVotingEscrow() external view returns (IVotingEscrow) {
+        return _votingEscrow;
+    }
+
+    function getTimeCursor() external view returns (uint256) {
+        return _timeCursor;
+    }
+
+    function getUserTimeCursor(address user) external view returns (uint256) {
+        return _userTimeCursor[user];
+    }
+
+    function getTokenTimeCursor(IERC20 token) external view returns (uint256) {
+        return _tokenTimeCursor[token];
+    }
+
+    function getUserTokenTimeCursor(address user, IERC20 token) external view returns (uint256) {
+        return _userTokenTimeCursor[user][token];
+    }
+
+    function getUserBalanceAtTimestamp(address user, uint256 timestamp) external view returns (uint256) {
+        return _userBalanceAtTimestamp[user][timestamp];
+    }
+
+    function getTotalSupplyAtTimestamp(uint256 timestamp) external view returns (uint256) {
+        return _veSupplyCache[timestamp];
+    }
+
+    function getTokenLastBalance(IERC20 token) external view returns (uint256) {
+        return _tokenLastBalance[token];
+    }
     function checkpointToken(IERC20 token) external nonReentrant {
         // Prevent someone from assigning tokens to an inaccessible week.
         require(block.timestamp > _startTime, "Fee distribution has not started yet");
