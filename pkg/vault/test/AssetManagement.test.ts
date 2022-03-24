@@ -31,7 +31,7 @@ describe('Asset Management', function () {
   });
 
   sharedBeforeEach('deploy vault', async () => {
-    authorizer = await deploy('Authorizer', { args: [admin.address, ZERO_ADDRESS] });
+    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS] });
     vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, MONTH, MONTH] });
   });
 

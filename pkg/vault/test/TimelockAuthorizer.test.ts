@@ -4,15 +4,15 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import Authorizer from '@balancer-labs/v2-helpers/src/models/authorizer/Authorizer';
+import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 
-describe('Authorizer', () => {
-  let authorizer: Authorizer, vault: Contract;
+describe('TimelockAuthorizer', () => {
+  let authorizer: TimelockAuthorizer, vault: Contract;
   let admin: SignerWithAddress, grantee: SignerWithAddress, from: SignerWithAddress;
 
   before('setup signers', async () => {
@@ -23,15 +23,15 @@ describe('Authorizer', () => {
   const ACTION_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
   const ACTIONS = [ACTION_1, ACTION_2];
 
-  const EVERYWHERE = Authorizer.EVERYWHERE;
+  const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
   const WHERE = [ethers.Wallet.createRandom().address, ethers.Wallet.createRandom().address];
   const NOT_WHERE = ethers.Wallet.createRandom().address;
 
   sharedBeforeEach('deploy authorizer', async () => {
-    const oldAuthorizer = await Authorizer.create({ admin });
+    const oldAuthorizer = await TimelockAuthorizer.create({ admin });
 
     vault = await deploy('Vault', { args: [oldAuthorizer.address, ZERO_ADDRESS, 0, 0] });
-    authorizer = await Authorizer.create({ admin, vault });
+    authorizer = await TimelockAuthorizer.create({ admin, vault });
 
     const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
     await oldAuthorizer.grantPermissions(setAuthorizerAction, admin, vault, { from: admin });
@@ -39,90 +39,87 @@ describe('Authorizer', () => {
   });
 
   describe('admin', () => {
-    let GRANT_PERMISSION: string, REVOKE_PERMISSION: string;
+    let GRANT_ACTION_ID: string, REVOKE_ACTION_ID: string;
 
     sharedBeforeEach('set constants', async () => {
-      GRANT_PERMISSION = await authorizer.GRANT_PERMISSION();
-      REVOKE_PERMISSION = await authorizer.REVOKE_PERMISSION();
+      GRANT_ACTION_ID = await authorizer.GRANT_ACTION_ID();
+      REVOKE_ACTION_ID = await authorizer.REVOKE_ACTION_ID();
     });
 
     it('defines its permissions correctly', async () => {
-      expect(GRANT_PERMISSION).to.be.equal(ethers.utils.solidityKeccak256(['string'], ['GRANT_PERMISSION']));
-      expect(REVOKE_PERMISSION).to.be.equal(ethers.utils.solidityKeccak256(['string'], ['REVOKE_PERMISSION']));
-
       const expectedGrantId = ethers.utils.solidityKeccak256(
         ['bytes32', 'address', 'address'],
-        [GRANT_PERMISSION, admin.address, EVERYWHERE]
+        [GRANT_ACTION_ID, admin.address, EVERYWHERE]
       );
-      expect(await authorizer.permissionId(GRANT_PERMISSION, admin, EVERYWHERE)).to.be.equal(expectedGrantId);
+      expect(await authorizer.permissionId(GRANT_ACTION_ID, admin, EVERYWHERE)).to.be.equal(expectedGrantId);
 
       const expectedRevokeId = ethers.utils.solidityKeccak256(
         ['bytes32', 'address', 'address'],
-        [REVOKE_PERMISSION, admin.address, EVERYWHERE]
+        [REVOKE_ACTION_ID, admin.address, EVERYWHERE]
       );
-      expect(await authorizer.permissionId(REVOKE_PERMISSION, admin, EVERYWHERE)).to.be.equal(expectedRevokeId);
+      expect(await authorizer.permissionId(REVOKE_ACTION_ID, admin, EVERYWHERE)).to.be.equal(expectedRevokeId);
     });
 
     it('can grant permissions everywhere', async () => {
-      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, WHERE)).to.be.true;
-      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, EVERYWHERE)).to.be.true;
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, admin, WHERE)).to.be.true;
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, admin, EVERYWHERE)).to.be.true;
     });
 
     it('can revoke permissions everywhere', async () => {
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, WHERE)).to.be.true;
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, EVERYWHERE)).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, admin, WHERE)).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, admin, EVERYWHERE)).to.be.true;
     });
 
     it('can grant permission to other address to grant permissions for a custom contract', async () => {
-      await authorizer.grantPermissions(GRANT_PERMISSION, grantee, WHERE[0], { from: admin });
+      await authorizer.grantPermissions(GRANT_ACTION_ID, grantee, WHERE[0], { from: admin });
 
-      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, WHERE[0])).to.be.true;
-      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, EVERYWHERE)).to.be.false;
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE[0])).to.be.true;
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE)).to.be.false;
     });
 
     it('can grant permission to other address to grant permissions everywhere', async () => {
-      await authorizer.grantPermissionsGlobally(GRANT_PERMISSION, grantee, { from: admin });
+      await authorizer.grantPermissionsGlobally(GRANT_ACTION_ID, grantee, { from: admin });
 
-      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, WHERE)).to.be.true;
-      expect(await authorizer.canPerform(GRANT_PERMISSION, grantee, EVERYWHERE)).to.be.true;
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE)).to.be.true;
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE)).to.be.true;
     });
 
     it('can grant permission to other address to revoke permissions for a custom contract', async () => {
-      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, WHERE[0], { from: admin });
+      await authorizer.grantPermissions(REVOKE_ACTION_ID, grantee, WHERE[0], { from: admin });
 
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, WHERE[0])).to.be.true;
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, EVERYWHERE)).to.be.false;
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE[0])).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE)).to.be.false;
     });
 
     it('can grant permission to other address to revoke permissions everywhere', async () => {
-      await authorizer.grantPermissionsGlobally(REVOKE_PERMISSION, grantee, { from: admin });
+      await authorizer.grantPermissionsGlobally(REVOKE_ACTION_ID, grantee, { from: admin });
 
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, WHERE)).to.be.true;
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, grantee, EVERYWHERE)).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE)).to.be.true;
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE)).to.be.true;
     });
 
     it('can have their global permissions revoked by an authorized address for any contract', async () => {
-      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, EVERYWHERE, { from: admin });
+      await authorizer.grantPermissions(REVOKE_ACTION_ID, grantee, EVERYWHERE, { from: admin });
 
-      await authorizer.revokePermissions(GRANT_PERMISSION, admin, EVERYWHERE, { from: grantee });
-      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, WHERE)).to.be.false;
-      expect(await authorizer.canPerform(GRANT_PERMISSION, admin, EVERYWHERE)).to.be.false;
+      await authorizer.revokePermissions(GRANT_ACTION_ID, admin, EVERYWHERE, { from: grantee });
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, admin, WHERE)).to.be.false;
+      expect(await authorizer.canPerform(GRANT_ACTION_ID, admin, EVERYWHERE)).to.be.false;
 
-      await authorizer.revokePermissions(REVOKE_PERMISSION, admin, EVERYWHERE, { from: grantee });
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, WHERE)).to.be.false;
-      expect(await authorizer.canPerform(REVOKE_PERMISSION, admin, EVERYWHERE)).to.be.false;
+      await authorizer.revokePermissions(REVOKE_ACTION_ID, admin, EVERYWHERE, { from: grantee });
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, admin, WHERE)).to.be.false;
+      expect(await authorizer.canPerform(REVOKE_ACTION_ID, admin, EVERYWHERE)).to.be.false;
     });
 
     it('cannot have their global permissions revoked by an authorized address for a specific contract', async () => {
-      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, WHERE[0], { from: admin });
-      await authorizer.grantPermissions(REVOKE_PERMISSION, grantee, WHERE[1], { from: admin });
+      await authorizer.grantPermissions(REVOKE_ACTION_ID, grantee, WHERE[0], { from: admin });
+      await authorizer.grantPermissions(REVOKE_ACTION_ID, grantee, WHERE[1], { from: admin });
 
       await expect(
-        authorizer.revokePermissions(GRANT_PERMISSION, admin, EVERYWHERE, { from: grantee })
+        authorizer.revokePermissions(GRANT_ACTION_ID, admin, EVERYWHERE, { from: grantee })
       ).to.be.revertedWith('SENDER_NOT_ALLOWED');
 
       await expect(
-        authorizer.revokePermissions(REVOKE_PERMISSION, admin, EVERYWHERE, { from: grantee })
+        authorizer.revokePermissions(REVOKE_ACTION_ID, admin, EVERYWHERE, { from: grantee })
       ).to.be.revertedWith('SENDER_NOT_ALLOWED');
     });
   });
@@ -159,7 +156,7 @@ describe('Authorizer', () => {
 
             ACTIONS.forEach((action, i) => {
               expectEvent.inReceipt(receipt, 'PermissionGranted', {
-                action,
+                actionId: action,
                 account: grantee.address,
                 where: WHERE[i],
               });
@@ -169,12 +166,16 @@ describe('Authorizer', () => {
 
         context('when there is a delay set to grant permissions', () => {
           const delay = DAY;
-          const GRANT_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['GRANT_PERMISSION']);
+          let GRANT_ACTION_ID: string;
+
+          sharedBeforeEach('set constants', async () => {
+            GRANT_ACTION_ID = await authorizer.GRANT_ACTION_ID();
+          });
 
           sharedBeforeEach('set delay', async () => {
             const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
             await authorizer.setDelay(setAuthorizerAction, delay * 2, { from: admin });
-            await authorizer.setDelay(GRANT_PERMISSION, delay, { from: admin });
+            await authorizer.setDelay(GRANT_ACTION_ID, delay, { from: admin });
           });
 
           it('reverts', async () => {
@@ -254,7 +255,7 @@ describe('Authorizer', () => {
 
             ACTIONS.forEach((action, i) => {
               expectEvent.inReceipt(receipt, 'PermissionGranted', {
-                action,
+                actionId: action,
                 account: grantee.address,
                 where: WHERE[i],
               });
@@ -301,9 +302,9 @@ describe('Authorizer', () => {
 
           for (const action of ACTIONS) {
             expectEvent.inReceipt(receipt, 'PermissionGranted', {
-              action,
+              actionId: action,
               account: grantee.address,
-              where: Authorizer.EVERYWHERE,
+              where: TimelockAuthorizer.EVERYWHERE,
             });
           }
         });
@@ -332,9 +333,9 @@ describe('Authorizer', () => {
 
             for (const action of ACTIONS) {
               expectEvent.inReceipt(receipt, 'PermissionGranted', {
-                action,
+                actionId: action,
                 account: grantee.address,
-                where: Authorizer.EVERYWHERE,
+                where: TimelockAuthorizer.EVERYWHERE,
               });
             }
           });
@@ -425,7 +426,7 @@ describe('Authorizer', () => {
 
               ACTIONS.forEach((action, i) => {
                 expectEvent.inReceipt(receipt, 'PermissionRevoked', {
-                  action,
+                  actionId: action,
                   account: grantee.address,
                   where: WHERE[i],
                 });
@@ -435,12 +436,16 @@ describe('Authorizer', () => {
 
           context('when there is a delay set to grant permissions', () => {
             const delay = DAY;
-            const REVOKE_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['REVOKE_PERMISSION']);
+            let REVOKE_ACTION_ID: string;
+
+            sharedBeforeEach('set constants', async () => {
+              REVOKE_ACTION_ID = await authorizer.REVOKE_ACTION_ID();
+            });
 
             sharedBeforeEach('set delay', async () => {
               const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
               await authorizer.setDelay(setAuthorizerAction, delay * 2, { from: admin });
-              await authorizer.setDelay(REVOKE_PERMISSION, delay, { from: admin });
+              await authorizer.setDelay(REVOKE_ACTION_ID, delay, { from: admin });
             });
 
             it('reverts', async () => {
@@ -571,9 +576,9 @@ describe('Authorizer', () => {
 
             for (const action of ACTIONS) {
               expectEvent.inReceipt(receipt, 'PermissionRevoked', {
-                action,
+                actionId: action,
                 account: grantee.address,
-                where: Authorizer.EVERYWHERE,
+                where: TimelockAuthorizer.EVERYWHERE,
               });
             }
           });
@@ -713,10 +718,11 @@ describe('Authorizer', () => {
 
   describe('setDelay', () => {
     const action = ACTION_1;
-    const SET_DELAY_PERMISSION = ethers.utils.solidityKeccak256(['string'], ['SET_DELAY_PERMISSION']);
 
     const grantPermission = async (actionId: string) => {
-      const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [SET_DELAY_PERMISSION, actionId]);
+      const SCHEDULE_DELAY_ACTION_ID = await authorizer.SCHEDULE_DELAY_ACTION_ID();
+      const args = [SCHEDULE_DELAY_ACTION_ID, actionId];
+      const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
       await authorizer.grantPermissions(setDelayAction, admin, authorizer, { from: admin });
     };
 
@@ -745,12 +751,12 @@ describe('Authorizer', () => {
               it('schedules a delay change', async () => {
                 const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
 
-                const scheduledAction = await authorizer.scheduledActions(id);
-                expect(scheduledAction.executed).to.be.false;
-                expect(scheduledAction.data).to.be.equal(expectedData);
-                expect(scheduledAction.where).to.be.equal(authorizer.address);
-                expect(scheduledAction.protected).to.be.false;
-                expect(scheduledAction.executableAt).to.be.at.most(await currentTimestamp());
+                const scheduledExecution = await authorizer.scheduledExecutions(id);
+                expect(scheduledExecution.executed).to.be.false;
+                expect(scheduledExecution.data).to.be.equal(expectedData);
+                expect(scheduledExecution.where).to.be.equal(authorizer.address);
+                expect(scheduledExecution.protected).to.be.false;
+                expect(scheduledExecution.executableAt).to.be.at.most(await currentTimestamp());
               });
 
               it('can be executed immediately', async () => {
@@ -764,7 +770,7 @@ describe('Authorizer', () => {
                 const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
 
                 const receipt = await authorizer.execute(id);
-                expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { action, delay });
+                expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { actionId: action, delay });
               });
             });
 
@@ -779,12 +785,12 @@ describe('Authorizer', () => {
               it('schedules a delay change', async () => {
                 const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
 
-                const scheduledAction = await authorizer.scheduledActions(id);
-                expect(scheduledAction.executed).to.be.false;
-                expect(scheduledAction.data).to.be.equal(expectedData);
-                expect(scheduledAction.where).to.be.equal(authorizer.address);
-                expect(scheduledAction.protected).to.be.false;
-                expect(scheduledAction.executableAt).to.be.at.most((await currentTimestamp()).add(previousDelay));
+                const scheduledExecution = await authorizer.scheduledExecutions(id);
+                expect(scheduledExecution.executed).to.be.false;
+                expect(scheduledExecution.data).to.be.equal(expectedData);
+                expect(scheduledExecution.where).to.be.equal(authorizer.address);
+                expect(scheduledExecution.protected).to.be.false;
+                expect(scheduledExecution.executableAt).to.be.at.most((await currentTimestamp()).add(previousDelay));
               });
 
               it('cannot be executed immediately', async () => {
@@ -802,7 +808,7 @@ describe('Authorizer', () => {
 
                 await advanceTime(previousDelay);
                 const receipt = await authorizer.execute(id);
-                expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { action, delay });
+                expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { actionId: action, delay });
               });
             });
           });
@@ -850,10 +856,10 @@ describe('Authorizer', () => {
 
   describe('schedule', () => {
     let where: Contract, action: string, data: string, executors: SignerWithAddress[];
-    let anotherVault: Contract, newAuthorizer: Authorizer;
+    let anotherVault: Contract, newAuthorizer: TimelockAuthorizer;
 
     sharedBeforeEach('deploy sample instances', async () => {
-      newAuthorizer = await Authorizer.create({ admin });
+      newAuthorizer = await TimelockAuthorizer.create({ admin });
       anotherVault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
     });
 
@@ -890,15 +896,15 @@ describe('Authorizer', () => {
                   executors = [];
                 });
 
-                it('schedules a non-protected action', async () => {
+                it('schedules a non-protected execution', async () => {
                   const id = await schedule();
 
-                  const scheduledAction = await authorizer.scheduledActions(id);
-                  expect(scheduledAction.executed).to.be.false;
-                  expect(scheduledAction.data).to.be.equal(data);
-                  expect(scheduledAction.where).to.be.equal(where.address);
-                  expect(scheduledAction.protected).to.be.false;
-                  expect(scheduledAction.executableAt).to.be.at.most((await currentTimestamp()).add(delay));
+                  const scheduledExecution = await authorizer.scheduledExecutions(id);
+                  expect(scheduledExecution.executed).to.be.false;
+                  expect(scheduledExecution.data).to.be.equal(data);
+                  expect(scheduledExecution.where).to.be.equal(where.address);
+                  expect(scheduledExecution.protected).to.be.false;
+                  expect(scheduledExecution.executableAt).to.be.at.most((await currentTimestamp()).add(delay));
                 });
 
                 it('cannot execute the action immediately', async () => {
@@ -911,10 +917,10 @@ describe('Authorizer', () => {
                   await advanceTime(delay);
 
                   const receipt = await authorizer.execute(id);
-                  expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { id });
+                  expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { scheduledExecutionId: id });
 
-                  const scheduledAction = await authorizer.scheduledActions(id);
-                  expect(scheduledAction.executed).to.be.true;
+                  const scheduledExecution = await authorizer.scheduledExecutions(id);
+                  expect(scheduledExecution.executed).to.be.true;
 
                   expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
                 });
@@ -933,15 +939,15 @@ describe('Authorizer', () => {
                   executors = [admin];
                 });
 
-                it('schedules the requested action', async () => {
+                it('schedules the requested execution', async () => {
                   const id = await schedule();
 
-                  const scheduledAction = await authorizer.scheduledActions(id);
-                  expect(scheduledAction.executed).to.be.false;
-                  expect(scheduledAction.data).to.be.equal(data);
-                  expect(scheduledAction.where).to.be.equal(where.address);
-                  expect(scheduledAction.protected).to.be.true;
-                  expect(scheduledAction.executableAt).to.be.at.most((await currentTimestamp()).add(delay));
+                  const scheduledExecution = await authorizer.scheduledExecutions(id);
+                  expect(scheduledExecution.executed).to.be.false;
+                  expect(scheduledExecution.data).to.be.equal(data);
+                  expect(scheduledExecution.where).to.be.equal(where.address);
+                  expect(scheduledExecution.protected).to.be.true;
+                  expect(scheduledExecution.executableAt).to.be.at.most((await currentTimestamp()).add(delay));
                 });
 
                 it('cannot execute the action immediately', async () => {
@@ -958,10 +964,10 @@ describe('Authorizer', () => {
                   await expect(authorizer.execute(id, { from: grantee })).to.be.revertedWith('SENDER_NOT_ALLOWED');
 
                   const receipt = await authorizer.execute(id, { from: executors[0] });
-                  expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { id });
+                  expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { scheduledExecutionId: id });
 
-                  const scheduledAction = await authorizer.scheduledActions(id);
-                  expect(scheduledAction.executed).to.be.true;
+                  const scheduledExecution = await authorizer.scheduledExecutions(id);
+                  expect(scheduledExecution.executed).to.be.true;
 
                   expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
                 });
@@ -1028,10 +1034,10 @@ describe('Authorizer', () => {
 
   describe('execute', () => {
     const delay = DAY;
-    let executors: SignerWithAddress[], newAuthorizer: Authorizer;
+    let executors: SignerWithAddress[], newAuthorizer: TimelockAuthorizer;
 
     sharedBeforeEach('deploy sample instances', async () => {
-      newAuthorizer = await Authorizer.create({ admin });
+      newAuthorizer = await TimelockAuthorizer.create({ admin });
     });
 
     sharedBeforeEach('grant set authorizer permission with delay', async () => {
@@ -1059,7 +1065,7 @@ describe('Authorizer', () => {
           });
 
           context('when the action was not cancelled', () => {
-            sharedBeforeEach('schedule action', async () => {
+            sharedBeforeEach('schedule execution', async () => {
               id = await schedule();
             });
 
@@ -1071,8 +1077,8 @@ describe('Authorizer', () => {
               it('executes the action', async () => {
                 await authorizer.execute(id, { from });
 
-                const scheduledAction = await authorizer.scheduledActions(id);
-                expect(scheduledAction.executed).to.be.true;
+                const scheduledExecution = await authorizer.scheduledExecutions(id);
+                expect(scheduledExecution.executed).to.be.true;
 
                 expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
               });
@@ -1080,7 +1086,7 @@ describe('Authorizer', () => {
               it('emits an event', async () => {
                 const receipt = await authorizer.execute(id, { from });
 
-                expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { id });
+                expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { scheduledExecutionId: id });
               });
 
               it('cannot be executed twice', async () => {
@@ -1134,8 +1140,8 @@ describe('Authorizer', () => {
 
           await authorizer.execute(id);
 
-          const scheduledAction = await authorizer.scheduledActions(id);
-          expect(scheduledAction.executed).to.be.true;
+          const scheduledExecution = await authorizer.scheduledExecutions(id);
+          expect(scheduledExecution.executed).to.be.true;
 
           expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
         });
@@ -1151,10 +1157,10 @@ describe('Authorizer', () => {
 
   describe('cancel', () => {
     const delay = DAY;
-    let executors: SignerWithAddress[], newAuthorizer: Authorizer;
+    let executors: SignerWithAddress[], newAuthorizer: TimelockAuthorizer;
 
     sharedBeforeEach('deploy sample instances', async () => {
-      newAuthorizer = await Authorizer.create({ admin });
+      newAuthorizer = await TimelockAuthorizer.create({ admin });
     });
 
     sharedBeforeEach('grant set authorizer permission with delay', async () => {
@@ -1177,21 +1183,21 @@ describe('Authorizer', () => {
         });
 
         context('when the action was not executed', () => {
-          sharedBeforeEach('schedule action', async () => {
+          sharedBeforeEach('schedule execution', async () => {
             id = await schedule();
           });
 
           it('cancels the action', async () => {
             await authorizer.cancel(id, { from });
 
-            const scheduledAction = await authorizer.scheduledActions(id);
-            expect(scheduledAction.cancelled).to.be.true;
+            const scheduledExecution = await authorizer.scheduledExecutions(id);
+            expect(scheduledExecution.cancelled).to.be.true;
           });
 
           it('emits an event', async () => {
             const receipt = await authorizer.cancel(id, { from });
 
-            expectEvent.inReceipt(await receipt.wait(), 'ActionCancelled', { id });
+            expectEvent.inReceipt(await receipt.wait(), 'ActionCancelled', { scheduledExecutionId: id });
           });
 
           it('cannot be cancelled twice', async () => {
