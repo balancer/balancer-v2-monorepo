@@ -505,6 +505,27 @@ def find_block_epoch(_block: uint256, max_epoch: uint256) -> uint256:
             _max = _mid - 1
     return _min
 
+@internal
+@view
+def find_timestamp_epoch(_timestamp: uint256, max_epoch: uint256) -> uint256:
+    """
+    @notice Binary search to find epoch for timestamp
+    @param _timestamp timestamp to find
+    @param max_epoch Don't go beyond this epoch
+    @return Epoch which contains _timestamp
+    """
+    # Binary search
+    _min: uint256 = 0
+    _max: uint256 = max_epoch
+    for i in range(128):  # Will be always enough for 128-bit numbers
+        if _min >= _max:
+            break
+        _mid: uint256 = (_min + _max + 1) / 2
+        if self.point_history[_mid].ts <= _timestamp:
+            _min = _mid
+        else:
+            _max = _mid - 1
+    return _min
 
 @external
 @view
@@ -615,7 +636,13 @@ def totalSupply(t: uint256 = block.timestamp) -> uint256:
     @dev Adheres to the ERC20 `totalSupply` interface for Aragon compatibility
     @return Total voting power
     """
-    _epoch: uint256 = self.epoch
+    _epoch: uint256 = 0
+    if t == block.timestamp:
+        # No need to do binary search, will always live in current epoch
+        _epoch = self.epoch
+    else:
+        _epoch = self.find_timestamp_epoch(t, self.epoch)
+
     last_point: Point = self.point_history[_epoch]
     return self.supply_at(last_point, t)
 
