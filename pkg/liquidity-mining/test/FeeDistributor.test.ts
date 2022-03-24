@@ -9,6 +9,8 @@ import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceToTimestamp, currentTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { parseFixed } from '@ethersproject/bignumber';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
+import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
+import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 
 const roundDownTimestamp = (timestamp: BigNumberish): BigNumber => {
   return BigNumber.from(timestamp).div(WEEK).mul(WEEK);
@@ -56,6 +58,13 @@ describe.only('FeeDistributor', () => {
     expect(await votingEscrow['balanceOf(address)'](user.address)).to.be.gt(0, 'zero veBAL balance');
     expect(await votingEscrow['totalSupply()']()).to.be.gt(0, 'zero veBAL supply');
   });
+
+  async function expectConsistentUserBalance(user: Account, timestamp: BigNumberish): Promise<void> {
+    const userAddress = TypesConverter.toAddress(user);
+    const cachedBalance = feeDistributor.getUserBalanceAtTimestamp(userAddress, timestamp);
+    const expectedBalance = votingEscrow['balanceOf(address,uint256)'](userAddress, timestamp);
+    expect(await cachedBalance).to.be.eq(await expectedBalance);
+  }
 
   async function expectConsistentTotalSupply(timestamp: BigNumberish): Promise<void> {
     const cachedSupply = feeDistributor.getTotalSupplyAtTimestamp(timestamp);
@@ -107,6 +116,54 @@ describe.only('FeeDistributor', () => {
         await feeDistributor.checkpoint();
 
         await expectConsistentTotalSupply(startTime);
+      });
+    });
+  });
+
+  describe('checkpointUser', () => {
+    context('when startTime has not passed', () => {
+      it('does not advance the user time cursor past startTime', async () => {
+        expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(0);
+
+        await feeDistributor.checkpointUser(user.address);
+
+        expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(startTime);
+
+        await feeDistributor.checkpointUser(user.address);
+
+        expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(startTime);
+      });
+
+      it("does not write a value for user's balance at startTime", async () => {
+        expect(await feeDistributor.getUserBalanceAtTimestamp(user.address, startTime)).to.be.eq(0);
+
+        await feeDistributor.checkpointUser(user.address);
+
+        expect(await feeDistributor.getUserBalanceAtTimestamp(user.address, startTime)).to.be.eq(0);
+      });
+    });
+
+    context('when startTime has passed', () => {
+      sharedBeforeEach('advance time past startTime', async () => {
+        await advanceToTimestamp(startTime.add(100));
+      });
+
+      it('advances the global time cursor', async () => {
+        const nextWeek = roundUpTimestamp(await currentTimestamp());
+
+        expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(0);
+
+        await feeDistributor.checkpointUser(user.address);
+
+        expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(nextWeek);
+      });
+
+      it("stores the user's balance at the start of the week", async () => {
+        expect(await feeDistributor.getUserBalanceAtTimestamp(user.address, startTime)).to.be.eq(0);
+
+        await feeDistributor.checkpointUser(user.address);
+
+        await expectConsistentUserBalance(user, startTime);
       });
     });
   });
