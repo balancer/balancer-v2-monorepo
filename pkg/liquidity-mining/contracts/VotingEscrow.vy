@@ -684,8 +684,11 @@ def totalSupply(t: uint256 = block.timestamp) -> uint256:
     else:
         _epoch = self.find_timestamp_epoch(t, self.epoch)
 
-    last_point: Point = self.point_history[_epoch]
-    return self.supply_at(last_point, t)
+    if _epoch == 0:
+        return 0
+    else:
+        last_point: Point = self.point_history[_epoch]
+        return self.supply_at(last_point, t)
 
 
 @external
