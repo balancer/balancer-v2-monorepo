@@ -35,6 +35,6 @@ export default {
   },
 
   async _deployAuthorizer(admin: SignerWithAddress, from?: SignerWithAddress): Promise<Contract> {
-    return deploy('v2-vault/Authorizer', { args: [admin.address, ZERO_ADDRESS], from });
+    return deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS], from });
   },
 };
