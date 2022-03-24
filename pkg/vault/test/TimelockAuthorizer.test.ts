@@ -917,7 +917,7 @@ describe('TimelockAuthorizer', () => {
                   await advanceTime(delay);
 
                   const receipt = await authorizer.execute(id);
-                  expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { scheduledExecutionId: id });
+                  expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
 
                   const scheduledExecution = await authorizer.scheduledExecutions(id);
                   expect(scheduledExecution.executed).to.be.true;
@@ -964,7 +964,7 @@ describe('TimelockAuthorizer', () => {
                   await expect(authorizer.execute(id, { from: grantee })).to.be.revertedWith('SENDER_NOT_ALLOWED');
 
                   const receipt = await authorizer.execute(id, { from: executors[0] });
-                  expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { scheduledExecutionId: id });
+                  expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
 
                   const scheduledExecution = await authorizer.scheduledExecutions(id);
                   expect(scheduledExecution.executed).to.be.true;
@@ -1086,7 +1086,7 @@ describe('TimelockAuthorizer', () => {
               it('emits an event', async () => {
                 const receipt = await authorizer.execute(id, { from });
 
-                expectEvent.inReceipt(await receipt.wait(), 'ActionExecuted', { scheduledExecutionId: id });
+                expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
               });
 
               it('cannot be executed twice', async () => {
@@ -1197,7 +1197,7 @@ describe('TimelockAuthorizer', () => {
           it('emits an event', async () => {
             const receipt = await authorizer.cancel(id, { from });
 
-            expectEvent.inReceipt(await receipt.wait(), 'ActionCancelled', { scheduledExecutionId: id });
+            expectEvent.inReceipt(await receipt.wait(), 'ExecutionCancelled', { scheduledExecutionId: id });
           });
 
           it('cannot be cancelled twice', async () => {

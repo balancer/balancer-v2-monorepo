@@ -67,19 +67,19 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     mapping(bytes32 => uint256) public delaysPerActionId;
 
     /**
-     * @dev Emitted when a new action `actionId` is scheduled
+     * @dev Emitted when a new execution `scheduledExecutionId` is scheduled
      */
     event ExecutionScheduled(bytes32 indexed actionId, uint256 indexed scheduledExecutionId);
 
     /**
-     * @dev Emitted when an action `actionId` is executed
+     * @dev Emitted when an execution `scheduledExecutionId` is executed
      */
-    event ActionExecuted(uint256 indexed scheduledExecutionId);
+    event ExecutionExecuted(uint256 indexed scheduledExecutionId);
 
     /**
-     * @dev Emitted when an action `actionId` is cancelled
+     * @dev Emitted when an execution `scheduledExecutionId` is cancelled
      */
-    event ActionCancelled(uint256 indexed scheduledExecutionId);
+    event ExecutionCancelled(uint256 indexed scheduledExecutionId);
 
     /**
      * @dev Emitted when a new `delay` is set in order to perform action `actionId`
@@ -218,7 +218,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
         scheduledExecution.executed = true;
         result = scheduledExecution.where.functionCall(scheduledExecution.data);
-        emit ActionExecuted(scheduledExecutionId);
+        emit ExecutionExecuted(scheduledExecutionId);
     }
 
     /**
@@ -237,7 +237,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         _require(hasPermission(actionId, msg.sender, scheduledExecution.where), Errors.SENDER_NOT_ALLOWED);
 
         scheduledExecution.cancelled = true;
-        emit ActionCancelled(scheduledExecutionId);
+        emit ExecutionCancelled(scheduledExecutionId);
     }
 
     /**
