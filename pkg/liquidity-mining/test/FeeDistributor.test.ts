@@ -156,26 +156,60 @@ describe.only('FeeDistributor', () => {
     });
 
     context('when startTime has passed', () => {
+      let start: BigNumber;
+      let end: BigNumber;
+
       sharedBeforeEach('advance time past startTime', async () => {
-        await advanceToTimestamp(startTime.add(100));
+        await advanceToTimestamp(startTime);
+
+        start = await currentTimestamp();
       });
 
-      it('advances the global time cursor to the start of the next week', async () => {
-        const nextWeek = roundUpTimestamp(await currentTimestamp());
+      function testCheckpoint() {
+        // These tests will begin to fail as we increase the number of weeks which we are checkpointing
+        // This is as `_checkpointUserBalance` is limited to perform at most 50 iterations minus the number
+        // of user epochs in the period being checkpointed.
+        let numWeeks: number;
+        let checkpointTimestamps: BigNumber[];
 
-        expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(0);
+        sharedBeforeEach('advance time to end of period to checkpoint', async () => {
+          numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(start)).div(WEEK).toNumber();
+          checkpointTimestamps = Array.from({ length: numWeeks }, (_, i) => roundDownTimestamp(start).add(i * WEEK));
+          await advanceToTimestamp(end);
+        });
 
-        await feeDistributor.checkpointUser(user.address);
+        it("advances the user's time cursor to the start of the next week", async () => {
+          expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(0);
 
-        expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(nextWeek);
-      });
+          const tx = await feeDistributor.checkpointUser(user.address);
 
-      it("stores the user's balance at the start of the week", async () => {
-        expect(await feeDistributor.getUserBalanceAtTimestamp(user.address, startTime)).to.be.eq(0);
+          const txTimestamp = await getReceiptTimestamp(tx.wait());
+          // Add 1 as if the transaction falls exactly on the beginning of the week
+          // then we also go to the end of the week as we can read the current balance
+          const nextWeek = roundUpTimestamp(txTimestamp + 1);
 
-        await feeDistributor.checkpointUser(user.address);
+          expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.eq(nextWeek);
+        });
 
-        await expectConsistentUserBalance(user, startTime);
+        it("stores the user's balance at the start of each week", async () => {
+          for (let i = 0; i < numWeeks; i++) {
+            expect(await feeDistributor.getUserBalanceAtTimestamp(user.address, checkpointTimestamps[i])).to.be.eq(0);
+          }
+
+          await feeDistributor.checkpointUser(user.address);
+
+          for (let i = 0; i < numWeeks; i++) {
+            await expectConsistentUserBalance(user, checkpointTimestamps[i]);
+          }
+        });
+      }
+
+      context("when user hasn't checkpointed in a small number of weeks", () => {
+        sharedBeforeEach('set end timestamp', async () => {
+          //
+          end = start.add(8 * WEEK - 1);
+        });
+        testCheckpoint();
       });
     });
   });
