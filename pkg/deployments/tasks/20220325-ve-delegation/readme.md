@@ -1,8 +1,9 @@
-# 2022-xx-xx - Test Balancer Token
+# 2022-03-25 - Voting Escrow Delegation
 
-Deployment of the `TestBalancerToken`, for replicating the BAL token's access control scheme on testnets
+Deployment of `VotingEscrowDelegation`, for delegation of veBAL-related boosts.
 
 ## Useful Files
 
-- [Kovan testnet addresses](./output/kovan.json)
-- [`TestBalancerToken` ABI](./abi/TestBalancerToken.json)
+- [Ethereum mainnet addresses](./output/kovan.json)
+- [`VotingEscrowDelegation` ABI](./abi/VotingEscrowDelegation.json)
+- [`VotingEscrowDelegationProxy` ABI](./abi/VotingEscrowDelegationProxy.json)

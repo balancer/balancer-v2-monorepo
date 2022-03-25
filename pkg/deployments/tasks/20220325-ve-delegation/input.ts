@@ -1,21 +1,17 @@
 import Task from '../../src/task';
 
-export type TestBalancerTokenDeployment = {
+export type VotingEscrowDelegationDeployment = {
   Vault: string;
   AuthorizerAdaptor: string;
   VotingEscrow: string;
-  veDelegation: string;
 };
 
 const Vault = new Task('20210418-vault');
-const AuthorizerAdaptor = new Task('2022xxxx-authorizer-adaptor');
-const VotingEscrow = new Task('2022xxxx-gauge-controller');
+const AuthorizerAdaptor = new Task('20220325-authorizer-adaptor');
+const VotingEscrow = new Task('20220325-gauge-controller');
 
 export default {
-  kovan: {
-    Vault,
-    AuthorizerAdaptor,
-    VotingEscrow,
-    veDelegation: '',
-  },
+  Vault,
+  AuthorizerAdaptor,
+  VotingEscrow,
 };

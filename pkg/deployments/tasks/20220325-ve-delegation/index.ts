@@ -1,9 +1,9 @@
 import Task from '../../src/task';
 import { TaskRunOptions } from '../../src/types';
-import { TestBalancerTokenDeployment } from './input';
+import { VotingEscrowDelegationDeployment } from './input';
 
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
-  const input = task.input() as TestBalancerTokenDeployment;
+  const input = task.input() as VotingEscrowDelegationDeployment;
 
   const args = [input.VotingEscrow, 'VotingEscrow Delegation', 'veBoost', '', input.AuthorizerAdaptor];
   const votingEscrowDelegation = await task.deployAndVerify('VotingEscrowDelegation', args, from);
