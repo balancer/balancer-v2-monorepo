@@ -301,6 +301,22 @@ describe.only('FeeDistributor', () => {
             });
             testCheckpoint();
           });
+
+          context('when user locked after the beginning of the week', () => {
+            sharedBeforeEach('set user', async () => {
+              user = other;
+              await createLockForUser(other, parseFixed('1', 18), 365 * DAY);
+            });
+            testCheckpoint();
+
+            it('records a zero balance for the week in which they lock', async () => {
+              expect(await feeDistributor.getUserBalanceAtTimestamp(user.address, startTime)).to.be.eq(0);
+
+              await feeDistributor.checkpointUser(user.address);
+
+              await expectConsistentUserBalance(user, startTime);
+            });
+          });
         });
       });
     });
