@@ -64,7 +64,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
 
     address[] private _initialPools;
 
-    address public lmCommitteeGaugeRecipient = 0xc38c5f97B34E175FFd35407fc91a937300E33860;
+    address public lmCommitteeMultisig = 0xc38c5f97B34E175FFd35407fc91a937300E33860;
 
     // All of veBAL, Polygon and Arbitrum funds are temporarily sent to multisigs which will take care of distribution
     // until an automated system is setup.
@@ -250,7 +250,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
             _createSingleRecipientGauge(
                 IGaugeAdder.GaugeType.LiquidityMiningCommittee,
                 "Liquidity Mining Committee BAL Holder",
-                lmCommitteeGaugeRecipient
+                lmCommitteeMultisig
             );
 
             // Temporary
@@ -266,7 +266,6 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
                 "Temporary Polygon Liquidity Mining BAL Holder",
                 polygonGaugeRecipient
             );
-
             // Temporary
             _createSingleRecipientGauge(
                 IGaugeAdder.GaugeType.Arbitrum,
@@ -276,6 +275,18 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
 
             authorizer.revokeRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
         }
+
+        // Step 6: grant permission to the LM Committee to add reward tokens to Ethereum gauges and manage their
+        // distributors
+        authorizer.grantRole(
+            authorizerAdaptor.getActionId(IStakingLiquidityGauge.add_reward.selector),
+            lmCommitteeMultisig
+        );
+
+        authorizer.grantRole(
+            authorizerAdaptor.getActionId(IStakingLiquidityGauge.set_reward_distributor.selector),
+            lmCommitteeMultisig
+        );
 
         firstStageActivationTime = block.timestamp;
         _currentDeploymentStage = DeploymentStage.FIRST_STAGE_DONE;
