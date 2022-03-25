@@ -18,8 +18,9 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
 import "./SingleRecipientGauge.sol";
+import "../../interfaces/ILiquidityGaugeFactory.sol";
 
-contract SingleRecipientGaugeFactory {
+contract SingleRecipientGaugeFactory is ILiquidityGaugeFactory {
     ISingleRecipientGauge private _gaugeImplementation;
 
     mapping(address => bool) private _isGaugeFromFactory;
@@ -41,7 +42,7 @@ contract SingleRecipientGaugeFactory {
     /**
      * @notice Returns true if `gauge` was created by this factory.
      */
-    function isGaugeFromFactory(address gauge) external view returns (bool) {
+    function isGaugeFromFactory(address gauge) external view override returns (bool) {
         return _isGaugeFromFactory[gauge];
     }
 
@@ -66,7 +67,7 @@ contract SingleRecipientGaugeFactory {
      * @param recipient The address to receive BAL minted from the gauge
      * @return The address of the deployed gauge
      */
-    function create(address recipient) external returns (address) {
+    function create(address recipient) external override returns (address) {
         require(_recipientGauge[recipient] == address(0), "Gauge already exists");
 
         address gauge = Clones.clone(address(_gaugeImplementation));

@@ -22,4 +22,6 @@ interface ILiquidityGaugeFactory {
      * @notice Returns true if `gauge` was created by this factory.
      */
     function isGaugeFromFactory(address gauge) external view returns (bool);
+
+    function create(address pool) external returns (address);
 }

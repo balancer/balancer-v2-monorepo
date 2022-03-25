@@ -65,7 +65,7 @@ contract LiquidityGaugeFactory is ILiquidityGaugeFactory {
      * @param pool The address of the pool for which to deploy a gauge
      * @return The address of the deployed gauge
      */
-    function create(address pool) external returns (address) {
+    function create(address pool) external override returns (address) {
         require(_poolGauge[pool] == address(0), "Gauge already exists");
 
         address gauge = Clones.clone(address(_gaugeImplementation));
