@@ -5,6 +5,6 @@ import { veBALDeploymentCoordinatorDeployment } from './input';
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as veBALDeploymentCoordinatorDeployment;
 
-  const args = [input.BalancerMinter, input.AuthorizerAdaptor, input.activationScheduledTime, input.secondStageDelay];
+  const args = [input.BalancerMinter, input.AuthorizerAdaptor, input.activationScheduledTime, input.thirdStageDelay];
   await task.deployAndVerify('veBALDeploymentCoordinator', args, from, force);
 };

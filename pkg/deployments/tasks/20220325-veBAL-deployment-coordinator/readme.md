@@ -1,8 +1,8 @@
-# 2022-xx-xx - Test Balancer Token
+# 2022-03-25 - veBAL Deployment Coordinator
 
-Deployment of the `TestBalancerToken`, for replicating the BAL token's access control scheme on testnets
+Deployment of the `veBALDeploymentCoordinator`, responsible for activating the veBAL system
 
 ## Useful Files
 
-- [Kovan testnet addresses](./output/kovan.json)
-- [`TestBalancerToken` ABI](./abi/TestBalancerToken.json)
+- [Ethereum mainnet addresses](./output/mainnet.json)
+- [`veBALDeploymentCoordinator` ABI](./abi/veBALDeploymentCoordinator.json)
