@@ -395,6 +395,13 @@ describe.only('FeeDistributor', () => {
         expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), nextWeek);
       });
 
+      it('updates the token time cursor for the user to the latest claimed week', async () => {
+        const thisWeek = roundDownTimestamp(await currentTimestamp());
+
+        await feeDistributor.claimToken(user.address, token.address);
+        expectTimestampsMatch(await feeDistributor.getUserTokenTimeCursor(user.address, token.address), thisWeek);
+      });
+
       context('when there are no tokens to distribute to user', () => {
         it("doesn't emit a TokensClaimed event", async () => {
           const tx = await feeDistributor.checkpointToken(token.address);
@@ -432,13 +439,6 @@ describe.only('FeeDistributor', () => {
             amount: tokensAmount.div(2),
             userTokenTimeCursor: thisWeek,
           });
-        });
-
-        it('updates the token time cursor for the user to the latest claimed week', async () => {
-          const thisWeek = roundDownTimestamp(await currentTimestamp());
-
-          await feeDistributor.claimToken(user.address, token.address);
-          expectTimestampsMatch(await feeDistributor.getUserTokenTimeCursor(user.address, token.address), thisWeek);
         });
 
         it('subtracts the number of tokens claimed from the cached balance', async () => {
