@@ -414,10 +414,6 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
         uint256[] memory preSwapBalances,
         uint256[] memory postSwapBalances
     ) private {
-        // Calculate total BPT for the protocol and management fee
-        // The management fee percentage applies to the remainder,
-        // after the protocol fee has been collected.
-        // So totalFee = protocolFee + (1 - protocolFee) * managementFee
         uint256 protocolFeePercentage = _cachedProtocolSwapFeePercentage;
 
         if (protocolFeePercentage == 0) {
