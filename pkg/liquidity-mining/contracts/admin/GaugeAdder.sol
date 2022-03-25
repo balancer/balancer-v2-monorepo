@@ -33,7 +33,7 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
     // Mapping from gauge type to a list of address for approved factories for that type
     mapping(GaugeType => EnumerableSet.AddressSet) internal _gaugeFactoriesByType;
     // Mapping from mainnet BPT addresses to canonical liquidity gauge as listed on the GaugeController
-    mapping(address => ILiquidityGauge) internal _poolGauge;
+    mapping(IERC20 => ILiquidityGauge) internal _poolGauge;
 
     constructor(IGaugeController gaugeController) Authentication(bytes32(uint256(address(this)))) {
         // GaugeAdder is a singleton, so it simply uses its own address to disambiguate action identifiers
@@ -79,7 +79,7 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
      * This function provides global information by using which gauge has been added to the Gauge Controller
      * to represent the canonical gauge for a given pool address.
      */
-    function getPoolGauge(address pool) external view override returns (ILiquidityGauge) {
+    function getPoolGauge(IERC20 pool) external view override returns (ILiquidityGauge) {
         return _poolGauge[pool];
     }
 
@@ -127,8 +127,9 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
         // Each gauge factory prevents deploying multiple gauges for the same Balancer pool
         // however two separate factories can each deploy their own gauge for the same pool.
         // We then check here to see if the new gauge's pool already has a gauge on the Gauge Controller
-        address pool = address(gauge.lp_token());
+        IERC20 pool = gauge.lp_token();
         require(_poolGauge[pool] == ILiquidityGauge(0), "Duplicate gauge");
+        require(pool != _gaugeController.token(), "Cannot add gauge for 80/20 BAL-WETH BPT");
         _poolGauge[pool] = gauge;
 
         _addGauge(address(gauge), GaugeType.Ethereum);
