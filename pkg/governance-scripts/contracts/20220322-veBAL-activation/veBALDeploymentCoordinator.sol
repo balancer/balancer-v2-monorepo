@@ -298,8 +298,6 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
             authorizer.revokeRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
         }
 
-        // grant batch relayer permissions
-
         firstStageActivationTime = block.timestamp;
         _currentDeploymentStage = DeploymentStage.FIRST_STAGE_DONE;
     }
