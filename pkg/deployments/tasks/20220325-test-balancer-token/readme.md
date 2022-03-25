@@ -1,4 +1,4 @@
-# 2022-xx-xx - Test Balancer Token
+# 2022-03-25 - Test Balancer Token
 
 Deployment of the `TestBalancerToken`, for replicating the BAL token's access control scheme on testnets
 
