@@ -252,7 +252,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
             uint256 poolsLength = _initialPools.length;
             for (uint256 i = 0; i < poolsLength; i++) {
                 ILiquidityGauge gauge = _ethereumGaugeFactory.deploy(_initialPools[i]);
-                _gaugeAdder.addEthereumGauge(address(gauge));
+                _gaugeAdder.addEthereumGauge(IStakingLiquidityGauge(address(gauge)));
             }
 
             authorizer.revokeRole(_gaugeAdder.getActionId(IGaugeAdder.addEthereumGauge.selector), address(this));
