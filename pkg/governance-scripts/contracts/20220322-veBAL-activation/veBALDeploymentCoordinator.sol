@@ -62,17 +62,23 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     ISingleRecipientLiquidityGaugeFactory private immutable _singleRecipientGaugeFactory;
     IBALTokenHolderFactory private immutable _balTokenHolderFactory;
 
-    address[] private _initialPools;
-    address[4] private _recipients;
+    address public lmCommitteeMultisig = 0xc38c5f97B34E175FFd35407fc91a937300E33860;
 
-    enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE }
+    // All of veBAL, Polygon and Arbitrum funds are temporarily sent to multisigs which will take care of distribution
+    // until an automated system is setup.
+    address public veBALGaugeRecipient = 0xd2EB7Bd802A7CA68d9AcD209bEc4E664A9abDD7b;
+    address public polygonGaugeRecipient = 0xd2EB7Bd802A7CA68d9AcD209bEc4E664A9abDD7b;
+    address public arbitrumGaugeRecipient = 0xd2EB7Bd802A7CA68d9AcD209bEc4E664A9abDD7b;
+
+    enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE, THIRD_STAGE_DONE }
 
     uint256 public firstStageActivationTime;
     uint256 public secondStageActivationTime;
+    uint256 public thirdStageActivationTime;
 
     DeploymentStage private _currentDeploymentStage;
     uint256 private immutable _activationScheduledTime;
-    uint256 private immutable _secondStageDelay;
+    uint256 private immutable _thirdStageDelay;
 
     uint256 public constant LM_COMMITTEE_WEIGHT = 10e16; // 10%
     uint256 public constant VEBAL_WEIGHT = 10e16; // 10%
@@ -87,20 +93,9 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         IEthereumLiquidityGaugeFactory ethereumGaugeFactory,
         ISingleRecipientLiquidityGaugeFactory singleRecipientGaugeFactory,
         IBALTokenHolderFactory balTokenHolderFactory,
-        address[] memory initialPools,
-        address[4] memory recipients,
         uint256 activationScheduledTime,
-        uint256 secondStageDelay
+        uint256 thirdStageDelay
     ) {
-        // Only a single gauge may exist for a given pool so repeated pool addresses
-        // will cause the activation to fail
-        uint256 poolsLength = initialPools.length;
-        for (uint256 i = 1; i < poolsLength; i++) {
-            _require(initialPools[i - 1] < initialPools[i], Errors.UNSORTED_ARRAY);
-        }
-        // We do not apply a similar protection for `recipients` as they must be sorted
-        // to match the desired gauge types (LMCommittee, veBAL, Polygon, Arbitrum)
-
         _currentDeploymentStage = DeploymentStage.PENDING;
 
         IBalancerTokenAdmin balancerTokenAdmin = balancerMinter.getBalancerTokenAdmin();
@@ -116,11 +111,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         _singleRecipientGaugeFactory = singleRecipientGaugeFactory;
         _balTokenHolderFactory = balTokenHolderFactory;
 
-        _initialPools = initialPools;
-        _recipients = recipients;
-
         _activationScheduledTime = activationScheduledTime;
-        _secondStageDelay = secondStageDelay;
+        _thirdStageDelay = thirdStageDelay;
     }
 
     /**
@@ -164,8 +156,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         return _activationScheduledTime;
     }
 
-    function getSecondStageDelay() external view returns (uint256) {
-        return _secondStageDelay;
+    function getThirdStageDelay() external view returns (uint256) {
+        return _thirdStageDelay;
     }
 
     function performFirstStage() external nonReentrant {
@@ -233,7 +225,103 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
 
         authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(_gaugeAdder));
 
-        // Step 5: create gauges for a preselected list of pools on Ethereum.
+        // Step 5: create gauges for the single-recipient gauge types
+        //
+        // The LM committee gauge will be remain as a SingleRecipientGauge permanently,
+        // however the gauges for veBAL, Polygon and Arbitrum types are temporary pending an automated solution.
+        // These three gauges will in time be retired (killed) and replaced with new gauge implementations
+        // which automate the distribution of BAL to BPT stakers on other networks and veBAL holders.
+        {
+            authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
+
+            // Permanent
+            _createSingleRecipientGauge(
+                IGaugeAdder.GaugeType.LiquidityMiningCommittee,
+                "Liquidity Mining Committee BAL Holder",
+                lmCommitteeMultisig
+            );
+
+            // Temporary
+            _createSingleRecipientGauge(
+                IGaugeAdder.GaugeType.veBAL,
+                "Temporary veBAL Liquidity Mining BAL Holder",
+                veBALGaugeRecipient
+            );
+
+            // Temporary
+            _createSingleRecipientGauge(
+                IGaugeAdder.GaugeType.Polygon,
+                "Temporary Polygon Liquidity Mining BAL Holder",
+                polygonGaugeRecipient
+            );
+            // Temporary
+            _createSingleRecipientGauge(
+                IGaugeAdder.GaugeType.Arbitrum,
+                "Temporary Arbitrum Liquidity Mining BAL Holder",
+                arbitrumGaugeRecipient
+            );
+
+            authorizer.revokeRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
+        }
+
+        // Step 6: grant permission to the LM Committee to add reward tokens to Ethereum gauges and manage their
+        // distributors
+        authorizer.grantRole(
+            authorizerAdaptor.getActionId(IStakingLiquidityGauge.add_reward.selector),
+            lmCommitteeMultisig
+        );
+
+        authorizer.grantRole(
+            authorizerAdaptor.getActionId(IStakingLiquidityGauge.set_reward_distributor.selector),
+            lmCommitteeMultisig
+        );
+
+        firstStageActivationTime = block.timestamp;
+        _currentDeploymentStage = DeploymentStage.FIRST_STAGE_DONE;
+    }
+
+    function performSecondStage() external nonReentrant {
+        require(_currentDeploymentStage == DeploymentStage.FIRST_STAGE_DONE, "Not ready for second stage");
+
+        ICurrentAuthorizer authorizer = getAuthorizer();
+
+        // Create gauges for a preselected list of pools on Ethereum. This is not included in the first stage to reduce
+        // total required gas for the execution of each stage.
+
+        address payable[32] memory initialPools = [
+            0x06Df3b2bbB68adc8B0e302443692037ED9f91b42,
+            0x072f14B85ADd63488DDaD88f855Fda4A99d6aC9B,
+            0x0b09deA16768f0799065C475bE02919503cB2a35,
+            0x186084fF790C65088BA694Df11758faE4943EE9E,
+            0x1E19CF2D73a72Ef1332C882F20534B6519Be0276,
+            0x27C9f71cC31464B906E0006d4FcBC8900F48f15f,
+            0x32296969Ef14EB0c6d29669C550D4a0449130230,
+            0x350196326AEAA9b98f1903fb5e8fc2686f85318C,
+            0x3e5FA9518eA95c3E533EB377C001702A9AaCAA32,
+            0x4bd6D86dEBdB9F5413e631Ad386c4427DC9D01B2,
+            0x51735bdFBFE3fC13dEa8DC6502E2E95898942961,
+            0x5d66FfF62c17D841935b60df5F07f6CF79Bd0F47,
+            0x5f7FA48d765053F8dD85E052843e12D23e3D7BC5,
+            0x702605F43471183158938C1a3e5f5A359d7b31ba,
+            0x7B50775383d3D6f0215A8F290f2C9e2eEBBEceb2,
+            0x7Edde0CB05ED19e03A9a47CD5E53fC57FDe1c80c,
+            0x8f4205e1604133d1875a3E771AE7e4F2b0865639,
+            0x90291319F1D4eA3ad4dB0Dd8fe9E12BAF749E845,
+            0x96646936b91d6B9D7D0c47C496AfBF3D6ec7B6f8,
+            0x96bA9025311e2f47B840A1f68ED57A3DF1EA8747,
+            0xa02E4b3d18D4E6B8d18Ac421fBc3dfFF8933c40a,
+            0xA6F548DF93de924d73be7D25dC02554c6bD66dB5,
+            0xBaeEC99c90E3420Ec6c1e7A769d2A856d2898e4D,
+            0xBF96189Eee9357a95C7719f4F5047F76bdE804E5,
+            0xe2469f47aB58cf9CF59F9822e3C5De4950a41C49,
+            0xE99481DC77691d8E2456E5f3F61C1810adFC1503,
+            0xeC60a5FeF79a92c741Cb74FdD6bfC340C0279B01,
+            0xEdf085f65b4F6c155e13155502Ef925c9a756003,
+            0xEFAa1604e82e1B3AF8430b90192c1B9e8197e377,
+            0xF4C0DD9B82DA36C07605df83c8a416F11724d88b,
+            0xf5aAf7Ee8C39B651CEBF5f1F50C10631E78e0ef9,
+            0xFeadd389a5c427952D8fdb8057D6C8ba1156cC56
+        ];
 
         // Allowlist the provided LiquidityGaugeFactory on the GaugeAdder
         // so its gauges may be added to the "Ethereum" gauge type.
@@ -249,65 +337,26 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         {
             authorizer.grantRole(_gaugeAdder.getActionId(IGaugeAdder.addEthereumGauge.selector), address(this));
 
-            uint256 poolsLength = _initialPools.length;
+            uint256 poolsLength = initialPools.length;
             for (uint256 i = 0; i < poolsLength; i++) {
-                ILiquidityGauge gauge = _ethereumGaugeFactory.deploy(_initialPools[i]);
+                ILiquidityGauge gauge = _ethereumGaugeFactory.deploy(initialPools[i]);
                 _gaugeAdder.addEthereumGauge(IStakingLiquidityGauge(address(gauge)));
             }
 
             authorizer.revokeRole(_gaugeAdder.getActionId(IGaugeAdder.addEthereumGauge.selector), address(this));
         }
 
-        // Step 6: create gauges for the single-recipient gauge types
-        //
-        // The LM committee gauge will be remain as a SingleRecipientGauge permanently,
-        // however the gauges for veBAL, Polygon and Arbitrum types are temporary pending an automated solution.
-        // These three gauges will in time be retired (killed) and replaced with new gauge implementations
-        // which automate the distribution of BAL to BPT stakers on other networks and veBAL holders.
-        {
-            authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
-
-            // Permanent
-            _createSingleRecipientGauge(
-                IGaugeAdder.GaugeType.LiquidityMiningCommittee,
-                "Liquidity Mining Committee BAL Holder",
-                _recipients[0]
-            );
-
-            // Temporary
-            _createSingleRecipientGauge(
-                IGaugeAdder.GaugeType.veBAL,
-                "Temporary veBAL Liquidity Mining BAL Holder",
-                _recipients[1]
-            );
-
-            // Temporary
-            _createSingleRecipientGauge(
-                IGaugeAdder.GaugeType.Polygon,
-                "Temporary Polygon Liquidity Mining BAL Holder",
-                _recipients[2]
-            );
-
-            // Temporary
-            _createSingleRecipientGauge(
-                IGaugeAdder.GaugeType.Arbitrum,
-                "Temporary Arbitrum Liquidity Mining BAL Holder",
-                _recipients[3]
-            );
-
-            authorizer.revokeRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
-        }
-
-        // grant batch relayer permissions
-
-        firstStageActivationTime = block.timestamp;
-        _currentDeploymentStage = DeploymentStage.FIRST_STAGE_DONE;
+        secondStageActivationTime = block.timestamp;
+        _currentDeploymentStage = DeploymentStage.SECOND_STAGE_DONE;
     }
 
-    function performSecondStage() external nonReentrant {
-        // Check delay from first stage
-        require(_currentDeploymentStage == DeploymentStage.FIRST_STAGE_DONE, "First steap already performed");
-        require(block.timestamp >= (firstStageActivationTime + _secondStageDelay), "Not ready for activation");
+    function performThirdStage() external nonReentrant {
+        // Check delay from second stage
+        require(_currentDeploymentStage == DeploymentStage.SECOND_STAGE_DONE, "Not ready for third stage");
+        require(
+            block.timestamp >= (secondStageActivationTime + _thirdStageDelay),
+            "Delay from second stage not yet elapsed"
+        );
 
         // We can now set the actual weights for each gauge type, causing gauges to have non-zero weights once veBAL
         // holders vote for them.
@@ -336,8 +385,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         // The entire system is now fully setup, and we can renounce permissions over the Authorizer
         authorizer.revokeRole(authorizer.DEFAULT_ADMIN_ROLE(), address(this));
 
-        secondStageActivationTime = block.timestamp;
-        _currentDeploymentStage = DeploymentStage.SECOND_STAGE_DONE;
+        thirdStageActivationTime = block.timestamp;
+        _currentDeploymentStage = DeploymentStage.THIRD_STAGE_DONE;
     }
 
     function _addGauge(ILiquidityGauge gauge, IGaugeAdder.GaugeType gaugeType) private {
