@@ -3,6 +3,10 @@ import Task from '../../src/task';
 export type veBALDeploymentCoordinatorDeployment = {
   AuthorizerAdaptor: string;
   BalancerMinter: string;
+  GaugeAdder: string;
+  LiquidityGaugeFactory: string;
+  SingleRecipientGaugeFactory: string;
+  BALTokenHolderFactory: string;
   activationScheduledTime: string;
   thirdStageDelay: string;
 };
