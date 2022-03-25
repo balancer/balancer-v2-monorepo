@@ -1,4 +1,4 @@
-# 2022-xx-xx - Authorizer Adaptor
+# 2022-03-25 - Authorizer Adaptor
 
 Deployment of the `AuthorizerAdaptor`, a gateway contract which allows compatibility between the Authorizer and systems which rely on having a single administrator address.
 
