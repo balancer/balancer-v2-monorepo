@@ -66,20 +66,23 @@ describe.only('FeeDistributor', () => {
 
   sharedBeforeEach('lock BPT into VotingEscrow', async () => {
     const bptAmount = parseFixed('1', 18);
-    await bpt.mint(user, bptAmount);
-    await bpt.approve(votingEscrow, bptAmount, { from: user });
-
-    const lockTimestamp = Math.floor(new Date().getTime() / 1000) + 365 * DAY;
-
-    await votingEscrow.connect(user).create_lock(bptAmount, lockTimestamp);
-
-    await bpt.mint(other, bptAmount);
-    await bpt.approve(votingEscrow, bptAmount, { from: other });
-    await votingEscrow.connect(other).create_lock(bptAmount, lockTimestamp);
+    await createLockForUser(user, bptAmount, 365 * DAY);
+    await createLockForUser(other, bptAmount, 365 * DAY);
 
     expect(await votingEscrow['balanceOf(address)'](user.address)).to.be.gt(0, 'zero veBAL balance');
     expect(await votingEscrow['totalSupply()']()).to.be.gt(0, 'zero veBAL supply');
   });
+
+  async function createLockForUser(
+    user: SignerWithAddress,
+    amount: BigNumberish,
+    lockDuration: BigNumberish
+  ): Promise<void> {
+    await bpt.mint(user, amount);
+    await bpt.approve(votingEscrow, amount, { from: user });
+    const now = await currentTimestamp();
+    await votingEscrow.connect(user).create_lock(amount, now.add(lockDuration));
+  }
 
   async function expectConsistentUserBalance(user: Account, timestamp: BigNumberish): Promise<void> {
     const userAddress = TypesConverter.toAddress(user);
