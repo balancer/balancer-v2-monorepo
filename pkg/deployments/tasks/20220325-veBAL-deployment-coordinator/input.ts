@@ -26,7 +26,7 @@ export default {
   SingleRecipientGaugeFactory,
   BALTokenHolderFactory,
   mainnet: {
-    activationScheduledTime: '1648454400', // Monday, March 28, 2022 8:00:00 AM UTC
+    activationScheduledTime: '1648465200', // Monday, March 28, 2022 11:00:00 AM
     thirdStageDelay: '691200', // 8 days
   },
   kovan: {
