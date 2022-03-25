@@ -7,7 +7,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 enum GaugeType {
   LiquidityMiningCommittee = 0,
@@ -175,7 +175,7 @@ describe('GaugeAdder', () => {
     let gauge: string;
 
     sharedBeforeEach('deploy gauge', async () => {
-      gauge = await deployGauge(gaugeFactory, ZERO_ADDRESS);
+      gauge = await deployGauge(gaugeFactory, ANY_ADDRESS);
     });
 
     context('when caller is not authorized', () => {
@@ -201,7 +201,7 @@ describe('GaugeAdder', () => {
           await gaugeAdder.connect(admin).addEthereumGauge(gauge);
 
           const duplicateGaugeFactory = await deploy('MockLiquidityGaugeFactory');
-          duplicateGauge = await deployGauge(duplicateGaugeFactory, ZERO_ADDRESS);
+          duplicateGauge = await deployGauge(duplicateGaugeFactory, ANY_ADDRESS);
         });
 
         it('reverts', async () => {
