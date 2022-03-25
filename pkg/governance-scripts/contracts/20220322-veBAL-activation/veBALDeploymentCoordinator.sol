@@ -65,14 +65,15 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     address[] private _initialPools;
     address[4] private _recipients;
 
-    enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE }
+    enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE, THIRD_STAGE_DONE }
 
     uint256 public firstStageActivationTime;
     uint256 public secondStageActivationTime;
+    uint256 public thirdStageActivationTime;
 
     DeploymentStage private _currentDeploymentStage;
     uint256 private immutable _activationScheduledTime;
-    uint256 private immutable _secondStageDelay;
+    uint256 private immutable _thirdStageDelay;
 
     uint256 public constant LM_COMMITTEE_WEIGHT = 10e16; // 10%
     uint256 public constant VEBAL_WEIGHT = 10e16; // 10%
@@ -90,7 +91,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         address[] memory initialPools,
         address[4] memory recipients,
         uint256 activationScheduledTime,
-        uint256 secondStageDelay
+        uint256 thirdStageDelay
     ) {
         // Only a single gauge may exist for a given pool so repeated pool addresses
         // will cause the activation to fail
@@ -120,7 +121,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         _recipients = recipients;
 
         _activationScheduledTime = activationScheduledTime;
-        _secondStageDelay = secondStageDelay;
+        _thirdStageDelay = thirdStageDelay;
     }
 
     /**
@@ -164,8 +165,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         return _activationScheduledTime;
     }
 
-    function getSecondStageDelay() external view returns (uint256) {
-        return _secondStageDelay;
+    function getThirdStageDelay() external view returns (uint256) {
+        return _thirdStageDelay;
     }
 
     function performFirstStage() external nonReentrant {
@@ -233,32 +234,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
 
         authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(_gaugeAdder));
 
-        // Step 5: create gauges for a preselected list of pools on Ethereum.
-
-        // Allowlist the provided LiquidityGaugeFactory on the GaugeAdder
-        // so its gauges may be added to the "Ethereum" gauge type.
-        {
-            authorizer.grantRole(_gaugeAdder.getActionId(IGaugeAdder.addGaugeFactory.selector), address(this));
-
-            _gaugeAdder.addGaugeFactory(_ethereumGaugeFactory, IGaugeAdder.GaugeType.Ethereum);
-
-            authorizer.revokeRole(_gaugeAdder.getActionId(IGaugeAdder.addGaugeFactory.selector), address(this));
-        }
-
-        // Deploy initial gauges and add them to the Gauge Controller
-        {
-            authorizer.grantRole(_gaugeAdder.getActionId(IGaugeAdder.addEthereumGauge.selector), address(this));
-
-            uint256 poolsLength = _initialPools.length;
-            for (uint256 i = 0; i < poolsLength; i++) {
-                ILiquidityGauge gauge = _ethereumGaugeFactory.deploy(_initialPools[i]);
-                _gaugeAdder.addEthereumGauge(IStakingLiquidityGauge(address(gauge)));
-            }
-
-            authorizer.revokeRole(_gaugeAdder.getActionId(IGaugeAdder.addEthereumGauge.selector), address(this));
-        }
-
-        // Step 6: create gauges for the single-recipient gauge types
+        // Step 5: create gauges for the single-recipient gauge types
         //
         // The LM committee gauge will be remain as a SingleRecipientGauge permanently,
         // however the gauges for veBAL, Polygon and Arbitrum types are temporary pending an automated solution.
@@ -303,9 +279,47 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     }
 
     function performSecondStage() external nonReentrant {
-        // Check delay from first stage
-        require(_currentDeploymentStage == DeploymentStage.FIRST_STAGE_DONE, "First steap already performed");
-        require(block.timestamp >= (firstStageActivationTime + _secondStageDelay), "Not ready for activation");
+        require(_currentDeploymentStage == DeploymentStage.FIRST_STAGE_DONE, "Not ready for second stage");
+
+        ICurrentAuthorizer authorizer = getAuthorizer();
+
+        // Create gauges for a preselected list of pools on Ethereum. This is not included in the first stage to reduce
+        // total required gas for the execution of each stage.
+
+        // Allowlist the provided LiquidityGaugeFactory on the GaugeAdder
+        // so its gauges may be added to the "Ethereum" gauge type.
+        {
+            authorizer.grantRole(_gaugeAdder.getActionId(IGaugeAdder.addGaugeFactory.selector), address(this));
+
+            _gaugeAdder.addGaugeFactory(_ethereumGaugeFactory, IGaugeAdder.GaugeType.Ethereum);
+
+            authorizer.revokeRole(_gaugeAdder.getActionId(IGaugeAdder.addGaugeFactory.selector), address(this));
+        }
+
+        // Deploy initial gauges and add them to the Gauge Controller
+        {
+            authorizer.grantRole(_gaugeAdder.getActionId(IGaugeAdder.addEthereumGauge.selector), address(this));
+
+            uint256 poolsLength = _initialPools.length;
+            for (uint256 i = 0; i < poolsLength; i++) {
+                ILiquidityGauge gauge = _ethereumGaugeFactory.deploy(_initialPools[i]);
+                _gaugeAdder.addEthereumGauge(IStakingLiquidityGauge(address(gauge)));
+            }
+
+            authorizer.revokeRole(_gaugeAdder.getActionId(IGaugeAdder.addEthereumGauge.selector), address(this));
+        }
+
+        secondStageActivationTime = block.timestamp;
+        _currentDeploymentStage = DeploymentStage.SECOND_STAGE_DONE;
+    }
+
+    function performThirdStage() external nonReentrant {
+        // Check delay from second stage
+        require(_currentDeploymentStage == DeploymentStage.SECOND_STAGE_DONE, "Not ready for third stage");
+        require(
+            block.timestamp >= (secondStageActivationTime + _thirdStageDelay),
+            "Delay from second stage not yet elapsed"
+        );
 
         // We can now set the actual weights for each gauge type, causing gauges to have non-zero weights once veBAL
         // holders vote for them.
@@ -334,8 +348,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         // The entire system is now fully setup, and we can renounce permissions over the Authorizer
         authorizer.revokeRole(authorizer.DEFAULT_ADMIN_ROLE(), address(this));
 
-        secondStageActivationTime = block.timestamp;
-        _currentDeploymentStage = DeploymentStage.SECOND_STAGE_DONE;
+        thirdStageActivationTime = block.timestamp;
+        _currentDeploymentStage = DeploymentStage.THIRD_STAGE_DONE;
     }
 
     function _addGauge(ILiquidityGauge gauge, IGaugeAdder.GaugeType gaugeType) private {
