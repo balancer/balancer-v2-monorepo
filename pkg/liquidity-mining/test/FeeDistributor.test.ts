@@ -407,6 +407,10 @@ describe.only('FeeDistributor', () => {
 
           expect(await feeDistributor.getTokenLastBalance(token.address)).to.be.eq(expectedTokenLastBalance);
         });
+
+        it('returns zero', async () => {
+          expect(await feeDistributor.callStatic.claimToken(user.address, token.address)).to.be.eq(0);
+        });
       });
 
       context('when there are tokens to distribute to user', () => {
@@ -449,6 +453,10 @@ describe.only('FeeDistributor', () => {
             token: token.address,
           });
           expect(newTokenLastBalance).to.be.eq(previousTokenLastBalance.sub(amount));
+        });
+
+        it('returns the amount of tokens claimed', async () => {
+          expect(await feeDistributor.callStatic.claimToken(user.address, token.address)).to.be.eq(tokensAmount.div(2));
         });
       });
     });
