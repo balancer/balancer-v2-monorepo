@@ -62,8 +62,6 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     ISingleRecipientLiquidityGaugeFactory private immutable _singleRecipientGaugeFactory;
     IBALTokenHolderFactory private immutable _balTokenHolderFactory;
 
-    address[] private _initialPools;
-
     address public lmCommitteeMultisig = 0xc38c5f97B34E175FFd35407fc91a937300E33860;
 
     // All of veBAL, Polygon and Arbitrum funds are temporarily sent to multisigs which will take care of distribution
@@ -95,17 +93,9 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         IEthereumLiquidityGaugeFactory ethereumGaugeFactory,
         ISingleRecipientLiquidityGaugeFactory singleRecipientGaugeFactory,
         IBALTokenHolderFactory balTokenHolderFactory,
-        address[] memory initialPools,
         uint256 activationScheduledTime,
         uint256 thirdStageDelay
     ) {
-        // Only a single gauge may exist for a given pool so repeated pool addresses
-        // will cause the activation to fail
-        uint256 poolsLength = initialPools.length;
-        for (uint256 i = 1; i < poolsLength; i++) {
-            _require(initialPools[i - 1] < initialPools[i], Errors.UNSORTED_ARRAY);
-        }
-
         _currentDeploymentStage = DeploymentStage.PENDING;
 
         IBalancerTokenAdmin balancerTokenAdmin = balancerMinter.getBalancerTokenAdmin();
@@ -120,8 +110,6 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         _ethereumGaugeFactory = ethereumGaugeFactory;
         _singleRecipientGaugeFactory = singleRecipientGaugeFactory;
         _balTokenHolderFactory = balTokenHolderFactory;
-
-        _initialPools = initialPools;
 
         _activationScheduledTime = activationScheduledTime;
         _thirdStageDelay = thirdStageDelay;
@@ -300,6 +288,41 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         // Create gauges for a preselected list of pools on Ethereum. This is not included in the first stage to reduce
         // total required gas for the execution of each stage.
 
+        address payable[32] memory initialPools = [
+            0x06Df3b2bbB68adc8B0e302443692037ED9f91b42,
+            0x072f14B85ADd63488DDaD88f855Fda4A99d6aC9B,
+            0x0b09deA16768f0799065C475bE02919503cB2a35,
+            0x186084fF790C65088BA694Df11758faE4943EE9E,
+            0x1E19CF2D73a72Ef1332C882F20534B6519Be0276,
+            0x27C9f71cC31464B906E0006d4FcBC8900F48f15f,
+            0x32296969Ef14EB0c6d29669C550D4a0449130230,
+            0x350196326AEAA9b98f1903fb5e8fc2686f85318C,
+            0x3e5FA9518eA95c3E533EB377C001702A9AaCAA32,
+            0x4bd6D86dEBdB9F5413e631Ad386c4427DC9D01B2,
+            0x51735bdFBFE3fC13dEa8DC6502E2E95898942961,
+            0x5d66FfF62c17D841935b60df5F07f6CF79Bd0F47,
+            0x5f7FA48d765053F8dD85E052843e12D23e3D7BC5,
+            0x702605F43471183158938C1a3e5f5A359d7b31ba,
+            0x7B50775383d3D6f0215A8F290f2C9e2eEBBEceb2,
+            0x7Edde0CB05ED19e03A9a47CD5E53fC57FDe1c80c,
+            0x8f4205e1604133d1875a3E771AE7e4F2b0865639,
+            0x90291319F1D4eA3ad4dB0Dd8fe9E12BAF749E845,
+            0x96646936b91d6B9D7D0c47C496AfBF3D6ec7B6f8,
+            0x96bA9025311e2f47B840A1f68ED57A3DF1EA8747,
+            0xa02E4b3d18D4E6B8d18Ac421fBc3dfFF8933c40a,
+            0xA6F548DF93de924d73be7D25dC02554c6bD66dB5,
+            0xBaeEC99c90E3420Ec6c1e7A769d2A856d2898e4D,
+            0xBF96189Eee9357a95C7719f4F5047F76bdE804E5,
+            0xe2469f47aB58cf9CF59F9822e3C5De4950a41C49,
+            0xE99481DC77691d8E2456E5f3F61C1810adFC1503,
+            0xeC60a5FeF79a92c741Cb74FdD6bfC340C0279B01,
+            0xEdf085f65b4F6c155e13155502Ef925c9a756003,
+            0xEFAa1604e82e1B3AF8430b90192c1B9e8197e377,
+            0xF4C0DD9B82DA36C07605df83c8a416F11724d88b,
+            0xf5aAf7Ee8C39B651CEBF5f1F50C10631E78e0ef9,
+            0xFeadd389a5c427952D8fdb8057D6C8ba1156cC56
+        ];
+
         // Allowlist the provided LiquidityGaugeFactory on the GaugeAdder
         // so its gauges may be added to the "Ethereum" gauge type.
         {
@@ -314,9 +337,9 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         {
             authorizer.grantRole(_gaugeAdder.getActionId(IGaugeAdder.addEthereumGauge.selector), address(this));
 
-            uint256 poolsLength = _initialPools.length;
+            uint256 poolsLength = initialPools.length;
             for (uint256 i = 0; i < poolsLength; i++) {
-                ILiquidityGauge gauge = _ethereumGaugeFactory.deploy(_initialPools[i]);
+                ILiquidityGauge gauge = _ethereumGaugeFactory.deploy(initialPools[i]);
                 _gaugeAdder.addEthereumGauge(IStakingLiquidityGauge(address(gauge)));
             }
 
