@@ -53,7 +53,7 @@
         "name": "getGaugeImplementation",
         "outputs": [
             {
-                "internalType": "contract ISingleRecipientLiquidityGauge",
+                "internalType": "contract ISingleRecipientGauge",
                 "name": "",
                 "type": "address"
             }
