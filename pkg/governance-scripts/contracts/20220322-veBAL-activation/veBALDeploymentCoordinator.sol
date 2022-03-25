@@ -63,7 +63,14 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     IBALTokenHolderFactory private immutable _balTokenHolderFactory;
 
     address[] private _initialPools;
-    address[4] private _recipients;
+
+    address public lmCommitteeGaugeRecipient = 0xc38c5f97B34E175FFd35407fc91a937300E33860;
+
+    // All of veBAL, Polygon and Arbitrum funds are temporarily sent to multisigs which will take care of distribution
+    // until an automated system is setup.
+    address public veBALGaugeRecipient = 0xd2EB7Bd802A7CA68d9AcD209bEc4E664A9abDD7b;
+    address public polygonGaugeRecipient = 0xd2EB7Bd802A7CA68d9AcD209bEc4E664A9abDD7b;
+    address public arbitrumGaugeRecipient = 0xd2EB7Bd802A7CA68d9AcD209bEc4E664A9abDD7b;
 
     enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE, THIRD_STAGE_DONE }
 
@@ -89,7 +96,6 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         ISingleRecipientLiquidityGaugeFactory singleRecipientGaugeFactory,
         IBALTokenHolderFactory balTokenHolderFactory,
         address[] memory initialPools,
-        address[4] memory recipients,
         uint256 activationScheduledTime,
         uint256 thirdStageDelay
     ) {
@@ -99,8 +105,6 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         for (uint256 i = 1; i < poolsLength; i++) {
             _require(initialPools[i - 1] < initialPools[i], Errors.UNSORTED_ARRAY);
         }
-        // We do not apply a similar protection for `recipients` as they must be sorted
-        // to match the desired gauge types (LMCommittee, veBAL, Polygon, Arbitrum)
 
         _currentDeploymentStage = DeploymentStage.PENDING;
 
@@ -118,7 +122,6 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         _balTokenHolderFactory = balTokenHolderFactory;
 
         _initialPools = initialPools;
-        _recipients = recipients;
 
         _activationScheduledTime = activationScheduledTime;
         _thirdStageDelay = thirdStageDelay;
@@ -247,28 +250,28 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
             _createSingleRecipientGauge(
                 IGaugeAdder.GaugeType.LiquidityMiningCommittee,
                 "Liquidity Mining Committee BAL Holder",
-                _recipients[0]
+                lmCommitteeGaugeRecipient
             );
 
             // Temporary
             _createSingleRecipientGauge(
                 IGaugeAdder.GaugeType.veBAL,
                 "Temporary veBAL Liquidity Mining BAL Holder",
-                _recipients[1]
+                veBALGaugeRecipient
             );
 
             // Temporary
             _createSingleRecipientGauge(
                 IGaugeAdder.GaugeType.Polygon,
                 "Temporary Polygon Liquidity Mining BAL Holder",
-                _recipients[2]
+                polygonGaugeRecipient
             );
 
             // Temporary
             _createSingleRecipientGauge(
                 IGaugeAdder.GaugeType.Arbitrum,
                 "Temporary Arbitrum Liquidity Mining BAL Holder",
-                _recipients[3]
+                arbitrumGaugeRecipient
             );
 
             authorizer.revokeRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
