@@ -5,7 +5,7 @@ export type BalancerTokenAdminDeployment = {
   Vault: string;
 };
 
-const TestBALTask = new Task('2022xxxx-test-balancer-token');
+const TestBALTask = new Task('20220325-test-balancer-token');
 const Vault = new Task('20210418-vault');
 
 export default {
