@@ -1,6 +1,6 @@
-# 2022-xx-xx - Gauge Controller
+# 2022-03-25 - Gauge Controller
 
-Deployment of the `VotingEscrow`, which allows users to stake 80/20 BAL/WETH BPT to receive veBPT. Holding veBPT gives voting powers on the `GaugeController`, to direct BAL emissions to pool gauges.
+Deployment of the `VotingEscrow`, which allows users to stake 80/20 BAL/WETH BPT to receive veBAL. Holding veBAL gives voting powers on the `GaugeController`, to direct BAL emissions to pool gauges.
 
 ## Useful Files
 
