@@ -20,8 +20,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "./interfaces/IGaugeAdder.sol";
-import "./interfaces/IStakingLiquidityGauge.sol";
+import "../interfaces/IGaugeAdder.sol";
+import "../interfaces/IStakingLiquidityGauge.sol";
 
 contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
