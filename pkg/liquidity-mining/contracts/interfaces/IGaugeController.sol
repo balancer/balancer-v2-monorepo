@@ -14,6 +14,8 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+
 import "./IAuthorizerAdaptor.sol";
 import "./IVotingEscrow.sol";
 
@@ -27,6 +29,8 @@ interface IGaugeController {
     function gauge_relative_weight(address gauge, uint256 time) external returns (uint256);
 
     function voting_escrow() external view returns (IVotingEscrow);
+
+    function token() external view returns (IERC20);
 
     function add_type(string calldata name, uint256 weight) external;
 

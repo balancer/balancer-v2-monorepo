@@ -19,7 +19,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "../interfaces/ILiquidityGauge.sol";
+import "./MockLiquidityGauge.sol";
+
 import "../interfaces/ILiquidityGaugeFactory.sol";
 
 contract MockLiquidityGaugeFactory is ILiquidityGaugeFactory {
@@ -42,10 +43,10 @@ contract MockLiquidityGaugeFactory is ILiquidityGaugeFactory {
         return _isGaugeFromFactory[gauge];
     }
 
-    function create(address pool) external returns (address) {
+    function create(address pool) external override returns (address) {
         require(_poolGauge[pool] == address(0), "Gauge already exists");
 
-        address gauge = address(uint160(uint256(keccak256(abi.encodePacked(pool)))));
+        address gauge = address(new MockLiquidityGauge(pool));
 
         _isGaugeFromFactory[gauge] = true;
         _poolGauge[pool] = gauge;
