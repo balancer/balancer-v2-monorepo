@@ -38,8 +38,8 @@ contract UnseededLiquidityBootstrappingPoolFactory is BasePoolSplitCodeFactory, 
         BasePoolController poolController = new AssetManagedLBPController(
             basePoolRights,
             getVault(),
+            poolParams.projectToken,
             poolParams.reserveToken,
-            poolParams.projectToken < poolParams.reserveToken,
             manager
         );
 
