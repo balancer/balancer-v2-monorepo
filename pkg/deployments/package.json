@@ -25,7 +25,7 @@
     "prepack": "yarn build",
     "test": "hardhat test ./**/test/*.ts",
     "test:deployed": "yarn test --network mainnet",
-    "test:fork": "yarn test --fork mainnet --block-number 12800000"
+    "test:fork": "yarn test --fork mainnet --block-number 14457800"
   },
   "devDependencies": {
     "@balancer-labs/balancer-js": "workspace:*",
