@@ -18,9 +18,10 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
 import "./SingleRecipientGauge.sol";
+import "../../interfaces/ILiquidityGaugeFactory.sol";
 
-contract SingleRecipientLiquidityGaugeFactory {
-    ISingleRecipientLiquidityGauge private _gaugeImplementation;
+contract SingleRecipientGaugeFactory is ILiquidityGaugeFactory {
+    ISingleRecipientGauge private _gaugeImplementation;
 
     mapping(address => bool) private _isGaugeFromFactory;
     mapping(address => address) private _recipientGauge;
@@ -34,14 +35,14 @@ contract SingleRecipientLiquidityGaugeFactory {
     /**
      * @notice Returns the address of the implementation used for gauge deployments.
      */
-    function getGaugeImplementation() public view returns (ISingleRecipientLiquidityGauge) {
+    function getGaugeImplementation() public view returns (ISingleRecipientGauge) {
         return _gaugeImplementation;
     }
 
     /**
      * @notice Returns true if `gauge` was created by this factory.
      */
-    function isGaugeFromFactory(address gauge) external view returns (bool) {
+    function isGaugeFromFactory(address gauge) external view override returns (bool) {
         return _isGaugeFromFactory[gauge];
     }
 
@@ -56,7 +57,7 @@ contract SingleRecipientLiquidityGaugeFactory {
      * @notice Returns the recipient of `gauge`.
      */
     function getGaugeRecipient(address gauge) external view returns (address) {
-        return ISingleRecipientLiquidityGauge(gauge).getRecipient();
+        return ISingleRecipientGauge(gauge).getRecipient();
     }
 
     /**
@@ -66,12 +67,12 @@ contract SingleRecipientLiquidityGaugeFactory {
      * @param recipient The address to receive BAL minted from the gauge
      * @return The address of the deployed gauge
      */
-    function create(address recipient) external returns (address) {
+    function create(address recipient) external override returns (address) {
         require(_recipientGauge[recipient] == address(0), "Gauge already exists");
 
         address gauge = Clones.clone(address(_gaugeImplementation));
 
-        ISingleRecipientLiquidityGauge(gauge).initialize(recipient);
+        ISingleRecipientGauge(gauge).initialize(recipient);
 
         _isGaugeFromFactory[gauge] = true;
         _recipientGauge[recipient] = gauge;

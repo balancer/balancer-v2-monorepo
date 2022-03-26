@@ -22,6 +22,7 @@ import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeAdder.sol"
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeController.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerMinter.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerTokenAdmin.sol";
+import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/ILiquidityGaugeFactory.sol";
 import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IBALTokenHolderFactory.sol";
 
 // solhint-disable not-rely-on-time
@@ -39,14 +40,6 @@ interface ICurrentAuthorizer is IAuthorizer {
     function revokeRole(bytes32 role, address account) external;
 }
 
-interface IEthereumLiquidityGaugeFactory is ILiquidityGaugeFactory {
-    function deploy(address pool) external returns (ILiquidityGauge);
-}
-
-interface ISingleRecipientLiquidityGaugeFactory is ILiquidityGaugeFactory {
-    function deploy(address recipient) external returns (ILiquidityGauge);
-}
-
 // https://vote.balancer.fi/#/proposal/0x9fe19c491cf90ed2e3ed9c15761c43d39fd1fb732a940aba8058ff69787ee90a
 // solhint-disable-next-line contract-name-camelcase
 contract veBALDeploymentCoordinator is ReentrancyGuard {
@@ -58,8 +51,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     IBalancerMinter private immutable _balancerMinter;
     IGaugeController private immutable _gaugeController;
     IGaugeAdder private immutable _gaugeAdder;
-    IEthereumLiquidityGaugeFactory private immutable _ethereumGaugeFactory;
-    ISingleRecipientLiquidityGaugeFactory private immutable _singleRecipientGaugeFactory;
+    ILiquidityGaugeFactory private immutable _ethereumGaugeFactory;
+    ILiquidityGaugeFactory private immutable _singleRecipientGaugeFactory;
     IBALTokenHolderFactory private immutable _balTokenHolderFactory;
 
     address public lmCommitteeMultisig = 0xc38c5f97B34E175FFd35407fc91a937300E33860;
@@ -90,8 +83,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         IBalancerMinter balancerMinter,
         IAuthorizerAdaptor authorizerAdaptor,
         IGaugeAdder gaugeAdder,
-        IEthereumLiquidityGaugeFactory ethereumGaugeFactory,
-        ISingleRecipientLiquidityGaugeFactory singleRecipientGaugeFactory,
+        ILiquidityGaugeFactory ethereumGaugeFactory,
+        ILiquidityGaugeFactory singleRecipientGaugeFactory,
         IBALTokenHolderFactory balTokenHolderFactory,
         uint256 activationScheduledTime,
         uint256 thirdStageDelay
@@ -339,7 +332,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
 
             uint256 poolsLength = initialPools.length;
             for (uint256 i = 0; i < poolsLength; i++) {
-                ILiquidityGauge gauge = _ethereumGaugeFactory.deploy(initialPools[i]);
+                ILiquidityGauge gauge = ILiquidityGauge(_ethereumGaugeFactory.create(initialPools[i]));
                 _gaugeAdder.addEthereumGauge(IStakingLiquidityGauge(address(gauge)));
             }
 
@@ -416,7 +409,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         address recipient
     ) private {
         IBALTokenHolder holder = _balTokenHolderFactory.create(name);
-        ILiquidityGauge gauge = _singleRecipientGaugeFactory.deploy(address(holder));
+        ILiquidityGauge gauge = ILiquidityGauge(_singleRecipientGaugeFactory.create(address(holder)));
         _addGauge(gauge, gaugeType);
         getAuthorizer().grantRole(holder.getActionId(IBALTokenHolder.withdrawFunds.selector), recipient);
     }
