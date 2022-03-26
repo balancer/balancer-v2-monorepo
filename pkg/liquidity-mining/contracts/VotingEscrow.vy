@@ -104,7 +104,7 @@ smart_wallet_checker: public(address)
 def __init__(token_addr: address, _name: String[64], _symbol: String[32], _authorizer_adaptor: address):
     """
     @notice Contract constructor
-    @param token_addr `ERC20CRV` token address
+    @param token_addr 80/20 BAL-WETH BPT token address
     @param _name Token name
     @param _symbol Token symbol
     @param _authorizer_adaptor `AuthorizerAdaptor` contract address
@@ -118,7 +118,7 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _autho
 
     _decimals: uint256 = ERC20(token_addr).decimals()
     assert _decimals <= 255
-    
+
     NAME = _name
     SYMBOL = _symbol
     DECIMALS = _decimals
@@ -487,10 +487,10 @@ def withdraw():
 @view
 def find_block_epoch(_block: uint256, max_epoch: uint256) -> uint256:
     """
-    @notice Binary search to estimate timestamp for block number
+    @notice Binary search to find epoch containing block number
     @param _block Block to find
     @param max_epoch Don't go beyond this epoch
-    @return Approximate timestamp for block
+    @return Epoch which contains _block
     """
     # Binary search
     _min: uint256 = 0
@@ -505,6 +505,73 @@ def find_block_epoch(_block: uint256, max_epoch: uint256) -> uint256:
             _max = _mid - 1
     return _min
 
+@internal
+@view
+def find_timestamp_epoch(_timestamp: uint256, max_epoch: uint256) -> uint256:
+    """
+    @notice Binary search to find epoch for timestamp
+    @param _timestamp timestamp to find
+    @param max_epoch Don't go beyond this epoch
+    @return Epoch which contains _timestamp
+    """
+    # Binary search
+    _min: uint256 = 0
+    _max: uint256 = max_epoch
+    for i in range(128):  # Will be always enough for 128-bit numbers
+        if _min >= _max:
+            break
+        _mid: uint256 = (_min + _max + 1) / 2
+        if self.point_history[_mid].ts <= _timestamp:
+            _min = _mid
+        else:
+            _max = _mid - 1
+    return _min
+
+@internal
+@view
+def find_block_user_epoch(_addr: address, _block: uint256, max_epoch: uint256) -> uint256:
+    """
+    @notice Binary search to find epoch for block number
+    @param _addr User for which to find user epoch for
+    @param _block Block to find
+    @param max_epoch Don't go beyond this epoch
+    @return Epoch which contains _block
+    """
+    # Binary search
+    _min: uint256 = 0
+    _max: uint256 = max_epoch
+    for i in range(128):  # Will be always enough for 128-bit numbers
+        if _min >= _max:
+            break
+        _mid: uint256 = (_min + _max + 1) / 2
+        if self.user_point_history[_addr][_mid].blk <= _block:
+            _min = _mid
+        else:
+            _max = _mid - 1
+    return _min
+
+@internal
+@view
+def find_timestamp_user_epoch(_addr: address, _timestamp: uint256, max_epoch: uint256) -> uint256:
+    """
+    @notice Binary search to find user epoch for timestamp
+    @param _addr User for which to find user epoch for
+    @param _timestamp timestamp to find
+    @param max_epoch Don't go beyond this epoch
+    @return Epoch which contains _timestamp
+    """
+    # Binary search
+    _min: uint256 = 0
+    _max: uint256 = max_epoch
+    for i in range(128):  # Will be always enough for 128-bit numbers
+        if _min >= _max:
+            break
+        _mid: uint256 = (_min + _max + 1) / 2
+        if self.user_point_history[_addr][_mid].ts <= _timestamp:
+            _min = _mid
+        else:
+            _max = _mid - 1
+    return _min
 
 @external
 @view
@@ -516,7 +583,13 @@ def balanceOf(addr: address, _t: uint256 = block.timestamp) -> uint256:
     @param _t Epoch time to return voting power at
     @return User voting power
     """
-    _epoch: uint256 = self.user_point_epoch[addr]
+    _epoch: uint256 = 0
+    if _t == block.timestamp:
+        # No need to do binary search, will always live in current epoch
+        _epoch = self.user_point_epoch[addr]
+    else:
+        _epoch = self.find_timestamp_user_epoch(addr, _t, self.user_point_epoch[addr])
+
     if _epoch == 0:
         return 0
     else:
@@ -541,19 +614,8 @@ def balanceOfAt(addr: address, _block: uint256) -> uint256:
     # reference yet
     assert _block <= block.number
 
-    # Binary search
-    _min: uint256 = 0
-    _max: uint256 = self.user_point_epoch[addr]
-    for i in range(128):  # Will be always enough for 128-bit numbers
-        if _min >= _max:
-            break
-        _mid: uint256 = (_min + _max + 1) / 2
-        if self.user_point_history[addr][_mid].blk <= _block:
-            _min = _mid
-        else:
-            _max = _mid - 1
-
-    upoint: Point = self.user_point_history[addr][_min]
+    _user_epoch: uint256 = self.find_block_user_epoch(addr, _block, self.user_point_epoch[addr])
+    upoint: Point = self.user_point_history[addr][_user_epoch]
 
     max_epoch: uint256 = self.epoch
     _epoch: uint256 = self.find_block_epoch(_block, max_epoch)
@@ -615,9 +677,18 @@ def totalSupply(t: uint256 = block.timestamp) -> uint256:
     @dev Adheres to the ERC20 `totalSupply` interface for Aragon compatibility
     @return Total voting power
     """
-    _epoch: uint256 = self.epoch
-    last_point: Point = self.point_history[_epoch]
-    return self.supply_at(last_point, t)
+    _epoch: uint256 = 0
+    if t == block.timestamp:
+        # No need to do binary search, will always live in current epoch
+        _epoch = self.epoch
+    else:
+        _epoch = self.find_timestamp_epoch(t, self.epoch)
+
+    if _epoch == 0:
+        return 0
+    else:
+        last_point: Point = self.point_history[_epoch]
+        return self.supply_at(last_point, t)
 
 
 @external

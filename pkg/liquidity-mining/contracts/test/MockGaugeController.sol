@@ -57,6 +57,10 @@ contract MockGaugeController is IGaugeController {
         _numGaugeTypes += 1;
     }
 
+    function token() external pure override returns (IERC20) {
+        return IERC20(0);
+    }
+
     function checkpoint_gauge(address) external override {
         // solhint-disable-previous-line no-empty-blocks
     }
