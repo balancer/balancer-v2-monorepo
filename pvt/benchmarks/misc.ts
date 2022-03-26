@@ -89,7 +89,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           swapFeePercentage: swapFeePercentage,
           swapEnabledOnStart: true,
           mustAllowlistLPs: false,
-          paysProtocolFees: true,
+          protocolSwapFeePercentage: MAX_UINT256,
           managementSwapFeePercentage: managementFee,
         };
 

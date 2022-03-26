@@ -5,7 +5,7 @@ import { BigNumber, Contract } from 'ethers';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 
@@ -59,7 +59,7 @@ describe('ManagedPoolFactory', function () {
     canChangeSwapFee = true,
     swapsEnabled = true,
     mustAllowlistLPs = false,
-    paysProtocolFees = true
+    protocolSwapFeePercentage = MAX_UINT256
   ): Promise<Contract> {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
@@ -73,7 +73,7 @@ describe('ManagedPoolFactory', function () {
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
-      paysProtocolFees: paysProtocolFees,
+      protocolSwapFeePercentage: protocolSwapFeePercentage,
       managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
     };
 
@@ -245,16 +245,16 @@ describe('ManagedPoolFactory', function () {
       expect(await pool.getMustAllowlistLPs()).to.be.false;
     });
 
-    it('pool created with protocol fees enabled', async () => {
+    it('pool created with protocol fees delegated', async () => {
       const pool = await createPool(true, true, true, true);
 
-      expect(await pool.paysProtocolFees()).to.be.true;
+      expect(await pool.delegatesProtocolFees()).to.be.true;
     });
 
     it('pool created with protocol fees disabled', async () => {
-      const pool = await createPool(true, true, true, false, false);
+      const pool = await createPool(true, true, true, false, fp(0));
 
-      expect(await pool.paysProtocolFees()).to.be.false;
+      expect(await pool.delegatesProtocolFees()).to.be.false;
     });
   });
 });

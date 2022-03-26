@@ -66,7 +66,7 @@ async function deployControllerAndPool(
   canChangeTokens = true,
   canChangeMgmtFees = true,
   swapEnabledOnStart = true,
-  paysProtocolFees = true
+  protocolSwapFeePercentage = MAX_UINT256
 ) {
   const basePoolRights: BasePoolRights = {
     canTransferOwnership: canTransfer,
@@ -99,7 +99,7 @@ async function deployControllerAndPool(
     swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
     poolType: WeightedPoolType.MANAGED_POOL,
     swapEnabledOnStart: swapEnabledOnStart,
-    paysProtocolFees: paysProtocolFees,
+    protocolSwapFeePercentage: protocolSwapFeePercentage,
   };
   pool = await WeightedPool.create(params);
 }

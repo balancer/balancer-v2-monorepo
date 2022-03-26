@@ -5,7 +5,7 @@ import { BigNumber, Contract } from 'ethers';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -45,7 +45,11 @@ describe('BaseManagedPoolFactory', function () {
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
 
-  async function createPool(swapsEnabled = true, mustAllowlistLPs = false, paysProtocolFees = true): Promise<Contract> {
+  async function createPool(
+    swapsEnabled = true,
+    mustAllowlistLPs = false,
+    protocolSwapFeePercentage = MAX_UINT256
+  ): Promise<Contract> {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
 
@@ -58,7 +62,7 @@ describe('BaseManagedPoolFactory', function () {
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
-      paysProtocolFees: paysProtocolFees,
+      protocolSwapFeePercentage: protocolSwapFeePercentage,
       managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
     };
 
@@ -187,16 +191,16 @@ describe('BaseManagedPoolFactory', function () {
       expect(await pool.getMustAllowlistLPs()).to.be.false;
     });
 
-    it('pool will pay protocol fees', async () => {
+    it('pool with delegated protocol fees', async () => {
       const pool = await createPool(true, false);
 
-      expect(await pool.paysProtocolFees()).to.be.true;
+      expect(await pool.delegatesProtocolFees()).to.be.true;
     });
 
-    it('pool created with protocol fees disabled', async () => {
-      const pool = await createPool(true, false, false);
+    it('pool created with a fixed protocol fee', async () => {
+      const pool = await createPool(true, false, fp(0.1));
 
-      expect(await pool.paysProtocolFees()).to.be.false;
+      expect(await pool.delegatesProtocolFees()).to.be.false;
     });
   });
 });
