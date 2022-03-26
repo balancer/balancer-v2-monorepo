@@ -138,6 +138,10 @@ def __init__(_voting_escrow: address, _name: String[32], _symbol: String[32], _b
     self.symbol = _symbol
     self.base_uri = _base_uri
 
+@view
+@external
+def admin() -> address:
+    return AUTHORIZER_ADAPTOR
 
 @internal
 def _approve(_owner: address, _approved: address, _token_id: uint256):
@@ -154,7 +158,6 @@ def _is_approved_or_owner(_spender: address, _token_id: uint256) -> bool:
         or _spender == self.getApproved[_token_id]
         or self.isApprovedForAll[owner][_spender]
     )
-
 
 @internal
 def _update_enumeration_data(_from: address, _to: address, _token_id: uint256):
@@ -549,25 +552,6 @@ def burn(_token_id: uint256):
         log BurnBoost(delegator, owner, _token_id)
 
     self._burn(_token_id)
-
-
-#@ if mode == "test":
-@external
-def _mint_for_testing(_to: address, _token_id: uint256):
-    self._mint(_to, _token_id)
-
-
-@external
-def _burn_for_testing(_token_id: uint256):
-    self._burn(_token_id)
-
-
-@view
-@external
-def uint_to_string(_value: uint256) -> String[78]:
-    return self._uint_to_string(_value)
-
-#@ endif
 
 
 @external

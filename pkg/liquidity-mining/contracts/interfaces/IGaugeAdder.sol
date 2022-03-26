@@ -34,7 +34,7 @@ interface IGaugeAdder is IAuthentication {
      * This function provides global information by using which gauge has been added to the Gauge Controller
      * to represent the canonical gauge for a given pool address.
      */
-    function getPoolGauge(address pool) external view returns (ILiquidityGauge);
+    function getPoolGauge(IERC20 pool) external view returns (ILiquidityGauge);
 
     /**
      * @notice Returns the `index`'th factory for gauge type `gaugeType`
