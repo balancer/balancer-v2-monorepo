@@ -37,7 +37,7 @@ export default {
       mustAllowlistLPs,
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
-      managementAumFeePercentage
+      managementAumFeePercentage,
     } = deployment;
 
     const poolId = await pool.getPoolId();
@@ -54,7 +54,7 @@ export default {
       mustAllowlistLPs,
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
-      managementAumFeePercentage,
+      managementAumFeePercentage
     );
   },
 
