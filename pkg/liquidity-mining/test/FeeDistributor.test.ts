@@ -38,7 +38,7 @@ function expectTimestampsMatch(timestamp: BigNumberish, expectedTimestamp: BigNu
   expect(timestamp, `Timestamp is ${weekNumber - expectedWeekNumber} weeks off`).to.be.eq(expectedTimestamp);
 }
 
-describe.only('FeeDistributor', () => {
+describe('FeeDistributor', () => {
   let bpt: Token;
   let votingEscrow: Contract;
   let feeDistributor: Contract;
