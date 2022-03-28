@@ -135,7 +135,7 @@ describe('SmartWalletChecker', () => {
       });
 
       context('when address is not currently denylisted', () => {
-        sharedBeforeEach('authorize caller', async () => {
+        sharedBeforeEach('allowlist address', async () => {
           await smartWalletChecker.connect(admin).allowlistAddress(ANY_ADDRESS);
         });
 
