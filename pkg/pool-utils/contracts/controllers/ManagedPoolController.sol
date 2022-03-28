@@ -204,7 +204,6 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
     /**
      * @dev Transfer any BPT management fees from this contract to the recipient.
      */
-    // solhint-disable-next-line no-empty-blocks
     function withdrawCollectedManagementFees(address recipient) external virtual override onlyManager withBoundPool {
         IERC20(pool).transfer(recipient, IERC20(pool).balanceOf(address(this)));
     }
