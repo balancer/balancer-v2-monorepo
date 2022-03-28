@@ -53,9 +53,9 @@ contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWin
                         swapFeePercentage: poolParams.swapFeePercentage,
                         swapEnabledOnStart: poolParams.swapEnabledOnStart,
                         mustAllowlistLPs: poolParams.mustAllowlistLPs,
+                        protocolSwapFeePercentage: poolParams.protocolSwapFeePercentage,
                         managementSwapFeePercentage: poolParams.managementSwapFeePercentage,
-                        managementAumFeePercentage: poolParams.managementAumFeePercentage,
-                        paysProtocolFees: poolParams.paysProtocolFees
+                        managementAumFeePercentage: poolParams.managementAumFeePercentage
                     }),
                     getVault(),
                     owner,

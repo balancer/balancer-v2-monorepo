@@ -35,9 +35,9 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
+      protocolSwapFeePercentage,
       managementSwapFeePercentage,
-      managementAumFeePercentage,
-      paysProtocolFees,
+      managementAumFeePercentage
     } = deployment;
 
     const poolId = await pool.getPoolId();
@@ -52,9 +52,9 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
+      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
-      paysProtocolFees
     );
   },
 
@@ -70,9 +70,9 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
+      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
-      paysProtocolFees,
       owner,
       from,
     } = params;
@@ -132,7 +132,7 @@ export default {
               assetManagers: assetManagers,
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
-              paysProtocolFees: paysProtocolFees,
+              protocolSwapFeePercentage: protocolSwapFeePercentage,
               managementSwapFeePercentage: managementSwapFeePercentage,
               managementAumFeePercentage: managementAumFeePercentage,
             },
@@ -176,7 +176,7 @@ export default {
       oracleEnabled,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      paysProtocolFees,
+      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
       poolType,
@@ -246,7 +246,7 @@ export default {
           swapFeePercentage: swapFeePercentage,
           swapEnabledOnStart: swapEnabledOnStart,
           mustAllowlistLPs: mustAllowlistLPs,
-          paysProtocolFees: paysProtocolFees,
+          protocolSwapFeePercentage: protocolSwapFeePercentage,
           managementSwapFeePercentage: managementSwapFeePercentage,
           managementAumFeePercentage: managementAumFeePercentage,
         };

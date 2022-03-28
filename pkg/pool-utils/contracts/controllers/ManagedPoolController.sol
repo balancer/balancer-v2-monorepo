@@ -133,7 +133,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
     }
 
     /**
-     * @dev Getter for the canChangeMgmtFees permission.
+     * @dev Getter for the canChangeManagementFees permission.
      */
     function canChangeManagementFees() public view returns (bool) {
         return _controllerState.decodeBool(_CHANGE_MGMT_FEES_OFFSET);
