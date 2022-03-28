@@ -15,9 +15,4 @@ export default {
     compilers: hardhatBaseConfig.compilers,
     overrides: { ...hardhatBaseConfig.overrides(name) },
   },
-  networks: {
-    hardhat: {
-      allowUnlimitedContractSize: true,
-    },
-  },
 };

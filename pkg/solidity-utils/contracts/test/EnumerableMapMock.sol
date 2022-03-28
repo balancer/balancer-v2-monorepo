@@ -77,11 +77,6 @@ contract EnumerableIERC20ToUint256MapMock {
         emit OperationResult(result);
     }
 
-    function setIndex(IERC20 key, uint256 index, uint256 errorCode) public {
-        bool result = _map.setIndex(key, index, errorCode);
-        emit OperationResult(result);
-    }
-
     function unchecked_indexOf(IERC20 key) public view returns (uint256) {
         return _map.unchecked_indexOf(key);
     }

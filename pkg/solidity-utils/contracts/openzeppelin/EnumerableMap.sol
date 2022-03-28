@@ -285,43 +285,6 @@ library EnumerableMap {
     }
 
     /**
-     * @dev Sets the index value for an existing key. O(1).
-     *
-     * Returns true key was in the map (even if no changes were made)
-     */
-    function setIndex(
-        IERC20ToUint256Map storage map,
-        IERC20 key,
-        uint256 index,
-        uint256 errorCode
-    ) internal returns (bool validKey) {
-        // Must be a valid (0-based) index
-        _require(index < map._length, errorCode);
-        // Where is the key pointing now?
-        uint256 existingIndex = map._indexes[key];
-
-        validKey = existingIndex > 0;
-
-        // Only proceed if the key is already in the map
-        if (validKey) {
-            existingIndex -= 1;
-
-            if (index != existingIndex) {
-                // "Swap" pointers: make the key point to the new index,
-                // and point whatever it was before to the previous entry
-                IERC20ToUint256MapEntry memory oldEntry = map._entries[index];
-               
-                map._entries[index] = map._entries[existingIndex];
-                map._entries[existingIndex] = oldEntry;
- 
-                // Same for indexes
-                map._indexes[key] = index + 1;
-                map._indexes[oldEntry._key] = existingIndex + 1;
-            }
-        }
-    }
-
-    /**
      * @dev Updates the value for an entry, given its key's index. The key index can be retrieved via
      * {unchecked_indexOf}, and it should be noted that key indices may change when calling {set} or {remove}. O(1).
      *
