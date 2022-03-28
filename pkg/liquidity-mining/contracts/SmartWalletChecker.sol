@@ -39,7 +39,7 @@ contract SmartWalletChecker is ISmartWalletChecker, Authentication {
 
         uint256 addressesLength = initialAllowedAddresses.length;
         for (uint256 i = 0; i < addressesLength; ++i) {
-            _allowlistedAddresses.add(initialAllowedAddresses[i]);
+            _allowlistAddress(initialAllowedAddresses[i]);
         }
     }
 
@@ -64,6 +64,10 @@ contract SmartWalletChecker is ISmartWalletChecker, Authentication {
     }
 
     function allowlistAddress(address contractAddress) external authenticate {
+       _allowlistAddress(contractAddress);
+    }
+
+    function _allowlistAddress(address contractAddress) internal {
         require(_allowlistedAddresses.add(contractAddress), "Address already allowlisted");
         emit ContractAddressAdded(contractAddress);
     }
