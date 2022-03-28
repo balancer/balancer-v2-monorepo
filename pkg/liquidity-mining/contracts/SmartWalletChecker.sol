@@ -64,12 +64,7 @@ contract SmartWalletChecker is ISmartWalletChecker, Authentication {
     }
 
     function allowlistAddress(address contractAddress) external authenticate {
-       _allowlistAddress(contractAddress);
-    }
-
-    function _allowlistAddress(address contractAddress) internal {
-        require(_allowlistedAddresses.add(contractAddress), "Address already allowlisted");
-        emit ContractAddressAdded(contractAddress);
+        _allowlistAddress(contractAddress);
     }
 
     function denylistAddress(address contractAddress) external authenticate {
@@ -78,6 +73,11 @@ contract SmartWalletChecker is ISmartWalletChecker, Authentication {
     }
 
     // Internal functions
+
+    function _allowlistAddress(address contractAddress) internal {
+        require(_allowlistedAddresses.add(contractAddress), "Address already allowlisted");
+        emit ContractAddressAdded(contractAddress);
+    }
 
     function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
         return getAuthorizer().canPerform(actionId, account, address(this));
