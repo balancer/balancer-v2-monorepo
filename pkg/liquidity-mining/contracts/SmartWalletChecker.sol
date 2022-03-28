@@ -15,18 +15,21 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "./interfaces/ISmartWalletChecker.sol";
 
 contract SmartWalletChecker is ISmartWalletChecker, Authentication {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     IVault private immutable _vault;
 
     event ContractAddressAdded(address contractAddress);
     event ContractAddressRemoved(address contractAddress);
 
-    mapping(address => bool) private _allowlistedAddresses;
+    EnumerableSet.AddressSet private _allowlistedAddresses;
 
     constructor(IVault vault, address[] memory initialAllowedAddresses)
         Authentication(bytes32(uint256(address(this))))
@@ -36,7 +39,7 @@ contract SmartWalletChecker is ISmartWalletChecker, Authentication {
 
         uint256 addressesLength = initialAllowedAddresses.length;
         for (uint256 i = 0; i < addressesLength; ++i) {
-            _allowlistedAddresses[initialAllowedAddresses[i]] = true;
+            _allowlistedAddresses.add(initialAllowedAddresses[i]);
         }
     }
 
@@ -49,18 +52,24 @@ contract SmartWalletChecker is ISmartWalletChecker, Authentication {
     }
 
     function check(address contractAddress) external view override returns (bool) {
-        return _allowlistedAddresses[contractAddress];
+        return _allowlistedAddresses.contains(contractAddress);
+    }
+
+    function getAllowlistedAddress(uint256 index) external view returns (address) {
+        return _allowlistedAddresses.at(index);
+    }
+
+    function getAllowlistedAddressesLength() external view returns (uint256) {
+        return _allowlistedAddresses.length();
     }
 
     function allowlistAddress(address contractAddress) external authenticate {
-        require(!_allowlistedAddresses[contractAddress], "Address already allowlisted");
-        _allowlistedAddresses[contractAddress] = true;
+        require(_allowlistedAddresses.add(contractAddress), "Address already allowlisted");
         emit ContractAddressAdded(contractAddress);
     }
 
     function denylistAddress(address contractAddress) external authenticate {
-        require(_allowlistedAddresses[contractAddress], "Address is not allowlisted");
-        _allowlistedAddresses[contractAddress] = false;
+        require(_allowlistedAddresses.remove(contractAddress), "Address is not allowlisted");
         emit ContractAddressRemoved(contractAddress);
     }
 
