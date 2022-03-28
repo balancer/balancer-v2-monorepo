@@ -21,7 +21,6 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "./interfaces/ISmartWalletChecker.sol";
 
 contract SmartWalletChecker is ISmartWalletChecker, Authentication {
-
     IVault private immutable _vault;
 
     event ContractAddressAdded(address contractAddress);
@@ -29,7 +28,9 @@ contract SmartWalletChecker is ISmartWalletChecker, Authentication {
 
     mapping(address => bool) private _allowlistedAddresses;
 
-    constructor(IVault vault, address[] memory initialAllowedAddresses) Authentication(bytes32(uint256(address(this)))) {
+    constructor(IVault vault, address[] memory initialAllowedAddresses)
+        Authentication(bytes32(uint256(address(this))))
+    {
         // SmartWalletChecker is a singleton, so it simply uses its own address to disambiguate action identifiers
         _vault = vault;
 
@@ -47,7 +48,7 @@ contract SmartWalletChecker is ISmartWalletChecker, Authentication {
         return getVault().getAuthorizer();
     }
 
-    function check(address contractAddress) view external override returns (bool) {
+    function check(address contractAddress) external view override returns (bool) {
         return _allowlistedAddresses[contractAddress];
     }
 

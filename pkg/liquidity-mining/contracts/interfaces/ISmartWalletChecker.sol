@@ -15,5 +15,5 @@
 pragma solidity ^0.7.0;
 
 interface ISmartWalletChecker {
-    function check(address contractAddress) view external returns (bool);
+    function check(address contractAddress) external view returns (bool);
 }
