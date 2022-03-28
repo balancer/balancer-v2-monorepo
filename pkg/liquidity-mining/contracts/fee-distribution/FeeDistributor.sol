@@ -103,6 +103,16 @@ contract FeeDistributor is ReentrancyGuard {
         _checkpointToken(token, true);
     }
 
+    function checkpointTokens(IERC20[] calldata tokens) external nonReentrant {
+        // Prevent someone from assigning tokens to an inaccessible week.
+        require(block.timestamp > _startTime, "Fee distribution has not started yet");
+        
+        uint256 tokensLength = tokens.length;
+        for(uint256 i = 0; i < tokensLength; ++i) {
+            _checkpointToken(tokens[i], true);
+        }
+    }
+
     function claimToken(address user, IERC20 token) external nonReentrant returns (uint256) {
         // Prevent someone from assigning tokens to an inaccessible week.
         require(block.timestamp > _startTime, "Fee distribution has not started yet");
@@ -113,6 +123,23 @@ contract FeeDistributor is ReentrancyGuard {
         uint256 amount = _claimToken(user, token);
         return amount;
     }
+
+    function claimTokens(address user, IERC20[] calldata tokens) external nonReentrant returns (uint256[] memory) {
+        // Prevent someone from assigning tokens to an inaccessible week.
+        require(block.timestamp > _startTime, "Fee distribution has not started yet");
+        _checkpointTotalSupply();
+        _checkpointUserBalance(user);
+
+        uint256 tokensLength = tokens.length;
+        uint256[] memory amounts = new uint256[](tokensLength);
+        for(uint256 i = 0; i < tokensLength; ++i) {
+            _checkpointToken(tokens[i], false);
+            amounts[i] = _claimToken(user, tokens[i]);
+        }
+
+        return amounts;
+    }
+    
 
     // Internal functions
 
