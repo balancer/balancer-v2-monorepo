@@ -428,13 +428,13 @@ describe('FeeDistributor', () => {
 
       context('when there are no tokens to distribute to user', () => {
         it("doesn't emit a TokensClaimed event", async () => {
-          const tx = await feeDistributor.checkpointToken(token.address);
+          const tx = await feeDistributor.claimToken(user1.address, token.address);
           expectEvent.notEmitted(await tx.wait(), 'TokensClaimed');
         });
 
         it('maintains the same cached balance', async () => {
           const expectedTokenLastBalance = await feeDistributor.getTokenLastBalance(token.address);
-          await feeDistributor.checkpointToken(token.address);
+          await feeDistributor.claimToken(user1.address, token.address);
 
           expect(await feeDistributor.getTokenLastBalance(token.address)).to.be.eq(expectedTokenLastBalance);
         });
