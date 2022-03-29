@@ -284,9 +284,8 @@ contract FeeDistributor is ReentrancyGuard {
 
         uint256 tokenBalance = token.balanceOf(address(this));
         uint256 tokensToDistribute = tokenBalance - _tokenLastBalance[token];
-        _tokenLastBalance[token] = tokenBalance;
-
         if (tokensToDistribute == 0) return;
+        _tokenLastBalance[token] = tokenBalance;
 
         uint256 thisWeek = _roundDownTimestamp(lastTokenTime);
         uint256 nextWeek = 0;
