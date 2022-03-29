@@ -381,6 +381,83 @@ describe('FeeDistributor', () => {
     });
   });
 
+  describe('checkpointTokens', () => {
+    let token1: Token, token2: Token;
+    let tokensAddress: string[];
+    const tokensAmount = parseFixed('1', 18);
+
+    sharedBeforeEach('Deploy protocol fee token', async () => {
+      token1 = await Token.create('FEE');
+      token2 = await Token.create('FEE2');
+      tokensAddress = [token1.address, token2.address];
+    });
+
+    context('when startTime has not passed', () => {
+      it('reverts', async () => {
+        await expect(feeDistributor.checkpointTokens([ANY_ADDRESS])).to.be.revertedWith(
+          'Fee distribution has not started yet'
+        );
+      });
+    });
+
+    context('when startTime has passed', () => {
+      sharedBeforeEach('advance time past startTime', async () => {
+        await advanceToTimestamp(startTime.add(100));
+      });
+
+      it("updates the token's time cursor to the current timestamp", async () => {
+        const tx = await feeDistributor.checkpointTokens(tokensAddress);
+
+        for (const token of tokensAddress) {
+          const tokenTimeCursor = await feeDistributor.getTokenTimeCursor(token);
+          const txTimestamp = await getReceiptTimestamp(tx.wait());
+          expectTimestampsMatch(tokenTimeCursor, txTimestamp);
+        }
+      });
+
+      context("when FeeDistributor hasn't received new tokens", () => {
+        sharedBeforeEach('send tokens and checkpoint', async () => {
+          await token1.mint(feeDistributor, tokensAmount);
+          await token2.mint(feeDistributor, tokensAmount);
+
+          await feeDistributor.checkpointTokens(tokensAddress);
+        });
+
+        it('maintains the same cached balance', async () => {
+          const expectedTokenLastBalances = await Promise.all(
+            tokensAddress.map((token) => feeDistributor.getTokenLastBalance(token))
+          );
+          await feeDistributor.checkpointTokens(tokensAddress);
+
+          for (const [index, token] of tokensAddress.entries()) {
+            expect(await feeDistributor.getTokenLastBalance(token)).to.be.eq(expectedTokenLastBalances[index]);
+          }
+        });
+      });
+
+      context('when FeeDistributor has received new tokens', () => {
+        sharedBeforeEach('send tokens', async () => {
+          await token1.mint(feeDistributor, tokensAmount);
+          await token2.mint(feeDistributor, tokensAmount);
+        });
+
+        it('updates the cached balance by the amount of new tokens received', async () => {
+          const previousTokenLastBalances = await Promise.all(
+            tokensAddress.map((token) => feeDistributor.getTokenLastBalance(token))
+          );
+          await feeDistributor.checkpointTokens(tokensAddress);
+          const newTokenLastBalances = await Promise.all(
+            tokensAddress.map((token) => feeDistributor.getTokenLastBalance(token))
+          );
+
+          for (const index in tokensAddress) {
+            expect(newTokenLastBalances[index].sub(previousTokenLastBalances[index])).to.be.eq(tokensAmount);
+          }
+        });
+      });
+    });
+  });
+
   describe('claimToken', () => {
     let token: Token;
     const tokensAmount = parseFixed('1', 18);
