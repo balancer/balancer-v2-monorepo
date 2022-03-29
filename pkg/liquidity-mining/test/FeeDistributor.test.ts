@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { BigNumber, Contract, ContractReceipt } from 'ethers';
+import { BigNumber, Contract, ContractReceipt, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
@@ -12,6 +12,7 @@ import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 const roundDownTimestamp = (timestamp: BigNumberish): BigNumber => {
   return BigNumber.from(timestamp).div(WEEK).mul(WEEK);
@@ -332,19 +333,13 @@ describe('FeeDistributor', () => {
     });
 
     describe('token checkpoint', () => {
-      describe('checkpointToken', () => {
-        let token: Token;
-        const tokensAmount = parseFixed('1', 18);
+      let tokens: TokenList;
+      let tokenAmounts: BigNumber[];
 
-        sharedBeforeEach('Deploy protocol fee token', async () => {
-          token = await Token.create('FEE');
-        });
-
+      function itCheckpointsTokensCorrectly(checkpointTokens: () => Promise<ContractTransaction>): void {
         context('when startTime has not passed', () => {
           it('reverts', async () => {
-            await expect(feeDistributor.checkpointToken(ANY_ADDRESS)).to.be.revertedWith(
-              'Fee distribution has not started yet'
-            );
+            await expect(checkpointTokens()).to.be.revertedWith('Fee distribution has not started yet');
           });
         });
 
@@ -354,71 +349,9 @@ describe('FeeDistributor', () => {
           });
 
           it("updates the token's time cursor to the current timestamp", async () => {
-            const tx = await feeDistributor.checkpointToken(token.address);
+            const tx = await checkpointTokens();
 
-            const tokenTimeCursor = await feeDistributor.getTokenTimeCursor(token.address);
-            const txTimestamp = await getReceiptTimestamp(tx.wait());
-            expectTimestampsMatch(tokenTimeCursor, txTimestamp);
-          });
-
-          context("when FeeDistributor hasn't received new tokens", () => {
-            sharedBeforeEach('send tokens and checkpoint', async () => {
-              await token.mint(feeDistributor, tokensAmount);
-              await feeDistributor.checkpointToken(token.address);
-            });
-
-            it('maintains the same cached balance', async () => {
-              const expectedTokenLastBalance = await feeDistributor.getTokenLastBalance(token.address);
-              await feeDistributor.checkpointToken(token.address);
-
-              expect(await feeDistributor.getTokenLastBalance(token.address)).to.be.eq(expectedTokenLastBalance);
-            });
-          });
-
-          context('when FeeDistributor has received new tokens', () => {
-            sharedBeforeEach('send tokens', async () => {
-              await token.mint(feeDistributor, tokensAmount);
-            });
-
-            it('updates the cached balance by the amount of new tokens received', async () => {
-              const previousTokenLastBalance = await feeDistributor.getTokenLastBalance(token.address);
-              await feeDistributor.checkpointToken(token.address);
-              const newTokenLastBalance = await feeDistributor.getTokenLastBalance(token.address);
-
-              expect(newTokenLastBalance.sub(previousTokenLastBalance)).to.be.eq(tokensAmount);
-            });
-          });
-        });
-      });
-
-      describe('checkpointTokens', () => {
-        let token1: Token, token2: Token;
-        let tokensAddress: string[];
-        const tokensAmount = parseFixed('1', 18);
-
-        sharedBeforeEach('Deploy protocol fee token', async () => {
-          token1 = await Token.create('FEE');
-          token2 = await Token.create('FEE2');
-          tokensAddress = [token1.address, token2.address];
-        });
-
-        context('when startTime has not passed', () => {
-          it('reverts', async () => {
-            await expect(feeDistributor.checkpointTokens([ANY_ADDRESS])).to.be.revertedWith(
-              'Fee distribution has not started yet'
-            );
-          });
-        });
-
-        context('when startTime has passed', () => {
-          sharedBeforeEach('advance time past startTime', async () => {
-            await advanceToTimestamp(startTime.add(100));
-          });
-
-          it("updates the token's time cursor to the current timestamp", async () => {
-            const tx = await feeDistributor.checkpointTokens(tokensAddress);
-
-            for (const token of tokensAddress) {
+            for (const token of tokens.addresses) {
               const tokenTimeCursor = await feeDistributor.getTokenTimeCursor(token);
               const txTimestamp = await getReceiptTimestamp(tx.wait());
               expectTimestampsMatch(tokenTimeCursor, txTimestamp);
@@ -427,19 +360,19 @@ describe('FeeDistributor', () => {
 
           context("when FeeDistributor hasn't received new tokens", () => {
             sharedBeforeEach('send tokens and checkpoint', async () => {
-              await token1.mint(feeDistributor, tokensAmount);
-              await token2.mint(feeDistributor, tokensAmount);
-
-              await feeDistributor.checkpointTokens(tokensAddress);
+              for (const [index, token] of tokens.tokens.entries()) {
+                await token.mint(feeDistributor, tokenAmounts[index]);
+              }
+              await feeDistributor.checkpointTokens(tokens.addresses);
             });
 
             it('maintains the same cached balance', async () => {
               const expectedTokenLastBalances = await Promise.all(
-                tokensAddress.map((token) => feeDistributor.getTokenLastBalance(token))
+                tokens.addresses.map((token) => feeDistributor.getTokenLastBalance(token))
               );
-              await feeDistributor.checkpointTokens(tokensAddress);
+              await checkpointTokens();
 
-              for (const [index, token] of tokensAddress.entries()) {
+              for (const [index, token] of tokens.addresses.entries()) {
                 expect(await feeDistributor.getTokenLastBalance(token)).to.be.eq(expectedTokenLastBalances[index]);
               }
             });
@@ -447,25 +380,44 @@ describe('FeeDistributor', () => {
 
           context('when FeeDistributor has received new tokens', () => {
             sharedBeforeEach('send tokens', async () => {
-              await token1.mint(feeDistributor, tokensAmount);
-              await token2.mint(feeDistributor, tokensAmount);
+              for (const [index, token] of tokens.tokens.entries()) {
+                await token.mint(feeDistributor, tokenAmounts[index]);
+              }
             });
 
             it('updates the cached balance by the amount of new tokens received', async () => {
               const previousTokenLastBalances = await Promise.all(
-                tokensAddress.map((token) => feeDistributor.getTokenLastBalance(token))
+                tokens.addresses.map((token) => feeDistributor.getTokenLastBalance(token))
               );
-              await feeDistributor.checkpointTokens(tokensAddress);
+              await checkpointTokens();
               const newTokenLastBalances = await Promise.all(
-                tokensAddress.map((token) => feeDistributor.getTokenLastBalance(token))
+                tokens.addresses.map((token) => feeDistributor.getTokenLastBalance(token))
               );
 
-              for (const index in tokensAddress) {
-                expect(newTokenLastBalances[index].sub(previousTokenLastBalances[index])).to.be.eq(tokensAmount);
+              for (const index in tokens.addresses) {
+                expect(newTokenLastBalances[index].sub(previousTokenLastBalances[index])).to.be.eq(tokenAmounts[index]);
               }
             });
           });
         });
+      }
+
+      describe('checkpointToken', () => {
+        sharedBeforeEach('Deploy protocol fee token', async () => {
+          tokens = await TokenList.create(['FEE']);
+          tokenAmounts = tokens.map(() => parseFixed('1', 18));
+        });
+
+        itCheckpointsTokensCorrectly(() => feeDistributor.checkpointToken(tokens.addresses[0]));
+      });
+
+      describe('checkpointTokens', () => {
+        sharedBeforeEach('Deploy protocol fee token', async () => {
+          tokens = await TokenList.create(['FEE', 'FEE2']);
+          tokenAmounts = tokens.map(() => parseFixed('1', 18));
+        });
+
+        itCheckpointsTokensCorrectly(() => feeDistributor.checkpointTokens(tokens.addresses));
       });
     });
   });
