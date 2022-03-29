@@ -487,4 +487,125 @@ describe('FeeDistributor', () => {
       });
     });
   });
+
+  // This currently mostly checks equivalence with `claimToken` for a single token entry.
+  // TODO: refactor to remove duplication.
+  describe('claimTokens', () => {
+    let token: Token;
+    const tokensAmount = parseFixed('1', 18);
+
+    sharedBeforeEach('Deploy protocol fee token', async () => {
+      token = await Token.create('FEE');
+    });
+
+    context('when startTime has not passed', () => {
+      it('reverts', async () => {
+        await expect(feeDistributor.claimTokens(user1.address, [ANY_ADDRESS])).to.be.revertedWith(
+          'Fee distribution has not started yet'
+        );
+      });
+    });
+
+    context('when startTime has passed', () => {
+      sharedBeforeEach('advance time past startTime', async () => {
+        await advanceToTimestamp(startTime.add(100));
+      });
+
+      it('checkpoints the global, token and user state', async () => {
+        const nextWeek = roundUpTimestamp(await currentTimestamp());
+        const tx = await feeDistributor.claimTokens(user1.address, [token.address]);
+
+        // Global
+        expectTimestampsMatch(await feeDistributor.getTimeCursor(), nextWeek);
+
+        // Token
+        // This only works as it is the first token checkpoint. Calls for the next day won't checkpoint
+        const tokenTimeCursor = await feeDistributor.getTokenTimeCursor(token.address);
+        const txTimestamp = await getReceiptTimestamp(tx.wait());
+        expectTimestampsMatch(tokenTimeCursor, txTimestamp);
+
+        // User
+        expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user1.address), nextWeek);
+      });
+
+      it('updates the token time cursor for the user to the latest claimed week', async () => {
+        const thisWeek = roundDownTimestamp(await currentTimestamp());
+
+        await feeDistributor.claimTokens(user1.address, [token.address]);
+        expectTimestampsMatch(await feeDistributor.getUserTokenTimeCursor(user1.address, token.address), thisWeek);
+      });
+
+      context('when there are no tokens to distribute to user', () => {
+        it("doesn't emit a TokensClaimed event", async () => {
+          const tx = await feeDistributor.claimTokens(user1.address, [token.address]);
+          expectEvent.notEmitted(await tx.wait(), 'TokensClaimed');
+        });
+
+        it('maintains the same cached balance', async () => {
+          const expectedTokenLastBalance = await feeDistributor.getTokenLastBalance(token.address);
+          await feeDistributor.claimTokens(user1.address, [token.address]);
+
+          expect(await feeDistributor.getTokenLastBalance(token.address)).to.be.eq(expectedTokenLastBalance);
+        });
+
+        it('returns zero', async () => {
+          expect(await feeDistributor.callStatic.claimTokens(user1.address, [token.address])).to.be.eql([
+            BigNumber.from(0),
+          ]);
+        });
+      });
+
+      context('when there are tokens to distribute to user', () => {
+        sharedBeforeEach('send tokens', async () => {
+          await token.mint(feeDistributor, tokensAmount);
+          await feeDistributor.checkpointToken(token.address);
+
+          // For the week to become claimable we must wait until the next week starts
+          await advanceToNextWeek();
+        });
+
+        context('when the array of tokens is unique', () => {
+          it('emits a TokensClaimed event', async () => {
+            const thisWeek = roundDownTimestamp(await currentTimestamp());
+
+            const tx = await feeDistributor.claimTokens(user1.address, [token.address]);
+            expectEvent.inReceipt(await tx.wait(), 'TokensClaimed', {
+              user: user1.address,
+              token: token.address,
+              amount: tokensAmount.div(2),
+              userTokenTimeCursor: thisWeek,
+            });
+          });
+
+          it('subtracts the number of tokens claimed from the cached balance', async () => {
+            const previousTokenLastBalance = await feeDistributor.getTokenLastBalance(token.address);
+            const tx = await feeDistributor.claimTokens(user1.address, [token.address]);
+            const newTokenLastBalance = await feeDistributor.getTokenLastBalance(token.address);
+
+            const {
+              args: { amount },
+            } = expectEvent.inReceipt(await tx.wait(), 'TokensClaimed', {
+              user: user1.address,
+              token: token.address,
+            });
+            expect(newTokenLastBalance).to.be.eq(previousTokenLastBalance.sub(amount));
+          });
+
+          it('returns the amount of tokens claimed', async () => {
+            expect(await feeDistributor.callStatic.claimTokens(user1.address, [token.address])).to.be.eql([
+              tokensAmount.div(2),
+            ]);
+          });
+        });
+
+        context('when the array of tokens contains duplicates', () => {
+          it('ignores the second occurence of the token address', async () => {
+            expect(
+              await feeDistributor.callStatic.claimTokens(user1.address, [token.address, token.address])
+            ).to.be.eql([tokensAmount.div(2), BigNumber.from(0)]);
+          });
+        });
+      });
+    });
+  });
 });
