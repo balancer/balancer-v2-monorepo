@@ -55,9 +55,15 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     mapping(IERC20 => mapping(uint256 => uint256)) private _tokensPerWeek;
 
     // User State
-    mapping(address => uint256) private _userStartTime;
-    mapping(address => uint256) private _userTimeCursor;
-    mapping(address => uint256) private _userLastEpochCheckpointed;
+
+    // `startTime` and `timeCursor` are timestamps so will comfortable fit in a uint64
+    // For `lastEpochCheckpointed` to overflow would need over 2^64 transactions to the VotingEscrow contract. 
+    struct UserState {
+        uint64 startTime;
+        uint64 timeCursor;
+        uint64 lastEpochCheckpointed;
+    }
+    mapping(address => UserState) private _userState;
     mapping(address => mapping(uint256 => uint256)) private _userBalanceAtTimestamp;
     mapping(address => mapping(IERC20 => uint256)) private _userTokenTimeCursor;
 
@@ -89,7 +95,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @param user - The address of the user to query.
      */
     function getUserTimeCursor(address user) external view override returns (uint256) {
-        return _userTimeCursor[user];
+        return _userState[user].timeCursor;
     }
 
     /**
@@ -364,9 +370,11 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         // If user has never locked then they won't receive fees
         if (maxUserEpoch == 0) return;
 
+        UserState storage userState = _userState[user];
+
         // weekCursor represents the timestamp of the beginning of the week from which we
         // start checkpointing the user's VotingEscrow balance.
-        uint256 weekCursor = _userTimeCursor[user];
+        uint256 weekCursor = userState.timeCursor;
         if (weekCursor == 0) {
             // First checkpoint for user so need to do the initial binary search
             userEpoch = _findTimestampUserEpoch(user, _startTime, maxUserEpoch);
@@ -376,7 +384,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
                 return;
             }
             // Otherwise use the value saved from last time
-            userEpoch = _userLastEpochCheckpointed[user];
+            userEpoch = userState.lastEpochCheckpointed;
         }
 
         // Epoch 0 is always empty so bump onto the next one so that we start on a valid epoch.
@@ -390,7 +398,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         // i.e. the timestamp of the first Thursday after they locked.
         if (weekCursor == 0) {
             weekCursor = _roundUpTimestamp(userPoint.ts);
-            _userStartTime[user] = weekCursor;
+            userState.startTime = uint64(weekCursor);
         }
 
         // Sanity check - can't claim fees from before fee distribution started.
@@ -435,8 +443,8 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             }
         }
 
-        _userLastEpochCheckpointed[user] = userEpoch - 1;
-        _userTimeCursor[user] = weekCursor;
+        userState.lastEpochCheckpointed = uint64(userEpoch - 1);
+        userState.timeCursor = uint64(weekCursor);
     }
 
     /**
@@ -477,7 +485,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         if (userTimeCursor > 0) return userTimeCursor;
         // This is the first time that the user has interacted with this token.
         // We then start from the latest out of either when `user` first locked veBAL or `token` was first checkpointed.
-        return Math.max(_userStartTime[user], _tokenState[token].startTime);
+        return Math.max(_userState[user].startTime, _tokenState[token].startTime);
     }
 
     /**
