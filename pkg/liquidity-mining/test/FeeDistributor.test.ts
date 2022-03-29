@@ -385,6 +385,17 @@ describe('FeeDistributor', () => {
               }
             });
 
+            it('emits a TokenCheckpointedEvent', async () => {
+              const tx = await checkpointTokens();
+
+              for (const [index, token] of tokens.tokens.entries()) {
+                expectEvent.inReceipt(await tx.wait(), 'TokenCheckpointed', {
+                  token: token.address,
+                  amount: tokenAmounts[index],
+                });
+              }
+            });
+
             it('updates the cached balance by the amount of new tokens received', async () => {
               const previousTokenLastBalances = await Promise.all(
                 tokens.addresses.map((token) => feeDistributor.getTokenLastBalance(token))

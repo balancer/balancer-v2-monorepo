@@ -37,6 +37,7 @@ contract FeeDistributor is ReentrancyGuard {
 
     uint256 private immutable _startTime;
 
+    event TokenCheckpointed(IERC20 token, uint256 amount, uint256 lastCheckpointTimestamp);
     event TokensClaimed(address user, IERC20 token, uint256 amount, uint256 userTokenTimeCursor);
 
     // Global State
@@ -322,6 +323,8 @@ contract FeeDistributor is ReentrancyGuard {
             lastTokenTime = nextWeek;
             thisWeek = nextWeek;
         }
+
+        emit TokenCheckpointed(token, tokensToDistribute, lastTokenTime);
     }
 
     /**
