@@ -21,6 +21,13 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "../interfaces/IVotingEscrow.sol";
 
+/**
+ * @title Fee Distributor
+ * @notice Distributes any tokens transferred to the contract (e.g. Protocol fees and any BAL emissions) among veBAL
+ * holders proportionally based on a snapshot of the week at which the tokens are sent to the FeeDistributor contract.
+ * @dev Supports distributing arbitrarily many different tokens. In order to start distributing a new token to veBAL
+ * holders simply transfer the tokens to the `FeeDistributor` contract and then call `checkpointToken`.
+ */
 contract FeeDistributor is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -57,62 +64,132 @@ contract FeeDistributor is ReentrancyGuard {
         _timeCursor = startTime;
     }
 
+    /**
+     * @notice Returns the VotingEscrow (veBAL) token contract
+     */
     function getVotingEscrow() external view returns (IVotingEscrow) {
         return _votingEscrow;
     }
 
+    /**
+     * @notice Returns the global time cursor representing the most earliest uncheckpointed week.
+     */
     function getTimeCursor() external view returns (uint256) {
         return _timeCursor;
     }
 
+    /**
+     * @notice Returns the user-level time cursor representing the most earliest uncheckpointed week.
+     * @param user - The address of the user to query.
+     */
     function getUserTimeCursor(address user) external view returns (uint256) {
         return _userTimeCursor[user];
     }
 
+    /**
+     * @notice Returns the token-level time cursor storing the timestamp at up to which tokens have been distributed.
+     * @param token - The ERC20 token address to query.
+     */
     function getTokenTimeCursor(IERC20 token) external view returns (uint256) {
         return _tokenTimeCursor[token];
     }
 
+    /**
+     * @notice Returns the user-level time cursor storing the timestamp of the latest token distribution claimed.
+     * @param user - The address of the user to query.
+     * @param token - The ERC20 token address to query.
+     */
     function getUserTokenTimeCursor(address user, IERC20 token) external view returns (uint256) {
         return _userTokenTimeCursor[user][token];
     }
 
+    /**
+     * @notice Returns the user's cached balance of veBAL as of the provided timestamp.
+     * @dev Only timestamps which fall on Thursdays 00:00:00 UTC will return correct values.
+     * This function requires `user` to have been checkpointed past `timestamp` so that their balance is cached.
+     * @param user - The address of the user of which to read the cached balance of.
+     * @param timestamp - The timestamp at which to read the `user`'s cached balance at.
+     */
     function getUserBalanceAtTimestamp(address user, uint256 timestamp) external view returns (uint256) {
         return _userBalanceAtTimestamp[user][timestamp];
     }
 
+    /**
+     * @notice Returns the cached total supply of veBAL as of the provided timestamp.
+     * @dev Only timestamps which fall on Thursdays 00:00:00 UTC will return correct values.
+     * This function requires the contract to have been checkpointed past `timestamp` so that the supply is cached.
+     * @param timestamp - The timestamp at which to read the cached total supply at.
+     */
     function getTotalSupplyAtTimestamp(uint256 timestamp) external view returns (uint256) {
         return _veSupplyCache[timestamp];
     }
 
+    /**
+     * @notice Returns the FeeDistributor's cached balance of `token`.
+     */
     function getTokenLastBalance(IERC20 token) external view returns (uint256) {
         return _tokenLastBalance[token];
     }
 
+    // Checkpointing
+
+    /**
+     * @notice Caches the total supply of veBAL at the beginning of each week.
+     * This function will be called automatically before claiming tokens to ensure the contract is properly updated.
+     */
     function checkpoint() external nonReentrant {
         _checkpointTotalSupply();
     }
 
+    /**
+     * @notice Caches the user's balance of veBAL at the beginning of each week.
+     * This function will be called automatically before claiming tokens to ensure the contract is properly updated.
+     * @param user - The address of the user to be checkpointed.
+     */
     function checkpointUser(address user) external nonReentrant {
         _checkpointUserBalance(user);
     }
 
+    /**
+     * @notice Assigns any newly-received tokens held by the FeeDistributor to weekly distributions.
+     * @dev Any `token` balance held by the FeeDistributor above that which is returned by `getTokenLastBalance`
+     * will be distributed evenly across the time period since `token` was last checkpointed.
+     *
+     * This function will be called automatically before claiming tokens to ensure the contract is properly updated.
+     * @param token - The ERC20 token address to be checkpointed.
+     */
     function checkpointToken(IERC20 token) external nonReentrant {
         // Prevent someone from assigning tokens to an inaccessible week.
         require(block.timestamp > _startTime, "Fee distribution has not started yet");
         _checkpointToken(token, true);
     }
 
+    /**
+     * @notice Assigns any newly-received tokens held by the FeeDistributor to weekly distributions.
+     * @dev A version of `checkpointToken` which supports checkpointing multiple tokens.
+     * See `checkpointToken` for more details.
+     * @param tokens - An array of ERC20 token addresses to be checkpointed.
+     */
     function checkpointTokens(IERC20[] calldata tokens) external nonReentrant {
         // Prevent someone from assigning tokens to an inaccessible week.
         require(block.timestamp > _startTime, "Fee distribution has not started yet");
-        
+
         uint256 tokensLength = tokens.length;
-        for(uint256 i = 0; i < tokensLength; ++i) {
+        for (uint256 i = 0; i < tokensLength; ++i) {
             _checkpointToken(tokens[i], true);
         }
     }
 
+    // Claiming
+
+    /**
+     * @notice Claims all pending distributions of the provided token for a user.
+     * @dev It's not necessary to explicitly checkpoint before calling this function, it will ensure the FeeDistributor
+     * is up to date before calculating the amount of tokens to be claimed.
+     * @param user - The user on behalf of which to claim.
+     * @param token - The ERC20 token address to be claimed.
+     * @return The amount of `token` sent to `user` as a result of claiming.
+     */
     function claimToken(address user, IERC20 token) external nonReentrant returns (uint256) {
         // Prevent someone from assigning tokens to an inaccessible week.
         require(block.timestamp > _startTime, "Fee distribution has not started yet");
@@ -124,6 +201,14 @@ contract FeeDistributor is ReentrancyGuard {
         return amount;
     }
 
+    /**
+     * @notice Claims a number of tokens on behalf of a user.
+     * @dev A version of `claimToken` which supports claiming multiple `tokens` on behalf of `user`.
+     * See `claimToken` for more details.
+     * @param user - The user on behalf of which to claim.
+     * @param tokens - An array of ERC20 token addresses to be claimed.
+     * @return An array of the amounts of each token in `tokens` sent to `user` as a result of claiming.
+     */
     function claimTokens(address user, IERC20[] calldata tokens) external nonReentrant returns (uint256[] memory) {
         // Prevent someone from assigning tokens to an inaccessible week.
         require(block.timestamp > _startTime, "Fee distribution has not started yet");
@@ -132,14 +217,13 @@ contract FeeDistributor is ReentrancyGuard {
 
         uint256 tokensLength = tokens.length;
         uint256[] memory amounts = new uint256[](tokensLength);
-        for(uint256 i = 0; i < tokensLength; ++i) {
+        for (uint256 i = 0; i < tokensLength; ++i) {
             _checkpointToken(tokens[i], false);
             amounts[i] = _claimToken(user, tokens[i]);
         }
 
         return amounts;
     }
-    
 
     // Internal functions
 
@@ -165,6 +249,7 @@ contract FeeDistributor is ReentrancyGuard {
                 _veSupplyCache[userTimeCursor];
             userTimeCursor += 1 weeks;
         }
+        // Update the stored user-token time cursor to prevent this user claiming this week again.
         _userTokenTimeCursor[user][token] = userTimeCursor;
 
         if (amount > 0) {
@@ -184,7 +269,7 @@ contract FeeDistributor is ReentrancyGuard {
         uint256 timeSinceLastCheckpoint;
         if (lastTokenTime == 0) {
             // If it's the first time we're checkpointing this token then start distributing from now.
-            // Also mark at which timestamp users should start attempt to claim this token from.
+            // Also mark at which timestamp users should start attempts to claim this token from.
             lastTokenTime = block.timestamp;
             _tokenStartTime[token] = _roundDownTimestamp(block.timestamp);
         } else {
@@ -286,14 +371,15 @@ contract FeeDistributor is ReentrancyGuard {
 
         IVotingEscrow.Point memory oldUserPoint;
         for (uint256 i = 0; i < 50; ++i) {
+            // Break if we're trying to cache the user's balance at a timestamp in the future
             if (weekCursor > block.timestamp) {
                 break;
             }
 
             if (weekCursor >= userPoint.ts && userEpoch <= maxUserEpoch) {
-                // The week being considered lies inside the user epoch described by `userPoint`.
-                // We then shift it into `oldUserPoint` and query the Point for the next user epoch.
-                // We do this because we need to know the end timestamp for the epoch.
+                // The week being considered is contained in an epoch after the user epoch described by `oldUserPoint`.
+                // We then shift `userPoint` into `oldUserPoint` and query the Point for the next user epoch.
+                // We do this in order to step though epochs until we find the last epoch starting before `weekCursor`.
                 userEpoch += 1;
                 oldUserPoint = userPoint;
                 if (userEpoch > maxUserEpoch) {
