@@ -682,7 +682,7 @@ describe('ManagedPool', function () {
         const receipt = await pool.instance.updateCachedProtocolSwapFeePercentage();
 
         // Real Vault will return a zero protocol fee
-        expectEvent.inReceipt(await receipt.wait(), 'ProtocolSwapFeeCacheUpdated', {
+        expectEvent.inReceipt(await receipt.wait(), 'CachedProtocolSwapFeePercentageUpdated', {
           protocolSwapFeePercentage: 0,
         });
       });
