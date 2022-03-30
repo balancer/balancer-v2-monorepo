@@ -75,15 +75,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     // Store non-token-based values:
     // Start/end timestamps for gradual weight update
     // Cache total tokens
-    // [ 64 bits  | 118 bits |    1 bit     |    1 bit    |  32 bits  |   32 bits  |    7 bits    |   1 bit   ]
-    // [ reserved |  unused  | protocol fee | restrict LP | end time  | start time | total tokens | swap flag ]
-    // |MSB                                                                                                LSB|
+    // [ 64 bits  | 119 bits |    1 bit    |  32 bits  |   32 bits  |    7 bits    |   1 bit   ]
+    // [ reserved |  unused  | restrict LP | end time  | start time | total tokens | swap flag ]
+    // |MSB                                                                                 LSB|
     uint256 private constant _SWAP_ENABLED_OFFSET = 0;
     uint256 private constant _TOTAL_TOKENS_OFFSET = 1;
     uint256 private constant _START_TIME_OFFSET = 8;
     uint256 private constant _END_TIME_OFFSET = 40;
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 72;
-    uint256 private constant _DELEGATES_PROTOCOL_FEES_OFFSET = 73;
 
     // 7 bits is enough for the token count, since _MAX_MANAGED_TOKENS is 50
 

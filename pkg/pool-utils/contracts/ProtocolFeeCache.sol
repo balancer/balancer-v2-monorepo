@@ -14,18 +14,17 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "./BasePool.sol";
-
 abstract contract ProtocolFeeCache {
+    uint256 public constant DELEGATE_PROTOCOL_FEES_SENTINEL = type(uint256).max;
+
     // Matches ProtocolFeesCollector
     uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
-    uint256 public constant DELEGATE_PROTOCOL_FEES_SENTINEL = type(uint256).max;
-
-    // Cache protocol swap fee percentage, since we need it on swaps, but it is not passed in then
     bool internal immutable _delegatedProtocolFees;
+
     IVault internal immutable _vault;
 
     // The Vault does not provide the protocol swap fee percentage in swap hooks (as swaps don't typically need this
@@ -39,6 +38,7 @@ abstract contract ProtocolFeeCache {
     constructor(IVault vault, uint256 protocolSwapFeePercentage) {
         // Set initial value of the protocolSwapFeePercentage; can be updated externally if it is delegated
         bool delegatedProtocolFees = protocolSwapFeePercentage == DELEGATE_PROTOCOL_FEES_SENTINEL;
+
         _delegatedProtocolFees = delegatedProtocolFees;
         _vault = vault;
 
@@ -57,14 +57,28 @@ abstract contract ProtocolFeeCache {
         }
     }
 
+    /**
+     * @dev Can be called by anyone to update the cache fee percentage (when delegated).
+     * Updates the cache to the latest value set by governance.
+     */
     function updateCachedProtocolSwapFeePercentage() external {
         if (getProtocolFeeDelegation()) {
             _updateCachedProtocolSwapFee(_vault);
         }
     }
 
+    /**
+     * @dev Getter for the protocol swap fee percentage
+     */
     function getCachedProtocolSwapFeePercentage() public view returns (uint256) {
         return _cachedProtocolSwapFeePercentage;
+    }
+
+    /**
+     * @dev Returns whether the pool pays protocol fees.
+     */
+    function getProtocolFeeDelegation() public view returns (bool) {
+        return _delegatedProtocolFees;
     }
 
     function _updateCachedProtocolSwapFee(IVault vault) private {
@@ -73,12 +87,5 @@ abstract contract ProtocolFeeCache {
         emit CachedProtocolSwapFeePercentageUpdated(currentProtocolSwapFeePercentage);
 
         _cachedProtocolSwapFeePercentage = currentProtocolSwapFeePercentage;
-    }
-
-    /**
-     * @dev Returns whether the pool pays protocol fees.
-     */
-    function getProtocolFeeDelegation() public view returns (bool) {
-        return _delegatedProtocolFees;
     }
 }
