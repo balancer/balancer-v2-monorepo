@@ -19,6 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
+import "../interfaces/IFeeDistributor.sol";
 import "../interfaces/IVotingEscrow.sol";
 
 /**
@@ -28,7 +29,7 @@ import "../interfaces/IVotingEscrow.sol";
  * @dev Supports distributing arbitrarily many different tokens. In order to start distributing a new token to veBAL
  * holders simply transfer the tokens to the `FeeDistributor` contract and then call `checkpointToken`.
  */
-contract FeeDistributor is ReentrancyGuard {
+contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint256 private constant _TOKEN_CHECKPOINT_DEADLINE = 1 days;
@@ -36,9 +37,6 @@ contract FeeDistributor is ReentrancyGuard {
     IVotingEscrow private immutable _votingEscrow;
 
     uint256 private immutable _startTime;
-
-    event TokenCheckpointed(IERC20 token, uint256 amount, uint256 lastCheckpointTimestamp);
-    event TokensClaimed(address user, IERC20 token, uint256 amount, uint256 userTokenTimeCursor);
 
     // Global State
     uint256 private _timeCursor;
@@ -68,14 +66,14 @@ contract FeeDistributor is ReentrancyGuard {
     /**
      * @notice Returns the VotingEscrow (veBAL) token contract
      */
-    function getVotingEscrow() external view returns (IVotingEscrow) {
+    function getVotingEscrow() external view override returns (IVotingEscrow) {
         return _votingEscrow;
     }
 
     /**
      * @notice Returns the global time cursor representing the most earliest uncheckpointed week.
      */
-    function getTimeCursor() external view returns (uint256) {
+    function getTimeCursor() external view override returns (uint256) {
         return _timeCursor;
     }
 
@@ -83,7 +81,7 @@ contract FeeDistributor is ReentrancyGuard {
      * @notice Returns the user-level time cursor representing the most earliest uncheckpointed week.
      * @param user - The address of the user to query.
      */
-    function getUserTimeCursor(address user) external view returns (uint256) {
+    function getUserTimeCursor(address user) external view override returns (uint256) {
         return _userTimeCursor[user];
     }
 
@@ -91,7 +89,7 @@ contract FeeDistributor is ReentrancyGuard {
      * @notice Returns the token-level time cursor storing the timestamp at up to which tokens have been distributed.
      * @param token - The ERC20 token address to query.
      */
-    function getTokenTimeCursor(IERC20 token) external view returns (uint256) {
+    function getTokenTimeCursor(IERC20 token) external view override returns (uint256) {
         return _tokenTimeCursor[token];
     }
 
@@ -100,7 +98,7 @@ contract FeeDistributor is ReentrancyGuard {
      * @param user - The address of the user to query.
      * @param token - The ERC20 token address to query.
      */
-    function getUserTokenTimeCursor(address user, IERC20 token) external view returns (uint256) {
+    function getUserTokenTimeCursor(address user, IERC20 token) external view override returns (uint256) {
         return _userTokenTimeCursor[user][token];
     }
 
@@ -111,7 +109,7 @@ contract FeeDistributor is ReentrancyGuard {
      * @param user - The address of the user of which to read the cached balance of.
      * @param timestamp - The timestamp at which to read the `user`'s cached balance at.
      */
-    function getUserBalanceAtTimestamp(address user, uint256 timestamp) external view returns (uint256) {
+    function getUserBalanceAtTimestamp(address user, uint256 timestamp) external view override returns (uint256) {
         return _userBalanceAtTimestamp[user][timestamp];
     }
 
@@ -121,14 +119,14 @@ contract FeeDistributor is ReentrancyGuard {
      * This function requires the contract to have been checkpointed past `timestamp` so that the supply is cached.
      * @param timestamp - The timestamp at which to read the cached total supply at.
      */
-    function getTotalSupplyAtTimestamp(uint256 timestamp) external view returns (uint256) {
+    function getTotalSupplyAtTimestamp(uint256 timestamp) external view override returns (uint256) {
         return _veSupplyCache[timestamp];
     }
 
     /**
      * @notice Returns the FeeDistributor's cached balance of `token`.
      */
-    function getTokenLastBalance(IERC20 token) external view returns (uint256) {
+    function getTokenLastBalance(IERC20 token) external view override returns (uint256) {
         return _tokenLastBalance[token];
     }
 
@@ -138,7 +136,7 @@ contract FeeDistributor is ReentrancyGuard {
      * @notice Caches the total supply of veBAL at the beginning of each week.
      * This function will be called automatically before claiming tokens to ensure the contract is properly updated.
      */
-    function checkpoint() external nonReentrant {
+    function checkpoint() external override nonReentrant {
         _checkpointTotalSupply();
     }
 
@@ -147,7 +145,7 @@ contract FeeDistributor is ReentrancyGuard {
      * This function will be called automatically before claiming tokens to ensure the contract is properly updated.
      * @param user - The address of the user to be checkpointed.
      */
-    function checkpointUser(address user) external nonReentrant {
+    function checkpointUser(address user) external override nonReentrant {
         _checkpointUserBalance(user);
     }
 
@@ -159,7 +157,7 @@ contract FeeDistributor is ReentrancyGuard {
      * This function will be called automatically before claiming tokens to ensure the contract is properly updated.
      * @param token - The ERC20 token address to be checkpointed.
      */
-    function checkpointToken(IERC20 token) external nonReentrant {
+    function checkpointToken(IERC20 token) external override nonReentrant {
         // Prevent someone from assigning tokens to an inaccessible week.
         require(block.timestamp > _startTime, "Fee distribution has not started yet");
         _checkpointToken(token, true);
@@ -171,7 +169,7 @@ contract FeeDistributor is ReentrancyGuard {
      * See `checkpointToken` for more details.
      * @param tokens - An array of ERC20 token addresses to be checkpointed.
      */
-    function checkpointTokens(IERC20[] calldata tokens) external nonReentrant {
+    function checkpointTokens(IERC20[] calldata tokens) external override nonReentrant {
         // Prevent someone from assigning tokens to an inaccessible week.
         require(block.timestamp > _startTime, "Fee distribution has not started yet");
 
@@ -191,7 +189,7 @@ contract FeeDistributor is ReentrancyGuard {
      * @param token - The ERC20 token address to be claimed.
      * @return The amount of `token` sent to `user` as a result of claiming.
      */
-    function claimToken(address user, IERC20 token) external nonReentrant returns (uint256) {
+    function claimToken(address user, IERC20 token) external override nonReentrant returns (uint256) {
         // Prevent someone from assigning tokens to an inaccessible week.
         require(block.timestamp > _startTime, "Fee distribution has not started yet");
         _checkpointTotalSupply();
@@ -210,7 +208,7 @@ contract FeeDistributor is ReentrancyGuard {
      * @param tokens - An array of ERC20 token addresses to be claimed.
      * @return An array of the amounts of each token in `tokens` sent to `user` as a result of claiming.
      */
-    function claimTokens(address user, IERC20[] calldata tokens) external nonReentrant returns (uint256[] memory) {
+    function claimTokens(address user, IERC20[] calldata tokens) external override nonReentrant returns (uint256[] memory) {
         // Prevent someone from assigning tokens to an inaccessible week.
         require(block.timestamp > _startTime, "Fee distribution has not started yet");
         _checkpointTotalSupply();
