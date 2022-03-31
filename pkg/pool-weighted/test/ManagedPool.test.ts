@@ -2,17 +2,19 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
-import { MINUTE, DAY, advanceTime, currentTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
+import { MINUTE, DAY, advanceTime, currentTimestamp, WEEK, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ZERO_ADDRESS, ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { SwapKind } from '@balancer-labs/balancer-js';
+import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import { range } from 'lodash';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
@@ -24,6 +26,7 @@ describe('ManagedPool', function () {
   let admin: SignerWithAddress, owner: SignerWithAddress, other: SignerWithAddress;
   let pool: WeightedPool;
   let aumProtocolFeesCollector: Contract;
+  let authorizer: Contract;
   let vault: Vault;
 
   before('setup signers', async () => {
@@ -1029,6 +1032,74 @@ describe('ManagedPool', function () {
           });
         });
       });
+    });
+  });
+
+  describe('non-zero AUM protocol fees', () => {
+    let authorizedVault: Contract;
+    let feesCollector: Contract;
+
+    const AUM_FEE_PERCENTAGE = fp(0.1);
+    const swapFeePercentage = fp(0.02);
+    const managementSwapFeePercentage = fp(0.8);
+    const managementAumFeePercentage = fp(0.1);
+
+    sharedBeforeEach('deploy and set protocol AUM fee', async () => {
+      const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
+
+      authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS] });
+      authorizedVault = await deploy('v2-vault/Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
+      feesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', { args: [authorizedVault.address] });
+
+      const action = await actionId(feesCollector, 'setAumFeePercentage');
+      await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+      await feesCollector.connect(admin).setAumFeePercentage(AUM_FEE_PERCENTAGE);
+    });
+
+    sharedBeforeEach('deploy and initialize pool', async () => {
+      const params = {
+        tokens: poolTokens,
+        weights: poolWeights,
+        owner: owner.address,
+        poolType: WeightedPoolType.MANAGED_POOL,
+        swapEnabledOnStart: true,
+        vault: new Vault(false, authorizedVault, authorizer, admin),
+        swapFeePercentage,
+        managementSwapFeePercentage,
+        managementAumFeePercentage,
+        aumProtocolFeesCollector: feesCollector.address,
+      };
+      pool = await WeightedPool.create(params);
+
+      await poolTokens.mint({ to: owner, amount: fp(100) });
+      await poolTokens.approve({ from: owner, to: await pool.getVault() });
+      await pool.init({ from: owner, initialBalances });
+    });
+
+    it('accounts for the protocol portion of the AUM fee', async () => {
+      await advanceTime(180 * DAY);
+
+      const totalSupply = await pool.totalSupply();
+      const expectedBpt = totalSupply
+        .mul(180)
+        .div(365)
+        .mul(managementAumFeePercentage)
+        .div(fp(1).sub(managementAumFeePercentage));
+
+      const balanceBefore = await pool.balanceOf(owner);
+
+      const protocolPortion = expectedBpt.mul(AUM_FEE_PERCENTAGE).div(fp(1));
+      const ownerPortion = expectedBpt.sub(protocolPortion);
+
+      const receipt = await pool.collectAumManagementFees(owner);
+      expectEvent.inReceipt(await receipt.wait(), 'ManagementAumFeeCollected');
+
+      const balanceAfter = await pool.balanceOf(owner);
+      expect(balanceAfter.sub(balanceBefore)).to.equalWithError(ownerPortion, 0.0001);
+
+      // Fee collector should have its balance
+      const protocolFees = await feesCollector.getCollectedFeeAmounts([pool.address]);
+      expect(protocolFees[0]).to.equalWithError(protocolPortion, 0.00001);
     });
   });
 });

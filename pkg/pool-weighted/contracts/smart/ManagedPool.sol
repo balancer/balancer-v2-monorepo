@@ -892,7 +892,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             // x = S * F/(1 - F); per annual time period
             // Final value needs to be annualized: multiply by elapsedTime/(365 days)
             //
-            // Protocol fee cut asdf
             uint256 feePct = _managementAumFeePercentage.divDown(_managementAumFeePercentage.complement());
             uint256 timePeriodPct = elapsedTime.mulUp(FixedPoint.ONE).divDown(365 days);
             uint256 bptAmount = totalSupply().mulDown(feePct).mulDown(timePeriodPct);
@@ -901,6 +900,16 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
             // Reset the collection timer to the current block
             _lastAumFeeCollectionTimestamp = currentTime;
+
+            // Compute the protocol's share of the AUM fee
+            address aumProtocolFeesCollector = address(getAumProtocolFeesCollector());
+
+            if (aumProtocolFeesCollector != address(0)) {
+                uint256 protocolBptAmount = bptAmount.mulUp(getAumProtocolFeesCollector().getAumFeePercentage());
+                bptAmount = bptAmount.sub(protocolBptAmount);
+
+                _mintPoolTokens(aumProtocolFeesCollector, protocolBptAmount);
+            }
 
             _mintPoolTokens(getOwner(), bptAmount);
         }
