@@ -77,6 +77,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
     const WEIGHTS = range(10000, 10000 + tokens.length);
     const weights = toNormalizedWeights(WEIGHTS.map(bn)); // Equal weights for all tokens
     const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
+    let aumProtocolFeesCollector: Contract;
     let params;
 
     switch (poolName) {
@@ -109,7 +110,9 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           canChangeTokens: true,
           canChangeMgmtFees: true,
         };
-        params = [newPoolParams, basePoolRights, managedPoolRights, DAY, creator.address];
+        aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', { args: [vault.address] });
+
+        params = [newPoolParams, basePoolRights, managedPoolRights, aumProtocolFeesCollector.address, DAY, creator.address];
         break;
       }
       case 'OracleWeightedPool': {
