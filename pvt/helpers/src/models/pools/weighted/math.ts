@@ -124,10 +124,9 @@ export function calcBptInGivenExactTokensOut(
 
   let invariantRatio = decimal(1);
   for (let i = 0; i < balances.length; i++) {
-    const tokenBalancePercentageExcess =
-      weightedBalanceRatio.lte(balanceRatiosWithoutFee[i])
-        ? 0
-        : weightedBalanceRatio.sub(balanceRatiosWithoutFee[i]).div(decimal(1).sub(balanceRatiosWithoutFee[i]));
+    const tokenBalancePercentageExcess = weightedBalanceRatio.lte(balanceRatiosWithoutFee[i])
+      ? 0
+      : weightedBalanceRatio.sub(balanceRatiosWithoutFee[i]).div(decimal(1).sub(balanceRatiosWithoutFee[i]));
 
     const amountOutBeforeFee = amountsOut[i].div(decimal(1).sub(swapFeePercentage.mul(tokenBalancePercentageExcess)));
     const tokenBalanceRatio = decimal(1).sub(amountOutBeforeFee.div(balances[i]));
