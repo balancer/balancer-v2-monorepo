@@ -110,9 +110,18 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           canChangeTokens: true,
           canChangeMgmtFees: true,
         };
-        aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', { args: [vault.address] });
+        aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', {
+          args: [vault.address],
+        });
 
-        params = [newPoolParams, basePoolRights, managedPoolRights, aumProtocolFeesCollector.address, DAY, creator.address];
+        params = [
+          newPoolParams,
+          basePoolRights,
+          managedPoolRights,
+          aumProtocolFeesCollector.address,
+          DAY,
+          creator.address,
+        ];
         break;
       }
       case 'OracleWeightedPool': {
