@@ -208,7 +208,12 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @param tokens - An array of ERC20 token addresses to be claimed.
      * @return An array of the amounts of each token in `tokens` sent to `user` as a result of claiming.
      */
-    function claimTokens(address user, IERC20[] calldata tokens) external override nonReentrant returns (uint256[] memory) {
+    function claimTokens(address user, IERC20[] calldata tokens)
+        external
+        override
+        nonReentrant
+        returns (uint256[] memory)
+    {
         // Prevent someone from assigning tokens to an inaccessible week.
         require(block.timestamp > _startTime, "Fee distribution has not started yet");
         _checkpointTotalSupply();

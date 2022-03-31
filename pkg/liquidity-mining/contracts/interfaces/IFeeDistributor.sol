@@ -25,7 +25,6 @@ import "./IVotingEscrow.sol";
  * holders simply transfer the tokens to the `FeeDistributor` contract and then call `checkpointToken`.
  */
 interface IFeeDistributor {
-    
     event TokenCheckpointed(IERC20 token, uint256 amount, uint256 lastCheckpointTimestamp);
     event TokensClaimed(address user, IERC20 token, uint256 amount, uint256 userTokenTimeCursor);
 
@@ -38,11 +37,13 @@ interface IFeeDistributor {
      * @notice Returns the global time cursor representing the most earliest uncheckpointed week.
      */
     function getTimeCursor() external view returns (uint256);
+
     /**
      * @notice Returns the user-level time cursor representing the most earliest uncheckpointed week.
      * @param user - The address of the user to query.
      */
     function getUserTimeCursor(address user) external view returns (uint256);
+
     /**
      * @notice Returns the token-level time cursor storing the timestamp at up to which tokens have been distributed.
      * @param token - The ERC20 token address to query.
@@ -77,6 +78,7 @@ interface IFeeDistributor {
      * @notice Returns the FeeDistributor's cached balance of `token`.
      */
     function getTokenLastBalance(IERC20 token) external view returns (uint256);
+
     // Checkpointing
 
     /**
