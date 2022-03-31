@@ -61,7 +61,7 @@ export function calcBptOutGivenExactTokensIn(
   for (let i = 0; i < balances.length; i++) {
     let amountInWithoutFee;
 
-    if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
+    if (balanceRatiosWithFee[i].gt(invariantRatioWithFees)) {
       const nonTaxableAmount = balances[i].mul(invariantRatioWithFees.sub(1));
       const taxableAmount = amountsIn[i].sub(nonTaxableAmount);
       amountInWithoutFee = nonTaxableAmount.add(taxableAmount.mul(decimal(1).sub(fromFp(fpSwapFeePercentage))));
@@ -124,10 +124,9 @@ export function calcBptInGivenExactTokensOut(
 
   let invariantRatio = decimal(1);
   for (let i = 0; i < balances.length; i++) {
-    const tokenBalancePercentageExcess =
-      weightedBalanceRatio <= balanceRatiosWithoutFee[i]
-        ? 0
-        : weightedBalanceRatio.sub(balanceRatiosWithoutFee[i]).div(decimal(1).sub(balanceRatiosWithoutFee[i]));
+    const tokenBalancePercentageExcess = weightedBalanceRatio.lte(balanceRatiosWithoutFee[i])
+      ? 0
+      : weightedBalanceRatio.sub(balanceRatiosWithoutFee[i]).div(decimal(1).sub(balanceRatiosWithoutFee[i]));
 
     const amountOutBeforeFee = amountsOut[i].div(decimal(1).sub(swapFeePercentage.mul(tokenBalancePercentageExcess)));
     const tokenBalanceRatio = decimal(1).sub(amountOutBeforeFee.div(balances[i]));
@@ -194,7 +193,7 @@ export function calculateBPTSwapFeeFeeAmount(
   currentInvariant: BigNumberish,
   fpProtocolSwapFeePercentage: BigNumberish
 ): Decimal {
-  if (currentInvariant <= lastInvariant) {
+  if (bn(currentInvariant).lte(lastInvariant)) {
     return decimal(1);
   }
 

@@ -104,7 +104,7 @@ smart_wallet_checker: public(address)
 def __init__(token_addr: address, _name: String[64], _symbol: String[32], _authorizer_adaptor: address):
     """
     @notice Contract constructor
-    @param token_addr `ERC20CRV` token address
+    @param token_addr 80/20 BAL-WETH BPT token address
     @param _name Token name
     @param _symbol Token symbol
     @param _authorizer_adaptor `AuthorizerAdaptor` contract address
@@ -118,7 +118,7 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _autho
 
     _decimals: uint256 = ERC20(token_addr).decimals()
     assert _decimals <= 255
-    
+
     NAME = _name
     SYMBOL = _symbol
     DECIMALS = _decimals
