@@ -18,7 +18,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerToken.sol";
 
 import "./interfaces/IBALTokenHolder.sol";
 
@@ -51,7 +50,7 @@ contract BALTokenHolder is IBALTokenHolder, Authentication {
         _name = name;
     }
 
-    function getBalancerToken() external view returns (IBalancerToken) {
+    function getBalancerToken() external view override returns (IBalancerToken) {
         return _balancerToken;
     }
 
