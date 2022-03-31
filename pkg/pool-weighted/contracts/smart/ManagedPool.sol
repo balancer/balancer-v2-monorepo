@@ -202,26 +202,28 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         _aumProtocolFeesCollector = IAumProtocolFeesCollector(aumProtocolFeesCollector);
 
         // Set initial value of the protocolSwapFeePercentage; can be updated externally if it is delegated
-        if (_DELEGATE_PROTOCOL_FEES_SENTINEL == params.protocolSwapFeePercentage) {
-            _setMiscData(_getMiscData().insertBool(true, _DELEGATES_PROTOCOL_FEES_OFFSET));
+        bool delegatedProtocolFees = params.protocolSwapFeePercentage == _DELEGATE_PROTOCOL_FEES_SENTINEL;
 
-            _updateCachedProtocolSwapFeeInternal(vault);
+        if (delegatedProtocolFees) {
+            _updateCachedProtocolSwapFee(vault);
         } else {
             _require(
                 params.protocolSwapFeePercentage <= _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE,
                 Errors.SWAP_FEE_PERCENTAGE_TOO_HIGH
             );
 
-            emit ProtocolSwapFeeCacheUpdated(params.protocolSwapFeePercentage);
-
             // Set the fixed protocol fee percentage, which can be zero
             _cachedProtocolSwapFeePercentage = params.protocolSwapFeePercentage;
+
+            emit ProtocolSwapFeeCacheUpdated(params.protocolSwapFeePercentage);
         }
 
         // Validate and set initial fees
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
 
         _setManagementAumFeePercentage(params.managementAumFeePercentage);
+        // Update flag (even if false, for consistency)
+        _setMiscData(_getMiscData().insertBool(delegatedProtocolFees, _DELEGATES_PROTOCOL_FEES_OFFSET));
 
         // Initialize the denorm weight sum to the initial normalized weight sum of ONE
         _denormWeightSum = FixedPoint.ONE;
@@ -243,14 +245,12 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function updateCachedProtocolSwapFeePercentage() external {
-        if (delegatesProtocolFees()) {
-            _updateCachedProtocolSwapFeeInternal(getVault());
+        if (getProtocolFeeDelegation()) {
+            _updateCachedProtocolSwapFee(getVault());
         }
     }
 
-    // This is split out because it must be called from the constructor, since it cannot call getVault(),
-    // which reads from an immutable variable.
-    function _updateCachedProtocolSwapFeeInternal(IVault vault) private {
+    function _updateCachedProtocolSwapFee(IVault vault) private {
         uint256 currentProtocolSwapFeePercentage = vault.getProtocolFeesCollector().getSwapFeePercentage();
 
         emit ProtocolSwapFeeCacheUpdated(currentProtocolSwapFeePercentage);
@@ -296,7 +296,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     /**
      * @dev Returns whether the pool pays protocol fees.
      */
-    function delegatesProtocolFees() public view returns (bool) {
+    function getProtocolFeeDelegation() public view returns (bool) {
         return _getMiscData().decodeBool(_DELEGATES_PROTOCOL_FEES_OFFSET);
     }
 
@@ -620,10 +620,10 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         );
 
         // Calculate the portion of the total fee due the protocol
-        // If both fees were 50%, the protocol would take 50% first.
-        // Then the manager would take 50% of the remaining 50% (or 25%), for a total fee of 75%
-        // The protocol would then earn 0.5/0.75 (two-thirds) of the total fee,
-        // and the manager would get 0.25/0.75 (one-third)
+        // If the protocol fee were 30% and the manager fee 10%, the protocol would take 30% first.
+        // Then the manager would take 10% of the remaining 70% (that is, 7%), for a total fee of 37%
+        // The protocol would then earn 0.3/0.37 ~=81% of the total fee,
+        // and the manager would get 0.1/0.75 ~=13%.
         uint256 protocolBptAmount = totalBptAmount.mulUp(protocolSwapFeePercentage.divUp(totalFeePercentage));
 
         if (protocolBptAmount > 0) {
@@ -693,7 +693,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // out) remain functional.
 
         // If swaps are disabled, the only exit kind that is allowed is the proportional one (as all others involve
-        // implicit swaps and alter token prices)
+        // implicit swaps and alter token prices).
         _require(
             getSwapEnabled() || userData.exitKind() == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED

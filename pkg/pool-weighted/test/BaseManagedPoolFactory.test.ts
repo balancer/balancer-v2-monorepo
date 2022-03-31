@@ -215,13 +215,13 @@ describe('BaseManagedPoolFactory', function () {
     it('pool with delegated protocol fees', async () => {
       const pool = await createPool(true, false);
 
-      expect(await pool.delegatesProtocolFees()).to.be.true;
+      expect(await pool.getProtocolFeeDelegation()).to.be.true;
     });
 
     it('pool created with a fixed protocol fee', async () => {
       const pool = await createPool(true, false, fp(0.1));
 
-      expect(await pool.delegatesProtocolFees()).to.be.false;
+      expect(await pool.getProtocolFeeDelegation()).to.be.false;
     });
   });
 });
