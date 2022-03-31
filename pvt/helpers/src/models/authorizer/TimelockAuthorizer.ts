@@ -78,16 +78,13 @@ export default class TimelockAuthorizer {
   }
 
   async canPerform(action: string, account: Account, where: Account, how?: string): Promise<boolean> {
-    const canPerform = this.instance.functions[`canPerform(bytes32,address,address${how ? ',bytes32' : ''})`];
     return how
-      ? (await canPerform(action, this.toAddress(account), this.toAddress(where), how))[0]
-      : (await canPerform(action, this.toAddress(account), this.toAddress(where)))[0];
+      ? this.instance.canPerformOrWhatever(action, this.toAddress(account), this.toAddress(where), how)
+      : this.instance.canPerform(action, this.toAddress(account), this.toAddress(where));
   }
 
   async hasPermission(action: string, account: Account, where: Account, how: string): Promise<boolean> {
-    const hasPermission = this.instance.functions[`hasPermission(bytes32,address,address,bytes32)`];
-    const result = await hasPermission(action, this.toAddress(account), this.toAddress(where), how);
-    return result[0];
+    return this.instance.hasPermissionOrWhatever(action, this.toAddress(account), this.toAddress(where), how);
   }
 
   async scheduleRootChange(root: Account, executors: Account[], params?: TxParams): Promise<number> {
