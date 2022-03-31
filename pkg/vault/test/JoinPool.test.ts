@@ -11,7 +11,6 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
-import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
