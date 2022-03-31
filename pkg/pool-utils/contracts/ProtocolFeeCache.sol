@@ -36,7 +36,7 @@ abstract contract ProtocolFeeCache {
     event CachedProtocolSwapFeePercentageUpdated(uint256 protocolSwapFeePercentage);
 
     constructor(IVault vault, uint256 protocolSwapFeePercentage) {
-        // Set initial value of the protocolSwapFeePercentage; can be updated externally if it is delegated
+        // Protocol fees are delegated to the value reported by the Fee Collector if the sentinel value is passed.
         bool delegatedProtocolFees = protocolSwapFeePercentage == DELEGATE_PROTOCOL_FEES_SENTINEL;
 
         _delegatedProtocolFees = delegatedProtocolFees;
@@ -62,20 +62,21 @@ abstract contract ProtocolFeeCache {
      * Updates the cache to the latest value set by governance.
      */
     function updateCachedProtocolSwapFeePercentage() external {
-        if (getProtocolFeeDelegation()) {
-            _updateCachedProtocolSwapFee(_vault);
-        }
+        _require(getProtocolFeeDelegation(), Errors.UNAUTHORIZED_OPERATION);
+
+        _updateCachedProtocolSwapFee(_vault);
     }
 
     /**
-     * @dev Getter for the protocol swap fee percentage
+     * @dev Returns the current protocol swap fee percentage. If `getProtocolFeeDelegation()` is false, this value is
+     * immutable. Alternatively, it will track the global fee percentage set in the Fee Collector.
      */
     function getCachedProtocolSwapFeePercentage() public view returns (uint256) {
         return _cachedProtocolSwapFeePercentage;
     }
 
     /**
-     * @dev Returns whether the pool pays protocol fees.
+     * @dev Returns whether this Pool tracks protocol fee changes in the Fee Collector.
      */
     function getProtocolFeeDelegation() public view returns (bool) {
         return _delegatedProtocolFees;

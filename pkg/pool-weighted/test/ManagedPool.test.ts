@@ -688,6 +688,47 @@ describe('ManagedPool', function () {
       });
     });
 
+    describe('Non-delegated protocol fees', () => {
+      const swapFeePercentage = fp(0.02);
+      const protocolSwapFeePercentage = fp(0.1); // Fixed 10%
+      const managementSwapFeePercentage = fp(0); // Set to zero to isolate BPT fees
+
+      sharedBeforeEach('deploy pool', async () => {
+        const vault = await Vault.create();
+
+        const params = {
+          tokens: poolTokens,
+          weights: poolWeights,
+          owner: owner.address,
+          poolType: WeightedPoolType.MANAGED_POOL,
+          swapEnabledOnStart: true,
+          vault,
+          swapFeePercentage,
+          managementSwapFeePercentage,
+          protocolSwapFeePercentage,
+        };
+        pool = await WeightedPool.create(params);
+      });
+
+      it('cannot update protocol fees when not delegated', async () => {
+        await expect(pool.instance.updateCachedProtocolSwapFeePercentage()).to.be.revertedWith(
+          'UNAUTHORIZED_OPERATION'
+        );
+      });
+
+      it('reports the protocol swap fee', async () => {
+        const feePercentage = await pool.instance.getCachedProtocolSwapFeePercentage();
+
+        expect(feePercentage).to.equal(protocolSwapFeePercentage);
+      });
+
+      it('indicates no delegation', async () => {
+        const delegatedFee = await pool.instance.getProtocolFeeDelegation();
+
+        expect(delegatedFee).to.be.false;
+      });
+    });
+
     describe('BPT protocol fees', () => {
       let protocolFeesCollector: Contract;
       let vault: Vault;
@@ -726,6 +767,18 @@ describe('ManagedPool', function () {
         bptFeeBalance = await pool.balanceOf(protocolFeesCollector.address);
 
         expect(bptFeeBalance).to.equal(0);
+      });
+
+      it('indicates no delegation', async () => {
+        const delegatedFee = await pool.instance.getProtocolFeeDelegation();
+
+        expect(delegatedFee).to.be.true;
+      });
+
+      it('reports the protocol swap fee', async () => {
+        const feePercentage = await pool.instance.getCachedProtocolSwapFeePercentage();
+
+        expect(feePercentage).to.equal(protocolFeePercentage);
       });
 
       describe('pays protocol fees on swap', () => {
