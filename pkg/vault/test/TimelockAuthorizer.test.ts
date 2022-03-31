@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -10,13 +10,14 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
+import { Account, TxParams } from '@balancer-labs/v2-helpers/src/models/types/types';
 
 describe('TimelockAuthorizer', () => {
   let authorizer: TimelockAuthorizer, vault: Contract;
-  let admin: SignerWithAddress, grantee: SignerWithAddress, from: SignerWithAddress;
+  let admin: SignerWithAddress, grantee: SignerWithAddress, other: SignerWithAddress, from: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, admin, grantee] = await ethers.getSigners();
+    [, admin, grantee, other] = await ethers.getSigners();
   });
 
   const ACTION_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
@@ -176,6 +177,1088 @@ describe('TimelockAuthorizer', () => {
       await expect(
         authorizer.removeRevokePermissionsManager(WHATEVER, admin, EVERYWHERE, { from: grantee })
       ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+    });
+  });
+
+  describe('manageGrantPermission', () => {
+    let GRANT_ACTION_ID: string;
+
+    beforeEach('load grant action ID', async () => {
+      GRANT_ACTION_ID = await authorizer.GRANT_ACTION_ID();
+    });
+
+    context('when the sender is the root', () => {
+      beforeEach('set sender', async () => {
+        from = admin;
+      });
+
+      context('when granting permission', () => {
+        context('for a specific action', () => {
+          const actionId = ACTION_1;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            it('can grant permission for that action in that contract only', async () => {
+              await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+            });
+
+            it('cannot grant permission for any other action', async () => {
+              await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            it('can grant permission for that action on any contract', async () => {
+              await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+            });
+
+            it('cannot grant permission for that any other action anywhere', async () => {
+              await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+            });
+          });
+        });
+
+        context('for a any action', () => {
+          const actionId = WHATEVER;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            it('can grant permission for any action in that contract only', async () => {
+              await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+            });
+
+            it('cannot grant permissions in any other contract', async () => {
+              await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            it('can grant permission for any action anywhere', async () => {
+              await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.true;
+
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.true;
+            });
+          });
+        });
+      });
+
+      context('when revoking permission', () => {
+        context('for a specific action', () => {
+          const actionId = ACTION_1;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            it('cannot grant permission for that action in that contract only', async () => {
+              await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+              await authorizer.removeGrantPermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+            });
+
+            it('cannot grant permission for any other action', async () => {
+              await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            it('cannot grant permission for that action on any contract', async () => {
+              await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+              await authorizer.removeGrantPermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+            });
+
+            it('cannot grant permission for that any other action anywhere', async () => {
+              await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+            });
+          });
+        });
+
+        context('for a any action', () => {
+          const actionId = WHATEVER;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            it('cannot grant permission for any action in that contract only', async () => {
+              await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+              await authorizer.removeGrantPermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+            });
+
+            it('cannot grant permissions in any other contract', async () => {
+              await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+              await authorizer.removeGrantPermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            it('cannot grant permission for any action anywhere', async () => {
+              await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+              await authorizer.removeGrantPermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+            });
+          });
+        });
+      });
+    });
+
+    context('when the sender is not the root', () => {
+      beforeEach('set sender', async () => {
+        from = other;
+      });
+
+      context('when granting permission', () => {
+        const itReverts = (actionId: string, where: string) => {
+          it('reverts', async () => {
+            await expect(authorizer.addGrantPermissionsManager(actionId, grantee, where, { from })).to.be.revertedWith(
+              'SENDER_NOT_ALLOWED'
+            );
+          });
+        };
+
+        context('for a specific action', () => {
+          const actionId = ACTION_1;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for that action in that contract only', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              });
+
+              it('cannot grant permission for any other action', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for that action on any contract', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+              });
+
+              it('cannot grant permission for that any other action anywhere', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+        });
+
+        context('for a any action', () => {
+          const actionId = WHATEVER;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for any action in that contract only', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+              });
+
+              it('cannot grant permissions in any other contract', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for any action anywhere', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.true;
+
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.true;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+        });
+      });
+
+      context('when revoking permission', () => {
+        const itReverts = (actionId: string, where: string) => {
+          it('reverts', async () => {
+            await expect(
+              authorizer.removeGrantPermissionsManager(actionId, grantee, where, { from })
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
+        };
+
+        context('for a specific action', () => {
+          const actionId = ACTION_1;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for that action in that contract only', async () => {
+                await authorizer.removeGrantPermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              });
+
+              it('cannot grant permission for any other action', async () => {
+                await authorizer.removeGrantPermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for that action on any contract', async () => {
+                await authorizer.removeGrantPermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              });
+
+              it('cannot grant permission for that any other action anywhere', async () => {
+                await authorizer.removeGrantPermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+        });
+
+        context('for a any action', () => {
+          const actionId = WHATEVER;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for any action in that contract only', async () => {
+                await authorizer.removeGrantPermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+              });
+
+              it('cannot grant permissions in any other contract', async () => {
+                await authorizer.removeGrantPermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addGrantPermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for any action anywhere', async () => {
+                await authorizer.removeGrantPermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(GRANT_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+        });
+      });
+    });
+  });
+
+  describe('manageRevokePermission', () => {
+    let REVOKE_ACTION_ID: string;
+
+    beforeEach('load grant action ID', async () => {
+      REVOKE_ACTION_ID = await authorizer.REVOKE_ACTION_ID();
+    });
+
+    context('when the sender is the root', () => {
+      beforeEach('set sender', async () => {
+        from = admin;
+      });
+
+      context('when granting permission', () => {
+        context('for a specific action', () => {
+          const actionId = ACTION_1;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            it('can grant permission for that action in that contract only', async () => {
+              await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+            });
+
+            it('cannot grant permission for any other action', async () => {
+              await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            it('can grant permission for that action on any contract', async () => {
+              await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+            });
+
+            it('cannot grant permission for that any other action anywhere', async () => {
+              await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+            });
+          });
+        });
+
+        context('for a any action', () => {
+          const actionId = WHATEVER;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            it('can grant permission for any action in that contract only', async () => {
+              await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+            });
+
+            it('cannot grant permissions in any other contract', async () => {
+              await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            it('can grant permission for any action anywhere', async () => {
+              await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.true;
+
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.true;
+            });
+          });
+        });
+      });
+
+      context('when revoking permission', () => {
+        context('for a specific action', () => {
+          const actionId = ACTION_1;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            it('cannot grant permission for that action in that contract only', async () => {
+              await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+              await authorizer.removeRevokePermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+            });
+
+            it('cannot grant permission for any other action', async () => {
+              await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            it('cannot grant permission for that action on any contract', async () => {
+              await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+              await authorizer.removeRevokePermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+            });
+
+            it('cannot grant permission for that any other action anywhere', async () => {
+              await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+            });
+          });
+        });
+
+        context('for a any action', () => {
+          const actionId = WHATEVER;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            it('cannot grant permission for any action in that contract only', async () => {
+              await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+              await authorizer.removeRevokePermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+            });
+
+            it('cannot grant permissions in any other contract', async () => {
+              await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+              await authorizer.removeRevokePermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            it('cannot grant permission for any action anywhere', async () => {
+              await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+              await authorizer.removeRevokePermissionsManager(actionId, grantee, where, { from });
+
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+            });
+          });
+        });
+      });
+    });
+
+    context('when the sender is not the root', () => {
+      beforeEach('set sender', async () => {
+        from = other;
+      });
+
+      context('when granting permission', () => {
+        const itReverts = (actionId: string, where: string) => {
+          it('reverts', async () => {
+            await expect(authorizer.addRevokePermissionsManager(actionId, grantee, where, { from })).to.be.revertedWith(
+              'SENDER_NOT_ALLOWED'
+            );
+          });
+        };
+
+        context('for a specific action', () => {
+          const actionId = ACTION_1;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for that action in that contract only', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+              });
+
+              it('cannot grant permission for any other action', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for that action on any contract', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+              });
+
+              it('cannot grant permission for that any other action anywhere', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+        });
+
+        context('for a any action', () => {
+          const actionId = WHATEVER;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for any action in that contract only', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+              });
+
+              it('cannot grant permissions in any other contract', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for any action anywhere', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.true;
+
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.true;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.true;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.true;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.true;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+        });
+      });
+
+      context('when revoking permission', () => {
+        const itReverts = (actionId: string, where: string) => {
+          it('reverts', async () => {
+            await expect(
+              authorizer.removeRevokePermissionsManager(actionId, grantee, where, { from })
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
+        };
+
+        context('for a specific action', () => {
+          const actionId = ACTION_1;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for that action in that contract only', async () => {
+                await authorizer.removeRevokePermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+              });
+
+              it('cannot grant permission for any other action', async () => {
+                await authorizer.removeRevokePermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for that action on any contract', async () => {
+                await authorizer.removeRevokePermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+              });
+
+              it('cannot grant permission for that any other action anywhere', async () => {
+                await authorizer.removeRevokePermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_2)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_2)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+        });
+
+        context('for a any action', () => {
+          const actionId = WHATEVER;
+
+          context('for a specific contract', () => {
+            const where = WHERE_1;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for any action in that contract only', async () => {
+                await authorizer.removeRevokePermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+              });
+
+              it('cannot grant permissions in any other contract', async () => {
+                await authorizer.removeRevokePermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_2, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+
+          context('for a any contract', () => {
+            const where = EVERYWHERE;
+
+            context('when the sender has permission', () => {
+              beforeEach('grant permission', async () => {
+                await authorizer.addRevokePermissionsManager(actionId, from, where, { from: admin });
+              });
+
+              it('can grant permission for any action anywhere', async () => {
+                await authorizer.removeRevokePermissionsManager(actionId, grantee, where, { from });
+
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.canPerform(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, WHERE_1, WHATEVER)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, ACTION_1)).to.be.false;
+                expect(await authorizer.hasPermission(REVOKE_ACTION_ID, grantee, EVERYWHERE, WHATEVER)).to.be.false;
+              });
+            });
+
+            context('when the sender does not have permission', () => {
+              itReverts(actionId, where);
+            });
+          });
+        });
+      });
     });
   });
 
@@ -1345,46 +2428,60 @@ describe('TimelockAuthorizer', () => {
   });
 
   describe('setRoot', () => {
-    const ROOT_CHANGE_DELAY = 7 * DAY;
+    let ROOT_CHANGE_DELAY: BigNumberish;
 
-    context('when trying to execute it directly', async () => {
-      it('reverts', async () => {
-        await expect(authorizer.instance.setRoot(grantee.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+    beforeEach('fetch root change delay', async () => {
+      ROOT_CHANGE_DELAY = await authorizer.instance.getRootTransferDelay();
+    });
+
+    context('when the sender is the root', async () => {
+      context('when trying to execute it directly', async () => {
+        it('reverts', async () => {
+          await expect(authorizer.instance.setRoot(grantee.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        });
+      });
+
+      context('when trying to schedule a call', async () => {
+        it('schedules a root change', async () => {
+          const expectedData = authorizer.instance.interface.encodeFunctionData('setRoot', [grantee.address]);
+
+          const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
+
+          const scheduledExecution = await authorizer.scheduledExecutions(id);
+          expect(scheduledExecution.executed).to.be.false;
+          expect(scheduledExecution.data).to.be.equal(expectedData);
+          expect(scheduledExecution.where).to.be.equal(authorizer.address);
+          expect(scheduledExecution.protected).to.be.false;
+          expect(scheduledExecution.executableAt).to.be.at.most((await currentTimestamp()).add(ROOT_CHANGE_DELAY));
+        });
+
+        it('can be executed after the delay', async () => {
+          const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
+
+          await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_EXECUTABLE');
+
+          await advanceTime(ROOT_CHANGE_DELAY);
+          await authorizer.execute(id);
+
+          expect(await authorizer.isRoot(admin)).to.be.false;
+          expect(await authorizer.isRoot(grantee)).to.be.true;
+        });
+
+        it('emits an event', async () => {
+          const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
+
+          await advanceTime(ROOT_CHANGE_DELAY);
+          const receipt = await authorizer.execute(id);
+          expectEvent.inReceipt(await receipt.wait(), 'RootSet', { root: grantee.address });
+        });
       });
     });
 
-    context('when trying to schedule a call', async () => {
-      it('schedules a root change', async () => {
-        const expectedData = authorizer.instance.interface.encodeFunctionData('setRoot', [grantee.address]);
-
-        const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
-
-        const scheduledExecution = await authorizer.scheduledExecutions(id);
-        expect(scheduledExecution.executed).to.be.false;
-        expect(scheduledExecution.data).to.be.equal(expectedData);
-        expect(scheduledExecution.where).to.be.equal(authorizer.address);
-        expect(scheduledExecution.protected).to.be.false;
-        expect(scheduledExecution.executableAt).to.be.at.most((await currentTimestamp()).add(ROOT_CHANGE_DELAY));
-      });
-
-      it('can be executed after the delay', async () => {
-        const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
-
-        await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_EXECUTABLE');
-
-        await advanceTime(ROOT_CHANGE_DELAY);
-        await authorizer.execute(id);
-
-        expect(await authorizer.isRoot(admin)).to.be.false;
-        expect(await authorizer.isRoot(grantee)).to.be.true;
-      });
-
-      it('emits an event', async () => {
-        const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
-
-        await advanceTime(ROOT_CHANGE_DELAY);
-        const receipt = await authorizer.execute(id);
-        expectEvent.inReceipt(await receipt.wait(), 'RootSet', { root: grantee.address });
+    context('when the sender is not the root', async () => {
+      it('reverts', async () => {
+        await expect(authorizer.scheduleRootChange(grantee, [], { from: grantee })).to.be.revertedWith(
+          'SENDER_NOT_ALLOWED'
+        );
       });
     });
   });

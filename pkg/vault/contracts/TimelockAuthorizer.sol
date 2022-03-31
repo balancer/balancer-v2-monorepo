@@ -46,9 +46,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     bytes32 public constant WHATEVER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     address public constant EVERYWHERE = address(-1);
-
     uint256 public constant MAX_DELAY = 2 * (365 days);
-    uint256 public constant ROOT_TRANSFER_DELAY = 7 days;
 
     struct ScheduledExecution {
         address where;
@@ -66,6 +64,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     bytes32 public immutable SCHEDULE_DELAY_ACTION_ID;
 
     IAuthentication private immutable _vault;
+    uint256 private immutable _rootTransferDelay;
 
     address public root;
     ScheduledExecution[] public scheduledExecutions;
@@ -107,9 +106,10 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      */
     event RootSet(address indexed root);
 
-    constructor(address admin, IAuthentication vault) {
+    constructor(address admin, IAuthentication vault, uint256 rootTransferDelay) {
         root = admin;
         _vault = vault;
+        _rootTransferDelay = rootTransferDelay;
 
         bytes32 grantActionId = getActionId(TimelockAuthorizer.grantPermissions.selector);
         _grantPermission(getActionId(grantActionId, WHATEVER), admin, EVERYWHERE);
@@ -128,6 +128,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      */
     function isRoot(address account) public view returns (bool) {
         return account == root;
+    }
+
+    /**
+     * @dev Tells the delay required to transfer the root address
+     */
+    function getRootTransferDelay() public view returns (uint256) {
+        return _rootTransferDelay;
     }
 
     /**
@@ -243,9 +250,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     {
         _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
         bytes32 actionId = getActionId(this.setRoot.selector);
-        bytes32 scheduleDelayActionId = getActionId(SCHEDULE_DELAY_ACTION_ID, actionId);
+        bytes32 scheduleRootChangeActionId = getActionId(SCHEDULE_DELAY_ACTION_ID, actionId);
         bytes memory data = abi.encodeWithSelector(this.setRoot.selector, newRoot);
-        return _scheduleWithDelay(scheduleDelayActionId, address(this), data, ROOT_TRANSFER_DELAY, executors);
+        return _scheduleWithDelay(scheduleRootChangeActionId, address(this), data, _rootTransferDelay, executors);
     }
 
     /**
@@ -348,9 +355,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where,
         bool allowed
     ) external {
-        bytes32 grantPermissionsActionId = getActionId(GRANT_ACTION_ID, actionId);
-        bool isAllowed = isRoot(msg.sender) || hasPermission(grantPermissionsActionId, msg.sender, where);
+        bool isAllowed = isRoot(msg.sender) || hasPermission(GRANT_ACTION_ID, msg.sender, where, actionId);
         _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+        bytes32 grantPermissionsActionId = getActionId(GRANT_ACTION_ID, actionId);
         (allowed ? _grantPermission : _revokePermission)(grantPermissionsActionId, account, where);
     }
 
@@ -394,9 +401,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where,
         bool allowed
     ) external {
-        bytes32 revokePermissionsActionId = getActionId(REVOKE_ACTION_ID, actionId);
-        bool isAllowed = isRoot(msg.sender) || hasPermission(revokePermissionsActionId, msg.sender, where);
+        bool isAllowed = isRoot(msg.sender) || hasPermission(REVOKE_ACTION_ID, msg.sender, where, actionId);
         _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+        bytes32 revokePermissionsActionId = getActionId(REVOKE_ACTION_ID, actionId);
         (allowed ? _grantPermission : _revokePermission)(revokePermissionsActionId, account, where);
     }
 
