@@ -42,6 +42,7 @@ contract ManagedPoolFactory {
         ManagedPool.NewPoolParams memory poolParams,
         BasePoolController.BasePoolRights calldata basePoolRights,
         ManagedPoolController.ManagedPoolRights calldata managedPoolRights,
+        address aumProtocolFeeCollector,
         uint256 minWeightChangeDuration,
         address manager
     ) external returns (address pool) {
@@ -53,7 +54,11 @@ contract ManagedPoolFactory {
         );
 
         // Let the base factory deploy the pool (owner is the controller)
-        pool = BaseManagedPoolFactory(baseManagedPoolFactory).create(poolParams, address(poolController));
+        pool = BaseManagedPoolFactory(baseManagedPoolFactory).create(
+            poolParams,
+            aumProtocolFeeCollector,
+            address(poolController)
+        );
 
         // Finally, initialize the controller
         poolController.initialize(pool);

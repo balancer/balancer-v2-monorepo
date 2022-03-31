@@ -20,6 +20,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IAumProtocolFeesCollector.sol";
 
 import "../BaseWeightedPool.sol";
 import "../WeightedPoolUserData.sol";
@@ -84,6 +85,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _END_TIME_OFFSET = 40;
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 72;
     uint256 private constant _DELEGATES_PROTOCOL_FEES_OFFSET = 73;
+
+    IAumProtocolFeesCollector private immutable _aumProtocolFeesCollector;
 
     // 7 bits is enough for the token count, since _MAX_MANAGED_TOKENS is 50
 
@@ -166,7 +169,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         IVault vault,
         address owner,
         uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
+        uint256 bufferPeriodDuration,
+        address aumProtocolFeesCollector
     )
         BaseWeightedPool(
             vault,
@@ -187,6 +191,15 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // Double check it fits in 7 bits
         _require(_getTotalTokens() == totalTokens, Errors.MAX_TOKENS);
+
+        // Verify this is pointing to the same Vault
+        if (aumProtocolFeesCollector != address(0)) {
+            _require(
+                vault == IAumProtocolFeesCollector(aumProtocolFeesCollector).vault(),
+                Errors.INVALID_INITIALIZATION
+            );
+        }
+        _aumProtocolFeesCollector = IAumProtocolFeesCollector(aumProtocolFeesCollector);
 
         // Set initial value of the protocolSwapFeePercentage; can be updated externally if it is delegated
         if (_DELEGATE_PROTOCOL_FEES_SENTINEL == params.protocolSwapFeePercentage) {
@@ -285,6 +298,13 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
      */
     function delegatesProtocolFees() public view returns (bool) {
         return _getMiscData().decodeBool(_DELEGATES_PROTOCOL_FEES_OFFSET);
+    }
+
+    /**
+     * @dev Getter for the AUM protocol fees collector singleton
+     */
+    function getAumProtocolFeesCollector() public view returns (IAumProtocolFeesCollector) {
+        return _aumProtocolFeesCollector;
     }
 
     /**
@@ -871,6 +891,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             // x(1 - F) = FS
             // x = S * F/(1 - F); per annual time period
             // Final value needs to be annualized: multiply by elapsedTime/(365 days)
+            //
+            // Protocol fee cut asdf
             uint256 feePct = _managementAumFeePercentage.divDown(_managementAumFeePercentage.complement());
             uint256 timePeriodPct = elapsedTime.mulUp(FixedPoint.ONE).divDown(365 days);
             uint256 bptAmount = totalSupply().mulDown(feePct).mulDown(timePeriodPct);

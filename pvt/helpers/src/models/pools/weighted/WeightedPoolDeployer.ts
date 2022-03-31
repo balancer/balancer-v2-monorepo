@@ -28,7 +28,7 @@ export default {
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
     const {
-      tokens,
+      tokens, 
       weights,
       assetManagers,
       swapFeePercentage,
@@ -38,6 +38,7 @@ export default {
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
+      aumProtocolFeesCollector,
     } = deployment;
 
     const poolId = await pool.getPoolId();
@@ -54,7 +55,8 @@ export default {
       mustAllowlistLPs,
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
-      managementAumFeePercentage
+      managementAumFeePercentage,
+      aumProtocolFeesCollector
     );
   },
 
@@ -73,6 +75,7 @@ export default {
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
+      aumProtocolFeesCollector,
       owner,
       from,
     } = params;
@@ -140,6 +143,7 @@ export default {
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
+            aumProtocolFeesCollector,
           ],
           from,
         });
@@ -179,6 +183,7 @@ export default {
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
+      aumProtocolFeesCollector,
       poolType,
       owner,
       from,
@@ -268,7 +273,7 @@ export default {
 
         const tx = await factory
           .connect(from || ZERO_ADDRESS)
-          .create(newPoolParams, basePoolRights, managedPoolRights, DAY, from?.address || ZERO_ADDRESS);
+          .create(newPoolParams, basePoolRights, managedPoolRights, aumProtocolFeesCollector, DAY, from?.address || ZERO_ADDRESS);
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
         result = deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);

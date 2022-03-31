@@ -15,16 +15,19 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { SwapKind } from '@balancer-labs/balancer-js';
 
 import { range } from 'lodash';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
 describe('ManagedPool', function () {
   let allTokens: TokenList;
   let poolTokens: TokenList;
   let tooManyWeights: BigNumber[];
-  let owner: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress, owner: SignerWithAddress, other: SignerWithAddress;
   let pool: WeightedPool;
+  let aumProtocolFeesCollector: Contract;
+  let vault: Vault;
 
   before('setup signers', async () => {
-    [, owner, other] = await ethers.getSigners();
+    [, admin, owner, other] = await ethers.getSigners();
   });
 
   const MAX_TOKENS = 50;
@@ -42,11 +45,16 @@ describe('ManagedPool', function () {
   const initialBalances = Array(TOKEN_COUNT).fill(fp(1));
   let sender: SignerWithAddress;
 
-  sharedBeforeEach('deploy tokens', async () => {
+  sharedBeforeEach('deploy tokens and AUMProtocolFeeCollector', async () => {
     allTokens = await TokenList.create(MAX_TOKENS + 1, { sorted: true, varyDecimals: true });
     tooManyWeights = Array(allTokens.length).fill(fp(0.01));
     poolTokens = allTokens.subset(20);
-    await poolTokens.mint({ to: [other], amount: fp(200) });
+    await allTokens.mint({ to: [other, owner], amount: fp(200) });
+
+    vault = await Vault.create({ admin });
+    aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', { args: [vault.address] });
+    await allTokens.approve({ from: other, to: vault });
+    await allTokens.approve({ from: owner, to: vault });
   });
 
   function itComputesWeightsAndScalingFactors(weightSum = 1): void {
@@ -62,9 +70,11 @@ describe('ManagedPool', function () {
               poolType: WeightedPoolType.MANAGED_POOL,
               tokens,
               weights: WEIGHTS.slice(0, numTokens),
+              vault,
               swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
               managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
               managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+              aumProtocolFeesCollector: aumProtocolFeesCollector.address,
             });
           });
 
@@ -98,6 +108,7 @@ describe('ManagedPool', function () {
       const params = {
         tokens: allTokens.subset(1),
         weights: [fp(0.3)],
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         poolType: WeightedPoolType.MANAGED_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
@@ -127,7 +138,9 @@ describe('ManagedPool', function () {
       const params = {
         tokens: poolTokens,
         weights: poolWeights,
+        vault,
         poolType: WeightedPoolType.MANAGED_POOL,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         from: owner,
         fromFactory: true,
       };
@@ -148,6 +161,8 @@ describe('ManagedPool', function () {
         tokens: poolTokens,
         weights: poolWeights,
         poolType: WeightedPoolType.MANAGED_POOL,
+        vault,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         swapEnabledOnStart: true,
         mustAllowlistLPs: true,
         owner: owner.address,
@@ -237,7 +252,7 @@ describe('ManagedPool', function () {
 
     context('when mustAllowlistLPs is toggled', () => {
       sharedBeforeEach('initialize pool', async () => {
-        await pool.init({ from: owner, initialBalances });
+        await pool.init({ from: other, initialBalances });
       });
 
       it('allowlist is initially on', async () => {
@@ -281,6 +296,8 @@ describe('ManagedPool', function () {
           tokens: poolTokens,
           weights: poolWeights,
           owner: owner.address,
+          //vault,
+          //aumProtocolFeesCollector: aumProtocolFeesCollector.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: false,
         };
@@ -301,6 +318,8 @@ describe('ManagedPool', function () {
         const params = {
           tokens: poolTokens,
           weights: poolWeights,
+          vault,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
         };
@@ -312,7 +331,7 @@ describe('ManagedPool', function () {
       });
 
       it('swaps are not blocked', async () => {
-        await pool.init({ from: owner, initialBalances });
+        await pool.init({ from: other, initialBalances });
 
         await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.not.be.reverted;
       });
@@ -360,6 +379,8 @@ describe('ManagedPool', function () {
           tokens: poolTokens,
           weights: poolWeights,
           owner: owner.address,
+          vault,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
         };
@@ -482,6 +503,8 @@ describe('ManagedPool', function () {
         const params = {
           tokens: poolTokens,
           weights: poolWeights,
+          vault,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
           owner: owner.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
@@ -507,7 +530,7 @@ describe('ManagedPool', function () {
         });
 
         sharedBeforeEach('initialize pool', async () => {
-          await pool.init({ from: sender, initialBalances });
+          await pool.init({ from: other, initialBalances });
         });
 
         context('with invalid parameters', () => {
@@ -662,13 +685,10 @@ describe('ManagedPool', function () {
     });
 
     describe('protocol fee cache update', () => {
-      let vault: Vault;
       const swapFeePercentage = fp(0.02);
       const managementSwapFeePercentage = fp(0.8);
 
       sharedBeforeEach('deploy pool', async () => {
-        vault = await Vault.create();
-
         const params = {
           tokens: poolTokens,
           weights: poolWeights,
@@ -678,6 +698,7 @@ describe('ManagedPool', function () {
           vault,
           swapFeePercentage,
           managementSwapFeePercentage,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         };
         pool = await WeightedPool.create(params);
       });
@@ -694,12 +715,10 @@ describe('ManagedPool', function () {
 
     describe.skip('BPT protocol fees', () => {
       let protocolFeesCollector: Contract;
-      let vault: Vault;
       const swapFeePercentage = fp(0.02);
       const managementSwapFeePercentage = fp(0.8);
 
       sharedBeforeEach('deploy pool', async () => {
-        vault = await Vault.create();
         protocolFeesCollector = await vault.getFeesCollector();
 
         const params = {
@@ -711,6 +730,7 @@ describe('ManagedPool', function () {
           vault,
           swapFeePercentage,
           managementSwapFeePercentage,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         };
         pool = await WeightedPool.create(params);
       });
@@ -769,14 +789,11 @@ describe('ManagedPool', function () {
     });
 
     describe('management fees', () => {
-      let vault: Vault;
       const swapFeePercentage = fp(0.02);
       const managementSwapFeePercentage = fp(0.8);
       const managementAumFeePercentage = fp(0.01);
 
       sharedBeforeEach('deploy pool', async () => {
-        vault = await Vault.create();
-
         const params = {
           tokens: poolTokens,
           weights: poolWeights,
@@ -787,6 +804,7 @@ describe('ManagedPool', function () {
           swapFeePercentage,
           managementSwapFeePercentage,
           managementAumFeePercentage,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         };
         pool = await WeightedPool.create(params);
       });

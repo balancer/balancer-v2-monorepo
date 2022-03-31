@@ -69,6 +69,7 @@ export default class WeightedPool {
   protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
+  aumProtocolFeesCollector: string;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
     return WeightedPoolDeployer.deploy(params);
@@ -87,7 +88,8 @@ export default class WeightedPool {
     mustAllowlistLPs: boolean,
     protocolSwapFeePercentage: BigNumberish,
     managementSwapFeePercentage: BigNumberish,
-    managementAumFeePercentage: BigNumberish
+    managementAumFeePercentage: BigNumberish,
+    aumProtocolFeesCollector: string
   ) {
     this.instance = instance;
     this.poolId = poolId;
@@ -102,6 +104,7 @@ export default class WeightedPool {
     this.protocolSwapFeePercentage = protocolSwapFeePercentage;
     this.managementSwapFeePercentage = managementSwapFeePercentage;
     this.managementAumFeePercentage = managementAumFeePercentage;
+    this.aumProtocolFeesCollector = aumProtocolFeesCollector;
   }
 
   get address(): string {
