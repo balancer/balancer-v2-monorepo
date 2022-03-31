@@ -27,10 +27,7 @@ contract ArbitrumRootGauge is ISingleRecipientGauge, StakelessGauge {
 
     address private _recipient;
 
-    constructor(
-        IBalancerMinter minter,
-        IGatewayRouter gatewayRouter
-    ) StakelessGauge(minter) {
+    constructor(IBalancerMinter minter, IGatewayRouter gatewayRouter) StakelessGauge(minter) {
         _gateway = gatewayRouter.getGateway(address(minter.getBalancerToken()));
         _gatewayRouter = gatewayRouter;
         _factory = IArbitrumFeeProvider(msg.sender);
