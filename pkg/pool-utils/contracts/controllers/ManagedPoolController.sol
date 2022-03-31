@@ -93,10 +93,6 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
                 .insertBool(managedRights.canSetCircuitBreakers, _CIRCUIT_BREAKERS_OFFSET);
     }
 
-    function initialize(address poolAddress) public virtual override {
-        super.initialize(poolAddress);
-    }
-
     /**
      * @dev Getter for the canChangeWeights permission.
      */
