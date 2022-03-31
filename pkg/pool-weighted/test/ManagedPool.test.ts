@@ -722,7 +722,6 @@ describe('ManagedPool', function () {
       // let mockMath: Contract;
 
       sharedBeforeEach('deploy pool', async () => {
-        vault = await Vault.create({ admin });
         await vault.setSwapFeePercentage(protocolFeePercentage, { from: admin });
         protocolFeesCollector = await vault.getFeesCollector();
 
