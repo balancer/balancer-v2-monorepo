@@ -49,6 +49,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     mapping(IERC20 => mapping(uint256 => uint256)) private _tokensPerWeek;
 
     // User State
+    mapping(address => uint256) private _userStartTime;
     mapping(address => uint256) private _userTimeCursor;
     mapping(address => uint256) private _userLastEpochCheckpointed;
     mapping(address => mapping(uint256 => uint256)) private _userBalanceAtTimestamp;
@@ -367,6 +368,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         // i.e. the timestamp of the first Thursday after they locked.
         if (weekCursor == 0) {
             weekCursor = _roundUpTimestamp(userPoint.ts);
+            _userStartTime[user] = weekCursor;
         }
 
         // Sanity check - can't claim fees from before fee distribution started.
@@ -450,7 +452,12 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      */
     function _getUserTokenTimeCursor(address user, IERC20 token) internal view returns (uint256) {
         uint256 userTimeCursor = _userTokenTimeCursor[user][token];
-        return userTimeCursor > 0 ? userTimeCursor : _tokenStartTime[token];
+        if (userTimeCursor > 0) return userTimeCursor;
+        // This is the first time that the user has interacted with this token.
+        // We then start from the latest out of either when `user` first locked veBAL or `token` was first checkpointed.
+        uint256 userStartTime = _userStartTime[user];
+        uint256 tokenStartTime = _tokenStartTime[token];
+        return userStartTime > tokenStartTime ? userStartTime : tokenStartTime;
     }
 
     /**
