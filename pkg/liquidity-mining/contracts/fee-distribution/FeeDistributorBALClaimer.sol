@@ -27,14 +27,16 @@ import "../interfaces/ISingleRecipientGauge.sol";
  */
 contract FeeDistributorBALClaimer {
     IERC20 private immutable _balToken;
+    IAuthorizerAdaptor private immutable _authorizerAdaptor;
     IFeeDistributor private immutable _feeDistributor;
     ISingleRecipientGauge private immutable _gauge;
     IBALTokenHolder private immutable _balTokenHolder;
 
-    constructor(IFeeDistributor feeDistributor, ISingleRecipientGauge gauge) {
+    constructor(IFeeDistributor feeDistributor, ISingleRecipientGauge gauge, IAuthorizerAdaptor authorizerAdaptor) {
         IBALTokenHolder balTokenHolder = IBALTokenHolder(gauge.getRecipient());
 
         _balToken = balTokenHolder.getBalancerToken();
+        _authorizerAdaptor = authorizerAdaptor;
         _feeDistributor = feeDistributor;
         _gauge = gauge;
         _balTokenHolder = balTokenHolder;
@@ -42,10 +44,18 @@ contract FeeDistributorBALClaimer {
 
     /**
      * @notice Mint any outstanding BAL emissions and send them to the FeeDistributor
+     * @dev The `FeeDistributorBALClaimer` must be authorized to checkpoint the gauge before this function is called.
      */
     function distributeBAL() external {
-        _gauge.checkpoint();
+        _checkpointGauge(_gauge);
         _balTokenHolder.withdrawFunds(address(_feeDistributor), _balToken.balanceOf(address(_balTokenHolder)));
         _feeDistributor.checkpointToken(_balToken);
+    }
+
+    function _checkpointGauge(IStakelessGauge gauge) private {
+        _authorizerAdaptor.performAction(
+            address(gauge),
+            abi.encodeWithSelector(IStakelessGauge.checkpoint.selector)
+        );
     }
 }
