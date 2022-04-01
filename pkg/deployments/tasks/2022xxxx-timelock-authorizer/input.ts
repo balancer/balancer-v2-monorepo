@@ -8,6 +8,7 @@ export type RoleData = {
 export type TimelockAuthorizerDeployment = {
   Vault: string;
   Authorizer: string;
+  root: string;
   rolesData: RoleData[];
 };
 
@@ -18,6 +19,7 @@ export default {
   mainnet: {
     Vault,
     Authorizer,
+    root: '0xE0a171587b1Cae546E069A943EDa96916F5EE977',
     rolesData: [
       {
         role: '0xb28b769768735d011b267f781c3be90bce51d5059ba015bc7a28b3e882fb2083',

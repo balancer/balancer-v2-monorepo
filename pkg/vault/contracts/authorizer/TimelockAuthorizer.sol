@@ -237,6 +237,20 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
+     * @dev Tells whether execution `scheduledExecutionId` can be executed or not.
+     * Only true if it is not executed, not cancelled, and if the execution delay has passed.
+     */
+    function canExecute(uint256 scheduledExecutionId) external view returns (bool) {
+        require(scheduledExecutionId < scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
+        ScheduledExecution storage scheduledExecution = scheduledExecutions[scheduledExecutionId];
+        return
+            !scheduledExecution.executed &&
+            !scheduledExecution.cancelled &&
+            block.timestamp >= scheduledExecution.executableAt;
+        // solhint-disable-previous-line not-rely-on-time
+    }
+
+    /**
      * @dev Sets a new root address
      */
     function setRoot(address newRoot) external {

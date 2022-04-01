@@ -4,6 +4,7 @@ import { Contract } from 'ethers';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { ONES_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 
 import Task from '../../../src/task';
@@ -54,6 +55,7 @@ describe('TimelockAuthorizer', function () {
 
   it('runs the migration properly', async () => {
     expect(await migrator.migratedRoles()).to.be.equal(input.rolesData.length);
+    expect(await migrator.isComplete()).to.be.true;
   });
 
   it('migrates all roles properly', async () => {
@@ -92,8 +94,9 @@ describe('TimelockAuthorizer', function () {
     }
   });
 
-  it('sets the new authorizer properly', async () => {
-    expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
+  it('does not set the new authorizer immediately', async () => {
+    expect(await newAuthorizer.isRoot(migrator.address)).to.be.true;
+    expect(await vault.getAuthorizer()).to.be.equal(oldAuthorizer.address);
   });
 
   it('revokes the admin roles from the migrator', async () => {
@@ -105,5 +108,17 @@ describe('TimelockAuthorizer', function () {
       .be.false;
     expect(await newAuthorizer.hasPermissionOrWhatever(REVOKE_ACTION_ID, migrator.address, EVERYWHERE, ONES_BYTES32)).to
       .be.false;
+  });
+
+  it('finalizes the migration after the set root delay', async () => {
+    await expect(migrator.finalizeMigration()).to.be.revertedWith('CANNOT_TRIGGER_ROOT_CHANGE_YET');
+
+    const CHANGE_ROOT_DELAY = await newAuthorizer.getRootTransferDelay();
+    await advanceTime(CHANGE_ROOT_DELAY);
+
+    await migrator.finalizeMigration();
+    expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
+    expect(await newAuthorizer.isRoot(input.root)).to.be.true;
+    expect(await newAuthorizer.isRoot(migrator.address)).to.be.false;
   });
 });

@@ -32,11 +32,13 @@ contract TimelockAuthorizerMigrator {
     bytes32 public immutable REVOKE_PERMISSION_ACTION_ID;
 
     IVault public immutable vault;
+    address public immutable root;
     IBasicAuthorizer public immutable oldAuthorizer;
     TimelockAuthorizer public immutable newAuthorizer;
 
     uint256 public migratedRoles;
     OldRoleData[] public rolesData;
+    uint256 public rootChangeExecutionId;
 
     /**
      * @dev This structure is required to tell the migrator which roles need to be
@@ -49,14 +51,16 @@ contract TimelockAuthorizerMigrator {
 
     constructor(
         IVault _vault,
+        address _root,
         IBasicAuthorizer _oldAuthorizer,
         OldRoleData[] memory _rolesData
     ) {
-        // At creation, this migration contract will be the sole admin of the TimelockAuthorizer.
-        // Once the migration is complete, admin powers will be renounced.
+        // At creation, the migrator will be the root of the TimelockAuthorizer.
+        // Once the migration is complete, the root permission will be transferred to `_root`.
         TimelockAuthorizer _newAuthorizer = new TimelockAuthorizer(address(this), _vault, CHANGE_ROOT_DELAY);
         newAuthorizer = _newAuthorizer;
         oldAuthorizer = _oldAuthorizer;
+        root = _root;
         vault = _vault;
 
         for (uint256 i = 0; i < _rolesData.length; i++) {
@@ -80,9 +84,27 @@ contract TimelockAuthorizerMigrator {
      * @param n Number of roles to migrate, use 0 to migrate all the remaining ones
      */
     function migrate(uint256 n) external {
+        require(!isComplete(), "MIGRATION_COMPLETE");
         _beforeMigrate();
         _migrate(n == 0 ? rolesData.length : n);
         _afterMigrate();
+    }
+
+    /**
+     * @dev Revoke migrator permissions and trigger change root action
+     */
+    function finalizeMigration() external {
+        require(isComplete(), "MIGRATION_NOT_COMPLETE");
+        require(newAuthorizer.canExecute(rootChangeExecutionId), "CANNOT_TRIGGER_ROOT_CHANGE_YET");
+
+        // Ensure the migrator contract has authority to change the vault's authorizer
+        bytes32 setAuthorizerId = IAuthentication(address(vault)).getActionId(IVault.setAuthorizer.selector);
+        bool canSetAuthorizer = oldAuthorizer.canPerform(setAuthorizerId, address(this), address(vault));
+        require(canSetAuthorizer, "MIGRATOR_CANNOT_SET_AUTHORIZER");
+
+        // Finally change the authorizer in the vault and trigger root change
+        vault.setAuthorizer(newAuthorizer);
+        newAuthorizer.execute(rootChangeExecutionId);
     }
 
     function _migrate(uint256 n) internal {
@@ -110,14 +132,12 @@ contract TimelockAuthorizerMigrator {
         }
     }
 
-    function _beforeMigrate() internal view {
+    function _beforeMigrate() internal {
         // Execute only once before the migration starts
         if (migratedRoles > 0) return;
 
-        // Ensure the migrator contract has authority to change the vault's authorizer
-        bytes32 setAuthorizerId = IAuthentication(address(vault)).getActionId(IVault.setAuthorizer.selector);
-        bool canSetAuthorizer = oldAuthorizer.canPerform(setAuthorizerId, address(this), address(vault));
-        require(canSetAuthorizer, "MIGRATOR_CANNOT_SET_AUTHORIZER");
+        // Enqueue a root change execution in the new authorizer to set it to the desire root address
+        rootChangeExecutionId = newAuthorizer.scheduleRootChange(root, _arr(address(this)));
     }
 
     function _afterMigrate() internal {
@@ -126,8 +146,7 @@ contract TimelockAuthorizerMigrator {
 
         // Grant permissions for `TimelockAuthorizer.grantPermissions` and `TimelockAuthorizer.revokePermissions`
         // on `TimelockAuthorizer.EVERYWHERE` and `TimelockAuthorizer.WHATEVER` to all the default admins defined
-        // in the old authorizer, and revoke these permissions to the migrator contract that were granted during
-        // initialization.
+        // in the old authorizer
         bytes32 grantWhateverActionId = newAuthorizer.getActionId(GRANT_PERMISSION_ACTION_ID, WHATEVER);
         bytes32 revokeWhateverActionId = newAuthorizer.getActionId(REVOKE_PERMISSION_ACTION_ID, WHATEVER);
         bytes32[] memory actionIds = _arr(grantWhateverActionId, revokeWhateverActionId);
@@ -138,9 +157,6 @@ contract TimelockAuthorizerMigrator {
             newAuthorizer.grantPermissions(actionIds, defaultAdmin, wheres);
         }
         newAuthorizer.revokePermissions(actionIds, address(this), wheres);
-
-        // Finally change the authorizer in the vault
-        vault.setAuthorizer(newAuthorizer);
     }
 
     function _arr(bytes32 a) internal pure returns (bytes32[] memory arr) {
