@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
@@ -23,9 +24,22 @@ import "./ILiquidityGauge.sol";
 // solhint-disable func-name-mixedcase
 
 interface IStakingLiquidityGauge is ILiquidityGauge, IERC20 {
+    struct Reward {
+        address token;
+        address distributor;
+        uint256 period_finish;
+        uint256 rate;
+        uint256 last_update;
+        uint256 integral;
+    }
+
     function initialize(address lpToken) external;
 
     function lp_token() external view returns (IERC20);
+
+    function reward_tokens(uint256 index) external view returns (IERC20);
+
+    function reward_data(IERC20 token) external view returns (Reward memory);
 
     function deposit(uint256 value, address recipient) external;
 
@@ -36,4 +50,6 @@ interface IStakingLiquidityGauge is ILiquidityGauge, IERC20 {
     function add_reward(address rewardToken, address distributor) external;
 
     function set_reward_distributor(address rewardToken, address distributor) external;
+
+    function deposit_reward_tokens(IERC20 rewardToken, uint256 amount) external;
 }
