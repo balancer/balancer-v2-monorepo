@@ -4,6 +4,7 @@ import { Contract } from 'ethers';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { ONES_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 
 import Task from '../../../src/task';
 import { impersonate } from '../../../src/signers';
@@ -74,8 +75,10 @@ describe('TimelockAuthorizer', function () {
       const adminsCount = await oldAuthorizer.getRoleMemberCount(adminRole);
       for (let i = 0; i < adminsCount; i++) {
         const admin = await oldAuthorizer.getRoleMember(adminRole, i);
-        expect(await newAuthorizer.hasPermission(GRANT_ACTION_ID, admin, roleData.target)).to.be.true;
-        expect(await newAuthorizer.hasPermission(REVOKE_ACTION_ID, admin, roleData.target)).to.be.true;
+        expect(await newAuthorizer.hasPermissionOrWhatever(GRANT_ACTION_ID, admin, roleData.target, ONES_BYTES32)).to.be
+          .true;
+        expect(await newAuthorizer.hasPermissionOrWhatever(REVOKE_ACTION_ID, admin, roleData.target, ONES_BYTES32)).to
+          .be.true;
       }
     }
   });
@@ -84,8 +87,8 @@ describe('TimelockAuthorizer', function () {
     const adminsCount = await oldAuthorizer.getRoleMemberCount(DEFAULT_ADMIN_ROLE);
     for (let i = 0; i < adminsCount; i++) {
       const admin = await oldAuthorizer.getRoleMember(DEFAULT_ADMIN_ROLE, i);
-      expect(await newAuthorizer.hasPermission(GRANT_ACTION_ID, admin, EVERYWHERE)).to.be.true;
-      expect(await newAuthorizer.hasPermission(REVOKE_ACTION_ID, admin, EVERYWHERE)).to.be.true;
+      expect(await newAuthorizer.hasPermissionOrWhatever(GRANT_ACTION_ID, admin, EVERYWHERE, ONES_BYTES32)).to.be.true;
+      expect(await newAuthorizer.hasPermissionOrWhatever(REVOKE_ACTION_ID, admin, EVERYWHERE, ONES_BYTES32)).to.be.true;
     }
   });
 
@@ -98,7 +101,9 @@ describe('TimelockAuthorizer', function () {
     const GRANT_ACTION_ID = await newAuthorizer.GRANT_ACTION_ID();
     const REVOKE_ACTION_ID = await newAuthorizer.REVOKE_ACTION_ID();
 
-    expect(await newAuthorizer.hasPermission(GRANT_ACTION_ID, migrator.address, EVERYWHERE)).to.be.false;
-    expect(await newAuthorizer.hasPermission(REVOKE_ACTION_ID, migrator.address, EVERYWHERE)).to.be.false;
+    expect(await newAuthorizer.hasPermissionOrWhatever(GRANT_ACTION_ID, migrator.address, EVERYWHERE, ONES_BYTES32)).to
+      .be.false;
+    expect(await newAuthorizer.hasPermissionOrWhatever(REVOKE_ACTION_ID, migrator.address, EVERYWHERE, ONES_BYTES32)).to
+      .be.false;
   });
 });

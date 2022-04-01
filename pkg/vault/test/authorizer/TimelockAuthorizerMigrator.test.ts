@@ -5,7 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
+import { ONES_BYTES32, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('TimelockAuthorizerMigrator', () => {
   let EVERYWHERE: string, GRANT_ACTION_ID: string, REVOKE_ACTION_ID: string;
@@ -77,8 +77,10 @@ describe('TimelockAuthorizerMigrator', () => {
       const adminsCount = await oldAuthorizer.getRoleMemberCount(adminRole);
       for (let i = 0; i < adminsCount; i++) {
         const admin = await oldAuthorizer.getRoleMember(adminRole, i);
-        expect(await newAuthorizer.hasPermission(GRANT_ACTION_ID, admin, roleData.target)).to.be.true;
-        expect(await newAuthorizer.hasPermission(REVOKE_ACTION_ID, admin, roleData.target)).to.be.true;
+        expect(await newAuthorizer.hasPermissionOrWhatever(GRANT_ACTION_ID, admin, roleData.target, ONES_BYTES32)).to.be
+          .true;
+        expect(await newAuthorizer.hasPermissionOrWhatever(REVOKE_ACTION_ID, admin, roleData.target, ONES_BYTES32)).to
+          .be.true;
       }
     }
   });
@@ -89,8 +91,8 @@ describe('TimelockAuthorizerMigrator', () => {
     const adminsCount = await oldAuthorizer.getRoleMemberCount(ZERO_BYTES32);
     for (let i = 0; i < adminsCount; i++) {
       const admin = await oldAuthorizer.getRoleMember(ZERO_BYTES32, i);
-      expect(await newAuthorizer.hasPermission(GRANT_ACTION_ID, admin, EVERYWHERE)).to.be.true;
-      expect(await newAuthorizer.hasPermission(REVOKE_ACTION_ID, admin, EVERYWHERE)).to.be.true;
+      expect(await newAuthorizer.hasPermissionOrWhatever(GRANT_ACTION_ID, admin, EVERYWHERE, ONES_BYTES32)).to.be.true;
+      expect(await newAuthorizer.hasPermissionOrWhatever(REVOKE_ACTION_ID, admin, EVERYWHERE, ONES_BYTES32)).to.be.true;
     }
   });
 
@@ -103,7 +105,9 @@ describe('TimelockAuthorizerMigrator', () => {
   it('revokes the admin roles from the migrator', async () => {
     await migrator.migrate(0);
 
-    expect(await newAuthorizer.hasPermission(GRANT_ACTION_ID, migrator.address, EVERYWHERE)).to.be.false;
-    expect(await newAuthorizer.hasPermission(REVOKE_ACTION_ID, migrator.address, EVERYWHERE)).to.be.false;
+    expect(await newAuthorizer.hasPermissionOrWhatever(GRANT_ACTION_ID, migrator.address, EVERYWHERE, ONES_BYTES32)).to
+      .be.false;
+    expect(await newAuthorizer.hasPermissionOrWhatever(REVOKE_ACTION_ID, migrator.address, EVERYWHERE, ONES_BYTES32)).to
+      .be.false;
   });
 });

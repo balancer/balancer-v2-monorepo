@@ -22,6 +22,7 @@ import "./TimelockAuthorizer.sol";
 import "../interfaces/IVault.sol";
 
 contract TimelockAuthorizerMigrator {
+    bytes32 public constant WHATEVER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     address public constant EVERYWHERE = address(-1);
     uint256 public constant CHANGE_ROOT_DELAY = 7 days;
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
@@ -51,6 +52,8 @@ contract TimelockAuthorizerMigrator {
         IBasicAuthorizer _oldAuthorizer,
         OldRoleData[] memory _rolesData
     ) {
+        // At creation, this migration contract will be the sole admin of the TimelockAuthorizer.
+        // Once the migration is complete, admin powers will be renounced.
         TimelockAuthorizer _newAuthorizer = new TimelockAuthorizer(address(this), _vault, CHANGE_ROOT_DELAY);
         newAuthorizer = _newAuthorizer;
         oldAuthorizer = _oldAuthorizer;
@@ -63,6 +66,13 @@ contract TimelockAuthorizerMigrator {
         bytes32 id = bytes32(uint256(address(_newAuthorizer)));
         GRANT_PERMISSION_ACTION_ID = keccak256(abi.encodePacked(id, TimelockAuthorizer.grantPermissions.selector));
         REVOKE_PERMISSION_ACTION_ID = keccak256(abi.encodePacked(id, TimelockAuthorizer.revokePermissions.selector));
+    }
+
+    /**
+     * @dev Tells whether the migration has been completed or not
+     */
+    function isComplete() public view returns (bool) {
+        return migratedRoles >= rolesData.length;
     }
 
     /**
@@ -83,25 +93,17 @@ contract TimelockAuthorizerMigrator {
     }
 
     function _migrate(OldRoleData memory roleData) internal {
-        // In the old authorizer, each role has an admin role which might have been granted to many admins.
-        // In order to replicate that in the new authorizer, we need to grant permission for
-        // `TimelockAuthorizer.grantPermissions` to the same list of admins on each target.
-        // First, the contract iterates over the accounts that had the role granted in the old authorizer, granting
-        // the permission for the same role for the specified target in the new authorizer.
         _migrate(roleData.role, roleData.target);
-
-        // Finally, the contract iterates over the list of role admins to grant `TimelockAuthorizer.grantPermissions`
-        // over the specified target. Note that this step may overlap with other roles data since this permission
-        // is at a general level for each target and not at a per-action level. However, the new authorizer ignores
-        // the request if the permission was granted already.
-        bytes32 adminRole = oldAuthorizer.getRoleAdmin(roleData.role);
-        _migrate(adminRole, roleData.target);
+        _migrate(oldAuthorizer.getRoleAdmin(roleData.role), roleData.target);
     }
 
     function _migrate(bytes32 role, address target) internal {
         address[] memory wheres = _arr(target);
         bytes32[] memory actionIds = _arr(role);
         uint256 membersCount = oldAuthorizer.getRoleMemberCount(role);
+
+        // Iterate over the accounts that had the role granted in the old authorizer, granting
+        // the permission for the same role for the specified target in the new authorizer.
         for (uint256 i = 0; i < membersCount; i++) {
             address member = oldAuthorizer.getRoleMember(role, i);
             newAuthorizer.grantPermissions(actionIds, member, wheres);
@@ -120,13 +122,16 @@ contract TimelockAuthorizerMigrator {
 
     function _afterMigrate() internal {
         // Execute only once after the migration ends
-        if (migratedRoles < rolesData.length) return;
+        if (!isComplete()) return;
 
         // Grant permissions for `TimelockAuthorizer.grantPermissions` and `TimelockAuthorizer.revokePermissions`
-        // on `TimelockAuthorizer.EVERYWHERE` to all the default admins defined in the old authorizer, and revoke
-        // these permissions to the migrator contract that were granted during initialization.
+        // on `TimelockAuthorizer.EVERYWHERE` and `TimelockAuthorizer.WHATEVER` to all the default admins defined
+        // in the old authorizer, and revoke these permissions to the migrator contract that were granted during
+        // initialization.
+        bytes32 grantWhateverActionId = newAuthorizer.getActionId(GRANT_PERMISSION_ACTION_ID, WHATEVER);
+        bytes32 revokeWhateverActionId = newAuthorizer.getActionId(REVOKE_PERMISSION_ACTION_ID, WHATEVER);
+        bytes32[] memory actionIds = _arr(grantWhateverActionId, revokeWhateverActionId);
         address[] memory wheres = _arr(EVERYWHERE, EVERYWHERE);
-        bytes32[] memory actionIds = _arr(GRANT_PERMISSION_ACTION_ID, REVOKE_PERMISSION_ACTION_ID);
         uint256 defaultAdminsCount = oldAuthorizer.getRoleMemberCount(DEFAULT_ADMIN_ROLE);
         for (uint256 i = 0; i < defaultAdminsCount; i++) {
             address defaultAdmin = oldAuthorizer.getRoleMember(DEFAULT_ADMIN_ROLE, i);
@@ -136,11 +141,6 @@ contract TimelockAuthorizerMigrator {
 
         // Finally change the authorizer in the vault
         vault.setAuthorizer(newAuthorizer);
-    }
-
-    function _times(bytes32 a, uint256 n) internal pure returns (bytes32[] memory arr) {
-        arr = new bytes32[](n);
-        for (uint256 i = 0; i < n; i++) arr[i] = a;
     }
 
     function _arr(bytes32 a) internal pure returns (bytes32[] memory arr) {

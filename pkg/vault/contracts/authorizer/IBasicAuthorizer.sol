@@ -12,15 +12,11 @@
 
 pragma solidity ^0.7.0;
 
-interface IBasicAuthorizer {
+import "../interfaces/IAuthorizer.sol";
+
+interface IBasicAuthorizer is IAuthorizer {
     // solhint-disable-next-line func-name-mixedcase
     function DEFAULT_ADMIN_ROLE() external returns (bytes32);
-
-    function canPerform(
-        bytes32 actionId,
-        address account,
-        address where
-    ) external view returns (bool);
 
     function getRoleAdmin(bytes32 role) external view returns (bytes32);
 
