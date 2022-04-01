@@ -36,13 +36,14 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
+        balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
+        balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
+
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
             request.amount = _subtractSwapFeeAmount(request.amount);
 
             // All token amounts are upscaled.
-            balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-            balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
             request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
             uint256 amountOut = _onSwapGivenIn(request, balanceTokenIn, balanceTokenOut);
@@ -51,8 +52,6 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
             return _downscaleDown(amountOut, scalingFactorTokenOut);
         } else {
             // All token amounts are upscaled.
-            balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-            balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
             uint256 amountIn = _onSwapGivenOut(request, balanceTokenIn, balanceTokenOut);
