@@ -24,8 +24,7 @@ import "../LinearPool.sol";
 contract ERC4626LinearPool is LinearPool {
     using Math for uint256;
 
-    uint256 private immutable _oneWrappedToken;
-    uint256 private immutable _wrappedTokenRateScale;
+    uint256 private immutable _rateScaleFactor;
 
     constructor(
         IVault vault,
@@ -70,21 +69,24 @@ contract ERC4626LinearPool is LinearPool {
 
         // _getWrappedTokenRate is scaled e18, so we may need to scale IERC4626.convertToAssets()
         uint256 wrappedTokenDecimals = ERC20(address(wrappedToken)).decimals();
-        _oneWrappedToken = 10**wrappedTokenDecimals;
-
         uint256 mainTokenDecimals = ERC20(address(mainToken)).decimals();
-        uint256 digitsDifference = Math.sub(18, mainTokenDecimals);
-        _wrappedTokenRateScale = 10**digitsDifference;
+
+        // This is always positive because we only accept tokens with <= 18 decimals
+        uint256 digitsDifference = Math.add(18, wrappedTokenDecimals).sub(mainTokenDecimals);
+        _rateScaleFactor = 10**digitsDifference;
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
         IERC4626 wrappedToken = IERC4626(getWrappedToken());
 
-        // Main tokens per wrapped token, scaled to mainToken.decimals
-        uint256 assetsPerShare = wrappedToken.convertToAssets(_oneWrappedToken);
+        // Main tokens per 1e18 wrapped token wei
+        //     decimals: main + (18 - wrapped)
+        uint256 assetsPerShare = wrappedToken.convertToAssets(FixedPoint.ONE);
 
         // This function returns a 18 decimal fixed point number
-        uint256 rate = _wrappedTokenRateScale.mul(assetsPerShare);
+        //     assetsPerShare decimals:   18 + main - wrapped
+        //     _rateScaleFactor decimals: 18 - main + wrapped
+        uint256 rate = assetsPerShare.mul(_rateScaleFactor).divDown(FixedPoint.ONE);
         return rate;
     }
 }
