@@ -20,9 +20,9 @@ describe('BaseWeightedPool', function () {
     itBehavesAsWeightedPool(2);
   });
 
-  context('for a 3 token pool', () => {
-    itBehavesAsWeightedPool(3);
-  });
+  // context('for a 3 token pool', () => {
+  //   itBehavesAsWeightedPool(3);
+  // });
 
   context('for a too-many token pool', () => {
     it('reverts if there are too many tokens', async () => {

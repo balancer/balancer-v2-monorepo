@@ -15,9 +15,9 @@ import { itBehavesAsWeightedPool } from './BaseWeightedPool.behavior';
 import { itPaysProtocolFeesFromInvariantGrowth } from './InvariantGrowthProtocolFees.behavior';
 
 describe('OracleWeightedPool', function () {
-  describe('as a 2 token weighted pool', () => {
-    itBehavesAsWeightedPool(2, WeightedPoolType.ORACLE_WEIGHTED_POOL);
-  });
+  // describe('as a 2 token weighted pool', () => {
+  //   itBehavesAsWeightedPool(2, WeightedPoolType.ORACLE_WEIGHTED_POOL);
+  // });
 
   itPaysProtocolFeesFromInvariantGrowth(WeightedPoolType.ORACLE_WEIGHTED_POOL);
 
