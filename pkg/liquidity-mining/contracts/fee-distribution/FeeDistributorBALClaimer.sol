@@ -44,7 +44,9 @@ contract FeeDistributorBALClaimer {
 
     /**
      * @notice Mint any outstanding BAL emissions and send them to the FeeDistributor
-     * @dev The `FeeDistributorBALClaimer` must be authorized to checkpoint the gauge before this function is called.
+     * @dev In order to call this function the `FeeDistributorBALClaimer` must be authorized to:
+     * - Withdraw BAL from the linked BALTokenHolder
+     * - Checkpoint the associated SingleRecipientGauge in order to mint BAL. 
      */
     function distributeBAL() external {
         _checkpointGauge(_gauge);
