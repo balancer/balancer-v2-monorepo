@@ -43,6 +43,41 @@ contract FeeDistributorBALClaimer {
     }
 
     /**
+     * @notice Returns the address of the Balancer token contract.
+     */
+    function getBalancerToken() external view returns (IERC20) {
+        return _balToken;
+    }
+
+    /**
+     * @notice Returns the address of the AuthorizerAdaptor contract.
+     */
+    function getAuthorizerAdaptor() external view returns (IAuthorizerAdaptor) {
+        return _authorizerAdaptor;
+    }
+
+    /**
+     * @notice Returns the address of the FeeDistributor contract.
+     */
+    function getFeeDistributor() external view returns (IFeeDistributor) {
+        return _feeDistributor;
+    }
+
+    /**
+     * @notice Returns the address of the associated SingleRecipientGauge contract.
+     */
+    function getGauge() external view returns (ISingleRecipientGauge) {
+        return _gauge;
+    }
+
+    /**
+     * @notice Returns the address of the associated BALTokenHolder contract.
+     */
+    function getBALTokenHolder() external view returns (IBALTokenHolder) {
+        return _balTokenHolder;
+    }
+
+    /**
      * @notice Mint any outstanding BAL emissions and send them to the FeeDistributor
      * @dev In order to call this function the `FeeDistributorBALClaimer` must be authorized to:
      * - Withdraw BAL from the linked BALTokenHolder
