@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/misc/IERC4626.sol";
 
 import "@balancer-labs/v2-standalone-utils/contracts/test/TestToken.sol";
@@ -22,22 +23,29 @@ import "@balancer-labs/v2-standalone-utils/contracts/test/TestToken.sol";
 contract MockERC4626Token is TestToken, IERC4626 {
     using FixedPoint for uint256;
 
-    // rate between wrapped and main tokens for deposit/redeem
+    // rate of assets per share scaled to 1e18
     uint256 private _rate = 1e18;
-    uint256 private _rateScale = 1e18;
+    uint256 private _scaleAssetsToFP;
+    uint256 private _scaleSharesToFP;
     uint256 private _totalAssets;
-    address private immutable _mainToken;
+    address private immutable _asset;
 
     constructor(
         string memory name,
         string memory symbol,
         uint8 decimals,
-        address mainToken
+        address asset
     ) TestToken(name, symbol, decimals) {
-        _mainToken = mainToken;
+        _asset = asset;
+
+        uint256 assetDecimals = TestToken(asset).decimals();
+        uint256 assetDecimalsDifference = Math.sub(18, assetDecimals);
+        _scaleAssetsToFP = FixedPoint.ONE * 10**assetDecimalsDifference;
+
+        uint256 shareDecimalsDifference = Math.sub(18, uint256(decimals));
+        _scaleSharesToFP = FixedPoint.ONE * 10**shareDecimalsDifference;
     }
 
-    // rate at e18 scale
     function setRate(uint256 newRate) external {
         _rate = newRate;
     }
@@ -47,7 +55,7 @@ contract MockERC4626Token is TestToken, IERC4626 {
     }
 
     function asset() external view override returns (address) {
-        return _mainToken;
+        return _asset;
     }
 
     function convertToAssets(uint256 shares) external view override returns (uint256) {
@@ -73,12 +81,14 @@ contract MockERC4626Token is TestToken, IERC4626 {
     }
 
     function _convertToAssets(uint256 shares) private view returns (uint256) {
-        uint256 assets = shares.mulDown(_rate).divDown(_rateScale);
+        uint256 assetsInShareDecimals = shares.mulDown(_rate);
+        uint256 assets = assetsInShareDecimals.mulDown(_scaleSharesToFP).divDown(_scaleAssetsToFP);
         return assets;
     }
 
     function _convertToShares(uint256 assets) private view returns (uint256) {
-        uint256 shares = assets.mulDown(_rateScale).divDown(_rate);
+        uint256 sharesInAssetDecimals = assets.divDown(_rate);
+        uint256 shares = sharesInAssetDecimals.mulDown(_scaleAssetsToFP).divDown(_scaleSharesToFP);
         return shares;
     }
 }
