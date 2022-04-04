@@ -1,6 +1,6 @@
-# 2022-03-04 - ERC4626 Linear Pool
+# 2022-03-04 - ERC4626 Linear Pool V1
 
-Deployment of the `ERC4626LinearPoolFactory`, for Linear Pools with a ERC4626 wrapped yield bearing token
+Preliminary deployment of the `ERC4626LinearPoolFactory`, for Linear Pools with a ERC4626 yield-bearing token. This version was released prior to finalization of EIP-4626 and should no longer be used.
 
 ## Useful Files
 
