@@ -405,9 +405,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
                 if (userBalance == 0 && userEpoch > maxUserEpoch) break;
 
                 // User had a nonzero lock and so is eligible to collect fees.
-                if (userBalance > 0) {
-                    _userBalanceAtTimestamp[user][weekCursor] = userBalance;
-                }
+                _userBalanceAtTimestamp[user][weekCursor] = userBalance;
 
                 weekCursor += 1 weeks;
             }
@@ -436,10 +434,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         for (uint256 i = 0; i < 20; ++i) {
             if (timeCursor > weekStart) break;
 
-            uint256 supplySnapshot = _votingEscrow.totalSupply(timeCursor);
-            if (supplySnapshot > 0) {
-                _veSupplyCache[timeCursor] = supplySnapshot;
-            }
+            _veSupplyCache[timeCursor] = _votingEscrow.totalSupply(timeCursor);
 
             timeCursor += 1 weeks;
         }
