@@ -438,7 +438,10 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
                     : 0;
 
                 // User's lock has expired and they haven't relocked yet.
-                if (userBalance == 0 && userEpoch > maxUserEpoch) break;
+                if (userBalance == 0 && userEpoch > maxUserEpoch) {
+                    weekCursor = _roundUpTimestamp(block.timestamp);
+                    break;
+                }
 
                 // User had a nonzero lock and so is eligible to collect fees.
                 _userBalanceAtTimestamp[user][weekCursor] = userBalance;
