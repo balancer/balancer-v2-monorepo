@@ -367,13 +367,15 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @dev Cache the `user`'s balance of `_votingEscrow` at the beginning of each new week
      */
     function _checkpointUserBalance(address user) internal {
-        // Minimal user_epoch is 0 (if user had no point)
-        uint256 userEpoch = 0;
         uint256 maxUserEpoch = _votingEscrow.user_point_epoch(user);
 
-        // If user has never locked then they won't receive fees
+        // If user has no epochs then they have never locked veBAL.
+        // They clearly will not then receive fees.
         if (maxUserEpoch == 0) return;
 
+        // Minimal user_epoch for an address which has locked veBAL is 1.
+        uint256 userEpoch = 1;
+        
         UserState storage userState = _userState[user];
 
         // weekCursor represents the timestamp of the beginning of the week from which we
@@ -389,11 +391,6 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             }
             // Otherwise use the value saved from last time
             userEpoch = userState.lastEpochCheckpointed;
-        }
-
-        // Epoch 0 is always empty so bump onto the next one so that we start on a valid epoch.
-        if (userEpoch == 0) {
-            userEpoch = 1;
         }
 
         IVotingEscrow.Point memory userPoint = _votingEscrow.user_point_history(user, userEpoch);
