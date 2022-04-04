@@ -459,13 +459,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         );
 
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
-        uint256 amountOut = WeightedMath._calcOutGivenIn(
-            currentBalanceTokenIn,
-            normalizedWeights[0],
-            currentBalanceTokenOut,
-            normalizedWeights[1],
-            swapRequest.amount
-        );
+        uint256 amountOut = super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
         uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
             currentBalanceTokenIn.add(swapRequest.amount),
@@ -493,14 +487,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         );
 
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
-        uint256 amountIn = WeightedMath._calcInGivenOut(
-            currentBalanceTokenIn,
-            normalizedWeights[0],
-            currentBalanceTokenOut,
-            normalizedWeights[1],
-            swapRequest.amount
-        );
-
+        uint256 amountIn = super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
         uint256 scalingFactorTokenIn = _scalingFactor(swapRequest.tokenIn);
         uint256 unscaledAmountIn = _addSwapFeeAmount(_downscaleUp(amountIn, scalingFactorTokenIn));
 
@@ -582,12 +569,12 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     // Additionally, we also check that only non-swap join and exit kinds are allowed while swaps are disabled.
 
     function _onJoinPool(
-        bytes32,
+        bytes32 poolId,
         address sender,
-        address,
+        address recipient,
         uint256[] memory balances,
-        uint256,
-        uint256,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
     )
@@ -606,16 +593,26 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // Check allowlist for LPs, if applicable
         _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
-        return _doJoin(balances, _getNormalizedWeights(), scalingFactors, userData);
+        return
+            super._onJoinPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                scalingFactors,
+                userData
+            );
     }
 
     function _onExitPool(
-        bytes32,
-        address,
-        address,
+        bytes32 poolId,
+        address sender,
+        address recipient,
         uint256[] memory balances,
-        uint256,
-        uint256,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
@@ -629,7 +626,17 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
-        return _doExit(balances, _getNormalizedWeights(), scalingFactors, userData);
+        return
+            super._onExitPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                protocolSwapFeePercentage,
+                scalingFactors,
+                userData
+            );
     }
 
     /**
