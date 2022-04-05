@@ -40,7 +40,6 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory {
     // We then shift right 28 bytes so that the function selector (top 4 bytes) sits in the lowest 4 bytes.
     bytes32 private constant _CLAIM_SIG = keccak256("get_reward()") >> (28 * 8);
 
-    IVault private immutable _vault;
     ILiquidityGauge private immutable _gaugeImplementation;
     IChildChainStreamer private immutable _childChainStreamerImplementation;
 
@@ -52,27 +51,12 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory {
     event RewardsOnlyGaugeCreated(address indexed gauge, address indexed pool, address streamer);
 
     constructor(
-        IVault vault,
         ILiquidityGauge gauge,
         IChildChainStreamer childChainStreamer
     ) {
-        _vault = vault;
+      
         _gaugeImplementation = gauge;
         _childChainStreamerImplementation = childChainStreamer;
-    }
-
-    /**
-     * @dev Returns the address of the Vault.
-     */
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
-
-    /**
-     * @dev Returns the address of the Vault's Authorizer.
-     */
-    function getAuthorizer() public view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
     }
 
     /**
