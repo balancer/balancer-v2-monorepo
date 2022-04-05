@@ -36,11 +36,7 @@ contract MockUnbuttonERC20 is ERC20, IButtonWrapper {
 
     function initialize(uint256 initialRate) public {
         uint256 mintAmount = INITIAL_DEPOSIT * initialRate;
-        IERC20(_underlying).safeTransferFrom(
-            msg.sender,
-            address(this),
-            INITIAL_DEPOSIT
-        );
+        IERC20(_underlying).safeTransferFrom(msg.sender, address(this), INITIAL_DEPOSIT);
         _mint(address(this), mintAmount);
     }
 

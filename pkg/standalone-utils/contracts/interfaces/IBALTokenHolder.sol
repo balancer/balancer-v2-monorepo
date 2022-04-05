@@ -18,7 +18,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerToken.sol";
 
-
 interface IBALTokenHolder is IAuthentication {
     function getBalancerToken() external view returns (IBalancerToken);
 
