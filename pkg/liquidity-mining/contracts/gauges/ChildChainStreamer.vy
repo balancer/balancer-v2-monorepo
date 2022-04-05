@@ -22,6 +22,7 @@ WEEK: constant(uint256) = 7 * 86400
 BAL_TOKEN: immutable(address)
 AUTHORIZER_ADAPTOR: immutable(address)
 
+# The reward receiver is actually immutable, but kept in storage due to this contract being used via proxies
 reward_receiver: public(address)
 
 reward_tokens: public(address[MAX_REWARDS])
