@@ -462,7 +462,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256 amountOut = super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
         uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
-            currentBalanceTokenIn.add(swapRequest.amount),
+            currentBalanceTokenIn.add(_addSwapFeeAmount(swapRequest.amount)),
             currentBalanceTokenOut.sub(amountOut)
         );
 
