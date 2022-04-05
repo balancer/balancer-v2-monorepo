@@ -1071,7 +1071,7 @@ describe('ManagedPool', function () {
     sharedBeforeEach('deploy and set protocol AUM fee', async () => {
       const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
-      authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS] });
+      authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
       authorizedVault = await deploy('v2-vault/Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
       feesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', { args: [authorizedVault.address] });
 
