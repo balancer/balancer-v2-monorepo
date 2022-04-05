@@ -594,6 +594,7 @@ def initialize(_lp_token: address, _reward_contract: address, _claim_sig: bytes3
     @param _lp_token Liquidity Pool contract address
     """
     assert self.lp_token == ZERO_ADDRESS
+    assert _lp_token != ZERO_ADDRESS
 
     self.lp_token = _lp_token
 

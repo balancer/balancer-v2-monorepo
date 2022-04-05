@@ -208,6 +208,7 @@ def initialize(reward_receiver: address):
     @param reward_receiver RewardsOnlyGauge address
     """
     assert self.reward_receiver == ZERO_ADDRESS
+    assert reward_receiver != ZERO_ADDRESS
     
     self.reward_receiver = reward_receiver
 
