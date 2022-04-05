@@ -30,7 +30,7 @@ describe('Swap Validation', () => {
   sharedBeforeEach('setup', async () => {
     const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
-    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS] });
+    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
     vault = await deploy('Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
 
