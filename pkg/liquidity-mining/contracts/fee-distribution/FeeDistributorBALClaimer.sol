@@ -32,7 +32,11 @@ contract FeeDistributorBALClaimer {
     ISingleRecipientGauge private immutable _gauge;
     IBALTokenHolder private immutable _balTokenHolder;
 
-    constructor(IFeeDistributor feeDistributor, ISingleRecipientGauge gauge, IAuthorizerAdaptor authorizerAdaptor) {
+    constructor(
+        IFeeDistributor feeDistributor,
+        ISingleRecipientGauge gauge,
+        IAuthorizerAdaptor authorizerAdaptor
+    ) {
         IBALTokenHolder balTokenHolder = IBALTokenHolder(gauge.getRecipient());
 
         _balToken = balTokenHolder.getBalancerToken();
@@ -81,7 +85,7 @@ contract FeeDistributorBALClaimer {
      * @notice Mint any outstanding BAL emissions and send them to the FeeDistributor
      * @dev In order to call this function the `FeeDistributorBALClaimer` must be authorized to:
      * - Withdraw BAL from the linked BALTokenHolder
-     * - Checkpoint the associated SingleRecipientGauge in order to mint BAL. 
+     * - Checkpoint the associated SingleRecipientGauge in order to mint BAL.
      */
     function distributeBAL() external {
         _checkpointGauge(_gauge);
@@ -90,9 +94,6 @@ contract FeeDistributorBALClaimer {
     }
 
     function _checkpointGauge(IStakelessGauge gauge) private {
-        _authorizerAdaptor.performAction(
-            address(gauge),
-            abi.encodeWithSelector(IStakelessGauge.checkpoint.selector)
-        );
+        _authorizerAdaptor.performAction(address(gauge), abi.encodeWithSelector(IStakelessGauge.checkpoint.selector));
     }
 }
