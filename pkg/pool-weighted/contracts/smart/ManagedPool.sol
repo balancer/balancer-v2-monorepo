@@ -491,13 +491,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         );
 
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
-        uint256 amountOut = WeightedMath._calcOutGivenIn(
-            currentBalanceTokenIn,
-            normalizedWeights[0],
-            currentBalanceTokenOut,
-            normalizedWeights[1],
-            swapRequest.amount
-        );
+        uint256 amountOut = super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
         uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
             currentBalanceTokenIn.add(swapRequest.amount),
@@ -525,14 +519,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         );
 
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
-        uint256 amountIn = WeightedMath._calcInGivenOut(
-            currentBalanceTokenIn,
-            normalizedWeights[0],
-            currentBalanceTokenOut,
-            normalizedWeights[1],
-            swapRequest.amount
-        );
-
+        uint256 amountIn = super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
         uint256 scalingFactorTokenIn = _scalingFactor(swapRequest.tokenIn);
         uint256 unscaledAmountIn = _addSwapFeeAmount(_downscaleUp(amountIn, scalingFactorTokenIn));
 
