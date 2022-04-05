@@ -32,4 +32,8 @@ interface IStakingLiquidityGauge is ILiquidityGauge, IERC20 {
     function withdraw(uint256 value) external;
 
     function claim_rewards(address user) external;
+
+    function add_reward(address rewardToken, address distributor) external;
+
+    function set_reward_distributor(address rewardToken, address distributor) external;
 }

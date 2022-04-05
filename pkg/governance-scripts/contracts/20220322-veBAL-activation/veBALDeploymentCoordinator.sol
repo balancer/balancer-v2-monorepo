@@ -22,6 +22,8 @@ import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeAdder.sol"
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeController.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerMinter.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerTokenAdmin.sol";
+import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/ILiquidityGaugeFactory.sol";
+import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IBALTokenHolderFactory.sol";
 
 // solhint-disable not-rely-on-time
 
@@ -48,15 +50,28 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     IBalancerToken private immutable _balancerToken;
     IBalancerMinter private immutable _balancerMinter;
     IGaugeController private immutable _gaugeController;
+    IGaugeAdder private immutable _gaugeAdder;
+    ILiquidityGaugeFactory private immutable _ethereumGaugeFactory;
+    ILiquidityGaugeFactory private immutable _singleRecipientGaugeFactory;
+    IBALTokenHolderFactory private immutable _balTokenHolderFactory;
 
-    enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE }
+    address public lmCommitteeMultisig = 0xc38c5f97B34E175FFd35407fc91a937300E33860;
+
+    // All of veBAL, Polygon and Arbitrum funds are temporarily sent to multisigs which will take care of distribution
+    // until an automated system is setup.
+    address public veBALGaugeRecipient = 0xd2EB7Bd802A7CA68d9AcD209bEc4E664A9abDD7b;
+    address public polygonGaugeRecipient = 0xd2EB7Bd802A7CA68d9AcD209bEc4E664A9abDD7b;
+    address public arbitrumGaugeRecipient = 0xd2EB7Bd802A7CA68d9AcD209bEc4E664A9abDD7b;
+
+    enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE, THIRD_STAGE_DONE }
 
     uint256 public firstStageActivationTime;
     uint256 public secondStageActivationTime;
+    uint256 public thirdStageActivationTime;
 
     DeploymentStage private _currentDeploymentStage;
     uint256 private immutable _activationScheduledTime;
-    uint256 private immutable _secondStageDelay;
+    uint256 private immutable _thirdStageDelay;
 
     uint256 public constant LM_COMMITTEE_WEIGHT = 10e16; // 10%
     uint256 public constant VEBAL_WEIGHT = 10e16; // 10%
@@ -67,8 +82,12 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     constructor(
         IBalancerMinter balancerMinter,
         IAuthorizerAdaptor authorizerAdaptor,
+        IGaugeAdder gaugeAdder,
+        ILiquidityGaugeFactory ethereumGaugeFactory,
+        ILiquidityGaugeFactory singleRecipientGaugeFactory,
+        IBALTokenHolderFactory balTokenHolderFactory,
         uint256 activationScheduledTime,
-        uint256 secondStageDelay
+        uint256 thirdStageDelay
     ) {
         _currentDeploymentStage = DeploymentStage.PENDING;
 
@@ -80,9 +99,13 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         _balancerToken = balancerTokenAdmin.getBalancerToken();
         _balancerMinter = balancerMinter;
         _gaugeController = IGaugeController(balancerMinter.getGaugeController());
+        _gaugeAdder = gaugeAdder;
+        _ethereumGaugeFactory = ethereumGaugeFactory;
+        _singleRecipientGaugeFactory = singleRecipientGaugeFactory;
+        _balTokenHolderFactory = balTokenHolderFactory;
 
         _activationScheduledTime = activationScheduledTime;
-        _secondStageDelay = secondStageDelay;
+        _thirdStageDelay = thirdStageDelay;
     }
 
     /**
@@ -95,8 +118,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     /**
      * @notice Returns the Balancer Vault's current authorizer.
      */
-    function getAuthorizer() public view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
+    function getAuthorizer() public view returns (ICurrentAuthorizer) {
+        return ICurrentAuthorizer(address(getVault().getAuthorizer()));
     }
 
     function getAuthorizerAdaptor() public view returns (IAuthorizerAdaptor) {
@@ -126,8 +149,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         return _activationScheduledTime;
     }
 
-    function getSecondStageDelay() external view returns (uint256) {
-        return _secondStageDelay;
+    function getThirdStageDelay() external view returns (uint256) {
+        return _thirdStageDelay;
     }
 
     function performFirstStage() external nonReentrant {
@@ -136,7 +159,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         require(_currentDeploymentStage == DeploymentStage.PENDING, "First step already performed");
 
         // Check external state: we need admin permission on both the BAL token and the Authorizer
-        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
+        ICurrentAuthorizer authorizer = getAuthorizer();
         require(_balancerToken.hasRole(_balancerToken.DEFAULT_ADMIN_ROLE(), address(this)), "Not BAL admin");
         require(authorizer.canPerform(bytes32(0), address(this), address(0)), "Not Authorizer admin");
 
@@ -178,38 +201,155 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
             // that this permission should only be granted on the gauge controller itself.
             authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_type.selector), address(this));
 
-            _addGaugeType(_gaugeController, "Liquidity Mining Committee");
-            _addGaugeType(_gaugeController, "veBAL");
-            _addGaugeType(_gaugeController, "Ethereum");
-            _addGaugeType(_gaugeController, "Polygon");
-            _addGaugeType(_gaugeController, "Arbitrum");
+            _addGaugeType("Liquidity Mining Committee");
+            _addGaugeType("veBAL");
+            _addGaugeType("Ethereum");
+            _addGaugeType("Polygon");
+            _addGaugeType("Arbitrum");
 
             authorizer.revokeRole(authorizerAdaptor.getActionId(IGaugeController.add_type.selector), address(this));
         }
 
-        // Step 4: create gauges for the single-gauge gauge types
+        // Step 4: setup the GaugeAdder contract to be in charge of adding gauges to the Gauge Controller.
         //
-        // The LM committee and veBAL gauge types will have a single gauge of the single-recipient gauge kind
+        // The GaugeAdder contract performs checks on addresses being added to the Gauge Controller to ensure
+        // that they have been deployed by a factory contract which has been associated with the gauge type
+        // to which the proposed gauge is being added. This is intended to prevent common mistakes when adding gauges.
 
-        // grant self power to add gauges
-        // deploy lm, vebal, merkle gauges. add gauges to gauge controller
+        authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(_gaugeAdder));
 
-        // grant gauge adder authority over controller
-        // grant self power over guage adder
-        // add l1 and l2 factories to gauge adder
-        // deploy l1 and l2 gauges, add to controller via gauge adder
+        // Step 5: create gauges for the single-recipient gauge types
+        //
+        // The LM committee gauge will be remain as a SingleRecipientGauge permanently,
+        // however the gauges for veBAL, Polygon and Arbitrum types are temporary pending an automated solution.
+        // These three gauges will in time be retired (killed) and replaced with new gauge implementations
+        // which automate the distribution of BAL to BPT stakers on other networks and veBAL holders.
+        {
+            authorizer.grantRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
 
-        // add tokens to l1 and l2 gauges
-        // grant batch relayer permissions
+            // Permanent
+            _createSingleRecipientGauge(
+                IGaugeAdder.GaugeType.LiquidityMiningCommittee,
+                "Liquidity Mining Committee BAL Holder",
+                lmCommitteeMultisig
+            );
+
+            // Temporary
+            _createSingleRecipientGauge(
+                IGaugeAdder.GaugeType.veBAL,
+                "Temporary veBAL Liquidity Mining BAL Holder",
+                veBALGaugeRecipient
+            );
+
+            // Temporary
+            _createSingleRecipientGauge(
+                IGaugeAdder.GaugeType.Polygon,
+                "Temporary Polygon Liquidity Mining BAL Holder",
+                polygonGaugeRecipient
+            );
+            // Temporary
+            _createSingleRecipientGauge(
+                IGaugeAdder.GaugeType.Arbitrum,
+                "Temporary Arbitrum Liquidity Mining BAL Holder",
+                arbitrumGaugeRecipient
+            );
+
+            authorizer.revokeRole(authorizerAdaptor.getActionId(IGaugeController.add_gauge.selector), address(this));
+        }
+
+        // Step 6: grant permission to the LM Committee to add reward tokens to Ethereum gauges and manage their
+        // distributors
+        authorizer.grantRole(
+            authorizerAdaptor.getActionId(IStakingLiquidityGauge.add_reward.selector),
+            lmCommitteeMultisig
+        );
+
+        authorizer.grantRole(
+            authorizerAdaptor.getActionId(IStakingLiquidityGauge.set_reward_distributor.selector),
+            lmCommitteeMultisig
+        );
 
         firstStageActivationTime = block.timestamp;
         _currentDeploymentStage = DeploymentStage.FIRST_STAGE_DONE;
     }
 
     function performSecondStage() external nonReentrant {
-        // Check delay from first stage
-        require(_currentDeploymentStage == DeploymentStage.FIRST_STAGE_DONE, "First steap already performed");
-        require(block.timestamp >= (firstStageActivationTime + _secondStageDelay), "Not ready for activation");
+        require(_currentDeploymentStage == DeploymentStage.FIRST_STAGE_DONE, "Not ready for second stage");
+
+        ICurrentAuthorizer authorizer = getAuthorizer();
+
+        // Create gauges for a preselected list of pools on Ethereum. This is not included in the first stage to reduce
+        // total required gas for the execution of each stage.
+
+        address payable[32] memory initialPools = [
+            0x06Df3b2bbB68adc8B0e302443692037ED9f91b42,
+            0x072f14B85ADd63488DDaD88f855Fda4A99d6aC9B,
+            0x0b09deA16768f0799065C475bE02919503cB2a35,
+            0x186084fF790C65088BA694Df11758faE4943EE9E,
+            0x1E19CF2D73a72Ef1332C882F20534B6519Be0276,
+            0x27C9f71cC31464B906E0006d4FcBC8900F48f15f,
+            0x32296969Ef14EB0c6d29669C550D4a0449130230,
+            0x350196326AEAA9b98f1903fb5e8fc2686f85318C,
+            0x3e5FA9518eA95c3E533EB377C001702A9AaCAA32,
+            0x4bd6D86dEBdB9F5413e631Ad386c4427DC9D01B2,
+            0x51735bdFBFE3fC13dEa8DC6502E2E95898942961,
+            0x5d66FfF62c17D841935b60df5F07f6CF79Bd0F47,
+            0x5f7FA48d765053F8dD85E052843e12D23e3D7BC5,
+            0x702605F43471183158938C1a3e5f5A359d7b31ba,
+            0x7B50775383d3D6f0215A8F290f2C9e2eEBBEceb2,
+            0x7Edde0CB05ED19e03A9a47CD5E53fC57FDe1c80c,
+            0x8f4205e1604133d1875a3E771AE7e4F2b0865639,
+            0x90291319F1D4eA3ad4dB0Dd8fe9E12BAF749E845,
+            0x96646936b91d6B9D7D0c47C496AfBF3D6ec7B6f8,
+            0x96bA9025311e2f47B840A1f68ED57A3DF1EA8747,
+            0xa02E4b3d18D4E6B8d18Ac421fBc3dfFF8933c40a,
+            0xA6F548DF93de924d73be7D25dC02554c6bD66dB5,
+            0xBaeEC99c90E3420Ec6c1e7A769d2A856d2898e4D,
+            0xBF96189Eee9357a95C7719f4F5047F76bdE804E5,
+            0xe2469f47aB58cf9CF59F9822e3C5De4950a41C49,
+            0xE99481DC77691d8E2456E5f3F61C1810adFC1503,
+            0xeC60a5FeF79a92c741Cb74FdD6bfC340C0279B01,
+            0xEdf085f65b4F6c155e13155502Ef925c9a756003,
+            0xEFAa1604e82e1B3AF8430b90192c1B9e8197e377,
+            0xF4C0DD9B82DA36C07605df83c8a416F11724d88b,
+            0xf5aAf7Ee8C39B651CEBF5f1F50C10631E78e0ef9,
+            0xFeadd389a5c427952D8fdb8057D6C8ba1156cC56
+        ];
+
+        // Allowlist the provided LiquidityGaugeFactory on the GaugeAdder
+        // so its gauges may be added to the "Ethereum" gauge type.
+        {
+            authorizer.grantRole(_gaugeAdder.getActionId(IGaugeAdder.addGaugeFactory.selector), address(this));
+
+            _gaugeAdder.addGaugeFactory(_ethereumGaugeFactory, IGaugeAdder.GaugeType.Ethereum);
+
+            authorizer.revokeRole(_gaugeAdder.getActionId(IGaugeAdder.addGaugeFactory.selector), address(this));
+        }
+
+        // Deploy initial gauges and add them to the Gauge Controller
+        {
+            authorizer.grantRole(_gaugeAdder.getActionId(IGaugeAdder.addEthereumGauge.selector), address(this));
+
+            uint256 poolsLength = initialPools.length;
+            for (uint256 i = 0; i < poolsLength; i++) {
+                ILiquidityGauge gauge = ILiquidityGauge(_ethereumGaugeFactory.create(initialPools[i]));
+                _gaugeAdder.addEthereumGauge(IStakingLiquidityGauge(address(gauge)));
+            }
+
+            authorizer.revokeRole(_gaugeAdder.getActionId(IGaugeAdder.addEthereumGauge.selector), address(this));
+        }
+
+        secondStageActivationTime = block.timestamp;
+        _currentDeploymentStage = DeploymentStage.SECOND_STAGE_DONE;
+    }
+
+    function performThirdStage() external nonReentrant {
+        // Check delay from second stage
+        require(_currentDeploymentStage == DeploymentStage.SECOND_STAGE_DONE, "Not ready for third stage");
+        require(
+            block.timestamp >= (secondStageActivationTime + _thirdStageDelay),
+            "Delay from second stage not yet elapsed"
+        );
 
         // We can now set the actual weights for each gauge type, causing gauges to have non-zero weights once veBAL
         // holders vote for them.
@@ -218,17 +358,17 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         IAuthorizerAdaptor authorizerAdaptor = getAuthorizerAdaptor();
         // Note that the current Authorizer ignores the 'where' parameter, so we don't need to (cannot) indicate
         // that this permission should only be granted on the gauge controller itself.
-        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
+        ICurrentAuthorizer authorizer = getAuthorizer();
         authorizer.grantRole(
             authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector),
             address(this)
         );
 
-        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.LiquidityMiningCommittee, LM_COMMITTEE_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.veBAL, VEBAL_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.Ethereum, ETHEREUM_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.Polygon, POLYGON_WEIGHT);
-        _setGaugeTypeWeight(_gaugeController, IGaugeAdder.GaugeType.Arbitrum, ARBITRUM_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.LiquidityMiningCommittee, LM_COMMITTEE_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.veBAL, VEBAL_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Ethereum, ETHEREUM_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Polygon, POLYGON_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Arbitrum, ARBITRUM_WEIGHT);
 
         authorizer.revokeRole(
             authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector),
@@ -238,25 +378,39 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         // The entire system is now fully setup, and we can renounce permissions over the Authorizer
         authorizer.revokeRole(authorizer.DEFAULT_ADMIN_ROLE(), address(this));
 
-        secondStageActivationTime = block.timestamp;
-        _currentDeploymentStage = DeploymentStage.SECOND_STAGE_DONE;
+        thirdStageActivationTime = block.timestamp;
+        _currentDeploymentStage = DeploymentStage.THIRD_STAGE_DONE;
     }
 
-    function _addGaugeType(IGaugeController gaugeController, string memory name) private {
+    function _addGauge(ILiquidityGauge gauge, IGaugeAdder.GaugeType gaugeType) private {
         getAuthorizerAdaptor().performAction(
-            address(gaugeController),
+            address(_gaugeController),
+            abi.encodeWithSelector(IGaugeController.add_gauge.selector, gauge, gaugeType)
+        );
+    }
+
+    function _addGaugeType(string memory name) private {
+        getAuthorizerAdaptor().performAction(
+            address(_gaugeController),
             abi.encodeWithSelector(IGaugeController.add_type.selector, name, 0)
         );
     }
 
-    function _setGaugeTypeWeight(
-        IGaugeController gaugeController,
-        IGaugeAdder.GaugeType typeId,
-        uint256 weight
-    ) private {
+    function _setGaugeTypeWeight(IGaugeAdder.GaugeType typeId, uint256 weight) private {
         getAuthorizerAdaptor().performAction(
-            address(gaugeController),
+            address(_gaugeController),
             abi.encodeWithSelector(IGaugeController.change_type_weight.selector, int128(typeId), weight)
         );
+    }
+
+    function _createSingleRecipientGauge(
+        IGaugeAdder.GaugeType gaugeType,
+        string memory name,
+        address recipient
+    ) private {
+        IBALTokenHolder holder = _balTokenHolderFactory.create(name);
+        ILiquidityGauge gauge = ILiquidityGauge(_singleRecipientGaugeFactory.create(address(holder)));
+        _addGauge(gauge, gaugeType);
+        getAuthorizer().grantRole(holder.getActionId(IBALTokenHolder.withdrawFunds.selector), recipient);
     }
 }

@@ -69,16 +69,30 @@ library WeightCompression {
     }
 
     /**
-     * @dev Convert a 64-bit value to full FixedPoint
+     * @dev Convert a 64-bit value to full FixedPoint (assuming a max value of ONE)
      */
     function uncompress64(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(FixedPoint.ONE).divUp(type(uint64).max);
+        return uncompress64(value, FixedPoint.ONE);
+    }
+
+    /**
+     * @dev Compress a FixedPoint value to 64 bits (assuming a max value of ONE)
+     */
+    function compress64(uint256 value) internal pure returns (uint256) {
+        return compress64(value, FixedPoint.ONE);
+    }
+
+    /**
+     * @dev Convert a 64-bit value to full FixedPoint
+     */
+    function uncompress64(uint256 value, uint256 maxValue) internal pure returns (uint256) {
+        return value.mulUp(maxValue).divUp(type(uint64).max);
     }
 
     /**
      * @dev Compress a FixedPoint value to 64 bits
      */
-    function compress64(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(type(uint64).max).divUp(FixedPoint.ONE);
+    function compress64(uint256 value, uint256 maxValue) internal pure returns (uint256) {
+        return value.mulUp(type(uint64).max).divUp(maxValue);
     }
 }
