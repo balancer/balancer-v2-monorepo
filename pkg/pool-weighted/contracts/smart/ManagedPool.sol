@@ -448,7 +448,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override returns (uint256) {
         // Swaps are disabled while the contract is paused.
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
@@ -468,7 +468,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         _payProtocolAndManagementFees(normalizedWeights, preSwapBalances, postSwapBalances);
 
-        // amountOut tokens are exiting the Pool, so we round down.
         return amountOut;
     }
 
@@ -476,7 +475,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override returns (uint256) {
         // Swaps are disabled while the contract is paused.
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
