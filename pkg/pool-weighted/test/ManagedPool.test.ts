@@ -1,10 +1,10 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, fromFp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { MINUTE, DAY, advanceTime, currentTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -694,20 +694,30 @@ describe('ManagedPool', function () {
       const swapFeePercentage = fp(0.02);
       const protocolFeePercentage = fp(0.5); // 50 %
       const managementSwapFeePercentage = fp(0); // Set to zero to isolate BPT fees
+      const tokenAmount = 100;
+      const poolWeights = [fp(0.8), fp(0.2)];
       let bptFeeBalance: BigNumber;
-      // let mockMath: Contract;
+      let mockMath: Contract;
 
-      const localBalances = Array(2).fill(fp(1000));
+      let twoTokens: TokenList;
+      let localBalances: Array<BigNumber>;
+      let swapAmount: BigNumber;
 
       sharedBeforeEach('deploy pool', async () => {
         vault = await Vault.create({ admin });
         await vault.setSwapFeePercentage(protocolFeePercentage, { from: admin });
         protocolFeesCollector = await vault.getFeesCollector();
 
+        twoTokens = poolTokens.subset(2);
+        localBalances = [bn(tokenAmount * 10 ** twoTokens.first.decimals), bn(100 * 10 ** twoTokens.second.decimals)];
+
+        // 10% of the initial balance
+        swapAmount = localBalances[0].div(10);
+
         // Make a 2-token pool for this purpose
         const params = {
-          tokens: poolTokens.subset(2),
-          weights: [fp(0.8), fp(0.2)],
+          tokens: twoTokens,
+          weights: poolWeights,
           owner: owner.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
@@ -716,7 +726,7 @@ describe('ManagedPool', function () {
           managementSwapFeePercentage,
         };
         pool = await WeightedPool.create(params);
-        // mockMath = await deploy('MockWeightedMath');
+        mockMath = await deploy('MockWeightedMath');
       });
 
       sharedBeforeEach('initialize pool', async () => {
@@ -731,19 +741,17 @@ describe('ManagedPool', function () {
         expect(bptFeeBalance).to.equal(0);
       });
 
-      it('indicates no delegation', async () => {
-        const delegatedFee = await pool.instance.getProtocolFeeDelegation();
+      describe('pays protocol fees on swaps', () => {
+        let upscaledBalances: Array<BigNumber>;
+        let upscaledSwapAmount: BigNumber;
 
-        expect(delegatedFee).to.be.true;
-      });
+        sharedBeforeEach('upscale balances and amounts', async () => {
+          const scaleFactor0 = 10 ** (18 - twoTokens.first.decimals);
+          const scaleFactor1 = 10 ** (18 - twoTokens.second.decimals);
+          upscaledBalances = [localBalances[0].mul(scaleFactor0), localBalances[1].mul(scaleFactor1)];
+          upscaledSwapAmount = swapAmount.mul(scaleFactor0);
+        });
 
-      it('reports the protocol swap fee', async () => {
-        const feePercentage = await pool.instance.getCachedProtocolSwapFeePercentage();
-
-        expect(feePercentage).to.equal(protocolFeePercentage);
-      });
-
-      describe('pays protocol fees on swap', () => {
         it('charges the expected protocol fee', async () => {
           const actualProtocolFee = await protocolFeesCollector.getSwapFeePercentage();
           expect(actualProtocolFee).to.equal(protocolFeePercentage);
@@ -756,7 +764,7 @@ describe('ManagedPool', function () {
               kind: SwapKind.GivenIn,
               assetIn: poolTokens.first.address,
               assetOut: poolTokens.second.address,
-              amount: fp(100),
+              amount: swapAmount,
               userData: '0x',
             };
             const funds = {
@@ -768,11 +776,33 @@ describe('ManagedPool', function () {
             const limit = 0; // Minimum amount out
             const deadline = MAX_UINT256;
 
+            const prevInvariant = await mockMath.invariant(poolWeights, upscaledBalances);
+
+            const adjustedAmountIn = upscaledSwapAmount.mul(fp(1).sub(swapFeePercentage)).div(fp(1));
+            const amountOut = await mockMath.outGivenIn(
+              upscaledBalances[0],
+              poolWeights[0],
+              upscaledBalances[1],
+              poolWeights[1],
+              adjustedAmountIn
+            );
+
+            const postBalances = [upscaledBalances[0].add(upscaledSwapAmount), upscaledBalances[1].sub(amountOut)];
+            const postInvariant = await mockMath.invariant(poolWeights, postBalances);
+            const totalSupply = await pool.totalSupply();
+
+            const expectedProtocolFees = await mockMath.calculateDueProtocolSwapFeeBPTAmount(
+              totalSupply,
+              prevInvariant,
+              postInvariant,
+              protocolFeePercentage
+            );
+
             await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
 
             bptFeeBalance = await pool.balanceOf(protocolFeesCollector.address);
 
-            expect(bptFeeBalance).to.gt(0);
+            expect(bptFeeBalance).to.equalWithError(expectedProtocolFees, 0.000001);
           });
         });
 
@@ -783,7 +813,7 @@ describe('ManagedPool', function () {
               kind: SwapKind.GivenOut,
               assetIn: poolTokens.second.address,
               assetOut: poolTokens.first.address,
-              amount: fp(100),
+              amount: swapAmount,
               userData: '0x',
             };
             const funds = {
@@ -795,11 +825,39 @@ describe('ManagedPool', function () {
             const limit = MAX_UINT256; // Maximum amount in
             const deadline = MAX_UINT256;
 
+            const prevInvariant = await mockMath.invariant(poolWeights, upscaledBalances);
+
+            const amountIn = await mockMath.inGivenOut(
+              upscaledBalances[1],
+              poolWeights[1],
+              upscaledBalances[0],
+              poolWeights[0],
+              upscaledSwapAmount
+            );
+
+            // Has to be a better way to do this...
+            const proportion = fp(1).sub(swapFeePercentage);
+            const adjustedAmountIn = fp(fromFp(amountIn).toNumber() / fromFp(proportion).toNumber());
+
+            const postBalances = [
+              upscaledBalances[1].sub(upscaledSwapAmount),
+              upscaledBalances[0].add(adjustedAmountIn),
+            ];
+            const postInvariant = await mockMath.invariant(poolWeights, postBalances);
+            const totalSupply = await pool.totalSupply();
+
+            const expectedProtocolFees = await mockMath.calculateDueProtocolSwapFeeBPTAmount(
+              totalSupply,
+              prevInvariant,
+              postInvariant,
+              protocolFeePercentage
+            );
+
             await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
 
             bptFeeBalance = await pool.balanceOf(protocolFeesCollector.address);
 
-            expect(bptFeeBalance).to.gt(0);
+            expect(bptFeeBalance).to.equalWithError(expectedProtocolFees, 0.000001);
           });
         });
       });
@@ -807,10 +865,12 @@ describe('ManagedPool', function () {
       describe('does not pay on join/exit', () => {
         context('with balance changes', () => {
           let currentBalances: BigNumber[];
+          let bptIn: BigNumber;
 
-          sharedBeforeEach('simulate doubled initial balances', async () => {
+          sharedBeforeEach('simulate increased initial balances', async () => {
             // 4/3 of the initial balances
             currentBalances = initialBalances.map((balance) => balance.mul(4).div(3));
+            bptIn = (await pool.balanceOf(owner)).div(10);
           });
 
           it('no protocol fees on join exact tokens in for BPT out', async () => {
@@ -823,7 +883,7 @@ describe('ManagedPool', function () {
           it('no protocol fees on exit exact BPT in for one token out', async () => {
             await pool.singleExitGivenIn({
               from: owner,
-              bptIn: fp(0.5),
+              bptIn: bptIn,
               token: 0,
               currentBalances,
               protocolFeePercentage,
@@ -837,7 +897,7 @@ describe('ManagedPool', function () {
           it('no protocol fees on exit exact BPT in for all tokens out', async () => {
             await pool.multiExitGivenIn({
               from: owner,
-              bptIn: fp(1),
+              bptIn: bptIn,
               currentBalances,
               protocolFeePercentage,
             });
@@ -848,10 +908,12 @@ describe('ManagedPool', function () {
           });
 
           it('no protocol fees on exit BPT In for exact tokens out', async () => {
+            const { balances } = await pool.getTokens();
+
             await pool.exitGivenOut({
               from: owner,
-              amountsOut: fp(1),
-              currentBalances,
+              amountsOut: [balances[0].div(5), balances[1].div(5)],
+              maximumBptIn: MAX_UINT256,
               protocolFeePercentage,
             });
 

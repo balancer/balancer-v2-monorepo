@@ -400,7 +400,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override returns (uint256) {
         // Swaps are disabled while the contract is paused.
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
@@ -414,13 +414,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 amountOut = super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
         uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
-            currentBalanceTokenIn.add(swapRequest.amount),
+            currentBalanceTokenIn.add(_addSwapFeeAmount(swapRequest.amount)),
             currentBalanceTokenOut.sub(amountOut)
         );
 
         _payProtocolAndManagementFees(normalizedWeights, preSwapBalances, postSwapBalances);
 
-        // amountOut tokens are exiting the Pool, so we round down.
         return amountOut;
     }
 
@@ -428,7 +427,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override returns (uint256) {
         // Swaps are disabled while the contract is paused.
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
@@ -440,11 +439,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
         uint256 amountIn = super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
-        uint256 scalingFactorTokenIn = _scalingFactor(swapRequest.tokenIn);
-        uint256 unscaledAmountIn = _addSwapFeeAmount(_downscaleUp(amountIn, scalingFactorTokenIn));
 
         uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
-            currentBalanceTokenIn.add(_upscale(unscaledAmountIn, scalingFactorTokenIn)),
+            currentBalanceTokenIn.add(_addSwapFeeAmount(amountIn)),
             currentBalanceTokenOut.sub(swapRequest.amount)
         );
 

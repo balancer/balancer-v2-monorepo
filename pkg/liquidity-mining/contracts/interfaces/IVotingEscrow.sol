@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "./IAuthorizerAdaptor.sol";
 
@@ -21,5 +22,24 @@ import "./IAuthorizerAdaptor.sol";
 // solhint-disable func-name-mixedcase
 
 interface IVotingEscrow {
+    struct Point {
+        int128 bias;
+        int128 slope; // - dweight / dt
+        uint256 ts;
+        uint256 blk; // block
+    }
+
+    function epoch() external view returns (uint256);
+
+    function totalSupply(uint256 timestamp) external view returns (uint256);
+
+    function user_point_epoch(address user) external view returns (uint256);
+
+    function point_history(uint256 timestamp) external view returns (Point memory);
+
+    function user_point_history(address user, uint256 timestamp) external view returns (Point memory);
+
+    function checkpoint() external;
+
     function admin() external view returns (IAuthorizerAdaptor);
 }
