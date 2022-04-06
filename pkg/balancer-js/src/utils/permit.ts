@@ -18,9 +18,20 @@ export const signPermit = async (
 
   if (!nonce) nonce = (await token.nonces(ownerAddress)) as BigNumberish;
 
+  // Hack around some tokens not exposing a `version()` function.
+  // If they do then use it, otherwise assume that their version is "1".
+  let version = '1';
+  try {
+    if (token.version) {
+      version = await token.version();
+    }
+  } catch {
+    // eslint-disable-prev-line no-empty
+  }
+
   const domain = {
     name: await token.name(),
-    version: '1',
+    version,
     chainId,
     verifyingContract: token.address,
   };
