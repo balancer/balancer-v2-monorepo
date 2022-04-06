@@ -279,7 +279,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
 
             if (!force) {
                 // Checkpointing N times within a single week is completely equivalent to checkpointing once at the end.
-                // We then want to get as close as possible to a single checkpoint every Thurs 00:00 UTC to save gas.
+                // We then want to get as close as possible to a single checkpoint every Wed 23:59 UTC to save gas.
 
                 // We then skip checkpointing if we're in the same week as the previous checkpoint.
                 bool alreadyCheckpointedThisWeek = _roundDownTimestamp(block.timestamp) ==
@@ -289,7 +289,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
                 bool nearingEndOfWeek = _roundUpTimestamp(block.timestamp) - block.timestamp < 1 days;
 
                 // This ensures that we checkpoint once at the beginning of the week and again for each user interaction
-                // towards the end of the weekat the end of the week to give an accurate final reading of the balance.
+                // towards the end of the week to give an accurate final reading of the balance.
                 if (alreadyCheckpointedThisWeek && !nearingEndOfWeek) {
                     return;
                 }
