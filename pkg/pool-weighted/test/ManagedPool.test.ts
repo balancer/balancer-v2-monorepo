@@ -688,47 +688,6 @@ describe('ManagedPool', function () {
       });
     });
 
-    describe('Non-delegated protocol fees', () => {
-      const swapFeePercentage = fp(0.02);
-      const protocolSwapFeePercentage = fp(0.1); // Fixed 10%
-      const managementSwapFeePercentage = fp(0); // Set to zero to isolate BPT fees
-
-      sharedBeforeEach('deploy pool', async () => {
-        const vault = await Vault.create();
-
-        const params = {
-          tokens: poolTokens,
-          weights: poolWeights,
-          owner: owner.address,
-          poolType: WeightedPoolType.MANAGED_POOL,
-          swapEnabledOnStart: true,
-          vault,
-          swapFeePercentage,
-          managementSwapFeePercentage,
-          protocolSwapFeePercentage,
-        };
-        pool = await WeightedPool.create(params);
-      });
-
-      it('cannot update protocol fees when not delegated', async () => {
-        await expect(pool.instance.updateCachedProtocolSwapFeePercentage()).to.be.revertedWith(
-          'UNAUTHORIZED_OPERATION'
-        );
-      });
-
-      it('reports the protocol swap fee', async () => {
-        const feePercentage = await pool.instance.getCachedProtocolSwapFeePercentage();
-
-        expect(feePercentage).to.equal(protocolSwapFeePercentage);
-      });
-
-      it('indicates no delegation', async () => {
-        const delegatedFee = await pool.instance.getProtocolFeeDelegation();
-
-        expect(delegatedFee).to.be.false;
-      });
-    });
-
     describe('BPT protocol fees', () => {
       let protocolFeesCollector: Contract;
       let vault: Vault;
@@ -961,56 +920,6 @@ describe('ManagedPool', function () {
             expectEvent.inReceipt(await receipt.wait(), 'ManagementFeePercentageChanged', {
               managementFeePercentage: NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE,
             });
-          });
-        });
-      });
-
-      describe.skip('fee collection', () => {
-        describe('swaps', () => {
-          it('collects management fees on swaps given in', async () => {
-            const singleSwap = {
-              poolId: await pool.getPoolId(),
-              kind: SwapKind.GivenIn,
-              assetIn: poolTokens.first.address,
-              assetOut: poolTokens.second.address,
-              amount: fp(0.01),
-              userData: '0x',
-            };
-            const funds = {
-              sender: owner.address,
-              fromInternalBalance: false,
-              recipient: other.address,
-              toInternalBalance: false,
-            };
-            const limit = 0; // Minimum amount out
-            const deadline = MAX_UINT256;
-
-            await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
-
-            expect(true).to.be.true;
-          });
-
-          it('collects management fees on swaps given out', async () => {
-            const singleSwap = {
-              poolId: await pool.getPoolId(),
-              kind: SwapKind.GivenOut,
-              assetIn: poolTokens.second.address,
-              assetOut: poolTokens.first.address,
-              amount: fp(0.01),
-              userData: '0x',
-            };
-            const funds = {
-              sender: owner.address,
-              fromInternalBalance: false,
-              recipient: other.address,
-              toInternalBalance: false,
-            };
-            const limit = MAX_UINT256; // Maximum amount in
-            const deadline = MAX_UINT256;
-
-            await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
-
-            expect(true).to.be.true;
           });
         });
       });
