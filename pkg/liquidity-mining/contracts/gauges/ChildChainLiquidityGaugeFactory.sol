@@ -76,7 +76,7 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory {
     /**
      * @notice Returns the address of the gauge belonging to `pool`.
      */
-    function getPoolGauge(address pool) external view returns (ILiquidityGauge) {
+    function getPoolGauge(address pool) public view returns (ILiquidityGauge) {
         return ILiquidityGauge(_poolGauge[pool]);
     }
 
@@ -90,7 +90,7 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory {
     /**
      * @notice Returns the address of the streamer belonging to `gauge`.
      */
-    function getGaugeStreamer(address gauge) external view returns (address) {
+    function getGaugeStreamer(address gauge) public view returns (address) {
         return _gaugeStreamer[gauge];
     }
 
@@ -106,6 +106,13 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory {
      */
     function getGaugePool(address gauge) external view returns (IERC20) {
         return IRewardsOnlyGauge(gauge).lp_token();
+    }
+
+    /**
+     * @notice Returns the address of the streamer belonging to `pool`'s gauge.
+     */
+    function getPoolStreamer(address pool) external view returns (address) {
+        return getGaugeStreamer(address(getPoolGauge(pool)));
     }
 
     /**
