@@ -288,8 +288,8 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
                 // overspilling into the next week. To mitigate this, we checkpoint if we're near the end of the week.
                 bool nearingEndOfWeek = _roundUpTimestamp(block.timestamp) - block.timestamp < 1 days;
 
-                // This ensures that we checkpoint once at the beginning of the week and again for each user interaction 
-                // towards the end of the weekat the end of the week to give an accurate final reading of the balance. 
+                // This ensures that we checkpoint once at the beginning of the week and again for each user interaction
+                // towards the end of the weekat the end of the week to give an accurate final reading of the balance.
                 if (alreadyCheckpointedThisWeek && !nearingEndOfWeek) {
                     return;
                 }
