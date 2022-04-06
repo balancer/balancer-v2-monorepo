@@ -68,11 +68,12 @@ def add_reward(_token: address, _distributor: address, _duration: uint256):
     self._add_reward(_token, _distributor, _duration)
 
 @external
-def remove_reward(_token: address):
+def remove_reward(_token: address, _recipient: address):
     """
     @notice Remove a reward token
     @dev Any remaining balance of the reward token is transferred to the owner
     @param _token Address of the reward token
+    @param _recipient Address to receive the removed tokens
     """
     assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
     assert self.reward_data[_token].distributor != ZERO_ADDRESS, "Reward token not added"
@@ -83,7 +84,7 @@ def remove_reward(_token: address):
         _token,
         concat(
             method_id("transfer(address,uint256)"),
-            convert(msg.sender, bytes32),
+            convert(_recipient, bytes32),
             convert(amount, bytes32),
         ),
         max_outsize=32,
