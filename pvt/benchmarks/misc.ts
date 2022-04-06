@@ -81,18 +81,15 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
     switch (poolName) {
       case 'ManagedPool': {
         const newPoolParams: ManagedPoolParams = {
-          vault: vault.address,
           name: name,
           symbol: symbol,
           tokens: tokens.addresses,
           normalizedWeights: weights,
           assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
           swapFeePercentage: swapFeePercentage,
-          pauseWindowDuration: MONTH * 3,
-          bufferPeriodDuration: MONTH,
-          owner: creator.address,
           swapEnabledOnStart: true,
           mustAllowlistLPs: false,
+          protocolSwapFeePercentage: MAX_UINT256,
           managementSwapFeePercentage: managementFee,
         };
 
@@ -108,9 +105,9 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           canSetMustAllowlistLPs: true,
           canSetCircuitBreakers: true,
           canChangeTokens: true,
-          canChangeMgmtSwapFee: true,
+          canChangeMgmtFees: true,
         };
-        params = [newPoolParams, basePoolRights, managedPoolRights, DAY];
+        params = [newPoolParams, basePoolRights, managedPoolRights, DAY, creator.address];
         break;
       }
       case 'OracleWeightedPool': {
