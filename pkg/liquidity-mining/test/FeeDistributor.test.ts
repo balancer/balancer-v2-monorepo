@@ -59,7 +59,7 @@ describe('FeeDistributor', () => {
     });
 
     // startTime is rounded up to the beginning of next week
-    startTime = roundUpTimestamp(Math.floor(new Date().getTime() / 1000));
+    startTime = roundUpTimestamp(await currentTimestamp());
     feeDistributor = await deploy('FeeDistributor', {
       args: [votingEscrow.address, startTime],
     });
