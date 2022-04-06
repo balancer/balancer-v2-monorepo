@@ -101,7 +101,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @param token - The ERC20 token address to query.
      */
     function getUserTokenTimeCursor(address user, IERC20 token) external view override returns (uint256) {
-        return _getUserTokenTimeCursor(user,token);
+        return _getUserTokenTimeCursor(user, token);
     }
 
     /**
