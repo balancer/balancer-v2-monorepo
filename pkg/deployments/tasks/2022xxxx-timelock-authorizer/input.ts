@@ -16,9 +16,9 @@ const Vault = new Task('20210418-vault');
 const Authorizer = new Task('20210418-authorizer');
 
 export default {
+  Vault,
+  Authorizer,
   mainnet: {
-    Vault,
-    Authorizer,
     root: '0xE0a171587b1Cae546E069A943EDa96916F5EE977',
     rolesData: [
       {
