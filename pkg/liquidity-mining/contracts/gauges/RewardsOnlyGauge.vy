@@ -125,6 +125,14 @@ def decimals() -> uint256:
     return 18
 
 @view
+@external
+def version() -> String[8]:
+    """
+    @notice Get the version of this gauge contract
+    """
+    return VERSION
+
+@view
 @internal
 def _get_allowance(owner: address, spender: address) -> uint256:
     """
