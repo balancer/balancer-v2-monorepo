@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
@@ -455,9 +456,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         if (userTimeCursor > 0) return userTimeCursor;
         // This is the first time that the user has interacted with this token.
         // We then start from the latest out of either when `user` first locked veBAL or `token` was first checkpointed.
-        uint256 userStartTime = _userStartTime[user];
-        uint256 tokenStartTime = _tokenStartTime[token];
-        return userStartTime > tokenStartTime ? userStartTime : tokenStartTime;
+        return Math.max(_userStartTime[user], _tokenStartTime[token]);
     }
 
     /**
