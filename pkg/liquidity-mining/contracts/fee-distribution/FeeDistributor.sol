@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
@@ -49,6 +50,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     mapping(IERC20 => mapping(uint256 => uint256)) private _tokensPerWeek;
 
     // User State
+    mapping(address => uint256) private _userStartTime;
     mapping(address => uint256) private _userTimeCursor;
     mapping(address => uint256) private _userLastEpochCheckpointed;
     mapping(address => mapping(uint256 => uint256)) private _userBalanceAtTimestamp;
@@ -99,7 +101,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @param token - The ERC20 token address to query.
      */
     function getUserTokenTimeCursor(address user, IERC20 token) external view override returns (uint256) {
-        return _userTokenTimeCursor[user][token];
+        return _getUserTokenTimeCursor(user, token);
     }
 
     /**
@@ -367,6 +369,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         // i.e. the timestamp of the first Thursday after they locked.
         if (weekCursor == 0) {
             weekCursor = _roundUpTimestamp(userPoint.ts);
+            _userStartTime[user] = weekCursor;
         }
 
         // Sanity check - can't claim fees from before fee distribution started.
@@ -450,7 +453,10 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      */
     function _getUserTokenTimeCursor(address user, IERC20 token) internal view returns (uint256) {
         uint256 userTimeCursor = _userTokenTimeCursor[user][token];
-        return userTimeCursor > 0 ? userTimeCursor : _tokenStartTime[token];
+        if (userTimeCursor > 0) return userTimeCursor;
+        // This is the first time that the user has interacted with this token.
+        // We then start from the latest out of either when `user` first locked veBAL or `token` was first checkpointed.
+        return Math.max(_userStartTime[user], _tokenStartTime[token]);
     }
 
     /**
