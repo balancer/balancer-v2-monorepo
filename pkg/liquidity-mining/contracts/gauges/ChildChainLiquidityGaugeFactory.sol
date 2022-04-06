@@ -50,11 +50,7 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory {
 
     event RewardsOnlyGaugeCreated(address indexed gauge, address indexed pool, address streamer);
 
-    constructor(
-        ILiquidityGauge gauge,
-        IChildChainStreamer childChainStreamer
-    ) {
-      
+    constructor(ILiquidityGauge gauge, IChildChainStreamer childChainStreamer) {
         _gaugeImplementation = gauge;
         _childChainStreamerImplementation = childChainStreamer;
     }
