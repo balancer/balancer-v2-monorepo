@@ -11,7 +11,7 @@ import { signPermit } from '@balancer-labs/balancer-js';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 
-describe.only('RewardsOnlyGauge', () => {
+describe('RewardsOnlyGauge', () => {
   let token: Token;
   let gauge: Contract;
 
