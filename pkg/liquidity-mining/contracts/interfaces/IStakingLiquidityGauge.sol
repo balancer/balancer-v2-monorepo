@@ -21,7 +21,7 @@ import "./ILiquidityGauge.sol";
 
 // For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
 // naming convention.
-// solhint-disable func-name-mixedcase
+// solhint-disable func-name-mixedcase, var-name-mixedcase
 
 interface IStakingLiquidityGauge is ILiquidityGauge, IERC20 {
     struct Reward {

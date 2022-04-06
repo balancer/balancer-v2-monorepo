@@ -19,16 +19,17 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "../interfaces/IStakingLiquidityGauge.sol";
 
+// solhint-disable not-rely-on-time
+
 /**
  * @title DistributionScheduler
  * @notice Scheduler for setting up permissionless distributions of liquidity gauge reward tokens.
- * @dev Any address may send tokens to the DistributionSchedule to be distributed among gauge depositors 
-
+ * @dev Any address may send tokens to the DistributionSchedule to be distributed among gauge depositors.
  */
 contract DistributionScheduler {
     using SafeERC20 for IERC20;
 
-    uint256 private constant MAX_REWARDS = 8;
+    uint256 private constant _MAX_REWARDS = 8;
 
     uint32 private constant _HEAD = 0;
     uint32 private constant _NULL = 0;
@@ -109,7 +110,7 @@ contract DistributionScheduler {
      * @param gauge - The gauge which is to distribute the reward token.
      */
     function startDistributions(IStakingLiquidityGauge gauge) external {
-        for (uint256 i = 0; i < MAX_REWARDS; ++i) {
+        for (uint256 i = 0; i < _MAX_REWARDS; ++i) {
             IERC20 token = gauge.reward_tokens(i);
             if (token == IERC20(0)) break;
 
@@ -198,8 +199,8 @@ contract DistributionScheduler {
             require(rewardAmount <= type(uint224).max, "Reward amount overflow");
             rewardsList[nextNodeKey].amount = uint224(rewardAmount);
         } else {
-            // We're inserting a node in between `currentNodeKey` and `nextNodeKey`.
-            // We then update `currentNodeKey` to point to the newly inserted node and the new node point to `nextNodeKey`.
+            // We're inserting a node in between `currentNodeKey` and `nextNodeKey` so then update
+            // `currentNodeKey` to point to the newly inserted node and the new node to point to `nextNodeKey`.
             rewardsList[insertedNodeKey] = RewardNode(amount, nextNodeKey);
             rewardsList[currentNodeKey].nextNodeKey = insertedNodeKey;
         }

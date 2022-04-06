@@ -17,6 +17,8 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
+// solhint-disable func-name-mixedcase, var-name-mixedcase, not-rely-on-time
+
 /**
  * @dev This contract is designed to mock LiquidityGaugeV5's interface for distributing external tokens.
  */
@@ -30,7 +32,7 @@ contract MockRewardTokenDistributor {
         uint256 integral;
     }
 
-    uint256 _rewardCount;
+    uint256 private _rewardCount;
     IERC20[8] private _rewardTokens;
     mapping(IERC20 => Reward) private _rewardData;
 
