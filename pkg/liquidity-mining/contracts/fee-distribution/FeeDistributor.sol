@@ -33,8 +33,6 @@ import "../interfaces/IVotingEscrow.sol";
 contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    uint256 private constant _TOKEN_CHECKPOINT_DEADLINE = 1 days;
-
     IVotingEscrow private immutable _votingEscrow;
 
     uint256 private immutable _startTime;
@@ -280,9 +278,23 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             _tokenStartTime[token] = _roundDownTimestamp(block.timestamp);
         } else {
             timeSinceLastCheckpoint = block.timestamp - lastTokenTime;
-            if (!force && timeSinceLastCheckpoint < _TOKEN_CHECKPOINT_DEADLINE) {
-                // We can prevent a lot of SSTORES by only checkpointing tokens at a minimum interval
-                return;
+
+            if (!force) {
+                // Checkpointing N times within a single week is completely equivalent to checkpointing once at the end.
+                // We then want to get as close as possible to a single checkpoint every Wed 23:59 UTC to save gas.
+
+                // We then skip checkpointing if we're in the same week as the previous checkpoint.
+                bool alreadyCheckpointedThisWeek = _roundDownTimestamp(block.timestamp) ==
+                    _roundDownTimestamp(lastTokenTime);
+                // However we want to ensure that all of this week's fees are assigned to the current week without
+                // overspilling into the next week. To mitigate this, we checkpoint if we're near the end of the week.
+                bool nearingEndOfWeek = _roundUpTimestamp(block.timestamp) - block.timestamp < 1 days;
+
+                // This ensures that we checkpoint once at the beginning of the week and again for each user interaction
+                // towards the end of the week to give an accurate final reading of the balance.
+                if (alreadyCheckpointedThisWeek && !nearingEndOfWeek) {
+                    return;
+                }
             }
         }
 
