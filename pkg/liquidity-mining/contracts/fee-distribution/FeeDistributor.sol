@@ -278,8 +278,8 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             timeSinceLastCheckpoint = block.timestamp - lastTokenTime;
 
             if (!force) {
-                // Checkpointing N times within a single week is completely equivalent to checkpointing once at the end
-                // We then want to get as close as possible to a single checkpoint per week at Thurs 00:00 UTC.
+                // Checkpointing N times within a single week is completely equivalent to checkpointing once at the end.
+                // We then want to get as close as possible to a single checkpoint every Thurs 00:00 UTC to save gas.
 
                 // We then skip checkpointing if we're in the same week as the previous checkpoint.
                 bool alreadyCheckpointedThisWeek = _roundDownTimestamp(block.timestamp) ==
@@ -288,8 +288,8 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
                 // overspilling into the next week. To mitigate this, we checkpoint if we're near the end of the week.
                 bool nearingEndOfWeek = _roundUpTimestamp(block.timestamp) - block.timestamp < 1 days;
 
-                // This ensures that we get a single checkpoint for the beginning of the week and then multiple
-                // checkpoints to give an accurate reading of the token balance at the end of the week.
+                // This ensures that we checkpoint once at the beginning of the week and again for each user interaction 
+                // towards the end of the weekat the end of the week to give an accurate final reading of the balance. 
                 if (alreadyCheckpointedThisWeek && !nearingEndOfWeek) {
                     return;
                 }
