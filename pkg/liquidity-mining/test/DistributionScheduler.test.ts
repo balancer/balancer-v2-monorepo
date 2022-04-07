@@ -154,6 +154,7 @@ describe('DistributionScheduler', () => {
 
               const newRewardNode = await getRewardNode(startTime);
               expect(newRewardNode.amount).to.be.eq(1);
+              expect(newRewardNode.nextNodeKey).to.be.eq(NULL);
             });
           });
 
