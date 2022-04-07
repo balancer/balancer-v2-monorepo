@@ -33,7 +33,7 @@ contract ERC4626LinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseW
         string memory name,
         string memory symbol,
         IERC20 mainToken,
-        IERC20 wrappedToken,
+        IERC4626 wrappedToken,
         uint256 upperTarget,
         uint256 swapFeePercentage,
         address owner

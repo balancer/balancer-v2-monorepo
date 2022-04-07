@@ -38,7 +38,7 @@ describe('Internal Balance', () => {
     tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
     weth = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
-    authorizer = await deploy('Authorizer', { args: [admin.address, ZERO_ADDRESS] });
+    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
     vault = await deploy('Vault', { args: [authorizer.address, weth.address, MONTH, MONTH] });
   });
 

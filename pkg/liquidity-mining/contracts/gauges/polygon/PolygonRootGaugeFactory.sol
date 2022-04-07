@@ -20,7 +20,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 import "./PolygonRootGauge.sol";
 
 contract PolygonRootGaugeFactory {
-    ISingleRecipientLiquidityGauge private _gaugeImplementation;
+    ISingleRecipientGauge private _gaugeImplementation;
 
     mapping(address => bool) private _isGaugeFromFactory;
     mapping(address => address) private _recipientGauge;
@@ -38,7 +38,7 @@ contract PolygonRootGaugeFactory {
     /**
      * @notice Returns the address of the implementation used for gauge deployments.
      */
-    function getGaugeImplementation() public view returns (ISingleRecipientLiquidityGauge) {
+    function getGaugeImplementation() public view returns (ISingleRecipientGauge) {
         return _gaugeImplementation;
     }
 
@@ -60,7 +60,7 @@ contract PolygonRootGaugeFactory {
      * @notice Returns the recipient of `gauge`.
      */
     function getGaugeRecipient(address gauge) external view returns (address) {
-        return ISingleRecipientLiquidityGauge(gauge).getRecipient();
+        return ISingleRecipientGauge(gauge).getRecipient();
     }
 
     /**
@@ -75,7 +75,7 @@ contract PolygonRootGaugeFactory {
 
         address gauge = Clones.clone(address(_gaugeImplementation));
 
-        ISingleRecipientLiquidityGauge(gauge).initialize(recipient);
+        ISingleRecipientGauge(gauge).initialize(recipient);
 
         _isGaugeFromFactory[gauge] = true;
         _recipientGauge[recipient] = gauge;

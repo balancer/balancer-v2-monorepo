@@ -64,8 +64,9 @@ async function deployControllerAndPool(
   canSetMustAllowlistLPs = true,
   canSetCircuitBreakers = true,
   canChangeTokens = true,
-  canChangeMgmtSwapFee = true,
-  swapEnabledOnStart = true
+  canChangeMgmtFees = true,
+  swapEnabledOnStart = true,
+  protocolSwapFeePercentage = MAX_UINT256
 ) {
   const basePoolRights: BasePoolRights = {
     canTransferOwnership: canTransfer,
@@ -79,7 +80,7 @@ async function deployControllerAndPool(
     canSetMustAllowlistLPs: canSetMustAllowlistLPs,
     canSetCircuitBreakers: canSetCircuitBreakers,
     canChangeTokens: canChangeTokens,
-    canChangeMgmtSwapFee: canChangeMgmtSwapFee,
+    canChangeMgmtFees: canChangeMgmtFees,
   };
 
   poolController = await deploy('ManagedPoolController', {
@@ -98,6 +99,7 @@ async function deployControllerAndPool(
     swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
     poolType: WeightedPoolType.MANAGED_POOL,
     swapEnabledOnStart: swapEnabledOnStart,
+    protocolSwapFeePercentage: protocolSwapFeePercentage,
   };
   pool = await WeightedPool.create(params);
 }
@@ -328,8 +330,8 @@ describe('ManagedPoolController', function () {
       });
     });
 
-    context('with canChangeMgmtSwapFee set to false', () => {
-      sharedBeforeEach('deploy controller (canChangeMgmtSwapFee false)', async () => {
+    context('with canChangeMgmtFees set to false', () => {
+      sharedBeforeEach('deploy controller (canChangeMgmtFees false)', async () => {
         await deployControllerAndPool(true, true, true, true, true, false, true, true, false);
         await poolController.initialize(pool.address);
       });
@@ -394,8 +396,8 @@ describe('ManagedPoolController', function () {
       });
     });
 
-    context('with canChangeMgmtSwapFee set to false', () => {
-      sharedBeforeEach('deploy controller (canChangeMgmtSwapFee false)', async () => {
+    context('with canChangeMgmtFees set to false', () => {
+      sharedBeforeEach('deploy controller (canChangeMgmtFees false)', async () => {
         await deployControllerAndPool(true, true, true, true, true, false, false, false, false);
       });
 

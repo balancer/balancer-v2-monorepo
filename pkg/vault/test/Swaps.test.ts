@@ -18,6 +18,7 @@ import {
   PoolSpecialization,
   RelayerAuthorization,
 } from '@balancer-labs/balancer-js';
+import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import {
@@ -62,7 +63,7 @@ describe('Swaps', () => {
   sharedBeforeEach('deploy vault and tokens', async () => {
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'WETH']);
 
-    authorizer = await deploy('Authorizer', { args: [admin.address, ZERO_ADDRESS] });
+    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
     vault = await deploy('Vault', { args: [authorizer.address, tokens.WETH.address, 0, 0] });
 
     await tokens.mint({ to: [lp, trader], amount: bn(200e18) });

@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 import "../StakelessGauge.sol";
 
-import "../../interfaces/ISingleRecipientLiquidityGauge.sol";
+import "../../interfaces/ISingleRecipientGauge.sol";
 
 interface IPolygonRootChainManager {
     function depositFor(
@@ -26,7 +26,7 @@ interface IPolygonRootChainManager {
     ) external;
 }
 
-contract PolygonRootGauge is ISingleRecipientLiquidityGauge, StakelessGauge {
+contract PolygonRootGauge is ISingleRecipientGauge, StakelessGauge {
     IPolygonRootChainManager private immutable _polygonRootChainManager;
     address private immutable _polygonERC20Predicate;
 
