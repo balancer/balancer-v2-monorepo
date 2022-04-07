@@ -198,9 +198,7 @@ def set_reward_distributor(_token: address, _distributor: address):
     @param _token Address of the reward token
     @param _distributor Reward distributor
     """
-    current_distributor: address = self.reward_data[_reward_token].distributor
-
-    assert msg.sender == current_distributor or msg.sender == AUTHORIZER_ADAPTOR
+    assert msg.sender == self.reward_data[_token].distributor or msg.sender == AUTHORIZER_ADAPTOR
     self.reward_data[_token].distributor = _distributor
 
 # Initializer
