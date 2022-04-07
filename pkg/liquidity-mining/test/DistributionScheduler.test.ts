@@ -108,7 +108,7 @@ describe('DistributionScheduler', () => {
 
       context('when distribution is scheduled in the past', () => {
         it('reverts', async () => {
-          await expect(scheduleDistribution(1, 0)).to.be.revertedWith(
+          await expect(scheduleDistribution(1, (await currentTimestamp()).sub(1))).to.be.revertedWith(
             'Distribution can only be scheduled for the future'
           );
         });
