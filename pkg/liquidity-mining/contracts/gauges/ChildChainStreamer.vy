@@ -8,6 +8,14 @@
 
 from vyper.interfaces import ERC20
 
+event RewardDistributorUpdated:
+    reward_token: indexed(address)
+    distributor: address
+
+event RewardDurationUpdated:
+    reward_token: indexed(address)
+    duration: uint256
+
 struct RewardToken:
     distributor: address
     period_finish: uint256
@@ -55,6 +63,9 @@ def _add_reward(_token: address, _distributor: address, _duration: uint256):
     self.reward_count = idx + 1
     self.reward_data[_token].distributor = _distributor
     self.reward_data[_token].duration = _duration
+    log RewardDistributorUpdated(_token, _distributor)
+    log RewardDurationUpdated(_token, _duration)
+
 
 @external
 def add_reward(_token: address, _distributor: address, _duration: uint256):
@@ -189,6 +200,7 @@ def set_reward_duration(_token: address, _duration: uint256):
     assert msg.sender == self.reward_data[_token].distributor  # dev: only owner
     assert block.timestamp > self.reward_data[_token].period_finish, "Reward period still active"
     self.reward_data[_token].duration = _duration
+    log RewardDurationUpdated(_token, _duration)
 
 
 @external
@@ -200,6 +212,7 @@ def set_reward_distributor(_token: address, _distributor: address):
     """
     assert msg.sender == self.reward_data[_token].distributor or msg.sender == AUTHORIZER_ADAPTOR
     self.reward_data[_token].distributor = _distributor
+    log RewardDistributorUpdated(_token, _distributor)
 
 # Initializer
 
