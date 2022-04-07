@@ -222,6 +222,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
 
         _setManagementAumFeePercentage(params.managementAumFeePercentage);
+
         // Update flag (even if false, for consistency)
         _setMiscData(_getMiscData().insertBool(delegatedProtocolFees, _DELEGATES_PROTOCOL_FEES_OFFSET));
 
@@ -500,8 +501,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal virtual override whenNotPaused returns (uint256) {
-        // Swaps are disabled while the contract is paused.
+    ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         (uint256[] memory normalizedWeights, uint256[] memory preSwapBalances) = _getWeightsAndPreSwapBalances(
@@ -514,13 +514,12 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256 amountOut = super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
         uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
-            currentBalanceTokenIn.add(swapRequest.amount),
+            currentBalanceTokenIn.add(_addSwapFeeAmount(swapRequest.amount)),
             currentBalanceTokenOut.sub(amountOut)
         );
 
         _payProtocolAndManagementFees(normalizedWeights, preSwapBalances, postSwapBalances);
 
-        // amountOut tokens are exiting the Pool, so we round down.
         return amountOut;
     }
 
@@ -528,8 +527,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal virtual override whenNotPaused returns (uint256) {
-        // Swaps are disabled while the contract is paused.
+    ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         (uint256[] memory normalizedWeights, uint256[] memory preSwapBalances) = _getWeightsAndPreSwapBalances(
@@ -540,11 +538,9 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
         uint256 amountIn = super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
-        uint256 scalingFactorTokenIn = _scalingFactor(swapRequest.tokenIn);
-        uint256 unscaledAmountIn = _addSwapFeeAmount(_downscaleUp(amountIn, scalingFactorTokenIn));
 
         uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
-            currentBalanceTokenIn.add(_upscale(unscaledAmountIn, scalingFactorTokenIn)),
+            currentBalanceTokenIn.add(_addSwapFeeAmount(amountIn)),
             currentBalanceTokenOut.sub(swapRequest.amount)
         );
 
@@ -862,6 +858,13 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // Collect fees based on the time elapsed
         if (currentTime > lastCollection) {
+            // Reset the collection timer to the current block
+            _lastAumFeeCollectionTimestamp = currentTime;
+
+            if (getManagementAumFeePercentage() == 0) {
+                return;
+            }
+
             uint256 elapsedTime = currentTime - lastCollection;
             // Similar to BPT swap fee calculation, collect fees equal to the AUM % after minting
             // F is the AUM fee percentage, S is the totalSupply, and x is the amount to mint after 1 year:
@@ -870,25 +873,11 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             // x(1 - F) = FS
             // x = S * F/(1 - F); per annual time period
             // Final value needs to be annualized: multiply by elapsedTime/(365 days)
-            //
-            uint256 feePct = _managementAumFeePercentage.divDown(_managementAumFeePercentage.complement());
+            uint256 feePct = getManagementAumFeePercentage().divDown(getManagementAumFeePercentage().complement());
             uint256 timePeriodPct = elapsedTime.mulUp(FixedPoint.ONE).divDown(365 days);
             uint256 bptAmount = totalSupply().mulDown(feePct).mulDown(timePeriodPct);
 
             emit ManagementAumFeeCollected(bptAmount);
-
-            // Reset the collection timer to the current block
-            _lastAumFeeCollectionTimestamp = currentTime;
-
-            // Compute the protocol's share of the AUM fee
-            address aumProtocolFeesCollector = address(getAumProtocolFeesCollector());
-
-            if (aumProtocolFeesCollector != address(0)) {
-                uint256 protocolBptAmount = bptAmount.mulUp(getAumProtocolFeesCollector().getAumFeePercentage());
-                bptAmount = bptAmount.sub(protocolBptAmount);
-
-                _mintPoolTokens(aumProtocolFeesCollector, protocolBptAmount);
-            }
 
             _mintPoolTokens(getOwner(), bptAmount);
         }
