@@ -34,7 +34,6 @@ import {
   GradualUpdateParams,
   WeightedPoolType,
   VoidResult,
-  TokenCollectedFees,
 } from './types';
 import {
   calculateInvariant,
@@ -67,6 +66,7 @@ export default class WeightedPool {
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
   reserveAssetManager: string;
 
@@ -85,8 +85,9 @@ export default class WeightedPool {
     poolType: WeightedPoolType,
     swapEnabledOnStart: boolean,
     mustAllowlistLPs: boolean,
-    managementSwapFeePercentage: BigNumberish,
-    reserveAssetManager: string
+    reserveAssetManager: string,
+    protocolSwapFeePercentage: BigNumberish,
+    managementSwapFeePercentage: BigNumberish
   ) {
     this.instance = instance;
     this.poolId = poolId;
@@ -98,6 +99,7 @@ export default class WeightedPool {
     this.poolType = poolType;
     this.swapEnabledOnStart = swapEnabledOnStart;
     this.mustAllowlistLPs = mustAllowlistLPs;
+    this.protocolSwapFeePercentage = protocolSwapFeePercentage;
     this.managementSwapFeePercentage = managementSwapFeePercentage;
     this.reserveAssetManager = reserveAssetManager;
   }
@@ -698,10 +700,5 @@ export default class WeightedPool {
   async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualUpdateParams> {
     const pool = from ? this.instance.connect(from) : this.instance;
     return await pool.getGradualWeightUpdateParams();
-  }
-
-  async getCollectedManagementFees(): Promise<TokenCollectedFees> {
-    const result = await this.instance.getCollectedManagementFees();
-    return { amounts: result.collectedFees, tokenAddresses: result.tokens };
   }
 }

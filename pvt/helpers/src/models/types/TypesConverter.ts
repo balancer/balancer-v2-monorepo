@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 
 import { bn, fp } from '../../numbers';
 import { DAY, MONTH } from '../../time';
-import { ZERO_ADDRESS } from '../../constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
 
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
@@ -64,6 +64,7 @@ export default {
       oracleEnabled,
       swapEnabledOnStart,
       mustAllowlistLPs,
+      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       reserveAssetManager,
       poolType,
@@ -81,8 +82,9 @@ export default {
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
     if (undefined == reserveAssetManager) reserveAssetManager = ZERO_ADDRESS;
-    if (managementSwapFeePercentage === undefined) managementSwapFeePercentage = fp(0);
-    if (poolType === WeightedPoolType.ORACLE_WEIGHTED_POOL && tokens.length !== 2)
+    if (undefined == protocolSwapFeePercentage) protocolSwapFeePercentage = MAX_UINT256;
+    if (undefined == managementSwapFeePercentage) managementSwapFeePercentage = fp(0);
+    if (poolType == WeightedPoolType.ORACLE_WEIGHTED_POOL && tokens.length !== 2)
       throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
     return {
       tokens,
@@ -94,6 +96,7 @@ export default {
       oracleEnabled,
       swapEnabledOnStart,
       mustAllowlistLPs,
+      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       reserveAssetManager,
       owner: this.toAddress(params.owner),

@@ -5,7 +5,7 @@ import { BigNumber, Contract } from 'ethers';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 
@@ -58,24 +58,22 @@ describe('ManagedPoolFactory', function () {
     canTransfer = true,
     canChangeSwapFee = true,
     swapsEnabled = true,
-    mustAllowlistLPs = false
+    mustAllowlistLPs = false,
+    protocolSwapFeePercentage = MAX_UINT256
   ): Promise<Contract> {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
 
     const newPoolParams: ManagedPoolParams = {
-      vault: vault.address,
       name: NAME,
       symbol: SYMBOL,
       tokens: tokens.addresses,
       normalizedWeights: WEIGHTS,
       assetManagers: assetManagers,
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-      pauseWindowDuration: BASE_PAUSE_WINDOW_DURATION,
-      bufferPeriodDuration: BASE_PAUSE_WINDOW_DURATION,
-      owner: manager.address,
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
+      protocolSwapFeePercentage: protocolSwapFeePercentage,
       managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
     };
 
@@ -91,13 +89,13 @@ describe('ManagedPoolFactory', function () {
       canSetMustAllowlistLPs: true,
       canSetCircuitBreakers: true,
       canChangeTokens: true,
-      canChangeMgmtSwapFee: true,
+      canChangeMgmtFees: true,
     };
 
     const receipt = await (
       await factory
         .connect(manager)
-        .create(newPoolParams, basePoolRights, managedPoolRights, MIN_WEIGHT_CHANGE_DURATION)
+        .create(newPoolParams, basePoolRights, managedPoolRights, MIN_WEIGHT_CHANGE_DURATION, manager.address)
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
@@ -245,6 +243,18 @@ describe('ManagedPoolFactory', function () {
       const pool = await createPool(true, true, true, false);
 
       expect(await pool.getMustAllowlistLPs()).to.be.false;
+    });
+
+    it('pool created with protocol fees delegated', async () => {
+      const pool = await createPool(true, true, true, true);
+
+      expect(await pool.getProtocolFeeDelegation()).to.be.true;
+    });
+
+    it('pool created with protocol fees disabled', async () => {
+      const pool = await createPool(true, true, true, false, fp(0));
+
+      expect(await pool.getProtocolFeeDelegation()).to.be.false;
     });
   });
 });
