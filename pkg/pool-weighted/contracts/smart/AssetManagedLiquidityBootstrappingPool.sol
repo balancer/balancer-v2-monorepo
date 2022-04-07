@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import "@balancer-labs/v2-asset-manager-utils/contracts/IAssetManager.sol";
 
 import "../BaseWeightedPool.sol";
@@ -318,95 +319,71 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
 
     // Swap overrides - revert unless swaps are enabled
 
-    function onSwap(
-        SwapRequest memory request,
-        uint256 balanceTokenIn,
-        uint256 balanceTokenOut
-    ) public virtual override onlyVault(request.poolId) returns (uint256) {
+    function _onSwapGivenIn(
+        SwapRequest memory swapRequest,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
-        uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
-
-        uint256[] memory normalizedWeights = new uint256[](2);
-        normalizedWeights[0] = _getNormalizedWeight(request.tokenIn);
-        normalizedWeights[1] = _getNormalizedWeight(request.tokenOut);
-
-        uint256[] memory preSwapBalances = new uint256[](2);
-        preSwapBalances[0] = _upscale(balanceTokenIn, scalingFactorTokenIn);
-        preSwapBalances[1] = _upscale(balanceTokenOut, scalingFactorTokenOut);
-
-        // Broken out only because of "stack too deep"
-        return
-            (request.kind == IVault.SwapKind.GIVEN_IN ? _processSwapGivenIn : _processSwapGivenOut)(
-                request,
-                scalingFactorTokenIn,
-                scalingFactorTokenOut,
-                preSwapBalances,
-                normalizedWeights
-            );
-    }
-
-    function _processSwapGivenIn(
-        SwapRequest memory request,
-        uint256 scalingFactorTokenIn,
-        uint256 scalingFactorTokenOut,
-        uint256[] memory preSwapBalances,
-        uint256[] memory normalizedWeights
-    ) private returns (uint256) {
-        // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
-        uint256 amountInMinusSwapFees = _subtractSwapFeeAmount(request.amount);
-        amountInMinusSwapFees = _upscale(amountInMinusSwapFees, scalingFactorTokenIn);
-        request.amount = _upscale(request.amount, scalingFactorTokenIn);
-
-        uint256 amountOut = WeightedMath._calcOutGivenIn(
-            preSwapBalances[0],
-            normalizedWeights[0],
-            preSwapBalances[1],
-            normalizedWeights[1],
-            amountInMinusSwapFees
+        (uint256[] memory normalizedWeights, uint256[] memory preSwapBalances) = _getWeightsAndPreSwapBalances(
+            swapRequest,
+            currentBalanceTokenIn,
+            currentBalanceTokenOut
         );
 
-        uint256[] memory postSwapBalances = new uint256[](2);
-        postSwapBalances[0] = preSwapBalances[0].add(request.amount);
-        postSwapBalances[1] = preSwapBalances[1].sub(amountOut);
+        // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
+        uint256 amountOut = super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+
+        uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
+            currentBalanceTokenIn.add(_addSwapFeeAmount(swapRequest.amount)),
+            currentBalanceTokenOut.sub(amountOut)
+        );
 
         _payLbpProtocolFees(normalizedWeights, preSwapBalances, postSwapBalances);
 
-        // amountOut tokens are exiting the Pool, so we round down.
-        return _downscaleDown(amountOut, scalingFactorTokenOut);
+        return amountOut;
     }
 
-    function _processSwapGivenOut(
-        SwapRequest memory request,
-        uint256 scalingFactorTokenIn,
-        uint256 scalingFactorTokenOut,
-        uint256[] memory preSwapBalances,
-        uint256[] memory normalizedWeights
-    ) private returns (uint256) {
-        request.amount = _upscale(request.amount, scalingFactorTokenOut);
+    function _onSwapGivenOut(
+        SwapRequest memory swapRequest,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) internal virtual override returns (uint256) {
+        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        uint256 amountIn = WeightedMath._calcInGivenOut(
-            preSwapBalances[0],
-            normalizedWeights[0],
-            preSwapBalances[1],
-            normalizedWeights[1],
-            request.amount
+        (uint256[] memory normalizedWeights, uint256[] memory preSwapBalances) = _getWeightsAndPreSwapBalances(
+            swapRequest,
+            currentBalanceTokenIn,
+            currentBalanceTokenOut
         );
 
-        // amountIn tokens are entering the Pool, so we round up.
-        amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
+        // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
+        uint256 amountIn = super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
-        // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-        uint256 amountInPlusSwapFees = _addSwapFeeAmount(amountIn);
-
-        uint256[] memory postSwapBalances = new uint256[](2);
-        postSwapBalances[0] = _upscale(amountInPlusSwapFees, scalingFactorTokenIn);
-        postSwapBalances[1] = preSwapBalances[1].sub(request.amount);
+        uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
+            currentBalanceTokenIn.add(_addSwapFeeAmount(amountIn)),
+            currentBalanceTokenOut.sub(swapRequest.amount)
+        );
 
         _payLbpProtocolFees(normalizedWeights, preSwapBalances, postSwapBalances);
 
-        return amountInPlusSwapFees;
+        return amountIn;
+    }
+
+    function _getWeightsAndPreSwapBalances(
+        SwapRequest memory swapRequest,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) private view returns (uint256[] memory, uint256[] memory) {
+        uint256[] memory normalizedWeights = ArrayHelpers.arrayFill(
+            _getNormalizedWeight(swapRequest.tokenIn),
+            _getNormalizedWeight(swapRequest.tokenOut)
+        );
+
+        uint256[] memory preSwapBalances = ArrayHelpers.arrayFill(currentBalanceTokenIn, currentBalanceTokenOut);
+
+        return (normalizedWeights, preSwapBalances);
     }
 
     function _payLbpProtocolFees(
