@@ -688,12 +688,12 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _onExitPool(
-        bytes32,
+        bytes32 poolId,
         address sender,
-        address,
+        address recipient,
         uint256[] memory balances,
-        uint256,
-        uint256,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
@@ -711,23 +711,19 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
-        return _doManagedPoolExit(sender, balances, _getNormalizedWeights(), scalingFactors, userData);
-    }
-
-    function _doManagedPoolExit(
-        address sender,
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256[] memory scalingFactors,
-        bytes memory userData
-    ) internal view returns (uint256, uint256[] memory) {
-        WeightedPoolUserData.ExitKind kind = userData.exitKind();
-
-        if (kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN) {
-            return _exitRemoveToken(sender, scalingFactors, userData);
-        } else {
-            return _doExit(balances, normalizedWeights, scalingFactors, userData);
-        }
+        return
+            userData.exitKind() == WeightedPoolUserData.ExitKind.REMOVE_TOKEN
+                ? _exitRemoveToken(sender, scalingFactors, userData)
+                : super._onExitPool(
+                    poolId,
+                    sender,
+                    recipient,
+                    balances,
+                    lastChangeBlock,
+                    protocolSwapFeePercentage,
+                    scalingFactors,
+                    userData
+                );
     }
 
     function _exitRemoveToken(
