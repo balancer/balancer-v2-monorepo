@@ -46,8 +46,9 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     // Token State
 
     // `startTime` and `timeCursor` are both timestamps so comfortably fit in a uint64.
-    // `cachedBalance` will comfortably fit the total supply of any meaningful token and one token overflowing
-    // cannot affect the accounting for other tokens.
+    // `cachedBalance` will comfortably fit the total supply of any meaningful token.
+    // Should more than 2^128 tokens be sent to this contract then checkpointing this token will fail until enough
+    // tokens have been claimed to bring the total balance back below 2^128.
     struct TokenState {
         uint64 startTime;
         uint64 timeCursor;
@@ -320,6 +321,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         uint256 tokenBalance = token.balanceOf(address(this));
         uint256 tokensToDistribute = tokenBalance - tokenState.cachedBalance;
         if (tokensToDistribute == 0) return;
+        require(tokenBalance <= type(uint128).max, "Maximum token balance exceeded");
         tokenState.cachedBalance = uint128(tokenBalance);
 
         uint256 thisWeek = _roundDownTimestamp(lastTokenTime);
