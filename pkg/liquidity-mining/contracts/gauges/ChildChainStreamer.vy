@@ -186,7 +186,7 @@ def set_reward_duration(_token: address, _duration: uint256):
     @param _token Address of the reward token
     @param _duration Number of seconds to distribute rewards over
     """
-    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
+    assert msg.sender == self.reward_data[_token].distributor  # dev: only owner
     assert block.timestamp > self.reward_data[_token].period_finish, "Reward period still active"
     self.reward_data[_token].duration = _duration
 
