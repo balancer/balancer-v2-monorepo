@@ -709,9 +709,9 @@ describe('ManagedPool', function () {
         protocolFeesCollector = await vault.getFeesCollector();
 
         twoTokens = poolTokens.subset(2);
-        localBalances = [bn(tokenAmount * 10 ** twoTokens.first.decimals), bn(100 * 10 ** twoTokens.second.decimals)];
+        localBalances = [bn(tokenAmount * 10 ** twoTokens.first.decimals), bn(tokenAmount * 10 ** twoTokens.second.decimals)];
 
-        // 10% of the initial balance
+        // 10% of the initial balance (always the first token)
         swapAmount = localBalances[0].div(10);
 
         // Make a 2-token pool for this purpose
