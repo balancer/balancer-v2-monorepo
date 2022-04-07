@@ -109,6 +109,8 @@ def remove_reward(_token: address, _recipient: address):
             self.reward_tokens[i] = self.reward_tokens[idx]
             self.reward_tokens[idx] = ZERO_ADDRESS
             self.reward_count = idx
+            log RewardDistributorUpdated(_token, ZERO_ADDRESS)
+            log RewardDurationUpdated(_token, 0)
             return
     raise  # this should never be reached
 
