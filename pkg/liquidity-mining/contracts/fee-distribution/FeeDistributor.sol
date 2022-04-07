@@ -23,6 +23,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "../interfaces/IFeeDistributor.sol";
 import "../interfaces/IVotingEscrow.sol";
 
+// solhint-disable not-rely-on-time
+
 /**
  * @title Fee Distributor
  * @notice Distributes any tokens transferred to the contract (e.g. Protocol fees and any BAL emissions) among veBAL
@@ -57,7 +59,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     // User State
 
     // `startTime` and `timeCursor` are timestamps so will comfortable fit in a uint64
-    // For `lastEpochCheckpointed` to overflow would need over 2^64 transactions to the VotingEscrow contract. 
+    // For `lastEpochCheckpointed` to overflow would need over 2^64 transactions to the VotingEscrow contract.
     struct UserState {
         uint64 startTime;
         uint64 timeCursor;
