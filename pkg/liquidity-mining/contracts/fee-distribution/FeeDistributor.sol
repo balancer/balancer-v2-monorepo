@@ -45,7 +45,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
 
     // Token State
 
-    // `startTime` and `timeCursor` are both timestamps so comfortable fit in a uint64
+    // `startTime` and `timeCursor` are both timestamps so comfortably fit in a uint64.
     // `cachedBalance` will comfortably fit the total supply of any meaningful token and one token overflowing
     // cannot affect the accounting for other tokens.
     struct TokenState {
@@ -58,7 +58,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
 
     // User State
 
-    // `startTime` and `timeCursor` are timestamps so will comfortable fit in a uint64
+    // `startTime` and `timeCursor` are timestamps so will comfortably fit in a uint64.
     // For `lastEpochCheckpointed` to overflow would need over 2^64 transactions to the VotingEscrow contract.
     struct UserState {
         uint64 startTime;
