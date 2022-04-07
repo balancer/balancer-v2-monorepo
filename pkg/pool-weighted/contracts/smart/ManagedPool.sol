@@ -879,6 +879,16 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
             emit ManagementAumFeeCollected(bptAmount);
 
+            // Compute the protocol's share of the AUM fee
+            address aumProtocolFeesCollector = address(getAumProtocolFeesCollector());
+
+            if (aumProtocolFeesCollector != address(0)) {
+                uint256 protocolBptAmount = bptAmount.mulUp(getAumProtocolFeesCollector().getAumFeePercentage());
+                bptAmount = bptAmount.sub(protocolBptAmount);
+
+                _mintPoolTokens(aumProtocolFeesCollector, protocolBptAmount);
+            }
+
             _mintPoolTokens(getOwner(), bptAmount);
         }
     }

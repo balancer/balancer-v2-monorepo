@@ -1041,11 +1041,11 @@ describe('ManagedPool', function () {
     });
   });
 
-  describe.only('non-zero AUM protocol fees', () => {
+  describe('non-zero AUM protocol fees', () => {
     let authorizedVault: Contract;
     let feesCollector: Contract;
 
-    const AUM_FEE_PERCENTAGE = fp(0.1);
+    const AUM_PROTOCOL_FEE_PERCENTAGE = fp(0.1);
     const swapFeePercentage = fp(0.02);
     const managementSwapFeePercentage = fp(0.8);
     const managementAumFeePercentage = fp(0.1);
@@ -1059,7 +1059,7 @@ describe('ManagedPool', function () {
 
       const action = await actionId(feesCollector, 'setAumFeePercentage');
       await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
-      await feesCollector.connect(admin).setAumFeePercentage(AUM_FEE_PERCENTAGE);
+      await feesCollector.connect(admin).setAumFeePercentage(AUM_PROTOCOL_FEE_PERCENTAGE);
     });
 
     sharedBeforeEach('deploy and initialize pool', async () => {
@@ -1094,18 +1094,18 @@ describe('ManagedPool', function () {
 
       const balanceBefore = await pool.balanceOf(owner);
 
-      const protocolPortion = expectedBpt.mul(AUM_FEE_PERCENTAGE).div(fp(1));
+      const protocolPortion = expectedBpt.mul(AUM_PROTOCOL_FEE_PERCENTAGE).div(fp(1));
       const ownerPortion = expectedBpt.sub(protocolPortion);
 
       const receipt = await pool.collectAumManagementFees(owner);
       expectEvent.inReceipt(await receipt.wait(), 'ManagementAumFeeCollected');
 
-      //const balanceAfter = await pool.balanceOf(owner);
-      //expect(balanceAfter.sub(balanceBefore)).to.equalWithError(ownerPortion, 0.0001);
+      const balanceAfter = await pool.balanceOf(owner);
+      expect(balanceAfter.sub(balanceBefore)).to.equalWithError(ownerPortion, 0.0001);
 
       // Fee collector should have its balance
-      //const protocolFees = await feesCollector.getCollectedFeeAmounts([pool.address]);
-      //expect(protocolFees[0]).to.equalWithError(protocolPortion, 0.00001);
+      const protocolFees = await feesCollector.getCollectedFeeAmounts([pool.address]);
+      expect(protocolFees[0]).to.equalWithError(protocolPortion, 0.00001);
     });
   });
 });
