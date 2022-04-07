@@ -291,7 +291,7 @@ describe('DistributionScheduler', () => {
 
     sharedBeforeEach('schedule some existing distributions', async () => {
       startTime = roundUpTimestamp(await currentTimestamp());
-      scheduledRewardsTimes = Array.from({ length: 10 }, (_, i) => startTime.add(i * 2 * WEEK));
+      scheduledRewardsTimes = Array.from({ length: 10 }, (_, i) => startTime.add(i * WEEK));
       for (const timestamp of scheduledRewardsTimes) {
         await scheduleDistribution(100, timestamp);
       }
