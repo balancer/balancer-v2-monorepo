@@ -295,7 +295,7 @@ describe('DistributionScheduler', () => {
       for (const timestamp of scheduledRewardsTimes) {
         await scheduleDistribution(100, timestamp);
       }
-      await advanceToTimestamp(startTime.add(1));
+      await advanceToTimestamp(startTime);
     });
 
     it('transfers tokens to the gauge', async () => {
