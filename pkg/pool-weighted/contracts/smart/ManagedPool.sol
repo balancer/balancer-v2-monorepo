@@ -401,7 +401,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal virtual override returns (uint256) {
-        // Swaps are disabled while the contract is paused.
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         (uint256[] memory normalizedWeights, uint256[] memory preSwapBalances) = _getWeightsAndPreSwapBalances(
@@ -428,7 +427,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal virtual override returns (uint256) {
-        // Swaps are disabled while the contract is paused.
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         (uint256[] memory normalizedWeights, uint256[] memory preSwapBalances) = _getWeightsAndPreSwapBalances(

@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
@@ -32,8 +33,6 @@ import "../interfaces/IVotingEscrow.sol";
 contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    uint256 private constant _TOKEN_CHECKPOINT_DEADLINE = 1 days;
-
     IVotingEscrow private immutable _votingEscrow;
 
     uint256 private immutable _startTime;
@@ -49,6 +48,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     mapping(IERC20 => mapping(uint256 => uint256)) private _tokensPerWeek;
 
     // User State
+    mapping(address => uint256) private _userStartTime;
     mapping(address => uint256) private _userTimeCursor;
     mapping(address => uint256) private _userLastEpochCheckpointed;
     mapping(address => mapping(uint256 => uint256)) private _userBalanceAtTimestamp;
@@ -99,7 +99,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @param token - The ERC20 token address to query.
      */
     function getUserTokenTimeCursor(address user, IERC20 token) external view override returns (uint256) {
-        return _userTokenTimeCursor[user][token];
+        return _getUserTokenTimeCursor(user, token);
     }
 
     /**
@@ -278,9 +278,23 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             _tokenStartTime[token] = _roundDownTimestamp(block.timestamp);
         } else {
             timeSinceLastCheckpoint = block.timestamp - lastTokenTime;
-            if (!force && timeSinceLastCheckpoint < _TOKEN_CHECKPOINT_DEADLINE) {
-                // We can prevent a lot of SSTORES by only checkpointing tokens at a minimum interval
-                return;
+
+            if (!force) {
+                // Checkpointing N times within a single week is completely equivalent to checkpointing once at the end.
+                // We then want to get as close as possible to a single checkpoint every Wed 23:59 UTC to save gas.
+
+                // We then skip checkpointing if we're in the same week as the previous checkpoint.
+                bool alreadyCheckpointedThisWeek = _roundDownTimestamp(block.timestamp) ==
+                    _roundDownTimestamp(lastTokenTime);
+                // However we want to ensure that all of this week's fees are assigned to the current week without
+                // overspilling into the next week. To mitigate this, we checkpoint if we're near the end of the week.
+                bool nearingEndOfWeek = _roundUpTimestamp(block.timestamp) - block.timestamp < 1 days;
+
+                // This ensures that we checkpoint once at the beginning of the week and again for each user interaction
+                // towards the end of the week to give an accurate final reading of the balance.
+                if (alreadyCheckpointedThisWeek && !nearingEndOfWeek) {
+                    return;
+                }
             }
         }
 
@@ -367,6 +381,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         // i.e. the timestamp of the first Thursday after they locked.
         if (weekCursor == 0) {
             weekCursor = _roundUpTimestamp(userPoint.ts);
+            _userStartTime[user] = weekCursor;
         }
 
         // Sanity check - can't claim fees from before fee distribution started.
@@ -450,7 +465,10 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      */
     function _getUserTokenTimeCursor(address user, IERC20 token) internal view returns (uint256) {
         uint256 userTimeCursor = _userTokenTimeCursor[user][token];
-        return userTimeCursor > 0 ? userTimeCursor : _tokenStartTime[token];
+        if (userTimeCursor > 0) return userTimeCursor;
+        // This is the first time that the user has interacted with this token.
+        // We then start from the latest out of either when `user` first locked veBAL or `token` was first checkpointed.
+        return Math.max(_userStartTime[user], _tokenStartTime[token]);
     }
 
     /**
