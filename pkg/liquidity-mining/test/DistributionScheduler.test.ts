@@ -119,7 +119,7 @@ describe('DistributionScheduler', () => {
       context('when distribution is scheduled in the future', () => {
         let startTime: BigNumber;
 
-        sharedBeforeEach('schedule some existing distributions', async () => {
+        sharedBeforeEach('set the first valid timestamp to schedule rewards', async () => {
           startTime = roundUpTimestamp(await currentTimestamp());
         });
 
