@@ -1008,8 +1008,6 @@ describe('ManagedPool', function () {
               .mul(managementAumFeePercentage)
               .div(fp(1).sub(managementAumFeePercentage));
 
-            console.log(`Expected: ${expectedBpt}`);
-
             const balanceBefore = await pool.balanceOf(owner);
 
             const receipt = await pool.collectAumManagementFees(owner);
