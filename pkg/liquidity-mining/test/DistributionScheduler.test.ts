@@ -365,6 +365,15 @@ describe('DistributionScheduler', () => {
     it('starts all distributions for gauge', async () => {
       // As we only call into `startDistributionForToken`, it's sufficient to test that multiple tokens are transferred.
 
+      const pendingToken1 = await distributionScheduler.getPendingRewards(
+        rewardTokenDistributor.address,
+        rewardToken.address
+      );
+      const pendingToken2 = await distributionScheduler.getPendingRewards(
+        rewardTokenDistributor.address,
+        rewardToken2.address
+      );
+
       const tx = await distributionScheduler.startDistributions(rewardTokenDistributor.address);
       const receipt = await tx.wait();
 
@@ -375,6 +384,7 @@ describe('DistributionScheduler', () => {
         {
           from: distributionScheduler.address,
           to: rewardTokenDistributor.address,
+          value: pendingToken1,
         },
         rewardToken.address
       );
@@ -386,6 +396,7 @@ describe('DistributionScheduler', () => {
         {
           from: distributionScheduler.address,
           to: rewardTokenDistributor.address,
+          value: pendingToken2,
         },
         rewardToken2.address
       );
