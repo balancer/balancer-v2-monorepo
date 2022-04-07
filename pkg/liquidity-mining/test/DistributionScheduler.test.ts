@@ -65,6 +65,8 @@ describe('DistributionScheduler', () => {
   }
 
   describe('scheduleDistribution', () => {
+    const amount = 42;
+
     context('when providing zero tokens', () => {
       it('reverts', async () => {
         await expect(scheduleDistribution(0, 0)).to.be.revertedWith('Must provide non-zero number of tokens');
@@ -79,13 +81,13 @@ describe('DistributionScheduler', () => {
 
     context("when distribution starts at a timestamp which doesn't fit in a uint32", () => {
       it('reverts', async () => {
-        await expect(scheduleDistribution(1, MAX_UINT32.add(1))).to.be.revertedWith('Reward timestamp overflow');
+        await expect(scheduleDistribution(amount, MAX_UINT32.add(1))).to.be.revertedWith('Reward timestamp overflow');
       });
     });
 
     context('when reward token does not exist on gauge', () => {
       it('reverts', async () => {
-        await expect(scheduleDistribution(1, 0)).to.be.revertedWith('Reward token does not exist on gauge');
+        await expect(scheduleDistribution(amount, 0)).to.be.revertedWith('Reward token does not exist on gauge');
       });
     });
 
@@ -95,7 +97,7 @@ describe('DistributionScheduler', () => {
       });
 
       it('reverts', async () => {
-        await expect(scheduleDistribution(1, 0)).to.be.revertedWith(
+        await expect(scheduleDistribution(amount, 0)).to.be.revertedWith(
           "DistributionScheduler is not reward token's distributor"
         );
       });
@@ -108,7 +110,7 @@ describe('DistributionScheduler', () => {
 
       context('when distribution is scheduled in the past', () => {
         it('reverts', async () => {
-          await expect(scheduleDistribution(1, (await currentTimestamp()).sub(1))).to.be.revertedWith(
+          await expect(scheduleDistribution(amount, (await currentTimestamp()).sub(1))).to.be.revertedWith(
             'Distribution can only be scheduled for the future'
           );
         });
@@ -129,7 +131,7 @@ describe('DistributionScheduler', () => {
               distributionScheduler.scheduleDistribution(
                 rewardTokenDistributor.address,
                 rewardToken.address,
-                1,
+                amount,
                 invalidTimestamp
               )
             ).to.be.revertedWith('Distribution must start at the beginning of the week');
@@ -141,7 +143,7 @@ describe('DistributionScheduler', () => {
             it('updates the the head node to point at the new node', async () => {
               expect(await getNextNodeKey(HEAD)).to.be.eq(0);
 
-              await scheduleDistribution(1, startTime);
+              await scheduleDistribution(amount, startTime);
 
               expect(await getNextNodeKey(HEAD)).to.be.eq(startTime);
             });
@@ -150,10 +152,10 @@ describe('DistributionScheduler', () => {
               const oldRewardNode = await getRewardNode(startTime);
               expect(oldRewardNode.amount).to.be.eq(0);
 
-              await scheduleDistribution(1, startTime);
+              await scheduleDistribution(amount, startTime);
 
               const newRewardNode = await getRewardNode(startTime);
-              expect(newRewardNode.amount).to.be.eq(1);
+              expect(newRewardNode.amount).to.be.eq(amount);
               expect(newRewardNode.nextNodeKey).to.be.eq(NULL);
             });
           });
@@ -179,7 +181,7 @@ describe('DistributionScheduler', () => {
                 const prevNodeKey = insertedTime.sub(2 * WEEK);
                 expect(await getNextNodeKey(prevNodeKey)).to.be.eq(0);
 
-                await scheduleDistribution(1, insertedTime);
+                await scheduleDistribution(amount, insertedTime);
 
                 expect(await getNextNodeKey(prevNodeKey)).to.be.eq(insertedTime);
               });
@@ -188,10 +190,10 @@ describe('DistributionScheduler', () => {
                 const oldRewardNode = await getRewardNode(insertedTime);
                 expect(oldRewardNode.amount).to.be.eq(0);
 
-                await scheduleDistribution(1, insertedTime);
+                await scheduleDistribution(amount, insertedTime);
 
                 const newRewardNode = await getRewardNode(insertedTime);
-                expect(newRewardNode.amount).to.be.eq(1);
+                expect(newRewardNode.amount).to.be.eq(amount);
                 expect(newRewardNode.nextNodeKey).to.be.eq(NULL);
               });
             });
@@ -207,7 +209,7 @@ describe('DistributionScheduler', () => {
                 const prevNodeKey = insertedTime.sub(WEEK);
                 expect(await getNextNodeKey(prevNodeKey)).to.be.eq(insertedTime.add(WEEK));
 
-                await scheduleDistribution(1, insertedTime);
+                await scheduleDistribution(amount, insertedTime);
 
                 expect(await getNextNodeKey(prevNodeKey)).to.be.eq(insertedTime);
               });
@@ -216,10 +218,10 @@ describe('DistributionScheduler', () => {
                 const oldRewardNode = await getRewardNode(insertedTime);
                 expect(oldRewardNode.amount).to.be.eq(0);
 
-                await scheduleDistribution(1, insertedTime);
+                await scheduleDistribution(amount, insertedTime);
 
                 const newRewardNode = await getRewardNode(insertedTime);
-                expect(newRewardNode.amount).to.be.eq(1);
+                expect(newRewardNode.amount).to.be.eq(amount);
                 expect(newRewardNode.nextNodeKey).to.be.eq(insertedTime.add(WEEK));
               });
             });
@@ -235,7 +237,7 @@ describe('DistributionScheduler', () => {
                 const prevNodeKey = insertedTime.sub(2 * WEEK);
                 expect(await getNextNodeKey(prevNodeKey)).to.be.eq(insertedTime);
 
-                await scheduleDistribution(1, insertedTime);
+                await scheduleDistribution(amount, insertedTime);
 
                 expect(await getNextNodeKey(prevNodeKey)).to.be.eq(insertedTime);
               });
@@ -244,10 +246,10 @@ describe('DistributionScheduler', () => {
                 const oldRewardNode = await getRewardNode(insertedTime);
                 expect(oldRewardNode.amount).to.be.eq(100);
 
-                await scheduleDistribution(1, insertedTime);
+                await scheduleDistribution(amount, insertedTime);
 
                 const newRewardNode = await getRewardNode(insertedTime);
-                expect(newRewardNode.amount).to.be.eq(101);
+                expect(newRewardNode.amount).to.be.eq(oldRewardNode.amount.add(amount));
                 expect(newRewardNode.nextNodeKey).to.be.eq(oldRewardNode.nextNodeKey);
               });
 
