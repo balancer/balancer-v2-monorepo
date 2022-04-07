@@ -934,8 +934,8 @@ describe('ManagedPool', function () {
       let upscaledSwapAmount: BigNumber;
 
       sharedBeforeEach('upscale balances and amounts', async () => {
-        const scaleFactor0 = 10 ** (18 - twoTokens.first.decimals);
-        const scaleFactor1 = 10 ** (18 - twoTokens.second.decimals);
+        const scaleFactor0 = bn(10 ** (18 - twoTokens.first.decimals));
+        const scaleFactor1 = bn(10 ** (18 - twoTokens.second.decimals));
         upscaledBalances = [localBalances[0].mul(scaleFactor0), localBalances[1].mul(scaleFactor1)];
         upscaledSwapAmount = swapAmount.mul(scaleFactor0);
       });
