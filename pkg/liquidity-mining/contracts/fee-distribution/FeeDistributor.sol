@@ -59,11 +59,11 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     // User State
 
     // `startTime` and `timeCursor` are timestamps so will comfortably fit in a uint64.
-    // For `lastEpochCheckpointed` to overflow would need over 2^64 transactions to the VotingEscrow contract.
+    // For `lastEpochCheckpointed` to overflow would need over 2^128 transactions to the VotingEscrow contract.
     struct UserState {
         uint64 startTime;
         uint64 timeCursor;
-        uint64 lastEpochCheckpointed;
+        uint128 lastEpochCheckpointed;
     }
     mapping(address => UserState) private _userState;
     mapping(address => mapping(uint256 => uint256)) private _userBalanceAtTimestamp;
