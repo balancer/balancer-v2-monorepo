@@ -254,7 +254,7 @@ describe('DistributionScheduler', () => {
               context('when providing more tokens would cause an overflow on the node', () => {
                 it('reverts', async () => {
                   const { amount: existingRewardAmount } = await getRewardNode(insertedTime);
-                  const rewardAmount = MAX_UINT224.sub(1);
+                  const rewardAmount = MAX_UINT224.sub(existingRewardAmount).add(1);
 
                   // Expect that an overflow would occur if tx was successful.
                   expect(existingRewardAmount.add(rewardAmount)).to.be.gt(MAX_UINT224);
