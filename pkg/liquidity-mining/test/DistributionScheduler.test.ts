@@ -114,10 +114,10 @@ describe('DistributionScheduler', () => {
         });
       });
 
-      context('when distribution is scheduled in the future', () => {
+      context.only('when distribution is scheduled in the future', () => {
         let startTime: BigNumber;
 
-        sharedBeforeEach('set the first valid timestamp to schedule rewards', async () => {
+        sharedBeforeEach('schedule some existing distributions', async () => {
           startTime = roundUpTimestamp(await currentTimestamp());
         });
 
@@ -159,9 +159,12 @@ describe('DistributionScheduler', () => {
           });
 
           context('when there are already rewards scheduled for this gauge', () => {
-            sharedBeforeEach('schedule distributions', async () => {
-              for (let i = 0; i < 10; i++) {
-                await scheduleDistribution(100, startTime.add(i * 2 * WEEK));
+            let scheduledRewardsTimes: BigNumber[];
+
+            sharedBeforeEach('schedule some existing distributions', async () => {
+              scheduledRewardsTimes = Array.from({ length: 10 }, (_, i) => startTime.add(i * 2 * WEEK));
+              for (const timestamp of scheduledRewardsTimes) {
+                await scheduleDistribution(100, timestamp);
               }
             });
 
@@ -270,6 +273,7 @@ describe('DistributionScheduler', () => {
 
   describe('startDistributionForToken', () => {
     let startTime: BigNumber;
+    let scheduledRewardsTimes: BigNumber[];
 
     async function startDistributionForToken(): Promise<ContractReceipt> {
       const tx = await distributionScheduler.startDistributionForToken(
@@ -281,9 +285,13 @@ describe('DistributionScheduler', () => {
 
     sharedBeforeEach('set reward token distributor to DistributionScheduler', async () => {
       await rewardTokenDistributor.add_reward(rewardToken.address, distributionScheduler.address);
+    });
+
+    sharedBeforeEach('schedule some existing distributions', async () => {
       startTime = roundUpTimestamp(await currentTimestamp());
-      for (let i = 0; i < 10; i++) {
-        await scheduleDistribution(100, startTime.add(i * WEEK));
+      scheduledRewardsTimes = Array.from({ length: 10 }, (_, i) => startTime.add(i * 2 * WEEK));
+      for (const timestamp of scheduledRewardsTimes) {
+        await scheduleDistribution(100, timestamp);
       }
       await advanceToTimestamp(startTime.add(1));
     });
@@ -342,6 +350,7 @@ describe('DistributionScheduler', () => {
   describe('startDistributions', () => {
     let rewardToken2: Token;
     let startTime: BigNumber;
+    let scheduledRewardsTimes: BigNumber[];
 
     sharedBeforeEach('deploy Token', async () => {
       rewardToken2 = await Token.create('REWARD2');
@@ -349,16 +358,19 @@ describe('DistributionScheduler', () => {
       await rewardToken2.approve(distributionScheduler, MAX_UINT256, { from: caller });
     });
 
-    sharedBeforeEach('initialize scheduled distributions', async () => {
+    sharedBeforeEach('set reward token distributor to DistributionScheduler', async () => {
       await rewardTokenDistributor.add_reward(rewardToken.address, distributionScheduler.address);
       await rewardTokenDistributor.add_reward(rewardToken2.address, distributionScheduler.address);
+    });
 
+    sharedBeforeEach('schedule some existing distributions', async () => {
       startTime = roundUpTimestamp(await currentTimestamp());
-      for (let i = 0; i < 10; i++) {
-        await scheduleDistribution(100, startTime.add(i * WEEK));
+      scheduledRewardsTimes = Array.from({ length: 10 }, (_, i) => startTime.add(i * 2 * WEEK));
+      for (const timestamp of scheduledRewardsTimes) {
+        await scheduleDistribution(100, timestamp);
         await distributionScheduler
           .connect(caller)
-          .scheduleDistribution(rewardTokenDistributor.address, rewardToken2.address, 50, startTime.add(i * WEEK));
+          .scheduleDistribution(rewardTokenDistributor.address, rewardToken2.address, 50, timestamp);
       }
       await advanceToTimestamp(startTime.add(1));
     });
