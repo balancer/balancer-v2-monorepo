@@ -24,7 +24,7 @@ const roundUpTimestamp = (timestamp: BigNumberish): BigNumber => {
 
 type RewardNode = {
   amount: BigNumber;
-  nextNodeKey: number;
+  nextTimestamp: number;
 };
 
 describe('DistributionScheduler', () => {
@@ -54,7 +54,7 @@ describe('DistributionScheduler', () => {
   }
 
   async function getNextNodeKey(nodeKey: BigNumberish): Promise<BigNumber> {
-    return BigNumber.from((await getRewardNode(nodeKey)).nextNodeKey);
+    return BigNumber.from((await getRewardNode(nodeKey)).nextTimestamp);
   }
 
   async function scheduleDistribution(amount: BigNumberish, timestamp: BigNumberish): Promise<ContractReceipt> {
@@ -156,7 +156,7 @@ describe('DistributionScheduler', () => {
 
               const newRewardNode = await getRewardNode(startTime);
               expect(newRewardNode.amount).to.be.eq(amount);
-              expect(newRewardNode.nextNodeKey).to.be.eq(NULL);
+              expect(newRewardNode.nextTimestamp).to.be.eq(NULL);
             });
           });
 
@@ -194,7 +194,7 @@ describe('DistributionScheduler', () => {
 
                 const newRewardNode = await getRewardNode(insertedTime);
                 expect(newRewardNode.amount).to.be.eq(amount);
-                expect(newRewardNode.nextNodeKey).to.be.eq(NULL);
+                expect(newRewardNode.nextTimestamp).to.be.eq(NULL);
               });
             });
 
@@ -222,7 +222,7 @@ describe('DistributionScheduler', () => {
 
                 const newRewardNode = await getRewardNode(insertedTime);
                 expect(newRewardNode.amount).to.be.eq(amount);
-                expect(newRewardNode.nextNodeKey).to.be.eq(insertedTime.add(WEEK));
+                expect(newRewardNode.nextTimestamp).to.be.eq(insertedTime.add(WEEK));
               });
             });
 
@@ -250,7 +250,7 @@ describe('DistributionScheduler', () => {
 
                 const newRewardNode = await getRewardNode(insertedTime);
                 expect(newRewardNode.amount).to.be.eq(oldRewardNode.amount.add(amount));
-                expect(newRewardNode.nextNodeKey).to.be.eq(oldRewardNode.nextNodeKey);
+                expect(newRewardNode.nextTimestamp).to.be.eq(oldRewardNode.nextTimestamp);
               });
 
               context('when providing more tokens would cause an overflow on the node', () => {

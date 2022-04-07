@@ -40,7 +40,7 @@ contract DistributionScheduler {
 
     struct RewardNode {
         uint224 amount;
-        uint32 nextNodeKey;
+        uint32 nextTimestamp;
     }
 
     /**
@@ -136,7 +136,7 @@ contract DistributionScheduler {
 
         // These calls are reentrancy-safe as we've already performed our only state transition (updating the head of
         // the list)
-        rewardsList[_HEAD].nextNodeKey = firstUnprocessedNodeKey;
+        rewardsList[_HEAD].nextTimestamp = firstUnprocessedNodeKey;
 
         token.approve(address(gauge), rewardAmount);
         gauge.deposit_reward_tokens(token, rewardAmount);
@@ -158,14 +158,14 @@ contract DistributionScheduler {
         view
         returns (uint32, uint256)
     {
-        uint32 currentNodeKey = rewardsList[_HEAD].nextNodeKey;
+        uint32 currentNodeKey = rewardsList[_HEAD].nextTimestamp;
 
         // Iterate through all nodes which are ready to be started, summing the values of each.
         uint256 amount;
         while (targetKey >= currentNodeKey && currentNodeKey != _NULL) {
             amount += rewardsList[currentNodeKey].amount;
 
-            currentNodeKey = rewardsList[currentNodeKey].nextNodeKey;
+            currentNodeKey = rewardsList[currentNodeKey].nextTimestamp;
         }
 
         return (currentNodeKey, amount);
@@ -182,18 +182,18 @@ contract DistributionScheduler {
         // We want to find two nodes which sit either side of the new node to be created so we can insert between them.
 
         uint32 currentNodeKey = _HEAD;
-        uint32 nextNodeKey = rewardsList[currentNodeKey].nextNodeKey;
+        uint32 nextNodeKey = rewardsList[currentNodeKey].nextTimestamp;
 
         // Search through nodes until the new node sits somewhere between `currentNodeKey` and `nextNodeKey`, or
         // we process all nodes.
         while (insertedNodeKey > nextNodeKey && nextNodeKey != _NULL) {
             currentNodeKey = nextNodeKey;
-            nextNodeKey = rewardsList[currentNodeKey].nextNodeKey;
+            nextNodeKey = rewardsList[currentNodeKey].nextTimestamp;
         }
 
         if (nextNodeKey == _NULL) {
             // We reached the end of the list and so can just append the new node.
-            rewardsList[currentNodeKey].nextNodeKey = insertedNodeKey;
+            rewardsList[currentNodeKey].nextTimestamp = insertedNodeKey;
             rewardsList[insertedNodeKey] = RewardNode(amount, _NULL);
         } else if (nextNodeKey == insertedNodeKey) {
             // There already exists a node at the time we want to insert one.
@@ -206,7 +206,7 @@ contract DistributionScheduler {
             // We're inserting a node in between `currentNodeKey` and `nextNodeKey` so then update
             // `currentNodeKey` to point to the newly inserted node and the new node to point to `nextNodeKey`.
             rewardsList[insertedNodeKey] = RewardNode(amount, nextNodeKey);
-            rewardsList[currentNodeKey].nextNodeKey = insertedNodeKey;
+            rewardsList[currentNodeKey].nextTimestamp = insertedNodeKey;
         }
     }
 
