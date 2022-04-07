@@ -23,6 +23,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "../interfaces/IFeeDistributor.sol";
 import "../interfaces/IVotingEscrow.sol";
 
+// solhint-disable not-rely-on-time
+
 /**
  * @title Fee Distributor
  * @notice Distributes any tokens transferred to the contract (e.g. Protocol fees and any BAL emissions) among veBAL
@@ -42,15 +44,29 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     mapping(uint256 => uint256) private _veSupplyCache;
 
     // Token State
-    mapping(IERC20 => uint256) private _tokenStartTime;
-    mapping(IERC20 => uint256) private _tokenTimeCursor;
-    mapping(IERC20 => uint256) private _tokenLastBalance;
+
+    // `startTime` and `timeCursor` are both timestamps so comfortably fit in a uint64.
+    // `cachedBalance` will comfortably fit the total supply of any meaningful token.
+    // Should more than 2^128 tokens be sent to this contract then checkpointing this token will fail until enough
+    // tokens have been claimed to bring the total balance back below 2^128.
+    struct TokenState {
+        uint64 startTime;
+        uint64 timeCursor;
+        uint128 cachedBalance;
+    }
+    mapping(IERC20 => TokenState) private _tokenState;
     mapping(IERC20 => mapping(uint256 => uint256)) private _tokensPerWeek;
 
     // User State
-    mapping(address => uint256) private _userStartTime;
-    mapping(address => uint256) private _userTimeCursor;
-    mapping(address => uint256) private _userLastEpochCheckpointed;
+
+    // `startTime` and `timeCursor` are timestamps so will comfortably fit in a uint64.
+    // For `lastEpochCheckpointed` to overflow would need over 2^128 transactions to the VotingEscrow contract.
+    struct UserState {
+        uint64 startTime;
+        uint64 timeCursor;
+        uint128 lastEpochCheckpointed;
+    }
+    mapping(address => UserState) private _userState;
     mapping(address => mapping(uint256 => uint256)) private _userBalanceAtTimestamp;
     mapping(address => mapping(IERC20 => uint256)) private _userTokenTimeCursor;
 
@@ -82,7 +98,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @param user - The address of the user to query.
      */
     function getUserTimeCursor(address user) external view override returns (uint256) {
-        return _userTimeCursor[user];
+        return _userState[user].timeCursor;
     }
 
     /**
@@ -90,7 +106,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @param token - The ERC20 token address to query.
      */
     function getTokenTimeCursor(IERC20 token) external view override returns (uint256) {
-        return _tokenTimeCursor[token];
+        return _tokenState[token].timeCursor;
     }
 
     /**
@@ -127,7 +143,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @notice Returns the FeeDistributor's cached balance of `token`.
      */
     function getTokenLastBalance(IERC20 token) external view override returns (uint256) {
-        return _tokenLastBalance[token];
+        return _tokenState[token].cachedBalance;
     }
 
     // Checkpointing
@@ -236,9 +252,10 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * before calling this function.
      */
     function _claimToken(address user, IERC20 token) internal returns (uint256) {
+        TokenState storage tokenState = _tokenState[token];
         uint256 userTimeCursor = _getUserTokenTimeCursor(user, token);
         // We round `_tokenTimeCursor` down so it represents the beginning of the first incomplete week.
-        uint256 currentActiveWeek = _roundDownTimestamp(_tokenTimeCursor[token]);
+        uint256 currentActiveWeek = _roundDownTimestamp(tokenState.timeCursor);
         mapping(uint256 => uint256) storage tokensPerWeek = _tokensPerWeek[token];
         mapping(uint256 => uint256) storage userBalanceAtTimestamp = _userBalanceAtTimestamp[user];
 
@@ -257,7 +274,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         _userTokenTimeCursor[user][token] = userTimeCursor;
 
         if (amount > 0) {
-            _tokenLastBalance[token] -= amount;
+            tokenState.cachedBalance = uint128(tokenState.cachedBalance - amount);
             token.safeTransfer(user, amount);
             emit TokensClaimed(user, token, amount, userTimeCursor);
         }
@@ -269,13 +286,14 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @dev Calculate the amount of `token` to be distributed to `_votingEscrow` holders since the last checkpoint.
      */
     function _checkpointToken(IERC20 token, bool force) internal {
-        uint256 lastTokenTime = _tokenTimeCursor[token];
+        TokenState storage tokenState = _tokenState[token];
+        uint256 lastTokenTime = tokenState.timeCursor;
         uint256 timeSinceLastCheckpoint;
         if (lastTokenTime == 0) {
             // If it's the first time we're checkpointing this token then start distributing from now.
             // Also mark at which timestamp users should start attempts to claim this token from.
             lastTokenTime = block.timestamp;
-            _tokenStartTime[token] = _roundDownTimestamp(block.timestamp);
+            tokenState.startTime = uint64(_roundDownTimestamp(block.timestamp));
         } else {
             timeSinceLastCheckpoint = block.timestamp - lastTokenTime;
 
@@ -298,12 +316,13 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             }
         }
 
-        _tokenTimeCursor[token] = block.timestamp;
+        tokenState.timeCursor = uint64(block.timestamp);
 
         uint256 tokenBalance = token.balanceOf(address(this));
-        uint256 tokensToDistribute = tokenBalance - _tokenLastBalance[token];
+        uint256 tokensToDistribute = tokenBalance - tokenState.cachedBalance;
         if (tokensToDistribute == 0) return;
-        _tokenLastBalance[token] = tokenBalance;
+        require(tokenBalance <= type(uint128).max, "Maximum token balance exceeded");
+        tokenState.cachedBalance = uint128(tokenBalance);
 
         uint256 thisWeek = _roundDownTimestamp(lastTokenTime);
         uint256 nextWeek = 0;
@@ -355,9 +374,11 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         // If user has never locked then they won't receive fees
         if (maxUserEpoch == 0) return;
 
+        UserState storage userState = _userState[user];
+
         // weekCursor represents the timestamp of the beginning of the week from which we
         // start checkpointing the user's VotingEscrow balance.
-        uint256 weekCursor = _userTimeCursor[user];
+        uint256 weekCursor = userState.timeCursor;
         if (weekCursor == 0) {
             // First checkpoint for user so need to do the initial binary search
             userEpoch = _findTimestampUserEpoch(user, _startTime, maxUserEpoch);
@@ -367,7 +388,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
                 return;
             }
             // Otherwise use the value saved from last time
-            userEpoch = _userLastEpochCheckpointed[user];
+            userEpoch = userState.lastEpochCheckpointed;
         }
 
         // Epoch 0 is always empty so bump onto the next one so that we start on a valid epoch.
@@ -381,7 +402,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         // i.e. the timestamp of the first Thursday after they locked.
         if (weekCursor == 0) {
             weekCursor = _roundUpTimestamp(userPoint.ts);
-            _userStartTime[user] = weekCursor;
+            userState.startTime = uint64(weekCursor);
         }
 
         // Sanity check - can't claim fees from before fee distribution started.
@@ -426,8 +447,8 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             }
         }
 
-        _userLastEpochCheckpointed[user] = userEpoch - 1;
-        _userTimeCursor[user] = weekCursor;
+        userState.lastEpochCheckpointed = uint64(userEpoch - 1);
+        userState.timeCursor = uint64(weekCursor);
     }
 
     /**
@@ -468,7 +489,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         if (userTimeCursor > 0) return userTimeCursor;
         // This is the first time that the user has interacted with this token.
         // We then start from the latest out of either when `user` first locked veBAL or `token` was first checkpointed.
-        return Math.max(_userStartTime[user], _tokenStartTime[token]);
+        return Math.max(_userState[user].startTime, _tokenState[token].startTime);
     }
 
     /**
