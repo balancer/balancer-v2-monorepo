@@ -363,6 +363,10 @@ describe('DistributionScheduler', () => {
     sharedBeforeEach('set reward token distributor to DistributionScheduler', async () => {
       await rewardTokenDistributor.add_reward(rewardToken.address, distributionScheduler.address);
       await rewardTokenDistributor.add_reward(rewardToken2.address, distributionScheduler.address);
+
+      // Add another reward token which the scheduler isn't the distributor for.
+      // We should skip over this token when starting distributions.
+      await rewardTokenDistributor.add_reward(ANY_ADDRESS, ANY_ADDRESS);
     });
 
     sharedBeforeEach('schedule some existing distributions', async () => {
