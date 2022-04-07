@@ -17,34 +17,27 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
+import "../interfaces/IRewardTokenDistributor.sol";
+
 // solhint-disable func-name-mixedcase, var-name-mixedcase, not-rely-on-time
 
 /**
  * @dev This contract is designed to mock LiquidityGaugeV5's interface for distributing external tokens.
  */
-contract MockRewardTokenDistributor {
-    struct Reward {
-        IERC20 token;
-        address distributor;
-        uint256 period_finish;
-        uint256 rate;
-        uint256 last_update;
-        uint256 integral;
-    }
-
+contract MockRewardTokenDistributor is IRewardTokenDistributor {
     uint256 private _rewardCount;
     IERC20[8] private _rewardTokens;
     mapping(IERC20 => Reward) private _rewardData;
 
-    function reward_tokens(uint256 index) external view returns (IERC20) {
+    function reward_tokens(uint256 index) external view override returns (IERC20) {
         return _rewardTokens[index];
     }
 
-    function reward_data(IERC20 token) external view returns (Reward memory) {
+    function reward_data(IERC20 token) external view override returns (Reward memory) {
         return _rewardData[token];
     }
 
-    function add_reward(IERC20 rewardToken, address distributor) external {
+    function add_reward(IERC20 rewardToken, address distributor) external override {
         _rewardTokens[_rewardCount] = rewardToken;
         _rewardData[rewardToken] = Reward({
             token: rewardToken,
@@ -59,14 +52,16 @@ contract MockRewardTokenDistributor {
         require(_rewardCount < 8, "Too many reward tokens");
     }
 
-    function set_reward_distributor(IERC20 rewardToken, address distributor) external {
+    function set_reward_distributor(IERC20 rewardToken, address distributor) external override {
         _rewardData[rewardToken].distributor = distributor;
     }
 
-    function deposit_reward_tokens(IERC20 rewardToken, uint256 amount) external {
+    function deposit_reward_tokens(IERC20 rewardToken, uint256 amount) external override {
         require(_rewardData[rewardToken].distributor == msg.sender, "Only callable by reward distributor");
         rewardToken.transferFrom(msg.sender, address(this), amount);
 
         // We don't care about the rest of the update.
     }
+
+    function claim_rewards(address user) external override {}
 }

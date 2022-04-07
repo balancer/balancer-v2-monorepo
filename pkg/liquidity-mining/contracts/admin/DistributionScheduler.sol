@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
-import "../interfaces/IStakingLiquidityGauge.sol";
+import "../interfaces/IRewardTokenDistributor.sol";
 
 // solhint-disable not-rely-on-time
 
@@ -52,7 +52,7 @@ contract DistributionScheduler {
      *         - the timestamp of the next scheduled distribution of `token` to `gauge`. Zero if no distribution exists.
      */
     function getRewardNode(
-        IStakingLiquidityGauge gauge,
+        IRewardTokenDistributor gauge,
         IERC20 token,
         uint256 timestamp
     ) external view returns (RewardNode memory) {
@@ -64,7 +64,7 @@ contract DistributionScheduler {
      * @param gauge - The gauge which is to distribute the reward token.
      * @param token - The token which is to be distributed among gauge depositors.
      */
-    function getPendingRewards(IStakingLiquidityGauge gauge, IERC20 token) external view returns (uint256) {
+    function getPendingRewards(IRewardTokenDistributor gauge, IERC20 token) external view returns (uint256) {
         mapping(uint32 => RewardNode) storage rewardsList = _rewardsLists[_getRewardsListId(gauge, token)];
 
         (, uint256 amount) = _getPendingRewards(rewardsList, block.timestamp);
@@ -82,7 +82,7 @@ contract DistributionScheduler {
      * @param startTime - The timestamp at the beginning of the week over which to distribute tokens.
      */
     function scheduleDistribution(
-        IStakingLiquidityGauge gauge,
+        IRewardTokenDistributor gauge,
         IERC20 token,
         uint256 amount,
         uint256 startTime
@@ -111,7 +111,7 @@ contract DistributionScheduler {
      * @notice Process all pending distributions for a gauge to start distributing the tokens.
      * @param gauge - The gauge which is to distribute the reward token.
      */
-    function startDistributions(IStakingLiquidityGauge gauge) external {
+    function startDistributions(IRewardTokenDistributor gauge) external {
         for (uint256 i = 0; i < _MAX_REWARDS; ++i) {
             IERC20 token = gauge.reward_tokens(i);
             if (token == IERC20(0)) break;
@@ -129,7 +129,7 @@ contract DistributionScheduler {
      * @param gauge - The gauge which is to distribute the reward token.
      * @param token - The token which is to be distributed among gauge depositors.
      */
-    function startDistributionForToken(IStakingLiquidityGauge gauge, IERC20 token) public {
+    function startDistributionForToken(IRewardTokenDistributor gauge, IERC20 token) public {
         mapping(uint32 => RewardNode) storage rewardsList = _rewardsLists[_getRewardsListId(gauge, token)];
 
         (uint32 firstUnprocessedNodeKey, uint256 rewardAmount) = _getPendingRewards(rewardsList, block.timestamp);
@@ -144,7 +144,7 @@ contract DistributionScheduler {
 
     // Internal functions
 
-    function _getRewardsListId(IStakingLiquidityGauge gauge, IERC20 rewardToken) internal pure returns (bytes32) {
+    function _getRewardsListId(IRewardTokenDistributor gauge, IERC20 rewardToken) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(gauge, rewardToken));
     }
 
