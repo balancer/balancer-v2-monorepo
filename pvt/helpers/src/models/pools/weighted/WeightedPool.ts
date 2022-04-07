@@ -688,12 +688,9 @@ export default class WeightedPool {
     const pool = from ? this.instance.connect(from) : this.instance;
     return await pool.getGradualWeightUpdateParams();
   }
-<<<<<<< HEAD
 
   async removeToken(from: SignerWithAddress, token: string, recipient: string): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
     return await pool.removeToken(token, recipient);
   }
-=======
->>>>>>> master
 }
