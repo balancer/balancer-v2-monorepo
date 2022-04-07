@@ -20,7 +20,14 @@ import "../smart/ManagedPool.sol";
 contract MockManagedPool is ManagedPool {
     using FixedPoint for uint256;
 
-    constructor(NewPoolParams memory params) ManagedPool(params) {}
+    constructor(
+        NewPoolParams memory params,
+        IVault vault,
+        address owner,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration) ManagedPool(params, vault, owner, pauseWindowDuration, bufferPeriodDuration) {
+        
+    }
 
     function getTotalTokens() external view returns (uint256) {
       return _getTotalTokens();

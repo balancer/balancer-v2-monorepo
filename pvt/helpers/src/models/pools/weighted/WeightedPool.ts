@@ -66,6 +66,7 @@ export default class WeightedPool {
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
@@ -83,6 +84,7 @@ export default class WeightedPool {
     poolType: WeightedPoolType,
     swapEnabledOnStart: boolean,
     mustAllowlistLPs: boolean,
+    protocolSwapFeePercentage: BigNumberish,
     managementSwapFeePercentage: BigNumberish
   ) {
     this.instance = instance;
@@ -95,6 +97,7 @@ export default class WeightedPool {
     this.poolType = poolType;
     this.swapEnabledOnStart = swapEnabledOnStart;
     this.mustAllowlistLPs = mustAllowlistLPs;
+    this.protocolSwapFeePercentage = protocolSwapFeePercentage;
     this.managementSwapFeePercentage = managementSwapFeePercentage;
   }
 
@@ -685,9 +688,12 @@ export default class WeightedPool {
     const pool = from ? this.instance.connect(from) : this.instance;
     return await pool.getGradualWeightUpdateParams();
   }
+<<<<<<< HEAD
 
   async removeToken(from: SignerWithAddress, token: string, recipient: string): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
     return await pool.removeToken(token, recipient);
   }
+=======
+>>>>>>> master
 }
