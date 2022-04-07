@@ -165,7 +165,7 @@ def notify_reward_amount(_token: address):
                 if block.timestamp >= self.reward_data[token].period_finish:
                     self.reward_data[token].rate = new_amount / duration
                 else:
-                    assert msg.sender in [AUTHORIZER_ADAPTOR, self.reward_data[_token].distributor], "Reward period still active"
+                    assert msg.sender == self.reward_data[_token].distributor, "Reward period still active"
                     remaining: uint256 = self.reward_data[token].period_finish - block.timestamp
                     leftover: uint256 = remaining * self.reward_data[token].rate
                     self.reward_data[token].rate = (new_amount + leftover) / duration
