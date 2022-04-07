@@ -116,7 +116,7 @@ describe('DistributionScheduler', () => {
         });
       });
 
-      context.only('when distribution is scheduled in the future', () => {
+      context('when distribution is scheduled in the future', () => {
         let startTime: BigNumber;
 
         sharedBeforeEach('schedule some existing distributions', async () => {
