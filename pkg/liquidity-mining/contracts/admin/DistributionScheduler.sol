@@ -31,9 +31,11 @@ contract DistributionScheduler {
 
     uint256 private constant _MAX_REWARDS = 8;
 
+    // The node at _HEAD contains no value, and simply points to the actual first node. The last node points to _NULL.
     uint32 private constant _HEAD = 0;
     uint32 private constant _NULL = 0;
 
+    // gauge-token pair -> timestamp -> (amount, nextTimestamp)
     mapping(bytes32 => mapping(uint32 => RewardNode)) private _rewardsLists;
 
     struct RewardNode {
@@ -132,7 +134,8 @@ contract DistributionScheduler {
 
         (uint32 firstUnprocessedNodeKey, uint256 rewardAmount) = _getPendingRewards(rewardsList, block.timestamp);
 
-        // Update the head of the list to point to the first unprocessed node.
+        // These calls are reentrancy-safe as we've already performed our only state transition (updating the head of
+        // the list)
         rewardsList[_HEAD].nextNodeKey = firstUnprocessedNodeKey;
 
         token.approve(address(gauge), rewardAmount);
@@ -181,7 +184,8 @@ contract DistributionScheduler {
         uint32 currentNodeKey = _HEAD;
         uint32 nextNodeKey = rewardsList[currentNodeKey].nextNodeKey;
 
-        // Search through nodes until the new node sits somewhere between `currentNodeKey` and `nextNodeKey`.
+        // Search through nodes until the new node sits somewhere between `currentNodeKey` and `nextNodeKey`, or
+        // we process all nodes.
         while (insertedNodeKey > nextNodeKey && nextNodeKey != _NULL) {
             currentNodeKey = nextNodeKey;
             nextNodeKey = rewardsList[currentNodeKey].nextNodeKey;
