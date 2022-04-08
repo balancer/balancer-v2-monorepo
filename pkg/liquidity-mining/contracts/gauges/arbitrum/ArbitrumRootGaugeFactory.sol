@@ -31,9 +31,9 @@ contract ArbitrumRootGaugeFactory is ILiquidityGaugeFactory, IArbitrumFeeProvide
     mapping(address => bool) private _isGaugeFromFactory;
     mapping(address => address) private _recipientGauge;
 
-    uint256 private _gasLimit;
-    uint256 private _gasPrice;
-    uint256 private _maxSubmissionCost;
+    uint64 private _gasLimit;
+    uint64 private _gasPrice;
+    uint64 private _maxSubmissionCost;
 
     event ArbitrumRootGaugeCreated(address indexed gauge, address indexed recipient);
     event ArbitrumFeesModified(uint256 gasLimit, uint256 gasPrice, uint256 maxSubmissionCost);
@@ -42,9 +42,9 @@ contract ArbitrumRootGaugeFactory is ILiquidityGaugeFactory, IArbitrumFeeProvide
         IVault vault,
         IBalancerMinter minter,
         IGatewayRouter gatewayRouter,
-        uint256 gasLimit,
-        uint256 gasPrice,
-        uint256 maxSubmissionCost
+        uint64 gasLimit,
+        uint64 gasPrice,
+        uint64 maxSubmissionCost
     ) Authentication(bytes32(uint256(address(this)))) {
         _vault = vault;
         _gaugeImplementation = new ArbitrumRootGauge(minter, gatewayRouter);
@@ -139,9 +139,9 @@ contract ArbitrumRootGaugeFactory is ILiquidityGaugeFactory, IArbitrumFeeProvide
      * @notice Set the fees for the Arbitrum side of the bridging transaction
      */
     function setArbitrumFees(
-        uint256 gasLimit,
-        uint256 gasPrice,
-        uint256 maxSubmissionCost
+        uint64 gasLimit,
+        uint64 gasPrice,
+        uint64 maxSubmissionCost
     ) external authenticate {
         _gasLimit = gasLimit;
         _gasPrice = gasPrice;
