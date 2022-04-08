@@ -19,6 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
 
+import "./Executor.sol";
 import "../interfaces/IVault.sol";
 import "../interfaces/IAuthorizer.sol";
 
@@ -63,6 +64,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     bytes32 public immutable EXECUTE_ACTION_ID;
     bytes32 public immutable SCHEDULE_DELAY_ACTION_ID;
 
+    Executor private immutable _executor;
     IAuthentication private immutable _vault;
     uint256 private immutable _rootTransferDelay;
 
@@ -113,6 +115,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     ) {
         root = admin;
         _vault = vault;
+        _executor = new Executor();
         _rootTransferDelay = rootTransferDelay;
 
         bytes32 grantActionId = getActionId(TimelockAuthorizer.grantPermissions.selector);
@@ -146,6 +149,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      */
     function getVault() external view returns (address) {
         return address(_vault);
+    }
+
+    /**
+     * @dev Tells the executor address
+     */
+    function getExecutor() external view returns (address) {
+        return address(_executor);
     }
 
     /**
@@ -208,7 +218,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address account,
         address where
     ) public view override returns (bool) {
-        return (delaysPerActionId[actionId] > 0) ? account == address(this) : hasPermission(actionId, account, where);
+        return
+            (delaysPerActionId[actionId] > 0) ? account == address(_executor) : hasPermission(actionId, account, where);
     }
 
     /**
@@ -223,7 +234,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         // If there is delay defined for the granular action ID, then the sender must be the authorizer (scheduled exec)
         bytes32 granularActionId = getActionId(actionId, how);
         if (delaysPerActionId[granularActionId] > 0) {
-            return account == address(this);
+            return account == address(_executor);
         }
 
         // If there is no delay, we can check if the account has that permissions
@@ -254,7 +265,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      * @dev Sets a new root address
      */
     function setRoot(address newRoot) external {
-        _require(msg.sender == address(this), Errors.SENDER_NOT_ALLOWED);
+        _require(msg.sender == address(_executor), Errors.SENDER_NOT_ALLOWED);
         root = newRoot;
         emit RootSet(newRoot);
     }
@@ -277,7 +288,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      * @dev Sets a new delay for action `actionId`
      */
     function setDelay(bytes32 actionId, uint256 delay) external {
-        _require(msg.sender == address(this), Errors.SENDER_NOT_ALLOWED);
+        _require(msg.sender == address(_executor), Errors.SENDER_NOT_ALLOWED);
 
         bytes32 setAuthorizerActionId = _vault.getActionId(IVault.setAuthorizer.selector);
         bool isAllowed = actionId == setAuthorizerActionId || delay <= delaysPerActionId[setAuthorizerActionId];
@@ -345,7 +356,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         }
 
         scheduledExecution.executed = true;
-        result = scheduledExecution.where.functionCall(scheduledExecution.data);
+        result = _executor.execute(scheduledExecution.where, scheduledExecution.data);
         emit ExecutionExecuted(scheduledExecutionId);
     }
 
