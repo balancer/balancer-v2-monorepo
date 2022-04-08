@@ -228,28 +228,25 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
-     * @dev Tells whether `account` can perform action `actionId` in `where` with `how`
+     * @dev Tells whether `account` can grant permissions for action `actionId` in `where`
      */
-    function canPerformOrWhatever(
+    function canGrant(
         bytes32 actionId,
         address account,
-        address where,
-        bytes32 how
+        address where
     ) public view returns (bool) {
-        // If there is delay defined for the granular action ID, then the sender must be the authorizer (scheduled exec)
-        bytes32 granularActionId = getActionId(actionId, how);
-        if (delaysPerActionId[granularActionId] > 0) {
-            return account == address(_executor);
-        }
+        return _canPerformOrWhatever(GRANT_ACTION_ID, account, where, actionId);
+    }
 
-        // If there is no delay, we can check if the account has that permissions
-        if (hasPermission(granularActionId, account, where)) {
-            return true;
-        }
-
-        // If the account doesn't have the permission explicitly we go through the same process with the global concept
-        bytes32 globalActionId = getActionId(actionId, WHATEVER);
-        return canPerform(globalActionId, account, where);
+    /**
+     * @dev Tells whether `account` can revoke permissions for action `actionId` in `where`
+     */
+    function canRevoke(
+        bytes32 actionId,
+        address account,
+        address where
+    ) public view returns (bool) {
+        return _canPerformOrWhatever(REVOKE_ACTION_ID, account, where, actionId);
     }
 
     /**
@@ -382,10 +379,10 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
-     * @dev Grants or revokes permissions to grant permissions to `account` for doing `actionId` in `where`
-     * Note that pairs can revoke themselves, even revoking the root, but the root can grant himself at any time
+     * @dev Manages `account`'s granter condition for action `actionId` in `where`.
+     * Note that pairs can manage themselves, even banning the root, but the root can allow himself back at any time
      */
-    function manageGrantPermission(
+    function manageGranter(
         bytes32 actionId,
         address account,
         address where,
@@ -407,8 +404,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     ) external {
         InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
         for (uint256 i = 0; i < actionIds.length; i++) {
-            bool isAllowed = canPerformOrWhatever(GRANT_ACTION_ID, msg.sender, where[i], actionIds[i]);
-            _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+            _require(canGrant(actionIds[i], msg.sender, where[i]), Errors.SENDER_NOT_ALLOWED);
             _grantPermission(actionIds[i], account, where[i]);
         }
     }
@@ -429,10 +425,10 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
-     * @dev Grants or revokes permissions to revoke permissions to `account` for doing `actionId` in `where`
-     * Note that pairs can revoke themselves, even revoking the root, but the root can grant himself at any time
+     * @dev Manages `account`'s revoker condition for action `actionId` in `where`.
+     * Note that pairs can manage themselves, even banning the root, but the root can allow himself back at any time
      */
-    function manageRevokePermission(
+    function manageRevoker(
         bytes32 actionId,
         address account,
         address where,
@@ -454,8 +450,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     ) external {
         InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
         for (uint256 i = 0; i < actionIds.length; i++) {
-            bool isAllowed = canPerformOrWhatever(REVOKE_ACTION_ID, msg.sender, where[i], actionIds[i]);
-            _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+            _require(canRevoke(actionIds[i], msg.sender, where[i]), Errors.SENDER_NOT_ALLOWED);
             _revokePermission(actionIds[i], account, where[i]);
         }
     }
@@ -539,6 +534,28 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         for (uint256 i = 0; i < executors.length; i++) {
             _grantPermission(executeActionId, executors[i], address(this));
         }
+    }
+
+    function _canPerformOrWhatever(
+        bytes32 actionId,
+        address account,
+        address where,
+        bytes32 how
+    ) internal view returns (bool) {
+        // If there is delay defined for the granular action ID, then the sender must be the authorizer (scheduled exec)
+        bytes32 granularActionId = getActionId(actionId, how);
+        if (delaysPerActionId[granularActionId] > 0) {
+            return account == address(_executor);
+        }
+
+        // If there is no delay, we can check if the account has that permissions
+        if (hasPermission(granularActionId, account, where)) {
+            return true;
+        }
+
+        // If the account doesn't have the permission explicitly we go through the same process with the global concept
+        bytes32 globalActionId = getActionId(actionId, WHATEVER);
+        return canPerform(globalActionId, account, where);
     }
 
     function _decodeSelector(bytes memory data) internal pure returns (bytes4) {
