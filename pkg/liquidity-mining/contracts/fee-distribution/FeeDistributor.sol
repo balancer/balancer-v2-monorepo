@@ -274,6 +274,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         _userTokenTimeCursor[user][token] = userTimeCursor;
 
         if (amount > 0) {
+            // For a token to be claimable it must have been added to the cached balance so this is safe.
             tokenState.cachedBalance = uint128(tokenState.cachedBalance - amount);
             token.safeTransfer(user, amount);
             emit TokensClaimed(user, token, amount, userTimeCursor);
@@ -331,12 +332,14 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         // These tokens are assigned to weeks proportionally to how much of this period falls into each week.
         mapping(uint256 => uint256) storage tokensPerWeek = _tokensPerWeek[token];
         for (uint256 i = 0; i < 20; ++i) {
+            // This is safe as we're incrementing a timestamp.
             nextWeek = thisWeek + 1 weeks;
             if (block.timestamp < nextWeek) {
                 // `thisWeek` is now the beginning of the current week, i.e. this is the final iteration.
                 if (timeSinceLastCheckpoint == 0 && block.timestamp == lastTokenTime) {
                     tokensPerWeek[thisWeek] += tokensToDistribute;
                 } else {
+                    // block.timestamp >= lastTokenTime by definition.
                     tokensPerWeek[thisWeek] +=
                         (tokensToDistribute * (block.timestamp - lastTokenTime)) /
                         timeSinceLastCheckpoint;
@@ -349,6 +352,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
                     // It shouldn't be possible to enter this block
                     tokensPerWeek[thisWeek] += tokensToDistribute;
                 } else {
+                    // nextWeek > lastTokenTime by definition. 
                     tokensPerWeek[thisWeek] +=
                         (tokensToDistribute * (nextWeek - lastTokenTime)) /
                         timeSinceLastCheckpoint;
@@ -410,6 +414,8 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             weekCursor = _startTime;
         }
 
+        // It's safe to increment `userEpoch` and `weekCursor` in this loop as epochs and timestamps
+        // are always much smaller than 2^256 and are being incremented by small values.
         IVotingEscrow.Point memory oldUserPoint;
         for (uint256 i = 0; i < 50; ++i) {
             // Break if we're trying to cache the user's balance at a timestamp in the future
@@ -447,6 +453,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             }
         }
 
+        // userEpoch > 0 so this is safe.
         userState.lastEpochCheckpointed = uint64(userEpoch - 1);
         userState.timeCursor = uint64(weekCursor);
     }
@@ -472,6 +479,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
 
             _veSupplyCache[timeCursor] = _votingEscrow.totalSupply(timeCursor);
 
+            // This is safe as we're incrementing a timestamp
             timeCursor += 1 weeks;
         }
         // Update state to the end of the current week (`weekStart` + 1 weeks)
@@ -507,12 +515,14 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         for (uint256 i = 0; i < 128; ++i) {
             if (min >= max) break;
 
+            // Algorithm assumes that inputs are less than 2^128 so this operation is safe.
             // +2 avoids getting stuck in min == mid < max
             uint256 mid = (min + max + 2) / 2;
             IVotingEscrow.Point memory pt = _votingEscrow.user_point_history(user, mid);
             if (pt.ts <= timestamp) {
                 min = mid;
             } else {
+                // max > min so this is safe.
                 max = mid - 1;
             }
         }
@@ -523,6 +533,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @dev Rounds the provided timestamp down to the beginning of the previous week (Thurs 00:00 UTC)
      */
     function _roundDownTimestamp(uint256 timestamp) private pure returns (uint256) {
+        // Division by zero or overflows are impossible here.
         return (timestamp / 1 weeks) * 1 weeks;
     }
 
@@ -530,6 +541,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @dev Rounds the provided timestamp up to the beginning of the next week (Thurs 00:00 UTC)
      */
     function _roundUpTimestamp(uint256 timestamp) private pure returns (uint256) {
+        // Overflows are impossible here for all realistic inputs.
         return _roundDownTimestamp(timestamp + 1 weeks - 1);
     }
 }
