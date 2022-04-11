@@ -89,8 +89,12 @@ export default class TimelockAuthorizer {
     return this.instance.canRevoke(action, this.toAddress(account), this.toAddress(where));
   }
 
-  async hasPermission(action: string, account: Account, where: Account, how: string): Promise<boolean> {
-    return this.instance.hasPermissionOrWhatever(action, this.toAddress(account), this.toAddress(where), how);
+  async isGranter(actionId: string, account: Account, where: Account): Promise<boolean> {
+    return this.instance.isGranter(actionId, this.toAddress(account), this.toAddress(where));
+  }
+
+  async isRevoker(actionId: string, account: Account, where: Account): Promise<boolean> {
+    return this.instance.isRevoker(actionId, this.toAddress(account), this.toAddress(where));
   }
 
   async scheduleRootChange(root: Account, executors: Account[], params?: TxParams): Promise<number> {
