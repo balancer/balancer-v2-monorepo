@@ -174,8 +174,6 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @param token - The ERC20 token address to be checkpointed.
      */
     function checkpointToken(IERC20 token) external override nonReentrant {
-        // Prevent someone from assigning tokens to an inaccessible week.
-        require(block.timestamp > _startTime, "Fee distribution has not started yet");
         _checkpointToken(token, true);
     }
 
@@ -186,9 +184,6 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @param tokens - An array of ERC20 token addresses to be checkpointed.
      */
     function checkpointTokens(IERC20[] calldata tokens) external override nonReentrant {
-        // Prevent someone from assigning tokens to an inaccessible week.
-        require(block.timestamp > _startTime, "Fee distribution has not started yet");
-
         uint256 tokensLength = tokens.length;
         for (uint256 i = 0; i < tokensLength; ++i) {
             _checkpointToken(tokens[i], true);
@@ -206,8 +201,6 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @return The amount of `token` sent to `user` as a result of claiming.
      */
     function claimToken(address user, IERC20 token) external override nonReentrant returns (uint256) {
-        // Prevent someone from assigning tokens to an inaccessible week.
-        require(block.timestamp > _startTime, "Fee distribution has not started yet");
         _checkpointTotalSupply();
         _checkpointToken(token, false);
         _checkpointUserBalance(user);
@@ -294,6 +287,9 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             // Also mark at which timestamp users should start attempts to claim this token from.
             lastTokenTime = block.timestamp;
             tokenState.startTime = uint64(_roundDownTimestamp(block.timestamp));
+            
+            // Prevent someone from assigning tokens to an inaccessible week.
+            require(block.timestamp > _startTime, "Fee distribution has not started yet");
         } else {
             timeSinceLastCheckpoint = block.timestamp - lastTokenTime;
 
