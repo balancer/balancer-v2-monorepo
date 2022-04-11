@@ -108,6 +108,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      */
     event RootSet(address indexed root);
 
+    modifier onlyExecutor() {
+        _require(msg.sender == address(_executor), Errors.SENDER_NOT_ALLOWED);
+        _;
+    }
+
     constructor(
         address admin,
         IAuthentication vault,
@@ -264,8 +269,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     /**
      * @dev Sets a new root address
      */
-    function setRoot(address newRoot) external {
-        _require(msg.sender == address(_executor), Errors.SENDER_NOT_ALLOWED);
+    function setRoot(address newRoot) external onlyExecutor {
         root = newRoot;
         emit RootSet(newRoot);
     }
@@ -287,9 +291,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     /**
      * @dev Sets a new delay for action `actionId`
      */
-    function setDelay(bytes32 actionId, uint256 delay) external {
-        _require(msg.sender == address(_executor), Errors.SENDER_NOT_ALLOWED);
-
+    function setDelay(bytes32 actionId, uint256 delay) external onlyExecutor {
         bytes32 setAuthorizerActionId = _vault.getActionId(IVault.setAuthorizer.selector);
         bool isAllowed = actionId == setAuthorizerActionId || delay <= delaysPerActionId[setAuthorizerActionId];
         require(isAllowed, "DELAY_EXCEEDS_SET_AUTHORIZER");
