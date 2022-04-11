@@ -397,14 +397,10 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
 
         // If this is the first checkpoint for the user, calculate the first week they're eligible for.
         // i.e. the timestamp of the first Thursday after they locked.
+        // If this is earlier then the first distribution then fast forward to then.
         if (weekCursor == 0) {
-            weekCursor = _roundUpTimestamp(userPoint.ts);
+            weekCursor = Math.max(_startTime, _roundUpTimestamp(userPoint.ts));
             userState.startTime = uint64(weekCursor);
-        }
-
-        // Sanity check - can't claim fees from before fee distribution started.
-        if (weekCursor < _startTime) {
-            weekCursor = _startTime;
         }
 
         IVotingEscrow.Point memory oldUserPoint;
