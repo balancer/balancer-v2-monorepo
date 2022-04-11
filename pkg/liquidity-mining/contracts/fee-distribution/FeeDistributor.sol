@@ -287,7 +287,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             // Also mark at which timestamp users should start attempts to claim this token from.
             lastTokenTime = block.timestamp;
             tokenState.startTime = uint64(_roundDownTimestamp(block.timestamp));
-            
+
             // Prevent someone from assigning tokens to an inaccessible week.
             require(block.timestamp > _startTime, "Fee distribution has not started yet");
         } else {
@@ -371,7 +371,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
 
         // Minimal user_epoch for an address which has locked veBAL is 1.
         uint256 userEpoch = 1;
-        
+
         UserState storage userState = _userState[user];
 
         // weekCursor represents the timestamp of the beginning of the week from which we
