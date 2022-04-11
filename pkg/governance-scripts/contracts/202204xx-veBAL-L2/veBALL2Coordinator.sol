@@ -26,8 +26,6 @@ import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/ILiquidityGaugeF
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/ISingleRecipientGaugeFactory.sol";
 import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IBALTokenHolderFactory.sol";
 
-import "@balancer-labs/v2-liquidity-mining/contracts/SmartWalletChecker.sol";
-
 // solhint-disable not-rely-on-time
 
 /**
@@ -53,8 +51,6 @@ contract veBALL2Coordinator is ReentrancyGuard {
     ILiquidityGaugeFactory private immutable _ethereumGaugeFactory;
     ISingleRecipientGaugeFactory private immutable _polygonGaugeFactory;
     ISingleRecipientGaugeFactory private immutable _arbitrumGaugeFactory;
-
-    SmartWalletChecker private immutable _smartWalletChecker;
 
     enum DeploymentStage { PENDING, FIRST_STAGE_DONE }
 
@@ -84,10 +80,6 @@ contract veBALL2Coordinator is ReentrancyGuard {
         _arbitrumGaugeFactory = arbitrumGaugeFactory;
 
         _activationScheduledTime = activationScheduledTime;
-
-        // TODO: fill out list of addresses
-        address[] memory initialAllowlistedAddresses = new address[](0);
-        _smartWalletChecker = new SmartWalletChecker(vault, initialAllowlistedAddresses);
     }
 
     /**
@@ -124,50 +116,22 @@ contract veBALL2Coordinator is ReentrancyGuard {
         ICurrentAuthorizer authorizer = getAuthorizer();
         require(authorizer.canPerform(bytes32(0), address(this), address(0)), "Not Authorizer admin");
 
-        // Step 1: Activate a SmartWalletChecker contract for veBAL
-        //
-        // This allows an allowlisted set of contracts to lock veBAL, contracts are generally prevented from doing so.
-        _setSmartWalletChecker();
-
-        // Step 2: Add new gauges to the GaugeController
+        // Step 1: Add new gauges to the GaugeController
         _addNewEthereumGauges();
 
-        // Step 3: Allowlist factories for the Polygon and Arbitrum gauge types
+        // Step 2: Allowlist factories for the Polygon and Arbitrum gauge types
         //
         // This allows gauges deployed from these factories to be added to Gauge Controller
         _addPolygonAndArbitrumGaugeFactories();
 
-        // Step 4: Deploy Polygon gauges and add them to the Gauge Controller
+        // Step 3: Deploy Polygon gauges and add them to the Gauge Controller
         _addNewPolygonGauges();
 
-        // Step 5: Deploy Arbitrum gauges and add them to the Gauge Controller
+        // Step 4: Deploy Arbitrum gauges and add them to the Gauge Controller
         _addNewArbitrumGauges();
 
         firstStageActivationTime = block.timestamp;
         _currentDeploymentStage = DeploymentStage.FIRST_STAGE_DONE;
-    }
-
-    function _setSmartWalletChecker() private {
-        ICurrentAuthorizer authorizer = getAuthorizer();
-        bytes32 commitSmartWalletCheckerRole = _authorizerAdaptor.getActionId(
-            IVotingEscrow.commit_smart_wallet_checker.selector
-        );
-        bytes32 applySmartWalletCheckerRole = _authorizerAdaptor.getActionId(
-            IVotingEscrow.apply_smart_wallet_checker.selector
-        );
-
-        authorizer.grantRole(commitSmartWalletCheckerRole, address(this));
-        _votingEscrow.commit_smart_wallet_checker(address(_smartWalletChecker));
-        authorizer.revokeRole(commitSmartWalletCheckerRole, address(this));
-
-        authorizer.grantRole(applySmartWalletCheckerRole, address(this));
-        _votingEscrow.apply_smart_wallet_checker();
-        authorizer.revokeRole(applySmartWalletCheckerRole, address(this));
-
-        require(
-            _votingEscrow.smart_wallet_checker() == address(_smartWalletChecker),
-            "Smart wallet checker not set correctly"
-        );
     }
 
     function _addNewEthereumGauges() private {
