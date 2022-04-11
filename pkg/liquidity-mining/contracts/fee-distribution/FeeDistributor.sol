@@ -19,6 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
 
 import "../interfaces/IFeeDistributor.sol";
 import "../interfaces/IVotingEscrow.sol";
@@ -33,6 +34,7 @@ import "../interfaces/IVotingEscrow.sol";
  * holders simply transfer the tokens to the `FeeDistributor` contract and then call `checkpointToken`.
  */
 contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
+    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     IVotingEscrow private immutable _votingEscrow;
@@ -320,7 +322,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         tokenState.timeCursor = uint64(block.timestamp);
 
         uint256 tokenBalance = token.balanceOf(address(this));
-        uint256 tokensToDistribute = tokenBalance - tokenState.cachedBalance;
+        uint256 tokensToDistribute = tokenBalance.sub(tokenState.cachedBalance);
         if (tokensToDistribute == 0) return;
         require(tokenBalance <= type(uint128).max, "Maximum token balance exceeded");
         tokenState.cachedBalance = uint128(tokenBalance);
