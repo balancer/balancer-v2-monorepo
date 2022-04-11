@@ -346,10 +346,10 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
                         (tokensToDistribute * (block.timestamp - lastTokenTime)) /
                         timeSinceLastCheckpoint;
                 }
-                // As we've caught up to the present then we should now break
+                // As we've caught up to the present then we should now break.
                 break;
             } else {
-                // We've gone a full week or more without checkpointing so need to distribute tokens to previous weeks
+                // We've gone a full week or more without checkpointing so need to distribute tokens to previous weeks.
                 if (timeSinceLastCheckpoint == 0 && nextWeek == lastTokenTime) {
                     // It shouldn't be possible to enter this block
                     tokensPerWeek[thisWeek] += tokensToDistribute;
