@@ -176,12 +176,7 @@ contract veBALL2Coordinator is ReentrancyGuard {
 
         uint256 initialRecipientsLength = initialRecipients.length;
         for (uint256 i = 0; i < initialRecipientsLength; i++) {
-            // Find gauge which distributes BAL to listed recipient
-            address gauge = address(_polygonGaugeFactory.getRecipientGauge(initialRecipients[i]));
-            if (gauge == address(0)) {
-                // If gauge doesn't exist yet then create one.
-                gauge = _polygonGaugeFactory.create(initialRecipients[i]);
-            }
+            address gauge = _deployGauge(_polygonGaugeFactory, initialRecipients[i]);
             _gaugeAdder.addPolygonGauge(gauge);
         }
 
@@ -200,15 +195,19 @@ contract veBALL2Coordinator is ReentrancyGuard {
 
         uint256 initialRecipientsLength = initialRecipients.length;
         for (uint256 i = 0; i < initialRecipientsLength; i++) {
-            // Find gauge which distributes BAL to listed recipient
-            address gauge = address(_arbitrumGaugeFactory.getRecipientGauge(initialRecipients[i]));
-            if (gauge == address(0)) {
-                // If gauge doesn't exist yet then create one.
-                gauge = _arbitrumGaugeFactory.create(initialRecipients[i]);
-            }
+            address gauge = _deployGauge(_arbitrumGaugeFactory, initialRecipients[i]);
             _gaugeAdder.addArbitrumGauge(gauge);
         }
 
         authorizer.revokeRole(addArbitrumGaugeRole, address(this));
+    }
+
+    function _deployGauge(ISingleRecipientGaugeFactory factory, address recipient) private returns (address gauge) {
+        // Find gauge which distributes BAL to listed recipient
+        gauge = address(factory.getRecipientGauge(recipient));
+        if (gauge == address(0)) {
+            // If gauge doesn't exist yet then create one.
+            gauge = factory.create(recipient);
+        }
     }
 }
