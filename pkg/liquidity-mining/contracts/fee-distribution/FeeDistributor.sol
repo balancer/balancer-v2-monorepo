@@ -354,7 +354,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
                     // It shouldn't be possible to enter this block
                     tokensPerWeek[thisWeek] += tokensToDistribute;
                 } else {
-                    // nextWeek > lastTokenTime by definition. 
+                    // nextWeek > lastTokenTime by definition.
                     tokensPerWeek[thisWeek] +=
                         (tokensToDistribute * (nextWeek - lastTokenTime)) /
                         timeSinceLastCheckpoint;
