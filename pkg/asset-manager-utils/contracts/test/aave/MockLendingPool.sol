@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 
-import "../../aave/DataTypes.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/asset-manager-utils/aave/DataTypes.sol";
 
 // solhint-disable no-unused-vars
 contract MockAToken is ERC20 {

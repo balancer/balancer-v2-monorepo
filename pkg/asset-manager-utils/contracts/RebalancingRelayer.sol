@@ -23,7 +23,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/misc/IWETH.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 
-import "./IAssetManager.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
 
 contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
     using Address for address payable;
