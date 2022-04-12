@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-standalone-utils/contracts/test/TestToken.sol";
 
-import "../interfaces/IStaticAToken.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/pool-linear/IStaticAToken.sol";
 
 contract MockStaticAToken is TestToken, IStaticAToken, ILendingPool {
     uint256 private _rate = 1e27;

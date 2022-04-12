@@ -25,7 +25,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 
-import "@balancer-labs/v2-asset-manager-utils/contracts/IAssetManager.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
 
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";

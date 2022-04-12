@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IUnbuttonToken.sol";
 
-import "../interfaces/IAToken.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/pool-linear/IAToken.sol";
 import "../LinearPool.sol";
 
 /**
