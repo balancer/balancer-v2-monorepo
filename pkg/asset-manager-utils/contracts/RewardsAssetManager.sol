@@ -12,6 +12,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
+
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/Math.sol";
@@ -20,9 +23,6 @@ import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/Fixe
 import "@balancer-labs/v2-balancer-interfaces/contracts/pool-utils/IRelayedBasePool.sol";
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
-
-pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
 /**
  * @title RewardsAssetManager
