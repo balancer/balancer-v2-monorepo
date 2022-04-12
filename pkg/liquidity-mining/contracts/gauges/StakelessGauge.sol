@@ -17,10 +17,10 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
-import "../interfaces/IBalancerMinter.sol";
-import "../interfaces/IBalancerTokenAdmin.sol";
-import "../interfaces/IGaugeController.sol";
-import "../interfaces/ILiquidityGauge.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IBalancerMinter.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IGaugeController.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/ILiquidityGauge.sol";
 
 abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
     IERC20 internal immutable _balToken;

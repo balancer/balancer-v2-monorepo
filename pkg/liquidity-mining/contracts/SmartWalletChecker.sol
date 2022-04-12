@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.so
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "./interfaces/ISmartWalletChecker.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/ISmartWalletChecker.sol";
 
 contract SmartWalletChecker is ISmartWalletChecker, Authentication {
     using EnumerableSet for EnumerableSet.AddressSet;

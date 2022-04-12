@@ -17,8 +17,9 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/ISingleRecipientGaugeFactory.sol";
+
 import "./SingleRecipientGauge.sol";
-import "../../interfaces/ISingleRecipientGaugeFactory.sol";
 
 contract SingleRecipientGaugeFactory is ISingleRecipientGaugeFactory {
     ISingleRecipientGauge private _gaugeImplementation;

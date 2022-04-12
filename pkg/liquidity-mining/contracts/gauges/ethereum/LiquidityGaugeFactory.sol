@@ -17,8 +17,8 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
-import "../../interfaces/IStakingLiquidityGauge.sol";
-import "../../interfaces/ILiquidityGaugeFactory.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IStakingLiquidityGauge.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/ILiquidityGaugeFactory.sol";
 
 contract LiquidityGaugeFactory is ILiquidityGaugeFactory {
     ILiquidityGauge private immutable _gaugeImplementation;

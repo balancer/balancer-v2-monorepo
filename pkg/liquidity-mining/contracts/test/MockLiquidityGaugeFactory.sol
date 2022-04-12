@@ -21,7 +21,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 import "./MockLiquidityGauge.sol";
 
-import "../interfaces/ILiquidityGaugeFactory.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/ILiquidityGaugeFactory.sol";
 
 contract MockLiquidityGaugeFactory is ILiquidityGaugeFactory {
     mapping(address => bool) private _isGaugeFromFactory;

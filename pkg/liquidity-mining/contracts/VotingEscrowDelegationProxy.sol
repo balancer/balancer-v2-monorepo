@@ -18,7 +18,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "./interfaces/IVeDelegation.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IVeDelegation.sol";
 
 contract VotingEscrowDelegationProxy is Authentication {
     IVault private immutable _vault;

@@ -21,8 +21,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
 
-import "../interfaces/IFeeDistributor.sol";
-import "../interfaces/IVotingEscrow.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IFeeDistributor.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IVotingEscrow.sol";
 
 // solhint-disable not-rely-on-time
 
