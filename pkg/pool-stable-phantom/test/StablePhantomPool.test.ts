@@ -18,14 +18,10 @@ import StablePhantomPool from '@balancer-labs/v2-helpers/src/models/pools/stable
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('StablePhantomPool', () => {
-  let lp: SignerWithAddress,
-    owner: SignerWithAddress,
-    recipient: SignerWithAddress,
-    admin: SignerWithAddress,
-    other: SignerWithAddress;
+  let lp: SignerWithAddress, owner: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
 
   sharedBeforeEach('setup signers', async () => {
-    [, lp, owner, recipient, admin, other] = await ethers.getSigners();
+    [, lp, owner, recipient, admin] = await ethers.getSigners();
   });
 
   context('for 2 tokens pool', () => {
