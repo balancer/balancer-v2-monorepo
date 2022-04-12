@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/LogCompression.sol";
+import "@balancer-labs/v2-balancer-interfaces/solidity-utils/helpers/LogCompression.sol";
 
 contract MockLogCompression {
     function toLowResLog(uint256 value) external pure returns (int256) {

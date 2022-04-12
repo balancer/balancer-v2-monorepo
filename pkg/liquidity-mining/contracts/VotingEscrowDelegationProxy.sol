@@ -14,9 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/Authentication.sol";
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IVeDelegation.sol";
 

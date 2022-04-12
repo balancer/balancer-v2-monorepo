@@ -14,12 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/Address.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/ReentrancyGuard.sol";
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IAuthorizer.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IAuthorizer.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
 

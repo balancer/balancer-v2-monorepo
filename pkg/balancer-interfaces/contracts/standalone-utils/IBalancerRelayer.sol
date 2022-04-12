@@ -13,12 +13,21 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "../solidity-utils/openzeppelin/Address.sol";
+import "../solidity-utils/openzeppelin/ReentrancyGuard.sol";
 
-// solhint-disable-next-line max-line-length
-// Based on https://github.com/lidofinance/lido-dao/blob/816bf1d0995ba5cfdfc264de4acda34a7fe93eba/contracts/0.4.24/Lido.sol
+import "../vault/IVault.sol";
 
-interface IstETH is IERC20 {
-    function submit(address referral) external payable returns (uint256);
+/**
+ * @title IBalancerRelayer
+ * @notice Allows safe multicall execution of a relayer's functions
+ */
+interface IBalancerRelayer {
+    function getLibrary() external view returns (address);
+
+    function getVault() external view returns (IVault);
+
+    function multicall(bytes[] calldata data) external payable returns (bytes[] memory results);
 }

@@ -2,7 +2,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "../solidity-utils/openzeppelin/IERC20.sol";
 
 // solhint-disable-next-line max-line-length
 // Based on https://github.com/aave/protocol-v2/blob/ac58fea62bb8afee23f66197e8bce6d79ecda292/contracts/interfaces/IStaticATokenLM.sol

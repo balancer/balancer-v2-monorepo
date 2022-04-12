@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../openzeppelin/ERC20.sol";
+import "@balancer-labs/v2-balancer-interfaces/solidity-utils/openzeppelin/ERC20.sol";
 
 contract ERC20Mock is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}

@@ -14,10 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "../solidity-utils/openzeppelin/IERC20.sol";
 
-interface IControlledPool {
-    function setSwapFeePercentage(uint256 swapFeePercentage) external;
+import "./IButtonWrapper.sol";
 
-    function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig) external;
+// Balancer only supports ERC20 tokens, so we use this intermediate interface
+// to enforce ERC20-ness of UnbuttonTokens.
+interface IUnbuttonToken is IButtonWrapper, IERC20 {
+    // solhint-disable-previous-line no-empty-blocks
 }

@@ -15,13 +15,15 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-vault/contracts/AssetHelpers.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-import "@balancer-labs/v2-pool-utils/contracts/interfaces/IBasePoolRelayer.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/misc/IWETH.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/AssetHelpers.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IAsset.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
+
+import "@balancer-labs/v2-balancer-interfaces/contracts/pool-utils/IBasePoolRelayer.sol";
+
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/Address.sol";
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
 

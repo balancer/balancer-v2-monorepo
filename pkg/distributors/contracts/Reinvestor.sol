@@ -15,13 +15,15 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-weighted/contracts/WeightedPoolUserData.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IAsset.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
-import "./PoolTokenCache.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/EnumerableSet.sol";
+
 import "@balancer-labs/v2-balancer-interfaces/contracts/distributors/IDistributorCallback.sol";
+
+import "@balancer-labs/v2-pool-weighted/contracts/WeightedPoolUserData.sol";
+import "./PoolTokenCache.sol";
 
 contract Reinvestor is PoolTokenCache, IDistributorCallback {
     using EnumerableSet for EnumerableSet.AddressSet;

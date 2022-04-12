@@ -14,12 +14,15 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "../solidity-utils/helpers/IAuthentication.sol";
+import "../solidity-utils/openzeppelin/IERC20.sol";
 
-import "./IButtonWrapper.sol";
+interface IBALTokenHolder is IAuthentication {
+    function withdrawFunds(address recipient, uint256 amount) external;
 
-// Balancer only supports ERC20 tokens, so we use this intermediate interface
-// to enforce ERC20-ness of UnbuttonTokens.
-interface IUnbuttonToken is IButtonWrapper, IERC20 {
-    // solhint-disable-previous-line no-empty-blocks
+    function sweepTokens(
+        IERC20 token,
+        address recipient,
+        uint256 amount
+    ) external;
 }

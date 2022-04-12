@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
+import "../../vault/IAsset.sol";
 
 import "../openzeppelin/IERC20.sol";
 

@@ -15,8 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-vault/contracts/AssetHelpers.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "../vault/AssetHelpers.sol";
+import "../vault/IVault.sol";
 
 /**
  * @title IBaseRelayerLibrary

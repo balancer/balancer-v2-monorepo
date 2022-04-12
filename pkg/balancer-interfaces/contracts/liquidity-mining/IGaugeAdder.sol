@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
+import "../solidity-utils/helpers/IAuthentication.sol";
 
 import "./IAuthorizerAdaptor.sol";
 import "./IGaugeController.sol";

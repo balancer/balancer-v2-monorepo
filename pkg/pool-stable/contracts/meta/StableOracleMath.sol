@@ -14,8 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/LogCompression.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/FixedPoint.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/LogCompression.sol";
 
 import "../StableMath.sol";
 

@@ -14,9 +14,10 @@
 
 pragma solidity ^0.7.0;
 
+import "../openzeppelin/EIP712.sol";
+
 import "./BalancerErrors.sol";
 import "./ISignaturesValidator.sol";
-import "../openzeppelin/EIP712.sol";
 
 /**
  * @dev Utility for signing Solidity function calls.

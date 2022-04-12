@@ -14,8 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "./LogExpMath.sol";
 import "../helpers/BalancerErrors.sol";
+
+import "./LogExpMath.sol";
 
 /* solhint-disable private-vars-leading-underscore */
 

@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "../solidity-utils/openzeppelin/IERC20.sol";
 
 interface IBalancerToken is IERC20 {
     function mint(address to, uint256 amount) external;

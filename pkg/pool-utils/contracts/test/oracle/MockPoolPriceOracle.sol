@@ -15,9 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-balancer-interfaces/contracts/pool-utils/IPriceOracle.sol";
+
 import "../../oracle/Samples.sol";
 import "../../oracle/PoolPriceOracle.sol";
-import "../../interfaces/IPriceOracle.sol";
 
 import "./MockSamples.sol";
 

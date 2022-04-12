@@ -15,20 +15,20 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/Math.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/FixedPoint.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/EnumerableSet.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/SafeERC20.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/IERC20Permit.sol";
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
-
-import "./MultiDistributorAuthorization.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IAsset.sol";
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/distributors/IMultiDistributor.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/distributors/IDistributorCallback.sol";
+
+import "./MultiDistributorAuthorization.sol";
 
 // solhint-disable not-rely-on-time
 

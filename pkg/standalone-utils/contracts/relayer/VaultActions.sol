@@ -15,15 +15,15 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/VaultHelpers.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/VaultHelpers.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/Math.sol";
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-pool-weighted/contracts/WeightedPoolUserData.sol";
 
-import "../interfaces/IBaseRelayerLibrary.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBaseRelayerLibrary.sol";
 
 /**
  * @title VaultActions

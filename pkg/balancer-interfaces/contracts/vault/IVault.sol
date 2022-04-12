@@ -14,11 +14,11 @@
 
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/ISignaturesValidator.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/ITemporarilyPausable.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/misc/IWETH.sol";
+import "../solidity-utils/openzeppelin/IERC20.sol";
+import "../solidity-utils/helpers/IAuthentication.sol";
+import "../solidity-utils/helpers/ISignaturesValidator.sol";
+import "../solidity-utils/helpers/ITemporarilyPausable.sol";
+import "../solidity-utils/misc/IWETH.sol";
 
 import "./IAsset.sol";
 import "./IAuthorizer.sol";

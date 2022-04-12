@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../math/Math.sol";
+import "@balancer-labs/v2-balancer-interfaces/solidity-utils/math/Math.sol";
 
 contract MathMock {
     function abs(int256 a) public pure returns (uint256) {

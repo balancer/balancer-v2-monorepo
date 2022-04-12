@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/BaseSplitCodeFactory.sol";
+import "@balancer-labs/v2-balancer-interfaces/solidity-utils/helpers/BaseSplitCodeFactory.sol";
 
 contract MockFactoryCreatedContract {
     bytes32 private _id;

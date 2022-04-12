@@ -14,9 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "../StakelessGauge.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/ISingleRecipientGauge.sol";
+
+import "../StakelessGauge.sol";
 
 interface IPolygonRootChainManager {
     function depositFor(

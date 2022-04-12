@@ -2,8 +2,8 @@
 
 pragma solidity ^0.7.0;
 
-import "../openzeppelin/EnumerableMap.sol";
-import "../openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-balancer-interfaces/solidity-utils/openzeppelin/EnumerableMap.sol";
+import "@balancer-labs/v2-balancer-interfaces/solidity-utils/openzeppelin/IERC20.sol";
 
 // solhint-disable func-name-mixedcase
 
