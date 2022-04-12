@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
 
-import "./Executor.sol";
+import "./TimelockExecutor.sol";
 import "../interfaces/IVault.sol";
 import "../interfaces/IAuthorizer.sol";
 
@@ -64,7 +64,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     bytes32 public immutable EXECUTE_ACTION_ID;
     bytes32 public immutable SCHEDULE_DELAY_ACTION_ID;
 
-    Executor private immutable _executor;
+    TimelockExecutor private immutable _executor;
     IAuthentication private immutable _vault;
     uint256 private immutable _rootTransferDelay;
 
@@ -120,7 +120,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     ) {
         root = admin;
         _vault = vault;
-        _executor = new Executor();
+        _executor = new TimelockExecutor();
         _rootTransferDelay = rootTransferDelay;
 
         bytes32 grantActionId = getActionId(TimelockAuthorizer.grantPermissions.selector);

@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
-describe('Executor', () => {
+describe('TimelockExecutor', () => {
   let executor: Contract, token: Contract;
   let authorizer: SignerWithAddress, other: SignerWithAddress;
 
@@ -16,7 +16,7 @@ describe('Executor', () => {
 
   sharedBeforeEach('deploy contracts', async () => {
     token = await deploy('v2-solidity-utils/ERC20Mock', { args: ['Token', 'TKN'] });
-    executor = await deploy('Executor', { from: authorizer });
+    executor = await deploy('TimelockExecutor', { from: authorizer });
   });
 
   describe('call', () => {
