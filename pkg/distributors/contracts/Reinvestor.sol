@@ -21,7 +21,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
 import "./PoolTokenCache.sol";
-import "./interfaces/IDistributorCallback.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/distributors/IDistributorCallback.sol";
 
 contract Reinvestor is PoolTokenCache, IDistributorCallback {
     using EnumerableSet for EnumerableSet.AddressSet;

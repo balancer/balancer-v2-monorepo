@@ -21,7 +21,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
-import "./interfaces/IDistributorCallback.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/distributors/IDistributorCallback.sol";
 
 pragma solidity ^0.7.0;
 

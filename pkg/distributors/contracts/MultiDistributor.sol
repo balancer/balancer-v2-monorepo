@@ -27,8 +27,8 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
 import "./MultiDistributorAuthorization.sol";
 
-import "./interfaces/IMultiDistributor.sol";
-import "./interfaces/IDistributorCallback.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/distributors/IMultiDistributor.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/distributors/IDistributorCallback.sol";
 
 // solhint-disable not-rely-on-time
 
