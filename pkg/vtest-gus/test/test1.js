@@ -5,8 +5,8 @@ const wethAddress = "0xc778417E063141139Fce010982780140Aa0cD5Ab";
 const bufferPeriodDuration = 0;
 const pauseWindowDuration = 0;
 
-let initial_mint = 500e6;
-let initial_mint2 = 10e6;
+let initial_mint = 1000e6;
+let initial_mint2 = 20e6;
 const initialBalances = [500e6, 500e6];
 let swapFeePercentage = 3000000000000000;
 const weight_pool = [BigInt(50e16), BigInt(50e16)];
@@ -18,8 +18,8 @@ describe('TEST', () => {
 	let owner, addr1, addr2, addr3, addr4, addr5;
 	let wbtc, weth;
 	let vault;
-	let weightedPoolFactory;
-	let poolAddress, poolId;
+	let weightedPoolFactory, stablePoolFactory;
+	let wPoolAddress, wPoolId, sPoolAddress, sPoolId;
 
 	describe('1) Deploy contracts', () => {
 		let Wbtc, Weth;
@@ -91,6 +91,19 @@ describe('TEST', () => {
 				});
 			});
 		});
+
+		describe('StablePoolFactory contract', () => {
+			let StablePoolFactory;
+
+			describe('Deploying Contract', () => {
+				it('Should deploy the StablePoolFactory Contract', async () => {
+					StablePoolFactory = await ethers.getContractFactory('StablePoolFactory');
+					stablePoolFactory = await StablePoolFactory.deploy(vault.address);
+					console.log (`\t\StablePoolFactory Address: ${weightedPoolFactory.address}`);
+					//console.log (weightedPoolFactory);
+				});
+			});
+		});
 	
 	});
 	
@@ -131,8 +144,8 @@ describe('TEST', () => {
 
 		it('Address1 invoke CREATE function in WeightedPoolFactory - Simple pool 50%-50%', async () => {
 			let tx = await weightedPoolFactory.create(
-				"prueba",
-				"prue",
+				"pruebaWeighted",
+				"pruW",
 				[weth.address, wbtc.address],
 				weight_pool,
 				[addr3.address, addr4.address],
@@ -143,28 +156,61 @@ describe('TEST', () => {
 
 				// We need to get the new pool address out of the PoolCreated event
 			const events = receipt.events.filter((e) => e.event === 'PoolCreated');
-			poolAddress = events[0].args.pool;
-			console.log(`\t\tNew Pool Address / ERC20 LP Token Address: ${poolAddress}`);
+			wPoolAddress = events[0].args.pool;
+			console.log(`\t\tNew Weigthed Pool Address / ERC20 LP Token Address: ${wPoolAddress}`);
 
-			const pool = await ethers.getContractAt('WeightedPool', poolAddress);
-			poolId  = await pool.getPoolId();
-			console.log(`\t\tNew Pool ID: ${poolId}`);
+			const wPool = await ethers.getContractAt('WeightedPool', wPoolAddress);
+			wPoolId  = await wPool.getPoolId();
+			console.log(`\t\tNew Weigthed Pool ID: ${wPoolId}`);
 
-			console.log(`\t\tNew Pool Details: (before funds)`);
-			tx = await vault.getPoolTokens(poolId);
-			console.log(`\t\t\tPool Tokens: ${tx[0]}`);
-			console.log(`\t\t\tPool Balance: ${tx[1]}`);
-			console.log(`\t\t\tPool lastChangeBlock: ${tx[2]}`);
+			console.log(`\t\tNew Weigthed Pool Details: (before funds)`);
+			tx = await vault.getPoolTokens(wPoolId);
+			console.log(`\t\t\tWeigthed Pool Tokens: ${tx[0]}`);
+			console.log(`\t\t\tWeigthed Pool Poolol Balance: ${tx[1]}`);
+			console.log(`\t\t\tWeigthed Pool lastChangeBlock: ${tx[2]}`);
 
-			const lpToken = await ethers.getContractAt('erc20', poolAddress);
-			let lpBalance = await lpToken.totalSupply();
-			console.log(`\n\t\t\tERC20 LP Balance: ${lpBalance}`);
+			const wLpToken = await ethers.getContractAt('erc20', wPoolAddress);
+			let wLpBalance = await wLpToken.totalSupply();
+			console.log(`\n\t\t\tERC20 LP Balance: ${wLpBalance}`);
 
 		});
 
+		it('Address1 invoke CREATE function in StablePoolFactory - Simple pool 50%-50%', async () => {
+			let tx = await stablePoolFactory.create(
+				"pruebaStable",
+				"pruS",
+				[weth.address, wbtc.address],
+				100,
+				swapFeePercentage,
+				owner.address,
+				);
+			const receipt = await tx.wait();
+
+				// We need to get the new pool address out of the PoolCreated event
+			const events = receipt.events.filter((e) => e.event === 'PoolCreated');
+			sPoolAddress = events[0].args.pool;
+			console.log(`\t\tNew Stable Pool Address / ERC20 LP Token Address: ${sPoolAddress}`);
+
+			const sPool = await ethers.getContractAt('StablePool', sPoolAddress);
+			sPoolId  = await sPool.getPoolId();
+			console.log(`\t\tNew Stable Pool ID: ${sPoolId}`);
+
+			console.log(`\t\tNew Stable Pool Details: (before funds)`);
+			tx = await vault.getPoolTokens(sPoolId);
+			console.log(`\t\t\tStable Pool Tokens: ${tx[0]}`);
+			console.log(`\t\t\tStable Pool Pool Balance: ${tx[1]}`);
+			console.log(`\t\t\tStable Pool lastChangeBlock: ${tx[2]}`);
+
+			const sLpToken = await ethers.getContractAt('erc20', sPoolAddress);
+			let sLpBalance = await sLpToken.totalSupply();
+			console.log(`\n\t\t\tERC20 LP Balance: ${sLpBalance}`);
+
+		});
+
+
 		describe('Address1 Fund the new pool -> with 500 weth and 500 wbtc ', () => {
 
-			it('Address1 Fund the new pool', async () => {
+			it('Address1 Fund the new Weighted pool', async () => {
 				// Tokens must be in the same order
 				// Values must be decimal-normalized! (USDT has 6 decimals)
 
@@ -187,76 +233,177 @@ describe('TEST', () => {
 
 				// joins are done on the Vault
 				let tx = await vault.connect(addr1).joinPool(
-														poolId, 
-														addr1.address, 
-														addr1.address, 
-														joinPoolRequest
-														);
+					wPoolId,
+					addr1.address,
+					addr1.address,
+					joinPoolRequest
+				);
 
 				// You can wait for it like this, or just print the tx hash and monitor
 				//const receipt = await tx.wait();
 
-				console.log(`\t\tNew Pool Details: (after funds)`);
-				tx = await vault.getPoolTokens(poolId);
-				console.log(`\t\t\tPool Tokens: ${tx[0]}`);
-				console.log(`\t\t\tPool Balance: ${tx[1]}`);
-				console.log(`\t\t\tPool lastChangeBlock: ${tx[2]}`);
+				console.log(`\t\tNew Weighted Pool Details: (after funds)`);
+				tx = await vault.getPoolTokens(wPoolId);
+				console.log(`\t\t\tWeighted Pool Tokens: ${tx[0]}`);
+				console.log(`\t\t\tWeighted Pool Balance: ${tx[1]}`);
+				console.log(`\t\t\tWeighted Pool lastChangeBlock: ${tx[2]}`);
 
-				const lpToken = await ethers.getContractAt('erc20', poolAddress);
-				let lpBalance = await lpToken.totalSupply();
-				console.log(`\n\t\t\tERC20 LP Balance: ${lpBalance}`);
-
+				const wLpToken = await ethers.getContractAt('erc20', wPoolAddress);
+				let wLpBalance = await wLpToken.totalSupply();
+				console.log(`\n\t\t\tERC20 LP Balance: ${wLpBalance}`);
 			});
+
+
+			it('Address1 Fund the new Stable pool', async () => {
+
+				// Construct userData
+				const JOIN_KIND_INIT = 0;
+				const initUserData =
+					ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256[]'],
+						[JOIN_KIND_INIT, initialBalances]);
+
+				// Pool Request		
+				const joinPoolRequest = {
+					assets: [weth.address, wbtc.address],
+					maxAmountsIn: initialBalances,
+					userData: initUserData,
+					fromInternalBalance: false
+				}
+
+				// define caller as the address you're calling from
+				//caller = addr1.address;
+
+				// joins are done on the Vault
+				let tx = await vault.connect(addr1).joinPool(
+					sPoolId,
+					addr1.address,
+					addr1.address,
+					joinPoolRequest
+				);
+
+				// You can wait for it like this, or just print the tx hash and monitor
+				//const receipt = await tx.wait();
+
+				console.log(`\t\tNew Stable Pool Details: (after funds)`);
+				tx = await vault.getPoolTokens(sPoolId);
+				console.log(`\t\t\tStable Pool Tokens: ${tx[0]}`);
+				console.log(`\t\t\tStable Pool Balance: ${tx[1]}`);
+				console.log(`\t\t\tStable Pool lastChangeBlock: ${tx[2]}`);
+
+				const sLpToken = await ethers.getContractAt('erc20', sPoolAddress);
+				let sLpBalance = await sLpToken.totalSupply();
+				console.log(`\n\t\t\tERC20 LP Balance: ${sLpBalance}`);
+			});
+
 
 		});
 	});
 
-	describe('4) Swap - Address2', () => {
+	describe('4) First Swap - Address2', () => {
 
-		it('Swap Simple Attempt ->  10 WETH - X??X WBTC', async () => {
+		it('Swap Simple Attempt in Weighted Pool->  10 WETH - X??X WBTC', async () => {
 
-			//it('Swap Attempt -> 2 WETH - XX WBTC', async () => {
-	
-				const swap_amount = 10e6;
-				const deadline = 11579208923731617853269984665640564039457584007913129639935;
-	
-				// BatchSwapStep	
-				const singleSwaps = {
-					poolId: poolId,
-					kind: 0,
-					assetIn: weth.address,
-					assetOut: wbtc.address,
-					amount: swap_amount,
-					userData: '0x'
-				};
-	
-				// Fund Management	
-				const funds = {
-					sender: addr2.address,
-					fromInternalBalance: false,
-					recipient: addr2.address,
-					toInternalBalance: false
-				};
-				
-				let tx = await vault.connect(addr2).swap( 
-														singleSwaps,
-														funds,
-														[0, 0],
-														BigInt(deadline)
-														);
-	
-				
-				console.log(`\t\tNew Pool Details: (after funds)`);
-				tx = await vault.getPoolTokens(poolId);
-				console.log(`\t\t\tPool Tokens: ${tx[0]}`);
-				console.log(`\t\t\tPool Balance: ${tx[1]}`);
-				console.log(`\t\t\tPool lastChangeBlock: ${tx[2]}`);
+			const swap_amount = 10e6;
+			const deadline = 11579208923731617853269984665640564039457584007913129639935;
+			const valuesBefore = await vault.getPoolTokens(wPoolId);
 
-				const lpToken = await ethers.getContractAt('erc20', poolAddress);
-				let lpBalance = await lpToken.totalSupply();
-				console.log(`\n\t\t\tERC20 LP Balance: ${lpBalance}`);
-			});
+			// BatchSwapStep	
+			const singleSwaps = {
+				poolId: wPoolId,
+				kind: 0,
+				assetIn: weth.address,
+				assetOut: wbtc.address,
+				amount: swap_amount,
+				userData: '0x'
+			};
 
+			// Fund Management	
+			const funds = {
+				sender: addr2.address,
+				fromInternalBalance: false,
+				recipient: addr2.address,
+				toInternalBalance: false
+			};
+
+			let tx = await vault.connect(addr2).swap(
+				singleSwaps,
+				funds,
+				[0, 0],
+				BigInt(deadline)
+			);
+
+
+			console.log(`\t\tNew Weigthed Pool Details: (before funds)`);
+			tx = await vault.getPoolTokens(wPoolId);
+			console.log(`\t\t\tWeigthed Pool Tokens: ${tx[0]}`);
+			console.log(`\t\t\tWeigthed Pool Poolol Balance: ${tx[1]}`);
+			console.log(`\t\t\tWeigthed Pool lastChangeBlock: ${tx[2]}`);
+
+			console.log(`\t\t\tSwap Final Values: [WETH: ${valuesBefore[1][0] - tx[1][0]},  WBTC: ${valuesBefore[1][1] - tx[1][1]}]`);
+		});
+
+		it('Swap Simple Attempt in Stable Pool->  10 WETH - X??X WBTC', async () => {
+
+			const swap_amount = 10e6;
+			const deadline = 11579208923731617853269984665640564039457584007913129639935;
+			const valuesBefore = await vault.getPoolTokens(sPoolId);
+
+			// BatchSwapStep	
+			const singleSwaps = {
+				poolId: sPoolId,
+				kind: 0,
+				assetIn: weth.address,
+				assetOut: wbtc.address,
+				amount: swap_amount,
+				userData: '0x'
+			};
+
+			// Fund Management	
+			const funds = {
+				sender: addr2.address,
+				fromInternalBalance: false,
+				recipient: addr2.address,
+				toInternalBalance: false
+			};
+
+			let tx = await vault.connect(addr2).swap(
+				singleSwaps,
+				funds,
+				[0, 0],
+				BigInt(deadline)
+			);
+
+
+			console.log(`\t\tNew Stable Pool Details: (before funds)`);
+			tx = await vault.getPoolTokens(sPoolId);
+			console.log(`\t\t\tStable Pool Tokens: ${tx[0]}`);
+			console.log(`\t\t\tStable Pool Poolol Balance: ${tx[1]}`);
+			console.log(`\t\t\tStable Pool lastChangeBlock: ${tx[2]}`);
+
+			console.log(`\t\t\tSwap Final Values: [WETH: ${valuesBefore[1][0] - tx[1][0]},  WBTC: ${valuesBefore[1][1] - tx[1][1]}]`);
+
+		});
+
+		it('Final Balance Logs in Address 2', async () => {
+			let wbtcBalance = await wbtc.balanceOf(addr2.address);
+			console.log(`\t\t\tInitial Balance WETH in Addr2: ${initial_mint2}`);
+			console.log(`\t\t\tActual Balance WBTC in Addr2: ${wbtcBalance}`);
+		});
+
+
+
+			// it('Batch Swap Attempt', async () => {
+			// //it('Swap Attempt -> 2 WETH - XX WBTC', async () => {
+
+			// 	const swap_amount = 3e6;
+			// 	const deadline = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
+
+			// 	// BatchSwapStep	
+			// 	const swaps = {
+			// 		poolId: poolId,
+			// 		assetInIndex: 1,
+			// 		assetOutIndex: 0,
+			// 		amount: swap_amount,
 			// it('Batch Swap Attempt', async () => {
 			// //it('Swap Attempt -> 2 WETH - XX WBTC', async () => {
 
