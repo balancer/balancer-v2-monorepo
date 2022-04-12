@@ -25,12 +25,16 @@ abstract contract ProtocolFeeCache {
 
     bool internal immutable _delegatedProtocolFees;
 
+    // Set to non-zero when fees are fixed
+    uint256 private immutable _fixedProtocolSwapFeePercentage;
+
     IVault internal immutable _vault;
 
     // The Vault does not provide the protocol swap fee percentage in swap hooks (as swaps don't typically need this
     // value), so we need to fetch it ourselves from the Vault's ProtocolFeeCollector. However, this value changes so
     // rarely that it doesn't make sense to perform the required calls to get the current value in every single swap.
     // Instead, we keep a local copy that can be permissionlessly updated by anyone with the real value.
+    // If fees are fixed, use the immutable `_fixedProtocolSwapFeePercentage` instead
     uint256 private _cachedProtocolSwapFeePercentage;
 
     event CachedProtocolSwapFeePercentageUpdated(uint256 protocolSwapFeePercentage);
@@ -55,6 +59,8 @@ abstract contract ProtocolFeeCache {
 
             emit CachedProtocolSwapFeePercentageUpdated(protocolSwapFeePercentage);
         }
+
+        _fixedProtocolSwapFeePercentage = delegatedProtocolFees ? 0 : protocolSwapFeePercentage;
     }
 
     /**
@@ -72,7 +78,7 @@ abstract contract ProtocolFeeCache {
      * immutable. Alternatively, it will track the global fee percentage set in the Fee Collector.
      */
     function getCachedProtocolSwapFeePercentage() public view returns (uint256) {
-        return _cachedProtocolSwapFeePercentage;
+        return getProtocolFeeDelegation() ? _cachedProtocolSwapFeePercentage : _fixedProtocolSwapFeePercentage;
     }
 
     /**
