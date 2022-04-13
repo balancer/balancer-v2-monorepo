@@ -26,10 +26,14 @@ describe('RewardsOnlyGauge', () => {
   let gauge: Contract;
   let streamer: Contract;
 
-  let admin: SignerWithAddress, distributor: SignerWithAddress, holder: SignerWithAddress, spender: SignerWithAddress;
+  let admin: SignerWithAddress,
+    distributor: SignerWithAddress,
+    holder: SignerWithAddress,
+    spender: SignerWithAddress,
+    other: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, admin, distributor, holder, spender] = await ethers.getSigners();
+    [, admin, distributor, holder, spender, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy token', async () => {
@@ -161,7 +165,7 @@ describe('RewardsOnlyGauge', () => {
       await token.approve(gauge, MAX_UINT256, { from: holder });
 
       await gauge.connect(holder)['deposit(uint256)'](rewardAmount);
-      await gauge.connect(holder)['deposit(uint256,address)'](rewardAmount, spender.address);
+      await gauge.connect(holder)['deposit(uint256,address)'](rewardAmount.mul(2), other.address);
     });
 
     sharedBeforeEach('set up distributor on streamer', async () => {
@@ -186,7 +190,7 @@ describe('RewardsOnlyGauge', () => {
       });
 
       it('transfers the expected number of tokens', async () => {
-        const expectedClaimAmount = rewardAmount.mul(DAY).div(WEEK).div(2);
+        const expectedClaimAmount = rewardAmount.mul(DAY).div(WEEK).div(3);
         await expectBalanceChange(() => gauge.connect(holder)['claim_rewards()'](), new TokenList([balToken]), [
           { account: holder, changes: { BAL: ['near', expectedClaimAmount] } },
         ]);
@@ -200,7 +204,7 @@ describe('RewardsOnlyGauge', () => {
 
       it('transfers the expected number of tokens', async () => {
         // We need to account for rounding errors for rewards per second
-        const expectedClaimAmount = rewardAmount.div(WEEK).mul(WEEK).div(2);
+        const expectedClaimAmount = rewardAmount.div(WEEK).mul(WEEK).div(3);
         await expectBalanceChange(() => gauge.connect(holder)['claim_rewards()'](), new TokenList([balToken]), [
           { account: holder, changes: { BAL: expectedClaimAmount } },
         ]);
