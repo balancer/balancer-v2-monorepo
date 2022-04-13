@@ -1,0 +1,6 @@
+{
+  "RewardsOnlyGauge": "0x41B953164995c11C81DA73D212ED8Af25741b7Ac",
+  "timestamp": 1649878059007,
+  "ChildChainStreamer": "0xD7FAD3bd59D6477cbe1BE7f646F7f1BA25b230f8",
+  "ChildChainLiquidityGaugeFactory": "0xb08E16cFc07C684dAA2f93C70323BAdb2A6CBFd2"
+}
