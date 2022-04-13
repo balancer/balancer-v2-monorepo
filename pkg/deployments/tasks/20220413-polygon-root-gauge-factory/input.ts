@@ -6,8 +6,6 @@ export type PolygonRootGaugeFactoryDeployment = {
   PolygonERC20Predicate: string;
 };
 
-// Depending on the discussion at https://forum.balancer.fi/t/decide-on-gauge-unexpected-behavior/2960 and follow-up
-// voting process, we may end up with an updated BalancerMinter, in which case this input would require updating.
 const BalancerMinter = new Task('20220325-gauge-controller');
 
 export default {
