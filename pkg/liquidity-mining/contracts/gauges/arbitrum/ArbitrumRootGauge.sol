@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../../interfaces/ISingleRecipientGauge.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/ISingleRecipientGauge.sol";
 
 import "../StakelessGauge.sol";
 import "./IGatewayRouter.sol";

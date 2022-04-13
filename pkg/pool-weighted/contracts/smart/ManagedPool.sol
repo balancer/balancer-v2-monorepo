@@ -20,9 +20,9 @@ import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppe
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/WordCodec.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/ArrayHelpers.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
 import "../BaseWeightedPool.sol";
-import "../WeightedPoolUserData.sol";
 import "./WeightCompression.sol";
 
 /**

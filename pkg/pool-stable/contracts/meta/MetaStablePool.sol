@@ -15,11 +15,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/pool-utils/IRateProvider.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/LogCompression.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/FixedPoint.sol";
+
+import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
 
 import "../StablePool.sol";
 import "./OracleMiscData.sol";

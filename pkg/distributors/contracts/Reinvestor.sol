@@ -22,7 +22,8 @@ import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppe
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/distributors/IDistributorCallback.sol";
 
-import "@balancer-labs/v2-pool-weighted/contracts/WeightedPoolUserData.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
+
 import "./PoolTokenCache.sol";
 
 contract Reinvestor is PoolTokenCache, IDistributorCallback {

@@ -18,9 +18,10 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/FixedPoint.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/InputHelpers.sol";
 
+import "@balancer-labs/v2-balancer-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
+
 import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
 
-import "./WeightedPoolUserData.sol";
 import "./WeightedMath.sol";
 
 /**

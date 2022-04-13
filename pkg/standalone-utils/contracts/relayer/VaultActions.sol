@@ -21,7 +21,7 @@ import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/Math
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-pool-weighted/contracts/WeightedPoolUserData.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBaseRelayerLibrary.sol";
 

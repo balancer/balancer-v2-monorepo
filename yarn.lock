@@ -123,7 +123,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-asset-manager-utils@workspace:pkg/asset-manager-utils"
   dependencies:
-    "@balancer-labs/v2-balancer-interfaces": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
@@ -158,7 +157,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v2-balancer-interfaces@workspace:*, @balancer-labs/v2-balancer-interfaces@workspace:pkg/balancer-interfaces":
+"@balancer-labs/v2-balancer-interfaces@workspace:pkg/balancer-interfaces":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-balancer-interfaces@workspace:pkg/balancer-interfaces"
   dependencies:
@@ -272,12 +271,6 @@ __metadata:
   resolution: "@balancer-labs/v2-distributors@workspace:pkg/distributors"
   dependencies:
     "@balancer-labs/balancer-js": "workspace:*"
-    "@balancer-labs/v2-common": "workspace:*"
-    "@balancer-labs/v2-helpers": "workspace:*"
-    "@balancer-labs/v2-pool-utils": "workspace:*"
-    "@balancer-labs/v2-solidity-utils": "workspace:*"
-    "@balancer-labs/v2-standalone-utils": "workspace:*"
-    "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -365,7 +358,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v2-liquidity-mining@workspace:*, @balancer-labs/v2-liquidity-mining@workspace:pkg/liquidity-mining":
+"@balancer-labs/v2-liquidity-mining@workspace:pkg/liquidity-mining":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-liquidity-mining@workspace:pkg/liquidity-mining"
   dependencies:
@@ -413,7 +406,6 @@ __metadata:
     "@balancer-labs/v2-helpers": "workspace:*"
     "@balancer-labs/v2-pool-utils": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
-    "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -452,9 +444,8 @@ __metadata:
   dependencies:
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-pool-stable": "workspace:*"
     "@balancer-labs/v2-pool-utils": "workspace:*"
-    "@balancer-labs/v2-solidity-utils": "workspace:*"
-    "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -495,7 +486,6 @@ __metadata:
     "@balancer-labs/v2-helpers": "workspace:*"
     "@balancer-labs/v2-pool-utils": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
-    "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -532,11 +522,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-pool-utils@workspace:pkg/pool-utils"
   dependencies:
-    "@balancer-labs/v2-asset-manager-utils": "workspace:*"
-    "@balancer-labs/v2-balancer-interfaces": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
-    "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
@@ -579,7 +566,6 @@ __metadata:
     "@balancer-labs/v2-helpers": "workspace:*"
     "@balancer-labs/v2-pool-utils": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
-    "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -658,9 +644,7 @@ __metadata:
     "@balancer-labs/balancer-js": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
-    "@balancer-labs/v2-liquidity-mining": "workspace:*"
     "@balancer-labs/v2-pool-utils": "workspace:*"
-    "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
@@ -696,7 +680,6 @@ __metadata:
     "@balancer-labs/balancer-js": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
-    "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@balancer-labs/v2-standalone-utils": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0

@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/solidity-utils/helpers/TemporarilyPausable.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/TemporarilyPausable.sol";
 
 contract TemporarilyPausableMock is TemporarilyPausable {
     constructor(uint256 pauseWindowDuration, uint256 bufferPeriodDuration)

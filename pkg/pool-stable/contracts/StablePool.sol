@@ -19,7 +19,7 @@ import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/Fixe
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/WordCodec.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/pool-utils/IRateProvider.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/pool-utils/IRateProvider.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/LegacyBaseMinimalSwapInfoPool.sol";
