@@ -1,4 +1,4 @@
-# 2022-04-xx - Child Chain Liquidity Gauge Factory
+# 2022-04-13 - Child Chain Liquidity Gauge Factory
 
 Deployment of the `ChildChainLiquidityGaugeFactory`, for liquidity gauges to be used with pools on networks other than Ethereum.
 
