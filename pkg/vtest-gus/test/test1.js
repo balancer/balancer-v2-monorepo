@@ -5,10 +5,11 @@ const wethAddress = "0xc778417E063141139Fce010982780140Aa0cD5Ab";
 const bufferPeriodDuration = 0;
 const pauseWindowDuration = 0;
 
-let initial_mint = 1000e6;
-let initial_mint2 = 20e6;
-const initialBalances = [500e6, 500e6];
-let swapFeePercentage = 3000000000000000;
+let initial_mint = 10e12;	// For Funds Pools
+let initial_mint2 = 20e5;	// For Swap1 in address2
+let initial_mint3 = 100e5;	// For Swap2 in address3
+const initialBalances = [initial_mint/2, initial_mint/2];
+let swapFeePercentage = BigInt(0.5 * 1e16);  // fee% * 1e16 -- min/max values (0.0001% and 10% respectively)
 const weight_pool = [BigInt(50e16), BigInt(50e16)];
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'; 
 
@@ -110,7 +111,7 @@ describe('TEST', () => {
 	describe('2) Initial Settings', () => {
 	
 		describe('Mint and approve ERC-20s for Address 1', () => {
-				it('Mint WBTC 500 Token (from owner) to address1', async () => {
+				it('Mint WBTC 1000 Token (from owner) to address1', async () => {
 					await wbtc.mint(addr1.address, initial_mint);
 					expect(await wbtc.totalSupply()).to.equal(initial_mint);
 				});
@@ -122,13 +123,13 @@ describe('TEST', () => {
 					await weth.connect(addr1).approve(vault.address, initial_mint);
 					expect(await weth.allowance(addr1.address,vault.address)).to.equal(initial_mint);
 				});
-				it('Approbe WBTC for Vault Contract in address1', async () => {
+				it('Approbe WBTC for Vault Contract in address2', async () => {
 					await wbtc.connect(addr1).approve(vault.address, initial_mint);
 					expect(await wbtc.allowance(addr1.address,vault.address)).to.equal(initial_mint);
 				});
 		});
-		
-		describe('Mint and approve ERC-20s (just WETH) for Address 2', () => {
+
+		describe('Mint and approve ERC-20s (just WETH) for Address 3', () => {
 			it('Mint WETH 10 Token (from owner) to address1', async () => {
 				await weth.mint(addr2.address, initial_mint2);
 				//expect(await weth.totalSupply()).to.equal(initial_mint2);
@@ -136,6 +137,17 @@ describe('TEST', () => {
 			it('Approbe WETH for Vault Contract in address1', async () => {
 				await weth.connect(addr2).approve(vault.address, initial_mint2);
 				expect(await weth.allowance(addr2.address,vault.address)).to.equal(initial_mint2);
+			});
+		});
+
+		describe('Mint and approve ERC-20s (just WBTC) for Address 3', () => {
+			it('Mint WBTC 200 Token (from owner) to address3', async () => {
+				await wbtc.mint(addr3.address, initial_mint3);
+				//expect(await weth.totalSupply()).to.equal(initial_mint2);
+			});
+			it('Approbe WBTC for Vault Contract in address3', async () => {
+				await wbtc.connect(addr3).approve(vault.address, initial_mint3);
+				expect(await wbtc.allowance(addr3.address,vault.address)).to.equal(initial_mint3);
 			});
 		});
 	});
@@ -303,7 +315,7 @@ describe('TEST', () => {
 
 		it('Swap Simple Attempt in Weighted Pool->  10 WETH - X??X WBTC', async () => {
 
-			const swap_amount = 10e6;
+			const swap_amount = initial_mint2/2;
 			const deadline = 11579208923731617853269984665640564039457584007913129639935;
 			const valuesBefore = await vault.getPoolTokens(wPoolId);
 
@@ -344,7 +356,7 @@ describe('TEST', () => {
 
 		it('Swap Simple Attempt in Stable Pool->  10 WETH - X??X WBTC', async () => {
 
-			const swap_amount = 10e6;
+			const swap_amount = initial_mint2/2;
 			const deadline = 11579208923731617853269984665640564039457584007913129639935;
 			const valuesBefore = await vault.getPoolTokens(sPoolId);
 
@@ -391,6 +403,99 @@ describe('TEST', () => {
 		});
 
 
+
+	describe('5) Second Swap - Address3', () => {
+
+		it('Swap Simple Attempt in Weighted Pool->  100 WBTC - X??X WWETH', async () => {
+
+			const swap_amount = initial_mint3/2;
+			const deadline = 11579208923731617853269984665640564039457584007913129639935;
+			const valuesBefore = await vault.getPoolTokens(wPoolId);
+
+			// BatchSwapStep	
+			const singleSwaps = {
+				poolId: wPoolId,
+				kind: 0,
+				assetIn: wbtc.address,
+				assetOut: weth.address,
+				amount: swap_amount,
+				userData: '0x'
+			};
+
+			// Fund Management	
+			const funds = {
+				sender: addr3.address,
+				fromInternalBalance: false,
+				recipient: addr3.address,
+				toInternalBalance: false
+			};
+
+			let tx = await vault.connect(addr3).swap(
+				singleSwaps,
+				funds,
+				[0, 0],
+				BigInt(deadline)
+			);
+
+
+			console.log(`\t\tNew Weigthed Pool Details: (before funds)`);
+			tx = await vault.getPoolTokens(wPoolId);
+			console.log(`\t\t\tWeigthed Pool Tokens: ${tx[0]}`);
+			console.log(`\t\t\tWeigthed Pool Pool Balance: ${tx[1]}`);
+			console.log(`\t\t\tWeigthed Pool lastChangeBlock: ${tx[2]}`);
+
+			console.log(`\t\t\tSwap Final Values: [WETH: ${valuesBefore[1][0] - tx[1][0]},  WBTC: ${valuesBefore[1][1] - tx[1][1]}]`);
+		});
+
+		it('Swap Simple Attempt in Stable Pool->  100 WBTC - X??X WETH', async () => {
+
+			const swap_amount = initial_mint3/2;
+			const deadline = 11579208923731617853269984665640564039457584007913129639935;
+			const valuesBefore = await vault.getPoolTokens(sPoolId);
+
+			// BatchSwapStep	
+			const singleSwaps = {
+				poolId: sPoolId,
+				kind: 0,
+				assetIn: wbtc.address,
+				assetOut: weth.address,
+				amount: swap_amount,
+				userData: '0x'
+			};
+
+			// Fund Management	
+			const funds = {
+				sender: addr3.address,
+				fromInternalBalance: false,
+				recipient: addr3.address,
+				toInternalBalance: false
+			};
+
+			let tx = await vault.connect(addr3).swap(
+				singleSwaps,
+				funds,
+				[0, 0],
+				BigInt(deadline)
+			);
+
+
+			console.log(`\t\tNew Stable Pool Details: (before funds)`);
+			tx = await vault.getPoolTokens(sPoolId);
+			console.log(`\t\t\tStable Pool Tokens: ${tx[0]}`);
+			console.log(`\t\t\tStable Pool Poolol Balance: ${tx[1]}`);
+			console.log(`\t\t\tStable Pool lastChangeBlock: ${tx[2]}`);
+
+			console.log(`\t\t\tSwap Final Values: [WETH: ${valuesBefore[1][0] - tx[1][0]},  WBTC: ${valuesBefore[1][1] - tx[1][1]}]`);
+
+		});
+
+		it('Final Balance Logs in Address 3', async () => {
+			let wethBalance = await weth.balanceOf(addr3.address);
+			console.log(`\t\t\tInitial Balance WBTC in Addr2: ${initial_mint3}`);
+			console.log(`\t\t\tActual Balance WETH in Addr2: ${wethBalance}`);
+		});
+
+	});
 
 			// it('Batch Swap Attempt', async () => {
 			// //it('Swap Attempt -> 2 WETH - XX WBTC', async () => {
