@@ -135,9 +135,13 @@ contract veBALL2Coordinator is ReentrancyGuard {
     }
 
     function _addNewEthereumGauges() private {
-        // TODO: fill out list of gauges
         // All these addresses are required to be mainnet gauges which have already been deployed
-        address[] memory newGauges = new address[](0);
+        address payable[3] memory newGauges = [
+            0xa57453737849A4029325dfAb3F6034656644E104, // 80HAUS-20WETH
+            0xA6468eca7633246Dcb24E5599681767D27d1F978, // 50COW-50GNO
+            0x158772F59Fe0d3b75805fC11139b46CBc89F70e5  // 50COW-50WETH
+            // 80NOTE-20WETH may be eligible to be added here as well soon
+        ];
 
         ICurrentAuthorizer authorizer = getAuthorizer();
         bytes32 addEthereumGaugeRole = _gaugeAdder.getActionId(IGaugeAdder.addEthereumGauge.selector);
@@ -165,9 +169,29 @@ contract veBALL2Coordinator is ReentrancyGuard {
     }
 
     function _addNewPolygonGauges() private {
-        // TODO: fill out list of recipients
         // All these addresses are required to match ChildChainStreamers which have been deployed to Polygon mainnet.
-        address[] memory initialRecipients = new address[](0);
+        address payable[19] memory initialRecipients = [
+            // Streamer                                 // Pool
+            0x0FC855f77cE75Bb6a5d650D0c4cC92E460c03E25, // 0x0297e37f1873d2dab4487aa67cd56b58e2f27875
+            0x4b878e9727B9E91fDaE37CdD85949f4367220187, // 0x03cd191f589d12b0582a99808cf19851e468e6b5
+            0x66750473cE1dECBa4ef2576a47fd5FF7BF07C4e2, // 0x06df3b2bbb68adc8b0e302443692037ed9f91b42
+            0x2Ac595007563df473449005883F1F2BA3036eBeF, // 0x0d34e5dd4d8f043557145598e4e2dc286b35fd4f
+            0x3b4D173601F8b36024cD49F7C5859D263385AF34, // 0x10f21c9bd8128a29aa785ab2de0d044dcdd79436
+            0xDe2F58c43CB222725A96236272c7749E4Abf1a25, // 0x186084ff790c65088ba694df11758fae4943ee9e
+            0x73CF9C065bFB9ABf76d94787324CfC4F751ac097, // 0x36128d5436d2d70cab39c9af9cce146c38554ff0
+            0x2845E95D2a4eFcd14Cf5D77B9Ba732788b96267f, // 0x5a6ae1fd70d04ba4a279fc219dfabc53825cb01d
+            0xb061F502d84f00d1B26568888A8f741cBE352C23, // 0x614b5038611729ed49e0ded154d8a5d3af9d1d9e
+            0xD65F35e750d5FFB63a3B6C7B4e5D4afe4CA5550D, // 0x7c9cf12d783821d5c63d8e9427af5c44bad92445
+            0x25a526ADb6925a9f40141567C06430D368232FEE, // 0x805ca3ccc61cc231851dee2da6aabff0a7714aa7
+            0x0fD7e9171b4dC9D89E157c2cc9A424Cd9C40a034, // 0xaf5e0b5425de1f5a630a8cb5aa9d97b8141c908d
+            0xbc9F244cf5a774785E726A9157aFe3725d93249B, // 0xb204bf10bc3a5435017d3db247f56da601dfe08a
+            0x2CCc518B7B6177C2d44771d6b249F85a5A0cC1D4, // 0xc31a37105b94ab4efca1954a14f059af11fcd9bb
+            0x64AFDb69C22971B2ed289020f78a47E070cFadba, // 0xce66904b68f1f070332cbc631de7ee98b650b499
+            0x6F4d27730d5253148d82283E3aD93eae9264DaA3, // 0xcf354603a9aebd2ff9f33e1b04246d8ea204ae95
+            0x6812162860fAC498fB6f03339D39d23b5a264152, // 0xdb1db6e248d7bb4175f6e5a382d0a03fe3dcc813
+            0x5EA9C37A3eCf0c82900FbbFd064FE29A427c41AB, // 0xea4e073c8ac859f2994c07e627178719c8002dc0
+            0xA95E0B91A3F522dDE42D5b6a4e430e0BFAD0F2F5  // 0xfeadd389a5c427952d8fdb8057d6c8ba1156cc56
+        ];
 
         ICurrentAuthorizer authorizer = getAuthorizer();
         bytes32 addPolygonGaugeRole = _gaugeAdder.getActionId(IGaugeAdder.addPolygonGauge.selector);
@@ -184,9 +208,24 @@ contract veBALL2Coordinator is ReentrancyGuard {
     }
 
     function _addNewArbitrumGauges() private {
-        // TODO: fill out list of recipients
         // All these addresses are required to match ChildChainStreamers which have been deployed to Arbitrum One.
-        address[] memory initialRecipients = new address[](0);
+        address payable[14] memory initialRecipients = [
+            // Streamer                                 // Pool
+            0xD84d832F47C22Cf5413aE4FE2bd9D220FE6E3Dc6, // 0x0510ccf9eb3ab03c1508d3b9769e8ee2cfd6fdcf
+            0x7B50775383d3D6f0215A8F290f2C9e2eEBBEceb2, // 0x0adeb25cb5920d4f7447af4a0428072edc2cee22
+            0x7C1028Bcde7Ca03EcF6DaAA9cBfA06E931913EaD, // 0x1533a3278f3f9141d5f820a184ea4b017fce2382
+            0xa57eaBc36A47dae5F11051c8339385cF95E77235, // 0x1779900c7707885720d39aa741f4086886307e9e
+            0x37A6FC079cad790E556BaeddA879358e076EF1B3, // 0x4a3a22a3e7fee0ffbb66f1c28bfac50f75546fc7
+            0xB556A02642A0f7be8c79932EFBC915F6e0485147, // 0x5a5884fc31948d59df2aeccca143de900d49e1a3
+            0x4B1137789FF06406a72bAce67Cd15Cf6786844cC, // 0x64541216bafffeec8ea535bb71fbc927831d0595
+            0xBd65449BabF09Be544d68fc7CCF0CEbe298fb214, // 0x651e00ffd5ecfa7f3d4f33d62ede0a97cf62ede2
+            0x2246211E715b6567a8F7138180EF61a79678ef46, // 0xb28670b3e7ad27bd41fb5938136bf9e9cba90d65
+            0xf2Bbfa122D41fFcF7056441578D108E3c40a7E99, // 0xb340b6b1a34019853cb05b2de6ee8ffd0b89a008
+            0xf081862BF62C24E3C708BdBeda24ABE6B55E42f7, // 0xb5b77f1ad2b520df01612399258e7787af63025d
+            0x28Cc04DcD85C4b40c6Dad463c628e98728ae9496, // 0xc2f082d33b5b8ef3a7e3de30da54efd3114512ac
+            0xDC467DB6AbdA75E62F4809f3a4934ae3aca1C380, // 0xc61ff48f94d801c1ceface0289085197b5ec44f0
+            0xd5Cd8328D93bf4bEf9824Fd288F32C8f0da1c551  // 0xcc65a812ce382ab909a11e434dbf75b34f1cc59d
+        ];
 
         ICurrentAuthorizer authorizer = getAuthorizer();
         bytes32 addArbitrumGaugeRole = _gaugeAdder.getActionId(IGaugeAdder.addArbitrumGauge.selector);
