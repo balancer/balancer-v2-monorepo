@@ -150,6 +150,9 @@ contract veBALL2Coordinator is ReentrancyGuard {
         // Step 5: Deploy Polygon gauges and add them to the Gauge Controller.
         _addNewPolygonGauges();
 
+        // Step 6: Kill deprecated Polygon and Arbitrum gauges.
+        _deprecateOldGauges();
+
         secondStageActivationTime = block.timestamp;
         _currentDeploymentStage = DeploymentStage.SECOND_STAGE_DONE;
     }
@@ -288,6 +291,26 @@ contract veBALL2Coordinator is ReentrancyGuard {
         authorizer.revokeRole(addArbitrumGaugeRole, address(this));
     }
 
+    function _deprecateOldGauges() private {  
+        address payable[2] memory deprecatedGauges = [
+            0x9fb8312CEdFB9b35364FF06311B429a2f4Cdf422, // Temporary Polygon gauge
+            0x3F829a8303455CB36B7Bcf3D1bdc18D5F6946aeA  // Temporary Arbitrum gauge
+        ];
+
+        ICurrentAuthorizer authorizer = getAuthorizer();
+
+        bytes32 killGaugeRole = _gaugeAdder.getActionId(ILiquidityGauge.killGauge.selector);
+
+        authorizer.grantRole(killGaugeRole, address(this));
+
+        uint256 deprecatedGaugesLength = deprecatedGauges.length;
+        for (uint256 i = 0; i < deprecatedGaugesLength; i++) {
+            _killGauge(deprecatedGauges[i]);
+        }
+
+        authorizer.revokeRole(killGaugeRole, address(this));
+    }
+
     function _deployGauge(ISingleRecipientGaugeFactory factory, address recipient) private returns (address gauge) {
         // Find gauge which distributes BAL to listed recipient
         gauge = address(factory.getRecipientGauge(recipient));
@@ -295,6 +318,10 @@ contract veBALL2Coordinator is ReentrancyGuard {
             // If gauge doesn't exist yet then create one.
             gauge = factory.create(recipient);
         }
+    }
+
+    function _killGauge(address gauge) private {
+        getAuthorizerAdaptor().performAction(gauge, abi.encodeWithSelector(ILiquidityGauge.killGauge.selector));
     }
 
     function _setGaugeTypeWeight(IGaugeAdder.GaugeType typeId, uint256 weight) private {
