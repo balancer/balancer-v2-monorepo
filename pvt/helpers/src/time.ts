@@ -9,8 +9,7 @@ export const currentTimestamp = async (): Promise<BigNumber> => {
 };
 
 export const currentWeekTimestamp = async (): Promise<BigNumber> => {
-  const { timestamp } = await network.provider.send('eth_getBlockByNumber', ['latest', true]);
-  return bn(timestamp).div(WEEK).mul(WEEK);
+  return (await currentTimestamp()).div(WEEK).mul(WEEK);
 };
 
 export const fromNow = async (seconds: number): Promise<BigNumber> => {
