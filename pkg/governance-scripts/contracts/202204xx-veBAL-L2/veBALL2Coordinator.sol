@@ -131,7 +131,7 @@ contract veBALL2Coordinator is ReentrancyGuard {
         _currentDeploymentStage = DeploymentStage.FIRST_STAGE_DONE;
     }
 
-     function performSecondStage() external nonReentrant {
+    function performSecondStage() external nonReentrant {
         // Check internal state
         require(_currentDeploymentStage == DeploymentStage.FIRST_STAGE_DONE, "Not ready for second stage");
 
@@ -150,7 +150,7 @@ contract veBALL2Coordinator is ReentrancyGuard {
         ICurrentAuthorizer authorizer = getAuthorizer();
         bytes32 changeTypeWeightRole = _authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector);
 
-        authorizer.grantRole(changeTypeWeightRole,address(this));
+        authorizer.grantRole(changeTypeWeightRole, address(this));
 
         // We set the LM committee type weight to zero as this gauge type is being deprecated.
         _setGaugeTypeWeight(IGaugeAdder.GaugeType.LiquidityMiningCommittee, 0);
@@ -162,7 +162,7 @@ contract veBALL2Coordinator is ReentrancyGuard {
         _setGaugeTypeWeight(IGaugeAdder.GaugeType.Polygon, EQUAL_TYPE_WEIGHT);
         _setGaugeTypeWeight(IGaugeAdder.GaugeType.Arbitrum, EQUAL_TYPE_WEIGHT);
 
-        authorizer.revokeRole(changeTypeWeightRole,address(this));
+        authorizer.revokeRole(changeTypeWeightRole, address(this));
     }
 
     function _addNewEthereumGauges() private {
@@ -170,7 +170,7 @@ contract veBALL2Coordinator is ReentrancyGuard {
         address payable[3] memory newGauges = [
             0xa57453737849A4029325dfAb3F6034656644E104, // 80HAUS-20WETH
             0xA6468eca7633246Dcb24E5599681767D27d1F978, // 50COW-50GNO
-            0x158772F59Fe0d3b75805fC11139b46CBc89F70e5  // 50COW-50WETH
+            0x158772F59Fe0d3b75805fC11139b46CBc89F70e5 // 50COW-50WETH
             // 80NOTE-20WETH may be eligible to be added here as well soon
         ];
 
@@ -209,7 +209,7 @@ contract veBALL2Coordinator is ReentrancyGuard {
             0x6F4d27730d5253148d82283E3aD93eae9264DaA3, // 0xcf354603a9aebd2ff9f33e1b04246d8ea204ae95
             0x6812162860fAC498fB6f03339D39d23b5a264152, // 0xdb1db6e248d7bb4175f6e5a382d0a03fe3dcc813
             0x5EA9C37A3eCf0c82900FbbFd064FE29A427c41AB, // 0xea4e073c8ac859f2994c07e627178719c8002dc0
-            0xA95E0B91A3F522dDE42D5b6a4e430e0BFAD0F2F5  // 0xfeadd389a5c427952d8fdb8057d6c8ba1156cc56
+            0xA95E0B91A3F522dDE42D5b6a4e430e0BFAD0F2F5 // 0xfeadd389a5c427952d8fdb8057d6c8ba1156cc56
         ];
 
         ICurrentAuthorizer authorizer = getAuthorizer();
@@ -250,7 +250,7 @@ contract veBALL2Coordinator is ReentrancyGuard {
             0xf081862BF62C24E3C708BdBeda24ABE6B55E42f7, // 0xb5b77f1ad2b520df01612399258e7787af63025d
             0x28Cc04DcD85C4b40c6Dad463c628e98728ae9496, // 0xc2f082d33b5b8ef3a7e3de30da54efd3114512ac
             0xDC467DB6AbdA75E62F4809f3a4934ae3aca1C380, // 0xc61ff48f94d801c1ceface0289085197b5ec44f0
-            0xd5Cd8328D93bf4bEf9824Fd288F32C8f0da1c551  // 0xcc65a812ce382ab909a11e434dbf75b34f1cc59d
+            0xd5Cd8328D93bf4bEf9824Fd288F32C8f0da1c551 // 0xcc65a812ce382ab909a11e434dbf75b34f1cc59d
         ];
 
         ICurrentAuthorizer authorizer = getAuthorizer();
