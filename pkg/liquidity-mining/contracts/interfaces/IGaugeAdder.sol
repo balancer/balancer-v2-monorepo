@@ -30,7 +30,7 @@ interface IGaugeAdder is IAuthentication {
     /**
      * @notice Returns the address of the Gauge Controller
      */
-    function getGaugeController() external view returns (address);
+    function getGaugeController() external view returns (IGaugeController);
 
     /**
      * @notice Returns the gauge corresponding to a Balancer pool `pool` on Ethereum mainnet.

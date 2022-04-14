@@ -54,7 +54,7 @@ contract veBALL2Coordinator is ReentrancyGuard {
     ISingleRecipientGaugeFactory private immutable _polygonGaugeFactory;
     ISingleRecipientGaugeFactory private immutable _arbitrumGaugeFactory;
 
-    address public immutable GAUGE_CHECKPOINTER_MULTISIG = address(0); 
+    address public immutable GAUGE_CHECKPOINTER_MULTISIG = address(0);
 
     enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE }
 
@@ -79,7 +79,7 @@ contract veBALL2Coordinator is ReentrancyGuard {
         _vault = vault;
         _authorizerAdaptor = authorizerAdaptor;
         _votingEscrow = votingEscrow;
-        _gaugeController = IGaugeController(gaugeAdder.getGaugeController());
+        _gaugeController = gaugeAdder.getGaugeController();
         _gaugeAdder = gaugeAdder;
         _ethereumGaugeFactory = ethereumGaugeFactory;
         _polygonGaugeFactory = polygonGaugeFactory;
@@ -291,10 +291,10 @@ contract veBALL2Coordinator is ReentrancyGuard {
         authorizer.revokeRole(addArbitrumGaugeRole, address(this));
     }
 
-    function _deprecateOldGauges() private {  
+    function _deprecateOldGauges() private {
         address payable[2] memory deprecatedGauges = [
             0x9fb8312CEdFB9b35364FF06311B429a2f4Cdf422, // Temporary Polygon gauge
-            0x3F829a8303455CB36B7Bcf3D1bdc18D5F6946aeA  // Temporary Arbitrum gauge
+            0x3F829a8303455CB36B7Bcf3D1bdc18D5F6946aeA // Temporary Arbitrum gauge
         ];
 
         ICurrentAuthorizer authorizer = getAuthorizer();
