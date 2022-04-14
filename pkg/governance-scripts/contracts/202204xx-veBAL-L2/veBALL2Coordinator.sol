@@ -163,11 +163,9 @@ contract veBALL2Coordinator is ReentrancyGuard {
 
         authorizer.grantRole(changeTypeWeightRole, address(this));
 
-        // We set the LM committee type weight to zero as this gauge type is being deprecated.
-        _setGaugeTypeWeight(IGaugeAdder.GaugeType.LiquidityMiningCommittee, 0);
-
-        // All other gauge types are set to have an equal type weight
-        uint256 EQUAL_TYPE_WEIGHT = 1e18;
+        // We set all gauge types to have an equal weight.
+        uint256 EQUAL_TYPE_WEIGHT = 1;
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.LiquidityMiningCommittee, EQUAL_TYPE_WEIGHT);
         _setGaugeTypeWeight(IGaugeAdder.GaugeType.veBAL, EQUAL_TYPE_WEIGHT);
         _setGaugeTypeWeight(IGaugeAdder.GaugeType.Ethereum, EQUAL_TYPE_WEIGHT);
         _setGaugeTypeWeight(IGaugeAdder.GaugeType.Polygon, EQUAL_TYPE_WEIGHT);
