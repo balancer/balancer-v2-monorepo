@@ -84,3 +84,4 @@ Returns an object with all contracts from a deployment and their addresses.
 | Single Recipient Stakeless Gauges                    | [`20220325-single-recipient-gauge-factory`](./tasks/20220325-single-recipient-gauge-factory) |
 | Delegation of veBAL boosts                           | [`20220325-ve-delegation`](./tasks/20220325-ve-delegation)                                   |
 | Coordination of the veBAL deployment                 | [`20220325-veBAL-deployment-coordinator`](./tasks/20220325-veBAL-deployment-coordinator)     |
+| Arbitrum Root Gauges, for veBAL voting               | [`20220413-arbitrum-root-gauge-factory`](./tasks/20220413-arbitrum-root-gauge-factory)       |
