@@ -24,6 +24,7 @@ import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerMinter.
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerTokenAdmin.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/ILiquidityGaugeFactory.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/ISingleRecipientGaugeFactory.sol";
+import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IStakelessGauge.sol";
 import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IBALTokenHolderFactory.sol";
 
 // solhint-disable not-rely-on-time
@@ -51,6 +52,8 @@ contract veBALL2Coordinator is ReentrancyGuard {
     ILiquidityGaugeFactory private immutable _ethereumGaugeFactory;
     ISingleRecipientGaugeFactory private immutable _polygonGaugeFactory;
     ISingleRecipientGaugeFactory private immutable _arbitrumGaugeFactory;
+
+    address public immutable GAUGE_CHECKPOINTER_MULTISIG = address(0); 
 
     enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE }
 
@@ -121,10 +124,13 @@ contract veBALL2Coordinator is ReentrancyGuard {
         // Step 1: Deprecate LM committee and set equal type weights on GaugeController.
         _setGaugeTypeWeights();
 
-        // Step 2: Add new gauges to the GaugeController.
+        // Step 2: Allow multisig to checkpoint Polygon and Arbitrum gauges.
+        _addGaugeCheckpointerMultisig();
+
+        // Step 3: Add new gauges to the GaugeController.
         _addNewEthereumGauges();
 
-        // Step 3: Deploy Arbitrum gauges and add them to the Gauge Controller.
+        // Step 4: Deploy Arbitrum gauges and add them to the Gauge Controller.
         _addNewArbitrumGauges();
 
         firstStageActivationTime = block.timestamp;
@@ -139,7 +145,7 @@ contract veBALL2Coordinator is ReentrancyGuard {
         ICurrentAuthorizer authorizer = getAuthorizer();
         require(authorizer.canPerform(bytes32(0), address(this), address(0)), "Not Authorizer admin");
 
-        // Step 4: Deploy Polygon gauges and add them to the Gauge Controller.
+        // Step 5: Deploy Polygon gauges and add them to the Gauge Controller.
         _addNewPolygonGauges();
 
         secondStageActivationTime = block.timestamp;
@@ -163,6 +169,12 @@ contract veBALL2Coordinator is ReentrancyGuard {
         _setGaugeTypeWeight(IGaugeAdder.GaugeType.Arbitrum, EQUAL_TYPE_WEIGHT);
 
         authorizer.revokeRole(changeTypeWeightRole, address(this));
+    }
+
+    function _addGaugeCheckpointerMultisig() private {
+        ICurrentAuthorizer authorizer = getAuthorizer();
+        bytes32 checkpointGaugeRole = _authorizerAdaptor.getActionId(IStakelessGauge.checkpoint.selector);
+        authorizer.grantRole(checkpointGaugeRole, GAUGE_CHECKPOINTER_MULTISIG);
     }
 
     function _addNewEthereumGauges() private {
@@ -273,6 +285,8 @@ contract veBALL2Coordinator is ReentrancyGuard {
 
         authorizer.revokeRole(addArbitrumGaugeRole, address(this));
     }
+
+
 
     function _deployGauge(ISingleRecipientGaugeFactory factory, address recipient) private returns (address gauge) {
         // Find gauge which distributes BAL to listed recipient
