@@ -2,7 +2,7 @@ import hre, { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumber, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { advanceTime, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -12,6 +12,7 @@ import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { range } from 'lodash';
 
 describe('PolygonRootGaugeFactory', function () {
   let veBALHolder: SignerWithAddress, admin: SignerWithAddress, recipient: SignerWithAddress;
@@ -177,6 +178,58 @@ describe('PolygonRootGaugeFactory', function () {
       depositReceiver: recipient.address,
       rootToken: BAL.address,
       amount: actualEmissions,
+    });
+  });
+
+  it('mint multiple weeks', async () => {
+    const numberOfWeeks = 5;
+    await advanceTime(WEEK * numberOfWeeks);
+    await gaugeController.checkpoint_gauge(gauge.address);
+
+    const weekTimestamp = await currentWeekTimestamp();
+
+    // We can query the relative weight of the gauge for each of the weeks that have passed
+    const relativeWeights: BigNumber[] = await Promise.all(
+      range(1, numberOfWeeks + 1).map(async (weekIndex) =>
+        gaugeController['gauge_relative_weight(address,uint256)'](gauge.address, weekTimestamp.sub(WEEK * weekIndex))
+      )
+    );
+
+    // The amount of tokens minted should equal the sum of the weekly emissions rate times the relative weight of the
+    // gauge (this assumes we're not crossing an emissions rate epoch so that the inflation remains constant).
+    const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
+    const expectedEmissions = relativeWeights
+      .map((weight) => weight.mul(weeklyRate).div(FP_SCALING_FACTOR))
+      .reduce((sum, value) => sum.add(value));
+
+    const calldata = gauge.interface.encodeFunctionData('checkpoint');
+    const tx = await authorizerAdaptor.connect(admin).performAction(gauge.address, calldata);
+
+    await Promise.all(
+      range(1, numberOfWeeks + 1).map(async (weekIndex) =>
+        expectEvent.inIndirectReceipt(await tx.wait(), gauge.interface, 'Checkpoint', {
+          periodTime: weekTimestamp.sub(WEEK * weekIndex),
+        })
+      )
+    );
+
+    // Tokens are minted for the gauge
+    expectEvent.inIndirectReceipt(await tx.wait(), BAL.interface, 'Transfer', {
+      from: ZERO_ADDRESS,
+      to: gauge.address,
+      value: expectedEmissions,
+    });
+
+    // And the gauge then deposits those in the predicate via the bridge mechanism
+    const bridgeInterface = new ethers.utils.Interface([
+      'event LockedERC20(address indexed depositor, address indexed depositReceiver, address indexed rootToken, uint256 amount)',
+    ]);
+
+    expectEvent.inIndirectReceipt(await tx.wait(), bridgeInterface, 'LockedERC20', {
+      depositor: gauge.address,
+      depositReceiver: recipient.address,
+      rootToken: BAL.address,
+      amount: expectedEmissions,
     });
   });
 });
