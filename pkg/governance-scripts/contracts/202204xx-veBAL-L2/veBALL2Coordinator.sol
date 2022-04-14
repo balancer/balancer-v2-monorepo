@@ -52,9 +52,10 @@ contract veBALL2Coordinator is ReentrancyGuard {
     ISingleRecipientGaugeFactory private immutable _polygonGaugeFactory;
     ISingleRecipientGaugeFactory private immutable _arbitrumGaugeFactory;
 
-    enum DeploymentStage { PENDING, FIRST_STAGE_DONE }
+    enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE }
 
     uint256 public firstStageActivationTime;
+    uint256 public secondStageActivationTime;
 
     DeploymentStage private _currentDeploymentStage;
     uint256 private immutable _activationScheduledTime;
@@ -119,14 +120,26 @@ contract veBALL2Coordinator is ReentrancyGuard {
         // Step 1: Add new gauges to the GaugeController
         _addNewEthereumGauges();
 
-        // Step 2: Deploy Polygon gauges and add them to the Gauge Controller
-        _addNewPolygonGauges();
-
-        // Step 3: Deploy Arbitrum gauges and add them to the Gauge Controller
+        // Step 2: Deploy Arbitrum gauges and add them to the Gauge Controller
         _addNewArbitrumGauges();
 
         firstStageActivationTime = block.timestamp;
         _currentDeploymentStage = DeploymentStage.FIRST_STAGE_DONE;
+    }
+
+     function performSecondStage() external nonReentrant {
+        // Check internal state
+        require(_currentDeploymentStage == DeploymentStage.FIRST_STAGE_DONE, "First step already performed");
+
+        // Check external state: we need admin permission on the Authorizer
+        ICurrentAuthorizer authorizer = getAuthorizer();
+        require(authorizer.canPerform(bytes32(0), address(this), address(0)), "Not Authorizer admin");
+
+        // Step 3: Deploy Polygon gauges and add them to the Gauge Controller
+        _addNewPolygonGauges();
+
+        secondStageActivationTime = block.timestamp;
+        _currentDeploymentStage = DeploymentStage.SECOND_STAGE_DONE;
     }
 
     function _addNewEthereumGauges() private {
