@@ -119,15 +119,10 @@ contract veBALL2Coordinator is ReentrancyGuard {
         // Step 1: Add new gauges to the GaugeController
         _addNewEthereumGauges();
 
-        // Step 2: Allowlist factories for the Polygon and Arbitrum gauge types
-        //
-        // This allows gauges deployed from these factories to be added to Gauge Controller
-        _addPolygonAndArbitrumGaugeFactories();
-
-        // Step 3: Deploy Polygon gauges and add them to the Gauge Controller
+        // Step 2: Deploy Polygon gauges and add them to the Gauge Controller
         _addNewPolygonGauges();
 
-        // Step 4: Deploy Arbitrum gauges and add them to the Gauge Controller
+        // Step 3: Deploy Arbitrum gauges and add them to the Gauge Controller
         _addNewArbitrumGauges();
 
         firstStageActivationTime = block.timestamp;
@@ -156,18 +151,6 @@ contract veBALL2Coordinator is ReentrancyGuard {
         authorizer.revokeRole(addEthereumGaugeRole, address(this));
     }
 
-    function _addPolygonAndArbitrumGaugeFactories() private {
-        ICurrentAuthorizer authorizer = getAuthorizer();
-        bytes32 addGaugeFactoryRole = _gaugeAdder.getActionId(IGaugeAdder.addGaugeFactory.selector);
-
-        authorizer.grantRole(addGaugeFactoryRole, address(this));
-
-        _gaugeAdder.addGaugeFactory(_polygonGaugeFactory, IGaugeAdder.GaugeType.Polygon);
-        _gaugeAdder.addGaugeFactory(_arbitrumGaugeFactory, IGaugeAdder.GaugeType.Arbitrum);
-
-        authorizer.revokeRole(addGaugeFactoryRole, address(this));
-    }
-
     function _addNewPolygonGauges() private {
         // All these addresses are required to match ChildChainStreamers which have been deployed to Polygon mainnet.
         address payable[19] memory initialRecipients = [
@@ -194,7 +177,14 @@ contract veBALL2Coordinator is ReentrancyGuard {
         ];
 
         ICurrentAuthorizer authorizer = getAuthorizer();
+
+        bytes32 addGaugeFactoryRole = _gaugeAdder.getActionId(IGaugeAdder.addGaugeFactory.selector);
         bytes32 addPolygonGaugeRole = _gaugeAdder.getActionId(IGaugeAdder.addPolygonGauge.selector);
+
+        // As these are the first polygon gauges we need to allowlist the factory in order to add them.
+        authorizer.grantRole(addGaugeFactoryRole, address(this));
+        _gaugeAdder.addGaugeFactory(_polygonGaugeFactory, IGaugeAdder.GaugeType.Polygon);
+        authorizer.revokeRole(addGaugeFactoryRole, address(this));
 
         authorizer.grantRole(addPolygonGaugeRole, address(this));
 
@@ -228,7 +218,14 @@ contract veBALL2Coordinator is ReentrancyGuard {
         ];
 
         ICurrentAuthorizer authorizer = getAuthorizer();
+
+        bytes32 addGaugeFactoryRole = _gaugeAdder.getActionId(IGaugeAdder.addGaugeFactory.selector);
         bytes32 addArbitrumGaugeRole = _gaugeAdder.getActionId(IGaugeAdder.addArbitrumGauge.selector);
+
+        // As these are the first arbitrum gauges we need to allowlist the factory in order to add them.
+        authorizer.grantRole(addGaugeFactoryRole, address(this));
+        _gaugeAdder.addGaugeFactory(_arbitrumGaugeFactory, IGaugeAdder.GaugeType.Arbitrum);
+        authorizer.revokeRole(addGaugeFactoryRole, address(this));
 
         authorizer.grantRole(addArbitrumGaugeRole, address(this));
 
