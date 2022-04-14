@@ -66,7 +66,7 @@ contract ArbitrumRootGauge is ISingleRecipientGauge, StakelessGauge {
             mintAmount,
             gasLimit,
             gasPrice,
-            abi.encode(maxSubmissionCost)
+            abi.encode(maxSubmissionCost, "")
         );
     }
 
