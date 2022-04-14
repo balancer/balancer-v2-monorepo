@@ -48,6 +48,7 @@ contract veBALL2Coordinator is ReentrancyGuard {
     IVault private immutable _vault;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
     IVotingEscrow private immutable _votingEscrow;
+    IGaugeController private immutable _gaugeController;
     IGaugeAdder private immutable _gaugeAdder;
     ILiquidityGaugeFactory private immutable _ethereumGaugeFactory;
     ISingleRecipientGaugeFactory private immutable _polygonGaugeFactory;
@@ -78,6 +79,7 @@ contract veBALL2Coordinator is ReentrancyGuard {
         _vault = vault;
         _authorizerAdaptor = authorizerAdaptor;
         _votingEscrow = votingEscrow;
+        _gaugeController = IGaugeController(gaugeAdder.getGaugeController());
         _gaugeAdder = gaugeAdder;
         _ethereumGaugeFactory = ethereumGaugeFactory;
         _polygonGaugeFactory = polygonGaugeFactory;
@@ -285,8 +287,6 @@ contract veBALL2Coordinator is ReentrancyGuard {
 
         authorizer.revokeRole(addArbitrumGaugeRole, address(this));
     }
-
-
 
     function _deployGauge(ISingleRecipientGaugeFactory factory, address recipient) private returns (address gauge) {
         // Find gauge which distributes BAL to listed recipient
