@@ -132,7 +132,7 @@ contract veBALL2Coordinator is ReentrancyGuard {
 
      function performSecondStage() external nonReentrant {
         // Check internal state
-        require(_currentDeploymentStage == DeploymentStage.FIRST_STAGE_DONE, "First step already performed");
+        require(_currentDeploymentStage == DeploymentStage.FIRST_STAGE_DONE, "Not ready for second stage");
 
         // Check external state: we need admin permission on the Authorizer
         ICurrentAuthorizer authorizer = getAuthorizer();
