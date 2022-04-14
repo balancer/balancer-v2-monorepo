@@ -117,10 +117,13 @@ contract veBALL2Coordinator is ReentrancyGuard {
         ICurrentAuthorizer authorizer = getAuthorizer();
         require(authorizer.canPerform(bytes32(0), address(this), address(0)), "Not Authorizer admin");
 
-        // Step 1: Add new gauges to the GaugeController
+        // Step 1: Deprecate LM committee and set equal type weights on GaugeController.
+        _setGaugeTypeWeights();
+
+        // Step 2: Add new gauges to the GaugeController.
         _addNewEthereumGauges();
 
-        // Step 2: Deploy Arbitrum gauges and add them to the Gauge Controller
+        // Step 3: Deploy Arbitrum gauges and add them to the Gauge Controller.
         _addNewArbitrumGauges();
 
         firstStageActivationTime = block.timestamp;
@@ -135,11 +138,30 @@ contract veBALL2Coordinator is ReentrancyGuard {
         ICurrentAuthorizer authorizer = getAuthorizer();
         require(authorizer.canPerform(bytes32(0), address(this), address(0)), "Not Authorizer admin");
 
-        // Step 3: Deploy Polygon gauges and add them to the Gauge Controller
+        // Step 4: Deploy Polygon gauges and add them to the Gauge Controller.
         _addNewPolygonGauges();
 
         secondStageActivationTime = block.timestamp;
         _currentDeploymentStage = DeploymentStage.SECOND_STAGE_DONE;
+    }
+
+    function _setGaugeTypeWeights() private {
+        ICurrentAuthorizer authorizer = getAuthorizer();
+        bytes32 changeTypeWeightRole = _authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector);
+
+        authorizer.grantRole(changeTypeWeightRole,address(this));
+
+        // We set the LM committee type weight to zero as this gauge type is being deprecated.
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.LiquidityMiningCommittee, 0);
+
+        // All other gauge types are set to have an equal type weight
+        uint256 EQUAL_TYPE_WEIGHT = 1e18;
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.veBAL, EQUAL_TYPE_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Ethereum, EQUAL_TYPE_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Polygon, EQUAL_TYPE_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Arbitrum, EQUAL_TYPE_WEIGHT);
+
+        authorizer.revokeRole(changeTypeWeightRole,address(this));
     }
 
     function _addNewEthereumGauges() private {
@@ -258,5 +280,12 @@ contract veBALL2Coordinator is ReentrancyGuard {
             // If gauge doesn't exist yet then create one.
             gauge = factory.create(recipient);
         }
+    }
+
+    function _setGaugeTypeWeight(IGaugeAdder.GaugeType typeId, uint256 weight) private {
+        getAuthorizerAdaptor().performAction(
+            address(_gaugeController),
+            abi.encodeWithSelector(IGaugeController.change_type_weight.selector, int128(typeId), weight)
+        );
     }
 }
