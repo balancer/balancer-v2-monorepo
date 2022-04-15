@@ -297,9 +297,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     {
         _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
         bytes32 actionId = getActionId(this.setRoot.selector);
-        bytes32 scheduleRootChangeActionId = getActionId(SCHEDULE_DELAY_ACTION_ID, actionId);
         bytes memory data = abi.encodeWithSelector(this.setRoot.selector, newRoot);
-        return _scheduleWithDelay(scheduleRootChangeActionId, address(this), data, _rootTransferDelay, executors);
+        return _scheduleWithDelay(actionId, address(this), data, _rootTransferDelay, executors);
     }
 
     /**
