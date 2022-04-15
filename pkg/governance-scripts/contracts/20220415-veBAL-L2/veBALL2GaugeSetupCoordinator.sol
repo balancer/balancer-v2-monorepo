@@ -44,7 +44,7 @@ interface ICurrentAuthorizer is IAuthorizer {
 
 // https://vote.balancer.fi/#/proposal/0x9fe19c491cf90ed2e3ed9c15761c43d39fd1fb732a940aba8058ff69787ee90a
 // solhint-disable-next-line contract-name-camelcase
-contract veBALL2Coordinator is ReentrancyGuard {
+contract veBALL2GaugeSetupCoordinator is ReentrancyGuard {
     IVault private immutable _vault;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
     IVotingEscrow private immutable _votingEscrow;
@@ -123,7 +123,7 @@ contract veBALL2Coordinator is ReentrancyGuard {
         ICurrentAuthorizer authorizer = getAuthorizer();
         require(authorizer.canPerform(bytes32(0), address(this), address(0)), "Not Authorizer admin");
 
-        // Step 1: Deprecate LM committee and set equal type weights on GaugeController.
+        // Step 1: Set equal type weights on GaugeController and deprecate LM committee.
         _setGaugeTypeWeights();
 
         // Step 2: Allow multisig to checkpoint Polygon and Arbitrum gauges.
@@ -134,6 +134,8 @@ contract veBALL2Coordinator is ReentrancyGuard {
 
         // Step 4: Deploy Arbitrum gauges and add them to the Gauge Controller.
         _addNewArbitrumGauges();
+
+        // The following steps are performed in a separate stage to reduce the gas cost of the execution of each step.
 
         firstStageActivationTime = block.timestamp;
         _currentDeploymentStage = DeploymentStage.FIRST_STAGE_DONE;
@@ -153,6 +155,9 @@ contract veBALL2Coordinator is ReentrancyGuard {
         // Step 6: Kill deprecated Polygon and Arbitrum gauges.
         _deprecateOldGauges();
 
+        // Step 7: Renounce admin role over the Authorizer.
+        authorizer.revokeRole(bytes32(0), address(this));
+
         secondStageActivationTime = block.timestamp;
         _currentDeploymentStage = DeploymentStage.SECOND_STAGE_DONE;
     }
@@ -163,13 +168,15 @@ contract veBALL2Coordinator is ReentrancyGuard {
 
         authorizer.grantRole(changeTypeWeightRole, address(this));
 
-        // We set all gauge types to have an equal weight.
+        // We set all gauge types to have an equal weight, except the Liquidity Mining Committee, which gets a weight of
+        // zero (preventing any tokens from being minted for gauges of that type).
         uint256 EQUAL_TYPE_WEIGHT = 1;
-        _setGaugeTypeWeight(IGaugeAdder.GaugeType.LiquidityMiningCommittee, EQUAL_TYPE_WEIGHT);
         _setGaugeTypeWeight(IGaugeAdder.GaugeType.veBAL, EQUAL_TYPE_WEIGHT);
         _setGaugeTypeWeight(IGaugeAdder.GaugeType.Ethereum, EQUAL_TYPE_WEIGHT);
         _setGaugeTypeWeight(IGaugeAdder.GaugeType.Polygon, EQUAL_TYPE_WEIGHT);
         _setGaugeTypeWeight(IGaugeAdder.GaugeType.Arbitrum, EQUAL_TYPE_WEIGHT);
+
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.LiquidityMiningCommittee, 0);
 
         authorizer.revokeRole(changeTypeWeightRole, address(this));
     }
