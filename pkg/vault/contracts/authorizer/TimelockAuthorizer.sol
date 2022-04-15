@@ -41,6 +41,15 @@ import "../interfaces/IAuthorizer.sol";
  * - Permission: Unique identifier to refer to a user (who) that is allowed to perform an action (what) in a specific
  *   target contract (where). This identifier is called `permissionId` and is computed as
  *   `keccak256(actionId, account, where)`.
+ *
+ * Permission granularity:
+ *   In addition to the who/what/where of a permission, an extra notion of "how" is introduced to enable more granular
+ *   configuration. This concept is used within the Authorizer to provide clarity among four ambiguous actions:
+ *   granting/revoking permissions, executing scheduled actions, and setting action delays. For example, in managing
+ *   the permission to set action delays, it is desirable to delineate whether an account can set delays for all
+ *   actions indiscriminately or only for a specific action ID. In this case, the permission's "what" is the action
+ *   ID for scheduling a delay change, and the "how" is the action ID for which the delay will be changed. The "what"
+ *   and "how" of a permission are combined into a single `actionId` by computing `keccak256(what, how)`.
  */
 contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     using Address for address;
