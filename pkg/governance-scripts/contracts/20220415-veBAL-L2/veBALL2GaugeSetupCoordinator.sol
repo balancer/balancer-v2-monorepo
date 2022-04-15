@@ -62,7 +62,6 @@ contract veBALL2GaugeSetupCoordinator is ReentrancyGuard {
     uint256 public secondStageActivationTime;
 
     DeploymentStage private _currentDeploymentStage;
-    uint256 private immutable _activationScheduledTime;
 
     constructor(
         IAuthorizerAdaptor authorizerAdaptor,
@@ -70,8 +69,7 @@ contract veBALL2GaugeSetupCoordinator is ReentrancyGuard {
         IGaugeAdder gaugeAdder,
         ILiquidityGaugeFactory ethereumGaugeFactory,
         ISingleRecipientGaugeFactory polygonGaugeFactory,
-        ISingleRecipientGaugeFactory arbitrumGaugeFactory,
-        uint256 activationScheduledTime
+        ISingleRecipientGaugeFactory arbitrumGaugeFactory
     ) {
         _currentDeploymentStage = DeploymentStage.PENDING;
 
@@ -84,8 +82,6 @@ contract veBALL2GaugeSetupCoordinator is ReentrancyGuard {
         _ethereumGaugeFactory = ethereumGaugeFactory;
         _polygonGaugeFactory = polygonGaugeFactory;
         _arbitrumGaugeFactory = arbitrumGaugeFactory;
-
-        _activationScheduledTime = activationScheduledTime;
     }
 
     /**
@@ -110,13 +106,8 @@ contract veBALL2GaugeSetupCoordinator is ReentrancyGuard {
         return _currentDeploymentStage;
     }
 
-    function getActivationScheduledTime() external view returns (uint256) {
-        return _activationScheduledTime;
-    }
-
     function performFirstStage() external nonReentrant {
         // Check internal state
-        require(block.timestamp >= _activationScheduledTime, "Not ready for activation");
         require(_currentDeploymentStage == DeploymentStage.PENDING, "First step already performed");
 
         // Check external state: we need admin permission on the Authorizer
@@ -304,7 +295,7 @@ contract veBALL2GaugeSetupCoordinator is ReentrancyGuard {
 
         ICurrentAuthorizer authorizer = getAuthorizer();
 
-        bytes32 killGaugeRole = _gaugeAdder.getActionId(ILiquidityGauge.killGauge.selector);
+        bytes32 killGaugeRole = _authorizerAdaptor.getActionId(ILiquidityGauge.killGauge.selector);
 
         authorizer.grantRole(killGaugeRole, address(this));
 
