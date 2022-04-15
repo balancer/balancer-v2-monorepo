@@ -12,7 +12,7 @@ import { impersonate } from '../../../src/signers';
 import { range } from 'lodash';
 import { advanceTime, WEEK } from '@balancer-labs/v2-helpers/src/time';
 
-describe.only('veBALL2GaugeSetupCoordinator', function () {
+describe('veBALL2GaugeSetupCoordinator', function () {
   let govMultisig: SignerWithAddress, checkpointMultisig: SignerWithAddress;
   let coordinator: Contract;
 
@@ -91,17 +91,10 @@ describe.only('veBALL2GaugeSetupCoordinator', function () {
     expect(await coordinator.getCurrentDeploymentStage()).to.equal(2);
   });
 
-  it('sets equal weights for all non-LMC gauge types', async () => {
-    // Liquidity Mining Committee is gauge type 0, so we skip it
-    for (const type of range(1, await gaugeController.n_gauge_types())) {
+  it('sets equal weights for all gauge types', async () => {
+    for (const type of range(0, await gaugeController.n_gauge_types())) {
       expect(await gaugeController.get_type_weight(type)).to.equal(1);
     }
-  });
-
-  it('sets zero weight for the LMC gauge type', async () => {
-    const LMC_GAUGE_TYPE = 0;
-    expect(await gaugeController.gauge_type_names(LMC_GAUGE_TYPE)).to.equal('Liquidity Mining Committee');
-    expect(await gaugeController.get_type_weight(LMC_GAUGE_TYPE)).to.equal(0);
   });
 
   it('kills temporary SingleRecipient Polygon and Arbitrum gauges', async () => {
