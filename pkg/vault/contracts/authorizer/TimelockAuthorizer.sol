@@ -566,7 +566,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where,
         bytes32 how
     ) internal view returns (bool) {
-        // If there is a delay defined for the granular action ID, then the sender must be the authorizer (scheduled exec)
+        // If there is a delay defined for the granular action ID, then the sender must be the authorizer (scheduled
+        // execution)
         bytes32 granularActionId = getActionId(actionId, how);
         if (delaysPerActionId[granularActionId] > 0) {
             return account == address(_executor);
