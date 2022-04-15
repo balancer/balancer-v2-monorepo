@@ -54,7 +54,7 @@ contract veBALL2GaugeSetupCoordinator is ReentrancyGuard {
     ISingleRecipientGaugeFactory private immutable _polygonGaugeFactory;
     ISingleRecipientGaugeFactory private immutable _arbitrumGaugeFactory;
 
-    address public immutable GAUGE_CHECKPOINTER_MULTISIG = address(0);
+    address public immutable GAUGE_CHECKPOINTER_MULTISIG = 0x02f35dA6A02017154367Bc4d47bb6c7D06C7533B;
 
     enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE }
 
