@@ -20,9 +20,10 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IAuthorizerAdaptor.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeAdder.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeController.sol";
+import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/ISingleRecipientGauge.sol";
 import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerTokenAdmin.sol";
 
-// solhint-disable not-rely-on-time
+import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IBALTokenHolder.sol";
 
 /**
  * @dev The currently deployed Authorizer has a different interface relative to the Authorizer in the monorepo
@@ -43,22 +44,27 @@ contract veBALFixCoordinator is ReentrancyGuard {
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
     IGaugeController private immutable _gaugeController;
     IBalancerTokenAdmin private immutable _balancerTokenAdmin;
-   
+
     address public constant BAL_MINT_RECIPIENT = address(0);
-    uint256 public constant BAL_MINT_AMOUNT = 98_600e18;
+
+    // Weekly emissions are 145k BAL. Recall that BAL has 18 decimals.
+
+    uint256 public constant VEBAL_BAL_MINT_AMOUNT = 29e18; // 2 weeks worth of 10% of emissions
+    uint256 public constant ARBITRUM_BAL_MINT_AMOUNT = 20300e15; // 2 weeks worth of 7% of emissions
+    uint256 public constant POLYGON_BAL_MINT_AMOUNT = 49600e15; // 2 weeks worth of 17% of emissions
+
+    // The total amount of BAL to mint is 29k + 20.3k + 49.6k = 98.6k
 
     enum DeploymentStage { PENDING, FIRST_STAGE_DONE }
 
     uint256 public firstStageActivationTime;
 
     DeploymentStage private _currentDeploymentStage;
-    uint256 private immutable _activationScheduledTime;
 
     constructor(
         IAuthorizerAdaptor authorizerAdaptor,
         IBalancerTokenAdmin balancerTokenAdmin,
-        IGaugeController gaugeController,
-        uint256 activationScheduledTime
+        IGaugeController gaugeController
     ) {
         _currentDeploymentStage = DeploymentStage.PENDING;
 
@@ -67,8 +73,6 @@ contract veBALFixCoordinator is ReentrancyGuard {
         _authorizerAdaptor = authorizerAdaptor;
         _balancerTokenAdmin = balancerTokenAdmin;
         _gaugeController = gaugeController;
-
-        _activationScheduledTime = activationScheduledTime;
     }
 
     /**
@@ -93,13 +97,8 @@ contract veBALFixCoordinator is ReentrancyGuard {
         return _currentDeploymentStage;
     }
 
-    function getActivationScheduledTime() external view returns (uint256) {
-        return _activationScheduledTime;
-    }
-
     function performFirstStage() external nonReentrant {
         // Check internal state
-        require(block.timestamp >= _activationScheduledTime, "Not ready for activation");
         require(_currentDeploymentStage == DeploymentStage.PENDING, "First step already performed");
 
         // Check external state: we need admin permission on the Authorizer
@@ -123,30 +122,50 @@ contract veBALFixCoordinator is ReentrancyGuard {
 
         bytes32 changeTypeWeightRole = _authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector);
         authorizer.grantRole(changeTypeWeightRole, address(this));
-        
+
         _setGaugeTypeWeight(IGaugeAdder.GaugeType.LiquidityMiningCommittee, 0);
-        
+
         authorizer.revokeRole(changeTypeWeightRole, address(this));
 
-        address lmCommitteeGauge = address(0);
+        address lmCommitteeGauge = 0x7AA5475b2eA29a9F4a1B9Cf1cB72512D1B4Ab75e;
+        require(
+            streq(
+                IBALTokenHolder(ISingleRecipientGauge(lmCommitteeGauge).getRecipient()).getName(),
+                "Liquidity Mining Committee BAL Holder"
+            )
+        );
+
         bytes32 killGaugeRole = _authorizerAdaptor.getActionId(ILiquidityGauge.killGauge.selector);
         authorizer.grantRole(killGaugeRole, address(this));
-        
+
         _killGauge(lmCommitteeGauge);
-        
+
         authorizer.revokeRole(killGaugeRole, address(this));
     }
 
     function _mintMissingBAL() private {
         ICurrentAuthorizer authorizer = getAuthorizer();
 
-        // Mint BAL necessary to make Polygon and Arbitrum LPs whole.
+        // Mint BAL necessary to make veBAL holders and Polygon and Arbitrum LPs whole.
         // See: https://forum.balancer.fi/t/decide-on-gauge-unexpected-behavior/2960#keeping-promises-13
+
+        IBALTokenHolder veBALHolder = IBALTokenHolder(0x3C1d00181ff86fbac0c3C52991fBFD11f6491D70);
+        require(streq(veBALHolder.getName(), "Temporary veBAL Liquidity Mining BAL Holder"));
+
+        IBALTokenHolder arbitrumHolder = IBALTokenHolder(0x0C925fcE89a22E36EbD9B3C6E0262234E853d2F6);
+        require(streq(arbitrumHolder.getName(), "Temporary Arbitrum Liquidity Mining BAL Holder"));
+
+        IBALTokenHolder polygonHolder = IBALTokenHolder(0x98087bf6A5CA828a6E09391aCE674DBaBB6a4C56);
+        require(streq(polygonHolder.getName(), "Temporary Polygon Liquidity Mining BAL Holder"));
 
         bytes32 mintBALRole = _balancerTokenAdmin.getActionId(IBalancerTokenAdmin.mint.selector);
 
         authorizer.grantRole(mintBALRole, address(this));
-        _balancerTokenAdmin.mint(BAL_MINT_RECIPIENT, BAL_MINT_AMOUNT);
+
+        _balancerTokenAdmin.mint(address(veBALHolder), VEBAL_BAL_MINT_AMOUNT);
+        _balancerTokenAdmin.mint(address(arbitrumHolder), ARBITRUM_BAL_MINT_AMOUNT);
+        _balancerTokenAdmin.mint(address(polygonHolder), POLYGON_BAL_MINT_AMOUNT);
+
         authorizer.revokeRole(mintBALRole, address(this));
     }
 
@@ -159,5 +178,9 @@ contract veBALFixCoordinator is ReentrancyGuard {
             address(_gaugeController),
             abi.encodeWithSelector(IGaugeController.change_type_weight.selector, int128(typeId), weight)
         );
+    }
+
+    function streq(string memory a, string memory b) private pure returns (bool) {
+        return keccak256(bytes(a)) == keccak256(bytes(b));
     }
 }
