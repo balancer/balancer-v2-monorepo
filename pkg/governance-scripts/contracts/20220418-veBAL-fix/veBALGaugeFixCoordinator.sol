@@ -39,7 +39,7 @@ interface ICurrentAuthorizer is IAuthorizer {
 }
 
 // solhint-disable-next-line contract-name-camelcase
-contract veBALFixCoordinator is ReentrancyGuard {
+contract veBALGaugeFixCoordinator is ReentrancyGuard {
     IVault private immutable _vault;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
     IGaugeController private immutable _gaugeController;
