@@ -3,7 +3,7 @@ import { expect } from 'chai';
 
 import Task from '../../../src/task';
 
-describe('StablePoolFactory', function () {
+describe('PrimaryIssuePoolFactory', function () {
   const task = Task.fromHRE('20220415-primary-issue-pool', hre);
 
   it('has a vault reference', async () => {
