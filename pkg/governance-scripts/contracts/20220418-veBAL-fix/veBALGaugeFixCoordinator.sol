@@ -49,11 +49,11 @@ contract veBALGaugeFixCoordinator is ReentrancyGuard {
 
     // Weekly emissions are 145k BAL. Recall that BAL has 18 decimals.
 
-    uint256 public constant VEBAL_BAL_MINT_AMOUNT = 29e18; // 2 weeks worth of 10% of emissions
-    uint256 public constant ARBITRUM_BAL_MINT_AMOUNT = 20300e15; // 2 weeks worth of 7% of emissions
-    uint256 public constant POLYGON_BAL_MINT_AMOUNT = 49600e15; // 2 weeks worth of 17% of emissions
+    uint256 public constant VEBAL_BAL_MINT_AMOUNT = 29000e18; // 2 weeks worth of 10% of emissions
+    uint256 public constant ARBITRUM_BAL_MINT_AMOUNT = 20300e18; // 2 weeks worth of 7% of emissions
+    uint256 public constant POLYGON_BAL_MINT_AMOUNT = 49300e18; // 2 weeks worth of 17% of emissions
 
-    // The total amount of BAL to mint is 29k + 20.3k + 49.6k = 98.6k
+    // The total amount of BAL to mint is 29k + 20.3k + 49.3k = 98.6k
 
     enum DeploymentStage { PENDING, FIRST_STAGE_DONE }
 
