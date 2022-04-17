@@ -1787,6 +1787,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@nomiclabs/hardhat-ethers@npm:2.0.1":
+  version: 2.0.1
+  resolution: "@nomiclabs/hardhat-ethers@npm:2.0.1"
+  peerDependencies:
+    ethers: ^5.0.0
+    hardhat: ^2.0.0
+  checksum: bf21e2d71398bc361b83ff058b6984d90b947f9ac062237962ce0f846e863b19ac744e0c9ec32fb0c8922050b876072575b28581c6769ba75dac05f020940c42
+  languageName: node
+  linkType: hard
+
 "@nomiclabs/hardhat-ethers@npm:^2.0.1":
   version: 2.0.2
   resolution: "@nomiclabs/hardhat-ethers@npm:2.0.2"
@@ -2500,6 +2510,47 @@ __metadata:
   checksum: be6c80a2fcea2fc4ed9ccf707da9837c2f501ba21312bf9b39f8b0c4ac7e581ed37909f4f64f8dab0c51c0ae5bdf2a45b59d9a215050876b3f27e6844dba30b6
   languageName: node
   linkType: hard
+
+"@verified-network/pool-primary-issues@workspace:pkg/pool-primary-issues":
+  version: 0.0.0-use.local
+  resolution: "@verified-network/pool-primary-issues@workspace:pkg/pool-primary-issues"
+  dependencies:
+    "@balancer-labs/v2-common": "workspace:*"
+    "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-pool-utils": "workspace:*"
+    "@balancer-labs/v2-solidity-utils": "workspace:*"
+    "@balancer-labs/v2-vault": "workspace:*"
+    "@nomiclabs/hardhat-ethers": 2.0.1
+    "@nomiclabs/hardhat-waffle": ^2.0.0
+    "@types/chai": ^4.2.12
+    "@types/lodash": ^4.14.161
+    "@types/mocha": ^8.0.3
+    "@types/node": ^14.6.0
+    "@typescript-eslint/eslint-plugin": ^4.1.1
+    "@typescript-eslint/parser": ^4.1.1
+    chai: ^4.2.0
+    decimal.js: ^10.2.1
+    eslint: ^7.9.0
+    eslint-plugin-mocha-no-only: ^1.1.1
+    eslint-plugin-prettier: ^3.1.4
+    ethereum-waffle: ^3.0.2
+    ethers: ^5.4.1
+    hardhat: ^2.8.3
+    lodash.frompairs: ^4.0.1
+    lodash.pick: ^4.4.0
+    lodash.range: ^3.2.0
+    lodash.times: ^4.3.2
+    lodash.zip: ^4.2.0
+    mocha: ^8.2.1
+    nodemon: ^2.0.4
+    prettier: ^2.1.2
+    prettier-plugin-solidity: v1.0.0-alpha.59
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.4
+    ts-node: ^8.10.2
+    typescript: ^4.0.2
+  languageName: unknown
+  linkType: soft
 
 "@yarnpkg/lockfile@npm:^1.1.0":
   version: 1.1.0
