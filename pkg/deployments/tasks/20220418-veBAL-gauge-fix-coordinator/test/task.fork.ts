@@ -10,6 +10,7 @@ import Task from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { range } from 'lodash';
 
 describe('veBALGaugeFixCoordinator', function () {
   let govMultisig: SignerWithAddress, balWithdrawerMultisig: SignerWithAddress;
@@ -27,6 +28,8 @@ describe('veBALGaugeFixCoordinator', function () {
   const VEBAL_BAL_TOKEN_HOLDER = '0x3C1d00181ff86fbac0c3C52991fBFD11f6491D70';
   const ARBITRUM_BAL_TOKEN_HOLDER = '0x0C925fcE89a22E36EbD9B3C6E0262234E853d2F6';
   const POLYGON_BAL_TOKEN_HOLDER = '0x98087bf6A5CA828a6E09391aCE674DBaBB6a4C56';
+
+  const LMC_GAUGE_TYPE = 0;
 
   let executeReceipt: ContractReceipt;
 
@@ -68,9 +71,16 @@ describe('veBALGaugeFixCoordinator', function () {
   });
 
   it('sets zero weight for the LMC gauge type', async () => {
-    const LMC_GAUGE_TYPE = 0;
     expect(await gaugeController.gauge_type_names(LMC_GAUGE_TYPE)).to.equal('Liquidity Mining Committee');
     expect(await gaugeController.get_type_weight(LMC_GAUGE_TYPE)).to.equal(0);
+  });
+
+  it('sets equal weights for all other gauge types', async () => {
+    for (const type of range(0, await gaugeController.n_gauge_types())) {
+      if (type == LMC_GAUGE_TYPE) continue;
+
+      expect(await gaugeController.get_type_weight(type)).to.equal(1);
+    }
   });
 
   it('kills LCM SingleRecipient gauge', async () => {

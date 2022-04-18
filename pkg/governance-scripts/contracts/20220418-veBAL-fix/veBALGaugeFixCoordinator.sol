@@ -108,10 +108,13 @@ contract veBALGaugeFixCoordinator is ReentrancyGuard {
         // Step 1: Deprecate the LM committee gauge type on the GaugeController.
         _deprecateLMCommittee();
 
-        // Step 2: Mint BAL which was to be distributed to Polygon and Arbitrum LPs to a multisig for distribution.
+        // Step 2: Set equal weights for all other gauge types.
+        _setGaugeTypeWeights();
+
+        // Step 3: Mint BAL which was to be distributed to Polygon and Arbitrum LPs to a multisig for distribution.
         _mintMissingBAL();
 
-        // Step 3: Renounce admin role over the Authorizer.
+        // Step 4: Renounce admin role over the Authorizer.
         authorizer.revokeRole(bytes32(0), address(this));
 
         firstStageActivationTime = block.timestamp;
@@ -144,6 +147,22 @@ contract veBALGaugeFixCoordinator is ReentrancyGuard {
         _killGauge(lmCommitteeGauge);
 
         authorizer.revokeRole(killGaugeRole, address(this));
+    }
+
+    function _setGaugeTypeWeights() private {
+        ICurrentAuthorizer authorizer = getAuthorizer();
+        bytes32 changeTypeWeightRole = _authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector);
+
+        authorizer.grantRole(changeTypeWeightRole, address(this));
+
+        // We set all gauge types to have an equal weight, except the LMC.
+        uint256 EQUAL_TYPE_WEIGHT = 1;
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.veBAL, EQUAL_TYPE_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Ethereum, EQUAL_TYPE_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Polygon, EQUAL_TYPE_WEIGHT);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Arbitrum, EQUAL_TYPE_WEIGHT);
+
+        authorizer.revokeRole(changeTypeWeightRole, address(this));
     }
 
     function _mintMissingBAL() private {
