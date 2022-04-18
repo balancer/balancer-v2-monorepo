@@ -9,7 +9,6 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import Task from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
-import { range } from 'lodash';
 import { advanceTime, WEEK } from '@balancer-labs/v2-helpers/src/time';
 
 describe('veBALL2GaugeSetupCoordinator', function () {
@@ -89,12 +88,6 @@ describe('veBALL2GaugeSetupCoordinator', function () {
   it('perform second stage', async () => {
     await coordinator.performSecondStage();
     expect(await coordinator.getCurrentDeploymentStage()).to.equal(2);
-  });
-
-  it('sets equal weights for all gauge types', async () => {
-    for (const type of range(0, await gaugeController.n_gauge_types())) {
-      expect(await gaugeController.get_type_weight(type)).to.equal(1);
-    }
   });
 
   it('kills temporary SingleRecipient Polygon and Arbitrum gauges', async () => {

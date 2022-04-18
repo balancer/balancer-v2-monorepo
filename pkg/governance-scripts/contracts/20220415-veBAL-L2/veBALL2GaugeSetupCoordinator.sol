@@ -114,16 +114,13 @@ contract veBALL2GaugeSetupCoordinator is ReentrancyGuard {
         ICurrentAuthorizer authorizer = getAuthorizer();
         require(authorizer.canPerform(bytes32(0), address(this), address(0)), "Not Authorizer admin");
 
-        // Step 1: Set equal type weights on GaugeController and deprecate LM committee.
-        _setGaugeTypeWeights();
-
-        // Step 2: Allow multisig to checkpoint Polygon and Arbitrum gauges.
+        // Step 1: Allow multisig to checkpoint Polygon and Arbitrum gauges.
         _addGaugeCheckpointerMultisig();
 
-        // Step 3: Add new gauges to the GaugeController.
+        // Step 2: Add new gauges to the GaugeController.
         _addNewEthereumGauges();
 
-        // Step 4: Deploy Arbitrum gauges and add them to the Gauge Controller.
+        // Step 3: Deploy Arbitrum gauges and add them to the Gauge Controller.
         _addNewArbitrumGauges();
 
         // The following steps are performed in a separate stage to reduce the gas cost of the execution of each step.
@@ -140,34 +137,17 @@ contract veBALL2GaugeSetupCoordinator is ReentrancyGuard {
         ICurrentAuthorizer authorizer = getAuthorizer();
         require(authorizer.canPerform(bytes32(0), address(this), address(0)), "Not Authorizer admin");
 
-        // Step 5: Deploy Polygon gauges and add them to the Gauge Controller.
+        // Step 4: Deploy Polygon gauges and add them to the Gauge Controller.
         _addNewPolygonGauges();
 
-        // Step 6: Kill deprecated Polygon and Arbitrum gauges.
+        // Step 5: Kill deprecated Polygon and Arbitrum gauges.
         _deprecateOldGauges();
 
-        // Step 7: Renounce admin role over the Authorizer.
+        // Step 6: Renounce admin role over the Authorizer.
         authorizer.revokeRole(bytes32(0), address(this));
 
         secondStageActivationTime = block.timestamp;
         _currentDeploymentStage = DeploymentStage.SECOND_STAGE_DONE;
-    }
-
-    function _setGaugeTypeWeights() private {
-        ICurrentAuthorizer authorizer = getAuthorizer();
-        bytes32 changeTypeWeightRole = _authorizerAdaptor.getActionId(IGaugeController.change_type_weight.selector);
-
-        authorizer.grantRole(changeTypeWeightRole, address(this));
-
-        // We set all gauge types to have an equal weight.
-        uint256 EQUAL_TYPE_WEIGHT = 1;
-        _setGaugeTypeWeight(IGaugeAdder.GaugeType.LiquidityMiningCommittee, EQUAL_TYPE_WEIGHT);
-        _setGaugeTypeWeight(IGaugeAdder.GaugeType.veBAL, EQUAL_TYPE_WEIGHT);
-        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Ethereum, EQUAL_TYPE_WEIGHT);
-        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Polygon, EQUAL_TYPE_WEIGHT);
-        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Arbitrum, EQUAL_TYPE_WEIGHT);
-
-        authorizer.revokeRole(changeTypeWeightRole, address(this));
     }
 
     function _addGaugeCheckpointerMultisig() private {
