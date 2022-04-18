@@ -119,4 +119,13 @@ describe('veBALGaugeFixCoordinator', function () {
       value: bn('24650e18').mul(2),
     });
   });
+
+  it('renounces the admin role', async () => {
+    expect(
+      await authorizer.hasRole(
+        '0x0000000000000000000000000000000000000000000000000000000000000000',
+        coordinator.address
+      )
+    ).to.equal(false);
+  });
 });

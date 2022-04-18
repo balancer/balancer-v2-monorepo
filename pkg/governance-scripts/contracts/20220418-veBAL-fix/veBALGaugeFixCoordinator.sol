@@ -111,6 +111,9 @@ contract veBALGaugeFixCoordinator is ReentrancyGuard {
         // Step 2: Mint BAL which was to be distributed to Polygon and Arbitrum LPs to a multisig for distribution.
         _mintMissingBAL();
 
+        // Step 3: Renounce admin role over the Authorizer.
+        authorizer.revokeRole(bytes32(0), address(this));
+
         firstStageActivationTime = block.timestamp;
         _currentDeploymentStage = DeploymentStage.FIRST_STAGE_DONE;
     }
