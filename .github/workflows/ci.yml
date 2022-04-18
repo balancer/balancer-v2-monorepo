@@ -5,7 +5,7 @@ on:
     branches:
       - master
   pull_request:
-    branches: "*"
+    branches: '*'
 
 jobs:
   lint:
@@ -20,7 +20,7 @@ jobs:
         uses: actions/cache@v2
         id: cache
         with:
-          path: "**/node_modules"
+          path: '**/node_modules'
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
       - name: Install
         run: yarn --immutable
@@ -40,7 +40,7 @@ jobs:
         uses: actions/cache@v2
         id: cache
         with:
-          path: "**/node_modules"
+          path: '**/node_modules'
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
       - name: Install
         run: yarn --immutable
@@ -60,7 +60,7 @@ jobs:
         uses: actions/cache@v2
         id: cache
         with:
-          path: "**/node_modules"
+          path: '**/node_modules'
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
       - name: Install
         run: yarn --immutable
@@ -82,7 +82,7 @@ jobs:
         uses: actions/cache@v2
         id: cache
         with:
-          path: "**/node_modules"
+          path: '**/node_modules'
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
       - name: Install
         run: yarn --immutable
@@ -104,7 +104,7 @@ jobs:
         uses: actions/cache@v2
         id: cache
         with:
-          path: "**/node_modules"
+          path: '**/node_modules'
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
       - name: Install
         run: yarn --immutable
@@ -126,7 +126,7 @@ jobs:
         uses: actions/cache@v2
         id: cache
         with:
-          path: "**/node_modules"
+          path: '**/node_modules'
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
       - name: Install
         run: yarn --immutable
@@ -148,7 +148,7 @@ jobs:
         uses: actions/cache@v2
         id: cache
         with:
-          path: "**/node_modules"
+          path: '**/node_modules'
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
       - name: Install
         run: yarn --immutable
@@ -170,7 +170,7 @@ jobs:
         uses: actions/cache@v2
         id: cache
         with:
-          path: "**/node_modules"
+          path: '**/node_modules'
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
       - name: Install
         run: yarn --immutable
@@ -192,7 +192,7 @@ jobs:
         uses: actions/cache@v2
         id: cache
         with:
-          path: "**/node_modules"
+          path: '**/node_modules'
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
       - name: Install
         run: yarn --immutable
@@ -214,7 +214,7 @@ jobs:
         uses: actions/cache@v2
         id: cache
         with:
-          path: "**/node_modules"
+          path: '**/node_modules'
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
       - name: Install
         run: yarn --immutable
@@ -223,6 +223,35 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-governance-scripts test
+
+  test-fork:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Cache
+        uses: actions/cache@v2
+        id: cache
+        with:
+          path: '**/node_modules'
+          key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
+      - name: Forked Network Cache
+        uses: nventuro/unconditional-upload-cache@v4.0.1
+        id: cache-forked-network
+        with:
+          path: 'pkg/deployments/cache/hardhat-network-fork/**'
+          key: hardhat-v1-network-fork # We're always saving the cache so the key doesn't do much
+      - name: Build Balancer JS
+        run: yarn workspace @balancer-labs/balancer-js build
+      - name: Prepare Config
+        run: node pkg/deployments/ci/prepare-config.js
+        env:
+          ALCHEMY_MAINNET_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_MAINNET_ARCHIVE_ENDPOINT }}
+      - name: Test
+        run: yarn workspace @balancer-labs/v2-deployments test:fork
 
   benchmark:
     runs-on: ubuntu-latest
