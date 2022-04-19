@@ -77,14 +77,24 @@ export default class TimelockAuthorizer {
     return this.instance.scheduledExecutions(id);
   }
 
-  async canPerform(action: string, account: Account, where: Account, how?: string): Promise<boolean> {
-    return how
-      ? this.instance.canPerformOrWhatever(action, this.toAddress(account), this.toAddress(where), how)
-      : this.instance.canPerform(action, this.toAddress(account), this.toAddress(where));
+  async canPerform(action: string, account: Account, where: Account): Promise<boolean> {
+    return this.instance.canPerform(action, this.toAddress(account), this.toAddress(where));
   }
 
-  async hasPermission(action: string, account: Account, where: Account, how: string): Promise<boolean> {
-    return this.instance.hasPermissionOrWhatever(action, this.toAddress(account), this.toAddress(where), how);
+  async canGrant(action: string, account: Account, where: Account): Promise<boolean> {
+    return this.instance.canGrant(action, this.toAddress(account), this.toAddress(where));
+  }
+
+  async canRevoke(action: string, account: Account, where: Account): Promise<boolean> {
+    return this.instance.canRevoke(action, this.toAddress(account), this.toAddress(where));
+  }
+
+  async isGranter(actionId: string, account: Account, where: Account): Promise<boolean> {
+    return this.instance.isGranter(actionId, this.toAddress(account), this.toAddress(where));
+  }
+
+  async isRevoker(actionId: string, account: Account, where: Account): Promise<boolean> {
+    return this.instance.isRevoker(actionId, this.toAddress(account), this.toAddress(where));
   }
 
   async scheduleRootChange(root: Account, executors: Account[], params?: TxParams): Promise<number> {
@@ -149,40 +159,30 @@ export default class TimelockAuthorizer {
     return this.with(params).cancel(id);
   }
 
-  async addGrantPermissionsManager(
-    action: string,
-    account: Account,
-    where: Account,
-    params?: TxParams
-  ): Promise<ContractTransaction> {
-    return this.with(params).manageGrantPermission(action, this.toAddress(account), this.toAddress(where), true);
+  async addGranter(action: string, account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).manageGranter(action, this.toAddress(account), this.toAddress(where), true);
   }
 
-  async removeGrantPermissionsManager(
+  async removeGranter(
     action: string,
     account: Account,
     wheres: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).manageGrantPermission(action, this.toAddress(account), this.toAddress(wheres), false);
+    return this.with(params).manageGranter(action, this.toAddress(account), this.toAddress(wheres), false);
   }
 
-  async addRevokePermissionsManager(
-    action: string,
-    account: Account,
-    where: Account,
-    params?: TxParams
-  ): Promise<ContractTransaction> {
-    return this.with(params).manageRevokePermission(action, this.toAddress(account), this.toAddress(where), true);
+  async addRevoker(action: string, account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).manageRevoker(action, this.toAddress(account), this.toAddress(where), true);
   }
 
-  async removeRevokePermissionsManager(
+  async removeRevoker(
     action: string,
     account: Account,
     wheres: Account,
     params?: TxParams
   ): Promise<ContractTransaction> {
-    return this.with(params).manageRevokePermission(action, this.toAddress(account), this.toAddress(wheres), false);
+    return this.with(params).manageRevoker(action, this.toAddress(account), this.toAddress(wheres), false);
   }
 
   async grantPermissions(
@@ -241,10 +241,6 @@ export default class TimelockAuthorizer {
     await this.grantPermissions(setDelayAction, this.toAddress(from), this, params);
     const id = await this.scheduleDelayChange(action, delay, [], params);
     await this.execute(id);
-  }
-
-  permissionsFor(actions: NAry<string>, w: NAry<Account>): string[][] {
-    return this.toList(actions).flatMap((a) => this.toList(w).map((where) => [a, this.toAddress(where)]));
   }
 
   toAddress(account: Account): string {

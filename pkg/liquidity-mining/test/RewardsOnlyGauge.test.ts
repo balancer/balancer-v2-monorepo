@@ -5,34 +5,59 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { ANY_ADDRESS, MAX_UINT256 as MAX_DEADLINE } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256 as MAX_DEADLINE, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { signPermit } from '@balancer-labs/balancer-js';
-import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, currentTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { parseFixed } from '@ethersproject/bignumber';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 describe('RewardsOnlyGauge', () => {
-  let token: Token;
-  let gauge: Contract;
+  let vault: Vault;
+  let adaptor: Contract;
 
-  let holder: SignerWithAddress, spender: SignerWithAddress;
+  let token: Token;
+  let balToken: Token;
+
+  let gauge: Contract;
+  let streamer: Contract;
+
+  let admin: SignerWithAddress,
+    distributor: SignerWithAddress,
+    holder: SignerWithAddress,
+    spender: SignerWithAddress,
+    other: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, holder, spender] = await ethers.getSigners();
+    [, admin, distributor, holder, spender, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy token', async () => {
+    vault = await Vault.create({ admin });
+    if (!vault.authorizer) throw Error('Vault has no Authorizer');
+
+    adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
+
     token = await Token.create({ symbol: 'BPT' });
-    const gaugeImplementation = await deploy('RewardsOnlyGauge', { args: [ANY_ADDRESS, ANY_ADDRESS, ANY_ADDRESS] });
-    const streamerImplementation = await deploy('ChildChainStreamer', { args: [ANY_ADDRESS, ANY_ADDRESS] });
+    balToken = await Token.create({ symbol: 'BAL' });
+
+    const gaugeImplementation = await deploy('RewardsOnlyGauge', {
+      args: [balToken.address, vault.address, adaptor.address],
+    });
+    const streamerImplementation = await deploy('ChildChainStreamer', { args: [balToken.address, adaptor.address] });
 
     const factory = await deploy('ChildChainLiquidityGaugeFactory', {
       args: [gaugeImplementation.address, streamerImplementation.address],
     });
 
-    const tx = await factory.create(token.address);
-    const event = expectEvent.inReceipt(await tx.wait(), 'RewardsOnlyGaugeCreated');
-    gauge = await deployedAt('RewardsOnlyGauge', event.args.gauge);
+    await factory.create(token.address);
+
+    gauge = await deployedAt('RewardsOnlyGauge', await factory.getPoolGauge(token.address));
+    streamer = await deployedAt('ChildChainStreamer', await factory.getPoolStreamer(token.address));
   });
 
   describe('info', () => {
@@ -129,6 +154,61 @@ describe('RewardsOnlyGauge', () => {
           await expect(gauge.permit(holder.address, spender.address, amount, deadline, v, r, s)).to.be.reverted;
         });
       }
+    });
+  });
+
+  describe('claim_rewards', () => {
+    const rewardAmount = parseFixed('1', 18);
+
+    sharedBeforeEach('stake into gauge', async () => {
+      await token.mint(holder);
+      await token.approve(gauge, MAX_UINT256, { from: holder });
+
+      await gauge.connect(holder)['deposit(uint256)'](rewardAmount);
+      await gauge.connect(holder)['deposit(uint256,address)'](rewardAmount.mul(2), other.address);
+    });
+
+    sharedBeforeEach('set up distributor on streamer', async () => {
+      const setDistributorActionId = await actionId(adaptor, 'set_reward_distributor', streamer.interface);
+      await vault.grantPermissionsGlobally([setDistributorActionId], admin);
+
+      const calldata = streamer.interface.encodeFunctionData('set_reward_distributor', [
+        balToken.address,
+        distributor.address,
+      ]);
+      await adaptor.connect(admin).performAction(streamer.address, calldata);
+    });
+
+    sharedBeforeEach('send tokens to streamer', async () => {
+      await balToken.mint(streamer.address, rewardAmount);
+      await streamer.connect(distributor).notify_reward_amount(balToken.address);
+    });
+
+    context('during reward period', () => {
+      sharedBeforeEach('start reward period', async () => {
+        await advanceTime(DAY);
+      });
+
+      it('transfers the expected number of tokens', async () => {
+        const expectedClaimAmount = rewardAmount.mul(DAY).div(WEEK).div(3);
+        await expectBalanceChange(() => gauge.connect(holder)['claim_rewards()'](), new TokenList([balToken]), [
+          { account: holder, changes: { BAL: ['near', expectedClaimAmount] } },
+        ]);
+      });
+    });
+
+    context('after reward period', () => {
+      sharedBeforeEach('start reward period', async () => {
+        await advanceTime(WEEK);
+      });
+
+      it('transfers the expected number of tokens', async () => {
+        // We need to account for rounding errors for rewards per second
+        const expectedClaimAmount = rewardAmount.div(WEEK).mul(WEEK).div(3);
+        await expectBalanceChange(() => gauge.connect(holder)['claim_rewards()'](), new TokenList([balToken]), [
+          { account: holder, changes: { BAL: expectedClaimAmount } },
+        ]);
+      });
     });
   });
 });
