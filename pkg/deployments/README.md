@@ -88,3 +88,4 @@ Returns an object with all contracts from a deployment and their addresses.
 | Arbitrum Root Gauges, for veBAL voting               | [`20220413-arbitrum-root-gauge-factory`](./tasks/20220413-arbitrum-root-gauge-factory)           |
 | Polygon Root Gauges, for veBAL voting                | [`20220413-polygon-root-gauge-factory`](./tasks/20220413-polygon-root-gauge-factory)             |
 | Coordination of setup of L2 gauges for veBAL system  | [`20220415-veBAL-L2-gauge-setup-coordinator`](./tasks/20220415-veBAL-L2-gauge-setup-coordinator) |
+| Coordination of veBAL gauges fix (Option 1)          | [`20220418-veBAL-gauge-fix-coordinator`](./tasks/20220418-veBAL-gauge-fix-coordinator)           |
