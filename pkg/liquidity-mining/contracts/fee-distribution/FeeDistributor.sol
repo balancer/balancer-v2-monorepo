@@ -409,7 +409,8 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             if (weekCursor >= userPoint.ts && userEpoch <= maxUserEpoch) {
                 // The week being considered is contained in an epoch after the user epoch described by `oldUserPoint`.
                 // We then shift `userPoint` into `oldUserPoint` and query the Point for the next user epoch.
-                // We do this in order to step though epochs until we find the last epoch starting before `weekCursor`.
+                // We do this in order to step though epochs until we find the first epoch starting after `weekCursor`,
+                // making the previous epoch the one that contains `weekCursor`.
                 userEpoch += 1;
                 oldUserPoint = userPoint;
                 if (userEpoch > maxUserEpoch) {
