@@ -216,6 +216,7 @@ __metadata:
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-etherscan": latest
     "@solidity-parser/parser": ^0.14.0
+    "@types/lodash.sum": ^4
     "@types/node": ^14.6.0
     "@typescript-eslint/eslint-plugin": ^4.1.1
     "@typescript-eslint/parser": ^4.1.1
@@ -224,6 +225,7 @@ __metadata:
     eslint-plugin-prettier: ^3.1.4
     hardhat: ^2.8.3
     hardhat-local-networks-config-plugin: 0.0.5
+    lodash.sum: ^4.0.2
     node-fetch: ^2.6.1
     prettier: ^2.1.2
     ts-node: ^8.10.2
@@ -2228,6 +2230,22 @@ __metadata:
     "@types/abstract-leveldown": "*"
     "@types/node": "*"
   checksum: 0b160c168dc3795226429c6c90894f449d340e6e38ee8853f3bbaf3909e6d9547103fe5ca662af0cccb7559b1b31bcd37d81c32567dbbc0965ac33169c3471db
+  languageName: node
+  linkType: hard
+
+"@types/lodash.sum@npm:^4":
+  version: 4.0.7
+  resolution: "@types/lodash.sum@npm:4.0.7"
+  dependencies:
+    "@types/lodash": "*"
+  checksum: 11c27fb5f2052739047c11778cbdfbc38108a731acc9334a91a79674faeb5094efff4a0eefa7249ef6948e46197f1b7598da6fc9ec26bbb9bbdc47acf6350a97
+  languageName: node
+  linkType: hard
+
+"@types/lodash@npm:*":
+  version: 4.14.182
+  resolution: "@types/lodash@npm:4.14.182"
+  checksum: e84c3e6bb03a241f648c8c8c8e0b3c26e00b932104d8d52599ff068adcc88d818a41aef9c3243b02d2e97273a9a605656d8ab3b64fb3c1afcbaa54a3ecf62f81
   languageName: node
   linkType: hard
 
@@ -9018,6 +9036,13 @@ fsevents@~2.1.1:
   version: 3.2.0
   resolution: "lodash.range@npm:3.2.0"
   checksum: f6febe8c9e5978d7428a40c17b14673516c332dd93372cc102a12d053a0920ed3bfca0faee4d9ff5b5f081ca93dde62b31aa1528b02594e555c1f1871f72a5fe
+  languageName: node
+  linkType: hard
+
+"lodash.sum@npm:^4.0.2":
+  version: 4.0.2
+  resolution: "lodash.sum@npm:4.0.2"
+  checksum: bd1f4a4fdbc46b002f188bb825533e86b8c9997ef1ebbb5522e1b50788faef8356b819ab44deed0c3e89f61b13493a54b59a1fef038d9517cc848b885dfd9d34
   languageName: node
   linkType: hard
 
