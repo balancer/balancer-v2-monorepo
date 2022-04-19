@@ -18,9 +18,9 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
 import "./SingleRecipientGauge.sol";
-import "../../interfaces/ILiquidityGaugeFactory.sol";
+import "../../interfaces/ISingleRecipientGaugeFactory.sol";
 
-contract SingleRecipientGaugeFactory is ILiquidityGaugeFactory {
+contract SingleRecipientGaugeFactory is ISingleRecipientGaugeFactory {
     ISingleRecipientGauge private _gaugeImplementation;
 
     mapping(address => bool) private _isGaugeFromFactory;
@@ -49,14 +49,14 @@ contract SingleRecipientGaugeFactory is ILiquidityGaugeFactory {
     /**
      * @notice Returns the gauge which sends funds to `recipient`.
      */
-    function getRecipientGauge(address recipient) external view returns (ILiquidityGauge) {
+    function getRecipientGauge(address recipient) external view override returns (ILiquidityGauge) {
         return ILiquidityGauge(_recipientGauge[recipient]);
     }
 
     /**
      * @notice Returns the recipient of `gauge`.
      */
-    function getGaugeRecipient(address gauge) external view returns (address) {
+    function getGaugeRecipient(address gauge) external view override returns (address) {
         return ISingleRecipientGauge(gauge).getRecipient();
     }
 

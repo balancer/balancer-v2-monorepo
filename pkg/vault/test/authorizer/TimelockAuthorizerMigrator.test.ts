@@ -9,9 +9,8 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { ONES_BYTES32, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('TimelockAuthorizerMigrator', () => {
-  let EVERYWHERE: string, GRANT_ACTION_ID: string, REVOKE_ACTION_ID: string;
   let user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress, root: SignerWithAddress;
-  let vault: Contract, oldAuthorizer: Contract, newAuthorizer: Contract, migrator: Contract;
+  let vault: Contract, oldAuthorizer: Contract, newAuthorizer: Contract, migrator: Contract, EVERYWHERE: string;
 
   before('set up signers', async () => {
     [, user1, user2, user3, root] = await ethers.getSigners();
@@ -47,8 +46,6 @@ describe('TimelockAuthorizerMigrator', () => {
 
   sharedBeforeEach('setup constants', async () => {
     EVERYWHERE = await newAuthorizer.EVERYWHERE();
-    GRANT_ACTION_ID = await newAuthorizer.GRANT_ACTION_ID();
-    REVOKE_ACTION_ID = await newAuthorizer.REVOKE_ACTION_ID();
   });
 
   const itMigratesPermissionsProperly = (migrate: () => Promise<unknown>) => {
@@ -81,10 +78,8 @@ describe('TimelockAuthorizerMigrator', () => {
         const adminsCount = await oldAuthorizer.getRoleMemberCount(adminRole);
         for (let i = 0; i < adminsCount; i++) {
           const admin = await oldAuthorizer.getRoleMember(adminRole, i);
-          expect(await newAuthorizer.hasPermissionOrWhatever(GRANT_ACTION_ID, admin, roleData.target, ONES_BYTES32)).to
-            .be.true;
-          expect(await newAuthorizer.hasPermissionOrWhatever(REVOKE_ACTION_ID, admin, roleData.target, ONES_BYTES32)).to
-            .be.true;
+          expect(await newAuthorizer.isGranter(ONES_BYTES32, admin, roleData.target)).to.be.true;
+          expect(await newAuthorizer.isRevoker(ONES_BYTES32, admin, roleData.target)).to.be.true;
         }
       }
     });
@@ -95,10 +90,8 @@ describe('TimelockAuthorizerMigrator', () => {
       const adminsCount = await oldAuthorizer.getRoleMemberCount(ZERO_BYTES32);
       for (let i = 0; i < adminsCount; i++) {
         const admin = await oldAuthorizer.getRoleMember(ZERO_BYTES32, i);
-        expect(await newAuthorizer.hasPermissionOrWhatever(GRANT_ACTION_ID, admin, EVERYWHERE, ONES_BYTES32)).to.be
-          .true;
-        expect(await newAuthorizer.hasPermissionOrWhatever(REVOKE_ACTION_ID, admin, EVERYWHERE, ONES_BYTES32)).to.be
-          .true;
+        expect(await newAuthorizer.isGranter(ONES_BYTES32, admin, EVERYWHERE)).to.be.true;
+        expect(await newAuthorizer.isRevoker(ONES_BYTES32, admin, EVERYWHERE)).to.be.true;
       }
     });
 
@@ -112,10 +105,8 @@ describe('TimelockAuthorizerMigrator', () => {
     it('revokes the admin roles from the migrator', async () => {
       await migrate();
 
-      expect(await newAuthorizer.hasPermissionOrWhatever(GRANT_ACTION_ID, migrator.address, EVERYWHERE, ONES_BYTES32))
-        .to.be.false;
-      expect(await newAuthorizer.hasPermissionOrWhatever(REVOKE_ACTION_ID, migrator.address, EVERYWHERE, ONES_BYTES32))
-        .to.be.false;
+      expect(await newAuthorizer.isGranter(ONES_BYTES32, migrator.address, EVERYWHERE)).to.be.false;
+      expect(await newAuthorizer.isRevoker(ONES_BYTES32, migrator.address, EVERYWHERE)).to.be.false;
     });
 
     it('finalizes the migration after the set root delay', async () => {
