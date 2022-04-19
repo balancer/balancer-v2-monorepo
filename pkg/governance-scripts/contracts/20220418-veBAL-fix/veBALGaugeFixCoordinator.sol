@@ -45,8 +45,6 @@ contract veBALGaugeFixCoordinator is ReentrancyGuard {
     IGaugeController private immutable _gaugeController;
     IBalancerTokenAdmin private immutable _balancerTokenAdmin;
 
-    address public constant BAL_MINT_RECIPIENT = address(0);
-
     // Weekly emissions are 145k BAL. Recall that BAL has 18 decimals.
 
     uint256 public constant VEBAL_BAL_MINT_AMOUNT = 29000e18; // 2 weeks worth of 10% of emissions
@@ -56,8 +54,6 @@ contract veBALGaugeFixCoordinator is ReentrancyGuard {
     // The total amount of BAL to mint is 29k + 20.3k + 49.3k = 98.6k
 
     enum DeploymentStage { PENDING, FIRST_STAGE_DONE }
-
-    uint256 public firstStageActivationTime;
 
     DeploymentStage private _currentDeploymentStage;
 
@@ -117,7 +113,6 @@ contract veBALGaugeFixCoordinator is ReentrancyGuard {
         // Step 4: Renounce admin role over the Authorizer.
         authorizer.revokeRole(bytes32(0), address(this));
 
-        firstStageActivationTime = block.timestamp;
         _currentDeploymentStage = DeploymentStage.FIRST_STAGE_DONE;
     }
 
@@ -135,10 +130,11 @@ contract veBALGaugeFixCoordinator is ReentrancyGuard {
 
         address lmCommitteeGauge = 0x7AA5475b2eA29a9F4a1B9Cf1cB72512D1B4Ab75e;
         require(
-            streq(
+            _streq(
                 IBALTokenHolder(ISingleRecipientGauge(lmCommitteeGauge).getRecipient()).getName(),
                 "Liquidity Mining Committee BAL Holder"
-            )
+            ),
+            "Incorrect gauge"
         );
 
         bytes32 killGaugeRole = _authorizerAdaptor.getActionId(ILiquidityGauge.killGauge.selector);
@@ -156,11 +152,11 @@ contract veBALGaugeFixCoordinator is ReentrancyGuard {
         authorizer.grantRole(changeTypeWeightRole, address(this));
 
         // We set all gauge types to have an equal weight, except the LMC.
-        uint256 EQUAL_TYPE_WEIGHT = 1;
-        _setGaugeTypeWeight(IGaugeAdder.GaugeType.veBAL, EQUAL_TYPE_WEIGHT);
-        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Ethereum, EQUAL_TYPE_WEIGHT);
-        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Polygon, EQUAL_TYPE_WEIGHT);
-        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Arbitrum, EQUAL_TYPE_WEIGHT);
+        uint256 equalTypeWeight = 1;
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.veBAL, equalTypeWeight);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Ethereum, equalTypeWeight);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Polygon, equalTypeWeight);
+        _setGaugeTypeWeight(IGaugeAdder.GaugeType.Arbitrum, equalTypeWeight);
 
         authorizer.revokeRole(changeTypeWeightRole, address(this));
     }
@@ -172,13 +168,13 @@ contract veBALGaugeFixCoordinator is ReentrancyGuard {
         // See: https://forum.balancer.fi/t/decide-on-gauge-unexpected-behavior/2960#keeping-promises-13
 
         IBALTokenHolder veBALHolder = IBALTokenHolder(0x3C1d00181ff86fbac0c3C52991fBFD11f6491D70);
-        require(streq(veBALHolder.getName(), "Temporary veBAL Liquidity Mining BAL Holder"));
+        require(_streq(veBALHolder.getName(), "Temporary veBAL Liquidity Mining BAL Holder"), "Incorrect holder");
 
         IBALTokenHolder arbitrumHolder = IBALTokenHolder(0x0C925fcE89a22E36EbD9B3C6E0262234E853d2F6);
-        require(streq(arbitrumHolder.getName(), "Temporary Arbitrum Liquidity Mining BAL Holder"));
+        require(_streq(arbitrumHolder.getName(), "Temporary Arbitrum Liquidity Mining BAL Holder"), "Incorrect holder");
 
         IBALTokenHolder polygonHolder = IBALTokenHolder(0x98087bf6A5CA828a6E09391aCE674DBaBB6a4C56);
-        require(streq(polygonHolder.getName(), "Temporary Polygon Liquidity Mining BAL Holder"));
+        require(_streq(polygonHolder.getName(), "Temporary Polygon Liquidity Mining BAL Holder"), "Incorrect holder");
 
         bytes32 mintBALRole = _balancerTokenAdmin.getActionId(IBalancerTokenAdmin.mint.selector);
 
@@ -202,7 +198,7 @@ contract veBALGaugeFixCoordinator is ReentrancyGuard {
         );
     }
 
-    function streq(string memory a, string memory b) private pure returns (bool) {
+    function _streq(string memory a, string memory b) private pure returns (bool) {
         return keccak256(bytes(a)) == keccak256(bytes(b));
     }
 }

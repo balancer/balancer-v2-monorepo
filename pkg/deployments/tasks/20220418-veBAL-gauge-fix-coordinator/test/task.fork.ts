@@ -1,4 +1,4 @@
-import hre, { ethers } from 'hardhat';
+import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract, ContractReceipt } from 'ethers';
 
@@ -13,7 +13,7 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { range } from 'lodash';
 
 describe('veBALGaugeFixCoordinator', function () {
-  let govMultisig: SignerWithAddress, balWithdrawerMultisig: SignerWithAddress;
+  let govMultisig: SignerWithAddress;
   let coordinator: Contract;
 
   let authorizer: Contract, gaugeController: Contract, BAL: Contract;
@@ -22,7 +22,6 @@ describe('veBALGaugeFixCoordinator', function () {
 
   const BAL_TOKEN = '0xba100000625a3754423978a60c9317c58a424e3D';
 
-  const BAL_WITHDRAWER_MULTISIG = '0xd2EB7Bd802A7CA68d9AcD209bEc4E664A9abDD7b';
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   const VEBAL_BAL_TOKEN_HOLDER = '0x3C1d00181ff86fbac0c3C52991fBFD11f6491D70';
@@ -55,7 +54,6 @@ describe('veBALGaugeFixCoordinator', function () {
 
   before('grant permissions', async () => {
     govMultisig = await impersonate(GOV_MULTISIG, fp(100));
-    balWithdrawerMultisig = await impersonate(BAL_WITHDRAWER_MULTISIG, fp(100));
 
     const vaultTask = Task.forTest('20210418-vault', getForkedNetwork(hre));
     authorizer = await vaultTask.instanceAt('Authorizer', await coordinator.getAuthorizer());
