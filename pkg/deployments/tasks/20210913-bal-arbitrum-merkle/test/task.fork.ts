@@ -1,5 +1,5 @@
 import hre, { ethers } from 'hardhat';
-import { Contract, BigNumber, utils } from 'ethers';
+import { Contract, BigNumber } from 'ethers';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';

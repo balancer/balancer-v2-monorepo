@@ -257,7 +257,7 @@ jobs:
         id: cache-forked-network
         with:
           path: 'pkg/deployments/cache/hardhat-network-fork/**'
-          key: hardhat-network-fork-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+          key: hardhat-network-fork-${{ github.run_number }}-${{ github.run_attempt }}
           restore-keys: |
             hardhat-network-fork-
       - name: Prepare Config
