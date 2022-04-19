@@ -8,6 +8,10 @@ export const currentTimestamp = async (): Promise<BigNumber> => {
   return bn(timestamp);
 };
 
+export const currentWeekTimestamp = async (): Promise<BigNumber> => {
+  return (await currentTimestamp()).div(WEEK).mul(WEEK);
+};
+
 export const fromNow = async (seconds: number): Promise<BigNumber> => {
   const now = await currentTimestamp();
   return now.add(seconds);
