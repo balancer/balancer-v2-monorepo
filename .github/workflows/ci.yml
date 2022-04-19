@@ -239,11 +239,22 @@ jobs:
           path: '**/node_modules'
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
       - name: Forked Network Cache
-        uses: nventuro/unconditional-upload-cache@v4.0.1
+        # Hardhat caches node requests when working with forked networks (e.g. when querying contract code, storage,
+        # etc.) to save time in future runs. We cache this directory accross runs.
+        # This cache action is special for a couple reasons, which originate from a) it not occupying much disk size,
+        # and b) the cache never being invalid (as past blockchain data is immutable). We therefore:
+        #  - save the cache even on action failure (which may be caused due to a timeout), even if this could result in
+        #    some wasted space. For this we use the always-upload-cache fork of the basic action.
+        #  - use a different key on every single run, causing for the cache to always be saved.
+        #  - use a wildcard as a restore key, which will cause all stored keys to match and the most recent one to be
+        #    selected.
+        uses: pat-s/always-upload-cache@v3.0.1
         id: cache-forked-network
         with:
           path: 'pkg/deployments/cache/hardhat-network-fork/**'
-          key: hardhat-v1-network-fork # We're always saving the cache so the key doesn't do much
+          key: hardhat-network-fork-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+          restore-keys: |
+            hardhat-network-fork-
       - name: Build Balancer JS
         run: yarn workspace @balancer-labs/balancer-js build
       - name: Prepare Config
