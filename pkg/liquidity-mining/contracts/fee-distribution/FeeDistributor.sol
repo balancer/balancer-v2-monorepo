@@ -369,14 +369,13 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         // They clearly will not then receive fees.
         if (maxUserEpoch == 0) return;
 
-        // Minimal user_epoch for an address which has locked veBAL is 1.
-        uint256 userEpoch = 1;
-
         UserState storage userState = _userState[user];
 
         // weekCursor represents the timestamp of the beginning of the week from which we
         // start checkpointing the user's VotingEscrow balance.
         uint256 weekCursor = userState.timeCursor;
+        
+        uint256 userEpoch;
         if (weekCursor == 0) {
             // First checkpoint for user so need to do the initial binary search
             userEpoch = _findTimestampUserEpoch(user, _startTime, maxUserEpoch);
@@ -387,6 +386,11 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             }
             // Otherwise use the value saved from last time
             userEpoch = userState.lastEpochCheckpointed;
+        }
+        
+        // Epoch 0 is always empty so bump onto the next one so that we start on a valid epoch.
+        if (userEpoch == 0) {
+            userEpoch = 1;
         }
 
         IVotingEscrow.Point memory userPoint = _votingEscrow.user_point_history(user, userEpoch);
