@@ -31,6 +31,10 @@ const contractSettings: ContractSettings = {
     version: '0.7.1',
     runs: 200,
   },
+  '@verified-network/pool-secondary-issues/contracts/SecondaryIssuePoolFactory.sol': {
+    version: '0.7.1',
+    runs: 200,
+  },
 };
 
 type SolcConfig = {
