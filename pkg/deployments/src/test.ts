@@ -1,5 +1,6 @@
 import { RunSuperFunction, HardhatRuntimeEnvironment, HttpNetworkConfig, HardhatNetworkConfig } from 'hardhat/types';
 import sum from 'lodash.sum';
+import path from 'path';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
@@ -24,7 +25,6 @@ async function runDeployTests(args: any, hre: HardhatRuntimeEnvironment, run: Ru
 }
 
 async function runForkTests(args: any, hre: HardhatRuntimeEnvironment, run: RunSuperFunction<any>): Promise<void> {
-  console.log('Running fork tests...');
   if (args.fork === 'hardhat') throw Error('Cannot fork local networks');
   const testFiles = args.testFiles.filter((file: string) => file.endsWith('.fork.ts'));
 
@@ -44,6 +44,8 @@ async function runForkTests(args: any, hre: HardhatRuntimeEnvironment, run: RunS
       method: 'hardhat_reset',
       params: [{ forking: { jsonRpcUrl: forkingNetworkConfig.url, blockNumber: args.blockNumber } }],
     });
+
+    console.log(`Running fork tests for task ${testFile.split(path.sep)[1]}`);
 
     args.testFiles = [testFile];
     results.push(await run(args));

@@ -13,7 +13,7 @@ import { getForkedNetwork } from '../../../src/test';
 import { AuthorizerDeployment } from '../../20210418-authorizer/input';
 import { TimelockAuthorizerDeployment } from '../input';
 
-describe('TimelockAuthorizer', function () {
+describe.skip('TimelockAuthorizer', function () {
   let input: TimelockAuthorizerDeployment;
   let EVERYWHERE: string, DEFAULT_ADMIN_ROLE: string;
   let migrator: Contract, vault: Contract, newAuthorizer: Contract, oldAuthorizer: Contract;

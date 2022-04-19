@@ -1,10 +1,9 @@
 import hre, { ethers } from 'hardhat';
-import { Contract, BigNumber, utils } from 'ethers';
+import { Contract, BigNumber } from 'ethers';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { MerkleTree } from '@balancer-labs/v2-distributors/lib/merkleTree';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
 import Task from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
@@ -16,7 +15,7 @@ function encodeElement(address: string, balance: BigNumber): string {
   return ethers.utils.solidityKeccak256(['address', 'uint'], [address, balance]);
 }
 
-describe('MerkleRedeem', function () {
+describe.skip('MerkleRedeem', function () {
   let lp: SignerWithAddress, other: SignerWithAddress, whale: SignerWithAddress;
   let distributor: Contract, token: Contract;
 
@@ -33,7 +32,7 @@ describe('MerkleRedeem', function () {
   before('load signers and transfer ownership', async () => {
     lp = await getSigner(2);
     other = await getSigner(3);
-    whale = await impersonate(REWARD_WHALE_ADDRESS);
+    whale = await impersonate(REWARD_WHALE_ADDRESS, fp(100));
     token = await task.instanceAt('IERC20', REWARD_TOKEN_ADDRESS);
 
     await distributor.transferOwnership(whale.address);
@@ -65,18 +64,6 @@ describe('MerkleRedeem', function () {
 
       await distributor.connect(lp).claimWeek(lp.address, bn(1), fp(66), proof);
       expectEqualWithError(await token.balanceOf(lp.address), fp(66), fp(1));
-    });
-
-    it('can claim a reward to a callback', async () => {
-      await distributor.connect(whale).seedAllocations(bn(2), root, fp(100));
-
-      const calldata = utils.defaultAbiCoder.encode([], []);
-      const callbackContract = await deploy('v2-distributors/MockRewardCallback', { args: [] });
-
-      const claims = [{ week: bn(2), balance: fp(66), merkleProof: proof }];
-
-      await distributor.connect(lp).claimWeeksWithCallback(lp.address, callbackContract.address, calldata, claims);
-      expectEqualWithError(await token.balanceOf(callbackContract.address), fp(66), fp(1));
     });
   });
 });
