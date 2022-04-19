@@ -238,6 +238,11 @@ jobs:
         with:
           path: '**/node_modules'
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
+      - name: Install
+        run: yarn --immutable
+        if: steps.cache.outputs.cache-hit != 'true'
+      - name: Build Balancer JS
+        run: yarn workspace @balancer-labs/balancer-js build
       - name: Forked Network Cache
         # Hardhat caches node requests when working with forked networks (e.g. when querying contract code, storage,
         # etc.) to save time in future runs. We cache this directory accross runs.
@@ -255,8 +260,6 @@ jobs:
           key: hardhat-network-fork-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
           restore-keys: |
             hardhat-network-fork-
-      - name: Build Balancer JS
-        run: yarn workspace @balancer-labs/balancer-js build
       - name: Prepare Config
         run: node pkg/deployments/ci/prepare-config.js
         env:
