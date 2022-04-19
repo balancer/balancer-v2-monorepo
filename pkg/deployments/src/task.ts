@@ -180,7 +180,7 @@ export default class Task {
   output({ ensure = true, network }: { ensure?: boolean; network?: Network } = {}): Output {
     if (network) this.network = network;
     const taskOutputDir = this._dirAt(this.dir(), 'output', ensure);
-    const taskOutputFile = this._fileAt(taskOutputDir, this.outputFile, ensure);
+    const taskOutputFile = this._fileAt(taskOutputDir, `${this.network}.json`, ensure);
     return this._read(taskOutputFile);
   }
 
