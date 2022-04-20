@@ -73,11 +73,15 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     constructor(IVotingEscrow votingEscrow, uint256 startTime) {
         _votingEscrow = votingEscrow;
 
-        // We assume that `votingEscrow` has been deployed in a week previous to this one.
-        // If `votingEscrow` did not have a non-zero supply at the beginning of the current week
-        // then any tokens which are distributed this week will be lost permanently.
-        require(startTime >= _roundDownTimestamp(block.timestamp), "Cannot start before current week");
         startTime = _roundDownTimestamp(startTime);
+        uint256 currentWeek = _roundDownTimestamp(block.timestamp);
+        require(startTime >= currentWeek, "Cannot start before current week");
+        if (startTime == currentWeek) {
+            // We assume that `votingEscrow` has been deployed in a week previous to this one.
+            // If `votingEscrow` did not have a non-zero supply at the beginning of the current week
+            // then any tokens which are distributed this week will be lost permanently.
+            require(votingEscrow.totalSupply(currentWeek) > 0, "Zero total supply results in lost tokens");
+        }
         _startTime = startTime;
         _timeCursor = startTime;
     }
