@@ -169,10 +169,10 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
 
     /**
      * @notice Deposits tokens to be distributed in the current week.
-     * @dev Sending tokens directly to the FeeDistributor instead of using `depositTokens` may result in tokens being
+     * @dev Sending tokens directly to the FeeDistributor instead of using `depositToken` may result in tokens being
      * retroactively distributed to past weeks, or for the distribution to carry over to future weeks.
      *
-     * If for some reason `depositTokens` cannot be called, in order to ensure that all tokens are correctly distributed
+     * If for some reason `depositToken` cannot be called, in order to ensure that all tokens are correctly distributed
      * manually call `checkpointToken` before and after the token transfer.
      * @param token - The ERC20 token address to distribute.
      * @param amount - The amount of tokens to deposit.
