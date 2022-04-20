@@ -120,11 +120,17 @@ contract SmartWalletCheckerCoordinator is ReentrancyGuard {
         );
 
         authorizer.grantRole(commitSmartWalletCheckerRole, address(this));
-        _votingEscrow.commit_smart_wallet_checker(address(_smartWalletChecker));
+        getAuthorizerAdaptor().performAction(
+            address(_votingEscrow),
+            abi.encodeWithSelector(IVotingEscrow.commit_smart_wallet_checker.selector, _smartWalletChecker)
+        );
         authorizer.revokeRole(commitSmartWalletCheckerRole, address(this));
 
         authorizer.grantRole(applySmartWalletCheckerRole, address(this));
-        _votingEscrow.apply_smart_wallet_checker();
+        getAuthorizerAdaptor().performAction(
+            address(_votingEscrow),
+            abi.encodeWithSelector(IVotingEscrow.apply_smart_wallet_checker.selector)
+        );
         authorizer.revokeRole(applySmartWalletCheckerRole, address(this));
 
         require(
