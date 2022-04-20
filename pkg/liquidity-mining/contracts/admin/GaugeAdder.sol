@@ -68,8 +68,8 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
     /**
      * @notice Returns the address of the Gauge Controller
      */
-    function getGaugeController() external view returns (address) {
-        return address(_gaugeController);
+    function getGaugeController() external view override returns (IGaugeController) {
+        return _gaugeController;
     }
 
     /**
