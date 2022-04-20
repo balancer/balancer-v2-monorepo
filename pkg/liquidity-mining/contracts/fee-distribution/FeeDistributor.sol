@@ -153,7 +153,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @param token - The ERC20 token address to query.
      * @param timestamp - The timestamp corresponding to the beginning of the week of interest.
      */
-    function getTokensDistributedInWeek(IERC20 token, uint256 timestamp) external view returns (uint256) {
+    function getTokensDistributedInWeek(IERC20 token, uint256 timestamp) external view override returns (uint256) {
         return _tokensPerWeek[token][timestamp];
     }
 
