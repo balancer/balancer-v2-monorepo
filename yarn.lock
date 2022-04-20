@@ -216,14 +216,18 @@ __metadata:
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-etherscan": latest
     "@solidity-parser/parser": ^0.14.0
+    "@types/lodash": ^4.14.181
+    "@types/lodash.range": ^3
     "@types/node": ^14.6.0
     "@typescript-eslint/eslint-plugin": ^4.1.1
     "@typescript-eslint/parser": ^4.1.1
     chalk: ^4.1.1
     eslint: ^7.9.0
     eslint-plugin-prettier: ^3.1.4
+    ethers: ^5.4.1
     hardhat: ^2.8.3
     hardhat-local-networks-config-plugin: 0.0.5
+    lodash.range: ^3.2.0
     node-fetch: ^2.6.1
     prettier: ^2.1.2
     ts-node: ^8.10.2
@@ -284,6 +288,8 @@ __metadata:
   dependencies:
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-liquidity-mining": "workspace:*"
+    "@balancer-labs/v2-standalone-utils": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -2228,6 +2234,22 @@ __metadata:
     "@types/abstract-leveldown": "*"
     "@types/node": "*"
   checksum: 0b160c168dc3795226429c6c90894f449d340e6e38ee8853f3bbaf3909e6d9547103fe5ca662af0cccb7559b1b31bcd37d81c32567dbbc0965ac33169c3471db
+  languageName: node
+  linkType: hard
+
+"@types/lodash.range@npm:^3":
+  version: 3.2.6
+  resolution: "@types/lodash.range@npm:3.2.6"
+  dependencies:
+    "@types/lodash": "*"
+  checksum: 8b56371c8af7b678f9700edf2b191971ba4148b517622bae3e471b07057332068bb06b78ab605cc4c05ef2b0ad171e8983d4e582805d77f40f1b1d7a808fab44
+  languageName: node
+  linkType: hard
+
+"@types/lodash@npm:*, @types/lodash@npm:^4.14.181":
+  version: 4.14.181
+  resolution: "@types/lodash@npm:4.14.181"
+  checksum: 633c02517483a52413f0824c44b4fc2089668f421b3eb0f075acb4cebd9b53146bbb662f6a871e466badfbe52ecc9ddfbcf59e299ec6922871be14d7c167b674
   languageName: node
   linkType: hard
 
