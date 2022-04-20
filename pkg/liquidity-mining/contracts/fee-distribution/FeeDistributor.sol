@@ -380,7 +380,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         // weekCursor represents the timestamp of the beginning of the week from which we
         // start checkpointing the user's VotingEscrow balance.
         uint256 weekCursor = userState.timeCursor;
-        
+
         uint256 userEpoch;
         if (weekCursor == 0) {
             // First checkpoint for user so need to do the initial binary search
@@ -393,7 +393,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             // Otherwise use the value saved from last time
             userEpoch = userState.lastEpochCheckpointed;
         }
-        
+
         // Epoch 0 is always empty so bump onto the next one so that we start on a valid epoch.
         if (userEpoch == 0) {
             userEpoch = 1;
