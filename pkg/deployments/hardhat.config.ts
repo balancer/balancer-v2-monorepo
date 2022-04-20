@@ -50,6 +50,6 @@ task(TASK_TEST)
 
 export default {
   mocha: {
-    timeout: 120000,
+    timeout: 600000,
   },
 };
