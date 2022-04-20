@@ -148,6 +148,15 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         return _tokenState[token].cachedBalance;
     }
 
+    /**
+     * @notice Returns the amount of `token` which the FeeDistributor received in the week beginning at `timestamp`.
+     * @param token - The ERC20 token address to query.
+     * @param timestamp - The timestamp corresponding to the beginning of the week of interest.
+     */
+    function getTokensDistributedInWeek(IERC20 token, uint256 timestamp) external view override returns (uint256) {
+        return _tokensPerWeek[token][timestamp];
+    }
+
     // Checkpointing
 
     /**
