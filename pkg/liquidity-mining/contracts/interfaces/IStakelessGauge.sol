@@ -14,10 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "./IStakelessGauge.sol";
+import "./ILiquidityGauge.sol";
 
-interface ISingleRecipientGauge is IStakelessGauge {
-    function initialize(address recipient) external;
-
-    function getRecipient() external view returns (address);
+interface IStakelessGauge is ILiquidityGauge {
+    function checkpoint() external payable returns (bool);
 }
