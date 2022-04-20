@@ -101,7 +101,7 @@ contract SmartWalletCheckerCoordinator is ReentrancyGuard {
         // This allows an allowlisted set of contracts to lock veBAL, contracts are generally prevented from doing so.
         _setSmartWalletChecker();
 
-        // Step 2: Allow the Governance multisig to allowlist future smart contracts to mint veBAL
+        // Step 2: Allow the Governance multisig to allow/denylist future smart contracts to mint veBAL
         _setSmartWalletCheckerPermissions();
 
         authorizer.revokeRole(bytes32(0), address(this));
@@ -136,7 +136,9 @@ contract SmartWalletCheckerCoordinator is ReentrancyGuard {
     function _setSmartWalletCheckerPermissions() private {
         ICurrentAuthorizer authorizer = getAuthorizer();
         bytes32 allowlistAddressRole = _smartWalletChecker.getActionId(SmartWalletChecker.allowlistAddress.selector);
+        bytes32 denylistAddressRole = _smartWalletChecker.getActionId(SmartWalletChecker.denylistAddress.selector);
 
         authorizer.grantRole(allowlistAddressRole, GOV_MULTISIG);
+        authorizer.grantRole(denylistAddressRole, GOV_MULTISIG);
     }
 }
