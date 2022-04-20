@@ -140,12 +140,12 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         IAsset[] memory _assets = new IAsset[](2);
         _assets[0] = IAsset(address(_security));
         _assets[1] = IAsset(address(_currency));
-        uint256[] memory _minAmountsIn = new uint256[](2);
-        _minAmountsIn[0] = _MAX_TOKEN_BALANCE;
-        _minAmountsIn[1] = Math.div(_MAX_TOKEN_BALANCE, _maxPrice, false);
+        uint256[] memory _minAmountsOut = new uint256[](2);
+        _minAmountsOut[0] = _MAX_TOKEN_BALANCE;
+        _minAmountsOut[1] = Math.div(_MAX_TOKEN_BALANCE, _maxPrice, false);
         IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
             assets: _assets,
-            minAmountsOut: _minAmountsIn,
+            minAmountsOut: _minAmountsOut,
             userData: "",
             toInternalBalance: false
         });        
@@ -260,8 +260,8 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
     ) internal view returns (uint256) {
         _require(request.tokenIn == _currency, Errors.INVALID_TOKEN);
         
-        //returning currency to be paid in, but only if new price of security do not go out of price band
-        if(request.tokenOut==_security){
+        //returning security to be swapped out for paid in currency
+        if(request.tokenIn==_currency){
             uint256 postPaidSecurityBalance = Math.sub(balances[_securityIndex], request.amount);
             uint256 tokenOutAmt = Math.div(postPaidSecurityBalance, balances[_currencyIndex], false);
             uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], tokenOutAmt);
@@ -281,8 +281,8 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
     ) internal view returns (uint256) {
         _require(request.tokenIn == _security, Errors.INVALID_TOKEN);
         
-        //returning security to be paid in, but only if new price of security do not go out of price band
-        if(request.tokenOut==_currency){
+        //returning currency to be paid in for security paid in
+        if(request.tokenIn==_security){
             uint256 postPaidCurrencyBalance = Math.sub(balances[_currencyIndex], request.amount);
             uint256 tokenOutAmt = Math.div(postPaidCurrencyBalance, balances[_securityIndex], false);
             uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], tokenOutAmt);
