@@ -135,9 +135,7 @@ contract SmartWalletCheckerCoordinator is ReentrancyGuard {
 
     function _setSmartWalletCheckerPermissions() private {
         ICurrentAuthorizer authorizer = getAuthorizer();
-        bytes32 allowlistAddressRole = _smartWalletChecker.getActionId(
-            SmartWalletChecker.allowlistAddress.selector
-        );
+        bytes32 allowlistAddressRole = _smartWalletChecker.getActionId(SmartWalletChecker.allowlistAddress.selector);
 
         authorizer.grantRole(allowlistAddressRole, GOV_MULTISIG);
     }
