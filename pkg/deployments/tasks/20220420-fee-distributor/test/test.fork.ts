@@ -2,27 +2,17 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { BigNumber, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import {
-  advanceTime,
-  advanceToTimestamp,
-  currentTimestamp,
-  currentWeekTimestamp,
-  DAY,
-  WEEK,
-} from '@balancer-labs/v2-helpers/src/time';
+import { advanceToTimestamp, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import Task from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
-import { getSigner, impersonate } from '../../../src/signers';
-import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import _, { first, range } from 'lodash';
+import { impersonate } from '../../../src/signers';
 
-describe.only('FeeDistributor', function () {
-  let veBALHolder: SignerWithAddress, feeCollector: SignerWithAddress;
+describe('FeeDistributor', function () {
+  let veBALHolder: SignerWithAddress, veBALHolder2: SignerWithAddress, feeCollector: SignerWithAddress;
   let distributor: Contract;
 
   let VEBAL: Contract, BAL: Contract, WETH: Contract;
@@ -30,6 +20,7 @@ describe.only('FeeDistributor', function () {
   const task = Task.forTest('20220420-fee-distributor', getForkedNetwork(hre));
 
   const VEBAL_HOLDER = '0xCB3593C7c0dFe13129Ff2B6add9bA402f76c797e';
+  const VEBAL_HOLDER_2 = '0x49a2dcc237a65cc1f412ed47e0594602f6141936';
   const PROTOCOL_FEE_COLLECTOR = '0xce88686553686da562ce7cea497ce749da109f9f';
 
   const BAL_ADDRESS = '0xba100000625a3754423978a60c9317c58a424e3D';
@@ -47,6 +38,7 @@ describe.only('FeeDistributor', function () {
 
   before('setup accounts', async () => {
     veBALHolder = await impersonate(VEBAL_HOLDER, fp(100));
+    veBALHolder2 = await impersonate(VEBAL_HOLDER_2, fp(100));
     feeCollector = await impersonate(PROTOCOL_FEE_COLLECTOR, fp(100));
   });
 
@@ -67,8 +59,8 @@ describe.only('FeeDistributor', function () {
 
     context('with BAL distributed', () => {
       before('send BAL to distribute', async () => {
-        await BAL.connect(feeCollector).transfer(distributor.address, balAmount);
-        await distributor.checkpointToken(BAL.address);
+        await BAL.connect(feeCollector).approve(distributor.address, balAmount);
+        await distributor.connect(feeCollector).depositToken(BAL.address, balAmount);
       });
 
       it('veBAL holders cannot yet claim tokens', async () => {
@@ -83,17 +75,21 @@ describe.only('FeeDistributor', function () {
     });
   });
 
-  context('in the next week', () => {
+  context('in the second week', () => {
     before('advance time', async () => {
       // 1 day into the second week
       await advanceToTimestamp(firstWeek.add(WEEK).add(DAY));
     });
 
     context('with WETH distributed', () => {
+      before('send BAL to distribute', async () => {
+        await BAL.connect(feeCollector).approve(distributor.address, balAmount.mul(3));
+        await distributor.connect(feeCollector).depositToken(BAL.address, balAmount.mul(3));
+      });
+
       before('send WETH to distribute', async () => {
-        await distributor.checkpointToken(WETH.address);
-        await WETH.connect(feeCollector).transfer(distributor.address, wethAmount);
-        await distributor.checkpointToken(WETH.address);
+        await WETH.connect(feeCollector).approve(distributor.address, wethAmount);
+        await distributor.connect(feeCollector).depositToken(WETH.address, wethAmount);
       });
 
       it('veBAL holders can claim BAL and not WETH', async () => {
@@ -115,6 +111,72 @@ describe.only('FeeDistributor', function () {
 
         expect(wethBalanceAfter).to.equal(wethBalanceBefore);
       });
+    });
+  });
+
+  context('in the third week', () => {
+    before('advance time', async () => {
+      // 1 day into the third week
+      await advanceToTimestamp(firstWeek.add(2 * WEEK).add(DAY));
+    });
+
+    it('veBAL holders can claim BAL and WETH', async () => {
+      const secondWeek = firstWeek.add(WEEK);
+      const holderSecondWeekBalance = await VEBAL['balanceOf(address,uint256)'](veBALHolder.address, secondWeek);
+      const secondWeekSupply = await VEBAL['totalSupply(uint256)'](secondWeek);
+
+      const expectedBALAmount = balAmount.mul(3).mul(holderSecondWeekBalance).div(secondWeekSupply);
+      const expectedWETHAmount = wethAmount.mul(holderSecondWeekBalance).div(secondWeekSupply);
+
+      const tx = await distributor.claimTokens(veBALHolder.address, [BAL.address, WETH.address]);
+
+      expectEvent.inIndirectReceipt(
+        await tx.wait(),
+        BAL.interface,
+        'Transfer',
+        { from: distributor.address, to: veBALHolder.address, value: expectedBALAmount },
+        BAL.address
+      );
+
+      expectEvent.inIndirectReceipt(
+        await tx.wait(),
+        WETH.interface,
+        'Transfer',
+        { from: distributor.address, to: veBALHolder.address, value: expectedWETHAmount },
+        WETH.address
+      );
+    });
+
+    it('veBAL holders can claim all the BAL and WETH at once', async () => {
+      const holderFirstWeekBalance = await VEBAL['balanceOf(address,uint256)'](veBALHolder2.address, firstWeek);
+      const firstWeekSupply = await VEBAL['totalSupply(uint256)'](firstWeek);
+      const balFirstWeekAmount = balAmount.mul(holderFirstWeekBalance).div(firstWeekSupply);
+
+      const secondWeek = firstWeek.add(WEEK);
+      const holderSecondWeekBalance = await VEBAL['balanceOf(address,uint256)'](veBALHolder2.address, secondWeek);
+      const secondWeekSupply = await VEBAL['totalSupply(uint256)'](secondWeek);
+      const balSecondWeekAmount = balAmount.mul(3).mul(holderSecondWeekBalance).div(secondWeekSupply);
+
+      const expectedBALAmount = balFirstWeekAmount.add(balSecondWeekAmount);
+      const expectedWETHAmount = wethAmount.mul(holderSecondWeekBalance).div(secondWeekSupply);
+
+      const tx = await distributor.claimTokens(veBALHolder2.address, [BAL.address, WETH.address]);
+
+      expectEvent.inIndirectReceipt(
+        await tx.wait(),
+        BAL.interface,
+        'Transfer',
+        { from: distributor.address, to: veBALHolder2.address, value: expectedBALAmount },
+        BAL.address
+      );
+
+      expectEvent.inIndirectReceipt(
+        await tx.wait(),
+        WETH.interface,
+        'Transfer',
+        { from: distributor.address, to: veBALHolder2.address, value: expectedWETHAmount },
+        WETH.address
+      );
     });
   });
 });
