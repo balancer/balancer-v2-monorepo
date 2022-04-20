@@ -20,9 +20,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "../interfaces/IBalancerMinter.sol";
 import "../interfaces/IBalancerTokenAdmin.sol";
 import "../interfaces/IGaugeController.sol";
-import "../interfaces/ILiquidityGauge.sol";
+import "../interfaces/IStakelessGauge.sol";
 
-abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
+abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
     IERC20 internal immutable _balToken;
     IBalancerTokenAdmin private immutable _tokenAdmin;
     IBalancerMinter private immutable _minter;
@@ -78,7 +78,7 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
         _startEpochTime = _tokenAdmin.startEpochTimeWrite();
     }
 
-    function checkpoint() external payable nonReentrant returns (bool) {
+    function checkpoint() external payable override nonReentrant returns (bool) {
         require(msg.sender == address(_authorizerAdaptor), "SENDER_NOT_ALLOWED");
         uint256 lastPeriod = _period;
         uint256 currentPeriod = _currentPeriod();

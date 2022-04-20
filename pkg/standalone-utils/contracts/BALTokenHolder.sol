@@ -59,7 +59,7 @@ contract BALTokenHolder is IBALTokenHolder, Authentication {
         return _vault;
     }
 
-    function getName() external view returns (string memory) {
+    function getName() external view override returns (string memory) {
         return _name;
     }
 

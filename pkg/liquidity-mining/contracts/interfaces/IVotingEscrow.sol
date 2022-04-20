@@ -42,4 +42,10 @@ interface IVotingEscrow {
     function checkpoint() external;
 
     function admin() external view returns (IAuthorizerAdaptor);
+
+    function smart_wallet_checker() external view returns (address);
+
+    function commit_smart_wallet_checker(address newSmartWalletChecker) external;
+
+    function apply_smart_wallet_checker() external;
 }
