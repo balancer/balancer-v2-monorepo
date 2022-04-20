@@ -100,8 +100,7 @@ interface IFeeDistributor {
      */
     function depositToken(IERC20 token, uint256 amount) external;
 
-
-     /**
+    /**
      * @notice Deposits tokens to be distributed in the current week.
      * @dev A version of `depositToken` which supports depositing multiple `tokens` at once.
      * See `depositToken` for more details.
