@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
@@ -155,6 +156,42 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      */
     function getTokensDistributedInWeek(IERC20 token, uint256 timestamp) external view override returns (uint256) {
         return _tokensPerWeek[token][timestamp];
+    }
+
+    // Depositing
+
+    /**
+     * @notice Deposits tokens to be distributed in the current week.
+     * @dev Sending tokens directly to the FeeDistributor instead of using `depositTokens` may result in tokens being
+     * retroactively distributed to past weeks, or for the distribution to carry over to future weeks.
+     *
+     * If for some reason `depositTokens` cannot be called, in order to ensure that all tokens are correctly distributed
+     * manually call `checkpointToken` before and after the token transfer.
+     * @param token - The ERC20 token address to distribute.
+     * @param amount - The amount of tokens to deposit.
+     */
+    function depositToken(IERC20 token, uint256 amount) external override nonReentrant {
+        _checkpointToken(token, false);
+        token.safeTransferFrom(msg.sender, address(this), amount);
+        _checkpointToken(token, true);
+    }
+
+    /**
+     * @notice Deposits tokens to be distributed in the current week.
+     * @dev A version of `depositToken` which supports depositing multiple `tokens` at once.
+     * See `depositToken` for more details.
+     * @param tokens - An array of ERC20 token addresses to distribute.
+     * @param amounts - An array of token amounts to deposit.
+     */
+    function depositTokens(IERC20[] calldata tokens, uint256[] calldata amounts) external override nonReentrant {
+        InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
+
+        uint256 length = tokens.length;
+        for (uint256 i = 0; i < length; ++i) {
+            _checkpointToken(tokens[i], false);
+            tokens[i].safeTransferFrom(msg.sender, address(this), amounts[i]);
+            _checkpointToken(tokens[i], true);
+        }
     }
 
     // Checkpointing
