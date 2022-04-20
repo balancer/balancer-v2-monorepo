@@ -91,3 +91,4 @@ Returns an object with all contracts from a deployment and their addresses.
 | Coordination of veBAL gauges fix (Option 1)          | [`20220418-veBAL-gauge-fix-coordinator`](./tasks/20220418-veBAL-gauge-fix-coordinator)           |
 | veBAL Smart Wallet Checker                           | [`20220420-smart-wallet-checker`](./tasks/20220420-smart-wallet-checker)                         |
 | veBAL Smart Wallet Checker Coordinator               | [`20220420-smart-wallet-checker-coordinator`](./tasks/20220420-smart-wallet-checker-coordinator) |
+| Fee Distributor                                      | [`20220420-fee-distributor`](./tasks/20220420-fee-distributor)                                   |
