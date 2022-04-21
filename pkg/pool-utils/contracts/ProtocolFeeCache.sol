@@ -23,7 +23,7 @@ abstract contract ProtocolFeeCache {
     // Matches ProtocolFeesCollector
     uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
-    bool internal immutable _delegatedProtocolFees;
+    bool private immutable _delegatedProtocolFees;
 
     // Set to non-zero when fees are fixed
     uint256 private immutable _fixedProtocolSwapFeePercentage;
