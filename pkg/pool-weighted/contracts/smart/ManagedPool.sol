@@ -384,6 +384,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @dev Attempting to collect AUM fees in excesss of 10% will result in this function reverting.
      */
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage) external authenticate whenNotPaused {
+        // We want to avoid a pool manager being able to retroactively increase the amount of AUM fees payable
+        // We then perform a collection before updating the fee percentage to prevent this.  
+        collectAumManagementFees();
+
         _setManagementAumFeePercentage(managementAumFeePercentage);
     }
 
@@ -402,7 +406,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
      * joins and exits.
      */
-    function collectAumManagementFees() external whenNotPaused nonReentrant {
+    function collectAumManagementFees() public whenNotPaused nonReentrant {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Performing an early return here prevents zero value AUM fee collections causing bogus events.
