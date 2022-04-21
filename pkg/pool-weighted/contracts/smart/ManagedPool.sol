@@ -22,6 +22,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IAumProtocolFeesCollector.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
+
 import "../BaseWeightedPool.sol";
 import "../WeightedPoolUserData.sol";
 import "./WeightCompression.sol";
@@ -49,7 +51,7 @@ import "./WeightCompression.sol";
  * token counts, rebalancing through token changes, gradual weight or fee updates, circuit breakers for
  * IL-protection, and more.
  */
-contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
+contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     // ManagedPool weights can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -76,15 +78,14 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     // Store non-token-based values:
     // Start/end timestamps for gradual weight update
     // Cache total tokens
-    // [ 64 bits  | 118 bits |    1 bit     |    1 bit    |  32 bits  |   32 bits  |    7 bits    |   1 bit   ]
-    // [ reserved |  unused  | protocol fee | restrict LP | end time  | start time | total tokens | swap flag ]
-    // |MSB                                                                                                LSB|
+    // [ 64 bits  | 119 bits |    1 bit    |  32 bits  |   32 bits  |    7 bits    |   1 bit   ]
+    // [ reserved |  unused  | restrict LP | end time  | start time | total tokens | swap flag ]
+    // |MSB                                                                                 LSB|
     uint256 private constant _SWAP_ENABLED_OFFSET = 0;
     uint256 private constant _TOTAL_TOKENS_OFFSET = 1;
     uint256 private constant _START_TIME_OFFSET = 8;
     uint256 private constant _END_TIME_OFFSET = 40;
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 72;
-    uint256 private constant _DELEGATES_PROTOCOL_FEES_OFFSET = 73;
 
     IAumProtocolFeesCollector private immutable _aumProtocolFeesCollector;
 
@@ -106,11 +107,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _END_DENORM_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 128;
 
-    uint256 private constant _DELEGATE_PROTOCOL_FEES_SENTINEL = type(uint256).max;
-
-    // Matches ProtocolFeesCollector
-    uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
-
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
@@ -125,13 +121,12 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
     uint256 private _managementSwapFeePercentage;
 
-    // This is an annual value
+    // Percentage of the pool's TVL to pay as management AUM fees over the course of a year.
     uint256 private _managementAumFeePercentage;
 
+    // Timestamp of the most recent collection of management AUM fees.
+    // Note that this is only initialized on the first attempt to collect fees after pool initialization.
     uint256 private _lastAumFeeCollectionTimestamp;
-
-    // Cache protocol swap fee percentage, since we need it on swaps, but it is not passed in then
-    uint256 private _cachedProtocolSwapFeePercentage;
 
     // Event declarations
 
@@ -148,7 +143,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     event ManagementAumFeeCollected(uint256 bptAmount);
     event AllowlistAddressAdded(address indexed member);
     event AllowlistAddressRemoved(address indexed member);
-    event ProtocolSwapFeeCacheUpdated(uint256 protocolSwapFeePercentage);
 
     struct NewPoolParams {
         string name;
@@ -183,6 +177,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             bufferPeriodDuration,
             owner
         )
+        ProtocolFeeCache(vault, params.protocolSwapFeePercentage)
     {
         uint256 totalTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
@@ -201,30 +196,10 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         }
         _aumProtocolFeesCollector = IAumProtocolFeesCollector(aumProtocolFeesCollector);
 
-        // Set initial value of the protocolSwapFeePercentage; can be updated externally if it is delegated
-        bool delegatedProtocolFees = params.protocolSwapFeePercentage == _DELEGATE_PROTOCOL_FEES_SENTINEL;
-
-        if (delegatedProtocolFees) {
-            _updateCachedProtocolSwapFee(vault);
-        } else {
-            _require(
-                params.protocolSwapFeePercentage <= _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE,
-                Errors.SWAP_FEE_PERCENTAGE_TOO_HIGH
-            );
-
-            // Set the fixed protocol fee percentage, which can be zero
-            _cachedProtocolSwapFeePercentage = params.protocolSwapFeePercentage;
-
-            emit ProtocolSwapFeeCacheUpdated(params.protocolSwapFeePercentage);
-        }
-
         // Validate and set initial fees
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
 
         _setManagementAumFeePercentage(params.managementAumFeePercentage);
-
-        // Update flag (even if false, for consistency)
-        _setMiscData(_getMiscData().insertBool(delegatedProtocolFees, _DELEGATES_PROTOCOL_FEES_OFFSET));
 
         // Initialize the denorm weight sum to the initial normalized weight sum of ONE
         _denormWeightSum = FixedPoint.ONE;
@@ -243,20 +218,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // If true, only addresses on the manager-controlled allowlist may join the pool.
         _setMustAllowlistLPs(params.mustAllowlistLPs);
-    }
-
-    function updateCachedProtocolSwapFeePercentage() external {
-        if (getProtocolFeeDelegation()) {
-            _updateCachedProtocolSwapFee(getVault());
-        }
-    }
-
-    function _updateCachedProtocolSwapFee(IVault vault) private {
-        uint256 currentProtocolSwapFeePercentage = vault.getProtocolFeesCollector().getSwapFeePercentage();
-
-        emit ProtocolSwapFeeCacheUpdated(currentProtocolSwapFeePercentage);
-
-        _cachedProtocolSwapFeePercentage = currentProtocolSwapFeePercentage;
     }
 
     /**
@@ -292,13 +253,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
      */
     function getManagementAumFeePercentage() public view returns (uint256) {
         return _managementAumFeePercentage;
-    }
-
-    /**
-     * @dev Returns whether the pool pays protocol fees.
-     */
-    function getProtocolFeeDelegation() public view returns (bool) {
-        return _getMiscData().decodeBool(_DELEGATES_PROTOCOL_FEES_OFFSET);
     }
 
     /**
@@ -428,7 +382,8 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     /**
-     * @dev Set the management fee percentage
+     * @notice Sets the percentage of swap fees which are payable to the pool manager.
+     * @dev Attempting to take more than 100% of the swap fees will result in this function reverting.
      */
     function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) external authenticate whenNotPaused {
         _setManagementSwapFeePercentage(managementSwapFeePercentage);
@@ -444,7 +399,15 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         emit ManagementSwapFeePercentageChanged(managementSwapFeePercentage);
     }
 
+    /**
+     * @notice Sets the yearly percentage AUM management fee which is payable to the pool manager.
+     * @dev Attempting to collect AUM fees in excesss of 10% will result in this function reverting.
+     */
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage) external authenticate whenNotPaused {
+        // We want to avoid a pool manager being able to retroactively increase the amount of AUM fees payable.
+        // We then perform a collection before updating the fee percentage to prevent this.
+        collectAumManagementFees();
+
         _setManagementAumFeePercentage(managementAumFeePercentage);
     }
 
@@ -456,6 +419,19 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         _managementAumFeePercentage = managementAumFeePercentage;
         emit ManagementAumFeePercentageChanged(managementAumFeePercentage);
+    }
+
+    /**
+     * @notice Collect any accrued AUM fees and send them to the pool manager.
+     * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
+     * joins and exits.
+     */
+    function collectAumManagementFees() public whenNotPaused nonReentrant {
+        // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
+        // We can query if the pool is initialized by checking for a nonzero total supply.
+        // Performing an early return here prevents zero value AUM fee collections causing bogus events.
+        if (totalSupply() == 0) return;
+        _collectAumManagementFees();
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -573,7 +549,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // The management fee percentage applies to the remainder,
         // after the protocol fee has been collected.
         // So totalFee = protocolFee + (1 - protocolFee) * managementFee
-        uint256 protocolSwapFeePercentage = _cachedProtocolSwapFeePercentage;
+        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
         uint256 managementSwapFeePercentage = _managementSwapFeePercentage;
 
         if (protocolSwapFeePercentage == 0 && managementSwapFeePercentage == 0) {
@@ -815,45 +791,20 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     // Join/exit callbacks
 
-    function _beforeJoin(
+    function _beforeJoinExit(
         uint256[] memory,
         uint256[] memory,
         uint256
     ) internal virtual override {
-        collectAumManagementFees();
-    }
-
-    // This is called during `_onInitializePool`
-    function _afterJoin(
-        uint256[] memory,
-        uint256[] memory,
-        uint256[] memory
-    ) internal virtual override {
-        if (_lastAumFeeCollectionTimestamp == 0) {
-            // Start the clock on `initializePool`
-            _lastAumFeeCollectionTimestamp = block.timestamp;
-        }
-    }
-
-    function _beforeExit(
-        uint256[] memory,
-        uint256[] memory,
-        uint256
-    ) internal virtual override {
-        collectAumManagementFees();
+        _collectAumManagementFees();
     }
 
     /**
-     * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
-     * joins and exits.
+     * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
+     * This function is called automatically on joins and exits.
      */
-    function collectAumManagementFees() public whenNotPaused nonReentrant {
+    function _collectAumManagementFees() internal {
         uint256 lastCollection = _lastAumFeeCollectionTimestamp;
-        // Do nothing before initialization
-        if (lastCollection == 0) {
-            return;
-        }
-
         uint256 currentTime = block.timestamp;
 
         // Collect fees based on the time elapsed
@@ -861,7 +812,9 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             // Reset the collection timer to the current block
             _lastAumFeeCollectionTimestamp = currentTime;
 
-            if (getManagementAumFeePercentage() == 0) {
+            // `lastCollection == 0` means that we're in the first attempt to collect AUM fees
+            // For gas reasons we only collect AUM from this point onwards so perform an early return if so.
+            if (getManagementAumFeePercentage() == 0 || lastCollection == 0 || !_isNotPaused()) {
                 return;
             }
 

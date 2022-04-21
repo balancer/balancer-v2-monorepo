@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { MINUTE, DAY, advanceTime, currentTimestamp, WEEK, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { bn, fp, fromFp, pct } from '@balancer-labs/v2-helpers/src/numbers';
@@ -686,35 +686,6 @@ describe('ManagedPool', function () {
       });
     });
 
-    describe('protocol fee cache update', () => {
-      const swapFeePercentage = fp(0.02);
-      const managementSwapFeePercentage = fp(0.8);
-
-      sharedBeforeEach('deploy pool', async () => {
-        const params = {
-          tokens: poolTokens,
-          weights: poolWeights,
-          owner: owner.address,
-          poolType: WeightedPoolType.MANAGED_POOL,
-          swapEnabledOnStart: true,
-          vault,
-          swapFeePercentage,
-          managementSwapFeePercentage,
-          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
-        };
-        pool = await WeightedPool.create(params);
-      });
-
-      it('emits event when protocol fee cache is updated', async () => {
-        const receipt = await pool.instance.updateCachedProtocolSwapFeePercentage();
-
-        // Real Vault will return a zero protocol fee
-        expectEvent.inReceipt(await receipt.wait(), 'ProtocolSwapFeeCacheUpdated', {
-          protocolSwapFeePercentage: 0,
-        });
-      });
-    });
-
     describe('BPT protocol fees', () => {
       let protocolFeesCollector: Contract;
       const swapFeePercentage = fp(0.02);
@@ -955,7 +926,6 @@ describe('ManagedPool', function () {
       const swapFeePercentage = fp(0.02);
       const managementSwapFeePercentage = fp(0.8);
       const managementAumFeePercentage = fp(0.01);
-      let initialBptBalance: BigNumber;
 
       sharedBeforeEach('deploy pool', async () => {
         const params = {
@@ -971,20 +941,6 @@ describe('ManagedPool', function () {
           aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         };
         pool = await WeightedPool.create(params);
-      });
-
-      sharedBeforeEach('initialize pool', async () => {
-        await poolTokens.mint({ to: owner, amount: fp(10000) });
-        await poolTokens.approve({ from: owner, to: await pool.getVault() });
-        await pool.init({ from: owner, initialBalances });
-
-        initialBptBalance = await pool.balanceOf(owner.address);
-      });
-
-      it('collected fees are initially zero', async () => {
-        const totalBpt = await pool.balanceOf(owner.address);
-
-        expect(totalBpt).to.equal(initialBptBalance);
       });
 
       describe('set management fee', () => {
@@ -1016,25 +972,84 @@ describe('ManagedPool', function () {
             });
           });
         });
+      });
 
-        describe('management aum fee collection', () => {
-          it('collects fees after time has passed', async () => {
+      describe('management aum fee collection', () => {
+        sharedBeforeEach('mint tokens', async () => {
+          await poolTokens.mint({ to: other, amount: fp(10000) });
+          await poolTokens.approve({ from: other, to: await pool.getVault() });
+        });
+
+        context('on pool initialization', () => {
+          it('pays no AUM fees', async () => {
+            // We set the recipient to `other` so that any BPT held by `owner` would be from AUM fees.
+            const { receipt } = await pool.init({ from: other, recipient: other, initialBalances });
+
+            expectEvent.notEmitted(receipt, 'ManagementAumFeeCollected');
+
+            const collectedAUMFees = await pool.balanceOf(owner.address);
+            expect(collectedAUMFees).to.equal(0);
+          });
+        });
+
+        context('after some time passes', () => {
+          let expectedManagementFeeBpt: BigNumber;
+
+          sharedBeforeEach('initialize pool and advance time', async () => {
+            await pool.init({ from: other, initialBalances });
+            await pool.collectAumManagementFees(owner);
+
             await advanceTime(180 * DAY);
 
             const totalSupply = await pool.totalSupply();
-            const expectedBpt = totalSupply
+            expectedManagementFeeBpt = totalSupply
               .mul(180)
               .div(365)
               .mul(managementAumFeePercentage)
               .div(fp(1).sub(managementAumFeePercentage));
+          });
 
-            const balanceBefore = await pool.balanceOf(owner);
+          function itCollectsAUMFeesCorrectly(collectAUMFees: () => Promise<ContractReceipt>) {
+            it('collects the expected amount of fees', async () => {
+              const balanceBefore = await pool.balanceOf(owner);
 
-            const receipt = await pool.collectAumManagementFees(owner);
-            expectEvent.inReceipt(await receipt.wait(), 'ManagementAumFeeCollected');
+              expectEvent.inIndirectReceipt(
+                await collectAUMFees(),
+                pool.instance.interface,
+                'ManagementAumFeeCollected'
+              );
 
-            const balanceAfter = await pool.balanceOf(owner);
-            expect(balanceAfter.sub(balanceBefore)).to.equalWithError(expectedBpt, 0.0001);
+              const balanceAfter = await pool.balanceOf(owner);
+              expect(balanceAfter.sub(balanceBefore)).to.equalWithError(expectedManagementFeeBpt, 0.0001);
+            });
+          }
+
+          context('when manually claiming', () => {
+            itCollectsAUMFeesCorrectly(async () => {
+              const tx = await pool.collectAumManagementFees(owner);
+              return tx.wait();
+            });
+          });
+
+          context('on pool joins', () => {
+            sharedBeforeEach('mint tokens', async () => {
+              await poolTokens.mint({ to: other, amount: fp(10000) });
+              await poolTokens.approve({ from: other, to: await pool.getVault() });
+            });
+
+            itCollectsAUMFeesCorrectly(async () => {
+              const amountsIn = initialBalances.map((x) => x.div(2));
+              const { receipt } = await pool.joinGivenIn({ from: other, amountsIn });
+              return receipt;
+            });
+          });
+
+          context('on pool exits', () => {
+            itCollectsAUMFeesCorrectly(async () => {
+              const amountsOut = initialBalances.map((x) => x.div(2));
+              const { receipt } = await pool.exitGivenOut({ from: other, amountsOut });
+              return receipt;
+            });
           });
         });
       });
