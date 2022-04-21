@@ -830,7 +830,7 @@ describe('StablePhantomPool', () => {
         await deployPool({ swapFeePercentage });
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
-        await pool.updateCachedProtocolSwapFeePercentage();
+        await pool.updateProtocolSwapFeePercentageCache();
 
         // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
         const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? 0 : fp(100)));
@@ -842,36 +842,11 @@ describe('StablePhantomPool', () => {
         await tokens.approve({ from: lp, to: pool.vault });
       });
 
-      describe('cache', () => {
-        const newProtocolFeePercentage = fp(0.3);
-
-        it('returns outdated value if the cache is not updated', async () => {
-          await pool.vault.setSwapFeePercentage(newProtocolFeePercentage);
-          expect(await pool.getCachedProtocolSwapFeePercentage()).to.equal(protocolFeePercentage);
-        });
-
-        it('returns updated value if the cache is updated', async () => {
-          await pool.vault.setSwapFeePercentage(newProtocolFeePercentage);
-          await pool.updateCachedProtocolSwapFeePercentage();
-
-          expect(await pool.getCachedProtocolSwapFeePercentage()).to.equal(newProtocolFeePercentage);
-        });
-
-        it('emits an event', async () => {
-          await pool.vault.setSwapFeePercentage(newProtocolFeePercentage);
-          const receipt = await (await pool.updateCachedProtocolSwapFeePercentage()).wait();
-
-          expectEvent.inReceipt(receipt, 'CachedProtocolSwapFeePercentageUpdated', {
-            protocolSwapFeePercentage: newProtocolFeePercentage,
-          });
-        });
-      });
-
       describe('accounting', () => {
         const amount = fp(1);
 
         sharedBeforeEach('update cache', async () => {
-          await pool.updateCachedProtocolSwapFeePercentage();
+          await pool.updateProtocolSwapFeePercentageCache();
         });
 
         enum AmountKind {
@@ -1017,7 +992,7 @@ describe('StablePhantomPool', () => {
         const amount = fp(10);
 
         sharedBeforeEach('update cache', async () => {
-          await pool.updateCachedProtocolSwapFeePercentage();
+          await pool.updateProtocolSwapFeePercentageCache();
         });
 
         sharedBeforeEach('accrue fees', async () => {
@@ -1060,7 +1035,7 @@ describe('StablePhantomPool', () => {
         await deployPool({ swapFeePercentage });
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
-        await pool.updateCachedProtocolSwapFeePercentage();
+        await pool.updateProtocolSwapFeePercentageCache();
 
         // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
         equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? bn(0) : fp(100)));
@@ -1108,7 +1083,7 @@ describe('StablePhantomPool', () => {
         await deployPool({ swapFeePercentage });
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
-        await pool.updateCachedProtocolSwapFeePercentage();
+        await pool.updateProtocolSwapFeePercentageCache();
 
         // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
         const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) =>
