@@ -20,6 +20,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
+
 import "../BaseWeightedPool.sol";
 import "../WeightedPoolUserData.sol";
 import "./WeightCompression.sol";
@@ -47,7 +49,7 @@ import "./WeightCompression.sol";
  * token counts, rebalancing through token changes, gradual weight or fee updates, circuit breakers for
  * IL-protection, and more.
  */
-contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
+contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     // ManagedPool weights can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -71,15 +73,14 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     // Store non-token-based values:
     // Start/end timestamps for gradual weight update
     // Cache total tokens
-    // [ 64 bits  | 118 bits |    1 bit     |    1 bit    |  32 bits  |   32 bits  |    7 bits    |   1 bit   ]
-    // [ reserved |  unused  | protocol fee | restrict LP | end time  | start time | total tokens | swap flag ]
-    // |MSB                                                                                                LSB|
+    // [ 64 bits  | 119 bits |    1 bit    |  32 bits  |   32 bits  |    7 bits    |   1 bit   ]
+    // [ reserved |  unused  | restrict LP | end time  | start time | total tokens | swap flag ]
+    // |MSB                                                                                 LSB|
     uint256 private constant _SWAP_ENABLED_OFFSET = 0;
     uint256 private constant _TOTAL_TOKENS_OFFSET = 1;
     uint256 private constant _START_TIME_OFFSET = 8;
     uint256 private constant _END_TIME_OFFSET = 40;
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 72;
-    uint256 private constant _DELEGATES_PROTOCOL_FEES_OFFSET = 73;
 
     // 7 bits is enough for the token count, since _MAX_MANAGED_TOKENS is 50
 
@@ -99,11 +100,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     uint256 private constant _END_DENORM_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 128;
 
-    uint256 private constant _DELEGATE_PROTOCOL_FEES_SENTINEL = type(uint256).max;
-
-    // Matches ProtocolFeesCollector
-    uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
-
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
@@ -117,9 +113,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
     uint256 private _managementSwapFeePercentage;
-
-    // Cache protocol swap fee percentage, since we need it on swaps, but it is not passed in then
-    uint256 private _cachedProtocolSwapFeePercentage;
 
     // Event declarations
 
@@ -135,7 +128,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     event AllowlistAddressAdded(address indexed member);
     event AllowlistAddressRemoved(address indexed member);
     event TokenRemoved(IERC20 indexed token, uint256 tokenAmountOut);
-    event ProtocolSwapFeeCacheUpdated(uint256 protocolSwapFeePercentage);
 
     struct NewPoolParams {
         string name;
@@ -168,6 +160,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             bufferPeriodDuration,
             owner
         )
+        ProtocolFeeCache(vault, params.protocolSwapFeePercentage)
     {
         uint256 totalTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
@@ -179,26 +172,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // Validate and set initial fee
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
-
-        // Set initial value of the protocolSwapFeePercentage; can be updated externally if it is delegated
-        bool delegatedProtocolFees = params.protocolSwapFeePercentage == _DELEGATE_PROTOCOL_FEES_SENTINEL;
-
-        if (delegatedProtocolFees) {
-            _updateCachedProtocolSwapFee(vault);
-        } else {
-            _require(
-                params.protocolSwapFeePercentage <= _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE,
-                Errors.SWAP_FEE_PERCENTAGE_TOO_HIGH
-            );
-
-            // Set the fixed protocol fee percentage, which can be zero
-            _cachedProtocolSwapFeePercentage = params.protocolSwapFeePercentage;
-
-            emit ProtocolSwapFeeCacheUpdated(params.protocolSwapFeePercentage);
-        }
-
-        // Update flag (even if false, for consistency)
-        _setMiscData(_getMiscData().insertBool(delegatedProtocolFees, _DELEGATES_PROTOCOL_FEES_OFFSET));
 
         // Initialize the denorm weight sum to the initial normalized weight sum of ONE
         _denormWeightSum = FixedPoint.ONE;
@@ -217,20 +190,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
         // If true, only addresses on the manager-controlled allowlist may join the pool.
         _setMustAllowlistLPs(params.mustAllowlistLPs);
-    }
-
-    function updateCachedProtocolSwapFeePercentage() external {
-        if (getProtocolFeeDelegation()) {
-            _updateCachedProtocolSwapFee(getVault());
-        }
-    }
-
-    function _updateCachedProtocolSwapFee(IVault vault) private {
-        uint256 currentProtocolSwapFeePercentage = vault.getProtocolFeesCollector().getSwapFeePercentage();
-
-        emit ProtocolSwapFeeCacheUpdated(currentProtocolSwapFeePercentage);
-
-        _cachedProtocolSwapFeePercentage = currentProtocolSwapFeePercentage;
     }
 
     /**
@@ -259,13 +218,6 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
      */
     function getManagementSwapFeePercentage() public view returns (uint256) {
         return _managementSwapFeePercentage;
-    }
-
-    /**
-     * @dev Returns whether the pool pays protocol fees.
-     */
-    function getProtocolFeeDelegation() public view returns (bool) {
-        return _getMiscData().decodeBool(_DELEGATES_PROTOCOL_FEES_OFFSET);
     }
 
     /**
@@ -606,7 +558,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         // The management fee percentage applies to the remainder,
         // after the protocol fee has been collected.
         // So totalFee = protocolFee + (1 - protocolFee) * managementFee
-        uint256 protocolSwapFeePercentage = _cachedProtocolSwapFeePercentage;
+        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
         uint256 managementSwapFeePercentage = _managementSwapFeePercentage;
 
         if (protocolSwapFeePercentage == 0 && managementSwapFeePercentage == 0) {
