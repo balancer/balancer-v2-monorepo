@@ -36,9 +36,9 @@ abstract contract ProtocolFeeCache {
     // rarely that it doesn't make sense to perform the required calls to get the current value in every single swap.
     // Instead, we keep a local copy that can be permissionlessly updated by anyone with the real value.
     // If fees are fixed, use the immutable `_fixedProtocolSwapFeePercentage` instead
-    uint256 private _cachedProtocolSwapFeePercentage;
+    uint256 private _protocolSwapFeePercentageCache;
 
-    event CachedProtocolSwapFeePercentageUpdated(uint256 protocolSwapFeePercentage);
+    event ProtocolSwapFeePercentageCacheUpdated(uint256 protocolSwapFeePercentage);
 
     constructor(IVault vault, uint256 protocolSwapFeePercentage) {
         // Protocol fees are delegated to the value reported by the Fee Collector if the sentinel value is passed.
@@ -50,7 +50,7 @@ abstract contract ProtocolFeeCache {
         _protocolFeeCollector = protocolFeeCollector;
 
         if (delegatedProtocolFees) {
-            _updateCachedProtocolSwapFee(protocolFeeCollector);
+            _updateProtocolSwapFeeCache(protocolFeeCollector);
         } else {
             _require(
                 protocolSwapFeePercentage <= _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE,
@@ -60,8 +60,8 @@ abstract contract ProtocolFeeCache {
             // We cannot set `_fixedProtocolSwapFeePercentage` here due to it being immutable so instead we must set it
             // in the main function scope with a value based on whether protocol fees are delegated.
 
-            // Emit an event as we do in `_updateCachedProtocolSwapFee` to appear the same to offchain indexers.
-            emit CachedProtocolSwapFeePercentageUpdated(protocolSwapFeePercentage);
+            // Emit an event as we do in `_updateProtocolSwapFeeCache` to appear the same to offchain indexers.
+            emit ProtocolSwapFeePercentageCacheUpdated(protocolSwapFeePercentage);
         }
 
         // As `_fixedProtocolSwapFeePercentage` is immutable we must set a value, but just set to zero if it's not used.
@@ -72,18 +72,18 @@ abstract contract ProtocolFeeCache {
      * @dev Can be called by anyone to update the cache fee percentage (when delegated).
      * Updates the cache to the latest value set by governance.
      */
-    function updateCachedProtocolSwapFeePercentage() external {
+    function updateProtocolSwapFeePercentageCache() external {
         _require(getProtocolFeeDelegation(), Errors.UNAUTHORIZED_OPERATION);
 
-        _updateCachedProtocolSwapFee(_protocolFeeCollector);
+        _updateProtocolSwapFeeCache(_protocolFeeCollector);
     }
 
     /**
      * @dev Returns the current protocol swap fee percentage. If `getProtocolFeeDelegation()` is false, this value is
      * immutable. Alternatively, it will track the global fee percentage set in the Fee Collector.
      */
-    function getCachedProtocolSwapFeePercentage() public view returns (uint256) {
-        return getProtocolFeeDelegation() ? _cachedProtocolSwapFeePercentage : _fixedProtocolSwapFeePercentage;
+    function getProtocolSwapFeePercentageCache() public view returns (uint256) {
+        return getProtocolFeeDelegation() ? _protocolSwapFeePercentageCache : _fixedProtocolSwapFeePercentage;
     }
 
     /**
@@ -93,11 +93,11 @@ abstract contract ProtocolFeeCache {
         return _delegatedProtocolFees;
     }
 
-    function _updateCachedProtocolSwapFee(IProtocolFeesCollector protocolFeeCollector) private {
+    function _updateProtocolSwapFeeCache(IProtocolFeesCollector protocolFeeCollector) private {
         uint256 currentProtocolSwapFeePercentage = protocolFeeCollector.getSwapFeePercentage();
 
-        emit CachedProtocolSwapFeePercentageUpdated(currentProtocolSwapFeePercentage);
+        emit ProtocolSwapFeePercentageCacheUpdated(currentProtocolSwapFeePercentage);
 
-        _cachedProtocolSwapFeePercentage = currentProtocolSwapFeePercentage;
+        _protocolSwapFeePercentageCache = currentProtocolSwapFeePercentage;
     }
 }

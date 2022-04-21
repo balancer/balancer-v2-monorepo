@@ -47,7 +47,7 @@ describe('ProtocolFeeCache', () => {
     });
 
     it('gets the protocol fee from the vault', async () => {
-      expect(await protocolFeeCache.getCachedProtocolSwapFeePercentage()).to.equal(VAULT_PROTOCOL_FEE);
+      expect(await protocolFeeCache.getProtocolSwapFeePercentageCache()).to.equal(VAULT_PROTOCOL_FEE);
     });
 
     context('when the vault fee is updated', () => {
@@ -56,19 +56,19 @@ describe('ProtocolFeeCache', () => {
       });
 
       it('retrieves the old value when not updated', async () => {
-        expect(await protocolFeeCache.getCachedProtocolSwapFeePercentage()).to.equal(VAULT_PROTOCOL_FEE);
+        expect(await protocolFeeCache.getProtocolSwapFeePercentageCache()).to.equal(VAULT_PROTOCOL_FEE);
       });
 
       it('updates the cached value', async () => {
-        await protocolFeeCache.updateCachedProtocolSwapFeePercentage();
+        await protocolFeeCache.updateProtocolSwapFeePercentageCache();
 
-        expect(await protocolFeeCache.getCachedProtocolSwapFeePercentage()).to.equal(NEW_VAULT_PROTOCOL_FEE);
+        expect(await protocolFeeCache.getProtocolSwapFeePercentageCache()).to.equal(NEW_VAULT_PROTOCOL_FEE);
       });
 
       it('emits an event when updating', async () => {
-        const receipt = await protocolFeeCache.updateCachedProtocolSwapFeePercentage();
+        const receipt = await protocolFeeCache.updateProtocolSwapFeePercentageCache();
 
-        expectEvent.inReceipt(await receipt.wait(), 'CachedProtocolSwapFeePercentageUpdated', {
+        expectEvent.inReceipt(await receipt.wait(), 'ProtocolSwapFeePercentageCacheUpdated', {
           protocolSwapFeePercentage: NEW_VAULT_PROTOCOL_FEE,
         });
       });
@@ -85,11 +85,11 @@ describe('ProtocolFeeCache', () => {
     });
 
     it('sets the protocol fee', async () => {
-      expect(await protocolFeeCache.getCachedProtocolSwapFeePercentage()).to.equal(FIXED_PROTOCOL_FEE);
+      expect(await protocolFeeCache.getProtocolSwapFeePercentageCache()).to.equal(FIXED_PROTOCOL_FEE);
     });
 
     it('reverts when trying to update fixed fee', async () => {
-      await expect(protocolFeeCache.updateCachedProtocolSwapFeePercentage()).to.be.revertedWith(
+      await expect(protocolFeeCache.updateProtocolSwapFeePercentageCache()).to.be.revertedWith(
         'UNAUTHORIZED_OPERATION'
       );
     });

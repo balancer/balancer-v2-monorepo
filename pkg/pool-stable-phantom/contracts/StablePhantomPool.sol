@@ -204,7 +204,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     ) internal virtual override whenNotPaused returns (uint256 amountOut) {
         _cacheTokenRatesIfNecessary();
 
-        uint256 protocolSwapFeePercentage = getCachedProtocolSwapFeePercentage();
+        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
 
         // Compute virtual BPT supply and token balances (sans BPT).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
@@ -270,7 +270,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     ) internal virtual override whenNotPaused returns (uint256 amountIn) {
         _cacheTokenRatesIfNecessary();
 
-        uint256 protocolSwapFeePercentage = getCachedProtocolSwapFeePercentage();
+        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
 
         // Compute virtual BPT supply and token balances (sans BPT).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);

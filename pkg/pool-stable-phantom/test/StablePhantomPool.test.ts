@@ -830,7 +830,7 @@ describe('StablePhantomPool', () => {
         await deployPool({ swapFeePercentage });
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
-        await pool.updateCachedProtocolSwapFeePercentage();
+        await pool.updateProtocolSwapFeePercentageCache();
 
         // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
         const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? 0 : fp(100)));
@@ -846,7 +846,7 @@ describe('StablePhantomPool', () => {
         const amount = fp(1);
 
         sharedBeforeEach('update cache', async () => {
-          await pool.updateCachedProtocolSwapFeePercentage();
+          await pool.updateProtocolSwapFeePercentageCache();
         });
 
         enum AmountKind {
@@ -992,7 +992,7 @@ describe('StablePhantomPool', () => {
         const amount = fp(10);
 
         sharedBeforeEach('update cache', async () => {
-          await pool.updateCachedProtocolSwapFeePercentage();
+          await pool.updateProtocolSwapFeePercentageCache();
         });
 
         sharedBeforeEach('accrue fees', async () => {
@@ -1035,7 +1035,7 @@ describe('StablePhantomPool', () => {
         await deployPool({ swapFeePercentage });
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
-        await pool.updateCachedProtocolSwapFeePercentage();
+        await pool.updateProtocolSwapFeePercentageCache();
 
         // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
         equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? bn(0) : fp(100)));
@@ -1083,7 +1083,7 @@ describe('StablePhantomPool', () => {
         await deployPool({ swapFeePercentage });
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
-        await pool.updateCachedProtocolSwapFeePercentage();
+        await pool.updateProtocolSwapFeePercentageCache();
 
         // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
         const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) =>

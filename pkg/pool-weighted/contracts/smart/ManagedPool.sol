@@ -472,7 +472,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // The management fee percentage applies to the remainder,
         // after the protocol fee has been collected.
         // So totalFee = protocolFee + (1 - protocolFee) * managementFee
-        uint256 protocolSwapFeePercentage = getCachedProtocolSwapFeePercentage();
+        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
         uint256 managementSwapFeePercentage = _managementSwapFeePercentage;
 
         if (protocolSwapFeePercentage == 0 && managementSwapFeePercentage == 0) {
