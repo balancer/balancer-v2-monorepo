@@ -118,9 +118,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
     uint256 private _managementSwapFeePercentage;
 
-    // This is an annual value
+    // Percentage of the pool's TVL to pay as management AUM fees over the course of a year.
     uint256 private _managementAumFeePercentage;
 
+    // Timestamp of the most recent collection of management AUM fees.
+    // Note that this is only initialized on the first attempt to collect fees after pool initialization.
     uint256 private _lastAumFeeCollectionTimestamp;
 
     // Event declarations
