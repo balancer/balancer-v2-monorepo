@@ -28,7 +28,8 @@ abstract contract ProtocolFeeCache {
     // Set to non-zero when fees are fixed
     uint256 private immutable _fixedProtocolSwapFeePercentage;
 
-    IVault internal immutable _vault;
+    // Note that this value is immutable in the Vault, so we can make it immutable here and save gas
+    IProtocolFeesCollector private immutable _protocolFeeCollector;
 
     // The Vault does not provide the protocol swap fee percentage in swap hooks (as swaps don't typically need this
     // value), so we need to fetch it ourselves from the Vault's ProtocolFeeCollector. However, this value changes so
@@ -44,10 +45,12 @@ abstract contract ProtocolFeeCache {
         bool delegatedProtocolFees = protocolSwapFeePercentage == DELEGATE_PROTOCOL_FEES_SENTINEL;
 
         _delegatedProtocolFees = delegatedProtocolFees;
-        _vault = vault;
+
+        IProtocolFeesCollector protocolFeeCollector = vault.getProtocolFeesCollector();
+        _protocolFeeCollector = protocolFeeCollector;
 
         if (delegatedProtocolFees) {
-            _updateCachedProtocolSwapFee(vault);
+            _updateCachedProtocolSwapFee(protocolFeeCollector);
         } else {
             _require(
                 protocolSwapFeePercentage <= _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE,
@@ -72,7 +75,7 @@ abstract contract ProtocolFeeCache {
     function updateCachedProtocolSwapFeePercentage() external {
         _require(getProtocolFeeDelegation(), Errors.UNAUTHORIZED_OPERATION);
 
-        _updateCachedProtocolSwapFee(_vault);
+        _updateCachedProtocolSwapFee(_protocolFeeCollector);
     }
 
     /**
@@ -90,8 +93,8 @@ abstract contract ProtocolFeeCache {
         return _delegatedProtocolFees;
     }
 
-    function _updateCachedProtocolSwapFee(IVault vault) private {
-        uint256 currentProtocolSwapFeePercentage = vault.getProtocolFeesCollector().getSwapFeePercentage();
+    function _updateCachedProtocolSwapFee(IProtocolFeesCollector protocolFeeCollector) private {
+        uint256 currentProtocolSwapFeePercentage = protocolFeeCollector.getSwapFeePercentage();
 
         emit CachedProtocolSwapFeePercentageUpdated(currentProtocolSwapFeePercentage);
 
