@@ -79,6 +79,36 @@ interface IFeeDistributor {
      */
     function getTokenLastBalance(IERC20 token) external view returns (uint256);
 
+    /**
+     * @notice Returns the amount of `token` which the FeeDistributor received in the week beginning at `timestamp`.
+     * @param token - The ERC20 token address to query.
+     * @param timestamp - The timestamp corresponding to the beginning of the week of interest.
+     */
+    function getTokensDistributedInWeek(IERC20 token, uint256 timestamp) external view returns (uint256);
+
+    // Depositing
+
+    /**
+     * @notice Deposits tokens to be distributed in the current week.
+     * @dev Sending tokens directly to the FeeDistributor instead of using `depositTokens` may result in tokens being
+     * retroactively distributed to past weeks, or for the distribution to carry over to future weeks.
+     *
+     * If for some reason `depositTokens` cannot be called, in order to ensure that all tokens are correctly distributed
+     * manually call `checkpointToken` before and after the token transfer.
+     * @param token - The ERC20 token address to distribute.
+     * @param amount - The amount of tokens to deposit.
+     */
+    function depositToken(IERC20 token, uint256 amount) external;
+
+    /**
+     * @notice Deposits tokens to be distributed in the current week.
+     * @dev A version of `depositToken` which supports depositing multiple `tokens` at once.
+     * See `depositToken` for more details.
+     * @param tokens - An array of ERC20 token addresses to distribute.
+     * @param amounts - An array of token amounts to deposit.
+     */
+    function depositTokens(IERC20[] calldata tokens, uint256[] calldata amounts) external;
+
     // Checkpointing
 
     /**
