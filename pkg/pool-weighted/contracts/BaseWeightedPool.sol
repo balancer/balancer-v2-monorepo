@@ -131,22 +131,10 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     }
 
     /**
-     * @dev Called before any join operation. Empty by default, but derived contracts may choose to add custom
+     * @dev Called before any join or exit operation. Empty by default, but derived contracts may choose to add custom
      * behavior at these steps. This often has to do with protocol fee processing.
      */
-    function _beforeJoin(
-        uint256[] memory preBalances,
-        uint256[] memory normalizedWeights,
-        uint256 protocolSwapFeePercentage
-    ) internal virtual {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    /**
-     * @dev Called before any exit operation. Empty by default, but derived contracts may choose to add custom
-     * behavior at these steps. This often has to do with protocol fee processing.
-     */
-    function _beforeExit(
+    function _beforeJoinExit(
         uint256[] memory preBalances,
         uint256[] memory normalizedWeights,
         uint256 protocolSwapFeePercentage
@@ -158,27 +146,12 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * @dev Called after any join operation (including initialization). Empty by default, but derived contracts
      * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
      *
-     * balanceDeltas are the amounts in
+     * If isJoin is true, balanceDeltas are the amounts in: otherwise they are the amounts out.
      *
      * This function is free to mutate the `preBalances` array.
      */
-    function _afterJoin(
-        uint256[] memory preBalances,
-        uint256[] memory balanceDeltas,
-        uint256[] memory normalizedWeights
-    ) internal virtual {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    /**
-     * @dev Called after any exit operation. Empty by default, but derived contracts may choose to add
-     * custom behavior at these steps. This often has to do with protocol fee processing.
-     *
-     * balanceDeltas are the amounts out
-     *
-     * This function is free to mutate the `preBalances` array.
-     */
-    function _afterExit(
+    function _afterJoinExit(
+        bool isJoin,
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights
@@ -212,7 +185,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         // consistent in Pools with similar compositions but different number of tokens.
         uint256 bptAmountOut = Math.mul(invariantAfterJoin, _getTotalTokens());
 
-        _afterJoin(new uint256[](amountsIn.length), amountsIn, normalizedWeights);
+        _afterJoinExit(true, new uint256[](amountsIn.length), amountsIn, normalizedWeights);
 
         return (bptAmountOut, amountsIn);
     }
@@ -233,14 +206,14 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        _beforeJoin(balances, normalizedWeights, protocolSwapFeePercentage);
+        _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
             balances,
             normalizedWeights,
             scalingFactors,
             userData
         );
-        _afterJoin(balances, amountsIn, normalizedWeights);
+        _afterJoinExit(true, balances, amountsIn, normalizedWeights);
 
         return (bptAmountOut, amountsIn);
     }
@@ -349,14 +322,14 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        _beforeExit(balances, normalizedWeights, protocolSwapFeePercentage);
+        _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
         (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
             balances,
             normalizedWeights,
             scalingFactors,
             userData
         );
-        _afterExit(balances, amountsOut, normalizedWeights);
+        _afterJoinExit(false, balances, amountsOut, normalizedWeights);
 
         return (bptAmountIn, amountsOut);
     }

@@ -795,7 +795,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
 
     // Join/exit callbacks
 
-    function _beforeJoin(
+    function _beforeJoinExit(
         uint256[] memory,
         uint256[] memory,
         uint256
@@ -804,23 +804,16 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     // This is called during `_onInitializePool`
-    function _afterJoin(
+    function _afterJoinExit(
+        bool isJoin,
         uint256[] memory,
         uint256[] memory,
         uint256[] memory
     ) internal virtual override {
-        if (_lastAumFeeCollectionTimestamp == 0) {
+        if (isJoin && _lastAumFeeCollectionTimestamp == 0) {
             // Start the clock on `initializePool`
             _lastAumFeeCollectionTimestamp = block.timestamp;
         }
-    }
-
-    function _beforeExit(
-        uint256[] memory,
-        uint256[] memory,
-        uint256
-    ) internal virtual override {
-        collectAumManagementFees();
     }
 
     /**
