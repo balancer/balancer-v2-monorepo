@@ -54,9 +54,6 @@ abstract contract ProtocolFeeCache {
                 Errors.SWAP_FEE_PERCENTAGE_TOO_HIGH
             );
 
-            // Set the fixed protocol fee percentage, which can be zero
-            _cachedProtocolSwapFeePercentage = protocolSwapFeePercentage;
-
             emit CachedProtocolSwapFeePercentageUpdated(protocolSwapFeePercentage);
         }
 
