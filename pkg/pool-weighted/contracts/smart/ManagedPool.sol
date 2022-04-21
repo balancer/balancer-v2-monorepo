@@ -385,7 +385,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      */
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage) external authenticate whenNotPaused {
         // We want to avoid a pool manager being able to retroactively increase the amount of AUM fees payable.
-        // We then perform a collection before updating the fee percentage to prevent this.  
+        // We then perform a collection before updating the fee percentage to prevent this.
         collectAumManagementFees();
 
         _setManagementAumFeePercentage(managementAumFeePercentage);
