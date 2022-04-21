@@ -12,7 +12,7 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 describe('ProtocolFeeCache', () => {
   const MAX_PROTOCOL_FEE = fp(0.5); // 50%
   const VAULT_PROTOCOL_FEE = fp(0.5); // 50%
-  const NEW_VAULT_PROTOCOL_FEE = fp(0.3); // 50%
+  const NEW_VAULT_PROTOCOL_FEE = fp(0.3); // 30%
   const FIXED_PROTOCOL_FEE = fp(0.1); // 10%
 
   let protocolFeeCache: Contract;
