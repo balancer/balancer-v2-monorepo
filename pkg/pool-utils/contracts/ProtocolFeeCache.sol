@@ -17,6 +17,19 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
+/**
+ * @title Store a fixed or cache the delegated Protocol Swap Fee Percentage
+ * @author Balancer Labs
+ * @dev The Vault does not provide the protocol swap fee percentage in swap hooks (as swaps don't typically need this
+ * value), so we need to fetch it ourselves from the Vault's ProtocolFeeCollector. However, this value changes so
+ * rarely that it doesn't make sense to perform the required calls to get the current value in every single swap.
+ * Instead, we keep a local copy that can be permissionlessly updated by anyone with the real value.
+ *
+ * When initialized with the sentinel value, the fee is delegated, meaning the mutable protocol swap fee cache is
+ * set to the current value stored in the Vault's ProtocolFeeCollector, and can be updated by anyone with a call to
+ * `updateProtocolSwapFeePercentageCache`. Any other value means the protocol swap fee is fixed, so it is instead
+ * stored in the immutable `_fixedProtocolSwapFeePercentage`.
+ */
 abstract contract ProtocolFeeCache {
     uint256 public constant DELEGATE_PROTOCOL_FEES_SENTINEL = type(uint256).max;
 
@@ -25,17 +38,12 @@ abstract contract ProtocolFeeCache {
 
     bool private immutable _delegatedProtocolFees;
 
-    // Set to non-zero when fees are fixed
+    // Only valid when `_delegatedProtocolFees` is false
     uint256 private immutable _fixedProtocolSwapFeePercentage;
 
     // Note that this value is immutable in the Vault, so we can make it immutable here and save gas
     IProtocolFeesCollector private immutable _protocolFeeCollector;
 
-    // The Vault does not provide the protocol swap fee percentage in swap hooks (as swaps don't typically need this
-    // value), so we need to fetch it ourselves from the Vault's ProtocolFeeCollector. However, this value changes so
-    // rarely that it doesn't make sense to perform the required calls to get the current value in every single swap.
-    // Instead, we keep a local copy that can be permissionlessly updated by anyone with the real value.
-    // If fees are fixed, use the immutable `_fixedProtocolSwapFeePercentage` instead
     uint256 private _protocolSwapFeePercentageCache;
 
     event ProtocolSwapFeePercentageCacheUpdated(uint256 protocolSwapFeePercentage);
@@ -73,7 +81,7 @@ abstract contract ProtocolFeeCache {
      * Updates the cache to the latest value set by governance.
      */
     function updateProtocolSwapFeePercentageCache() external {
-        _require(getProtocolFeeDelegation(), Errors.UNAUTHORIZED_OPERATION);
+        _require(getProtocolFeeDelegation(), Errors.INVALID_OPERATION);
 
         _updateProtocolSwapFeeCache(_protocolFeeCollector);
     }

@@ -27,18 +27,11 @@ describe('ProtocolFeeCache', () => {
     vault = await Vault.create({ admin });
   });
 
-  context('with invalid parameters', () => {
-    it('reverts if fee is too high', async () => {
-      await expect(
-        deploy('MockProtocolFeeCache', { args: [vault.address, MAX_PROTOCOL_FEE.add(1)] })
-      ).to.be.revertedWith('SWAP_FEE_PERCENTAGE_TOO_HIGH');
-    });
-  });
-
   context('with delegated fee', () => {
     sharedBeforeEach('deploy delegated fee cache', async () => {
       await vault.setSwapFeePercentage(VAULT_PROTOCOL_FEE, { from: admin });
 
+      // The sentinel value used to designate delegated fees is MAX_UINT256
       protocolFeeCache = await deploy('MockProtocolFeeCache', { args: [vault.address, MAX_UINT256] });
     });
 
@@ -88,10 +81,14 @@ describe('ProtocolFeeCache', () => {
       expect(await protocolFeeCache.getProtocolSwapFeePercentageCache()).to.equal(FIXED_PROTOCOL_FEE);
     });
 
+    it('reverts if fee is too high', async () => {
+      await expect(
+        deploy('MockProtocolFeeCache', { args: [vault.address, MAX_PROTOCOL_FEE.add(1)] })
+      ).to.be.revertedWith('SWAP_FEE_PERCENTAGE_TOO_HIGH');
+    });
+
     it('reverts when trying to update fixed fee', async () => {
-      await expect(protocolFeeCache.updateProtocolSwapFeePercentageCache()).to.be.revertedWith(
-        'UNAUTHORIZED_OPERATION'
-      );
+      await expect(protocolFeeCache.updateProtocolSwapFeePercentageCache()).to.be.revertedWith('INVALID_OPERATION');
     });
   });
 });
