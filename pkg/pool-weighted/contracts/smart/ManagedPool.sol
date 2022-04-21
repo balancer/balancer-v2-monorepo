@@ -438,6 +438,15 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         emit ManagementAumFeePercentageChanged(managementAumFeePercentage);
     }
 
+    /**
+     * @notice Collect any accrued AUM fees and send them to the pool manager.
+     * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
+     * joins and exits.
+     */
+    function collectAumManagementFees() public whenNotPaused nonReentrant {
+        _collectAumManagementFees();
+    }
+
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
         return _readScalingFactor(_getTokenData(token));
     }
@@ -800,7 +809,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         uint256[] memory,
         uint256
     ) internal virtual override {
-        collectAumManagementFees();
+        _collectAumManagementFees();
     }
 
     // This is called during `_onInitializePool`
@@ -817,10 +826,10 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     /**
-     * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
-     * joins and exits.
+     * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
+     * This function is called automatically on joins and exits.
      */
-    function collectAumManagementFees() public whenNotPaused nonReentrant {
+    function _collectAumManagementFees() internal {
         uint256 lastCollection = _lastAumFeeCollectionTimestamp;
         // Do nothing before initialization
         if (lastCollection == 0) {
@@ -834,7 +843,7 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
             // Reset the collection timer to the current block
             _lastAumFeeCollectionTimestamp = currentTime;
 
-            if (getManagementAumFeePercentage() == 0) {
+            if (getManagementAumFeePercentage() == 0 || !_isNotPaused()) {
                 return;
             }
 
