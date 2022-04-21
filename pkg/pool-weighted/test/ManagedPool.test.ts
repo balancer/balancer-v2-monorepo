@@ -975,6 +975,7 @@ describe('ManagedPool', function () {
 
           sharedBeforeEach('initialize pool and advance time', async () => {
             await pool.init({ from: other, initialBalances });
+            await pool.collectAumManagementFees(owner);
 
             await advanceTime(180 * DAY);
 

@@ -396,6 +396,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * joins and exits.
      */
     function collectAumManagementFees() public whenNotPaused nonReentrant {
+        // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
+        // We can query if the pool is initialized by checking for a nonzero total supply.
+        // Performing an early return here prevents zero value AUM fee collections causing bogus events.
+        if (totalSupply() == 0) return;
         _collectAumManagementFees();
     }
 
@@ -764,30 +768,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         _collectAumManagementFees();
     }
 
-    // This is called during `_onInitializePool`
-    function _afterJoinExit(
-        bool isJoin,
-        uint256[] memory,
-        uint256[] memory,
-        uint256[] memory
-    ) internal virtual override {
-        if (isJoin && _lastAumFeeCollectionTimestamp == 0) {
-            // Start the clock on `initializePool`
-            _lastAumFeeCollectionTimestamp = block.timestamp;
-        }
-    }
-
     /**
      * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
      * This function is called automatically on joins and exits.
      */
     function _collectAumManagementFees() internal {
         uint256 lastCollection = _lastAumFeeCollectionTimestamp;
-        // Do nothing before initialization
-        if (lastCollection == 0) {
-            return;
-        }
-
         uint256 currentTime = block.timestamp;
 
         // Collect fees based on the time elapsed
@@ -795,7 +781,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             // Reset the collection timer to the current block
             _lastAumFeeCollectionTimestamp = currentTime;
 
-            if (getManagementAumFeePercentage() == 0 || !_isNotPaused()) {
+            // `lastCollection == 0` means that we're in the first attempt to collect AUM fees
+            // For gas reasons we only collect AUM from this point onwards so perform an early return if so.
+            if (getManagementAumFeePercentage() == 0 || lastCollection == 0 || !_isNotPaused()) {
                 return;
             }
 
