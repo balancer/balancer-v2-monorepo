@@ -10,6 +10,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('ProtocolFeeCache', () => {
+  const MAX_PROTOCOL_FEE = fp(0.5); // 50%
   const VAULT_PROTOCOL_FEE = fp(0.5); // 50%
   const NEW_VAULT_PROTOCOL_FEE = fp(0.3); // 50%
   const FIXED_PROTOCOL_FEE = fp(0.1); // 10%
@@ -28,9 +29,9 @@ describe('ProtocolFeeCache', () => {
 
   context('with invalid parameters', () => {
     it('reverts if fee is too high', async () => {
-      await expect(deploy('MockProtocolFeeCache', { args: [vault.address, fp(0.51)] })).to.be.revertedWith(
-        'SWAP_FEE_PERCENTAGE_TOO_HIGH'
-      );
+      await expect(
+        deploy('MockProtocolFeeCache', { args: [vault.address, MAX_PROTOCOL_FEE.add(1)] })
+      ).to.be.revertedWith('SWAP_FEE_PERCENTAGE_TOO_HIGH');
     });
   });
 
