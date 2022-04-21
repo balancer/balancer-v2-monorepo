@@ -181,7 +181,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // Double check it fits in 7 bits
         _require(_getTotalTokens() == totalTokens, Errors.MAX_TOKENS);
 
-         // Validate and set initial fees
+        // Validate and set initial fees
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
 
         _setManagementAumFeePercentage(params.managementAumFeePercentage);
