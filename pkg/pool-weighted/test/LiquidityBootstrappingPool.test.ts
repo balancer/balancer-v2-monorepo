@@ -333,31 +333,6 @@ describe('LiquidityBootstrappingPool', function () {
                 expect(updateParams.endTime).to.equalWithError(endTime, 0.001);
                 expect(updateParams.endWeights).to.equalWithError(finalEndWeights, 0.001);
               });
-
-              it('gets start weights if called before the start time', async () => {
-                const normalizedWeights = await pool.getNormalizedWeights();
-
-                // Need to decrease precision
-                expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
-              });
-
-              it('gets end weights if called after the end time', async () => {
-                await advanceTime(endTime.add(MINUTE));
-                const normalizedWeights = await pool.getNormalizedWeights();
-
-                // Need to decrease precision
-                expect(normalizedWeights).to.equalWithError(finalEndWeights, 0.0001);
-              });
-
-              for (let pct = 5; pct < 100; pct += 5) {
-                it(`gets correct intermediate weights if called ${pct}% through`, async () => {
-                  await advanceTime(START_DELAY + (UPDATE_DURATION * pct) / 100);
-                  const normalizedWeights = await pool.getNormalizedWeights();
-
-                  // Need to decrease precision
-                  expect(normalizedWeights).to.equalWithError(getEndWeights(pct), 0.005);
-                });
-              }
             });
           });
         });
