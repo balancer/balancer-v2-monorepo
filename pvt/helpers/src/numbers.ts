@@ -1,6 +1,8 @@
 import { Decimal } from 'decimal.js';
 import { BigNumber } from 'ethers';
 
+export { BigNumber };
+
 const SCALING_FACTOR = 1e18;
 
 export type BigNumberish = string | number | BigNumber;
