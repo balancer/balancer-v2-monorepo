@@ -171,7 +171,7 @@ async function stakeIntoDistributions(numberOfDistributions: number, stakeUsingV
   let receipt: ContractReceipt;
   if (stakeUsingVault) {
     const action = await actionId(vault.instance, 'manageUserBalance');
-    await vault.grantRoleGlobally(action, distributor);
+    await vault.grantPermissionsGlobally([action], distributor);
 
     await vault.setRelayerApproval(trader, distributor, true);
 

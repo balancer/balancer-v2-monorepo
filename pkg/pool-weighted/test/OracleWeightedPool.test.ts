@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { BigNumberish, fp, bn, fromFp, scaleUp, scaleDown } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp, bn, fromFp, scaleDown } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_INT22, MAX_UINT10, MAX_UINT31, MIN_INT22 } from '@balancer-labs/v2-helpers/src/constants';
 import { MINUTE, advanceTime, currentTimestamp, lastBlockNumber } from '@balancer-labs/v2-helpers/src/time';
 
@@ -12,11 +12,14 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import { Sample, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
 import { itBehavesAsWeightedPool } from './BaseWeightedPool.behavior';
+import { itPaysProtocolFeesFromInvariantGrowth } from './InvariantGrowthProtocolFees.behavior';
 
 describe('OracleWeightedPool', function () {
   describe('as a 2 token weighted pool', () => {
     itBehavesAsWeightedPool(2, WeightedPoolType.ORACLE_WEIGHTED_POOL);
   });
+
+  itPaysProtocolFeesFromInvariantGrowth(WeightedPoolType.ORACLE_WEIGHTED_POOL);
 
   let trader: SignerWithAddress,
     admin: SignerWithAddress,
@@ -97,8 +100,6 @@ describe('OracleWeightedPool', function () {
 
         sharedBeforeEach(async () => {
           previousBalances = await pool.getBalances();
-          // Adjust for non-18 decimal tokens
-          previousBalances = previousBalances.map((b, i) => scaleUp(b, scalingFactors[i]));
           previousTotalSupply = await pool.totalSupply();
 
           await advanceTime(MINUTE * 10); // force index update
@@ -349,7 +350,7 @@ describe('OracleWeightedPool', function () {
 
       sharedBeforeEach('grant role to admin', async () => {
         const action = await actionId(pool.instance, 'enableOracle');
-        await pool.vault.grantRoleGlobally(action, admin);
+        await pool.vault.grantPermissionsGlobally([action], admin);
       });
 
       context('when it starts enabled', () => {

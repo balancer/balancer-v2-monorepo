@@ -61,7 +61,7 @@ export function calcBptOutGivenExactTokensIn(
   for (let i = 0; i < balances.length; i++) {
     let amountInWithoutFee;
 
-    if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
+    if (balanceRatiosWithFee[i].gt(invariantRatioWithFees)) {
       const nonTaxableAmount = balances[i].mul(invariantRatioWithFees.sub(1));
       const taxableAmount = amountsIn[i].sub(nonTaxableAmount);
       amountInWithoutFee = nonTaxableAmount.add(taxableAmount.mul(decimal(1).sub(fromFp(fpSwapFeePercentage))));
@@ -124,10 +124,9 @@ export function calcBptInGivenExactTokensOut(
 
   let invariantRatio = decimal(1);
   for (let i = 0; i < balances.length; i++) {
-    const tokenBalancePercentageExcess =
-      weightedBalanceRatio <= balanceRatiosWithoutFee[i]
-        ? 0
-        : weightedBalanceRatio.sub(balanceRatiosWithoutFee[i]).div(decimal(1).sub(balanceRatiosWithoutFee[i]));
+    const tokenBalancePercentageExcess = weightedBalanceRatio.lte(balanceRatiosWithoutFee[i])
+      ? 0
+      : weightedBalanceRatio.sub(balanceRatiosWithoutFee[i]).div(decimal(1).sub(balanceRatiosWithoutFee[i]));
 
     const amountOutBeforeFee = amountsOut[i].div(decimal(1).sub(swapFeePercentage.mul(tokenBalancePercentageExcess)));
     const tokenBalanceRatio = decimal(1).sub(amountOutBeforeFee.div(balances[i]));
@@ -186,6 +185,28 @@ export function calculateOneTokenSwapFeeAmount(
   const accruedFees = balance.mul(decimal(1).sub(invariantRatio.pow(exponent)));
 
   return toFp(accruedFees);
+}
+
+export function calculateBPTSwapFeeFeeAmount(
+  fpBptTotalSupply: BigNumberish,
+  lastInvariant: BigNumberish,
+  currentInvariant: BigNumberish,
+  fpProtocolSwapFeePercentage: BigNumberish
+): Decimal {
+  if (bn(currentInvariant).lte(lastInvariant)) {
+    return decimal(1);
+  }
+
+  const growth = decimal(currentInvariant).div(decimal(lastInvariant));
+
+  const k = fromFp(fpProtocolSwapFeePercentage)
+    .mul(growth.sub(decimal(1)))
+    .div(growth);
+
+  const numerator = fromFp(fpBptTotalSupply).mul(k);
+  const denominator = decimal(1).sub(k);
+
+  return numerator.div(denominator);
 }
 
 export function calculateMaxOneTokenSwapFeeAmount(

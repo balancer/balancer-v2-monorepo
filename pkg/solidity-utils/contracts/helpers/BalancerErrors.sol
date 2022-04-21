@@ -112,6 +112,7 @@ library Errors {
     uint256 internal constant BPT_OUT_MIN_AMOUNT = 208;
     uint256 internal constant EXPIRED_PERMIT = 209;
     uint256 internal constant NOT_TWO_TOKENS = 210;
+    uint256 internal constant DISABLED = 211;
 
     // Pools
     uint256 internal constant MIN_AMP = 300;
@@ -196,6 +197,8 @@ library Errors {
     uint256 internal constant NOT_PAUSED = 431;
     uint256 internal constant ADDRESS_ALREADY_ALLOWLISTED = 432;
     uint256 internal constant ADDRESS_NOT_ALLOWLISTED = 433;
+    uint256 internal constant ERC20_BURN_EXCEEDS_BALANCE = 434;
+    uint256 internal constant INVALID_OPERATION = 435;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;

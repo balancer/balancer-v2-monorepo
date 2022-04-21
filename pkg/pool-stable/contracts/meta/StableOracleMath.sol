@@ -19,7 +19,11 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/LogCompression.sol";
 
 import "../StableMath.sol";
 
-contract StableOracleMath {
+// These functions start with an underscore, as if they were part of a contract and not a library. At some point this
+// should be fixed.
+// solhint-disable private-vars-leading-underscore
+
+library StableOracleMath {
     using FixedPoint for uint256;
 
     /**

@@ -50,7 +50,7 @@ export function inIndirectReceipt(
   address?: string
 ): any {
   const decodedEvents = receipt.logs
-    .filter((log) => (address ? log.address === address : true))
+    .filter((log) => (address ? log.address.toLowerCase() === address.toLowerCase() : true))
     .map((log) => {
       try {
         return emitter.parseLog(log);

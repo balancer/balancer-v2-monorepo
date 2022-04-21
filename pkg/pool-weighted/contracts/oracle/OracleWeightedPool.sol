@@ -20,10 +20,11 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/LogCompression.sol";
 import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
 
 import "../BaseWeightedPool.sol";
+import "../InvariantGrowthProtocolFees.sol";
 import "./OracleWeightedMath.sol";
 import "./OracleWeightedPoolMiscData.sol";
 
-contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeightedMath {
+contract OracleWeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees, PoolPriceOracle {
     using FixedPoint for uint256;
     using OracleWeightedPoolMiscData for bytes32;
 
@@ -32,10 +33,6 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeighted
 
     uint256 private immutable _normalizedWeight0;
     uint256 private immutable _normalizedWeight1;
-
-    // The protocol fees will always be charged using the token associated with the max weight in the pool.
-    // Since these Pools will register tokens only once, we can assume this index will be constant.
-    uint256 private immutable _maxWeightTokenIndex;
 
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
@@ -90,8 +87,6 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeighted
         _normalizedWeight0 = params.normalizedWeight0;
         _normalizedWeight1 = params.normalizedWeight1;
 
-        _maxWeightTokenIndex = params.normalizedWeight0 >= params.normalizedWeight1 ? 0 : 1;
-
         _setOracleEnabled(params.oracleEnabled);
     }
 
@@ -144,16 +139,6 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeighted
         normalizedWeights[0] = _normalizedWeight0;
         normalizedWeights[1] = _normalizedWeight1;
         return normalizedWeights;
-    }
-
-    function _getNormalizedWeightsAndMaxWeightIndex()
-        internal
-        view
-        virtual
-        override
-        returns (uint256[] memory, uint256)
-    {
-        return (_getNormalizedWeights(), _maxWeightTokenIndex);
     }
 
     // Swaps remain the same, except we need to update the oracle with the pre-swap balances (after these have been
@@ -210,16 +195,7 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeighted
         uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        virtual
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {
+    ) internal virtual override returns (uint256, uint256[] memory) {
         // Update price oracle with the pre-join balances
         _updateOracle(lastChangeBlock, balances[0], balances[1]);
 
@@ -271,16 +247,7 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeighted
         uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        virtual
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {
+    ) internal virtual override returns (uint256, uint256[] memory) {
         // The oracle is not updated if the Pool is paused to avoid extra calculations and reduce the potential for
         // errors.
         if (_isNotPaused()) {
@@ -433,5 +400,24 @@ contract OracleWeightedPool is BaseWeightedPool, PoolPriceOracle, OracleWeighted
 
     function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
         return token == _token0 ? _normalizedWeight0 : _normalizedWeight1;
+    }
+
+    // InvariantGrowthProtocolFees
+
+    function _beforeJoinExit(
+        uint256[] memory preBalances,
+        uint256[] memory normalizedWeights,
+        uint256 protocolSwapFeePercentage
+    ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
+        InvariantGrowthProtocolFees._beforeJoinExit(preBalances, normalizedWeights, protocolSwapFeePercentage);
+    }
+
+    function _afterJoinExit(
+        bool isJoin,
+        uint256[] memory preBalances,
+        uint256[] memory balanceDeltas,
+        uint256[] memory normalizedWeights
+    ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
+        InvariantGrowthProtocolFees._afterJoinExit(isJoin, preBalances, balanceDeltas, normalizedWeights);
     }
 }

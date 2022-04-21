@@ -12,11 +12,17 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { Dictionary } from 'lodash';
+import {
+  expectChainedReferenceContents,
+  setChainedReferenceContents,
+  toChainedReference,
+} from './helpers/chainedReferences';
+import { expectTransferEvent } from './helpers/tokenTransfer';
 
 describe('LidoWrapping', function () {
   let stETH: Token, wstETH: Token;
@@ -29,10 +35,9 @@ describe('LidoWrapping', function () {
   });
 
   sharedBeforeEach('deploy Vault', async () => {
-    const [deployer] = await ethers.getSigners();
     vault = await Vault.create({ admin });
 
-    const stETHContract = await deploy('MockStETH', { args: [deployer.address, 'stETH', 'stETH', 18] });
+    const stETHContract = await deploy('MockStETH', { args: ['stETH', 'stETH', 18] });
     stETH = new Token('stETH', 'stETH', 18, stETHContract);
 
     const wstETHContract = await deploy('MockWstETH', { args: [stETH.address] });
@@ -59,20 +64,11 @@ describe('LidoWrapping', function () {
         actionId(vault.instance, action)
       )
     );
-    const authorizer = await deployedAt('v2-vault/Authorizer', await vault.instance.getAuthorizer());
-    await authorizer.connect(admin).grantRolesGlobally(relayerActionIds, relayer.address);
+    await vault.grantPermissionsGlobally(relayerActionIds, relayer);
 
     // Approve relayer by sender
-    await vault.instance.connect(senderUser).setRelayerApproval(senderUser.address, relayer.address, true);
+    await vault.setRelayerApproval(senderUser, relayer, true);
   });
-
-  const CHAINED_REFERENCE_PREFIX = 'ba10';
-  function toChainedReference(key: BigNumberish): BigNumber {
-    // The full padded prefix is 66 characters long, with 64 hex characters and the 0x prefix.
-    const paddedPrefix = `0x${CHAINED_REFERENCE_PREFIX}${'0'.repeat(64 - CHAINED_REFERENCE_PREFIX.length)}`;
-
-    return BigNumber.from(paddedPrefix).add(key);
-  }
 
   function encodeApprove(token: Token, amount: BigNumberish): string {
     return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
@@ -120,28 +116,6 @@ describe('LidoWrapping', function () {
       amount,
       outputReference ?? 0,
     ]);
-  }
-
-  async function setChainedReferenceContents(ref: BigNumberish, value: BigNumberish): Promise<void> {
-    await relayer.multicall([relayerLibrary.interface.encodeFunctionData('setChainedReferenceValue', [ref, value])]);
-  }
-
-  async function expectChainedReferenceContents(ref: BigNumberish, expectedValue: BigNumberish): Promise<void> {
-    const receipt = await (
-      await relayer.multicall([relayerLibrary.interface.encodeFunctionData('getChainedReferenceValue', [ref])])
-    ).wait();
-
-    expectEvent.inIndirectReceipt(receipt, relayerLibrary.interface, 'ChainedReferenceValueRead', {
-      value: bn(expectedValue),
-    });
-  }
-
-  function expectTransferEvent(
-    receipt: ContractReceipt,
-    args: { from?: string; to?: string; value?: BigNumberish },
-    token: Token
-  ) {
-    return expectEvent.inIndirectReceipt(receipt, token.instance.interface, 'Transfer', args, token.address);
   }
 
   describe('primitives', () => {
@@ -221,12 +195,12 @@ describe('LidoWrapping', function () {
             .connect(senderUser)
             .multicall([encodeWrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
-          await expectChainedReferenceContents(toChainedReference(0), expectedWstETHAmount);
+          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedWstETHAmount);
         });
 
         it('wraps with chained references', async () => {
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
-          await setChainedReferenceContents(toChainedReference(0), amount);
+          await setChainedReferenceContents(relayer, toChainedReference(0), amount);
 
           const receipt = await (
             await relayer
@@ -331,11 +305,11 @@ describe('LidoWrapping', function () {
             .multicall([encodeUnwrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
           const stETHAmount = await wstETH.instance.getStETHByWstETH(amount);
-          await expectChainedReferenceContents(toChainedReference(0), stETHAmount);
+          await expectChainedReferenceContents(relayer, toChainedReference(0), stETHAmount);
         });
 
         it('unwraps with chained references', async () => {
-          await setChainedReferenceContents(toChainedReference(0), amount);
+          await setChainedReferenceContents(relayer, toChainedReference(0), amount);
 
           const receipt = await (
             await relayer
@@ -424,11 +398,11 @@ describe('LidoWrapping', function () {
             .connect(senderUser)
             .multicall([encodeStakeETH(tokenRecipient, amount, toChainedReference(0))], { value: amount });
 
-          await expectChainedReferenceContents(toChainedReference(0), amount);
+          await expectChainedReferenceContents(relayer, toChainedReference(0), amount);
         });
 
         it('stakes with chained references', async () => {
-          await setChainedReferenceContents(toChainedReference(0), amount);
+          await setChainedReferenceContents(relayer, toChainedReference(0), amount);
 
           const receipt = await (
             await relayer
@@ -498,13 +472,13 @@ describe('LidoWrapping', function () {
             .connect(senderUser)
             .multicall([encodeStakeETHAndWrap(tokenRecipient, amount, toChainedReference(0))], { value: amount });
 
-          await expectChainedReferenceContents(toChainedReference(0), expectedWstETHAmount);
+          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedWstETHAmount);
         });
 
         it('stakes with chained references', async () => {
           const expectedWstETHAmount = await wstETH.instance.getWstETHByStETH(amount);
 
-          await setChainedReferenceContents(toChainedReference(0), amount);
+          await setChainedReferenceContents(relayer, toChainedReference(0), amount);
 
           const receipt = await (
             await relayer

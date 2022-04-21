@@ -1,7 +1,7 @@
 import { MaxUint256 as MAX_DEADLINE } from '@ethersproject/constants';
 import { Contract } from '@ethersproject/contracts';
 import { hexValue, hexZeroPad, splitSignature } from '@ethersproject/bytes';
-import { BigNumberish } from '@ethersproject/bignumber';
+import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
 import { Signer, TypedDataSigner } from '@ethersproject/abstract-signer';
 
 export type Account = string | Signer | Contract;
@@ -167,5 +167,56 @@ export class RelayerAuthorization {
     };
 
     return user._signTypedData(domain, types, value);
+  };
+}
+
+export class BalancerMinterAuthorization {
+  /**
+   * Cannot be constructed.
+   */
+  private constructor() {
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+  }
+
+  static signSetMinterApproval = async (
+    minterContract: Contract,
+    minter: Account,
+    approval: boolean,
+    user: Signer & TypedDataSigner,
+    deadline: BigNumberish = MAX_DEADLINE,
+    nonce?: BigNumberish
+  ): Promise<{ v: number; r: string; s: string; deadline: BigNumber }> => {
+    const { chainId } = await minterContract.provider.getNetwork();
+    if (!nonce) {
+      const userAddress = await user.getAddress();
+      nonce = (await minterContract.getNextNonce(userAddress)) as BigNumberish;
+    }
+
+    const domain = {
+      name: 'Balancer Minter',
+      version: '1',
+      chainId,
+      verifyingContract: minterContract.address,
+    };
+
+    const types = {
+      SetMinterApproval: [
+        { name: 'minter', type: 'address' },
+        { name: 'approval', type: 'bool' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'deadline', type: 'uint256' },
+      ],
+    };
+
+    const value = {
+      minter: await accountToAddress(minter),
+      approval,
+      nonce: nonce.toString(),
+      deadline: deadline.toString(),
+    };
+
+    const signature = await user._signTypedData(domain, types, value);
+
+    return { ...splitSignature(signature), deadline: BigNumber.from(deadline) };
   };
 }
