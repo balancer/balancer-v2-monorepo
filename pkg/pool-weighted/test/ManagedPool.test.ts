@@ -996,26 +996,26 @@ describe('ManagedPool', function () {
             });
           });
         });
+      });
 
-        describe('management aum fee collection', () => {
-          it('collects fees after time has passed', async () => {
-            await advanceTime(180 * DAY);
+      describe('management aum fee collection', () => {
+        it('collects fees after time has passed', async () => {
+          await advanceTime(180 * DAY);
 
-            const totalSupply = await pool.totalSupply();
-            const expectedBpt = totalSupply
-              .mul(180)
-              .div(365)
-              .mul(managementAumFeePercentage)
-              .div(fp(1).sub(managementAumFeePercentage));
+          const totalSupply = await pool.totalSupply();
+          const expectedBpt = totalSupply
+            .mul(180)
+            .div(365)
+            .mul(managementAumFeePercentage)
+            .div(fp(1).sub(managementAumFeePercentage));
 
-            const balanceBefore = await pool.balanceOf(owner);
+          const balanceBefore = await pool.balanceOf(owner);
 
-            const receipt = await pool.collectAumManagementFees(owner);
-            expectEvent.inReceipt(await receipt.wait(), 'ManagementAumFeeCollected');
+          const receipt = await pool.collectAumManagementFees(owner);
+          expectEvent.inReceipt(await receipt.wait(), 'ManagementAumFeeCollected');
 
-            const balanceAfter = await pool.balanceOf(owner);
-            expect(balanceAfter.sub(balanceBefore)).to.equalWithError(expectedBpt, 0.0001);
-          });
+          const balanceAfter = await pool.balanceOf(owner);
+          expect(balanceAfter.sub(balanceBefore)).to.equalWithError(expectedBpt, 0.0001);
         });
       });
     });
