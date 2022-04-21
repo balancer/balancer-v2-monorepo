@@ -362,7 +362,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Set the management fee percentage
+     * @notice Sets the percentage of swap fees which are payable to the pool manager.
+     * @dev Attempting to take more than 100% of the swap fees will result in this function reverting.
      */
     function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) external authenticate whenNotPaused {
         _setManagementSwapFeePercentage(managementSwapFeePercentage);
@@ -378,6 +379,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         emit ManagementSwapFeePercentageChanged(managementSwapFeePercentage);
     }
 
+    /**
+     * @notice Sets the yearly percentage AUM management fee which is payable to the pool manager.
+     * @dev Attempting to collect AUM fees in excesss of 10% will result in this function reverting.
+     */
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage) external authenticate whenNotPaused {
         _setManagementAumFeePercentage(managementAumFeePercentage);
     }
