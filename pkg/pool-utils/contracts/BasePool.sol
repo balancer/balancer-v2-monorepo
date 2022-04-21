@@ -154,10 +154,14 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     function _setSwapFeePercentage(uint256 swapFeePercentage) private {
         _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
-        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
 
         _miscData = _miscData.insertUint64(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET);
         emit SwapFeePercentageChanged(swapFeePercentage);
+    }
+
+    function _getMaxSwapFeePercentage() internal virtual pure returns (uint256) {
+        return _MAX_SWAP_FEE_PERCENTAGE;
     }
 
     function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig)

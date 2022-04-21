@@ -332,6 +332,11 @@ contract ManagedPool is BaseWeightedPool, ReentrancyGuard {
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
     }
 
+    // Don't limit maximum swap fee for managed pools
+    function _getMaxSwapFeePercentage() internal virtual override pure returns (uint256) {
+        return 1e18;
+    }
+
     /**
      * @dev Adds an address to the allowlist.
      */
