@@ -22,10 +22,11 @@ library WeightChange {
     function getNormalizedWeight(
         uint256 startWeight,
         uint256 endWeight,
+        uint256 currentTime,
         uint256 startTime,
         uint256 endTime
-    ) internal view returns (uint256) {
-        uint256 pctProgress = _calculateWeightChangeProgress(startTime, endTime);
+    ) internal pure returns (uint256) {
+        uint256 pctProgress = _calculateWeightChangeProgress(currentTime, startTime, endTime);
 
         return _interpolateWeight(startWeight, endWeight, pctProgress);
     }
@@ -53,9 +54,11 @@ library WeightChange {
      * @dev Returns a fixed-point number representing how far along the current weight change is, where 0 means the
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
-    function _calculateWeightChangeProgress(uint256 startTime, uint256 endTime) private view returns (uint256) {
-        uint256 currentTime = block.timestamp;
-
+    function _calculateWeightChangeProgress(
+        uint256 currentTime,
+        uint256 startTime,
+        uint256 endTime
+    ) private pure returns (uint256) {
         if (currentTime > endTime) {
             return FixedPoint.ONE;
         } else if (currentTime < startTime) {
