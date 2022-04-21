@@ -54,9 +54,14 @@ abstract contract ProtocolFeeCache {
                 Errors.SWAP_FEE_PERCENTAGE_TOO_HIGH
             );
 
+            // We cannot set `_fixedProtocolSwapFeePercentage` here due to it being immutable so instead we must set it
+            // in the main function scope with a value based on whether protocol fees are delegated.
+
+            // Emit an event as we do in `_updateCachedProtocolSwapFee` to appear the same to offchain indexers.
             emit CachedProtocolSwapFeePercentageUpdated(protocolSwapFeePercentage);
         }
 
+        // As `_fixedProtocolSwapFeePercentage` is immutable we must set a value, but just set to zero if it's not used.
         _fixedProtocolSwapFeePercentage = delegatedProtocolFees ? 0 : protocolSwapFeePercentage;
     }
 
