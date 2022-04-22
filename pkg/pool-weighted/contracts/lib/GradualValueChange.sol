@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 pragma solidity ^0.7.0;
 
@@ -28,6 +29,16 @@ library GradualValueChange {
         uint256 pctProgress = _calculateValueChangeProgress(startTime, endTime);
 
         return _interpolateWeight(startValue, endValue, pctProgress);
+    }
+
+    function resolveStartTime(uint256 startTime, uint256 endTime) internal view returns (uint256 resolvedStartTime) {
+        // If the start time is in the past, "fast forward" to start now
+        // This avoids discontinuities in the value curve. Otherwise, if you set the start/end times with
+        // only 10% of the period in the future, the value would immediately jump 90%
+        uint256 currentTime = block.timestamp;
+        resolvedStartTime = Math.max(currentTime, startTime);
+
+        _require(resolvedStartTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
     }
 
     // Private functions

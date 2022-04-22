@@ -185,14 +185,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     ) external authenticate whenNotPaused nonReentrant {
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
 
-        // If the start time is in the past, "fast forward" to start now
-        // This avoids discontinuities in the weight curve. Otherwise, if you set the start/end times with
-        // only 10% of the period in the future, the weights would immediately jump 90%
-        uint256 currentTime = block.timestamp;
-        startTime = Math.max(currentTime, startTime);
-
-        _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
-
+        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights);
     }
 
