@@ -54,6 +54,7 @@ library WeightChange {
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
     function _calculateWeightChangeProgress(uint256 startTime, uint256 endTime) private view returns (uint256) {
+        // solhint-disable-next-line not-rely-on-time
         uint256 currentTime = block.timestamp;
 
         if (currentTime > endTime) {

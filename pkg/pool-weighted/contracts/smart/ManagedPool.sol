@@ -263,6 +263,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         returns (
             uint256 startTime,
             uint256 endTime,
+            uint256 startSwapFeePercentage,
             uint256 endSwapFeePercentage
         )
     {
@@ -271,6 +272,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         startTime = poolState.decodeUint32(_FEE_START_TIME_OFFSET);
         endTime = poolState.decodeUint32(_FEE_END_TIME_OFFSET);
+        startSwapFeePercentage = super.getSwapFeePercentage();
         endSwapFeePercentage = _endSwapFeePercentage;
     }
 

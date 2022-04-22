@@ -17,6 +17,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 pragma solidity ^0.7.0;
 
+// solhint-disable not-rely-on-time
+
 library GradualValueChange {
     using FixedPoint for uint256;
 
