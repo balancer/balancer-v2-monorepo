@@ -955,19 +955,6 @@ describe('ManagedPool', function () {
                     );
                   });
 
-                  it('returns the the BPT value of the removed tokens', async () => {
-                    const beforeNormalizedWeights = await pool.getNormalizedWeights();
-                    const tokenWeight = beforeNormalizedWeights[tokenIndex];
-
-                    const bptSupply = await pool.totalSupply();
-                    const expectedBPTValue = tokenWeight.mul(bptSupply).div(FP_SCALING_FACTOR);
-
-                    const actualBPTValue = await pool.instance
-                      .connect(sender)
-                      .callStatic.removeToken(poolTokens.addresses[tokenIndex], other.address);
-                    expect(actualBPTValue).to.equal(expectedBPTValue);
-                  });
-
                   it('emits an event', async () => {
                     const { balances: beforeRemoveBalances } = await pool.getTokens();
 

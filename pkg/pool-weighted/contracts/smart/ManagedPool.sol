@@ -332,19 +332,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Remove a token from the pool. This is a permissioned function that performs the following operations:
-     * - Verify there are enough tokens, and there is no ongoing weight change
-     * - Calculate the BPT value of the full token balance, and returns it for possible use by the caller
-     * - Exit the pool, returning the full balance of the token to the recipient
-     * - Deregister the token in the Vault (since it now has zero balance)
-     * - Reduce the total weight by the weight of the token removed, and update the number of tokens and `_tokenState`
-     *   (all other weights then scale accordingly)
+     * @dev Removes a token from the Pool's composition, withdrawing all funds from the Vault and sending them to
+     * `recipient`, and adjusting the weights of all other tokens.
+     *
+     * Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token removal
+     * is also forbidden during a weight change, or if one is scheduled to happen in the future.
      */
-    function removeToken(IERC20 token, address recipient) external authenticate whenNotPaused returns (uint256) {
-        return _removeToken(token, recipient);
-    }
-
-    function _removeToken(IERC20 token, address recipient) internal returns (uint256) {
+    function removeToken(IERC20 token, address recipient) external authenticate whenNotPaused {
         // Exit the pool, returning the full balance of the token to the recipient
         (IERC20[] memory tokens, uint256[] memory unscaledBalances, ) = getVault().getPoolTokens(getPoolId());
         uint256 tokenIndex = _tokenAddressToIndex(token);
@@ -373,9 +367,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         // Decrease the total weight by the weight of the token being removed
         _denormWeightSum -= _denormalizeWeight(normalizedWeightBeforeRemove);
-
-        // The bpt amount corresponding to the token is simply its proportional share of the totalSupply
-        return normalizedWeightBeforeRemove.mulDown(totalSupply());
     }
 
     // Separated to avoid stack too deep
