@@ -76,7 +76,7 @@ describe('ManagedPool', function () {
           });
 
           it('has the correct total weight', async () => {
-            expect(await pool.instance.getDenormWeightSum()).to.equal(fp(weightSum));
+            expect(await pool.instance.getDenormalizedWeightSum()).to.equal(fp(weightSum));
           });
 
           it('sets token weights', async () => {
@@ -957,7 +957,7 @@ describe('ManagedPool', function () {
 
                   it('updates the denormalized sum correctly', async () => {
                     const beforeWeights = await pool.getNormalizedWeights();
-                    const beforeSum = await pool.instance.getDenormWeightSum();
+                    const beforeSum = await pool.instance.getDenormalizedWeightSum();
 
                     const expectedDenormWeightSum = beforeWeights
                       .filter((_, i) => i !== tokenIndex)
@@ -965,7 +965,7 @@ describe('ManagedPool', function () {
 
                     await pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address);
 
-                    expect(await pool.instance.getDenormWeightSum()).to.equalWithError(
+                    expect(await pool.instance.getDenormalizedWeightSum()).to.equalWithError(
                       expectedDenormWeightSum,
                       0.000001
                     );
