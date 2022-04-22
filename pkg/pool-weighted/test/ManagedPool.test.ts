@@ -525,12 +525,6 @@ describe('ManagedPool', function () {
             );
           });
 
-          it('fails if start time > end time', async () => {
-            await expect(pool.updateWeightsGradually(sender, now, now.sub(1), poolWeights)).to.be.revertedWith(
-              'GRADUAL_UPDATE_TIME_TRAVEL'
-            );
-          });
-
           it('fails with an end weight below the minimum', async () => {
             const badWeights = [...poolWeights];
             badWeights[2] = fp(0.005);
@@ -546,26 +540,6 @@ describe('ManagedPool', function () {
             await expect(
               pool.updateWeightsGradually(sender, now.add(100), now.add(WEEK), badWeights)
             ).to.be.revertedWith('NORMALIZED_WEIGHT_INVARIANT');
-          });
-
-          context('with start time in the past', () => {
-            let now: BigNumber, startTime: BigNumber, endTime: BigNumber;
-            const endWeights = [...poolWeights];
-
-            sharedBeforeEach('updateWeightsGradually (start time in the past)', async () => {
-              now = await currentTimestamp();
-              // Start an hour in the past
-              startTime = now.sub(MINUTE * 60);
-              endTime = now.add(UPDATE_DURATION);
-            });
-
-            it('fast-forwards start time to present', async () => {
-              await pool.updateWeightsGradually(owner, startTime, endTime, endWeights);
-              const updateParams = await pool.getGradualWeightUpdateParams();
-
-              // Start time should be fast-forwarded to now
-              expect(updateParams.startTime).to.equal(await currentTimestamp());
-            });
           });
         });
 
