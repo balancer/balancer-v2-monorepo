@@ -19,6 +19,8 @@ import "./relayer/BaseRelayerLibrary.sol";
 
 import "./relayer/AaveWrapping.sol";
 import "./relayer/LidoWrapping.sol";
+import "./relayer/ERC4626Wrapping.sol";
+import "./relayer/UnbuttonWrapping.sol";
 import "./relayer/VaultActions.sol";
 import "./relayer/VaultPermit.sol";
 
@@ -27,7 +29,15 @@ import "./relayer/VaultPermit.sol";
  * @notice This contract is not a relayer by itself and calls into it directly will fail.
  * The associated relayer can be found by calling `getEntrypoint` on this contract.
  */
-contract BatchRelayerLibrary is BaseRelayerLibrary, AaveWrapping, LidoWrapping, VaultActions, VaultPermit {
+contract BatchRelayerLibrary is
+    BaseRelayerLibrary,
+    AaveWrapping,
+    LidoWrapping,
+    VaultActions,
+    VaultPermit,
+    ERC4626Wrapping,
+    UnbuttonWrapping
+{
     constructor(IVault vault, IERC20 wstETH) BaseRelayerLibrary(vault) LidoWrapping(wstETH) {
         // solhint-disable-previous-line no-empty-blocks
     }

@@ -7,11 +7,13 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { PoolSpecialization } from '@balancer-labs/balancer-js';
-import { ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
+import { ANY_ADDRESS, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
+
 import { encodeInvestmentConfig } from './helpers/rebalance';
 
 describe('RebalancingRelayer', function () {
@@ -31,7 +33,7 @@ describe('RebalancingRelayer', function () {
     const WETH = await Token.create('WETH');
     tokens = new TokenList([DAI, WETH].sort());
 
-    authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
+    authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
     vault = await deploy('v2-vault/Vault', { args: [authorizer.address, tokens.WETH.address, 0, 0] });
     relayer = await deploy('RebalancingRelayer', { args: [vault.address] });
 
@@ -87,7 +89,7 @@ describe('RebalancingRelayer', function () {
       context('when the relayer is allowed to join', () => {
         sharedBeforeEach('allow relayer', async () => {
           const action = await actionId(vault, 'joinPool');
-          await authorizer.connect(admin).grantRolesGlobally([action], relayer.address);
+          await authorizer.connect(admin).grantPermissions([action], relayer.address, [ANY_ADDRESS]);
         });
 
         context('when the user did allow the relayer', () => {
@@ -187,7 +189,7 @@ describe('RebalancingRelayer', function () {
         context('when the relayer is not allowed to join', () => {
           sharedBeforeEach('revoke relayer', async () => {
             const action = await actionId(vault, 'joinPool');
-            await authorizer.connect(admin).revokeRolesGlobally([action], relayer.address);
+            await authorizer.connect(admin).revokePermissions([action], relayer.address, [ANY_ADDRESS]);
           });
 
           it('reverts', async () => {
@@ -232,7 +234,7 @@ describe('RebalancingRelayer', function () {
       context('when the relayer is allowed to exit', () => {
         sharedBeforeEach('allow relayer', async () => {
           const action = await actionId(vault, 'exitPool');
-          await authorizer.connect(admin).grantRolesGlobally([action], relayer.address);
+          await authorizer.connect(admin).grantPermissions([action], relayer.address, [ANY_ADDRESS]);
         });
 
         context('when the user did allow the relayer', () => {
@@ -242,7 +244,7 @@ describe('RebalancingRelayer', function () {
 
           sharedBeforeEach('join pool', async () => {
             const action = await actionId(vault, 'joinPool');
-            await authorizer.connect(admin).grantRolesGlobally([action], relayer.address);
+            await authorizer.connect(admin).grantPermissions([action], relayer.address, [ANY_ADDRESS]);
             // We join twice here so that exiting doesn't return the pool to a zero-balance state
             await relayer.connect(sender).joinPool(poolId, sender.address, joinRequest);
             await relayer.connect(sender).joinPool(poolId, sender.address, joinRequest);
@@ -352,7 +354,7 @@ describe('RebalancingRelayer', function () {
         context('when the relayer is not allowed to exit', () => {
           sharedBeforeEach('revoke relayer', async () => {
             const action = await actionId(vault, 'exitPool');
-            await authorizer.connect(admin).revokeRolesGlobally([action], relayer.address);
+            await authorizer.connect(admin).revokePermissions([action], relayer.address, [ANY_ADDRESS]);
           });
 
           it('reverts', async () => {

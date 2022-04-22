@@ -1,7 +1,7 @@
 import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
 
 import { actionId } from '../../misc/actions';
-import { BigNumberish, bn, fp } from '../../../numbers';
+import { BigNumberish, bn, fp, FP_SCALING_FACTOR } from '../../../numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../constants';
 
 import * as expectEvent from '../../../test/expectEvent';
@@ -34,7 +34,6 @@ import {
   GradualUpdateParams,
   WeightedPoolType,
   VoidResult,
-  TokenCollectedFees,
 } from './types';
 import {
   calculateInvariant,
@@ -67,6 +66,7 @@ export default class WeightedPool {
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
@@ -84,6 +84,7 @@ export default class WeightedPool {
     poolType: WeightedPoolType,
     swapEnabledOnStart: boolean,
     mustAllowlistLPs: boolean,
+    protocolSwapFeePercentage: BigNumberish,
     managementSwapFeePercentage: BigNumberish
   ) {
     this.instance = instance;
@@ -96,6 +97,7 @@ export default class WeightedPool {
     this.poolType = poolType;
     this.swapEnabledOnStart = swapEnabledOnStart;
     this.mustAllowlistLPs = mustAllowlistLPs;
+    this.protocolSwapFeePercentage = protocolSwapFeePercentage;
     this.managementSwapFeePercentage = managementSwapFeePercentage;
   }
 
@@ -230,7 +232,12 @@ export default class WeightedPool {
 
   async estimateSpotPrice(currentBalances?: BigNumberish[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
-    return calculateSpotPrice(currentBalances, this.weights);
+
+    const scalingFactors = await this.getScalingFactors();
+    return calculateSpotPrice(
+      currentBalances.map((x, i) => bn(x).mul(scalingFactors[i]).div(FP_SCALING_FACTOR)),
+      this.weights
+    );
   }
 
   async estimateBptPrice(
@@ -240,12 +247,24 @@ export default class WeightedPool {
   ): Promise<BigNumber> {
     if (!currentBalance) currentBalance = (await this.getBalances())[tokenIndex];
     if (!currentSupply) currentSupply = await this.totalSupply();
-    return calculateBPTPrice(currentBalance, this.weights[tokenIndex], currentSupply);
+
+    const scalingFactors = await this.getScalingFactors();
+
+    return calculateBPTPrice(
+      bn(currentBalance).mul(scalingFactors[tokenIndex]).div(FP_SCALING_FACTOR),
+      this.weights[tokenIndex],
+      currentSupply
+    );
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
-    return calculateInvariant(currentBalances, this.weights);
+    const scalingFactors = await this.getScalingFactors();
+
+    return calculateInvariant(
+      currentBalances.map((x, i) => bn(x).mul(scalingFactors[i]).div(FP_SCALING_FACTOR)),
+      this.weights
+    );
   }
 
   async estimateSwapFeeAmount(
@@ -598,7 +617,7 @@ export default class WeightedPool {
 
   async pause(): Promise<void> {
     const action = await actionId(this.instance, 'setPaused');
-    await this.vault.grantRolesGlobally([action]);
+    await this.vault.grantPermissionsGlobally([action]);
     await this.instance.setPaused(true);
   }
 
@@ -678,10 +697,5 @@ export default class WeightedPool {
   async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualUpdateParams> {
     const pool = from ? this.instance.connect(from) : this.instance;
     return await pool.getGradualWeightUpdateParams();
-  }
-
-  async getCollectedManagementFees(): Promise<TokenCollectedFees> {
-    const result = await this.instance.getCollectedManagementFees();
-    return { amounts: result.collectedFees, tokenAddresses: result.tokens };
   }
 }

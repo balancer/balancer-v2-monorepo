@@ -14,7 +14,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
-import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { arraySub, bn, BigNumberish, min, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { PoolSpecialization, RelayerAuthorization } from '@balancer-labs/balancer-js';
 
@@ -30,12 +30,12 @@ describe('Join Pool', () => {
   sharedBeforeEach('deploy vault & tokens', async () => {
     const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
-    authorizer = await deploy('Authorizer', { args: [admin.address] });
+    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
     vault = await deploy('Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
     feesCollector = await deployedAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
     const action = await actionId(feesCollector, 'setSwapFeePercentage');
-    await authorizer.connect(admin).grantRolesGlobally([action], admin.address);
+    await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
     await feesCollector.connect(admin).setSwapFeePercentage(fp(0.1));
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
@@ -232,7 +232,7 @@ describe('Join Pool', () => {
                 context('when the relayer is whitelisted by the authorizer', () => {
                   sharedBeforeEach('grant permission to relayer', async () => {
                     const action = await actionId(vault, 'joinPool');
-                    await authorizer.connect(admin).grantRolesGlobally([action], relayer.address);
+                    await authorizer.connect(admin).grantPermissions([action], relayer.address, [ANY_ADDRESS]);
                   });
 
                   context('when the relayer is allowed by the user', () => {
@@ -269,7 +269,7 @@ describe('Join Pool', () => {
                 context('when the relayer is not whitelisted by the authorizer', () => {
                   sharedBeforeEach('revoke permission from relayer', async () => {
                     const action = await actionId(vault, 'joinPool');
-                    await authorizer.connect(admin).revokeRolesGlobally([action], relayer.address);
+                    await authorizer.connect(admin).revokePermissions([action], relayer.address, [ANY_ADDRESS]);
                   });
 
                   context('when the relayer is allowed by the user', () => {
@@ -310,7 +310,7 @@ describe('Join Pool', () => {
           context('when paused', () => {
             sharedBeforeEach('pause', async () => {
               const action = await actionId(vault, 'setPaused');
-              await authorizer.connect(admin).grantRolesGlobally([action], admin.address);
+              await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
               await vault.connect(admin).setPaused(true);
             });
 

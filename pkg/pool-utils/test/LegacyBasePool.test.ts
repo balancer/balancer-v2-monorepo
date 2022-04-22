@@ -3,15 +3,16 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
+import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { PoolSpecialization } from '@balancer-labs/balancer-js';
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 
 describe('LegacyBasePool', function () {
@@ -32,7 +33,7 @@ describe('LegacyBasePool', function () {
   });
 
   sharedBeforeEach(async () => {
-    authorizer = await deploy('v2-vault/Authorizer', { args: [admin.address] });
+    authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
     vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
   });
@@ -125,7 +126,7 @@ describe('LegacyBasePool', function () {
 
     it('tracks authorizer changes in the vault', async () => {
       const action = await actionId(vault, 'setAuthorizer');
-      await authorizer.connect(admin).grantRolesGlobally([action], admin.address);
+      await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
 
       await vault.connect(admin).setAuthorizer(other.address);
 
@@ -229,7 +230,7 @@ describe('LegacyBasePool', function () {
         context('when the sender has the set fee permission in the authorizer', () => {
           sharedBeforeEach('grant permission', async () => {
             const action = await actionId(pool, 'setSwapFeePercentage');
-            await authorizer.connect(admin).grantRolesGlobally([action], sender.address);
+            await authorizer.connect(admin).grantPermissions([action], sender.address, [ANY_ADDRESS]);
           });
 
           itSetsSwapFeePercentage();
@@ -268,7 +269,7 @@ describe('LegacyBasePool', function () {
           context('when the sender has the set fee permission in the authorizer', () => {
             sharedBeforeEach(async () => {
               const action = await actionId(pool, 'setSwapFeePercentage');
-              await authorizer.connect(admin).grantRolesGlobally([action], sender.address);
+              await authorizer.connect(admin).grantPermissions([action], sender.address, [ANY_ADDRESS]);
             });
 
             itRevertsWithUnallowedSender();
@@ -344,7 +345,7 @@ describe('LegacyBasePool', function () {
       context('when the sender has the pause permission in the authorizer', () => {
         sharedBeforeEach('grant permission', async () => {
           const action = await actionId(pool, 'setPaused');
-          await authorizer.connect(admin).grantRolesGlobally([action], sender.address);
+          await authorizer.connect(admin).grantPermissions([action], sender.address, [ANY_ADDRESS]);
         });
 
         itCanPause();
@@ -383,7 +384,7 @@ describe('LegacyBasePool', function () {
         context('when the sender has the pause permission in the authorizer', () => {
           sharedBeforeEach(async () => {
             const action = await actionId(pool, 'setPaused');
-            await authorizer.connect(admin).grantRolesGlobally([action], sender.address);
+            await authorizer.connect(admin).grantPermissions([action], sender.address, [ANY_ADDRESS]);
           });
 
           itCanPause();

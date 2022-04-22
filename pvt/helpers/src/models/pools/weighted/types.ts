@@ -25,8 +25,9 @@ export type RawWeightedPoolDeployment = {
   oracleEnabled?: boolean;
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
+  protocolSwapFeePercentage?: BigNumberish;
   managementSwapFeePercentage?: BigNumberish;
-  owner?: string;
+  owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   vault?: Vault;
@@ -45,6 +46,7 @@ export type WeightedPoolDeployment = {
   oracleEnabled: boolean;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
   owner?: string;
   admin?: SignerWithAddress;
@@ -193,11 +195,6 @@ export type GradualUpdateParams = {
   endWeights: BigNumber[];
 };
 
-export type TokenCollectedFees = {
-  amounts: BigNumber[];
-  tokenAddresses: string[];
-};
-
 export type BasePoolRights = {
   canTransferOwnership: boolean;
   canChangeSwapFee: boolean;
@@ -210,21 +207,18 @@ export type ManagedPoolRights = {
   canSetMustAllowlistLPs: boolean;
   canSetCircuitBreakers: boolean;
   canChangeTokens: boolean;
-  canChangeMgmtSwapFee: boolean;
+  canChangeMgmtFees: boolean;
 };
 
 export type ManagedPoolParams = {
-  vault: string;
   name: string;
   symbol: string;
   tokens: string[];
   normalizedWeights: BigNumberish[];
   assetManagers: string[];
   swapFeePercentage: BigNumberish;
-  pauseWindowDuration: number;
-  bufferPeriodDuration: number;
-  owner: string;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
 };

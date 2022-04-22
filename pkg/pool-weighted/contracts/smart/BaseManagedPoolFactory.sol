@@ -38,27 +38,28 @@ contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWin
      * @dev Deploys a new `ManagedPool`. The owner should be a managed pool controller, deployed by
      * another factory.
      */
-    function create(ManagedPool.NewPoolParams memory poolParams) external returns (address pool) {
+    function create(ManagedPool.NewPoolParams memory poolParams, address owner) external returns (address pool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
         return
             _create(
                 abi.encode(
                     ManagedPool.NewPoolParams({
-                        vault: getVault(),
                         name: poolParams.name,
                         symbol: poolParams.symbol,
                         tokens: poolParams.tokens,
                         normalizedWeights: poolParams.normalizedWeights,
                         assetManagers: poolParams.assetManagers,
                         swapFeePercentage: poolParams.swapFeePercentage,
-                        pauseWindowDuration: pauseWindowDuration,
-                        bufferPeriodDuration: bufferPeriodDuration,
-                        owner: poolParams.owner,
                         swapEnabledOnStart: poolParams.swapEnabledOnStart,
                         mustAllowlistLPs: poolParams.mustAllowlistLPs,
+                        protocolSwapFeePercentage: poolParams.protocolSwapFeePercentage,
                         managementSwapFeePercentage: poolParams.managementSwapFeePercentage
-                    })
+                    }),
+                    getVault(),
+                    owner,
+                    pauseWindowDuration,
+                    bufferPeriodDuration
                 )
             );
     }

@@ -42,20 +42,18 @@ contract ManagedPoolFactory {
         ManagedPool.NewPoolParams memory poolParams,
         BasePoolController.BasePoolRights calldata basePoolRights,
         ManagedPoolController.ManagedPoolRights calldata managedPoolRights,
-        uint256 minWeightChangeDuration
+        uint256 minWeightChangeDuration,
+        address manager
     ) external returns (address pool) {
         ManagedPoolController poolController = new ManagedPoolController(
             basePoolRights,
             managedPoolRights,
             minWeightChangeDuration,
-            msg.sender
+            manager
         );
 
-        // Set the owner of the pool to the controller
-        poolParams.owner = address(poolController);
-
-        // Let the base factory deploy the pool
-        pool = BaseManagedPoolFactory(baseManagedPoolFactory).create(poolParams);
+        // Let the base factory deploy the pool (owner is the controller)
+        pool = BaseManagedPoolFactory(baseManagedPoolFactory).create(poolParams, address(poolController));
 
         // Finally, initialize the controller
         poolController.initialize(pool);
