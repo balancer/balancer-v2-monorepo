@@ -41,7 +41,6 @@ describe('WeightChange', function () {
         endTime
       );
 
-      // Need to decrease precision
       expect(interpolatedWeight).to.equal(startWeights[i]);
     }
   });
@@ -57,7 +56,6 @@ describe('WeightChange', function () {
         endTime
       );
 
-      // Need to decrease precision
       expect(interpolatedWeight).to.equal(endWeights[i]);
     }
   });
@@ -85,7 +83,6 @@ describe('WeightChange', function () {
           endTime
         );
         const expectedInterpolatedWeight = getIntermediateWeight(startWeights[i], endWeights[i], pct);
-        // Need to decrease precision
         expect(interpolatedWeight).to.equalWithError(expectedInterpolatedWeight, MAX_RELATIVE_ERROR);
       }
     });
