@@ -25,6 +25,7 @@ import { SwapKind } from '@balancer-labs/balancer-js';
 
 import { random, range } from 'lodash';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 describe('ManagedPool', function () {
   let allTokens: TokenList;
@@ -709,7 +710,7 @@ describe('ManagedPool', function () {
     let poolTokens: TokenList;
 
     sharedBeforeEach('deploy Vault', async () => {
-      vault = await Vault.create();
+      vault = await Vault.create({ admin });
     });
 
     sharedBeforeEach('deploy pool', async () => {
@@ -765,7 +766,7 @@ describe('ManagedPool', function () {
           });
 
           it('non-owners cannot remove tokens', async () => {
-            await expect(pool.removeToken(sender, poolTokens.get(0).address, other.address)).to.be.revertedWith(
+            await expect(pool.removeToken(sender, poolTokens.addresses[0], other.address)).to.be.revertedWith(
               'SENDER_NOT_ALLOWED'
             );
           });
@@ -791,6 +792,21 @@ describe('ManagedPool', function () {
             await expect(pool.removeToken(sender, ZERO_ADDRESS, other.address)).to.be.revertedWith('INVALID_TOKEN');
           });
 
+          context('when the pool is paused', () => {
+            sharedBeforeEach('pause pool', async () => {
+              await vault.authorizer
+                ?.connect(admin)
+                .grantPermissions([await actionId(pool.instance, 'setPaused')], other.address, [pool.address]);
+              await pool.instance.connect(other).setPaused(true);
+            });
+
+            it('reverts', async () => {
+              await expect(pool.removeToken(sender, poolTokens.addresses[0], other.address)).to.be.revertedWith(
+                'PAUSED'
+              );
+            });
+          });
+
           context('with a scheduled weight change', () => {
             let startTime: BigNumber, endTime: BigNumber;
 
@@ -805,7 +821,7 @@ describe('ManagedPool', function () {
             });
 
             it('reverts', async () => {
-              await expect(pool.removeToken(sender, poolTokens.get(0).address, other.address)).to.be.revertedWith(
+              await expect(pool.removeToken(sender, poolTokens.addresses[0], other.address)).to.be.revertedWith(
                 'CHANGE_TOKENS_PENDING_WEIGHT_CHANGE'
               );
             });
@@ -816,7 +832,7 @@ describe('ManagedPool', function () {
               });
 
               it('reverts', async () => {
-                await expect(pool.removeToken(sender, poolTokens.get(0).address, other.address)).to.be.revertedWith(
+                await expect(pool.removeToken(sender, poolTokens.addresses[0], other.address)).to.be.revertedWith(
                   'CHANGE_TOKENS_DURING_WEIGHT_CHANGE'
                 );
               });
