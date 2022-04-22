@@ -372,7 +372,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         _setMiscData(_getMiscData().insertUint7(tokens.length - 1, _TOTAL_TOKENS_OFFSET));
 
         // Decrease the total weight by the weight of the token being removed
-        _denormWeightSum -= normalizedWeightBeforeRemove;
+        _denormWeightSum -= _denormalizeWeight(normalizedWeightBeforeRemove);
 
         // The bpt amount corresponding to the token is simply its proportional share of the totalSupply
         return normalizedWeightBeforeRemove.mulDown(totalSupply());
