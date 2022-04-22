@@ -459,18 +459,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
     function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
         bytes32 tokenData = _getTokenData(token);
-        uint256 startWeight = _normalizeWeight(
-            tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
-        );
-        uint256 endWeight = _normalizeWeight(
-            tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
-        );
+        uint256 startWeight = tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT);
+        uint256 endWeight = tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT);
 
         bytes32 poolState = _getMiscData();
         uint256 startTime = poolState.decodeUint32(_WEIGHT_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_WEIGHT_END_TIME_OFFSET);
 
-        return GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
+        return _normalizeWeight(GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime));
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
@@ -485,14 +481,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         for (uint256 i = 0; i < numTokens; i++) {
             bytes32 tokenData = _tokenState[tokens[i]];
-            uint256 startWeight = _normalizeWeight(
-                tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
-            );
-            uint256 endWeight = _normalizeWeight(
-                tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
-            );
+            uint256 startWeight = tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT);
+            uint256 endWeight = tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT);
 
-            normalizedWeights[i] = GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
+            normalizedWeights[i] = _normalizeWeight(
+                GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime)
+            );
         }
     }
 
