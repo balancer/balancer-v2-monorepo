@@ -5,6 +5,8 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { DAY, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 
+const MAX_RELATIVE_ERROR = 0.00005;
+
 describe('WeightChange', function () {
   let mock: Contract;
 
@@ -40,7 +42,7 @@ describe('WeightChange', function () {
       );
 
       // Need to decrease precision
-      expect(interpolatedWeight).to.equalWithError(startWeights[i], 0.0001);
+      expect(interpolatedWeight).to.equal(startWeights[i]);
     }
   });
 
@@ -56,7 +58,7 @@ describe('WeightChange', function () {
       );
 
       // Need to decrease precision
-      expect(interpolatedWeight).to.equalWithError(endWeights[i], 0.0001);
+      expect(interpolatedWeight).to.equal(endWeights[i]);
     }
   });
 
@@ -84,7 +86,7 @@ describe('WeightChange', function () {
         );
         const expectedInterpolatedWeight = getIntermediateWeight(startWeights[i], endWeights[i], pct);
         // Need to decrease precision
-        expect(interpolatedWeight).to.equalWithError(expectedInterpolatedWeight, 0.0001);
+        expect(interpolatedWeight).to.equalWithError(expectedInterpolatedWeight, MAX_RELATIVE_ERROR);
       }
     });
   }
