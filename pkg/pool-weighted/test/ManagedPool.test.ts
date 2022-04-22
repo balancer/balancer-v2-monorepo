@@ -1095,11 +1095,13 @@ describe('ManagedPool', function () {
       await poolTokens.mint({ to: owner, amount: fp(100) });
       await poolTokens.approve({ from: owner, to: await pool.getVault() });
       await pool.init({ from: owner, initialBalances });
+
+      // Clock no longer starts at initialization
+      // Now we have to do a join to start the clock
+      await expect(pool.joinAllGivenOut({ from: owner, bptOut: fp(0) }));
     });
 
     it('accounts for the protocol portion of the AUM fee', async () => {
-      await advanceTime(180 * DAY);
-
       const totalSupply = await pool.totalSupply();
       const expectedBpt = totalSupply
         .mul(180)
@@ -1111,6 +1113,8 @@ describe('ManagedPool', function () {
 
       const protocolPortion = expectedBpt.mul(AUM_PROTOCOL_FEE_PERCENTAGE).div(fp(1));
       const ownerPortion = expectedBpt.sub(protocolPortion);
+
+      await advanceTime(180 * DAY);
 
       const receipt = await pool.collectAumManagementFees(owner);
       expectEvent.inReceipt(await receipt.wait(), 'ManagementAumFeeCollected');
