@@ -23,6 +23,6 @@ contract MockWeightChange {
         uint256 startTime,
         uint256 endTime
     ) external view returns (uint256) {
-       return WeightChange.getNormalizedWeight(startWeight, endWeight, startTime, endTime);
+        return WeightChange.getNormalizedWeight(startWeight, endWeight, startTime, endTime);
     }
 }
