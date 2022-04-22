@@ -152,7 +152,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _setSwapFeePercentage(swapFeePercentage);
     }
 
-    function _setSwapFeePercentage(uint256 swapFeePercentage) private {
+    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual {
         _require(swapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
 

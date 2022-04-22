@@ -245,6 +245,46 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @dev Return start time, end time, and endWeights as an array.
      * Current weights should be retrieved via `getNormalizedWeights()`.
      */
+    function getGradualFeeUpdateParams()
+        external
+        view
+        returns (
+            uint256 startTime,
+            uint256 endTime,
+            uint256 endSwapFeePercentage
+        )
+    {
+        // Load current pool state from storage
+        bytes32 poolState = _getMiscData();
+
+        startTime = poolState.decodeUint32(_FEE_START_TIME_OFFSET);
+        endTime = poolState.decodeUint32(_FEE_END_TIME_OFFSET);
+        endSwapFeePercentage = _endSwapFeePercentage;
+    }
+
+    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual override {
+        // Do not allow setting if there is an ongoing fee change
+        uint256 currentTime = block.timestamp;
+        bytes32 poolState = _getMiscData();
+
+        uint256 startTime = poolState.decodeUint32(_FEE_START_TIME_OFFSET);
+        uint256 endTime = poolState.decodeUint32(_FEE_END_TIME_OFFSET);
+
+        if (currentTime < startTime) {
+            _revert(Errors.SET_SWAP_FEE_PENDING_FEE_CHANGE);
+        } else if (currentTime < endTime) {
+            _revert(Errors.SET_SWAP_FEE_DURING_FEE_CHANGE);
+        }
+
+        _setSwapFeeData(currentTime, currentTime, swapFeePercentage, swapFeePercentage);
+
+        super._setSwapFeePercentage(swapFeePercentage);
+    }
+
+    /**
+     * @dev Return start time, end time, and endWeights as an array.
+     * Current weights should be retrieved via `getNormalizedWeights()`.
+     */
     function getGradualWeightUpdateParams()
         external
         view
@@ -672,6 +712,17 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) internal virtual {
+        _setSwapFeeData(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+
+        emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+    }
+
+    function _setSwapFeeData(
+        uint256 startTime,
+        uint256 endTime,
+        uint256 startSwapFeePercentage, 
+        uint256 endSwapFeePercentage
+    ) private {
         _setMiscData(
             _getMiscData()
                 .insertUint32(startTime, _FEE_START_TIME_OFFSET)
@@ -680,8 +731,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         );
 
         _endSwapFeePercentage = endSwapFeePercentage;
-
-        emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
     }
 
     // Factored out to avoid stack issues
