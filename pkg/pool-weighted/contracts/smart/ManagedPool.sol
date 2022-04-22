@@ -24,8 +24,10 @@ import "@balancer-labs/v2-balancer-interfaces/contracts/pool-weighted/WeightedPo
 
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
+import "../lib/GradualValueChange.sol";
+import "../lib/WeightCompression.sol";
+
 import "../BaseWeightedPool.sol";
-import "./WeightCompression.sol";
 
 /**
  * @dev Weighted Pool with mutable tokens and weights, designed to be used in conjunction with a pool controller
@@ -271,13 +273,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     ) external authenticate whenNotPaused nonReentrant {
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
 
-        // If the start time is in the past, "fast forward" to start now
-        // This avoids discontinuities in the weight curve. Otherwise, if you set the start/end times with
-        // only 10% of the period in the future, the weights would immediately jump 90%
-        uint256 currentTime = block.timestamp;
-        startTime = Math.max(currentTime, startTime);
-
-        _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
+        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
@@ -373,10 +369,19 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     }
 
     function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
-        uint256 pctProgress = _calculateWeightChangeProgress();
         bytes32 tokenData = _getTokenData(token);
+        uint256 startWeight = _normalizeWeight(
+            tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
+        );
+        uint256 endWeight = _normalizeWeight(
+            tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
+        );
 
-        return _interpolateWeight(tokenData, pctProgress);
+        bytes32 poolState = _getMiscData();
+        uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
+        uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+
+        return GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
@@ -385,12 +390,20 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         normalizedWeights = new uint256[](numTokens);
 
-        uint256 pctProgress = _calculateWeightChangeProgress();
+        bytes32 poolState = _getMiscData();
+        uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
+        uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
 
         for (uint256 i = 0; i < numTokens; i++) {
             bytes32 tokenData = _tokenState[tokens[i]];
+            uint256 startWeight = _normalizeWeight(
+                tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
+            );
+            uint256 endWeight = _normalizeWeight(
+                tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
+            );
 
-            normalizedWeights[i] = _interpolateWeight(tokenData, pctProgress);
+            normalizedWeights[i] = GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
         }
     }
 
@@ -658,50 +671,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             (actionId == getActionId(ManagedPool.setMustAllowlistLPs.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementSwapFeePercentage.selector)) ||
             super._isOwnerOnlyAction(actionId);
-    }
-
-    /**
-     * @dev Returns a fixed-point number representing how far along the current weight change is, where 0 means the
-     * change has not yet started, and FixedPoint.ONE means it has fully completed.
-     */
-    function _calculateWeightChangeProgress() private view returns (uint256) {
-        uint256 currentTime = block.timestamp;
-        bytes32 poolState = _getMiscData();
-
-        uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
-        uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
-
-        if (currentTime >= endTime) {
-            return FixedPoint.ONE;
-        } else if (currentTime <= startTime) {
-            return 0;
-        }
-
-        uint256 totalSeconds = endTime - startTime;
-        uint256 secondsElapsed = currentTime - startTime;
-
-        // In the degenerate case of a zero duration change, consider it completed (and avoid division by zero)
-        return secondsElapsed.divDown(totalSeconds);
-    }
-
-    function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private view returns (uint256) {
-        uint256 startWeight = _normalizeWeight(
-            tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
-        );
-        uint256 endWeight = _normalizeWeight(
-            tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
-        );
-
-        if (pctProgress == 0 || startWeight == endWeight) return startWeight;
-        if (pctProgress >= FixedPoint.ONE) return endWeight;
-
-        if (startWeight > endWeight) {
-            uint256 weightDelta = pctProgress.mulDown(startWeight - endWeight);
-            return startWeight - weightDelta;
-        } else {
-            uint256 weightDelta = pctProgress.mulDown(endWeight - startWeight);
-            return startWeight + weightDelta;
-        }
     }
 
     function _getTokenData(IERC20 token) private view returns (bytes32 tokenData) {
