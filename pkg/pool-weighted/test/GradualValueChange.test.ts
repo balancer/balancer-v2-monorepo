@@ -7,20 +7,20 @@ import { expect } from 'chai';
 
 const MAX_RELATIVE_ERROR = 0.0005;
 
-describe('WeightChange', function () {
+describe('GradualValueChange', function () {
   let mock: Contract;
 
   before(async function () {
-    mock = await deploy('MockWeightChange');
+    mock = await deploy('MockGradualValueChange');
   });
 
-  const numWeights = 20;
-  const startWeights = Array.from({ length: numWeights }).map((_, i) => fp(i / numWeights));
-  const endWeights = startWeights.map((weight, i) => {
+  const numValues = 20;
+  const startValues = Array.from({ length: numValues }).map((_, i) => fp(i / numValues));
+  const endValues = startValues.map((value, i) => {
     if (i % 2 == 0) {
-      return weight.add(fp(0.02));
+      return value.add(fp(0.02));
     }
-    return weight.sub(fp(0.02));
+    return value.sub(fp(0.02));
   });
 
   let now, startTime: BigNumber, endTime: BigNumber;
@@ -34,19 +34,19 @@ describe('WeightChange', function () {
   });
 
   it('gets start weights if called before the start time', async () => {
-    for (let i = 0; i < numWeights; i++) {
-      const interpolatedWeight = await mock.getInterpolatedValue(startWeights[i], endWeights[i], startTime, endTime);
+    for (let i = 0; i < numValues; i++) {
+      const interpolatedWeight = await mock.getInterpolatedValue(startValues[i], endValues[i], startTime, endTime);
 
-      expect(interpolatedWeight).to.equal(startWeights[i]);
+      expect(interpolatedWeight).to.equal(startValues[i]);
     }
   });
 
   it('gets end weights if called after the end time', async () => {
     await advanceTime(endTime.add(MINUTE));
-    for (let i = 0; i < numWeights; i++) {
-      const interpolatedWeight = await mock.getInterpolatedValue(startWeights[i], endWeights[i], startTime, endTime);
+    for (let i = 0; i < numValues; i++) {
+      const interpolatedWeight = await mock.getInterpolatedValue(startValues[i], endValues[i], startTime, endTime);
 
-      expect(interpolatedWeight).to.equal(endWeights[i]);
+      expect(interpolatedWeight).to.equal(endValues[i]);
     }
   });
 
@@ -63,9 +63,10 @@ describe('WeightChange', function () {
   for (let pct = 5; pct < 100; pct += 5) {
     it(`gets correct intermediate weight if called ${pct}% through`, async () => {
       await advanceTime(START_DELAY + (UPDATE_DURATION * pct) / 100);
-      for (let i = 0; i < numWeights; i++) {
-        const interpolatedWeight = await mock.getInterpolatedValue(startWeights[i], endWeights[i], startTime, endTime);
-        const expectedInterpolatedWeight = getIntermediateWeight(startWeights[i], endWeights[i], pct);
+
+      for (let i = 0; i < numValues; i++) {
+        const interpolatedWeight = await mock.getInterpolatedValue(startValues[i], endValues[i], startTime, endTime);
+        const expectedInterpolatedWeight = getIntermediateWeight(startValues[i], endValues[i], pct);
         expect(interpolatedWeight).to.equalWithError(expectedInterpolatedWeight, MAX_RELATIVE_ERROR);
       }
     });
