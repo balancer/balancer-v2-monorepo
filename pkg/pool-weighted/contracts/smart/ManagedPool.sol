@@ -254,8 +254,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Return start time, end time, and endWeights as an array.
-     * Current weights should be retrieved via `getNormalizedWeights()`.
+     * @dev Return start/end times and swap fee percentages. The current swap fee
+     * can be retrieved via `getSwapFeePercentage()`.
      */
     function getGradualFeeUpdateParams()
         external
