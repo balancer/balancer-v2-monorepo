@@ -720,7 +720,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     function _setSwapFeeData(
         uint256 startTime,
         uint256 endTime,
-        uint256 startSwapFeePercentage, 
+        uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) private {
         _setMiscData(
