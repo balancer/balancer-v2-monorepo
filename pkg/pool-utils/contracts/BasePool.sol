@@ -160,11 +160,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
-    function _getMinSwapFeePercentage() internal virtual pure returns (uint256) {
+    function _getMinSwapFeePercentage() internal pure virtual returns (uint256) {
         return _MIN_SWAP_FEE_PERCENTAGE;
     }
 
-    function _getMaxSwapFeePercentage() internal virtual pure returns (uint256) {
+    function _getMaxSwapFeePercentage() internal pure virtual returns (uint256) {
         return _MAX_SWAP_FEE_PERCENTAGE;
     }
 
