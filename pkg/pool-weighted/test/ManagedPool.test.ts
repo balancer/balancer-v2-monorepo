@@ -13,6 +13,7 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { SwapKind } from '@balancer-labs/balancer-js';
 
 import { range } from 'lodash';
