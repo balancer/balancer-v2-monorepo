@@ -23,7 +23,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
-import "../lib/WeightChange.sol";
+import "../lib/GradualValueChange.sol";
 import "../lib/WeightCompression.sol";
 
 import "../BaseWeightedPool.sol";
@@ -273,13 +273,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     ) external authenticate whenNotPaused nonReentrant {
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
 
-        // If the start time is in the past, "fast forward" to start now
-        // This avoids discontinuities in the weight curve. Otherwise, if you set the start/end times with
-        // only 10% of the period in the future, the weights would immediately jump 90%
-        uint256 currentTime = block.timestamp;
-        startTime = Math.max(currentTime, startTime);
-
-        _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
+        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
@@ -387,7 +381,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
 
-        return WeightChange.getNormalizedWeight(startWeight, endWeight, startTime, endTime);
+        return GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
@@ -409,7 +403,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
                 tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
             );
 
-            normalizedWeights[i] = WeightChange.getNormalizedWeight(startWeight, endWeight, startTime, endTime);
+            normalizedWeights[i] = GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
         }
     }
 

@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
-import "../lib/WeightChange.sol";
+import "../lib/GradualValueChange.sol";
 import "../lib/WeightCompression.sol";
 
 import "../BaseWeightedPool.sol";
@@ -185,14 +185,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     ) external authenticate whenNotPaused nonReentrant {
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
 
-        // If the start time is in the past, "fast forward" to start now
-        // This avoids discontinuities in the weight curve. Otherwise, if you set the start/end times with
-        // only 10% of the period in the future, the weights would immediately jump 90%
-        uint256 currentTime = block.timestamp;
-        startTime = Math.max(currentTime, startTime);
-
-        _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
-
+        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights);
     }
 
@@ -221,7 +214,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
 
-        return WeightChange.getNormalizedWeight(startWeight, endWeight, startTime, endTime);
+        return GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory) {
