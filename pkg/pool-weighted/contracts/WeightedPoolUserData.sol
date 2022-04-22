@@ -74,7 +74,8 @@ library WeightedPoolUserData {
         (, amountsOut, maxBPTAmountIn) = abi.decode(self, (ExitKind, uint256[], uint256));
     }
 
-    function removeToken(bytes memory self) internal pure returns (uint256 tokenIndex, uint256 amountOut) {
-        (, tokenIndex, amountOut) = abi.decode(self, (ExitKind, uint256, uint256));
+    // Managed Pool
+    function removeToken(bytes memory self) internal pure returns (uint256 tokenIndex) {
+        (, tokenIndex) = abi.decode(self, (ExitKind, uint256));
     }
 }

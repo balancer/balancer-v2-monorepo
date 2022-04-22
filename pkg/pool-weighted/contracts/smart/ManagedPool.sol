@@ -387,7 +387,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             IVault.ExitPoolRequest({
                 assets: _asIAsset(tokens),
                 minAmountsOut: minAmountsOut,
-                userData: abi.encode(WeightedPoolUserData.ExitKind.REMOVE_TOKEN, tokenIndex, unscaledTokenAmountOut),
+                userData: abi.encode(WeightedPoolUserData.ExitKind.REMOVE_TOKEN, tokenIndex),
                 toInternalBalance: false
             })
         );
@@ -640,12 +640,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
-        // out) remain functional.
-
-        // If swaps are disabled, the only exit kind that is allowed is the proportional one (as all others involve
-        // implicit swaps and alter token prices) and management fee collection (as there's no point in restricting
-        // that). It also allows removing a token.
+        // If swaps are disabled, the only exit kinds that are allowed are the proportional one (as all others involve
+        // implicit swaps and alter token prices) and the internal mechanism for token removal.
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
         _require(
             getSwapEnabled() ||
@@ -656,7 +652,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         return
             userData.exitKind() == WeightedPoolUserData.ExitKind.REMOVE_TOKEN
-                ? _exitRemoveToken(sender, scalingFactors, userData)
+                ? _doExitRemoveToken(sender, balances, userData)
                 : super._onExitPool(
                     poolId,
                     sender,
@@ -669,25 +665,27 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
                 );
     }
 
-    function _exitRemoveToken(
+    function _doExitRemoveToken(
         address sender,
-        uint256[] memory scalingFactors,
+        uint256[] memory balances,
         bytes memory userData
-    ) private view whenNotPaused returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+    ) private view whenNotPaused returns (uint256, uint256[] memory) {
         // This exit function is disabled if the contract is paused.
 
         // This exit function can only be called by the Pool itself - the authorization logic that governs when that
         // call can be made resides in removeToken.
         _require(sender == address(this), Errors.UNAUTHORIZED_EXIT);
 
-        // No BPT is required for the exit operation itself. The `removeToken` function calculates and returns
-        // the bptAmountIn, but leaves any further action, such as burning BPT, up to the caller.
-        bptAmountIn = 0;
+        uint256 tokenIndex = userData.removeToken();
 
-        (uint256 tokenIndex, uint256 amountOut) = userData.removeToken();
+        // No BPT is required to remove the token - it is up to the caller do determine under which conditions removing
+        // a token makes sense, and if e.g. burning BPT is required.
+        uint256 bptAmountIn = 0;
 
-        amountsOut = new uint256[](_getTotalTokens());
-        amountsOut[tokenIndex] = _upscale(amountOut, scalingFactors[tokenIndex]);
+        uint256[] memory amountsOut = new uint256[](_getTotalTokens());
+        amountsOut[tokenIndex] = balances[tokenIndex];
+
+        return (bptAmountIn, amountsOut);
     }
 
     function _tokenAddressToIndex(IERC20 token) internal view returns (uint256) {

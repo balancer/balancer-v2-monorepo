@@ -781,7 +781,7 @@ describe('ManagedPool', function () {
               vault.instance.connect(owner).exitPool(await pool.getPoolId(), owner.address, other.address, {
                 assets: poolTokens.addresses,
                 minAmountsOut: new Array(poolTokens.length).fill(bn(0)),
-                userData: ManagedPoolEncoder.exitForRemoveToken(0, fp(100)),
+                userData: ManagedPoolEncoder.exitForRemoveToken(0),
                 toInternalBalance: false,
               })
             ).to.be.revertedWith('UNAUTHORIZED_EXIT');
