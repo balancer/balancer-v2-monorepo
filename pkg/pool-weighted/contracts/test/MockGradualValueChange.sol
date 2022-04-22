@@ -25,4 +25,11 @@ contract MockGradualValueChange {
     ) external view returns (uint256) {
         return GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
     }
+
+    function resolveStartTime(
+        uint256 startTime,
+        uint256 endTime
+    ) external view returns (uint256) {
+        return GradualValueChange.resolveStartTime(startTime, endTime);
+    }
 }

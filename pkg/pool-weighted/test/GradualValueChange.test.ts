@@ -14,6 +14,42 @@ describe('GradualValueChange', function () {
     mock = await deploy('MockGradualValueChange');
   });
 
+  describe('resolveStartTime', () => {
+    let now: BigNumber;
+
+    sharedBeforeEach('get current timestamp', async () => {
+      now = await currentTimestamp();
+    });
+
+    context('when the start time is after the end time', () => {
+      it('reverts', async () => {
+        const startTime = now.add(DAY);
+        await expect(mock.resolveStartTime(startTime, startTime.sub(1))).to.be.revertedWith(
+          'GRADUAL_UPDATE_TIME_TRAVEL'
+        );
+      });
+    });
+
+    context('when the start time is before the end time', () => {
+      it('returns the start time', async () => {
+        const startTime = now.add(DAY);
+        expect(await mock.resolveStartTime(startTime, startTime)).to.be.eq(startTime);
+        expect(await mock.resolveStartTime(startTime, startTime.add(1))).to.be.eq(startTime);
+        expect(await mock.resolveStartTime(startTime, startTime.add(DAY))).to.be.eq(startTime);
+      });
+
+      context('when the start time is in the past', () => {
+        it('it is fast forwarded up to the current timestamp', async () => {
+          const startTime = now.sub(DAY);
+          const endTime = startTime.add(DAY);
+          expect(await mock.resolveStartTime(startTime, endTime)).to.be.eq(now);
+          expect(await mock.resolveStartTime(startTime, endTime)).to.be.eq(now);
+          expect(await mock.resolveStartTime(startTime, endTime)).to.be.eq(now);
+        });
+      });
+    });
+  });
+
   describe('getInterpolatedValue', () => {
     const numValues = 20;
     const startValues = Array.from({ length: numValues }).map((_, i) => fp(i / numValues));
