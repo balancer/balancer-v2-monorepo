@@ -1,11 +1,11 @@
-import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { DAY, MINUTE } from '@balancer-labs/v2-helpers/src/time';
+import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { advanceTime, currentTimestamp, DAY, MINUTE } from '@balancer-labs/v2-helpers/src/time';
+import { expect } from 'chai';
 
-const MAX_RELATIVE_ERROR = 0.00005;
+const MAX_RELATIVE_ERROR = 0.0005;
 
 describe('WeightChange', function () {
   let mock: Contract;
@@ -23,38 +23,28 @@ describe('WeightChange', function () {
     return weight.sub(fp(0.02));
   });
 
+  let now, startTime: BigNumber, endTime: BigNumber;
   const START_DELAY = MINUTE * 10;
   const UPDATE_DURATION = DAY * 2;
 
-  const offset = bn(50 * 365 * DAY);
-  const startTime = offset.add(START_DELAY);
-  const endTime = startTime.add(UPDATE_DURATION);
+  sharedBeforeEach('updateWeightsGradually', async () => {
+    now = await currentTimestamp();
+    startTime = now.add(START_DELAY);
+    endTime = startTime.add(UPDATE_DURATION);
+  });
 
   it('gets start weights if called before the start time', async () => {
-    const now = offset;
     for (let i = 0; i < numWeights; i++) {
-      const interpolatedWeight = await mock.getNormalizedWeight(
-        startWeights[i],
-        endWeights[i],
-        now,
-        startTime,
-        endTime
-      );
+      const interpolatedWeight = await mock.getNormalizedWeight(startWeights[i], endWeights[i], startTime, endTime);
 
       expect(interpolatedWeight).to.equal(startWeights[i]);
     }
   });
 
   it('gets end weights if called after the end time', async () => {
-    const now = endTime.add(MINUTE);
+    await advanceTime(endTime.add(MINUTE));
     for (let i = 0; i < numWeights; i++) {
-      const interpolatedWeight = await mock.getNormalizedWeight(
-        startWeights[i],
-        endWeights[i],
-        now,
-        startTime,
-        endTime
-      );
+      const interpolatedWeight = await mock.getNormalizedWeight(startWeights[i], endWeights[i], startTime, endTime);
 
       expect(interpolatedWeight).to.equal(endWeights[i]);
     }
@@ -72,16 +62,9 @@ describe('WeightChange', function () {
 
   for (let pct = 5; pct < 100; pct += 5) {
     it(`gets correct intermediate weight if called ${pct}% through`, async () => {
-      const now = startTime.add((UPDATE_DURATION * pct) / 100);
-
+      await advanceTime(START_DELAY + (UPDATE_DURATION * pct) / 100);
       for (let i = 0; i < numWeights; i++) {
-        const interpolatedWeight = await mock.getNormalizedWeight(
-          startWeights[i],
-          endWeights[i],
-          now,
-          startTime,
-          endTime
-        );
+        const interpolatedWeight = await mock.getNormalizedWeight(startWeights[i], endWeights[i], startTime, endTime);
         const expectedInterpolatedWeight = getIntermediateWeight(startWeights[i], endWeights[i], pct);
         expect(interpolatedWeight).to.equalWithError(expectedInterpolatedWeight, MAX_RELATIVE_ERROR);
       }
