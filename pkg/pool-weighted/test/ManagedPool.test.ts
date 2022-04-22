@@ -570,45 +570,21 @@ describe('ManagedPool', function () {
         });
 
         context('with valid parameters (ongoing weight update)', () => {
-          // startWeights must equal "weights" above - just not using fp to keep math simple
-          const startWeights = [...poolWeights];
-          const endWeights = [...poolWeights];
-
-          // Now generate endWeights (first weight doesn't change)
-          for (let i = 2; i < poolWeights.length; i++) {
-            endWeights[i] = 0 == i % 2 ? startWeights[i].add(fp(0.02)) : startWeights[i].sub(fp(0.02));
-          }
-
-          function getEndWeights(pct: number): BigNumber[] {
-            const intermediateWeights = Array<BigNumber>(poolWeights.length);
-
-            for (let i = 0; i < poolWeights.length; i++) {
-              if (startWeights[i] < endWeights[i]) {
-                // Weight is increasing
-                intermediateWeights[i] = startWeights[i].add(endWeights[i].sub(startWeights[i]).mul(pct).div(100));
-              } else {
-                // Weight is decreasing (or not changing)
-                intermediateWeights[i] = startWeights[i].sub(startWeights[i].sub(endWeights[i]).mul(pct).div(100));
-              }
-            }
-
-            return intermediateWeights;
-          }
+          const endWeights = poolWeights.map((weight, i) => (i % 2 == 0 ? weight.add(fp(0.02)) : weight.sub(fp(0.02))));
 
           let now, startTime: BigNumber, endTime: BigNumber;
           const START_DELAY = MINUTE * 10;
-          const finalEndWeights = getEndWeights(100);
 
           sharedBeforeEach('updateWeightsGradually', async () => {
             now = await currentTimestamp();
             startTime = now.add(START_DELAY);
             endTime = startTime.add(UPDATE_DURATION);
 
-            await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
+            await pool.updateWeightsGradually(owner, startTime, endTime, endWeights);
           });
 
           it('updating weights emits an event', async () => {
-            const receipt = await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
+            const receipt = await pool.updateWeightsGradually(owner, startTime, endTime, endWeights);
 
             expectEvent.inReceipt(await receipt.wait(), 'GradualWeightUpdateScheduled', {
               startTime: startTime,
@@ -622,7 +598,7 @@ describe('ManagedPool', function () {
 
             expect(updateParams.startTime).to.equalWithError(startTime, 0.001);
             expect(updateParams.endTime).to.equalWithError(endTime, 0.001);
-            expect(updateParams.endWeights).to.equalWithError(finalEndWeights, 0.001);
+            expect(updateParams.endWeights).to.equalWithError(endWeights, 0.001);
           });
         });
       });
