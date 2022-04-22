@@ -14,5 +14,10 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     input.MaxSubmissionCost,
   ];
 
-  await task.deployAndVerify('ArbitrumRootGaugeFactory', args, from, force);
+  const factory = await task.deployAndVerify('ArbitrumRootGaugeFactory', args, from, force);
+
+  await task.verify('ArbitrumRootGauge', await factory.getGaugeImplementation(), [
+    input.BalancerMinter,
+    input.GatewayRouter,
+  ]);
 };
