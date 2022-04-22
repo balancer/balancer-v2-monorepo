@@ -756,10 +756,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             // Reset the collection timer to the current block
             _lastAumFeeCollectionTimestamp = currentTime;
 
+            uint256 managementAumFeePercentage = getManagementAumFeePercentage();
+
             // `lastCollection == 0` means that we're in the first attempt to collect AUM fees
             // For gas reasons we only collect AUM fees from this point onwards so perform an early return if so.
             // We also perform an early return if pool's emergency pause mechanism has been triggered.
-            if (getManagementAumFeePercentage() == 0 || lastCollection == 0 || !_isNotPaused()) {
+            if (managementAumFeePercentage == 0 || lastCollection == 0 || !_isNotPaused()) {
                 return;
             }
 
@@ -771,7 +773,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             // x(1 - F) = FS
             // x = S * F/(1 - F); per annual time period
             // Final value needs to be annualized: multiply by elapsedTime/(365 days)
-            uint256 feePct = getManagementAumFeePercentage().divDown(getManagementAumFeePercentage().complement());
+            uint256 feePct = managementAumFeePercentage.divDown(managementAumFeePercentage.complement());
             uint256 timePeriodPct = elapsedTime.mulUp(FixedPoint.ONE).divDown(365 days);
             uint256 bptAmount = totalSupply().mulDown(feePct).mulDown(timePeriodPct);
 
