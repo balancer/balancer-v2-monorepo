@@ -327,10 +327,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Getter for the sum of all weights. In initially FixedPoint.ONE, it can be higher or lower
-     * as a result of adds and removes.
+     * @dev Returns the normalization factor, which is used to efficiently scale weights when adding and removing
+     * tokens. This value is an internal implementation detail and typically useless from the outside.
      */
-    function getDenormWeightSum() external view returns (uint256) {
+    function getDenormalizedWeightSum() public view returns (uint256) {
         return _denormWeightSum;
     }
 
