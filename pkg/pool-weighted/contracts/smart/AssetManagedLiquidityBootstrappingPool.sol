@@ -21,8 +21,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import "@balancer-labs/v2-asset-manager-utils/contracts/IAssetManager.sol";
 
+import "../lib/WeightCompression.sol";
+
 import "../BaseWeightedPool.sol";
-import "./WeightCompression.sol";
 
 /**
  * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping: potentially without
