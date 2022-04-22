@@ -30,7 +30,7 @@ describe('ManagedPool', function () {
   const MAX_TOKENS = 50;
   const TOKEN_COUNT = 20;
 
-  const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  const POOL_SWAP_FEE_PERCENTAGE = fp(0.05);
   const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.7);
   const NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.8);
   const WEIGHTS = range(10000, 10000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
@@ -573,6 +573,101 @@ describe('ManagedPool', function () {
             expect(updateParams.startTime).to.equalWithError(startTime, 0.001);
             expect(updateParams.endTime).to.equalWithError(endTime, 0.001);
             expect(updateParams.endWeights).to.equalWithError(endWeights, 0.001);
+          });
+        });
+      });
+    });
+
+    describe('update swap fee gradually', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        const params = {
+          tokens: poolTokens,
+          weights: poolWeights,
+          owner: owner.address,
+          swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+          poolType: WeightedPoolType.MANAGED_POOL,
+          swapEnabledOnStart: true,
+        };
+        pool = await WeightedPool.create(params);
+      });
+
+      const UPDATE_DURATION = DAY * 2;
+      const NEW_SWAP_FEE = fp(0.1);
+
+      context('when the sender is not the owner', () => {
+        it('non-owners cannot update weights', async () => {
+          const now = await currentTimestamp();
+
+          await expect(pool.updateSwapFeeGradually(other, now, now, NEW_SWAP_FEE)).to.be.revertedWith(
+            'SENDER_NOT_ALLOWED'
+          );
+        });
+      });
+
+      context('when the sender is the owner', () => {
+        beforeEach('set sender to owner', () => {
+          sender = owner;
+        });
+
+        sharedBeforeEach('initialize pool', async () => {
+          await pool.init({ from: sender, initialBalances });
+        });
+
+        context('with invalid parameters', () => {
+          let now: BigNumber;
+
+          sharedBeforeEach(async () => {
+            now = await currentTimestamp();
+          });
+
+          it('fails with a swap fee too low', async () => {
+            const LOW_FEE = 0;
+
+            await expect(pool.updateSwapFeeGradually(sender, now.add(100), now.add(WEEK), LOW_FEE)).to.be.revertedWith(
+              'MIN_SWAP_FEE_PERCENTAGE'
+            );
+          });
+
+          it('fails with a swap fee too high', async () => {
+            const HIGH_FEE = fp(2);
+
+            await expect(pool.updateSwapFeeGradually(sender, now.add(100), now.add(WEEK), HIGH_FEE)).to.be.revertedWith(
+              'MAX_SWAP_FEE_PERCENTAGE'
+            );
+          });
+        });
+
+        context('with valid parameters (ongoing swap fee update)', () => {
+          let now, startTime: BigNumber, endTime: BigNumber;
+          const START_DELAY = MINUTE * 10;
+          const NEW_SWAP_FEE = fp(0.01);
+
+          sharedBeforeEach('updateWeightsGradually', async () => {
+            now = await currentTimestamp();
+            startTime = now.add(START_DELAY);
+            endTime = startTime.add(UPDATE_DURATION);
+
+            await pool.updateSwapFeeGradually(owner, startTime, endTime, NEW_SWAP_FEE);
+          });
+
+          it('updating the swap fee emits an event', async () => {
+            const receipt = await pool.updateSwapFeeGradually(owner, startTime, endTime, NEW_SWAP_FEE);
+
+            expectEvent.inReceipt(await receipt.wait(), 'GradualSwapFeeUpdateScheduled', {
+              startTime: startTime,
+              endTime: endTime,
+              startSwapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+              endSwapFeePercentage: NEW_SWAP_FEE,
+            });
+          });
+
+          it('stores the params', async () => {
+            const updateParams = await pool.getGradualSwapFeeUpdateParams();
+
+            expect(updateParams.startTime).to.equalWithError(startTime, 0.001);
+            expect(updateParams.endTime).to.equalWithError(endTime, 0.001);
+            expect(updateParams.startSwapFeePercentage).to.equal(POOL_SWAP_FEE_PERCENTAGE);
+            expect(updateParams.endSwapFeePercentage).to.equal(NEW_SWAP_FEE);
           });
         });
       });
