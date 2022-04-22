@@ -75,14 +75,17 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     // Store non-token-based values:
     // Start/end timestamps for gradual weight update
     // Cache total tokens
-    // [ 64 bits  | 119 bits |    1 bit    |  32 bits  |   32 bits  |    7 bits    |   1 bit   ]
-    // [ reserved |  unused  | restrict LP | end time  | start time | total tokens | swap flag ]
-    // |MSB                                                                                 LSB|
+    // [ 64 bits  | 55 bits |    1 bit    | 32 bits |  32 bits  |  32 bits |  32 bits  |    7 bits    |   1 bit   ]
+    // [ swap fee | unused  | restrict LP | end fee | start fee | end wgt  | start wgt | total tokens | swap flag ]
+    // |MSB                                                                                                    LSB|
     uint256 private constant _SWAP_ENABLED_OFFSET = 0;
     uint256 private constant _TOTAL_TOKENS_OFFSET = 1;
-    uint256 private constant _START_TIME_OFFSET = 8;
-    uint256 private constant _END_TIME_OFFSET = 40;
-    uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 72;
+    uint256 private constant _WEIGHT_START_TIME_OFFSET = 8;
+    uint256 private constant _WEIGHT_END_TIME_OFFSET = 40;
+    uint256 private constant _FEE_START_TIME_OFFSET = 72;
+    uint256 private constant _FEE_END_TIME_OFFSET = 104;
+    uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 136;
+    uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
 
     // 7 bits is enough for the token count, since _MAX_MANAGED_TOKENS is 50
 
@@ -116,6 +119,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
     uint256 private _managementSwapFeePercentage;
 
+    // Don't have enough bits left in MiscData for the swap fee
+    uint256 private _endSwapFeePercentage;
+
     // Event declarations
 
     event GradualWeightUpdateScheduled(
@@ -129,6 +135,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     event ManagementFeePercentageChanged(uint256 managementFeePercentage);
     event AllowlistAddressAdded(address indexed member);
     event AllowlistAddressRemoved(address indexed member);
+    event GradualSwapFeeUpdateScheduled(
+        uint256 startTime,
+        uint256 endTime,
+        uint256 startSwapFeePercentage,
+        uint256 endSwapFeePercentage
+    );
 
     struct NewPoolParams {
         string name;
@@ -186,6 +198,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             params.tokens
         );
 
+        _startGradualSwapFeeChange(currentTime, currentTime, params.swapFeePercentage, params.swapFeePercentage);
+
         // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction).
         _setSwapEnabled(params.swapEnabledOnStart);
 
@@ -221,6 +235,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         return _managementSwapFeePercentage;
     }
 
+    function getSwapFeePercentage() public view virtual override returns (uint256) {
+        uint256 pctProgress = _calculateGradualChangeProgress(_FEE_START_TIME_OFFSET, _FEE_END_TIME_OFFSET);
+
+        return _interpolateValue(super.getSwapFeePercentage(), _endSwapFeePercentage, pctProgress);
+    }
+
     /**
      * @dev Return start time, end time, and endWeights as an array.
      * Current weights should be retrieved via `getNormalizedWeights()`.
@@ -237,8 +257,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // Load current pool state from storage
         bytes32 poolState = _getMiscData();
 
-        startTime = poolState.decodeUint32(_START_TIME_OFFSET);
-        endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+        startTime = poolState.decodeUint32(_WEIGHT_START_TIME_OFFSET);
+        endTime = poolState.decodeUint32(_WEIGHT_END_TIME_OFFSET);
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         uint256 totalTokens = tokens.length;
@@ -271,22 +291,28 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     ) external authenticate whenNotPaused nonReentrant {
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
 
-        // If the start time is in the past, "fast forward" to start now
-        // This avoids discontinuities in the weight curve. Otherwise, if you set the start/end times with
-        // only 10% of the period in the future, the weights would immediately jump 90%
-        uint256 currentTime = block.timestamp;
-        startTime = Math.max(currentTime, startTime);
-
-        _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
+        startTime = _resolveStartTime(startTime, endTime);
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
     }
 
-    // Don't limit maximum swap fee for managed pools
-    function _getMaxSwapFeePercentage() internal virtual override pure returns (uint256) {
-        return 1e18;
+    /**
+     * @dev Schedule a gradual swap fee change, from the current value to the given ending fee percentage,
+     * over startTime to endTime.
+     */
+    function updateSwapFeeGradually(
+        uint256 startTime,
+        uint256 endTime,
+        uint256 endSwapFeePercentage
+    ) external authenticate whenNotPaused nonReentrant {
+        _require(endSwapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(endSwapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
+
+        startTime = _resolveStartTime(startTime, endTime);
+
+        _startGradualSwapFeeChange(startTime, endTime, super.getSwapFeePercentage(), endSwapFeePercentage);
     }
 
     /**
@@ -378,10 +404,17 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     }
 
     function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
-        uint256 pctProgress = _calculateWeightChangeProgress();
+        uint256 pctProgress = _calculateGradualChangeProgress(_WEIGHT_START_TIME_OFFSET, _WEIGHT_END_TIME_OFFSET);
         bytes32 tokenData = _getTokenData(token);
 
-        return _interpolateWeight(tokenData, pctProgress);
+        uint256 startWeight = _normalizeWeight(
+            tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
+        );
+        uint256 endWeight = _normalizeWeight(
+            tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
+        );
+
+        return _interpolateValue(startWeight, endWeight, pctProgress);
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
@@ -390,12 +423,19 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         normalizedWeights = new uint256[](numTokens);
 
-        uint256 pctProgress = _calculateWeightChangeProgress();
+        uint256 pctProgress = _calculateGradualChangeProgress(_WEIGHT_START_TIME_OFFSET, _WEIGHT_END_TIME_OFFSET);
 
         for (uint256 i = 0; i < numTokens; i++) {
             bytes32 tokenData = _tokenState[tokens[i]];
 
-            normalizedWeights[i] = _interpolateWeight(tokenData, pctProgress);
+            uint256 startWeight = _normalizeWeight(
+                tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
+            );
+            uint256 endWeight = _normalizeWeight(
+                tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
+            );
+
+            normalizedWeights[i] = _interpolateValue(startWeight, endWeight, pctProgress);
         }
     }
 
@@ -617,10 +657,31 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
         _setMiscData(
-            _getMiscData().insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET)
+            _getMiscData().insertUint32(startTime, _WEIGHT_START_TIME_OFFSET).insertUint32(
+                endTime,
+                _WEIGHT_END_TIME_OFFSET
+            )
         );
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
+    }
+
+    function _startGradualSwapFeeChange(
+        uint256 startTime,
+        uint256 endTime,
+        uint256 startSwapFeePercentage,
+        uint256 endSwapFeePercentage
+    ) internal virtual {
+        _setMiscData(
+            _getMiscData()
+                .insertUint32(startTime, _FEE_START_TIME_OFFSET)
+                .insertUint32(endTime, _FEE_END_TIME_OFFSET)
+                .insertUint64(startSwapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET)
+        );
+
+        _endSwapFeePercentage = endSwapFeePercentage;
+
+        emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
     }
 
     // Factored out to avoid stack issues
@@ -665,16 +726,31 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             super._isOwnerOnlyAction(actionId);
     }
 
+    // Don't limit maximum swap fee for managed pools
+    function _getMaxSwapFeePercentage() internal pure virtual override returns (uint256) {
+        return 1e18;
+    }
+
+    function _resolveStartTime(uint256 startTime, uint256 endTime) private view returns (uint256 resolvedStartTime) {
+        // If the start time is in the past, "fast forward" to start now
+        // This avoids discontinuities in the weight curve. Otherwise, if you set the start/end times with
+        // only 10% of the period in the future, the weights would immediately jump 90%
+        uint256 currentTime = block.timestamp;
+        resolvedStartTime = Math.max(currentTime, startTime);
+
+        _require(resolvedStartTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
+    }
+
     /**
-     * @dev Returns a fixed-point number representing how far along the current weight change is, where 0 means the
-     * change has not yet started, and FixedPoint.ONE means it has fully completed.
+     * @dev Returns a fixed-point number representing how far along the current weight or fee change is,
+     * where 0 means the change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
-    function _calculateWeightChangeProgress() private view returns (uint256) {
+    function _calculateGradualChangeProgress(uint256 startOffset, uint256 endOffset) private view returns (uint256) {
         uint256 currentTime = block.timestamp;
         bytes32 poolState = _getMiscData();
 
-        uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
-        uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+        uint256 startTime = poolState.decodeUint32(startOffset);
+        uint256 endTime = poolState.decodeUint32(endOffset);
 
         if (currentTime >= endTime) {
             return FixedPoint.ONE;
@@ -689,23 +765,20 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         return secondsElapsed.divDown(totalSeconds);
     }
 
-    function _interpolateWeight(bytes32 tokenData, uint256 pctProgress) private view returns (uint256) {
-        uint256 startWeight = _normalizeWeight(
-            tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
-        );
-        uint256 endWeight = _normalizeWeight(
-            tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
-        );
+    function _interpolateValue(
+        uint256 startValue,
+        uint256 endValue,
+        uint256 pctProgress
+    ) private pure returns (uint256) {
+        if (pctProgress == 0 || startValue == endValue) return startValue;
+        if (pctProgress >= FixedPoint.ONE) return endValue;
 
-        if (pctProgress == 0 || startWeight == endWeight) return startWeight;
-        if (pctProgress >= FixedPoint.ONE) return endWeight;
-
-        if (startWeight > endWeight) {
-            uint256 weightDelta = pctProgress.mulDown(startWeight - endWeight);
-            return startWeight - weightDelta;
+        if (startValue > endValue) {
+            uint256 delta = pctProgress.mulDown(startValue - endValue);
+            return startValue - delta;
         } else {
-            uint256 weightDelta = pctProgress.mulDown(endWeight - startWeight);
-            return startWeight + weightDelta;
+            uint256 delta = pctProgress.mulDown(endValue - startValue);
+            return startValue + delta;
         }
     }
 

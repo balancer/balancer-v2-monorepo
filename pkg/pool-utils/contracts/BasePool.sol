@@ -140,7 +140,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _DEFAULT_MINIMUM_BPT;
     }
 
-    function getSwapFeePercentage() public view returns (uint256) {
+    function getSwapFeePercentage() public view virtual returns (uint256) {
         return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
     }
 
@@ -153,11 +153,15 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     function _setSwapFeePercentage(uint256 swapFeePercentage) private {
-        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
 
         _miscData = _miscData.insertUint64(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET);
         emit SwapFeePercentageChanged(swapFeePercentage);
+    }
+
+    function _getMinSwapFeePercentage() internal virtual pure returns (uint256) {
+        return _MIN_SWAP_FEE_PERCENTAGE;
     }
 
     function _getMaxSwapFeePercentage() internal virtual pure returns (uint256) {
