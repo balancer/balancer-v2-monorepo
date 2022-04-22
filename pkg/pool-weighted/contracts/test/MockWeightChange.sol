@@ -14,15 +14,15 @@
 
 pragma solidity ^0.7.0;
 
-import "../lib/WeightChange.sol";
+import "../lib/GradualValueChange.sol";
 
-contract MockWeightChange {
-    function getNormalizedWeight(
+contract MockGradualValueChange {
+    function getInterpolatedValue(
         uint256 startWeight,
         uint256 endWeight,
         uint256 startTime,
         uint256 endTime
     ) external view returns (uint256) {
-       return WeightChange.getNormalizedWeight(startWeight, endWeight, startTime, endTime);
+        return GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
     }
 }

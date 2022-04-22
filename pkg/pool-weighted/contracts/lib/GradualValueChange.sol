@@ -16,44 +16,47 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 pragma solidity ^0.7.0;
 
-library WeightChange {
+library GradualValueChange {
     using FixedPoint for uint256;
 
-    function getNormalizedWeight(
-        uint256 startWeight,
-        uint256 endWeight,
+    function getInterpolatedValue(
+        uint256 startValue,
+        uint256 endValue,
         uint256 startTime,
         uint256 endTime
     ) internal view returns (uint256) {
-        uint256 pctProgress = _calculateWeightChangeProgress(startTime, endTime);
+        uint256 pctProgress = _calculateValueChangeProgress(startTime, endTime);
 
-        return _interpolateWeight(startWeight, endWeight, pctProgress);
+        return _interpolateWeight(startValue, endValue, pctProgress);
     }
 
     // Private functions
 
     function _interpolateWeight(
-        uint256 startWeight,
-        uint256 endWeight,
+        uint256 startValue,
+        uint256 endValue,
         uint256 pctProgress
     ) private pure returns (uint256) {
-        if (pctProgress == 0 || startWeight == endWeight) return startWeight;
-        if (pctProgress >= FixedPoint.ONE) return endWeight;
+        if (pctProgress == 0 || startValue == endValue) return startValue;
+        if (pctProgress >= FixedPoint.ONE) return endValue;
 
-        if (startWeight > endWeight) {
-            uint256 weightDelta = pctProgress.mulDown(startWeight - endWeight);
-            return startWeight.sub(weightDelta);
+        if (startValue > endValue) {
+            uint256 weightDelta = pctProgress.mulDown(startValue - endValue);
+            return startValue.sub(weightDelta);
         } else {
-            uint256 weightDelta = pctProgress.mulDown(endWeight - startWeight);
-            return startWeight.add(weightDelta);
+            uint256 weightDelta = pctProgress.mulDown(endValue - startValue);
+            return startValue.add(weightDelta);
         }
     }
 
     /**
-     * @dev Returns a fixed-point number representing how far along the current weight change is, where 0 means the
+     * @dev Returns a fixed-point number representing how far along the current value change is, where 0 means the
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
-    function _calculateWeightChangeProgress(uint256 startTime, uint256 endTime) private view returns (uint256) {
+    function _calculateValueChangeProgress(
+        uint256 startTime,
+        uint256 endTime
+    ) private view returns (uint256) {
         uint256 currentTime = block.timestamp;
 
         if (currentTime > endTime) {

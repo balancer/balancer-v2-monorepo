@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
-import "../lib/WeightChange.sol";
+import "../lib/GradualValueChange.sol";
 import "../lib/WeightCompression.sol";
 
 import "../BaseWeightedPool.sol";
@@ -221,7 +221,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
 
-        return WeightChange.getNormalizedWeight(startWeight, endWeight, startTime, endTime);
+        return GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory) {

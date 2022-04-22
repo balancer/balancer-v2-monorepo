@@ -23,7 +23,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
-import "../lib/WeightChange.sol";
+import "../lib/GradualValueChange.sol";
 import "../lib/WeightCompression.sol";
 
 import "../BaseWeightedPool.sol";
@@ -383,7 +383,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
 
-        return WeightChange.getNormalizedWeight(startWeight, endWeight, startTime, endTime);
+        return GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
@@ -401,7 +401,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             uint256 startWeight = tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT);
             uint256 endWeight = tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT);
 
-            normalizedWeights[i] = WeightChange.getNormalizedWeight(startWeight, endWeight, startTime, endTime);
+            normalizedWeights[i] = GradualValueChange.getInterpolatedValue(
+                startWeight,
+                endWeight,
+                startTime,
+                endTime
+            );
         }
     }
 
