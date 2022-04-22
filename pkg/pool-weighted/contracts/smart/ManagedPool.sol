@@ -345,51 +345,22 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         IERC20 token,
         address recipient,
         uint256 burnAmount
-    ) external authenticate whenNotPaused {
+    ) external authenticate nonReentrant whenNotPaused {
         // Exit the pool, returning the full balance of the token to the recipient
         (IERC20[] memory tokens, uint256[] memory unscaledBalances, ) = getVault().getPoolTokens(getPoolId());
-        uint256 tokenIndex = _tokenAddressToIndex(token);
         _require(tokens.length > 2, Errors.MIN_TOKENS);
-        // Do not allow removing tokens if there is an ongoing or pending gradual weight change
-        _ensureConstantWeights();
 
-        uint256 normalizedWeightBeforeRemove = _exitWithEntireBalance(
-            tokens,
-            _getNormalizedWeights(),
-            tokenIndex,
-            unscaledBalances[tokenIndex],
-            recipient
-        );
+        // Tokens cannot be removed during or before a weight change to reduce complexity of weight interactions
+        _ensureNoWeightChange();
 
-        // Deregister the token in the Vault
-        IERC20[] memory tokensToRemove = new IERC20[](1);
-        tokensToRemove[0] = token;
-        getVault().deregisterTokens(getPoolId(), tokensToRemove);
+        uint256 tokenIndex = _tokenAddressToIndex(token);
+        uint256 tokenBalance = unscaledBalances[tokenIndex];
+        uint256 tokenNormalizedWeight = _getNormalizedWeight(token);
 
-        emit TokenRemoved(token, unscaledBalances[tokenIndex]);
-
-        // Clean up data structures and update the token count
-        delete _tokenState[token];
-        _setMiscData(_getMiscData().insertUint7(tokens.length - 1, _TOTAL_TOKENS_OFFSET));
-
-        if (burnAmount > 0) {
-            _burnPoolTokens(msg.sender, burnAmount);
-        }
-
-        // Decrease the total weight by the weight of the token being removed
-        _denormWeightSum -= _denormalizeWeight(normalizedWeightBeforeRemove);
-    }
-
-    // Separated to avoid stack too deep
-    function _exitWithEntireBalance(
-        IERC20[] memory tokens,
-        uint256[] memory normalizedWeights,
-        uint256 tokenIndex,
-        uint256 unscaledTokenAmountOut,
-        address recipient
-    ) private returns (uint256) {
+        // We first perform a special exit operation at the Vault, which will withdraw the entire tokenBalance from it.
+        // Only the Pool itself is authorized to initiate such an exit.
         uint256[] memory minAmountsOut = new uint256[](tokens.length);
-        minAmountsOut[tokenIndex] = unscaledTokenAmountOut;
+        minAmountsOut[tokenIndex] = tokenBalance;
 
         getVault().exitPool(
             getPoolId(),
@@ -403,10 +374,32 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             })
         );
 
-        return normalizedWeights[tokenIndex];
+        // The Pool is now in an invalid state, since one of its tokens has a balance of zero (making the invariant also
+        // zero). We immediately deregister the emptied-out token to restore a valid state.
+        // Since all non-view Vault functions are non-reentrant, and we make no external calls between the two Vault
+        // calls (`exitPool` and `deregisterTokens`), it is impossible for any actor to interact with the Pool while it
+        // is in this inconsistent state (except for view calls).
+
+        IERC20[] memory tokensToRemove = new IERC20[](1);
+        tokensToRemove[0] = token;
+        getVault().deregisterTokens(getPoolId(), tokensToRemove);
+
+        // Now all we need to do is delete the removed token's entry and update the sum of denormalized weights to scale
+        // all other token weights accordingly.
+        // Clean up data structures and update the token count
+        delete _tokenState[token];
+        _denormWeightSum -= _denormalizeWeight(tokenNormalizedWeight);
+
+        _setMiscData(_getMiscData().insertUint7(tokens.length - 1, _TOTAL_TOKENS_OFFSET));
+
+        if (burnAmount > 0) {
+            _burnPoolTokens(msg.sender, burnAmount);
+        }
+
+        emit TokenRemoved(token, tokenBalance);
     }
 
-    function _ensureConstantWeights() private view {
+    function _ensureNoWeightChange() private view {
         uint256 currentTime = block.timestamp;
         bytes32 poolState = _getMiscData();
 

@@ -667,37 +667,6 @@ describe('ManagedPool', function () {
         itHandlesWeightUpdates();
       });
     });
-
-    describe('protocol fee cache update', () => {
-      let vault: Vault;
-      const swapFeePercentage = fp(0.02);
-      const managementSwapFeePercentage = fp(0.8);
-
-      sharedBeforeEach('deploy pool', async () => {
-        vault = await Vault.create();
-
-        const params = {
-          tokens: poolTokens,
-          weights: poolWeights,
-          owner: owner.address,
-          poolType: WeightedPoolType.MANAGED_POOL,
-          swapEnabledOnStart: true,
-          vault,
-          swapFeePercentage,
-          managementSwapFeePercentage,
-        };
-        pool = await WeightedPool.create(params);
-      });
-
-      it('emits event when protocol fee cache is updated', async () => {
-        const receipt = await pool.instance.updateCachedProtocolSwapFeePercentage();
-
-        // Real Vault will return a zero protocol fee
-        expectEvent.inReceipt(await receipt.wait(), 'ProtocolSwapFeeCacheUpdated', {
-          protocolSwapFeePercentage: 0,
-        });
-      });
-    });
   });
 
   describe('remove token', () => {
