@@ -794,7 +794,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             _lastAumFeeCollectionTimestamp = currentTime;
 
             // `lastCollection == 0` means that we're in the first attempt to collect AUM fees
-            // For gas reasons we only collect AUM from this point onwards so perform an early return if so.
+            // For gas reasons we only collect AUM fees from this point onwards so perform an early return if so.
+            // We also perform an early return if pool's emergency pause mechanism has been triggered.
             if (getManagementAumFeePercentage() == 0 || lastCollection == 0 || !_isNotPaused()) {
                 return;
             }
