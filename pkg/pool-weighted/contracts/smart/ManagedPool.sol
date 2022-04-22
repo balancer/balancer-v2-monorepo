@@ -395,12 +395,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             uint256 startWeight = tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT);
             uint256 endWeight = tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT);
 
-            normalizedWeights[i] = GradualValueChange.getInterpolatedValue(
-                startWeight,
-                endWeight,
-                startTime,
-                endTime
-            );
+            normalizedWeights[i] = GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
         }
     }
 

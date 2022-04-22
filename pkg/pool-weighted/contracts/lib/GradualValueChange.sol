@@ -64,10 +64,7 @@ library GradualValueChange {
      * @dev Returns a fixed-point number representing how far along the current value change is, where 0 means the
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
-    function _calculateValueChangeProgress(
-        uint256 startTime,
-        uint256 endTime
-    ) private view returns (uint256) {
+    function _calculateValueChangeProgress(uint256 startTime, uint256 endTime) private view returns (uint256) {
         uint256 currentTime = block.timestamp;
 
         if (currentTime > endTime) {
