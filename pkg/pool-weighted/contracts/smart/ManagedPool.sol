@@ -426,11 +426,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
      * joins and exits.
      */
-    function collectAumManagementFees() public whenNotPaused nonReentrant {
+    function collectAumManagementFees() public whenNotPaused {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Performing an early return here prevents zero value AUM fee collections causing bogus events.
         if (totalSupply() == 0) return;
+
         _collectAumManagementFees();
     }
 
