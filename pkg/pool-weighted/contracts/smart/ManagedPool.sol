@@ -337,8 +337,15 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      *
      * Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token removal
      * is also forbidden during a weight change, or if one is scheduled to happen in the future.
+     *
+     * The caller may aditionally pass a non-zero `burnAmount` to have some of their BPT be burned, which might be
+     * useful in some scenarios to account for the fact that the Pool now has fewer tokens.
      */
-    function removeToken(IERC20 token, address recipient) external authenticate whenNotPaused {
+    function removeToken(
+        IERC20 token,
+        address recipient,
+        uint256 burnAmount
+    ) external authenticate whenNotPaused {
         // Exit the pool, returning the full balance of the token to the recipient
         (IERC20[] memory tokens, uint256[] memory unscaledBalances, ) = getVault().getPoolTokens(getPoolId());
         uint256 tokenIndex = _tokenAddressToIndex(token);
@@ -364,6 +371,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // Clean up data structures and update the token count
         delete _tokenState[token];
         _setMiscData(_getMiscData().insertUint7(tokens.length - 1, _TOTAL_TOKENS_OFFSET));
+
+        if (burnAmount > 0) {
+            _burnPoolTokens(msg.sender, burnAmount);
+        }
 
         // Decrease the total weight by the weight of the token being removed
         _denormWeightSum -= _denormalizeWeight(normalizedWeightBeforeRemove);

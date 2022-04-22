@@ -689,8 +689,13 @@ export default class WeightedPool {
     return await pool.getGradualWeightUpdateParams();
   }
 
-  async removeToken(from: SignerWithAddress, token: string, recipient: string): Promise<ContractTransaction> {
+  async removeToken(
+    from: SignerWithAddress,
+    token: string,
+    recipient: string,
+    burnAmount?: BigNumberish
+  ): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    return await pool.removeToken(token, recipient);
+    return await pool.removeToken(token, recipient, burnAmount ?? 0);
   }
 }

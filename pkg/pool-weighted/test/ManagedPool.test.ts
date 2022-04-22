@@ -974,13 +974,24 @@ describe('ManagedPool', function () {
                   it('emits an event', async () => {
                     const { balances: beforeRemoveBalances } = await pool.getTokens();
 
-                    const tx = await pool.instance
-                      .connect(sender)
-                      .removeToken(poolTokens.addresses[tokenIndex], other.address);
+                    const tx = await pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address);
 
                     expectEvent.inReceipt(await tx.wait(), 'TokenRemoved', {
                       token: poolTokens.addresses[tokenIndex],
                       tokenAmountOut: beforeRemoveBalances[tokenIndex],
+                    });
+                  });
+
+                  context('with a non-zero burn amount', () => {
+                    it('burns BPT from the caller', async () => {
+                      const bptBalanceBefore = await pool.balanceOf(sender.address);
+
+                      const burnAmount = fp(17);
+                      await pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address, burnAmount);
+
+                      const bptBalanceAfter = await pool.balanceOf(sender.address);
+
+                      expect(bptBalanceBefore.sub(bptBalanceAfter)).to.equal(burnAmount);
                     });
                   });
                 }
