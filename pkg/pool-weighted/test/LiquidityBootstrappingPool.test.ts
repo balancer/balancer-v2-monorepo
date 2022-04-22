@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import { MINUTE, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
