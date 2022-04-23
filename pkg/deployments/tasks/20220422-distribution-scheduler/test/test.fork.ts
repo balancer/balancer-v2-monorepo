@@ -2,19 +2,17 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { BigNumber, bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { advanceTime, currentWeekTimestamp, DAY, MONTH, WEEK } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, currentWeekTimestamp, MONTH, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import Task from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
-import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { range } from 'lodash';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
-describe.only('DistributionScheduler', function () {
+describe('DistributionScheduler', function () {
   let lmCommittee: SignerWithAddress, distributor: SignerWithAddress;
   let scheduler: Contract, gauge: Contract, DAI: Contract, USDC: Contract;
 
