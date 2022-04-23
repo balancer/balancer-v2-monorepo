@@ -5,6 +5,4 @@ Deployment of the `DistributionScheduler`, which can be used to schedule token d
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [Polygon addresses](./output/polygon.json)
-- [Arbitrum addresses](./output/arbitrum.json)
 - [`DistributionScheduler` ABI](./abi/DistributionScheduler.json)
