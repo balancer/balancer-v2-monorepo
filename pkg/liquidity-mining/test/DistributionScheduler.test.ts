@@ -174,11 +174,11 @@ describe('DistributionScheduler', () => {
               let insertedTime: BigNumber;
 
               sharedBeforeEach('set insertedTime', async () => {
-                insertedTime = startTime.add(20 * WEEK);
+                insertedTime = startTime.add(999 * WEEK);
               });
 
               it('updates the previous node to point at the new node', async () => {
-                const prevNodeKey = insertedTime.sub(2 * WEEK);
+                const prevNodeKey = scheduledRewardsTimes[scheduledRewardsTimes.length - 1];
                 expect(await getNextNodeKey(prevNodeKey)).to.be.eq(0);
 
                 await scheduleDistribution(amount, insertedTime);
@@ -336,7 +336,8 @@ describe('DistributionScheduler', () => {
 
     context('when the last scheduled distribution is processed', () => {
       sharedBeforeEach('advance time past the last scheduled distribution', async () => {
-        await advanceToTimestamp(startTime.add(10 * WEEK));
+        const lastTimestamp = scheduledRewardsTimes[scheduledRewardsTimes.length - 1];
+        await advanceToTimestamp(lastTimestamp.add(WEEK * 99));
       });
 
       it('updates the head node to point towards NULL', async () => {
