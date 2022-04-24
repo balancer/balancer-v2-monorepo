@@ -262,12 +262,12 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         // Step 6: grant permission to the LM Committee to add reward tokens to Ethereum gauges and manage their
         // distributors
         authorizer.grantRole(
-            authorizerAdaptor.getActionId(IStakingLiquidityGauge.add_reward.selector),
+            authorizerAdaptor.getActionId(IRewardTokenDistributor.add_reward.selector),
             lmCommitteeMultisig
         );
 
         authorizer.grantRole(
-            authorizerAdaptor.getActionId(IStakingLiquidityGauge.set_reward_distributor.selector),
+            authorizerAdaptor.getActionId(IRewardTokenDistributor.set_reward_distributor.selector),
             lmCommitteeMultisig
         );
 

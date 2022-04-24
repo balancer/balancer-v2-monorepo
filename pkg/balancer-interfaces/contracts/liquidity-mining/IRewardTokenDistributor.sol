@@ -15,21 +15,31 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../solidity-utils/openzeppelin/IERC20.sol";
-
-import "./ILiquidityGauge.sol";
-import "./IRewardTokenDistributor.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
 // For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
 // naming convention.
 // solhint-disable func-name-mixedcase, var-name-mixedcase
 
-interface IStakingLiquidityGauge is IRewardTokenDistributor, ILiquidityGauge, IERC20 {
-    function initialize(address lpToken) external;
+interface IRewardTokenDistributor {
+    struct Reward {
+        IERC20 token;
+        address distributor;
+        uint256 period_finish;
+        uint256 rate;
+        uint256 last_update;
+        uint256 integral;
+    }
 
-    function lp_token() external view returns (IERC20);
+    function reward_tokens(uint256 index) external view returns (IERC20);
 
-    function deposit(uint256 value, address recipient) external;
+    function reward_data(IERC20 token) external view returns (Reward memory);
 
-    function withdraw(uint256 value) external;
+    function claim_rewards(address user) external;
+
+    function add_reward(IERC20 rewardToken, address distributor) external;
+
+    function set_reward_distributor(IERC20 rewardToken, address distributor) external;
+
+    function deposit_reward_tokens(IERC20 rewardToken, uint256 amount) external;
 }
