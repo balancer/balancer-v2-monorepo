@@ -15,9 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
-
-import "../interfaces/IRewardTokenDistributor.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IRewardTokenDistributor.sol";
 
 // solhint-disable func-name-mixedcase, var-name-mixedcase, not-rely-on-time
 
