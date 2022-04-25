@@ -365,7 +365,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
-        _startGradualSwapFeeChange(startTime, endTime, super.getSwapFeePercentage(), endSwapFeePercentage);
+        _startGradualSwapFeeChange(startTime, endTime, getSwapFeePercentage(), endSwapFeePercentage);
     }
 
     /**
