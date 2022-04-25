@@ -406,8 +406,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     function collectAumManagementFees() external whenNotPaused {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
-        // Performing an early return here prevents zero value AUM fee collections causing bogus events.
-        if (totalSupply() == 0) return;
+        // Reverting here prevents zero value AUM fee collections causing bogus events.
+        if (totalSupply() == 0) _revert(Errors.UNINITIALIZED);
 
         _collectAumManagementFees();
     }
