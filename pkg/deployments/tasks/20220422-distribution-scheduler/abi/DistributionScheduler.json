@@ -1,0 +1,155 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "contract IRewardTokenDistributor",
+        "name": "gauge",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "getPendingRewards",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IRewardTokenDistributor",
+        "name": "gauge",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPendingRewardsAt",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IRewardTokenDistributor",
+        "name": "gauge",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "getRewardNode",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint224",
+            "name": "amount",
+            "type": "uint224"
+          },
+          {
+            "internalType": "uint32",
+            "name": "nextTimestamp",
+            "type": "uint32"
+          }
+        ],
+        "internalType": "struct DistributionScheduler.RewardNode",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IRewardTokenDistributor",
+        "name": "gauge",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "startTime",
+        "type": "uint256"
+      }
+    ],
+    "name": "scheduleDistribution",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IRewardTokenDistributor",
+        "name": "gauge",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "startDistributionForToken",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IRewardTokenDistributor",
+        "name": "gauge",
+        "type": "address"
+      }
+    ],
+    "name": "startDistributions",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
