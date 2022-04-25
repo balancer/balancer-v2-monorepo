@@ -777,8 +777,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
                 return 0;
             }
 
-            uint256 elapsedTime = currentTime - lastCollection;
-
             // We want to collect fees so that the manager will receive `f` percent of the Pool's AUM after a year.
             // We compute the amount of BPT to mint for the manager that would allow it to proportionally exit the Pool
             // and receive this fraction of the Pool's assets.
@@ -798,6 +796,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
             // This value is annualized, in reality we will be collecting fees regularly over the course of the year.
             // We then multiply this value by the fraction of the year which has elapsed since we last collected fees.
+            uint256 elapsedTime = currentTime - lastCollection;
             uint256 fractionalTimePeriod = elapsedTime.divDown(365 days);
             bptAmount = annualizedFee.mulDown(fractionalTimePeriod);
 
