@@ -595,7 +595,7 @@ describe('ManagedPool', function () {
       const NEW_SWAP_FEE = fp(0.1);
 
       context('when the sender is not the owner', () => {
-        it('non-owners cannot update weights', async () => {
+        it('non-owners cannot update swap fee', async () => {
           const now = await currentTimestamp();
 
           await expect(pool.updateSwapFeeGradually(other, now, now, NEW_SWAP_FEE)).to.be.revertedWith(
