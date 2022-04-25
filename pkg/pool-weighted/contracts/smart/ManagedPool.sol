@@ -349,7 +349,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // Tokens cannot be removed during or before a weight change to reduce complexity of weight interactions
         _ensureNoWeightChange();
 
-        uint256 tokenIndex = _tokenAddressToIndex(token);
+        uint256 tokenIndex = _tokenAddressToIndex(tokens, token);
         uint256 tokenBalance = unscaledBalances[tokenIndex];
         uint256 tokenNormalizedWeight = _getNormalizedWeight(token);
 
@@ -699,10 +699,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         return (bptAmountIn, amountsOut);
     }
 
-    function _tokenAddressToIndex(IERC20 token) internal view returns (uint256) {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-
-        for (uint256 i = 0; i < tokens.length; i++) {
+    function _tokenAddressToIndex(IERC20[] memory tokens, IERC20 token) internal view returns (uint256) {
+        uint256 tokensLength = tokens.length;
+        for (uint256 i = 0; i < tokensLength; i++) {
             if (tokens[i] == token) {
                 return i;
             }
