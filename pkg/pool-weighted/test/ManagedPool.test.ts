@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { bn, fp, fromFp, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp, fromFp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { MINUTE, DAY, currentTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
@@ -875,55 +875,73 @@ describe('ManagedPool', function () {
       });
 
       describe('management aum fee collection', () => {
+        let timeElapsed: BigNumberish;
+
+        function expectedAUMFees(
+          totalSupply: BigNumberish,
+          aumFeePercentage: BigNumberish,
+          timeElapsed: BigNumberish
+        ): BigNumber {
+          return bn(totalSupply)
+            .mul(timeElapsed)
+            .div(365 * DAY)
+            .mul(aumFeePercentage)
+            .div(fp(1).sub(aumFeePercentage));
+        }
+
+        function itCollectsNoAUMFees(collectAUMFees: () => Promise<ContractReceipt>) {
+          it('collects no AUM fees', async () => {
+            const balanceBefore = await pool.balanceOf(owner);
+
+            const receipt = await collectAUMFees();
+
+            const balanceAfter = await pool.balanceOf(owner);
+            expect(balanceAfter).to.equal(balanceBefore);
+
+            expectEvent.notEmitted(receipt, 'ManagementAumFeeCollected');
+          });
+        }
+
+        function itCollectsAUMFeesCorrectly(collectAUMFees: () => Promise<ContractReceipt>) {
+          it('collects the expected amount of fees', async () => {
+            const balanceBefore = await pool.balanceOf(owner);
+
+            const totalSupply = await pool.totalSupply();
+            const expectedManagementFeeBpt = expectedAUMFees(totalSupply, managementAumFeePercentage, timeElapsed);
+
+            const receipt = await collectAUMFees();
+
+            const balanceAfter = await pool.balanceOf(owner);
+            const actualManagementFeeBpt = balanceAfter.sub(balanceBefore);
+            expect(actualManagementFeeBpt).to.equalWithError(expectedManagementFeeBpt, 0.0001);
+
+            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'ManagementAumFeeCollected', {
+              bptAmount: actualManagementFeeBpt,
+            });
+          });
+        }
+
         sharedBeforeEach('mint tokens', async () => {
           await poolTokens.mint({ to: other, amount: fp(10000) });
           await poolTokens.approve({ from: other, to: await pool.getVault() });
         });
 
         context('on pool initialization', () => {
-          it('pays no AUM fees', async () => {
-            // We set the recipient to `other` so that any BPT held by `owner` would be from AUM fees.
+          itCollectsNoAUMFees(async () => {
             const { receipt } = await pool.init({ from: other, recipient: other, initialBalances });
-
-            expectEvent.notEmitted(receipt, 'ManagementAumFeeCollected');
-
-            const collectedAUMFees = await pool.balanceOf(owner.address);
-            expect(collectedAUMFees).to.equal(0);
+            return receipt;
           });
         });
 
         context('after some time passes', () => {
-          let expectedManagementFeeBpt: BigNumber;
+          timeElapsed = 180 * DAY;
 
           sharedBeforeEach('initialize pool and advance time', async () => {
             await pool.init({ from: other, initialBalances });
             await pool.collectAumManagementFees(owner);
 
-            await advanceTime(180 * DAY);
-
-            const totalSupply = await pool.totalSupply();
-            expectedManagementFeeBpt = totalSupply
-              .mul(180)
-              .div(365)
-              .mul(managementAumFeePercentage)
-              .div(fp(1).sub(managementAumFeePercentage));
+            await advanceTime(timeElapsed);
           });
-
-          function itCollectsAUMFeesCorrectly(collectAUMFees: () => Promise<ContractReceipt>) {
-            it('collects the expected amount of fees', async () => {
-              const balanceBefore = await pool.balanceOf(owner);
-
-              const receipt = await collectAUMFees();
-
-              const balanceAfter = await pool.balanceOf(owner);
-              const actualManagementFeeBpt = balanceAfter.sub(balanceBefore);
-              expect(actualManagementFeeBpt).to.equalWithError(expectedManagementFeeBpt, 0.0001);
-
-              expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'ManagementAumFeeCollected', {
-                bptAmount: actualManagementFeeBpt,
-              });
-            });
-          }
 
           context('when manually claiming', () => {
             itCollectsAUMFeesCorrectly(async () => {
