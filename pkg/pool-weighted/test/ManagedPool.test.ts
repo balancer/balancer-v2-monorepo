@@ -926,31 +926,65 @@ describe('ManagedPool', function () {
           await poolTokens.approve({ from: other, to: await pool.getVault() });
         });
 
-        context('on pool initialization', () => {
-          itCollectsNoAUMFees(async () => {
-            const { receipt } = await pool.init({ from: other, recipient: other, initialBalances });
-            return receipt;
-          });
-        });
-
-        context('after some time passes', () => {
-          timeElapsed = 180 * DAY;
-
-          sharedBeforeEach('initialize pool and advance time', async () => {
-            await pool.init({ from: other, initialBalances });
-            await pool.collectAumManagementFees(owner);
-
-            await advanceTime(timeElapsed);
-          });
-
-          context('when manually claiming', () => {
-            itCollectsAUMFeesCorrectly(async () => {
-              const tx = await pool.collectAumManagementFees(owner);
-              return tx.wait();
+        context('manual claiming of AUM fees', () => {
+          context('when the pool is uninitialized', () => {
+            itCollectsNoAUMFees(async () => {
+              const { receipt } = await pool.init({ from: other, recipient: other, initialBalances });
+              return receipt;
             });
           });
 
-          context('on pool joins', () => {
+          context('when the pool is initialized', () => {
+            timeElapsed = 10 * DAY;
+
+            sharedBeforeEach('initialize pool and advance time', async () => {
+              await pool.init({ from: other, initialBalances });
+
+              await advanceTime(timeElapsed);
+            });
+
+            context('on the first attempt to collect fees', () => {
+              itCollectsNoAUMFees(async () => {
+                const tx = await pool.collectAumManagementFees(owner);
+                return tx.wait();
+              });
+            });
+
+            context('on subsequent attempts to collect fees', () => {
+              timeElapsed = 10 * DAY;
+
+              sharedBeforeEach('advance time', async () => {
+                // AUM fees only accrue after the first collection so we have to wait for more time to elapse.
+                await pool.collectAumManagementFees(owner);
+                await advanceTime(timeElapsed);
+              });
+
+              itCollectsAUMFeesCorrectly(async () => {
+                const tx = await pool.collectAumManagementFees(owner);
+                return tx.wait();
+              });
+            });
+          });
+        });
+
+        context('on pool joins', () => {
+          context('on pool initialization', () => {
+            itCollectsNoAUMFees(async () => {
+              const { receipt } = await pool.init({ from: other, recipient: other, initialBalances });
+              return receipt;
+            });
+          });
+
+          context('after pool initialization', () => {
+            timeElapsed = 10 * DAY;
+
+            sharedBeforeEach('initialize pool and advance time', async () => {
+              await pool.init({ from: other, initialBalances });
+              await pool.collectAumManagementFees(owner);
+
+              await advanceTime(timeElapsed);
+            });
+
             sharedBeforeEach('mint tokens', async () => {
               await poolTokens.mint({ to: other, amount: fp(10000) });
               await poolTokens.approve({ from: other, to: await pool.getVault() });
@@ -962,13 +996,22 @@ describe('ManagedPool', function () {
               return receipt;
             });
           });
+        });
 
-          context('on pool exits', () => {
-            itCollectsAUMFeesCorrectly(async () => {
-              const amountsOut = initialBalances.map((x) => x.div(2));
-              const { receipt } = await pool.exitGivenOut({ from: other, amountsOut });
-              return receipt;
-            });
+        context('on pool exits', () => {
+          timeElapsed = 10 * DAY;
+
+          sharedBeforeEach('initialize pool and advance time', async () => {
+            await pool.init({ from: other, initialBalances });
+            await pool.collectAumManagementFees(owner);
+
+            await advanceTime(timeElapsed);
+          });
+
+          itCollectsAUMFeesCorrectly(async () => {
+            const amountsOut = initialBalances.map((x) => x.div(2));
+            const { receipt } = await pool.exitGivenOut({ from: other, amountsOut });
+            return receipt;
           });
         });
       });
