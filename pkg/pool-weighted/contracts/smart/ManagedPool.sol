@@ -340,7 +340,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     function removeToken(
         IERC20 token,
         address recipient,
-        uint256 burnAmount
+        uint256 burnAmount,
+        uint256 minAmountOut
     ) external authenticate nonReentrant whenNotPaused {
         // Exit the pool, returning the full balance of the token to the recipient
         (IERC20[] memory tokens, uint256[] memory unscaledBalances, ) = getVault().getPoolTokens(getPoolId());
@@ -357,7 +358,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // We first perform a special exit operation at the Vault, which will withdraw the entire tokenBalance from it.
         // Only the Pool itself is authorized to initiate such an exit.
         uint256[] memory minAmountsOut = new uint256[](tokens.length);
-        minAmountsOut[tokenIndex] = tokenBalance;
+        minAmountsOut[tokenIndex] = minAmountOut;
 
         getVault().exitPool(
             getPoolId(),
