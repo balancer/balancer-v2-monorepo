@@ -662,7 +662,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         );
 
         return
-            userData.exitKind() == WeightedPoolUserData.ExitKind.REMOVE_TOKEN
+            kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN
                 ? _doExitRemoveToken(sender, balances, userData)
                 : super._onExitPool(
                     poolId,
