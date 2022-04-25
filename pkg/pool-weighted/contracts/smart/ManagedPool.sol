@@ -278,7 +278,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory endWeights
     ) external authenticate whenNotPaused nonReentrant {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-        
+
         InputHelpers.ensureInputLengthMatch(tokens.length, endWeights.length);
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
