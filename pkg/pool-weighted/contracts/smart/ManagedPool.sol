@@ -284,7 +284,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             _revert(Errors.SET_SWAP_FEE_DURING_FEE_CHANGE);
         }
 
-        _setSwapFeeData(currentTime, currentTime, swapFeePercentage, swapFeePercentage);
+        _setSwapFeeData(currentTime, currentTime, swapFeePercentage);
 
         super._setSwapFeePercentage(swapFeePercentage);
     }
@@ -347,20 +347,27 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Schedule a gradual swap fee change, from the current value to the given ending fee percentage,
-     * over startTime to endTime.
+     * @dev Schedule a gradual swap fee change, from the starting value (which may or may not be the current
+     * value) to the given ending fee percentage, over startTime to endTime. Calling this with a starting
+     * value avoids requiring an explicit external `setSwapFeePercentage` call.
      */
     function updateSwapFeeGradually(
         uint256 startTime,
         uint256 endTime,
+        uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) external authenticate whenNotPaused nonReentrant {
-        _require(endSwapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
-        _require(endSwapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
+        _validateSwapFeePercentage(startSwapFeePercentage);
+        _validateSwapFeePercentage(endSwapFeePercentage);
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
-        _startGradualSwapFeeChange(startTime, endTime, getSwapFeePercentage(), endSwapFeePercentage);
+        _startGradualSwapFeeChange(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+    }
+
+    function _validateSwapFeePercentage(uint256 swapFeePercentage) private pure {
+        _require(swapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
     }
 
     /**
@@ -717,7 +724,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) internal virtual {
-        _setSwapFeeData(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+        if (startSwapFeePercentage != super.getSwapFeePercentage()) {
+            super._setSwapFeePercentage(startSwapFeePercentage);
+        }
+
+        _setSwapFeeData(startTime, endTime, endSwapFeePercentage);
 
         emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
     }
@@ -725,14 +736,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     function _setSwapFeeData(
         uint256 startTime,
         uint256 endTime,
-        uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) private {
         _setMiscData(
-            _getMiscData()
-                .insertUint32(startTime, _FEE_START_TIME_OFFSET)
-                .insertUint32(endTime, _FEE_END_TIME_OFFSET)
-                .insertUint64(startSwapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET)
+            _getMiscData().insertUint32(startTime, _FEE_START_TIME_OFFSET).insertUint32(endTime, _FEE_END_TIME_OFFSET)
         );
 
         _endSwapFeePercentage = endSwapFeePercentage;

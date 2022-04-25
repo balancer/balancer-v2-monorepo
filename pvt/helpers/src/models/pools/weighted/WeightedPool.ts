@@ -704,10 +704,11 @@ export default class WeightedPool {
     from: SignerWithAddress,
     startTime: BigNumberish,
     endTime: BigNumberish,
+    startSwapFeePercentage: BigNumberish,
     endSwapFeePercentage: BigNumberish
   ): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    return await pool.updateSwapFeeGradually(startTime, endTime, endSwapFeePercentage);
+    return await pool.updateSwapFeeGradually(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
   }
 
   async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualWeightUpdateParams> {
