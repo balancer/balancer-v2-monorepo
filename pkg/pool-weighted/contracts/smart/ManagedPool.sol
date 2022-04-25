@@ -244,12 +244,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 endTime = poolState.decodeUint32(_FEE_END_TIME_OFFSET);
 
         return
-            GradualValueChange.getInterpolatedValue(
-                startSwapFeePercentage,
-                _endSwapFeePercentage,
-                startTime,
-                endTime
-            );
+            GradualValueChange.getInterpolatedValue(startSwapFeePercentage, _endSwapFeePercentage, startTime, endTime);
     }
 
     /**
