@@ -252,6 +252,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         }
     }
 
+    /**
+     * @dev Returns the normalization factor, which is used to efficiently scale weights when adding and removing
+     * tokens. This value is an internal implementation detail and typically useless from the outside.
+     */
+    function getDenormalizedWeightSum() public view returns (uint256) {
+        return _denormWeightSum;
+    }
+
     function _getMaxTokens() internal pure virtual override returns (uint256) {
         return _MAX_MANAGED_TOKENS;
     }
@@ -324,14 +332,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         _setMiscData(_getMiscData().insertBool(swapEnabled, _SWAP_ENABLED_OFFSET));
 
         emit SwapEnabledSet(swapEnabled);
-    }
-
-    /**
-     * @dev Returns the normalization factor, which is used to efficiently scale weights when adding and removing
-     * tokens. This value is an internal implementation detail and typically useless from the outside.
-     */
-    function getDenormalizedWeightSum() public view returns (uint256) {
-        return _denormWeightSum;
     }
 
     /**
