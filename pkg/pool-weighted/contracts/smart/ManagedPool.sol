@@ -379,11 +379,18 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @notice Sets the yearly percentage AUM management fee which is payable to the pool manager.
      * @dev Attempting to collect AUM fees in excesss of 10% will result in this function reverting.
      */
-    function setManagementAumFeePercentage(uint256 managementAumFeePercentage) external authenticate whenNotPaused {
+    function setManagementAumFeePercentage(uint256 managementAumFeePercentage)
+        external
+        authenticate
+        whenNotPaused
+        returns (uint256 amount)
+    {
         // We want to avoid a pool manager being able to retroactively increase the amount of AUM fees payable.
         // We then perform a collection before updating the fee percentage to prevent this.
         // This is only necessary if the pool has been initialized (which is shown by the total supply being nonzero).
-        if (totalSupply() > 0) _collectAumManagementFees();
+        if (totalSupply() > 0) {
+            amount = _collectAumManagementFees();
+        }
 
         _setManagementAumFeePercentage(managementAumFeePercentage);
     }
@@ -403,13 +410,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
      * joins and exits.
      */
-    function collectAumManagementFees() external {
+    function collectAumManagementFees() external returns (uint256) {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Reverting here prevents zero value AUM fee collections causing bogus events.
         if (totalSupply() == 0) _revert(Errors.UNINITIALIZED);
 
-        _collectAumManagementFees();
+        return _collectAumManagementFees();
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -752,7 +759,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
      * This function is called automatically on joins and exits.
      */
-    function _collectAumManagementFees() internal {
+    function _collectAumManagementFees() internal returns (uint256 bptAmount) {
         uint256 lastCollection = _lastAumFeeCollectionTimestamp;
         uint256 currentTime = block.timestamp;
 
@@ -780,7 +787,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             // Final value needs to be annualized: multiply by elapsedTime/(365 days)
             uint256 feePct = managementAumFeePercentage.divDown(managementAumFeePercentage.complement());
             uint256 timePeriodPct = elapsedTime.mulUp(FixedPoint.ONE).divDown(365 days);
-            uint256 bptAmount = totalSupply().mulDown(feePct).mulDown(timePeriodPct);
+            bptAmount = totalSupply().mulDown(feePct).mulDown(timePeriodPct);
 
             emit ManagementAumFeeCollected(bptAmount);
 
