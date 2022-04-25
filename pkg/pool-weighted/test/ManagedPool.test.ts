@@ -864,6 +864,16 @@ describe('ManagedPool', function () {
                     });
                   });
 
+                  it('returns the amount of tokens removed', async () => {
+                    const { balances: beforeRemoveBalances } = await pool.getTokens();
+
+                    const amount = await pool.instance
+                      .connect(sender)
+                      .callStatic.removeToken(poolTokens.addresses[tokenIndex], other.address, 0, 0);
+
+                    expect(amount).to.equal(beforeRemoveBalances[tokenIndex]);
+                  });
+
                   context('with a non-zero burn amount', () => {
                     it('burns BPT from the caller', async () => {
                       const bptBalanceBefore = await pool.balanceOf(sender.address);

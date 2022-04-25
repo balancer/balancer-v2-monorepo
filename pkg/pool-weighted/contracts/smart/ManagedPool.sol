@@ -346,15 +346,16 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * The caller may aditionally pass a non-zero `burnAmount` to have some of their BPT be burned, which might be
      * useful in some scenarios to account for the fact that the Pool now has fewer tokens.
      * @param token - The ERC20 token to be removed from the Pool.
-     * @param recipient - The address which is to receive the {ool's balance of `token` after it is removed.
+     * @param recipient - The address which is to receive the Pool's balance of `token` after it is removed.
      * @param burnAmount - An amount of BPT which is to be burnt as a result of removing `token` from the Pool.
+     * @return The amount of tokens the Pool held, sent to `recipient`.
      */
     function removeToken(
         IERC20 token,
         address recipient,
         uint256 burnAmount,
         uint256 minAmountOut
-    ) external authenticate nonReentrant whenNotPaused {
+    ) external authenticate nonReentrant whenNotPaused returns (uint256) {
         // Exit the pool, returning the full balance of the token to the recipient
         (IERC20[] memory tokens, uint256[] memory unscaledBalances, ) = getVault().getPoolTokens(getPoolId());
         _require(tokens.length > 2, Errors.MIN_TOKENS);
@@ -407,6 +408,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         }
 
         emit TokenRemoved(token, tokenBalance);
+
+        return tokenBalance;
     }
 
     function _ensureNoWeightChange() private view {
