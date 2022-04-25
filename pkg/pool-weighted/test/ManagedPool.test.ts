@@ -963,6 +963,17 @@ describe('ManagedPool', function () {
                 const tx = await pool.collectAumManagementFees(owner);
                 return tx.wait();
               });
+
+              context('when the pool is paused', () => {
+                sharedBeforeEach('pause pool', async () => {
+                  await pool.pause();
+                });
+
+                itCollectsNoAUMFees(async () => {
+                  const tx = await pool.collectAumManagementFees(owner);
+                  return tx.wait();
+                });
+              });
             });
           });
         });
@@ -1011,6 +1022,17 @@ describe('ManagedPool', function () {
           itCollectsAUMFeesCorrectly(async () => {
             const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
             return receipt;
+          });
+
+          context('when the pool is paused', () => {
+            sharedBeforeEach('pause pool', async () => {
+              await pool.pause();
+            });
+
+            itCollectsNoAUMFees(async () => {
+              const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
+              return receipt;
+            });
           });
         });
       });
