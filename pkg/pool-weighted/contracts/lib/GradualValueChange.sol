@@ -28,7 +28,7 @@ library GradualValueChange {
     ) internal view returns (uint256) {
         uint256 pctProgress = _calculateValueChangeProgress(startTime, endTime);
 
-        return _interpolateWeight(startValue, endValue, pctProgress);
+        return _interpolateValue(startValue, endValue, pctProgress);
     }
 
     function resolveStartTime(uint256 startTime, uint256 endTime) internal view returns (uint256 resolvedStartTime) {
@@ -43,7 +43,7 @@ library GradualValueChange {
 
     // Private functions
 
-    function _interpolateWeight(
+    function _interpolateValue(
         uint256 startValue,
         uint256 endValue,
         uint256 pctProgress
@@ -52,11 +52,11 @@ library GradualValueChange {
         if (pctProgress >= FixedPoint.ONE) return endValue;
 
         if (startValue > endValue) {
-            uint256 weightDelta = pctProgress.mulDown(startValue - endValue);
-            return startValue.sub(weightDelta);
+            uint256 delta = pctProgress.mulDown(startValue - endValue);
+            return startValue.sub(delta);
         } else {
-            uint256 weightDelta = pctProgress.mulDown(endValue - startValue);
-            return startValue.add(weightDelta);
+            uint256 delta = pctProgress.mulDown(endValue - startValue);
+            return startValue.add(delta);
         }
     }
 
