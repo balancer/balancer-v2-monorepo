@@ -253,6 +253,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         }
     }
 
+    /**
+     * @dev Returns the normalization factor, which is used to efficiently scale weights when adding and removing
+     * tokens. This value is an internal implementation detail and typically useless from the outside.
+     */
+    function getDenormalizedWeightSum() public view returns (uint256) {
+        return _denormWeightSum;
+    }
+
     function _getMaxTokens() internal pure virtual override returns (uint256) {
         return _MAX_MANAGED_TOKENS;
     }
@@ -328,6 +336,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
+     * @notice Removes a token from the Pool's list of tradeable tokens.
      * @dev Removes a token from the Pool's composition, withdrawing all funds from the Vault and sending them to
      * `recipient`, and adjusting the weights of all other tokens.
      *
@@ -336,6 +345,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      *
      * The caller may aditionally pass a non-zero `burnAmount` to have some of their BPT be burned, which might be
      * useful in some scenarios to account for the fact that the Pool now has fewer tokens.
+     * @param token - The ERC20 token to be removed from the Pool.
+     * @param recipient - The address which is to receive the {ool's balance of `token` after it is removed.
+     * @param burnAmount - An amount of BPT which is to be burnt as a result of removing `token` from the Pool.
      */
     function removeToken(
         IERC20 token,
@@ -409,14 +421,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         } else if (currentTime < endTime) {
             _revert(Errors.CHANGE_TOKENS_DURING_WEIGHT_CHANGE);
         }
-    }
-
-    /**
-     * @dev Returns the normalization factor, which is used to efficiently scale weights when adding and removing
-     * tokens. This value is an internal implementation detail and typically useless from the outside.
-     */
-    function getDenormalizedWeightSum() public view returns (uint256) {
-        return _denormWeightSum;
     }
 
     /**
