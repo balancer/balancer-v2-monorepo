@@ -9,6 +9,9 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
+import '@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol';
+import '@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol';
+
 import "./PrimaryIssuePool.sol";
 import "./interfaces/IPrimaryIssuePoolFactory.sol";
 
@@ -18,10 +21,15 @@ contract PrimaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function create(
-        IPrimaryIssuePoolFactory.FactoryPoolParams memory params
-    ) external returns (address) {
-        
+    function create(address _security, 
+                    address _currency, 
+                    uint256 _minimumPrice,
+                    uint256 _basePrice,
+                    uint256 _maxAmountsIn,
+                    uint256 _issueFeePercentage,
+                    uint256 _cutOffTime
+                    ) external returns (address){
+
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
         
         address assetManager = msg.sender;
@@ -31,18 +39,18 @@ contract PrimaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
 
         PrimaryIssuePool.NewPoolParams memory poolparams = PrimaryIssuePool.NewPoolParams({
             vault: getVault(),
-            name: params.name,
-            symbol: params.symbol,
-            security: params.security,
-            currency: params.currency,
+            name: ERC20(_security).name(),
+            symbol: ERC20(_security).symbol(),
+            security: IERC20(_security),
+            currency: IERC20(_currency),
             assetManagers: assetmanagers,
-            minimumPrice: params.minimumPrice,
-            basePrice: params.basePrice,
-            maxSecurityOffered : params.maxAmountsIn,
-            issueFeePercentage: params.issueFeePercentage,
+            minimumPrice: _minimumPrice,
+            basePrice: _basePrice,
+            maxSecurityOffered : _maxAmountsIn,
+            issueFeePercentage: _issueFeePercentage,
             pauseWindowDuration: pauseWindowDuration,
             bufferPeriodDuration: bufferPeriodDuration,
-            issueCutoffTime: params.cutOffTime,
+            issueCutoffTime: _cutOffTime,
             owner: assetManager
         });
 
@@ -50,6 +58,5 @@ contract PrimaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         _register(pool);
         return pool;
     }
-
 
 }

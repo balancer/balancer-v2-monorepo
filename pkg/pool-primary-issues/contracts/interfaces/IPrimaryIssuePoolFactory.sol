@@ -9,20 +9,13 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 interface IPrimaryIssuePoolFactory {
 
-    struct FactoryPoolParams{
-        string name;
-        string symbol;
-        IERC20 security;
-        IERC20 currency;
-        uint256 minimumPrice;
-        uint256 basePrice;
-        uint256 maxAmountsIn;
-        uint256 issueFeePercentage;
-        uint256 cutOffTime;
-    }
-
-    function create(
-        FactoryPoolParams memory params
-    ) external returns (address);
+    function create(address security, 
+                    address currency, 
+                    uint256 minimumPrice,
+                    uint256 basePrice,
+                    uint256 maxAmountsIn,
+                    uint256 issueFeePercentage,
+                    uint256 cutOffTime
+                    ) external returns (address);
 
 }

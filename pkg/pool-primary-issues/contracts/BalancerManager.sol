@@ -169,8 +169,6 @@ contract BalancerManager is IMarketMaker, Ownable{
         // check if security to be issued has been offered by the issuer, and if yes, initialize the issuance
         uint i = offeredTokenIndex[security];
         if(offeredTokens[i]==security){
-            IERC20[] memory tokens = new IERC20[](2);
-            tokens[0] = IERC20(offeredTokens[i]);
             
             // check all offered securities that is not the security to be issued
             for(uint j=0; j<offeredTokens.length; j++){
@@ -244,19 +242,12 @@ contract BalancerManager is IMarketMaker, Ownable{
             //create primary issue pool if it does not exist already
             for(uint x=0; x<pairedTokens[security].length; x++){
                 address lptoken = pairedTokens[security][x];
-                tokens[1] = IERC20(lptoken);
-                IPrimaryIssuePoolFactory.FactoryPoolParams memory poolparams = IPrimaryIssuePoolFactory.FactoryPoolParams({
-                    name : ERC20(security).name(),
-                    symbol : ERC20(security).symbol(),
-                    security : tokens[0],
-                    currency : tokens[1],
-                    minimumPrice : qlTokens[security][lptoken].minPrice,
-                    basePrice : qlTokens[security][lptoken].maxPrice,
-                    maxAmountsIn : qlTokens[security][lptoken].amountIssued,
-                    issueFeePercentage : issueFeePercentage,
-                    cutOffTime : cutoffTime
-                });
-                address newIssue = factory.create(poolparams);
+                address newIssue = factory.create(security, lptoken, 
+                                                    qlTokens[security][lptoken].minPrice,
+                                                    qlTokens[security][lptoken].maxPrice,
+                                                    qlTokens[security][lptoken].amountIssued,
+                                                    issueFeePercentage,
+                                                    cutoffTime);                  
                 // store details of new pool created
                 issues[security].issuer = mmtokens[security][lptoken][0].owner;
                 issues[security].deadline = cutoffTime;
