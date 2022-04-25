@@ -778,16 +778,28 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             }
 
             uint256 elapsedTime = currentTime - lastCollection;
-            // Similar to BPT swap fee calculation, collect fees equal to the AUM % after minting
-            // F is the AUM fee percentage, S is the totalSupply, and x is the amount to mint after 1 year:
-            // S + x = S + F(S + x)
-            // x = F(S + x)
-            // x(1 - F) = FS
-            // x = S * F/(1 - F); per annual time period
-            // Final value needs to be annualized: multiply by elapsedTime/(365 days)
-            uint256 feePct = managementAumFeePercentage.divDown(managementAumFeePercentage.complement());
-            uint256 timePeriodPct = elapsedTime.mulUp(FixedPoint.ONE).divDown(365 days);
-            bptAmount = totalSupply().mulDown(feePct).mulDown(timePeriodPct);
+
+            // We want to collect fees so that the manager will receive `f` percent of the Pool's AUM after a year.
+            // We compute the amount of BPT to mint for the manager that would allow it to proportionally exit the Pool
+            // and receive this fraction of the Pool's assets.
+            // Note that the total BPT supply will increase when minting, so we need to account for this 
+            // in order to compute the percentage of Pool ownership the manager will have.
+
+            // The formula can be derived from:
+            //
+            // f = toMint / (supply + toMint)
+            //
+            // which can be rearranged into:
+            //
+            // toMint = supply * f / (1 - f)
+            uint256 annualizedFee = totalSupply().mulDown(managementAumFeePercentage).divDown(
+                managementAumFeePercentage.complement()
+            );
+
+            // This value is annualized, in reality we will be collecting fees regularly over the course of the year.
+            // We then multiply this value by the fraction of the year which has elapsed since we last collected fees.
+            uint256 fractionalTimePeriod = elapsedTime.mulUp(FixedPoint.ONE).divDown(365 days);
+            bptAmount = annualizedFee.mulDown(fractionalTimePeriod);
 
             emit ManagementAumFeeCollected(bptAmount);
 
