@@ -349,6 +349,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // Tokens cannot be removed during or before a weight change to reduce complexity of weight interactions
         _ensureNoWeightChange();
 
+        // Reverts if token does not exist in pool.
         uint256 tokenIndex = _tokenAddressToIndex(tokens, token);
         uint256 tokenBalance = unscaledBalances[tokenIndex];
         uint256 tokenNormalizedWeight = _getNormalizedWeight(token);
@@ -689,7 +690,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         uint256 tokenIndex = userData.removeToken();
 
-        // No BPT is required to remove the token - it is up to the caller do determine under which conditions removing
+        // No BPT is required to remove the token - it is up to the caller to determine under which conditions removing
         // a token makes sense, and if e.g. burning BPT is required.
         uint256 bptAmountIn = 0;
 
