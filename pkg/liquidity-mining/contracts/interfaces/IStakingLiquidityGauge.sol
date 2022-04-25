@@ -13,16 +13,18 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
 import "./ILiquidityGauge.sol";
+import "./IRewardTokenDistributor.sol";
 
 // For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
 // naming convention.
-// solhint-disable func-name-mixedcase
+// solhint-disable func-name-mixedcase, var-name-mixedcase
 
-interface IStakingLiquidityGauge is ILiquidityGauge, IERC20 {
+interface IStakingLiquidityGauge is IRewardTokenDistributor, ILiquidityGauge, IERC20 {
     function initialize(address lpToken) external;
 
     function lp_token() external view returns (IERC20);
@@ -30,10 +32,4 @@ interface IStakingLiquidityGauge is ILiquidityGauge, IERC20 {
     function deposit(uint256 value, address recipient) external;
 
     function withdraw(uint256 value) external;
-
-    function claim_rewards(address user) external;
-
-    function add_reward(address rewardToken, address distributor) external;
-
-    function set_reward_distributor(address rewardToken, address distributor) external;
 }
