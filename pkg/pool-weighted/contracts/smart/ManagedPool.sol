@@ -382,7 +382,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage) external authenticate whenNotPaused {
         // We want to avoid a pool manager being able to retroactively increase the amount of AUM fees payable.
         // We then perform a collection before updating the fee percentage to prevent this.
-        collectAumManagementFees();
+        // This is only necessary if the pool has been initialized (which is shown by the total supply being nonzero).
+        if (totalSupply() > 0) _collectAumManagementFees();
 
         _setManagementAumFeePercentage(managementAumFeePercentage);
     }
@@ -402,7 +403,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
      * joins and exits.
      */
-    function collectAumManagementFees() public whenNotPaused {
+    function collectAumManagementFees() external whenNotPaused {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Performing an early return here prevents zero value AUM fee collections causing bogus events.
@@ -742,7 +743,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     ) internal virtual override {
         // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
         // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
-        // for the period in which they are an LP within the pool. 
+        // for the period in which they are an LP within the pool, otherwise an LP could shift their share off AUM fees
+        // onto the remaining LPs in the pool by exiting before it was paid.
         _collectAumManagementFees();
     }
 
