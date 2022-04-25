@@ -16,9 +16,6 @@ export default {
   kovan: {
     wstETH: '0xa387b91e393cfb9356a460370842bc8dbb2f29af',
   },
-  rinkeby: {
-    wstETH: '0x0000000000000000000000000000000000000000',
-  },
   polygon: {
     wstETH: '0x0000000000000000000000000000000000000000',
   },
