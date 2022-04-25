@@ -928,9 +928,8 @@ describe('ManagedPool', function () {
 
         context('manual claiming of AUM fees', () => {
           context('when the pool is uninitialized', () => {
-            itCollectsNoAUMFees(async () => {
-              const { receipt } = await pool.init({ from: other, recipient: other, initialBalances });
-              return receipt;
+            it('reverts', async () => {
+              await expect(pool.collectAumManagementFees(owner)).to.be.revertedWith('UNINITIALIZED');
             });
           });
 
