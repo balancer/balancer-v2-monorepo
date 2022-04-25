@@ -693,7 +693,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // a token makes sense, and if e.g. burning BPT is required.
         uint256 bptAmountIn = 0;
 
-        uint256[] memory amountsOut = new uint256[](_getTotalTokens());
+        uint256[] memory amountsOut = new uint256[](balances.length);
         amountsOut[tokenIndex] = balances[tokenIndex];
 
         return (bptAmountIn, amountsOut);
