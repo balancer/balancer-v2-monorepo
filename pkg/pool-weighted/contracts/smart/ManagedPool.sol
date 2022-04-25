@@ -774,7 +774,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             // For gas reasons we only collect AUM fees from this point onwards so perform an early return if so.
             // We also perform an early return if pool's emergency pause mechanism has been triggered.
             if (managementAumFeePercentage == 0 || lastCollection == 0 || !_isNotPaused()) {
-                return;
+                return 0;
             }
 
             uint256 elapsedTime = currentTime - lastCollection;
