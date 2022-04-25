@@ -75,16 +75,16 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     // Store non-token-based values:
     // Start/end timestamps for gradual weight update
     // Cache total tokens
-    // [ 64 bits  | 55 bits |    1 bit    | 32 bits |  32 bits  |  32 bits |  32 bits  |    7 bits    |   1 bit   ]
-    // [ swap fee | unused  | restrict LP | end fee | start fee | end wgt  | start wgt | total tokens | swap flag ]
-    // |MSB                                                                                                    LSB|
-    uint256 private constant _SWAP_ENABLED_OFFSET = 0;
-    uint256 private constant _TOTAL_TOKENS_OFFSET = 1;
-    uint256 private constant _WEIGHT_START_TIME_OFFSET = 8;
-    uint256 private constant _WEIGHT_END_TIME_OFFSET = 40;
-    uint256 private constant _FEE_START_TIME_OFFSET = 72;
-    uint256 private constant _FEE_END_TIME_OFFSET = 104;
-    uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 136;
+    // [ 64 bits  |  1 bit  | 31 bits |   1 bit   |  31 bits  |  64 bits |  32 bits |  32 bits  ]
+    // [ swap fee | LP flag | fee end | swap flag | fee start | end swap | end wgt  | start wgt ]
+    // |MSB                                                                                  LSB|
+    uint256 private constant _WEIGHT_START_TIME_OFFSET = 0;
+    uint256 private constant _WEIGHT_END_TIME_OFFSET = 32;
+    uint256 private constant _END_SWAP_FEE_PERCENTAGE_OFFSET = 64;
+    uint256 private constant _FEE_START_TIME_OFFSET = 128;
+    uint256 private constant _SWAP_ENABLED_OFFSET = 159;
+    uint256 private constant _FEE_END_TIME_OFFSET = 160;
+    uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 191;
     uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
 
     // 7 bits is enough for the token count, since _MAX_MANAGED_TOKENS is 50
@@ -118,9 +118,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
     // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
     uint256 private _managementSwapFeePercentage;
-
-    // Don't have enough bits left in MiscData for the swap fee
-    uint256 private _endSwapFeePercentage;
 
     // Event declarations
 
@@ -177,11 +174,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     {
         uint256 totalTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
-
-        _setMiscData(_getMiscData().insertUint7(totalTokens, _TOTAL_TOKENS_OFFSET));
-
-        // Double check it fits in 7 bits
-        _require(_getTotalTokens() == totalTokens, Errors.MAX_TOKENS);
 
         // Validate and set initial fee
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
@@ -240,11 +232,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         bytes32 poolState = _getMiscData();
 
         uint256 startSwapFeePercentage = poolState.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
-        uint256 startTime = poolState.decodeUint32(_FEE_START_TIME_OFFSET);
-        uint256 endTime = poolState.decodeUint32(_FEE_END_TIME_OFFSET);
+        uint256 endSwapFeePercentage = poolState.decodeUint64(_END_SWAP_FEE_PERCENTAGE_OFFSET);
+        uint256 startTime = poolState.decodeUint31(_FEE_START_TIME_OFFSET);
+        uint256 endTime = poolState.decodeUint31(_FEE_END_TIME_OFFSET);
 
         return
-            GradualValueChange.getInterpolatedValue(startSwapFeePercentage, _endSwapFeePercentage, startTime, endTime);
+            GradualValueChange.getInterpolatedValue(startSwapFeePercentage, endSwapFeePercentage, startTime, endTime);
     }
 
     /**
@@ -264,10 +257,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // Load current pool state from storage
         bytes32 poolState = _getMiscData();
 
-        startTime = poolState.decodeUint32(_FEE_START_TIME_OFFSET);
-        endTime = poolState.decodeUint32(_FEE_END_TIME_OFFSET);
+        startTime = poolState.decodeUint31(_FEE_START_TIME_OFFSET);
+        endTime = poolState.decodeUint31(_FEE_END_TIME_OFFSET);
         startSwapFeePercentage = poolState.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
-        endSwapFeePercentage = _endSwapFeePercentage;
+        endSwapFeePercentage = poolState.decodeUint64(_END_SWAP_FEE_PERCENTAGE_OFFSET);
     }
 
     function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual override {
@@ -275,8 +268,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 currentTime = block.timestamp;
         bytes32 poolState = _getMiscData();
 
-        uint256 startTime = poolState.decodeUint32(_FEE_START_TIME_OFFSET);
-        uint256 endTime = poolState.decodeUint32(_FEE_END_TIME_OFFSET);
+        uint256 startTime = poolState.decodeUint31(_FEE_START_TIME_OFFSET);
+        uint256 endTime = poolState.decodeUint31(_FEE_END_TIME_OFFSET);
 
         if (currentTime < startTime) {
             _revert(Errors.SET_SWAP_FEE_PENDING_FEE_CHANGE);
@@ -333,7 +326,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _getMiscData().decodeUint7(_TOTAL_TOKENS_OFFSET);
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+
+        return tokens.length;
     }
 
     /**
@@ -724,7 +719,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) internal virtual {
-        if (startSwapFeePercentage != super.getSwapFeePercentage()) {
+        if (startSwapFeePercentage != getSwapFeePercentage()) {
             super._setSwapFeePercentage(startSwapFeePercentage);
         }
 
@@ -739,10 +734,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 endSwapFeePercentage
     ) private {
         _setMiscData(
-            _getMiscData().insertUint32(startTime, _FEE_START_TIME_OFFSET).insertUint32(endTime, _FEE_END_TIME_OFFSET)
+            _getMiscData()
+                .insertUint31(startTime, _FEE_START_TIME_OFFSET)
+                .insertUint31(endTime, _FEE_END_TIME_OFFSET)
+                .insertUint64(endSwapFeePercentage, _END_SWAP_FEE_PERCENTAGE_OFFSET)
         );
-
-        _endSwapFeePercentage = endSwapFeePercentage;
     }
 
     // Factored out to avoid stack issues
