@@ -124,7 +124,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     uint256 private _managementAumFeePercentage;
 
     // Timestamp of the most recent collection of management AUM fees.
-    // Note that this is only initialized on the first attempt to collect fees after pool initialization.
+    // Note that this is only initialized the first times fees are collected.
     uint256 private _lastAumFeeCollectionTimestamp;
 
     // Event declarations
