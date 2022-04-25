@@ -118,6 +118,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
     uint256 private _managementSwapFeePercentage;
 
+    // Store the token count locally (can change if tokens are added or removed)
+    uint256 private _totalTokensCache;
+
     // Event declarations
 
     event GradualWeightUpdateScheduled(
@@ -173,6 +176,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     {
         uint256 totalTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
+
+        _totalTokensCache = totalTokens;
 
         // Validate and set initial fee
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
@@ -301,7 +306,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         endTime = poolState.decodeUint32(_WEIGHT_END_TIME_OFFSET);
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-        uint256 totalTokens = tokens.length;
+        uint256 totalTokens = _getTotalTokens();
 
         endWeights = new uint256[](totalTokens);
 
@@ -325,9 +330,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-
-        return tokens.length;
+        return _totalTokensCache;
     }
 
     /**
