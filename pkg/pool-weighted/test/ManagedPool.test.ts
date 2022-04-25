@@ -673,7 +673,6 @@ describe('ManagedPool', function () {
           it('reverts if the token is not in the pool', async () => {
             await expect(pool.removeToken(sender, ZERO_ADDRESS, other.address)).to.be.revertedWith('INVALID_TOKEN');
           });
-
           context('when the pool is paused', () => {
             sharedBeforeEach('pause pool', async () => {
               await vault.authorizer
@@ -879,12 +878,22 @@ describe('ManagedPool', function () {
                       const bptBalanceBefore = await pool.balanceOf(sender.address);
 
                       const burnAmount = fp(17);
-                      await pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address, burnAmount);
+                      await pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address, { burnAmount });
 
                       const bptBalanceAfter = await pool.balanceOf(sender.address);
 
                       expect(bptBalanceBefore.sub(bptBalanceAfter)).to.equal(burnAmount);
                     });
+                  });
+
+                  it('reverts if the minimum amount out is larger than the balance', async () => {
+                    const { balances: beforeRemoveBalances } = await pool.getTokens();
+
+                    await expect(
+                      pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address, {
+                        minAmountOut: beforeRemoveBalances[tokenIndex].add(1),
+                      })
+                    ).to.be.revertedWith('EXIT_BELOW_MIN');
                   });
                 }
               }

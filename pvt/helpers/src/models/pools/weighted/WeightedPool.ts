@@ -693,10 +693,9 @@ export default class WeightedPool {
     from: SignerWithAddress,
     token: string,
     recipient: string,
-    burnAmount?: BigNumberish,
-    minAmountIn?: BigNumberish
+    extra: { burnAmount?: BigNumberish; minAmountOut?: BigNumberish } = {}
   ): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    return await pool.removeToken(token, recipient, burnAmount ?? 0, minAmountIn ?? 0);
+    return await pool.removeToken(token, recipient, extra.burnAmount ?? 0, extra.minAmountOut ?? 0);
   }
 }
