@@ -798,7 +798,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
             // This value is annualized, in reality we will be collecting fees regularly over the course of the year.
             // We then multiply this value by the fraction of the year which has elapsed since we last collected fees.
-            uint256 fractionalTimePeriod = elapsedTime.mulUp(FixedPoint.ONE).divDown(365 days);
+            uint256 fractionalTimePeriod = elapsedTime.divDown(365 days);
             bptAmount = annualizedFee.mulDown(fractionalTimePeriod);
 
             emit ManagementAumFeeCollected(bptAmount);
