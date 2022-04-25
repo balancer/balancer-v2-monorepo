@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { bn, fp, fromFp, pct } from '@balancer-labs/v2-helpers/src/numbers';
-import { MINUTE, DAY, currentTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
+import { MINUTE, DAY, currentTimestamp, WEEK, advanceToTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -574,6 +574,49 @@ describe('ManagedPool', function () {
             expect(updateParams.endTime).to.equalWithError(endTime, 0.001);
             expect(updateParams.endWeights).to.equalWithError(endWeights, 0.001);
           });
+        });
+      });
+    });
+
+    describe('update swap fee', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        const params = {
+          tokens: poolTokens,
+          weights: poolWeights,
+          owner: owner.address,
+          swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+          poolType: WeightedPoolType.MANAGED_POOL,
+          swapEnabledOnStart: true,
+        };
+        pool = await WeightedPool.create(params);
+        await pool.init({ from: owner, initialBalances });
+      });
+
+      context('when there is an ongoing gradual change', () => {
+        let now, startTime: BigNumber, endTime: BigNumber;
+        const START_DELAY = MINUTE * 10;
+        const UPDATE_DURATION = DAY * 2;
+        const NEW_SWAP_FEE = fp(0.1);
+
+        sharedBeforeEach('start gradual swap fee update', async () => {
+          now = await currentTimestamp();
+          startTime = now.add(START_DELAY);
+          endTime = startTime.add(UPDATE_DURATION);
+
+          await pool.updateSwapFeeGradually(owner, startTime, endTime, NEW_SWAP_FEE);
+        });
+
+        it('fails when gradual change is set to start in the future', async () => {
+          await expect(pool.setSwapFeePercentage(owner, NEW_SWAP_FEE)).to.be.revertedWith(
+            'SET_SWAP_FEE_PENDING_FEE_CHANGE'
+          );
+        });
+
+        it('fails when gradual change is in progress', async () => {
+          advanceToTimestamp(startTime.add(1));
+          await expect(pool.setSwapFeePercentage(owner, NEW_SWAP_FEE)).to.be.revertedWith(
+            'SET_SWAP_FEE_DURING_FEE_CHANGE'
+          );
         });
       });
     });

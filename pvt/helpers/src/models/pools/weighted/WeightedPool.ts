@@ -644,6 +644,11 @@ export default class WeightedPool {
     return pool.setSwapEnabled(swapEnabled);
   }
 
+  async setSwapFeePercentage(from: SignerWithAddress, swapFeePercentage: BigNumberish): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.setSwapFeePercentage(swapFeePercentage);
+  }
+
   async setManagementSwapFeePercentage(
     from: SignerWithAddress,
     managementFee: BigNumberish
