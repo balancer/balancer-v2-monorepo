@@ -70,7 +70,7 @@ describe('ManagedPool', function () {
           });
 
           it('has the correct total weight', async () => {
-            expect(await pool.instance.getDenormWeightSum()).to.equal(fp(weightSum));
+            expect(await pool.instance.getDenormalizedWeightSum()).to.equal(fp(weightSum));
           });
 
           it('sets token weights', async () => {
