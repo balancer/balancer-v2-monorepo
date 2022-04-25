@@ -683,34 +683,42 @@ describe('ManagedPool', function () {
         context('with valid parameters (ongoing swap fee update)', () => {
           let now, startTime: BigNumber, endTime: BigNumber;
           const START_DELAY = MINUTE * 10;
-          const NEW_SWAP_FEE = fp(0.01);
+          const START_SWAP_FEE = fp(0.5);
+          const END_SWAP_FEE = fp(0.01);
 
           sharedBeforeEach('updateWeightsGradually', async () => {
             now = await currentTimestamp();
             startTime = now.add(START_DELAY);
             endTime = startTime.add(UPDATE_DURATION);
 
-            await pool.updateSwapFeeGradually(owner, startTime, endTime, NEW_SWAP_FEE);
+            // Before we schedule the "real" swap fee update we perform another one which ensures that the start and
+            // end swap fee percentages held in storage are not equal. This ensures that we're calculating the
+            // current swap fee correctly.
+            await pool.updateSwapFeeGradually(owner, now.add(1), now.add(1), START_SWAP_FEE);
+            await advanceToTimestamp(now.add(2));
           });
 
           it('updating the swap fee emits an event', async () => {
-            const receipt = await pool.updateSwapFeeGradually(owner, startTime, endTime, NEW_SWAP_FEE);
+            const receipt = await pool.updateSwapFeeGradually(owner, startTime, endTime, END_SWAP_FEE);
 
             expectEvent.inReceipt(await receipt.wait(), 'GradualSwapFeeUpdateScheduled', {
               startTime: startTime,
               endTime: endTime,
-              startSwapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-              endSwapFeePercentage: NEW_SWAP_FEE,
+              startSwapFeePercentage: START_SWAP_FEE,
+              endSwapFeePercentage: END_SWAP_FEE,
             });
           });
 
+          // We currently expect this test to fail as ManagedPool doesn't write startSwapFeePercentage to storage.
           it('stores the params', async () => {
+            await pool.updateSwapFeeGradually(owner, startTime, endTime, END_SWAP_FEE);
+
             const updateParams = await pool.getGradualSwapFeeUpdateParams();
 
             expect(updateParams.startTime).to.equalWithError(startTime, 0.001);
             expect(updateParams.endTime).to.equalWithError(endTime, 0.001);
-            expect(updateParams.startSwapFeePercentage).to.equal(POOL_SWAP_FEE_PERCENTAGE);
-            expect(updateParams.endSwapFeePercentage).to.equal(NEW_SWAP_FEE);
+            expect(updateParams.startSwapFeePercentage).to.equal(START_SWAP_FEE);
+            expect(updateParams.endSwapFeePercentage).to.equal(END_SWAP_FEE);
           });
         });
       });
