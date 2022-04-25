@@ -90,8 +90,8 @@ describe('OracleWeightedPool', function () {
           await action(await calcLastChangeBlock(lastChangeBlockOffset));
 
           const currentMiscData = await pool.getMiscData();
-          expect(currentMiscData.oracleIndex).to.equal(previousData.oracleIndex.add(1));
           expect(currentMiscData.oracleSampleCreationTimestamp).to.equal(await currentTimestamp());
+          expect(currentMiscData.oracleIndex).to.equal(previousData.oracleIndex.add(1));
         });
       });
 
