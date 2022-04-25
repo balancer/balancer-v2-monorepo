@@ -700,7 +700,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         return (bptAmountIn, amountsOut);
     }
 
-    function _tokenAddressToIndex(IERC20[] memory tokens, IERC20 token) internal view returns (uint256) {
+    function _tokenAddressToIndex(IERC20[] memory tokens, IERC20 token) internal pure returns (uint256) {
         uint256 tokensLength = tokens.length;
         for (uint256 i = 0; i < tokensLength; i++) {
             if (tokens[i] == token) {
