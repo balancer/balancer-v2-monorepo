@@ -1009,8 +1009,7 @@ describe('ManagedPool', function () {
           });
 
           itCollectsAUMFeesCorrectly(async () => {
-            const amountsOut = initialBalances.map((x) => x.div(2));
-            const { receipt } = await pool.exitGivenOut({ from: other, amountsOut });
+            const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
             return receipt;
           });
         });
