@@ -913,14 +913,15 @@ describe('ManagedPool', function () {
             it('collects the expected amount of fees', async () => {
               const balanceBefore = await pool.balanceOf(owner);
 
-              expectEvent.inIndirectReceipt(
-                await collectAUMFees(),
-                pool.instance.interface,
-                'ManagementAumFeeCollected'
-              );
+              const receipt = await collectAUMFees();
 
               const balanceAfter = await pool.balanceOf(owner);
-              expect(balanceAfter.sub(balanceBefore)).to.equalWithError(expectedManagementFeeBpt, 0.0001);
+              const actualManagementFeeBpt = balanceAfter.sub(balanceBefore);
+              expect(actualManagementFeeBpt).to.equalWithError(expectedManagementFeeBpt, 0.0001);
+
+              expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'ManagementAumFeeCollected', {
+                bptAmount: actualManagementFeeBpt,
+              });
             });
           }
 
