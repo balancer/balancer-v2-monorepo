@@ -1353,7 +1353,7 @@ describe('ManagedPool', function () {
 
     it('accounts for the protocol portion of the AUM fee', async () => {
       const protocolFeesCollector = await vault.getFeesCollector();
-      
+
       const totalSupply = await pool.totalSupply();
       const expectedBpt = totalSupply
         .mul(180)
