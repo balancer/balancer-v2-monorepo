@@ -394,6 +394,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory minAmountsOut = new uint256[](tokens.length);
         minAmountsOut[tokenIndex] = minAmountOut;
 
+        // Note that this exit will trigger a collection of the AUM fees payable up to now.
         getVault().exitPool(
             getPoolId(),
             address(this),
