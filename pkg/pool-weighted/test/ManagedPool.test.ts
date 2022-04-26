@@ -640,10 +640,10 @@ describe('ManagedPool', function () {
       });
     });
 
-    itRevomesTokensCorrectly(3);
-    itRevomesTokensCorrectly(4);
+    itRemovesTokensCorrectly(3);
+    itRemovesTokensCorrectly(4);
 
-    function itRevomesTokensCorrectly(totalTokens: number) {
+    function itRemovesTokensCorrectly(totalTokens: number) {
       context(`on a pool with ${totalTokens} tokens`, () => {
         removeTokensDownTo(totalTokens);
 
