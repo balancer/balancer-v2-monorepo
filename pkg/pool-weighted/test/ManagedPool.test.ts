@@ -142,7 +142,6 @@ describe('ManagedPool', function () {
         weights: poolWeights,
         vault,
         poolType: WeightedPoolType.MANAGED_POOL,
-        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         from: owner,
         fromFactory: true,
       };

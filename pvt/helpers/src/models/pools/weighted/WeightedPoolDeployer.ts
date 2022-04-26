@@ -183,7 +183,6 @@ export default {
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       poolType,
       owner,
       from,
@@ -277,7 +276,6 @@ export default {
             newPoolParams,
             basePoolRights,
             managedPoolRights,
-            aumProtocolFeesCollector,
             DAY,
             from?.address || ZERO_ADDRESS
           );
