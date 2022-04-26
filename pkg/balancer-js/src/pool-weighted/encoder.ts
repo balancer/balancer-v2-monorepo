@@ -6,6 +6,7 @@ export enum WeightedPoolJoinKind {
   EXACT_TOKENS_IN_FOR_BPT_OUT,
   TOKEN_IN_FOR_EXACT_BPT_OUT,
   ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
+  ADD_TOKEN,
 }
 
 export enum WeightedPoolExitKind {
@@ -99,6 +100,14 @@ export class ManagedPoolEncoder {
   private constructor() {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
   }
+
+  /**
+   * Encodes the userData parameter for adding a new token to a WeightedPool
+   * @param token - the token being added
+   * @param amountIn - the amount of the tokens to send to the pool as its initial balance
+   */
+  static joinForAddToken = (token: string, amountIn: BigNumberish): string =>
+    defaultAbiCoder.encode(['uint256', 'uint256', 'uint256'], [WeightedPoolJoinKind.ADD_TOKEN, token, amountIn]);
 
   /**
    * Encodes the userData parameter for exiting a ManagedPool to remove a token.

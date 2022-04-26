@@ -18,7 +18,13 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
 library WeightedPoolUserData {
     // In order to preserve backwards compatibility, make sure new join and exit kinds are added at the end of the enum.
-    enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT, ALL_TOKENS_IN_FOR_EXACT_BPT_OUT }
+    enum JoinKind {
+        INIT,
+        EXACT_TOKENS_IN_FOR_BPT_OUT,
+        TOKEN_IN_FOR_EXACT_BPT_OUT,
+        ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
+        ADD_TOKEN // for Managed Pool
+    }
     enum ExitKind {
         EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
         EXACT_BPT_IN_FOR_TOKENS_OUT,
@@ -54,6 +60,11 @@ library WeightedPoolUserData {
 
     function allTokensInForExactBptOut(bytes memory self) internal pure returns (uint256 bptAmountOut) {
         (, bptAmountOut) = abi.decode(self, (JoinKind, uint256));
+    }
+
+    // The token must be registered before the add join, so we use the index
+    function addToken(bytes memory self) internal pure returns (uint256 tokenIndex, uint256 amountIn) {
+        (, tokenIndex, amountIn) = abi.decode(self, (JoinKind, uint256, uint256));
     }
 
     // Exits

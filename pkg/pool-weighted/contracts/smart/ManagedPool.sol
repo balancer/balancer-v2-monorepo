@@ -65,7 +65,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
     // The upper bound is WeightedMath.MAX_WEIGHTED_TOKENS, but this is constrained by other factors, such as Pool
     // creation gas consumption.
-    uint256 private constant _MAX_MANAGED_TOKENS = 50;
+    uint256 private constant _MAX_MANAGED_TOKENS = 38;
 
     uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
 
@@ -150,6 +150,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     );
+    event TokenAdded(IERC20 indexed token, uint256 weight, uint256 initialBalance);
     event TokenRemoved(IERC20 indexed token, uint256 tokenAmountOut);
 
     struct NewPoolParams {
@@ -442,6 +443,282 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         _setMiscData(_getMiscData().insertBool(swapEnabled, _SWAP_ENABLED_OFFSET));
 
         emit SwapEnabledSet(swapEnabled);
+    }
+
+    /**
+     * @dev This function takes the token, and the normalizedWeight it should have in the pool after being added.
+     * The stored (denormalized) weights of all other tokens remain unchanged, but the weightSum will increase,
+     * such that the normalized weight of the new token will match the target value, and the normalized weights of
+     * all other tokens will be reduced proportionately.
+     *
+     * addToken performs the following operations:
+     *
+     * - Verify there is room for the token, there is no weight change, and the final weights are all valid
+     * - Calculate the new BPT price, and ensure it is >= the minimum
+     * - Register the new token with the Vault
+     * - Join the pool, pulling in the tokenAmountIn from the sender
+     * - Increase the total weight, and update the number of tokens and `_tokenState`
+     *   (all other weights then scale accordingly)
+     * - Return the BPT value of the new token, for possible use by the caller
+     */
+    function addToken(
+        IERC20 token,
+        uint256 normalizedWeight,
+        uint256 tokenAmountIn,
+        address assetManager,
+        uint256 minBptPrice,
+        address sender,
+        address recipient
+    ) external authenticate whenNotPaused returns (uint256) {
+        return _addToken(token, normalizedWeight, tokenAmountIn, assetManager, minBptPrice, sender, recipient);
+    }
+
+    function _validateAddToken(
+        IERC20 token,
+        uint256 normalizedWeight,
+        uint256 tokenAmountIn,
+        uint256 minBptPrice
+    ) private view returns (uint256 weightSumAfterAdd, uint256 bptAmountOut) {
+        _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
+        // The max weight actually depends on the number of other tokens, but this is handled below
+        // by ensuring the final weights are all >= minimum
+        _require(normalizedWeight < FixedPoint.ONE, Errors.MAX_WEIGHT);
+        _require(_getTotalTokens() < _getMaxTokens(), Errors.MAX_TOKENS);
+
+        // Do not allow adding tokens if there is an ongoing or pending gradual weight change
+        uint256 currentTime = block.timestamp;
+        bytes32 poolState = _getMiscData();
+
+        if (currentTime < poolState.decodeUint32(_WEIGHT_START_TIME_OFFSET)) {
+            _revert(Errors.CHANGE_TOKENS_PENDING_WEIGHT_CHANGE);
+        } else if (currentTime < poolState.decodeUint32(_WEIGHT_END_TIME_OFFSET)) {
+            _revert(Errors.CHANGE_TOKENS_DURING_WEIGHT_CHANGE);
+        }
+
+        uint256 weightSumBeforeAdd = _denormWeightSum;
+
+        // Calculate the weightSum after the add
+        // Consider an 80/20 pool:
+        // |----0.8----|-0.2-|
+        // 0                 x = 1.0 (rightmost point at the "end" of the number line)
+        //
+        // Now add a new token with a weight of 60%
+        // |----0.8----|-0.2-|---0.6y---|
+        // 0                 x          y = the new weightSum
+        //
+        // By definition, since we interpret the new token weight as the desired final normalized weight,
+        // the new "length" is the old length, plus 60% of the total new length, y
+        // y = 0.6y + x
+        // (1 - 0.6)y = x
+        // y = x / (1 - 0.6); since x = 1, y = 1/0.4 = 2.5
+        //
+        // The denormalized weight of the new token, 0.6y, is then 0.6(2.5) = 1.5
+        // Since the denorm weights of the original tokens stay the same, the final state is:
+        // |----0.8----|-0.2-|---1.5---|  denormalized weights (as stored)
+        //    0.8/2.5  0.2/2.5 1.5/2.5
+        //      32%      8%      60%      normalized weights (as calculated: W[i]/weightSum)
+        //
+        // The added token is 60%, as desired, and the original 80/20 weights are scaled down
+        // proportionately to 32/8, to fit within the remaining 40%
+        //
+        //uint256 weightSumMultiplier = FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight);
+        weightSumAfterAdd = weightSumBeforeAdd.mulUp(FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight));
+
+        // Now we need to make sure the other token weights don't get scaled down below the minimum
+        // normalized weight[i] = denormalized weight[i] / weightSumAfterAdd
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        for (uint256 i = 0; i < tokens.length; i++) {
+            _require(
+                _getTokenData(tokens[i]).decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT).divUp(
+                    weightSumAfterAdd
+                ) >= WeightedMath._MIN_WEIGHT,
+                Errors.MIN_WEIGHT
+            );
+        }
+
+        // Calculate the bptAmountOut equivalent to adding the token at the given weight
+        // The BPT price of a token = S / (B/Wn) = (S * Wn) / B;
+        // where S = totalSupply, Wn = normalized weight, and B = balance
+        //
+        // Since the BPT prices of existing tokens should stay constant when adding a token,
+        // Let Sb, Wnb = total supply and normalized weight before the add; and
+        //     Sa, Wna = total supply and normalized weight after the add
+        // Then: (Sa * Wna) / B = (Sb * Wnb) / B
+        //       Sa * Wna = Sb * Wnb
+        //       Sa = Sb * (Wnb / Wna)
+        // Since the normalized weights (Wn) = denormalized weights (Wd) / weightSum (WS), we have:
+        // Sa = Sb * (Wd / WSb)  - denormalized weights don't change, so there is just one Wd
+        //            ---------
+        //           (Wd / WSa)
+        // Sa = Sb * WSa / WSb = totalSupply after the add
+        //
+        // Then the bptAmountOut is the delta in the total supply:
+        // bptAmountOut = Sa - Sb
+        //              = Sb * WSa / WSb - Sb
+        //              = Sb * (WSa / WSb - 1)
+        //
+        // In our example, Sa is the totalSupply on initialization of the pool. If the balances are 400 and 0.5:
+        // Sb = (400^0.8) * (0.5^0.2) * 2 = 210.1222
+        // Sa = 210.1222 * (2.5 / 1.0) = 525.3056
+        // bptAmountOut = 210.1222 * (2.5 / 1.0 - 1) = 315.1833
+        // The added token should represent 60% of the total supply, after the add, and in fact:
+        // 315.1833 / 525.3056 = ~ 0.6
+        //
+        uint256 weightSumRatio = weightSumAfterAdd.divDown(weightSumBeforeAdd);
+        bptAmountOut = totalSupply().mulDown(weightSumRatio.sub(FixedPoint.ONE));
+
+        // Validate that the actual BPT price
+        uint256 actualBptPrice = totalSupply().mulDown(weightSumRatio).mulDown(normalizedWeight).divUp(
+            _upscale(tokenAmountIn, _computeScalingFactor(token))
+        );
+
+        _require(actualBptPrice >= minBptPrice, Errors.MIN_BPT_PRICE_ADD_TOKEN);
+    }
+
+    function _updateTokenStateAfterAdd(
+        uint256 numTokens,
+        IERC20 token,
+        uint256 denormalizedWeight
+    ) private {
+        // Store token data, and update the token count
+        bytes32 tokenState;
+
+        _tokenState[token] = tokenState
+            .insertUint64(denormalizedWeight.compress64(_MAX_DENORM_WEIGHT), _START_DENORM_WEIGHT_OFFSET)
+            .insertUint64(denormalizedWeight.compress64(_MAX_DENORM_WEIGHT), _END_DENORM_WEIGHT_OFFSET)
+            .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
+        _totalTokensCache = numTokens;
+    }
+
+    function _registerNewToken(
+        IERC20 token,
+        uint256 denormalizedWeight,
+        uint256 tokenAmountIn,
+        address assetManager
+    )
+        private
+        returns (
+            IERC20[] memory,
+            uint256,
+            uint256[] memory
+        )
+    {
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = assetManager;
+        IERC20[] memory tokensToAdd = new IERC20[](1);
+        tokensToAdd[0] = token;
+
+        getVault().registerTokens(getPoolId(), tokensToAdd, assetManagers);
+
+        // Tokens array is now different
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        uint256[] memory maxAmountsIn = new uint256[](tokens.length);
+        uint256 tokenIndex;
+
+        // It will put it at the end, so iterate backwards to find it faster
+        for (uint256 i = tokens.length - 1; i >= 0; i--) {
+            if (tokens[i] == token) {
+                // This is the new one we're joining with
+                maxAmountsIn[i] = tokenAmountIn;
+                tokenIndex = i;
+                break;
+            }
+        }
+
+        _updateTokenStateAfterAdd(tokens.length, token, denormalizedWeight);
+
+        return (tokens, tokenIndex, maxAmountsIn);
+    }
+
+    // Not worrying about updating the invariant yet, or paying protocol fees, since that will all likely change
+    function _joinAddToken(
+        IERC20[] memory tokens,
+        uint256 tokenIndex,
+        uint256 tokenAmountIn,
+        uint256[] memory maxAmountsIn,
+        address recipient
+    ) private {
+        getVault().joinPool(
+            getPoolId(),
+            address(this),
+            payable(recipient),
+            IVault.JoinPoolRequest({
+                assets: _asIAsset(tokens),
+                maxAmountsIn: maxAmountsIn,
+                userData: abi.encode(WeightedPoolUserData.JoinKind.ADD_TOKEN, tokenIndex, tokenAmountIn),
+                fromInternalBalance: false
+            })
+        );
+    }
+
+    /**
+     * @dev 1) Validate the operation (and calculate the new weightSum and bptAmountOut to return)
+     *         - the incoming normalizedWeight is valid
+     *         - adding a token will not exceed the token limit
+     *         - there is no ongoing or pending weight change
+     *         - adding the new token at the given weight does not lower any other weights below the minimum
+     *         - the final BPT price is at or above the calculated minimum
+     *      2) Register the new token, with the given asset manager (and return the final sorted token list,
+     *         and index of the new token). Note that the token order can completely change. Note that after
+     *         registration and before joining, the pool is in an invalid state, with a zero invariant.
+     *         - register the token with the Vault
+     *         - adjust the management fees data structure to the new token order (preserving any uncollected fees)
+     *         - adjust the rest of the token state (including token count)
+     *      3) Join the pool, transferring tokens to the Vault, and restoring the pool to functional status
+     *      4) Finally, update the stored weightSum, and return the bptAmountOut. The caller may then mint BPT,
+     *         depending on the use case.
+     */
+
+    function _addToken(
+        IERC20 token,
+        uint256 normalizedWeight,
+        uint256 tokenAmountIn,
+        address assetManager,
+        uint256 minBptPrice,
+        address sender,
+        address recipient
+    ) internal returns (uint256) {
+        (uint256 weightSumAfterAdd, uint256 bptAmountOut) = _validateAddToken(
+            token,
+            normalizedWeight,
+            tokenAmountIn,
+            minBptPrice
+        );
+
+        (IERC20[] memory tokens, uint256 tokenIndex, uint256[] memory maxAmountsIn) = _registerNewToken(
+            token,
+            normalizedWeight.mulUp(weightSumAfterAdd),
+            tokenAmountIn,
+            assetManager
+        );
+
+        // Transfer tokens from the sender to this contract, since the sender for the join must be the pool
+        token.transferFrom(sender, address(this), tokenAmountIn);
+        token.approve(address(getVault()), tokenAmountIn);
+
+        _joinAddToken(tokens, tokenIndex, tokenAmountIn, maxAmountsIn, recipient);
+
+        // If done in two stages, the controller would externally calculate a minimum BPT price (i.e., 1 token = x BPT),
+        // based on dollar values.
+        //
+        // BPT price = (totalSupply * weight)/balance, where balance should be set to:
+        // (old USD value of pool) * WSa/WSb * weight of new token
+        //
+        // For instance, if adding 60% DAI to our example pool with $10k of value (at $1/DAI), you would add
+        // 10k * 2.5/1.0 * 0.6 = 15,000 DAI
+        // The BPT price would be 525.3056 * 0.6 / 15000 = 0.021, and the controller could set a minimum of 0.02
+        // (lower BPT price = higher maxAmountIn).
+        //
+        // In the commit stage, the actual desired balance would be passed in, and addToken would verify
+        // the final BPT price.
+        //
+        // The controller might also impose other limitations, such as not allowing (or allowlisting) asset managers.
+
+        _denormWeightSum = weightSumAfterAdd;
+
+        emit TokenAdded(token, normalizedWeight, tokenAmountIn);
+
+        return bptAmountOut;
     }
 
     /**
@@ -774,17 +1051,49 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal view override returns (uint256, uint256[] memory) {
+    ) internal view override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
         // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps,
         // and alter token prices.
+        WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(
-            getSwapEnabled() || userData.joinKind() == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
+            getSwapEnabled() ||
+                kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT ||
+                kind == WeightedPoolUserData.JoinKind.ADD_TOKEN,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
-        // Check allowlist for LPs, if applicable
-        _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
-        return super._doJoin(sender, balances, normalizedWeights, scalingFactors, userData);
+        if (WeightedPoolUserData.JoinKind.ADD_TOKEN == kind) {
+            (bptAmountOut, amountsIn) = _doJoinAddToken(sender, scalingFactors, userData);
+        } else {
+            // Check allowlist for LPs, if applicable
+            _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
+
+            (bptAmountOut, amountsIn) = super._doJoin(sender, balances, normalizedWeights, scalingFactors, userData);
+
+        }
+    }
+
+    function _doJoinAddToken(
+        address sender,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    ) private view returns (uint256, uint256[] memory) {
+        // This join function can only be called by the Pool itself - the authorization logic that governs when that
+        // call can be made resides in addToken.
+        _require(sender == address(this), Errors.UNAUTHORIZED_JOIN);
+
+        // No BPT will be issued for the join operation itself. The `addToken` function calculates and returns
+        // the bptAmountOut, but leaves any further action, such as minting BPT, up to the caller.
+        uint256 bptAmountOut = 0;
+
+        // Note that there is no maximum amountsIn parameter: this is handled by `IVault.joinPool`.
+
+        (uint256 tokenIndex, uint256 amountIn) = userData.addToken();
+
+        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
+        amountsIn[tokenIndex] = _upscale(amountIn, scalingFactors[tokenIndex]);
+
+        return (bptAmountOut, amountsIn);
     }
 
     function _doExit(
@@ -836,6 +1145,18 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     function _tokenAddressToIndex(IERC20[] memory tokens, IERC20 token) internal pure returns (uint256) {
         uint256 tokensLength = tokens.length;
         for (uint256 i = 0; i < tokensLength; i++) {
+            if (tokens[i] == token) {
+                return i;
+            }
+        }
+
+        _revert(Errors.INVALID_TOKEN);
+    }
+
+    function _tokenAddressToIndex(IERC20 token) internal view returns (uint256) {
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+
+        for (uint256 i = 0; i < tokens.length; i++) {
             if (tokens[i] == token) {
                 return i;
             }
@@ -946,6 +1267,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             (actionId == getActionId(ManagedPool.addAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPool.removeAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPool.setMustAllowlistLPs.selector)) ||
+            (actionId == getActionId(ManagedPool.addToken.selector)) ||
             (actionId == getActionId(ManagedPool.removeToken.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementSwapFeePercentage.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementAumFeePercentage.selector)) ||
