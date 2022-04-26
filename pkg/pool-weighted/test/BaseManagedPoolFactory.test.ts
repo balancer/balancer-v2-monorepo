@@ -25,6 +25,7 @@ describe('BaseManagedPoolFactory', function () {
   const SYMBOL = 'BPT';
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.5);
+  const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = toNormalizedWeights([fp(30), fp(70), fp(5), fp(5)]);
 
   const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -64,6 +65,7 @@ describe('BaseManagedPoolFactory', function () {
       mustAllowlistLPs: mustAllowlistLPs,
       protocolSwapFeePercentage: protocolSwapFeePercentage,
       managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+      managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
     };
 
     const receipt = await (await factory.connect(manager).create(newPoolParams, manager.address)).wait();
@@ -113,6 +115,10 @@ describe('BaseManagedPoolFactory', function () {
 
     it('sets management swap fee', async () => {
       expect(await pool.getManagementSwapFeePercentage()).to.equal(POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE);
+    });
+
+    it('sets management aum fee', async () => {
+      expect(await pool.getManagementAumFeePercentage()).to.equal(POOL_MANAGEMENT_AUM_FEE_PERCENTAGE);
     });
 
     it('sets the pool owner', async () => {

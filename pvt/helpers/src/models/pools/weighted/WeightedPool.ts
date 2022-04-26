@@ -68,6 +68,7 @@ export default class WeightedPool {
   mustAllowlistLPs: boolean;
   protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
+  managementAumFeePercentage: BigNumberish;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
     return WeightedPoolDeployer.deploy(params);
@@ -85,7 +86,8 @@ export default class WeightedPool {
     swapEnabledOnStart: boolean,
     mustAllowlistLPs: boolean,
     protocolSwapFeePercentage: BigNumberish,
-    managementSwapFeePercentage: BigNumberish
+    managementSwapFeePercentage: BigNumberish,
+    managementAumFeePercentage: BigNumberish
   ) {
     this.instance = instance;
     this.poolId = poolId;
@@ -99,6 +101,7 @@ export default class WeightedPool {
     this.mustAllowlistLPs = mustAllowlistLPs;
     this.protocolSwapFeePercentage = protocolSwapFeePercentage;
     this.managementSwapFeePercentage = managementSwapFeePercentage;
+    this.managementAumFeePercentage = managementAumFeePercentage;
   }
 
   get address(): string {
@@ -205,6 +208,10 @@ export default class WeightedPool {
 
   async getManagementSwapFeePercentage(): Promise<BigNumber> {
     return this.instance.getManagementSwapFeePercentage();
+  }
+
+  async getManagementAumFeePercentage(): Promise<BigNumber> {
+    return this.instance.getManagementAumFeePercentage();
   }
 
   async getNormalizedWeights(): Promise<BigNumber[]> {
@@ -651,6 +658,14 @@ export default class WeightedPool {
     return pool.setManagementSwapFeePercentage(managementFee);
   }
 
+  async setManagementAumFeePercentage(
+    from: SignerWithAddress,
+    managementFee: BigNumberish
+  ): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.setManagementAumFeePercentage(managementFee);
+  }
+
   async addAllowedAddress(from: SignerWithAddress, member: string): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
     return pool.addAllowedAddress(member);
@@ -674,14 +689,9 @@ export default class WeightedPool {
     return this.instance.isAllowedAddress(member);
   }
 
-  async withdrawCollectedManagementFees(
-    from: SignerWithAddress,
-    recipient?: SignerWithAddress
-  ): Promise<ContractTransaction> {
-    if (recipient === undefined) recipient = from;
-
+  async collectAumManagementFees(from: SignerWithAddress): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    return pool.withdrawCollectedManagementFees(recipient.address);
+    return pool.collectAumManagementFees();
   }
 
   async updateWeightsGradually(
