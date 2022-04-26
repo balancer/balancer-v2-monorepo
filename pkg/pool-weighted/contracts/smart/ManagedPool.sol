@@ -15,7 +15,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
@@ -62,7 +61,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     using WordCodec for bytes32;
     using WeightCompression for uint256;
     using WeightedPoolUserData for bytes;
-    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
 
     // State variables
 
@@ -127,7 +125,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     uint256 private _managementAumFeePercentage;
 
     // Timestamp of the most recent collection of management AUM fees.
-    // Note that this is only initialized on the first attempt to collect fees after pool initialization.
+    // Note that this is only initialized the first times fees are collected.
     uint256 private _lastAumFeeCollectionTimestamp;
 
     // Event declarations
@@ -295,6 +293,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         }
     }
 
+    /**
+     * @dev Returns the normalization factor, which is used to efficiently scale weights when adding and removing
+     * tokens. This value is an internal implementation detail and typically useless from the outside.
+     */
+    function getDenormalizedWeightSum() public view returns (uint256) {
+        return _denormWeightSum;
+    }
+
     function _getMaxTokens() internal pure virtual override returns (uint256) {
         return _MAX_MANAGED_TOKENS;
     }
@@ -312,11 +318,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 endTime,
         uint256[] memory endWeights
     ) external authenticate whenNotPaused nonReentrant {
-        InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+
+        InputHelpers.ensureInputLengthMatch(tokens.length, endWeights.length);
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
-
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
     }
@@ -370,16 +376,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Getter for the sum of all weights. In initially FixedPoint.ONE, it can be higher or lower
-     * as a result of adds and removes.
-     */
-    function getDenormWeightSum() external view returns (uint256) {
-        return _denormWeightSum;
-    }
-
-    /**
-     * @notice Sets the percentage of swap fees which are payable to the pool manager.
-     * @dev Attempting to take more than 100% of the swap fees will result in this function reverting.
+     * @dev Set the management fee percentage
      */
     function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) external authenticate whenNotPaused {
         _setManagementSwapFeePercentage(managementSwapFeePercentage);
@@ -399,10 +396,18 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @notice Sets the yearly percentage AUM management fee which is payable to the pool manager.
      * @dev Attempting to collect AUM fees in excesss of 10% will result in this function reverting.
      */
-    function setManagementAumFeePercentage(uint256 managementAumFeePercentage) external authenticate whenNotPaused {
+    function setManagementAumFeePercentage(uint256 managementAumFeePercentage)
+        external
+        authenticate
+        whenNotPaused
+        returns (uint256 amount)
+    {
         // We want to avoid a pool manager being able to retroactively increase the amount of AUM fees payable.
         // We then perform a collection before updating the fee percentage to prevent this.
-        collectAumManagementFees();
+        // This is only necessary if the pool has been initialized (which is shown by the total supply being nonzero).
+        if (totalSupply() > 0) {
+            amount = _collectAumManagementFees();
+        }
 
         _setManagementAumFeePercentage(managementAumFeePercentage);
     }
@@ -422,13 +427,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
      * joins and exits.
      */
-    function collectAumManagementFees() public whenNotPaused {
+    function collectAumManagementFees() external returns (uint256) {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
-        // Performing an early return here prevents zero value AUM fee collections causing bogus events.
-        if (totalSupply() == 0) return;
+        // Reverting here prevents zero value AUM fee collections causing bogus events.
+        if (totalSupply() == 0) _revert(Errors.UNINITIALIZED);
 
-        _collectAumManagementFees();
+        return _collectAumManagementFees();
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -760,6 +765,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory,
         uint256
     ) internal virtual override {
+        // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
+        // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
+        // for the period in which they are an LP within the pool, otherwise an LP could shift their share of AUM fees
+        // onto the remaining LPs in the pool by exiting before it was paid.
         _collectAumManagementFees();
     }
 
@@ -767,7 +776,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
      * This function is called automatically on joins and exits.
      */
-    function _collectAumManagementFees() internal {
+    function _collectAumManagementFees() internal returns (uint256 bptAmount) {
         uint256 lastCollection = _lastAumFeeCollectionTimestamp;
         uint256 currentTime = block.timestamp;
 
@@ -778,24 +787,42 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
             uint256 managementAumFeePercentage = getManagementAumFeePercentage();
 
-            // `lastCollection == 0` means that we're in the first attempt to collect AUM fees
-            // For gas reasons we only collect AUM fees from this point onwards so perform an early return if so.
-            // We also perform an early return if pool's emergency pause mechanism has been triggered.
+            // If `lastCollection` has not been set then we don't know what period over which to collect fees.
+            // We then perform an early return after initializing it so that we can collect fees next time. This
+            // means that AUM fees are not collected for any tokens the Pool is initialized with until the first
+            // non-initialization join or exit.
+            // We also perform an early return if the AUM fee is zero, to save gas.
+            //
+            // If the Pool has been paused, all fee calculation and minting is skipped to reduce execution
+            // complexity to a minimum (and therefore likelihood of errors). We do still update the last
+            // collection timestamp however, to avoid potentially collecting extra fees if the Pool were to
+            // be later unpaused. Any fees that would be collected while the Pool is paused are lost.
             if (managementAumFeePercentage == 0 || lastCollection == 0 || !_isNotPaused()) {
-                return;
+                return 0;
             }
 
+            // We want to collect fees so that the manager will receive `f` percent of the Pool's AUM after a year.
+            // We compute the amount of BPT to mint for the manager that would allow it to proportionally exit the Pool
+            // and receive this fraction of the Pool's assets.
+            // Note that the total BPT supply will increase when minting, so we need to account for this
+            // in order to compute the percentage of Pool ownership the manager will have.
+
+            // The formula can be derived from:
+            //
+            // f = toMint / (supply + toMint)
+            //
+            // which can be rearranged into:
+            //
+            // toMint = supply * f / (1 - f)
+            uint256 annualizedFee = totalSupply().mulDown(managementAumFeePercentage).divDown(
+                managementAumFeePercentage.complement()
+            );
+
+            // This value is annualized, in reality we will be collecting fees regularly over the course of the year.
+            // We then multiply this value by the fraction of the year which has elapsed since we last collected fees.
             uint256 elapsedTime = currentTime - lastCollection;
-            // Similar to BPT swap fee calculation, collect fees equal to the AUM % after minting
-            // F is the AUM fee percentage, S is the totalSupply, and x is the amount to mint after 1 year:
-            // S + x = S + F(S + x)
-            // x = F(S + x)
-            // x(1 - F) = FS
-            // x = S * F/(1 - F); per annual time period
-            // Final value needs to be annualized: multiply by elapsedTime/(365 days)
-            uint256 feePct = managementAumFeePercentage.divDown(managementAumFeePercentage.complement());
-            uint256 timePeriodPct = elapsedTime.mulUp(FixedPoint.ONE).divDown(365 days);
-            uint256 bptAmount = totalSupply().mulDown(feePct).mulDown(timePeriodPct);
+            uint256 fractionalTimePeriod = elapsedTime.divDown(365 days);
+            bptAmount = annualizedFee.mulDown(fractionalTimePeriod);
 
             emit ManagementAumFeeCollected(bptAmount);
 

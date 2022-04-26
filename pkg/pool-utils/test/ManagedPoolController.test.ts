@@ -351,9 +351,15 @@ describe('ManagedPoolController', function () {
         await poolController.initialize(pool.address);
       });
 
-      it('reverts if the manager tries to change the management fee', async () => {
+      it('reverts if the manager tries to change the management swap fee', async () => {
         await expect(
           poolController.connect(manager).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE)
+        ).to.be.revertedWith('UNAUTHORIZED_OPERATION');
+      });
+
+      it('reverts if the manager tries to change the management AUM fee', async () => {
+        await expect(
+          poolController.connect(manager).setManagementAumFeePercentage(NEW_MGMT_AUM_FEE)
         ).to.be.revertedWith('UNAUTHORIZED_OPERATION');
       });
     });
