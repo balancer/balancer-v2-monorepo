@@ -1023,6 +1023,30 @@ describe('ManagedPool', function () {
               const { receipt } = await pool.joinGivenIn({ from: other, amountsIn });
               return receipt;
             }, timeElapsed);
+
+            context('when the pool is paused and then then unpaused', () => {
+              sharedBeforeEach('pause pool, collect fees and unpause pool', async () => {
+                await pool.pause();
+
+                // Trigger a collection of the management fees, this will collect no fees but will update the
+                // timestamp of the last collection. This avoids the pool overcharging AUM fees after the unpause.
+                // Note that if nobody interacts with the pool before it is unpaused then AUM fees will be charged
+                // as if the pool were never paused, however this is unlikely to occur.
+                await pool.collectAumManagementFees(owner);
+
+                await pool.setPaused(false);
+
+                // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
+                // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
+                await advanceTime(timeElapsed);
+              });
+
+              itCollectsAUMFeesCorrectly(async () => {
+                const amountsIn = initialBalances.map((x) => x.div(2));
+                const { receipt } = await pool.joinGivenIn({ from: other, amountsIn });
+                return receipt;
+              }, timeElapsed);
+            });
           });
         });
 
@@ -1050,6 +1074,27 @@ describe('ManagedPool', function () {
             itCollectsNoAUMFees(async () => {
               const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
               return receipt;
+            });
+
+            context('when the pool is then unpaused', () => {
+              sharedBeforeEach('collect fees and unpause pool', async () => {
+                // Trigger a collection of the management fees, this will collect no fees but will update the
+                // timestamp of the last collection. This avoids the pool overcharging AUM fees after the unpause.
+                // Note that if nobody interacts with the pool before it is unpaused then AUM fees will be charged
+                // as if the pool were never paused, however this is unlikely to occur.
+                await pool.collectAumManagementFees(owner);
+
+                await pool.setPaused(false);
+
+                // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
+                // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
+                await advanceTime(timeElapsed);
+              });
+
+              itCollectsAUMFeesCorrectly(async () => {
+                const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
+                return receipt;
+              }, timeElapsed);
             });
           });
         });
