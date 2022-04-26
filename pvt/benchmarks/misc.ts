@@ -110,13 +110,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           canChangeMgmtFees: true,
         };
 
-        params = [
-          newPoolParams,
-          basePoolRights,
-          managedPoolRights,
-          DAY,
-          creator.address,
-        ];
+        params = [newPoolParams, basePoolRights, managedPoolRights, DAY, creator.address];
         break;
       }
       case 'OracleWeightedPool': {
