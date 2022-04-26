@@ -83,21 +83,15 @@ describe('OracleWeightedPool', function () {
 
     const itUpdatesTheOracleData = (action: PoolHook, lastChangeBlockOffset = 0) => {
       context('without updated oracle', () => {
-        let expectedTimestamp: BigNumber;
-
         it('updates the oracle data', async () => {
           const previousData = await pool.getMiscData();
-          expectedTimestamp = await currentTimestamp();
-          console.log(`pre-advance timestamp: ${expectedTimestamp}`);
 
           await advanceTime(MINUTE * 10); // force index update
           await action(await calcLastChangeBlock(lastChangeBlockOffset));
-          expectedTimestamp = await currentTimestamp();
 
           const currentMiscData = await pool.getMiscData();
-          console.log(`sample creation timestamp: ${currentMiscData.oracleSampleCreationTimestamp}`);
           expect(currentMiscData.oracleIndex).to.equal(previousData.oracleIndex.add(1));
-          expect(currentMiscData.oracleSampleCreationTimestamp).to.equal(expectedTimestamp);
+          expect(currentMiscData.oracleSampleCreationTimestamp).to.equal(await currentTimestamp());
         });
       });
 
