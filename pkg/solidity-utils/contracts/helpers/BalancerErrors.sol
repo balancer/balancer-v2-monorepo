@@ -163,6 +163,7 @@ library Errors {
     uint256 internal constant UNINITIALIZED_POOL_CONTROLLER = 345;
     uint256 internal constant CHANGE_TOKENS_DURING_WEIGHT_CHANGE = 346;
     uint256 internal constant CHANGE_TOKENS_PENDING_WEIGHT_CHANGE = 347;
+    uint256 internal constant MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 348;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
