@@ -817,17 +817,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             uint256 fractionalTimePeriod = elapsedTime.divDown(365 days);
             bptAmount = annualizedFee.mulDown(fractionalTimePeriod);
 
-            emit ManagementAumFeeCollected(bptAmount);
-
             // Compute the protocol's share of the AUM fee
-            address aumProtocolFeesCollector = address(getAumProtocolFeesCollector());
+            uint256 protocolBptAmount = bptAmount.mulUp(getAumProtocolFeesCollector().getAumFeePercentage());
+            bptAmount = bptAmount.sub(protocolBptAmount);
 
-            if (aumProtocolFeesCollector != address(0)) {
-                uint256 protocolBptAmount = bptAmount.mulUp(getAumProtocolFeesCollector().getAumFeePercentage());
-                bptAmount = bptAmount.sub(protocolBptAmount);
+            _payProtocolFees(protocolBptAmount);
 
-                _mintPoolTokens(aumProtocolFeesCollector, protocolBptAmount);
-            }
+            // Only show the amount collected by the manager
+            emit ManagementAumFeeCollected(bptAmount);
 
             _mintPoolTokens(getOwner(), bptAmount);
         }

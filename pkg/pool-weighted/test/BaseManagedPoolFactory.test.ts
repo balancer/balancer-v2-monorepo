@@ -48,6 +48,10 @@ describe('BaseManagedPoolFactory', function () {
     createTime = await currentTimestamp();
   });
 
+  it('factory has the AumProtocolFeesController', async () => {
+    expect(factory.aumProtocolFeesCollector()).to.not.equal(ZERO_ADDRESS);
+  });
+
   async function createPool(
     swapsEnabled = true,
     mustAllowlistLPs = false,

@@ -21,17 +21,9 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 interface IAumProtocolFeesCollector {
     event AumFeePercentageChanged(uint256 newAumFeePercentage);
 
-    function withdrawCollectedFees(
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        address recipient
-    ) external;
-
-    function setAumFeePercentage(uint256 newSwapFeePercentage) external;
-
     function getAumFeePercentage() external view returns (uint256);
 
-    function getCollectedFeeAmounts(IERC20[] memory tokens) external view returns (uint256[] memory feeAmounts);
+    function setAumFeePercentage(uint256 newSwapFeePercentage) external;
 
     function getAuthorizer() external view returns (IAuthorizer);
 

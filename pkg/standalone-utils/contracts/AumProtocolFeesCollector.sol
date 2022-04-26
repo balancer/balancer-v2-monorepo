@@ -53,20 +53,6 @@ contract AumProtocolFeesCollector is IAumProtocolFeesCollector, Authentication, 
         vault = _vault;
     }
 
-    function withdrawCollectedFees(
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        address recipient
-    ) external override nonReentrant authenticate {
-        InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-            uint256 amount = amounts[i];
-            token.safeTransfer(recipient, amount);
-        }
-    }
-
     function setAumFeePercentage(uint256 newAumFeePercentage) external override authenticate {
         _require(newAumFeePercentage <= _MAX_PROTOCOL_AUM_FEE_PERCENTAGE, Errors.AUM_FEE_PERCENTAGE_TOO_HIGH);
         _aumFeePercentage = newAumFeePercentage;
@@ -75,18 +61,6 @@ contract AumProtocolFeesCollector is IAumProtocolFeesCollector, Authentication, 
 
     function getAumFeePercentage() external view override returns (uint256) {
         return _aumFeePercentage;
-    }
-
-    function getCollectedFeeAmounts(IERC20[] memory tokens)
-        external
-        view
-        override
-        returns (uint256[] memory feeAmounts)
-    {
-        feeAmounts = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            feeAmounts[i] = tokens[i].balanceOf(address(this));
-        }
     }
 
     function getAuthorizer() external view override returns (IAuthorizer) {

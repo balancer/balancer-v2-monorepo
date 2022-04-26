@@ -1306,6 +1306,7 @@ describe('ManagedPool', function () {
   describe('non-zero AUM protocol fees', () => {
     let authorizedVault: Contract;
     let feesCollector: Contract;
+    let vault: Vault;
 
     const AUM_PROTOCOL_FEE_PERCENTAGE = fp(0.1);
     const swapFeePercentage = fp(0.02);
@@ -1325,13 +1326,15 @@ describe('ManagedPool', function () {
     });
 
     sharedBeforeEach('deploy and initialize pool', async () => {
+      vault = new Vault(false, authorizedVault, authorizer, admin);
+
       const params = {
         tokens: poolTokens,
         weights: poolWeights,
         owner: owner.address,
         poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
-        vault: new Vault(false, authorizedVault, authorizer, admin),
+        vault,
         swapFeePercentage,
         managementSwapFeePercentage,
         managementAumFeePercentage,
@@ -1349,6 +1352,8 @@ describe('ManagedPool', function () {
     });
 
     it('accounts for the protocol portion of the AUM fee', async () => {
+      const protocolFeesCollector = await vault.getFeesCollector();
+      
       const totalSupply = await pool.totalSupply();
       const expectedBpt = totalSupply
         .mul(180)
@@ -1370,8 +1375,8 @@ describe('ManagedPool', function () {
       expect(balanceAfter.sub(balanceBefore)).to.equalWithError(ownerPortion, 0.0001);
 
       // Fee collector should have its balance
-      const protocolFees = await feesCollector.getCollectedFeeAmounts([pool.address]);
-      expect(protocolFees[0]).to.equalWithError(protocolPortion, 0.00001);
+      const protocolFees = await pool.balanceOf(protocolFeesCollector.address);
+      expect(protocolFees).to.equalWithError(protocolPortion, 0.00001);
     });
   });
 });
