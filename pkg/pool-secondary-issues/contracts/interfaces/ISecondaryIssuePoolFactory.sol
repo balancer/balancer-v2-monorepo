@@ -10,8 +10,8 @@ interface ISecondaryIssuePoolFactory {
     function create(
         string calldata name,
         string calldata symbol,
-        IERC20 security,
-        IERC20 currency,
+        address security,
+        address currency,
         uint256 maxAmountsIn,
         uint256 tradeFeePercentage
     ) external returns (address);

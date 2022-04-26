@@ -8,6 +8,8 @@ import "./interfaces/IOrder.sol";
 import "./interfaces/ITrade.sol";
 import "./interfaces/ISettlor.sol";
 
+import "./utilities/StringUtils.sol";
+
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
 
@@ -18,6 +20,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
 {   
     using Math for uint256;
+    using stringutils for *;
 
     address private immutable _security;
     address private immutable _currency;
@@ -34,6 +37,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
     uint256 private immutable _currencyIndex;
 
     address payable private balancerManager;
+
+    struct Params {
+        uint256 fee;
+        bytes32 trade;
+        uint256 price;
+    }
+
+    uint256[] balances;
 
     struct NewPoolParams {
         IVault vault;
@@ -192,130 +203,59 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
 
     function onSwap(
         SwapRequest memory request,
-        uint256[] memory balances,
+        uint256[] memory swappedBalances,
         uint256 indexIn,
         uint256 indexOut
     ) public override onlyVault(request.poolId) returns (uint256) {
         
         uint256[] memory scalingFactors = _scalingFactors();
+        
+        balances = swappedBalances;
 
+        bytes memory _trade;
+        bytes memory _price;
+        for(uint i=0; i<request.userData.length; i++){
+            if(i>=0 && i<=5)
+                _trade[i] = request.userData[i];
+            else if(i>=5 && i<=37)
+                _price[i-5] = request.userData[i];
+        }
+
+        Params memory params = Params({
+            fee: getSwapFeePercentage(),
+            trade: string(_trade).stringToBytes32(),
+            price: string(_price).stringToUint()
+        });
+
+        uint256 amount = 0;
+        uint256 price = 0;
+        
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             request.amount = _upscale(request.amount, scalingFactors[indexIn]);
-            uint256 amountOut = _onSwapIn(request, balances);
-            return _downscaleDown(amountOut, scalingFactors[indexOut]);
+            if(request.tokenOut==IERC20(_currency)){    
+                (price, amount) = newOrder(request.from, params.price, request.amount, params.trade, "Sell");//_onSwapIn(request, balances, params);
+                if(params.trade=="Market")
+                    return _downscaleDown(price, scalingFactors[indexOut]);
+            }
+            else if(request.tokenOut==IERC20(_security)){
+                (price, amount) = newOrder(request.from, params.price, request.amount, params.trade, "Buy");
+                if(params.trade=="Market")
+                    return _downscaleDown(amount, scalingFactors[indexOut]);
+            }            
         } else if (request.kind == IVault.SwapKind.GIVEN_OUT){
             request.amount = _upscale(request.amount, scalingFactors[indexOut]);
-            uint256 amountIn = _onSwapOut(request, balances);
-            return _downscaleUp(amountIn, scalingFactors[indexIn]);
+            if(request.tokenIn==IERC20(_currency)){
+                (price, amount) = newOrder(request.from, params.price, request.amount, params.trade, "Buy");//_onSwapOut(request, balances, params);
+                if(params.trade=="Market")
+                    return _downscaleDown(amount, scalingFactors[indexOut]);
+            }
+            else if(request.tokenIn==IERC20(_security)){
+                (price, amount) = newOrder(request.from, params.price, request.amount, params.trade, "Sell");
+                if(params.trade=="Market")                    
+                    return _downscaleDown(price, scalingFactors[indexOut]);                
+            }
         }
 
-    }
-
-    function _onSwapIn(
-        SwapRequest memory request,
-        uint256[] memory balances
-    ) internal returns (uint256) {
-        if (request.tokenIn == IERC20(_security)) {
-            return _swapSecurityIn(request, balances);
-        } else if (request.tokenIn == IERC20(_currency)) {
-            return _swapCurrencyIn(request, balances);
-        } else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-    }
-
-    function _swapSecurityIn(
-        SwapRequest memory request,
-        uint256[] memory balances
-    ) internal returns (uint256) {
-        _require(request.tokenOut == IERC20(_currency), Errors.INVALID_TOKEN);
-
-        //returning currency for current price of security paid in
-        if(request.tokenOut==IERC20(_currency)){
-            uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], request.amount);
-            uint256 tokenOutAmt = Math.div(postPaidSecurityBalance, balances[_currencyIndex], false);
-            uint256 postPaidCurrencyBalance = Math.sub(balances[_currencyIndex], tokenOutAmt);
-            //newOrder(request.from, Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false), request.amount, "Market", "Sell");
-            checkLimitOrders(Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false));
-            checkStopOrders(Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false));
-            return tokenOutAmt;
-        }
-        else
-            return 0;     
-        
-    }
-
-    function _swapCurrencyIn(
-        SwapRequest memory request,
-        uint256[] memory balances
-    ) internal returns (uint256) {
-        _require(request.tokenOut == IERC20(_security), Errors.INVALID_TOKEN);
-
-        //returning security for currency paid in at current price of security
-        if(request.tokenOut==IERC20(_security)){
-            uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], request.amount);
-            uint256 tokenOutAmt = Math.div(postPaidCurrencyBalance, balances[_securityIndex], false);
-            uint256 postPaidSecurityBalance = Math.sub(balances[_securityIndex], tokenOutAmt);
-            checkLimitOrders(Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false));
-            checkStopOrders(Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false));
-            return tokenOutAmt;
-        }
-        else
-            return 0;
-        
-    }
-
-    function _onSwapOut(
-        SwapRequest memory request,
-        uint256[] memory balances
-    ) internal returns (uint256) {
-        if (request.tokenOut == IERC20(_security)) {
-            return _swapSecurityOut(request, balances);
-        } else if (request.tokenOut == IERC20(_currency)) {
-            return _swapCurrencyOut(request, balances);
-        } else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-    }
-
-    function _swapSecurityOut(
-        SwapRequest memory request,
-        uint256[] memory balances
-    ) internal returns (uint256) {
-        _require(request.tokenIn == IERC20(_currency), Errors.INVALID_TOKEN);
-
-        //returning security to be swapped out for paid in currency
-        if(request.tokenIn==IERC20(_currency)){
-            uint256 postPaidSecurityBalance = Math.sub(balances[_securityIndex], request.amount);
-            uint256 tokenOutAmt = Math.div(postPaidSecurityBalance, balances[_currencyIndex], false);
-            uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], tokenOutAmt);
-            checkLimitOrders(Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false));
-            checkStopOrders(Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false));
-            return tokenOutAmt;
-        }
-        else
-            return 0;
-        
-    }
-
-    function _swapCurrencyOut(
-        SwapRequest memory request,
-        uint256[] memory balances
-    ) internal returns (uint256) {
-        _require(request.tokenIn == IERC20(_security), Errors.INVALID_TOKEN);
-
-        //returning currency to be paid in for security paid in
-        if(request.tokenIn==IERC20(_security)){
-            uint256 postPaidCurrencyBalance = Math.sub(balances[_currencyIndex], request.amount);
-            uint256 tokenOutAmt = Math.div(postPaidCurrencyBalance, balances[_securityIndex], false);
-            uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], tokenOutAmt);
-            checkLimitOrders(Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false));
-            checkStopOrders(Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false));
-            return tokenOutAmt;
-        }
-        else
-            return 0;
-        
     }
 
     function _onInitializePool(
@@ -408,8 +348,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                         uint256 _price,
                         uint256 _qty, 
                         bytes32 _otype, 
-                        bytes32 _order) private {
-        require(_otype=="Limit" || _otype=="StopLoss");
+                        bytes32 _order) private returns(uint256, uint256){
+        require(_otype=="Market" || _otype=="Limit" || _otype=="Stop");
         require(_order=="Buy" || _order=="Sell");
         bytes32 ref = keccak256(abi.encodePacked(_party, block.timestamp));
         //fill up order details
@@ -419,24 +359,31 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
         orders[ref].qty = _qty;
         orders[ref].order = _order; 
         orders[ref].otype = _otype;
-        orders[ref].dt = block.timestamp;
-        orders[ref].status = "Open";
+        orders[ref].dt = block.timestamp;        
         //fill up indexes
         orderIndex[ref] = orderRefs.length;
         orderRefs.push(ref);
         userOrderIndex[ref] = userOrderRefs[_party].length;
         userOrderRefs[_party].push(ref);
-        if(_otype=="Limit"){
+        if(_otype=="Market"){
+            orders[ref].status = "Filled";
+            marketOrders[orders[ref].orderno] = ref;
+            marketOrderbook = marketOrderbook + 1;
+            return matchOrders(ref, "market");
+        }
+        else if(_otype=="Limit"){
+            orders[ref].status = "Open";
             limitOrders[orders[ref].orderno] = ref;
             limitOrderbook = limitOrderbook + 1;
             checkLimitOrders(_price);
         }
-        else if(_otype=="StopLoss"){
+        else if(_otype=="Stop"){
+            orders[ref].status = "Open";
             stopOrders[orders[ref].orderno] = ref;
             stopOrderbook = stopOrderbook + 1;
             checkStopOrders(_price);
         }
-        
+        return (0,0);
     }
 
     function getOrderRef() override external view returns(bytes32[] memory){
@@ -455,7 +402,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                 limitOrders[orders[ref].orderno] = ref;
                 checkLimitOrders(_price);
             }
-            else if(orders[ref].otype=="StopLoss"){
+            else if(orders[ref].otype=="Stop"){
                 stopOrders[orders[ref].orderno] = ref;
                 checkStopOrders(_price);
             }
@@ -486,20 +433,20 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                 marketOrderbook = marketOrderbook + 1;
                 ref = limitOrders[i];
                 reorder(i, "limit");
-                matchOrders(ref);
+                matchOrders(ref, "limit");
             }
             else if(orders[limitOrders[i]].order=="Sell" && orders[limitOrders[i]].price<=_priceFilled){
                 marketOrders[orders[limitOrders[i]].orderno] = limitOrders[i];
                 marketOrderbook = marketOrderbook + 1;
                 ref = limitOrders[i];
                 reorder(i, "limit");
-                matchOrders(ref);
+                matchOrders(ref, "limit");
             }
         }
     }
 
-    //check if a buy order in the limit order book can execute under the prevailing (high) price passed to the function
-    //check if a sell order in the limit order book can execute over the prevailing (low) price passed to the function
+    //check if a buy order in the stoploss order book can execute under the prevailing (high) price passed to the function
+    //check if a sell order in the stoploss order book can execute over the prevailing (low) price passed to the function
     function checkStopOrders(uint256 _priceFilled) private {
         bytes32 ref;
         for(uint256 i=0; i<stopOrderbook; i++){
@@ -508,20 +455,29 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                 marketOrderbook = marketOrderbook + 1;
                 ref = stopOrders[i];
                 reorder(i, "stop");
-                matchOrders(ref);
+                matchOrders(ref, "stop");
             }
             else if(orders[stopOrders[i]].order=="Sell" && orders[stopOrders[i]].price>=_priceFilled){
                 marketOrders[orders[stopOrders[i]].orderno] = stopOrders[i];
                 marketOrderbook = marketOrderbook + 1;
                 ref = stopOrders[i];
                 reorder(i, "stop");
-                matchOrders(ref);
+                matchOrders(ref, "stop");
             }
         }   
     }
     
     function reorder(uint256 position, bytes32 list) private {
-        if(list=="limit"){
+        if(list=="market"){
+            for(uint i=position; i<marketOrderbook; i++){
+                if(i==marketOrderbook-1)
+                    delete marketOrders[position];
+                else
+                    marketOrders[position] = marketOrders[position+1];
+            } 
+            marketOrderbook = marketOrderbook - 1;
+        }
+        else if(list=="limit"){
             for(uint i=position; i<limitOrderbook; i++){
                 if(i==limitOrderbook-1)
                     delete limitOrders[position];
@@ -543,7 +499,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
 
     //match market orders. Sellers get the best price (highest bid) they can sell at.
     //Buyers get the best price (lowest offer) they can buy at. 
-    function matchOrders(bytes32 _ref) private {
+    function matchOrders(bytes32 _ref, bytes32 _trade) private returns (uint256, uint256){
         for(uint i=0; i<marketOrderbook; i++){
             if(marketOrders[i]!=_ref && orders[marketOrders[i]].party!=orders[_ref].party && orders[marketOrders[i]].status!="Filled"){
                 if(orders[marketOrders[i]].order=="Buy" && orders[_ref].order=="Sell"){
@@ -576,6 +532,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                     orders[_ref].status = "Filled";
                     reportTrade(_ref, orders[_ref].party, bestBid, orders[bestBid].party, orders[_ref].price, qty, orders[_ref].order, orders[_ref].otype);
                     reorder(bidIndex, "market");
+                    if(_trade=="market")
+                        return (orders[_ref].price, qty);
                 }
                 else{
                     orders[_ref].qty = orders[_ref].qty - orders[bestBid].qty;
@@ -584,10 +542,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                     orders[bestBid].status = "PartlyFilled";
                     orders[_ref].status = "PartlyFilled";
                     reportTrade(_ref, orders[_ref].party, bestBid, orders[bestBid].party, orders[_ref].price, qty, orders[_ref].order, orders[_ref].otype);
+                    if(_trade=="market")
+                        return (orders[_ref].price, qty);
                 }
                 checkLimitOrders(orders[_ref].price);
                 checkStopOrders(orders[_ref].price);
             }
+            return (0,0);
         }
         else if(orders[_ref].order=="Buy"){
             if(bestOffer!=""){
@@ -599,6 +560,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                     orders[_ref].status = "Filled";
                     reportTrade(bestOffer, orders[bestOffer].party, _ref, orders[_ref].party, orders[_ref].price, qty, orders[_ref].order, orders[_ref].otype);
                     reorder(bidIndex, "market");
+                    if(_trade=="market")
+                        return (orders[_ref].price, qty);
                 }
                 else{
                     orders[_ref].qty = orders[_ref].qty - orders[bestOffer].qty;
@@ -607,11 +570,15 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                     orders[bestOffer].status = "PartlyFilled";
                     orders[_ref].status = "PartlyFilled";
                     reportTrade(bestOffer, orders[bestOffer].party, _ref, orders[_ref].party, orders[_ref].price, qty, orders[_ref].order, orders[_ref].otype);
+                    if(_trade=="market")
+                        return (orders[_ref].price, qty);
                 }
                 checkLimitOrders(orders[_ref].price);
                 checkStopOrders(orders[_ref].price);
             }
+            return (0,0);
         }
+
     }
     
     function reportTrade(bytes32 _pregRef,

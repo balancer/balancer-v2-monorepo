@@ -53,5 +53,4 @@ contract SecondaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         return pool;
     }
 
-
 }

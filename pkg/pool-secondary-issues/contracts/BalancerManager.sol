@@ -39,8 +39,8 @@ contract BalancerManager is ISettlor, Ownable {
         address pool = ISecondaryIssuePoolFactory(factory).create(
             ERC20(security).name(),
             ERC20(security).symbol(),
-            IERC20(security),
-            IERC20(currency),
+            security,
+            currency,
             amount,
             fee
         );
@@ -131,7 +131,6 @@ contract BalancerManager is ISettlor, Ownable {
     }
 
     function getTransferAgent(address party) override external view returns(bytes32){
-        //to do : when integrating to an issuing platform (external)
         return(issuers[msg.sender][party]);
     }
 
