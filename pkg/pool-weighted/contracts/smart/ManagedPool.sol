@@ -377,7 +377,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 burnAmount,
         uint256 minAmountOut
     ) external authenticate nonReentrant whenNotPaused returns (uint256) {
-        // We require the pool to be initialized (shown by the total supply being nonzero) in order to remove a token.,
+        // We require the pool to be initialized (shown by the total supply being nonzero) in order to remove a token,
         // maintaining the behaviour that no exits can occur before the pool has been initialized.
         // This prevents the AUM fee calculation being triggered before the pool contains any assets.
         _require(totalSupply() > 0, Errors.UNINITIALIZED);
