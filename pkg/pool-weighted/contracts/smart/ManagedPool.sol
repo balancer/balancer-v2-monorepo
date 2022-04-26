@@ -673,27 +673,15 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         }
     }
 
-    // We override _onJoinPool and _onExitPool as we do not need to compute the current invariant and calculate protocol
-    // fees, since that mechanism does not work for Pools where the weights change over time.
-    // Instead, we calculate protocol fees on each swap.
-    // Additionally, we also check that only non-swap join and exit kinds are allowed while swaps are disabled.
+    // Join/Exit overrides
 
-    function _onJoinPool(
-        bytes32 poolId,
+    function _doJoin(
         address sender,
-        address recipient,
         uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
+        uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        virtual
-        override
-        whenNotPaused // All joins are disabled while the contract is paused.
-        returns (uint256, uint256[] memory)
-    {
+    ) internal view override returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps,
         // and alter token prices.
         _require(
@@ -703,32 +691,16 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // Check allowlist for LPs, if applicable
         _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
-        return
-            super._onJoinPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                protocolSwapFeePercentage,
-                scalingFactors,
-                userData
-            );
+        return super._doJoin(sender, balances, normalizedWeights, scalingFactors, userData);
     }
 
-    function _onExitPool(
-        bytes32 poolId,
+    function _doExit(
         address sender,
-        address recipient,
         uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
+        uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
-        // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
-        // out) remain functional.
-
+    ) internal view override returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps,
         // and alter token prices.
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
@@ -742,16 +714,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         return
             kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN
                 ? _doExitRemoveToken(sender, balances, userData)
-                : super._onExitPool(
-                    poolId,
-                    sender,
-                    recipient,
-                    balances,
-                    lastChangeBlock,
-                    protocolSwapFeePercentage,
-                    scalingFactors,
-                    userData
-                );
+                : super._doExit(sender, balances, normalizedWeights, scalingFactors, userData);
     }
 
     function _doExitRemoveToken(
