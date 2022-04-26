@@ -364,7 +364,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token removal
      * is also forbidden during a weight change, or if one is scheduled to happen in the future.
      *
-     * The caller may aditionally pass a non-zero `burnAmount` to have some of their BPT be burned, which might be
+     * The caller may additionally pass a non-zero `burnAmount` to have some of their BPT be burned, which might be
      * useful in some scenarios to account for the fact that the Pool now has fewer tokens.
      * @param token - The ERC20 token to be removed from the Pool.
      * @param recipient - The address which is to receive the Pool's balance of `token` after it is removed.
