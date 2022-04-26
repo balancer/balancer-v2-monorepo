@@ -27,6 +27,7 @@ export type RawWeightedPoolDeployment = {
   mustAllowlistLPs?: boolean;
   protocolSwapFeePercentage?: BigNumberish;
   managementSwapFeePercentage?: BigNumberish;
+  managementAumFeePercentage?: BigNumberish;
   owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -48,6 +49,7 @@ export type WeightedPoolDeployment = {
   mustAllowlistLPs: boolean;
   protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
+  managementAumFeePercentage: BigNumberish;
   owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -228,4 +230,5 @@ export type ManagedPoolParams = {
   mustAllowlistLPs: boolean;
   protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
+  managementAumFeePercentage: BigNumberish;
 };

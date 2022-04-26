@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
+import { ManagedPoolEncoder, PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
@@ -527,6 +527,26 @@ export function itBehavesAsWeightedPool(
 
         const amountsOut = initialBalances;
         await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('PAUSED');
+      });
+    });
+
+    context('exit remove token (managed pools)', () => {
+      it('reverts', async () => {
+        const { tokens } = await pool.getTokens();
+
+        await expect(
+          pool.vault.exitPool({
+            poolAddress: pool.address,
+            poolId: pool.poolId,
+            recipient: other.address,
+            currentBalances: new Array(tokens.length).fill(fp(10)),
+            tokens,
+            lastChangeBlock: 0,
+            protocolFeePercentage: 0,
+            data: ManagedPoolEncoder.exitForRemoveToken(0),
+            from: other,
+          })
+        ).to.be.revertedWith('UNHANDLED_EXIT_KIND');
       });
     });
   });
