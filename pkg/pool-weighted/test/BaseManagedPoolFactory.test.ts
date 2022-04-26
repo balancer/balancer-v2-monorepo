@@ -38,7 +38,7 @@ describe('BaseManagedPoolFactory', function () {
     [, admin, manager, assetManager] = await ethers.getSigners();
   });
 
-  sharedBeforeEach('deploy factory, AUMProtocolFeesCollector & tokens', async () => {
+  sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create({ admin });
 
     factory = await deploy('BaseManagedPoolFactory', { args: [vault.address] });
