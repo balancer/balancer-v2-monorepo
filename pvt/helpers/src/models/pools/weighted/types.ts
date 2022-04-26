@@ -191,10 +191,17 @@ export type Sample = {
 
 export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
 
-export type GradualUpdateParams = {
+export type GradualWeightUpdateParams = {
   startTime: BigNumber;
   endTime: BigNumber;
   endWeights: BigNumber[];
+};
+
+export type GradualSwapFeeUpdateParams = {
+  startTime: BigNumber;
+  endTime: BigNumber;
+  startSwapFeePercentage: BigNumber;
+  endSwapFeePercentage: BigNumber;
 };
 
 export type BasePoolRights = {

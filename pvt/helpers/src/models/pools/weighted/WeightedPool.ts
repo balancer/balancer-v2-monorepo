@@ -31,7 +31,8 @@ import {
   PoolQueryResult,
   MiscData,
   Sample,
-  GradualUpdateParams,
+  GradualWeightUpdateParams,
+  GradualSwapFeeUpdateParams,
   WeightedPoolType,
   VoidResult,
 } from './types';
@@ -650,6 +651,11 @@ export default class WeightedPool {
     return pool.setSwapEnabled(swapEnabled);
   }
 
+  async setSwapFeePercentage(from: SignerWithAddress, swapFeePercentage: BigNumberish): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.setSwapFeePercentage(swapFeePercentage);
+  }
+
   async setManagementSwapFeePercentage(
     from: SignerWithAddress,
     managementFee: BigNumberish
@@ -704,9 +710,25 @@ export default class WeightedPool {
     return await pool.updateWeightsGradually(startTime, endTime, endWeights);
   }
 
-  async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualUpdateParams> {
+  async updateSwapFeeGradually(
+    from: SignerWithAddress,
+    startTime: BigNumberish,
+    endTime: BigNumberish,
+    startSwapFeePercentage: BigNumberish,
+    endSwapFeePercentage: BigNumberish
+  ): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return await pool.updateSwapFeeGradually(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+  }
+
+  async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualWeightUpdateParams> {
     const pool = from ? this.instance.connect(from) : this.instance;
     return await pool.getGradualWeightUpdateParams();
+  }
+
+  async getGradualSwapFeeUpdateParams(from?: SignerWithAddress): Promise<GradualSwapFeeUpdateParams> {
+    const pool = from ? this.instance.connect(from) : this.instance;
+    return await pool.getGradualSwapFeeUpdateParams();
   }
 
   async removeToken(
