@@ -48,7 +48,7 @@ import "../WeightedPoolUserData.sol";
  * would prevent initiating from the pool contract.
  *
  * Managed Pools and their controllers are designed to support many asset management use cases, including: large
- * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of 
+ * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of
  * protocol and management fees, allowlisting of LPs, and more.
  */
 contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
