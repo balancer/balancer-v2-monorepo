@@ -973,6 +973,8 @@ describe('ManagedPool', function () {
                   sharedBeforeEach('collect fees and unpause pool', async () => {
                     // Trigger a collection of the management fees, this will collect no fees but will update the
                     // timestamp of the last collection. This avoids the pool overcharging AUM fees after the unpause.
+                    // Note that if nobody interacts with the pool before it is unpaused then AUM fees will be charged
+                    // as if the pool were never paused, however this is unlikely to occur.
                     await pool.collectAumManagementFees(owner);
 
                     await pool.setPaused(false);
