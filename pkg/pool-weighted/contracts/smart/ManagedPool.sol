@@ -517,6 +517,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
     // We override _onJoinPool and _onExitPool as we do not need to compute the current invariant and calculate protocol
     // fees, since that mechanism does not work for Pools where the weights change over time.
+    // Instead, we calculate protocol fees on each swap.
     // Additionally, we also check that only non-swap join and exit kinds are allowed while swaps are disabled.
 
     function _onJoinPool(
