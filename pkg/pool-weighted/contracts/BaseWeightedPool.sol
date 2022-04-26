@@ -194,7 +194,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
     function _onJoinPool(
         bytes32,
-        address,
+        address sender,
         address,
         uint256[] memory balances,
         uint256,
@@ -208,6 +208,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
+            sender,
             balances,
             normalizedWeights,
             scalingFactors,
@@ -218,12 +219,18 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         return (bptAmountOut, amountsIn);
     }
 
+    /**
+     * @dev Dispatch code which decodes the provided userdata to perform the specified join type.
+     * Inheriting contracts may override this function to add additional join types or extra conditions to allow
+     * or disallow joins under certain circumstances.
+     */
     function _doJoin(
+        address,
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal view returns (uint256, uint256[] memory) {
+    ) internal view virtual returns (uint256, uint256[] memory) {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
         if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
@@ -308,7 +315,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
     function _onExitPool(
         bytes32,
-        address,
+        address sender,
         address,
         uint256[] memory balances,
         uint256,
@@ -324,6 +331,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
         (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
+            sender,
             balances,
             normalizedWeights,
             scalingFactors,
@@ -334,12 +342,18 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         return (bptAmountIn, amountsOut);
     }
 
+    /**
+     * @dev Dispatch code which decodes the provided userdata to perform the specified exit type.
+     * Inheriting contracts may override this function to add additional exit types or extra conditions to allow
+     * or disallow exit under certain circumstances.
+     */
     function _doExit(
+        address,
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal view returns (uint256, uint256[] memory) {
+    ) internal view virtual returns (uint256, uint256[] memory) {
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {

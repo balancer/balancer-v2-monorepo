@@ -140,6 +140,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     event ManagementAumFeeCollected(uint256 bptAmount);
     event AllowlistAddressAdded(address indexed member);
     event AllowlistAddressRemoved(address indexed member);
+    event TokenRemoved(IERC20 indexed token, uint256 tokenAmountOut);
 
     struct NewPoolParams {
         string name;
@@ -353,6 +354,103 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         _setMiscData(_getMiscData().insertBool(swapEnabled, _SWAP_ENABLED_OFFSET));
 
         emit SwapEnabledSet(swapEnabled);
+    }
+
+    /**
+     * @notice Removes a token from the Pool's list of tradeable tokens.
+     * @dev Removes a token from the Pool's composition, withdrawing all funds from the Vault and sending them to
+     * `recipient`, and adjusting the weights of all other tokens.
+     *
+     * Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token removal
+     * is also forbidden during a weight change, or if one is scheduled to happen in the future.
+     *
+     * The caller may additionally pass a non-zero `burnAmount` to have some of their BPT be burned, which might be
+     * useful in some scenarios to account for the fact that the Pool now has fewer tokens.
+     * @param token - The ERC20 token to be removed from the Pool.
+     * @param recipient - The address which is to receive the Pool's balance of `token` after it is removed.
+     * @param burnAmount - An amount of BPT which is to be burnt as a result of removing `token` from the Pool.
+     * @return The amount of tokens the Pool held, sent to `recipient`.
+     */
+    function removeToken(
+        IERC20 token,
+        address recipient,
+        uint256 burnAmount,
+        uint256 minAmountOut
+    ) external authenticate nonReentrant whenNotPaused returns (uint256) {
+        // We require the pool to be initialized (shown by the total supply being nonzero) in order to remove a token,
+        // maintaining the behaviour that no exits can occur before the pool has been initialized.
+        // This prevents the AUM fee calculation being triggered before the pool contains any assets.
+        _require(totalSupply() > 0, Errors.UNINITIALIZED);
+
+        // Exit the pool, returning the full balance of the token to the recipient
+        (IERC20[] memory tokens, uint256[] memory unscaledBalances, ) = getVault().getPoolTokens(getPoolId());
+        _require(tokens.length > 2, Errors.MIN_TOKENS);
+
+        // Tokens cannot be removed during or before a weight change to reduce complexity of weight interactions
+        _ensureNoWeightChange();
+
+        // Reverts if token does not exist in pool.
+        uint256 tokenIndex = _tokenAddressToIndex(tokens, token);
+        uint256 tokenBalance = unscaledBalances[tokenIndex];
+        uint256 tokenNormalizedWeight = _getNormalizedWeight(token);
+
+        // We first perform a special exit operation at the Vault, which will withdraw the entire tokenBalance from it.
+        // Only the Pool itself is authorized to initiate such an exit.
+        uint256[] memory minAmountsOut = new uint256[](tokens.length);
+        minAmountsOut[tokenIndex] = minAmountOut;
+
+        // Note that this exit will trigger a collection of the AUM fees payable up to now.
+        getVault().exitPool(
+            getPoolId(),
+            address(this),
+            payable(recipient),
+            IVault.ExitPoolRequest({
+                assets: _asIAsset(tokens),
+                minAmountsOut: minAmountsOut,
+                userData: abi.encode(WeightedPoolUserData.ExitKind.REMOVE_TOKEN, tokenIndex),
+                toInternalBalance: false
+            })
+        );
+
+        // The Pool is now in an invalid state, since one of its tokens has a balance of zero (making the invariant also
+        // zero). We immediately deregister the emptied-out token to restore a valid state.
+        // Since all non-view Vault functions are non-reentrant, and we make no external calls between the two Vault
+        // calls (`exitPool` and `deregisterTokens`), it is impossible for any actor to interact with the Pool while it
+        // is in this inconsistent state (except for view calls).
+
+        IERC20[] memory tokensToRemove = new IERC20[](1);
+        tokensToRemove[0] = token;
+        getVault().deregisterTokens(getPoolId(), tokensToRemove);
+
+        // Now all we need to do is delete the removed token's entry and update the sum of denormalized weights to scale
+        // all other token weights accordingly.
+        // Clean up data structures and update the token count
+        delete _tokenState[token];
+        _denormWeightSum -= _denormalizeWeight(tokenNormalizedWeight);
+
+        _setMiscData(_getMiscData().insertUint7(tokens.length - 1, _TOTAL_TOKENS_OFFSET));
+
+        if (burnAmount > 0) {
+            _burnPoolTokens(msg.sender, burnAmount);
+        }
+
+        emit TokenRemoved(token, tokenBalance);
+
+        return tokenBalance;
+    }
+
+    function _ensureNoWeightChange() private view {
+        uint256 currentTime = block.timestamp;
+        bytes32 poolState = _getMiscData();
+
+        uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
+        uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+
+        if (currentTime < startTime) {
+            _revert(Errors.CHANGE_TOKENS_PENDING_WEIGHT_CHANGE);
+        } else if (currentTime < endTime) {
+            _revert(Errors.CHANGE_TOKENS_DURING_WEIGHT_CHANGE);
+        }
     }
 
     /**
@@ -580,27 +678,15 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         }
     }
 
-    // We override _onJoinPool and _onExitPool as we do not need to compute the current invariant and calculate protocol
-    // fees, since that mechanism does not work for Pools where the weights change over time.
-    // Instead, we calculate protocol fees on each swap.
-    // Additionally, we also check that only non-swap join and exit kinds are allowed while swaps are disabled.
+    // Join/Exit overrides
 
-    function _onJoinPool(
-        bytes32 poolId,
+    function _doJoin(
         address sender,
-        address recipient,
         uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
+        uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        virtual
-        override
-        whenNotPaused // All joins are disabled while the contract is paused.
-        returns (uint256, uint256[] memory)
-    {
+    ) internal view override returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps,
         // and alter token prices.
         _require(
@@ -610,50 +696,64 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // Check allowlist for LPs, if applicable
         _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
-        return
-            super._onJoinPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                protocolSwapFeePercentage,
-                scalingFactors,
-                userData
-            );
+        return super._doJoin(sender, balances, normalizedWeights, scalingFactors, userData);
     }
 
-    function _onExitPool(
-        bytes32 poolId,
+    function _doExit(
         address sender,
-        address recipient,
         uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
+        uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
-        // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
-        // out) remain functional.
-
+    ) internal view override returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps,
         // and alter token prices.
+        WeightedPoolUserData.ExitKind kind = userData.exitKind();
         _require(
-            getSwapEnabled() || userData.exitKind() == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+            getSwapEnabled() ||
+                kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT ||
+                kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
         return
-            super._onExitPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                protocolSwapFeePercentage,
-                scalingFactors,
-                userData
-            );
+            kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN
+                ? _doExitRemoveToken(sender, balances, userData)
+                : super._doExit(sender, balances, normalizedWeights, scalingFactors, userData);
+    }
+
+    function _doExitRemoveToken(
+        address sender,
+        uint256[] memory balances,
+        bytes memory userData
+    ) private view whenNotPaused returns (uint256, uint256[] memory) {
+        // This exit function is disabled if the contract is paused.
+
+        // This exit function can only be called by the Pool itself - the authorization logic that governs when that
+        // call can be made resides in removeToken.
+        _require(sender == address(this), Errors.UNAUTHORIZED_EXIT);
+
+        uint256 tokenIndex = userData.removeToken();
+
+        // No BPT is required to remove the token - it is up to the caller to determine under which conditions removing
+        // a token makes sense, and if e.g. burning BPT is required.
+        uint256 bptAmountIn = 0;
+
+        uint256[] memory amountsOut = new uint256[](balances.length);
+        amountsOut[tokenIndex] = balances[tokenIndex];
+
+        return (bptAmountIn, amountsOut);
+    }
+
+    function _tokenAddressToIndex(IERC20[] memory tokens, IERC20 token) internal pure returns (uint256) {
+        uint256 tokensLength = tokens.length;
+        for (uint256 i = 0; i < tokensLength; i++) {
+            if (tokens[i] == token) {
+                return i;
+            }
+        }
+
+        _revert(Errors.INVALID_TOKEN);
     }
 
     /**
@@ -726,6 +826,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             (actionId == getActionId(ManagedPool.addAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPool.removeAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPool.setMustAllowlistLPs.selector)) ||
+            (actionId == getActionId(ManagedPool.removeToken.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementSwapFeePercentage.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementAumFeePercentage.selector)) ||
             super._isOwnerOnlyAction(actionId);
