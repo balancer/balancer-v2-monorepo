@@ -39,10 +39,7 @@ contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWin
      * @dev Deploys a new `ManagedPool`. The owner should be a managed pool controller, deployed by
      * another factory.
      */
-    function create(
-        ManagedPool.NewPoolParams memory poolParams,
-        address owner
-    ) external returns (address pool) {
+    function create(ManagedPool.NewPoolParams memory poolParams, address owner) external returns (address pool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
         return

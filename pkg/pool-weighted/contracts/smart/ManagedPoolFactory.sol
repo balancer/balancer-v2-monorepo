@@ -53,10 +53,7 @@ contract ManagedPoolFactory {
         );
 
         // Let the base factory deploy the pool (owner is the controller)
-        pool = BaseManagedPoolFactory(baseManagedPoolFactory).create(
-            poolParams,
-            address(poolController)
-        );
+        pool = BaseManagedPoolFactory(baseManagedPoolFactory).create(poolParams, address(poolController));
 
         // Finally, initialize the controller
         poolController.initialize(pool);
