@@ -486,14 +486,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         _require(_getTotalTokens() < _getMaxTokens(), Errors.MAX_TOKENS);
 
         // Do not allow adding tokens if there is an ongoing or pending gradual weight change
-        uint256 currentTime = block.timestamp;
-        bytes32 poolState = _getMiscData();
-
-        if (currentTime < poolState.decodeUint32(_WEIGHT_START_TIME_OFFSET)) {
-            _revert(Errors.CHANGE_TOKENS_PENDING_WEIGHT_CHANGE);
-        } else if (currentTime < poolState.decodeUint32(_WEIGHT_END_TIME_OFFSET)) {
-            _revert(Errors.CHANGE_TOKENS_DURING_WEIGHT_CHANGE);
-        }
+        _ensureNoWeightChange();
 
         uint256 weightSumBeforeAdd = _denormWeightSum;
 
