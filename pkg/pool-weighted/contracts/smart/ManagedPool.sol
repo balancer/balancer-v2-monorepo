@@ -575,21 +575,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         _require(actualBptPrice >= minBptPrice, Errors.MIN_BPT_PRICE_ADD_TOKEN);
     }
 
-    function _updateTokenStateAfterAdd(
-        uint256 numTokens,
-        IERC20 token,
-        uint256 denormalizedWeight
-    ) private {
-        // Store token data, and update the token count
-        bytes32 tokenState;
-
-        _tokenState[token] = tokenState
-            .insertUint64(denormalizedWeight.compress64(_MAX_DENORM_WEIGHT), _START_DENORM_WEIGHT_OFFSET)
-            .insertUint64(denormalizedWeight.compress64(_MAX_DENORM_WEIGHT), _END_DENORM_WEIGHT_OFFSET)
-            .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
-        _totalTokensCache = numTokens;
-    }
-
     function _registerNewToken(
         IERC20 token,
         uint256 denormalizedWeight,
@@ -625,7 +610,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             }
         }
 
-        _updateTokenStateAfterAdd(tokens.length, token, denormalizedWeight);
+        _tokenState[token] = _encodeTokenState(token, denormalizedWeight, denormalizedWeight);
+        _totalTokensCache = tokens.length;
 
         return (tokens, tokenIndex, maxAmountsIn);
     }
