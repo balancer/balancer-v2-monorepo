@@ -1077,7 +1077,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         (uint256 tokenIndex, uint256 amountIn) = userData.addToken();
 
         // amountIn is unscaled so we need to upscale it using the token's scale factor.
-        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
+        uint256[] memory amountsIn = new uint256[](scalingFactors.length);
         amountsIn[tokenIndex] = _upscale(amountIn, scalingFactors[tokenIndex]);
 
         return (bptAmountOut, amountsIn);
