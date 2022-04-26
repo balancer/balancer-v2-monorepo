@@ -150,7 +150,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     );
-    event TokenAdded(IERC20 indexed token, uint256 weight, uint256 initialBalance);
+    event TokenAdded(IERC20 indexed token, uint256 normalizedWeight, uint256 initialBalance);
     event TokenRemoved(IERC20 indexed token, uint256 tokenAmountOut);
 
     struct NewPoolParams {
