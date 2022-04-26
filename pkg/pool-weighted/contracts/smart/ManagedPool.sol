@@ -784,7 +784,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             // We want to collect fees so that the manager will receive `f` percent of the Pool's AUM after a year.
             // We compute the amount of BPT to mint for the manager that would allow it to proportionally exit the Pool
             // and receive this fraction of the Pool's assets.
-            // Note that the total BPT supply will increase when minting, so we need to account for this 
+            // Note that the total BPT supply will increase when minting, so we need to account for this
             // in order to compute the percentage of Pool ownership the manager will have.
 
             // The formula can be derived from:
