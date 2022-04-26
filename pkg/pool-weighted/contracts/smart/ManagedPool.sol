@@ -1048,7 +1048,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
-        if (WeightedPoolUserData.JoinKind.ADD_TOKEN == kind) {
+        if (kind == WeightedPoolUserData.JoinKind.ADD_TOKEN) {
             (bptAmountOut, amountsIn) = _doJoinAddToken(sender, scalingFactors, userData);
         } else {
             // Check allowlist for LPs, if applicable
