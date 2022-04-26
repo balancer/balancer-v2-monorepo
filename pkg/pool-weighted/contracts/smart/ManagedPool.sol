@@ -785,9 +785,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             super._isOwnerOnlyAction(actionId);
     }
 
-    // Don't limit maximum swap fee for managed pools
     function _getMaxSwapFeePercentage() internal pure virtual override returns (uint256) {
-        return 1e18;
+        return _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE;
     }
 
     function _getTokenData(IERC20 token) private view returns (bytes32 tokenData) {
