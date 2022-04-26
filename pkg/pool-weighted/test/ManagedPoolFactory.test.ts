@@ -29,7 +29,6 @@ describe('ManagedPoolFactory', function () {
   let assetManager: SignerWithAddress;
   let admin: SignerWithAddress;
   let poolControllerAddress: string;
-  let aumProtocolFeesCollector: Contract;
 
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
@@ -53,8 +52,6 @@ describe('ManagedPoolFactory', function () {
 
     baseFactory = await deploy('BaseManagedPoolFactory', { args: [vault.address] });
     factory = await deploy('ManagedPoolFactory', { args: [baseFactory.address] });
-
-    aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', { args: [vault.address] });
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
@@ -101,14 +98,7 @@ describe('ManagedPoolFactory', function () {
     const receipt = await (
       await factory
         .connect(manager)
-        .create(
-          newPoolParams,
-          basePoolRights,
-          managedPoolRights,
-          aumProtocolFeesCollector.address,
-          MIN_WEIGHT_CHANGE_DURATION,
-          manager.address
-        )
+        .create(newPoolParams, basePoolRights, managedPoolRights, MIN_WEIGHT_CHANGE_DURATION, manager.address)
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
@@ -195,7 +185,7 @@ describe('ManagedPoolFactory', function () {
     });
 
     it('sets the AUMProtocolFeesCollector', async () => {
-      expect(await pool.getAumProtocolFeesCollector()).to.equal(aumProtocolFeesCollector.address);
+      expect(await pool.getAumProtocolFeesCollector()).to.not.equal(ZERO_ADDRESS);
     });
   });
 

@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
+import "@balancer-labs/v2-standalone-utils/contracts/AumProtocolFeesCollector.sol";
 
 import "./ManagedPool.sol";
 
@@ -40,7 +41,6 @@ contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWin
      */
     function create(
         ManagedPool.NewPoolParams memory poolParams,
-        address aumProtocolFeesCollector,
         address owner
     ) external returns (address pool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
@@ -65,7 +65,7 @@ contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWin
                     owner,
                     pauseWindowDuration,
                     bufferPeriodDuration,
-                    aumProtocolFeesCollector
+                    new AumProtocolFeesCollector(getVault())
                 )
             );
     }

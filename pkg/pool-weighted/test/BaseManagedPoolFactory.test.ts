@@ -18,7 +18,6 @@ describe('BaseManagedPoolFactory', function () {
   let tokens: TokenList;
   let factory: Contract;
   let vault: Vault;
-  let aumProtocolFeesCollector: Contract;
   let admin: SignerWithAddress;
   let manager: SignerWithAddress;
   let assetManager: SignerWithAddress;
@@ -43,8 +42,6 @@ describe('BaseManagedPoolFactory', function () {
     vault = await Vault.create({ admin });
 
     factory = await deploy('BaseManagedPoolFactory', { args: [vault.address] });
-
-    aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', { args: [vault.address] });
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
 
@@ -73,9 +70,7 @@ describe('BaseManagedPoolFactory', function () {
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
     };
 
-    const receipt = await (
-      await factory.connect(manager).create(newPoolParams, aumProtocolFeesCollector.address, manager.address)
-    ).wait();
+    const receipt = await (await factory.connect(manager).create(newPoolParams, manager.address)).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     return deployedAt('ManagedPool', event.args.pool);
@@ -146,7 +141,7 @@ describe('BaseManagedPoolFactory', function () {
     });
 
     it('sets the AUMProtocolFeesCollector', async () => {
-      expect(await pool.getAumProtocolFeesCollector()).to.equal(aumProtocolFeesCollector.address);
+      expect(await pool.getAumProtocolFeesCollector()).to.not.equal(ZERO_ADDRESS);
     });
   });
 
@@ -155,7 +150,6 @@ describe('BaseManagedPoolFactory', function () {
       const pool = await createPool();
       const { pauseWindowEndTime, bufferPeriodEndTime } = await pool.getPausedState();
 
-      // Deployment of aumProtocolFeesCollector introduces some delay
       expect(pauseWindowEndTime).to.equalWithError(createTime.add(BASE_PAUSE_WINDOW_DURATION), 0.00001);
       expect(bufferPeriodEndTime).to.equalWithError(
         createTime.add(BASE_PAUSE_WINDOW_DURATION + BASE_BUFFER_PERIOD_DURATION),
