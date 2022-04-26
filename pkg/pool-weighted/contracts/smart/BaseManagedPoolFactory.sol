@@ -31,8 +31,10 @@ import "./ManagedPool.sol";
  * deploy the pool, passing in the controller as the owner.
  */
 contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+    AumProtocolFeesCollector public immutable aumProtocolFeesCollector;
+
     constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(ManagedPool).creationCode) {
-        // solhint-disable-previous-line no-empty-blocks
+        aumProtocolFeesCollector = new AumProtocolFeesCollector(vault);
     }
 
     /**
@@ -62,7 +64,7 @@ contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWin
                     owner,
                     pauseWindowDuration,
                     bufferPeriodDuration,
-                    new AumProtocolFeesCollector(getVault())
+                    address(aumProtocolFeesCollector)
                 )
             );
     }

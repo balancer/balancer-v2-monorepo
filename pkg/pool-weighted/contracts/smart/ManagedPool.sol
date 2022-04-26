@@ -187,13 +187,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // Double check it fits in 7 bits
         _require(_getTotalTokens() == totalTokens, Errors.MAX_TOKENS);
 
-        // Verify this is pointing to the same Vault
-        if (aumProtocolFeesCollector != address(0)) {
-            _require(
-                vault == IAumProtocolFeesCollector(aumProtocolFeesCollector).vault(),
-                Errors.INVALID_INITIALIZATION
-            );
-        }
         _aumProtocolFeesCollector = IAumProtocolFeesCollector(aumProtocolFeesCollector);
 
         // Validate and set initial fees
