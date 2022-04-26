@@ -290,9 +290,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         if (currentTime < endTime) {
             uint256 startTime = poolState.decodeUint31(_FEE_START_TIME_OFFSET);
             _revert(
-                currentTime < startTime
-                    ? Errors.SET_SWAP_FEE_PENDING_FEE_CHANGE
-                    : Errors.SET_SWAP_FEE_DURING_FEE_CHANGE
+                currentTime < startTime ? Errors.SET_SWAP_FEE_PENDING_FEE_CHANGE : Errors.SET_SWAP_FEE_DURING_FEE_CHANGE
             );
         }
 
