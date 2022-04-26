@@ -175,7 +175,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
-        InputHelpers.ensureInputLengthMatch(_getTotalTokens(), amountsIn.length);
+        InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
         _upscaleArray(amountsIn, scalingFactors);
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
@@ -183,7 +183,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
         // consistent in Pools with similar compositions but different number of tokens.
-        uint256 bptAmountOut = Math.mul(invariantAfterJoin, _getTotalTokens());
+        uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
 
         _afterJoinExit(true, new uint256[](amountsIn.length), amountsIn, normalizedWeights);
 
@@ -244,7 +244,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
-        InputHelpers.ensureInputLengthMatch(_getTotalTokens(), amountsIn.length);
+        InputHelpers.ensureInputLengthMatch(balances.length, amountsIn.length);
 
         _upscaleArray(amountsIn, scalingFactors);
 
@@ -269,7 +269,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
         // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
 
-        _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
+        _require(tokenIndex < balances.length, Errors.OUT_OF_BOUNDS);
 
         uint256 amountIn = WeightedMath._calcTokenInGivenExactBptOut(
             balances[tokenIndex],
@@ -280,7 +280,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         );
 
         // We join in a single token, so we initialize amountsIn with zeros
-        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
+        uint256[] memory amountsIn = new uint256[](balances.length);
         // And then assign the result to the selected token
         amountsIn[tokenIndex] = amountIn;
 
@@ -363,7 +363,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
-        _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
+        _require(tokenIndex < balances.length, Errors.OUT_OF_BOUNDS);
 
         uint256 amountOut = WeightedMath._calcTokenOutGivenExactBptIn(
             balances[tokenIndex],
@@ -375,7 +375,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
         // We exit in a single token, so we initialize amountsOut with zeros
-        uint256[] memory amountsOut = new uint256[](_getTotalTokens());
+        uint256[] memory amountsOut = new uint256[](balances.length);
         // And then assign the result to the selected token
         amountsOut[tokenIndex] = amountOut;
 
@@ -408,7 +408,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         // This exit function is disabled if the contract is paused.
 
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
-        InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens());
+        InputHelpers.ensureInputLengthMatch(amountsOut.length, balances.length);
         _upscaleArray(amountsOut, scalingFactors);
 
         // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
