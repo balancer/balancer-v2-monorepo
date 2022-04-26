@@ -17,8 +17,6 @@ pragma experimental ABIEncoderV2;
 
 import "../smart/ManagedPool.sol";
 
-import "hardhat/console.sol";
-
 contract MockManagedPool is ManagedPool {
     using FixedPoint for uint256;
 
