@@ -48,11 +48,11 @@ import "../WeightedPoolUserData.sol";
  * would prevent initiating from the pool contract.
  *
  * Managed Pools and their controllers are designed to support many asset management use cases, including: large
- * token counts, rebalancing through token changes, gradual weight or fee updates, circuit breakers for
- * IL-protection, and more.
+ * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of 
+ * protocol and management fees, allowlisting of LPs, and more.
  */
 contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
-    // ManagedPool weights can change over time: these periods are expected to be long enough (e.g. days)
+    // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
 
@@ -70,7 +70,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
 
     // Use the _miscData slot in BasePool
-    // First 64 bits are reserved for the swap fee
+    // The first 64 bits are reserved for the swap fee
     //
     // Store non-token-based values:
     // Start/end timestamps for gradual weight update
@@ -515,9 +515,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         }
     }
 
-    // We override _onJoinPool and _onExitPool as we need to not compute the current invariant and calculate protocol
-    // fees, since that mechanism does not work for Pools in which the weights change over time. Instead, this Pool
-    // always pays zero protocol fees.
+    // We override _onJoinPool and _onExitPool as we do not need to compute the current invariant and calculate protocol
+    // fees, since that mechanism does not work for Pools where the weights change over time.
     // Additionally, we also check that only non-swap join and exit kinds are allowed while swaps are disabled.
 
     function _onJoinPool(
@@ -536,8 +535,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         whenNotPaused // All joins are disabled while the contract is paused.
         returns (uint256, uint256[] memory)
     {
-        // If swaps are disabled, the only join kind that is allowed is the proportional one, as all others involve
-        // implicit swaps and alter token prices.
+        // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps,
+        // and alter token prices.
         _require(
             getSwapEnabled() || userData.joinKind() == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
@@ -571,8 +570,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
         // out) remain functional.
 
-        // If swaps are disabled, the only exit kind that is allowed is the proportional one (as all others involve
-        // implicit swaps and alter token prices).
+        // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps,
+        // and alter token prices.
         _require(
             getSwapEnabled() || userData.exitKind() == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
