@@ -1139,18 +1139,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         _revert(Errors.INVALID_TOKEN);
     }
 
-    function _tokenAddressToIndex(IERC20 token) internal view returns (uint256) {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-
-        for (uint256 i = 0; i < tokens.length; i++) {
-            if (tokens[i] == token) {
-                return i;
-            }
-        }
-
-        _revert(Errors.INVALID_TOKEN);
-    }
-
     /**
      * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
      * if necessary.
