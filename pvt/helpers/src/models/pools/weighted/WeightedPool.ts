@@ -736,12 +736,11 @@ export default class WeightedPool {
     token: string,
     normalizedWeight: BigNumberish,
     tokenAmountIn: BigNumberish,
-    assetManager: string,
     minBptAmountOut: BigNumberish,
     recipient: string
   ): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    return await pool.addToken(token, normalizedWeight, tokenAmountIn, assetManager, minBptAmountOut, recipient);
+    return await pool.addToken(token, normalizedWeight, tokenAmountIn, minBptAmountOut, recipient);
   }
 
   async removeToken(

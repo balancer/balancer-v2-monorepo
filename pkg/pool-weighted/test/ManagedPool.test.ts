@@ -1667,9 +1667,9 @@ describe('ManagedPool', function () {
         });
 
         it('prevents adding to a max-token pool', async () => {
-          await expect(
-            pool.addToken(owner, newToken, fp(0.01), fp(1), ZERO_ADDRESS, 0, other.address)
-          ).to.be.revertedWith('MAX_TOKENS');
+          await expect(pool.addToken(owner, newToken, fp(0.01), fp(1), 0, other.address)).to.be.revertedWith(
+            'MAX_TOKENS'
+          );
         });
 
         it('reverts if the vault is called directly', async () => {
@@ -1735,14 +1735,7 @@ describe('ManagedPool', function () {
               expect(
                 await pool.instance
                   .connect(owner)
-                  .callStatic.addToken(
-                    addedTokens[tokenIndex].address,
-                    normalizedWeight,
-                    fp(1),
-                    ZERO_ADDRESS,
-                    0,
-                    other.address
-                  )
+                  .callStatic.addToken(addedTokens[tokenIndex].address, normalizedWeight, fp(1), 0, other.address)
               ).to.be.eq(expectedBptAmountOut);
             });
 
@@ -1753,7 +1746,6 @@ describe('ManagedPool', function () {
                   newTokenAddress,
                   normalizedWeight,
                   tokenAmountIn,
-                  ZERO_ADDRESS,
                   0,
                   other.address
                 );
@@ -1854,11 +1846,11 @@ describe('ManagedPool', function () {
             const weightTooHigh = fp(1);
 
             await expect(
-              pool.addToken(owner, newTokenAddress, weightTooLow, fp(1), ZERO_ADDRESS, 0, other.address)
+              pool.addToken(owner, newTokenAddress, weightTooLow, fp(1), 0, other.address)
             ).to.be.revertedWith('MIN_WEIGHT');
 
             await expect(
-              pool.addToken(owner, newTokenAddress, weightTooHigh, fp(1), ZERO_ADDRESS, 0, other.address)
+              pool.addToken(owner, newTokenAddress, weightTooHigh, fp(1), 0, other.address)
             ).to.be.revertedWith('MAX_WEIGHT');
           });
 
@@ -1869,9 +1861,9 @@ describe('ManagedPool', function () {
             await pool.updateWeightsGradually(owner, startTime, endTime, poolWeights);
             await advanceTime(DAY);
 
-            await expect(
-              pool.addToken(owner, newTokenAddress, fp(0.1), fp(1), ZERO_ADDRESS, 0, other.address)
-            ).to.be.revertedWith('CHANGE_TOKENS_DURING_WEIGHT_CHANGE');
+            await expect(pool.addToken(owner, newTokenAddress, fp(0.1), fp(1), 0, other.address)).to.be.revertedWith(
+              'CHANGE_TOKENS_DURING_WEIGHT_CHANGE'
+            );
           });
 
           it('when there is a pending weight change', async () => {
@@ -1880,15 +1872,15 @@ describe('ManagedPool', function () {
 
             await pool.updateWeightsGradually(owner, startTime.add(DAY), endTime, poolWeights);
 
-            await expect(
-              pool.addToken(owner, newTokenAddress, fp(0.1), fp(1), ZERO_ADDRESS, 0, other.address)
-            ).to.be.revertedWith('CHANGE_TOKENS_PENDING_WEIGHT_CHANGE');
+            await expect(pool.addToken(owner, newTokenAddress, fp(0.1), fp(1), 0, other.address)).to.be.revertedWith(
+              'CHANGE_TOKENS_PENDING_WEIGHT_CHANGE'
+            );
           });
 
           it('when the incoming weight is too high', async () => {
-            await expect(
-              pool.addToken(owner, newTokenAddress, fp(0.98), fp(1), ZERO_ADDRESS, 0, other.address)
-            ).to.be.revertedWith('MIN_WEIGHT');
+            await expect(pool.addToken(owner, newTokenAddress, fp(0.98), fp(1), 0, other.address)).to.be.revertedWith(
+              'MIN_WEIGHT'
+            );
           });
 
           it('when the minBptAmountOut is too high', async () => {
@@ -1901,21 +1893,13 @@ describe('ManagedPool', function () {
             const expectedBptAmountOut = totalSupply.mul(weightSumRatio.sub(fp(1))).div(fp(1));
 
             await expect(
-              pool.addToken(
-                owner,
-                newTokenAddress,
-                normalizedWeight,
-                fp(1),
-                ZERO_ADDRESS,
-                expectedBptAmountOut.add(1),
-                other.address
-              )
+              pool.addToken(owner, newTokenAddress, normalizedWeight, fp(1), expectedBptAmountOut.add(1), other.address)
             ).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
           });
 
           it('when the token is already in the pool', async () => {
             await expect(
-              pool.addToken(owner, poolTokens.get(0).address, fp(0.1), fp(1), ZERO_ADDRESS, 0, other.address)
+              pool.addToken(owner, poolTokens.get(0).address, fp(0.1), fp(1), 0, other.address)
             ).to.be.revertedWith('TOKEN_ALREADY_REGISTERED');
           });
         });
@@ -1929,24 +1913,6 @@ describe('ManagedPool', function () {
           itCanAddAToken(i, fp(0.2), false);
           //}
         }
-
-        context('with an asset manager', () => {
-          it('registers a token with an asset manager', async () => {
-            await pool.addToken(
-              owner,
-              addedTokens[0].address,
-              fp(0.1),
-              fp(1),
-              mockAssetManager.address,
-              0,
-              other.address
-            );
-
-            const { assetManager } = await vault.getPoolTokenInfo(await pool.getPoolId(), addedTokens[0]);
-
-            expect(assetManager).to.equal(mockAssetManager.address);
-          });
-        });
       });
     });
   });
