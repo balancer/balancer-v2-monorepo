@@ -1726,17 +1726,26 @@ describe('ManagedPool', function () {
             });
 
             it('calculates bptAmountOut', async () => {
-              await pool.instance
-                .connect(owner)
-                .checkAddTokenBptAmount(
-                  addedTokens[tokenIndex].address,
-                  normalizedWeight,
-                  fp(1),
-                  ZERO_ADDRESS,
-                  0,
-                  owner.address,
-                  other.address
-                );
+              const weightSumBeforeAdd = await pool.instance.getDenormalizedWeightSum();
+              const weightSumAfterAdd = fp(weightSumBeforeAdd).mul(fp(1)).div(fp(1).sub(normalizedWeight));
+              const weightSumRatio = weightSumAfterAdd.div(weightSumBeforeAdd);
+
+              const totalSupply = await pool.totalSupply();
+              const expectedBptAmountOut = totalSupply.mul(weightSumRatio.sub(fp(1))).div(fp(1));
+
+              expect(
+                await pool.instance
+                  .connect(owner)
+                  .callStatic.addToken(
+                    addedTokens[tokenIndex].address,
+                    normalizedWeight,
+                    fp(1),
+                    ZERO_ADDRESS,
+                    0,
+                    owner.address,
+                    other.address
+                  )
+              ).to.be.eq(expectedBptAmountOut);
             });
 
             context('when token is added', () => {
@@ -1768,7 +1777,6 @@ describe('ManagedPool', function () {
 
                 // Has no asset manager
                 expect(assetManager).to.equal(ZERO_ADDRESS);
-                expect(await pool.instance.getTotalTokens()).to.equal(numPoolTokens + 1);
               });
 
               it('inserts the token', async () => {
