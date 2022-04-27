@@ -472,18 +472,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         (uint256 weightSumAfterAdd, uint256 bptAmountOut) = _validateAddToken(normalizedWeight);
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
-        (IERC20[] memory tokens, uint256 tokenIndex, uint256[] memory maxAmountsIn) = _registerNewToken(
-            token,
-            normalizedWeight.mulUp(weightSumAfterAdd),
-            tokenAmountIn,
-            assetManager
-        );
+        IERC20[] memory tokens = _registerNewToken(token, normalizedWeight.mulUp(weightSumAfterAdd), assetManager);
 
         // Transfer tokens from the sender to this contract, since the sender for the join must be the pool
         token.transferFrom(msg.sender, address(this), tokenAmountIn);
         token.approve(address(getVault()), tokenAmountIn);
 
-        _joinAddToken(tokens, tokenIndex, tokenAmountIn, maxAmountsIn, recipient);
+        _joinAddToken(tokens, tokenAmountIn, recipient);
 
         // If done in two stages, the controller would externally calculate a minimum BPT price (i.e., 1 token = x BPT),
         // based on dollar values.
@@ -602,16 +597,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     function _registerNewToken(
         IERC20 token,
         uint256 denormalizedWeight,
-        uint256 tokenAmountIn,
         address assetManager
-    )
-        private
-        returns (
-            IERC20[] memory,
-            uint256,
-            uint256[] memory
-        )
-    {
+    ) private returns (IERC20[] memory) {
         address[] memory assetManagers = new address[](1);
         assetManagers[0] = assetManager;
         IERC20[] memory tokensToAdd = new IERC20[](1);
@@ -621,33 +608,24 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         // Tokens array is now different
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-        uint256[] memory maxAmountsIn = new uint256[](tokens.length);
-        uint256 tokenIndex;
-
-        // It will put it at the end, so iterate backwards to find it faster
-        for (uint256 i = tokens.length - 1; i >= 0; i--) {
-            if (tokens[i] == token) {
-                // This is the new one we're joining with
-                maxAmountsIn[i] = tokenAmountIn;
-                tokenIndex = i;
-                break;
-            }
-        }
 
         _tokenState[token] = _encodeTokenState(token, denormalizedWeight, denormalizedWeight);
         _totalTokensCache = tokens.length;
 
-        return (tokens, tokenIndex, maxAmountsIn);
+        return tokens;
     }
 
     // Not worrying about updating the invariant yet, or paying protocol fees, since that will all likely change
     function _joinAddToken(
         IERC20[] memory tokens,
-        uint256 tokenIndex,
         uint256 tokenAmountIn,
-        uint256[] memory maxAmountsIn,
         address recipient
     ) private {
+        // A newly registered token will always be placed at the end of the array of tokens
+        // We can then safely calculate the index of the new token as we know the length of the `tokens` array.
+        uint256[] memory maxAmountsIn = new uint256[](tokens.length);
+        maxAmountsIn[tokens.length - 1] = tokenAmountIn;
+
         getVault().joinPool(
             getPoolId(),
             address(this),
@@ -655,7 +633,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             IVault.JoinPoolRequest({
                 assets: _asIAsset(tokens),
                 maxAmountsIn: maxAmountsIn,
-                userData: abi.encode(WeightedPoolUserData.JoinKind.ADD_TOKEN, tokenIndex, tokenAmountIn),
+                userData: abi.encode(WeightedPoolUserData.JoinKind.ADD_TOKEN, tokenAmountIn),
                 fromInternalBalance: false
             })
         );
@@ -1009,7 +987,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
             (bptAmountOut, amountsIn) = super._doJoin(sender, balances, normalizedWeights, scalingFactors, userData);
-
         }
     }
 
@@ -1028,7 +1005,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         // Note that there is no maximum amountsIn parameter: this is handled by `IVault.joinPool`.
 
-        (uint256 tokenIndex, uint256 amountIn) = userData.addToken();
+        uint256 tokenIndex = scalingFactors.length - 1;
+        uint256 amountIn = userData.addToken();
 
         // amountIn is unscaled so we need to upscale it using the token's scale factor.
         uint256[] memory amountsIn = new uint256[](scalingFactors.length);

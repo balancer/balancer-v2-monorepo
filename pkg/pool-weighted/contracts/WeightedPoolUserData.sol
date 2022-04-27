@@ -62,9 +62,8 @@ library WeightedPoolUserData {
         (, bptAmountOut) = abi.decode(self, (JoinKind, uint256));
     }
 
-    // The token must be registered before the add join, so we use the index
-    function addToken(bytes memory self) internal pure returns (uint256 tokenIndex, uint256 amountIn) {
-        (, tokenIndex, amountIn) = abi.decode(self, (JoinKind, uint256, uint256));
+    function addToken(bytes memory self) internal pure returns (uint256 amountIn) {
+        (, amountIn) = abi.decode(self, (JoinKind, uint256));
     }
 
     // Exits

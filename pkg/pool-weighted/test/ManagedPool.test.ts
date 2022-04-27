@@ -1673,13 +1673,12 @@ describe('ManagedPool', function () {
         });
 
         it('reverts if the vault is called directly', async () => {
-          const newTokenIndex = MAX_TOKENS;
           await expect(
             vault.instance.connect(owner).joinPool(await pool.getPoolId(), owner.address, other.address, {
               assets: poolTokens.subset(MAX_TOKENS).addresses,
 
               maxAmountsIn: new Array(MAX_TOKENS).fill(fp(1000)),
-              userData: ManagedPoolEncoder.joinForAddToken(newTokenIndex, fp(100)),
+              userData: ManagedPoolEncoder.joinForAddToken(fp(100)),
               toInternalBalance: false,
             })
           ).to.be.revertedWith('UNAUTHORIZED_JOIN');
