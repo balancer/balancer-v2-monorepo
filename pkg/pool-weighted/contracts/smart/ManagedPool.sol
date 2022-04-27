@@ -910,8 +910,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     // Factored out to avoid stack issues
     function _encodeTokenState(
         IERC20 token,
-        uint256 startWeight,
-        uint256 endWeight
+        uint256 normalizedStartWeight,
+        uint256 normalizedEndWeight
     ) private view returns (bytes32) {
         bytes32 tokenState;
 
@@ -921,10 +921,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         return
             tokenState
                 .insertUint64(
-                _denormalizeWeight(startWeight).compress64(_MAX_DENORM_WEIGHT),
+                _denormalizeWeight(normalizedStartWeight).compress64(_MAX_DENORM_WEIGHT),
                 _START_DENORM_WEIGHT_OFFSET
             )
-                .insertUint64(_denormalizeWeight(endWeight).compress64(_MAX_DENORM_WEIGHT), _END_DENORM_WEIGHT_OFFSET)
+                .insertUint64(
+                _denormalizeWeight(normalizedEndWeight).compress64(_MAX_DENORM_WEIGHT),
+                _END_DENORM_WEIGHT_OFFSET
+            )
                 .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
     }
 
