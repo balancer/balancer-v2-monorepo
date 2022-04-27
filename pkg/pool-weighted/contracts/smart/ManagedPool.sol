@@ -503,6 +503,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             })
         );
 
+        // Adding the new token to the pool increases the total weight across all the Pool's tokens.
+        // We then update the normalization factor used to account for this.
         _denormWeightSum = weightSumAfterAdd;
 
         if (mintAmount > 0) {
