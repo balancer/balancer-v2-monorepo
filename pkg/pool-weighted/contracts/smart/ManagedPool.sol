@@ -504,7 +504,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         _denormWeightSum = weightSumAfterAdd;
 
-        // TODO: actually mint BPT
+        if (bptAmountOut > 0) {
+            _mintPoolTokens(recipient, bptAmountOut);
+        }
 
         emit TokenAdded(token, normalizedWeight, tokenAmountIn);
 
