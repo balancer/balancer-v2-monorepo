@@ -466,16 +466,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 normalizedWeight,
         uint256 tokenAmountIn,
         address assetManager,
-        uint256 minBptPrice,
+        uint256 minBPTAmountOut,
         address sender,
         address recipient
     ) external authenticate whenNotPaused returns (uint256) {
-        (uint256 weightSumAfterAdd, uint256 bptAmountOut) = _validateAddToken(
-            token,
-            normalizedWeight,
-            tokenAmountIn,
-            minBptPrice
-        );
+        (uint256 weightSumAfterAdd, uint256 bptAmountOut) = _validateAddToken(normalizedWeight);
+        _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
         (IERC20[] memory tokens, uint256 tokenIndex, uint256[] memory maxAmountsIn) = _registerNewToken(
             token,
@@ -515,12 +511,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         return bptAmountOut;
     }
 
-    function _validateAddToken(
-        IERC20 token,
-        uint256 normalizedWeight,
-        uint256 tokenAmountIn,
-        uint256 minBptPrice
-    ) private view returns (uint256 weightSumAfterAdd, uint256 bptAmountOut) {
+    function _validateAddToken(uint256 normalizedWeight)
+        private
+        view
+        returns (uint256 weightSumAfterAdd, uint256 bptAmountOut)
+    {
         _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
         // The max weight actually depends on the number of other tokens, but this is handled below
         // by ensuring the final weights are all >= minimum
@@ -601,13 +596,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         //
         uint256 weightSumRatio = weightSumAfterAdd.divDown(weightSumBeforeAdd);
         bptAmountOut = totalSupply().mulDown(weightSumRatio.sub(FixedPoint.ONE));
-
-        // Validate that the actual BPT price
-        uint256 actualBptPrice = totalSupply().mulDown(weightSumRatio).mulDown(normalizedWeight).divUp(
-            _upscale(tokenAmountIn, _computeScalingFactor(token))
-        );
-
-        _require(actualBptPrice >= minBptPrice, Errors.MIN_BPT_PRICE_ADD_TOKEN);
     }
 
     function _registerNewToken(

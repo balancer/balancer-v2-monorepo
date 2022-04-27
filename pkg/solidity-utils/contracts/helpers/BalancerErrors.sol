@@ -165,10 +165,9 @@ library Errors {
     uint256 internal constant CHANGE_TOKENS_PENDING_WEIGHT_CHANGE = 347;
     uint256 internal constant MAX_WEIGHT = 348;
     uint256 internal constant UNAUTHORIZED_JOIN = 349;
-    uint256 internal constant MIN_BPT_PRICE_ADD_TOKEN = 350;
-    uint256 internal constant MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 351;
-    uint256 internal constant SET_SWAP_FEE_DURING_FEE_CHANGE = 352;
-    uint256 internal constant SET_SWAP_FEE_PENDING_FEE_CHANGE = 353;
+    uint256 internal constant MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 350;
+    uint256 internal constant SET_SWAP_FEE_DURING_FEE_CHANGE = 351;
+    uint256 internal constant SET_SWAP_FEE_PENDING_FEE_CHANGE = 352;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

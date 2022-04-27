@@ -1894,19 +1894,27 @@ describe('ManagedPool', function () {
             ).to.be.revertedWith('MIN_WEIGHT');
           });
 
-          it('when the bptPrice is too low', async () => {
+          it('when the minBptAmountOut is too high', async () => {
+            const normalizedWeight = fp(0.1);
+            const weightSumBeforeAdd = await pool.instance.getDenormalizedWeightSum();
+            const weightSumAfterAdd = fp(weightSumBeforeAdd).mul(fp(1)).div(fp(1).sub(normalizedWeight));
+            const weightSumRatio = weightSumAfterAdd.div(weightSumBeforeAdd);
+
+            const totalSupply = await pool.totalSupply();
+            const expectedBptAmountOut = totalSupply.mul(weightSumRatio.sub(fp(1))).div(fp(1));
+
             await expect(
               pool.addToken(
                 owner,
                 newTokenAddress,
-                fp(0.1),
+                normalizedWeight,
                 fp(1),
                 ZERO_ADDRESS,
-                fp(10000),
+                expectedBptAmountOut.add(1),
                 owner.address,
                 other.address
               )
-            ).to.be.revertedWith('MIN_BPT_PRICE_ADD_TOKEN');
+            ).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
           });
 
           it('when the token is already in the pool', async () => {
