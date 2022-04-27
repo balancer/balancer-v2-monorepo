@@ -25,11 +25,10 @@ describe('ManagedPool', function () {
   let poolTokens: TokenList;
   let tooManyWeights: BigNumber[];
   let admin: SignerWithAddress, owner: SignerWithAddress, other: SignerWithAddress;
-  let mockAssetManager: SignerWithAddress;
   let pool: WeightedPool;
 
   before('setup signers', async () => {
-    [, admin, owner, other, mockAssetManager] = await ethers.getSigners();
+    [, admin, owner, other] = await ethers.getSigners();
   });
 
   const MAX_TOKENS = 38;
