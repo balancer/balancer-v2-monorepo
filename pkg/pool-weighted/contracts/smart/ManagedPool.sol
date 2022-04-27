@@ -467,7 +467,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 tokenAmountIn,
         address assetManager,
         uint256 minBPTAmountOut,
-        address sender,
         address recipient
     ) external authenticate whenNotPaused returns (uint256) {
         (uint256 weightSumAfterAdd, uint256 bptAmountOut) = _validateAddToken(normalizedWeight);
@@ -481,7 +480,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         );
 
         // Transfer tokens from the sender to this contract, since the sender for the join must be the pool
-        token.transferFrom(sender, address(this), tokenAmountIn);
+        token.transferFrom(msg.sender, address(this), tokenAmountIn);
         token.approve(address(getVault()), tokenAmountIn);
 
         _joinAddToken(tokens, tokenIndex, tokenAmountIn, maxAmountsIn, recipient);

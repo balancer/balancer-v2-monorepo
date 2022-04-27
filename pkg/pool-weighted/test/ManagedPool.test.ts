@@ -1668,7 +1668,7 @@ describe('ManagedPool', function () {
 
         it('prevents adding to a max-token pool', async () => {
           await expect(
-            pool.addToken(owner, newToken, fp(0.01), fp(1), ZERO_ADDRESS, 0, owner.address, other.address)
+            pool.addToken(owner, newToken, fp(0.01), fp(1), ZERO_ADDRESS, 0, other.address)
           ).to.be.revertedWith('MAX_TOKENS');
         });
 
@@ -1742,7 +1742,6 @@ describe('ManagedPool', function () {
                     fp(1),
                     ZERO_ADDRESS,
                     0,
-                    owner.address,
                     other.address
                   )
               ).to.be.eq(expectedBptAmountOut);
@@ -1757,7 +1756,6 @@ describe('ManagedPool', function () {
                   tokenAmountIn,
                   ZERO_ADDRESS,
                   0,
-                  owner.address,
                   other.address
                 );
 
@@ -1857,11 +1855,11 @@ describe('ManagedPool', function () {
             const weightTooHigh = fp(1);
 
             await expect(
-              pool.addToken(owner, newTokenAddress, weightTooLow, fp(1), ZERO_ADDRESS, 0, owner.address, other.address)
+              pool.addToken(owner, newTokenAddress, weightTooLow, fp(1), ZERO_ADDRESS, 0, other.address)
             ).to.be.revertedWith('MIN_WEIGHT');
 
             await expect(
-              pool.addToken(owner, newTokenAddress, weightTooHigh, fp(1), ZERO_ADDRESS, 0, owner.address, other.address)
+              pool.addToken(owner, newTokenAddress, weightTooHigh, fp(1), ZERO_ADDRESS, 0, other.address)
             ).to.be.revertedWith('MAX_WEIGHT');
           });
 
@@ -1873,7 +1871,7 @@ describe('ManagedPool', function () {
             await advanceTime(DAY);
 
             await expect(
-              pool.addToken(owner, newTokenAddress, fp(0.1), fp(1), ZERO_ADDRESS, 0, owner.address, other.address)
+              pool.addToken(owner, newTokenAddress, fp(0.1), fp(1), ZERO_ADDRESS, 0, other.address)
             ).to.be.revertedWith('CHANGE_TOKENS_DURING_WEIGHT_CHANGE');
           });
 
@@ -1884,13 +1882,13 @@ describe('ManagedPool', function () {
             await pool.updateWeightsGradually(owner, startTime.add(DAY), endTime, poolWeights);
 
             await expect(
-              pool.addToken(owner, newTokenAddress, fp(0.1), fp(1), ZERO_ADDRESS, 0, owner.address, other.address)
+              pool.addToken(owner, newTokenAddress, fp(0.1), fp(1), ZERO_ADDRESS, 0, other.address)
             ).to.be.revertedWith('CHANGE_TOKENS_PENDING_WEIGHT_CHANGE');
           });
 
           it('when the incoming weight is too high', async () => {
             await expect(
-              pool.addToken(owner, newTokenAddress, fp(0.98), fp(1), ZERO_ADDRESS, 0, owner.address, other.address)
+              pool.addToken(owner, newTokenAddress, fp(0.98), fp(1), ZERO_ADDRESS, 0, other.address)
             ).to.be.revertedWith('MIN_WEIGHT');
           });
 
@@ -1911,7 +1909,6 @@ describe('ManagedPool', function () {
                 fp(1),
                 ZERO_ADDRESS,
                 expectedBptAmountOut.add(1),
-                owner.address,
                 other.address
               )
             ).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
@@ -1919,16 +1916,7 @@ describe('ManagedPool', function () {
 
           it('when the token is already in the pool', async () => {
             await expect(
-              pool.addToken(
-                owner,
-                poolTokens.get(0).address,
-                fp(0.1),
-                fp(1),
-                ZERO_ADDRESS,
-                0,
-                owner.address,
-                other.address
-              )
+              pool.addToken(owner, poolTokens.get(0).address, fp(0.1), fp(1), ZERO_ADDRESS, 0, other.address)
             ).to.be.revertedWith('TOKEN_ALREADY_REGISTERED');
           });
         });
@@ -1952,7 +1940,6 @@ describe('ManagedPool', function () {
               fp(1),
               mockAssetManager.address,
               0,
-              owner.address,
               other.address
             );
 
