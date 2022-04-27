@@ -1042,17 +1042,25 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
     // Functions that convert weights between internal (denormalized) and external (normalized) representations
 
-    // Convert from the internal representation to normalized weights (summing to ONE)
+    /**
+     * @dev Converts a token weight from the internal representation to the normalized form (summing to ONE)
+     */
     function _normalizeWeight(uint256 denormWeight) private view returns (uint256) {
         return denormWeight.divDown(_denormWeightSum);
     }
 
-    // converts from normalized form to the internal representation (summing to _denormWeightSum)
+    /**
+     * @dev Converts a token weight from normalized form to the internal representation (summing to _denormWeightSum)
+     */
     function _denormalizeWeight(uint256 weight) private view returns (uint256) {
+        // We could call into `_denormalizeWeight(uint256, uint256) here it's overkill for a function so simple.
         return weight.mulUp(_denormWeightSum);
     }
 
-    // converts from normalized form to the internal representation (summing to customDenormWeightSum)
+    /**
+     * @dev An equivalent of the unary form of `_denormalizeWeight` for when the denormalized weight sum is known.
+     * This allows avoiding repeated SLOADs when denormalizing many weights.
+     */
     function _denormalizeWeight(uint256 weight, uint256 customDenormWeightSum) private pure returns (uint256) {
         return weight.mulUp(customDenormWeightSum);
     }
