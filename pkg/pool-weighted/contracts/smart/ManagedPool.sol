@@ -470,11 +470,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     ) external authenticate whenNotPaused returns (uint256) {
         uint256 weightSumAfterAdd = _validateAddToken(normalizedWeight);
 
-        IERC20[] memory tokens = _registerNewToken(token, normalizedWeight.mulUp(weightSumAfterAdd), assetManager);
-
         // Transfer tokens from the sender to this contract, since the sender for the join must be the pool
         token.transferFrom(msg.sender, address(this), tokenAmountIn);
         token.approve(address(getVault()), tokenAmountIn);
+
+        IERC20[] memory tokens = _registerNewToken(token, normalizedWeight.mulUp(weightSumAfterAdd), assetManager);
 
         // A newly registered token will always be placed at the end of the array of tokens
         // We can then safely calculate the index of the new token as we know the length of the `tokens` array.
