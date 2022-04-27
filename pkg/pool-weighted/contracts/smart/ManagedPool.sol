@@ -476,6 +476,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         IERC20[] memory tokens = _registerNewToken(token, normalizedWeight.mulUp(weightSumAfterAdd), assetManager);
 
+        // The Pool is now in an invalid state, since one of its tokens has a balance of zero (making the invariant also
+        // zero). We immediately perform a join using the newly added token to restore a valid state.
+        // Since all non-view Vault functions are non-reentrant, and we make no external calls between the two Vault
+        // calls (`registerTokens` and `joinPool`), it is impossible for any actor to interact with the Pool while it
+        // is in this inconsistent state (except for view calls).
+
         // A newly registered token will always be placed at the end of the array of tokens
         // We can then safely calculate the index of the new token as we know the length of the `tokens` array.
         uint256[] memory maxAmountsIn = new uint256[](tokens.length);
@@ -555,6 +561,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // Tokens array is now different
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
+        // `_encodeTokenState` performs an external call to `token` (to get it's decimals value), however this is
+        // reentrancy safe as view functions are called in a STATICCALL context and so will revert if it modifies state.
         _tokenState[token] = _encodeTokenState(token, denormalizedWeight, denormalizedWeight);
         _totalTokensCache = tokens.length;
 
