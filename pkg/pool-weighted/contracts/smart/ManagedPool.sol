@@ -493,22 +493,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             })
         );
 
-        // If done in two stages, the controller would externally calculate a minimum BPT price (i.e., 1 token = x BPT),
-        // based on dollar values.
-        //
-        // BPT price = (totalSupply * weight)/balance, where balance should be set to:
-        // (old USD value of pool) * WSa/WSb * weight of new token
-        //
-        // For instance, if adding 60% DAI to our example pool with $10k of value (at $1/DAI), you would add
-        // 10k * 2.5/1.0 * 0.6 = 15,000 DAI
-        // The BPT price would be 525.3056 * 0.6 / 15000 = 0.021, and the controller could set a minimum of 0.02
-        // (lower BPT price = higher maxAmountIn).
-        //
-        // In the commit stage, the actual desired balance would be passed in, and addToken would verify
-        // the final BPT price.
-        //
-        // The controller might also impose other limitations, such as not allowing (or allowlisting) asset managers.
-
         _denormWeightSum = weightSumAfterAdd;
 
         uint256 bptAmountOut = WeightedMath._calcBptOutAddToken(totalSupply(), normalizedWeight);
