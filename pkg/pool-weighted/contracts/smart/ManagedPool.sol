@@ -517,10 +517,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // The max weight actually depends on the number of other tokens, but this is handled below
         // by ensuring the final weights are all >= minimum
         _require(normalizedWeight < FixedPoint.ONE, Errors.MAX_WEIGHT);
-        _require(_getTotalTokens() < _getMaxTokens(), Errors.MAX_TOKENS);
 
         // Do not allow adding tokens if there is an ongoing or pending gradual weight change
         _ensureNoWeightChange();
+
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        uint256 numTokens = tokens.length;
+        _require(numTokens < _getMaxTokens(), Errors.MAX_TOKENS);
 
         // The growth in the total weight of the pool can be easily calculated by:
         //
@@ -533,8 +536,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         // Now we need to make sure the other token weights don't get scaled down below the minimum
         // normalized weight[i] = denormalized weight[i] / weightSumAfterAdd
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < numTokens; i++) {
             _require(
                 _getTokenData(tokens[i]).decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT).divUp(
                     weightSumAfterAdd
