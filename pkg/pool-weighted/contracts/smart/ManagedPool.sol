@@ -1053,7 +1053,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @dev Converts a token weight from normalized form to the internal representation (summing to _denormWeightSum)
      */
     function _denormalizeWeight(uint256 weight) private view returns (uint256) {
-        // We could call into `_denormalizeWeight(uint256, uint256) here it's overkill for a function so simple.
+        // We could call into `_denormalizeWeight(uint256, uint256) here but it's overkill for a function so simple.
         return weight.mulUp(_denormWeightSum);
     }
 
