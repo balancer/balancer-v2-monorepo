@@ -446,20 +446,24 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev This function takes the token, and the normalizedWeight it should have in the pool after being added.
+     * @notice Adds a token to the Pool's list of tradeable tokens.
+     * @dev Adds a token to the Pool's composition, sending funds to the Vault from `msg.sender`,
+     * and adjusting the weights of all other tokens.
+     *
+     * Token addition is forbidden during a weight change, or if one is scheduled to happen in the future.
+     *
+     * The caller may additionally pass a non-zero `mintAmount` to have some BPT be minted for them, which might be
+     * useful in some scenarios to account for the fact that the Pool now has more tokens.
+     *
+     * This function takes the token, and the normalizedWeight it should have in the pool after being added.
      * The stored (denormalized) weights of all other tokens remain unchanged, but the weightSum will increase,
      * such that the normalized weight of the new token will match the target value, and the normalized weights of
      * all other tokens will be reduced proportionately.
-     *
-     * addToken performs the following operations:
-     *
-     * - Verify there is room for the token, there is no weight change, and the final weights are all valid
-     * - Calculate the new BPT price, and ensure it is >= the minimum
-     * - Register the new token with the Vault
-     * - Join the pool, pulling in the tokenAmountIn from the sender
-     * - Increase the total weight, and update the number of tokens and `_tokenState`
-     *   (all other weights then scale accordingly)
-     * - Return the BPT value of the new token, for possible use by the caller
+     * @param token - The ERC20 token to be added to the Pool.
+     * @param normalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
+     * @param tokenAmountIn - The amount of `token` to be sent to the pool as its initial balance.
+     * @param mintAmount - An amount of BPT which is to be minted as a result of adding `token` to the Pool.
+     * @param recipient - The address which is to receive the BPT minted by the Pool.
      */
     function addToken(
         IERC20 token,
