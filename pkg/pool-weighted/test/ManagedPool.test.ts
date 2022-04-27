@@ -20,7 +20,7 @@ import { random, range } from 'lodash';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-describe.only('ManagedPool', function () {
+describe('ManagedPool', function () {
   let allTokens: TokenList;
   let poolTokens: TokenList;
   let tooManyWeights: BigNumber[];
