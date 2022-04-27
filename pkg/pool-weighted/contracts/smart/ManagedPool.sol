@@ -522,31 +522,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         uint256 weightSumBeforeAdd = _denormWeightSum;
 
-        // Calculate the weightSum after the add
-        // Consider an 80/20 pool:
-        // |----0.8----|-0.2-|
-        // 0                 x = 1.0 (rightmost point at the "end" of the number line)
+        // The growth in the total weight of the pool can be easily calculated by:
         //
-        // Now add a new token with a weight of 60%
-        // |----0.8----|-0.2-|---0.6y---|
-        // 0                 x          y = the new weightSum
+        // weightSumRatio = totalWeight / (totalWeight - newTokenWeight)
         //
-        // By definition, since we interpret the new token weight as the desired final normalized weight,
-        // the new "length" is the old length, plus 60% of the total new length, y
-        // y = 0.6y + x
-        // (1 - 0.6)y = x
-        // y = x / (1 - 0.6); since x = 1, y = 1/0.4 = 2.5
+        // As we're working with normalized weights `totalWeight` is equal to 1.
         //
-        // The denormalized weight of the new token, 0.6y, is then 0.6(2.5) = 1.5
-        // Since the denorm weights of the original tokens stay the same, the final state is:
-        // |----0.8----|-0.2-|---1.5---|  denormalized weights (as stored)
-        //    0.8/2.5  0.2/2.5 1.5/2.5
-        //      32%      8%      60%      normalized weights (as calculated: W[i]/weightSum)
-        //
-        // The added token is 60%, as desired, and the original 80/20 weights are scaled down
-        // proportionately to 32/8, to fit within the remaining 40%
-        //
-        //uint256 weightSumMultiplier = FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight);
+        // We can then easily calculate the new denormalized weight sum by applying this ratio to the old sum.
         weightSumAfterAdd = weightSumBeforeAdd.mulUp(FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight));
 
         // Now we need to make sure the other token weights don't get scaled down below the minimum
@@ -561,36 +543,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             );
         }
 
-        // Calculate the bptAmountOut equivalent to adding the token at the given weight
-        // The BPT price of a token = S / (B/Wn) = (S * Wn) / B;
-        // where S = totalSupply, Wn = normalized weight, and B = balance
-        //
-        // Since the BPT prices of existing tokens should stay constant when adding a token,
-        // Let Sb, Wnb = total supply and normalized weight before the add; and
-        //     Sa, Wna = total supply and normalized weight after the add
-        // Then: (Sa * Wna) / B = (Sb * Wnb) / B
-        //       Sa * Wna = Sb * Wnb
-        //       Sa = Sb * (Wnb / Wna)
-        // Since the normalized weights (Wn) = denormalized weights (Wd) / weightSum (WS), we have:
-        // Sa = Sb * (Wd / WSb)  - denormalized weights don't change, so there is just one Wd
-        //            ---------
-        //           (Wd / WSa)
-        // Sa = Sb * WSa / WSb = totalSupply after the add
-        //
-        // Then the bptAmountOut is the delta in the total supply:
-        // bptAmountOut = Sa - Sb
-        //              = Sb * WSa / WSb - Sb
-        //              = Sb * (WSa / WSb - 1)
-        //
-        // In our example, Sa is the totalSupply on initialization of the pool. If the balances are 400 and 0.5:
-        // Sb = (400^0.8) * (0.5^0.2) * 2 = 210.1222
-        // Sa = 210.1222 * (2.5 / 1.0) = 525.3056
-        // bptAmountOut = 210.1222 * (2.5 / 1.0 - 1) = 315.1833
-        // The added token should represent 60% of the total supply, after the add, and in fact:
-        // 315.1833 / 525.3056 = ~ 0.6
-        //
-        uint256 weightSumRatio = weightSumAfterAdd.divDown(weightSumBeforeAdd);
-        bptAmountOut = totalSupply().mulDown(weightSumRatio.sub(FixedPoint.ONE));
+        bptAmountOut = WeightedMath._calcBptOutAddToken(totalSupply(), normalizedWeight);
     }
 
     function _registerNewToken(
