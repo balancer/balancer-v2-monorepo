@@ -473,7 +473,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         token.transferFrom(msg.sender, address(this), tokenAmountIn);
         token.approve(address(getVault()), tokenAmountIn);
 
-        IERC20[] memory tokens = _registerNewToken(token, normalizedWeight.mulUp(weightSumAfterAdd));
+        IERC20[] memory tokens = _registerNewToken(token, normalizedWeight, weightSumAfterAdd);
 
         // The Pool is now in an invalid state, since one of its tokens has a balance of zero (making the invariant also
         // zero). We immediately perform a join using the newly added token to restore a valid state.
@@ -541,7 +541,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         return weightSumAfterAdd;
     }
 
-    function _registerNewToken(IERC20 token, uint256 denormalizedWeight) private returns (IERC20[] memory) {
+    function _registerNewToken(IERC20 token, uint256 normalizedWeight, uint256 newDenormWeightSum) private returns (IERC20[] memory) {
         IERC20[] memory tokensToAdd = new IERC20[](1);
         tokensToAdd[0] = token;
 
@@ -552,7 +552,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         // `_encodeTokenState` performs an external call to `token` (to get it's decimals value), however this is
         // reentrancy safe as view functions are called in a STATICCALL context and so will revert if it modifies state.
-        _tokenState[token] = _encodeTokenState(token, denormalizedWeight, denormalizedWeight);
+        _tokenState[token] = _encodeTokenState(token, normalizedWeight, normalizedWeight, newDenormWeightSum);
         _totalTokensCache = tokens.length;
 
         return tokens;
