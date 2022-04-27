@@ -476,7 +476,22 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         token.transferFrom(msg.sender, address(this), tokenAmountIn);
         token.approve(address(getVault()), tokenAmountIn);
 
-        _joinAddToken(tokens, tokenAmountIn, recipient);
+        // A newly registered token will always be placed at the end of the array of tokens
+        // We can then safely calculate the index of the new token as we know the length of the `tokens` array.
+        uint256[] memory maxAmountsIn = new uint256[](tokens.length);
+        maxAmountsIn[tokens.length - 1] = tokenAmountIn;
+
+        getVault().joinPool(
+            getPoolId(),
+            address(this),
+            payable(recipient),
+            IVault.JoinPoolRequest({
+                assets: _asIAsset(tokens),
+                maxAmountsIn: maxAmountsIn,
+                userData: abi.encode(WeightedPoolUserData.JoinKind.ADD_TOKEN, tokenAmountIn),
+                fromInternalBalance: false
+            })
+        );
 
         // If done in two stages, the controller would externally calculate a minimum BPT price (i.e., 1 token = x BPT),
         // based on dollar values.
@@ -560,30 +575,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         _totalTokensCache = tokens.length;
 
         return tokens;
-    }
-
-    // Not worrying about updating the invariant yet, or paying protocol fees, since that will all likely change
-    function _joinAddToken(
-        IERC20[] memory tokens,
-        uint256 tokenAmountIn,
-        address recipient
-    ) private {
-        // A newly registered token will always be placed at the end of the array of tokens
-        // We can then safely calculate the index of the new token as we know the length of the `tokens` array.
-        uint256[] memory maxAmountsIn = new uint256[](tokens.length);
-        maxAmountsIn[tokens.length - 1] = tokenAmountIn;
-
-        getVault().joinPool(
-            getPoolId(),
-            address(this),
-            payable(recipient),
-            IVault.JoinPoolRequest({
-                assets: _asIAsset(tokens),
-                maxAmountsIn: maxAmountsIn,
-                userData: abi.encode(WeightedPoolUserData.JoinKind.ADD_TOKEN, tokenAmountIn),
-                fromInternalBalance: false
-            })
-        );
     }
 
     /**
