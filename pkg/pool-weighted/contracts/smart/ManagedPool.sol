@@ -464,9 +464,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         IERC20 token,
         uint256 normalizedWeight,
         uint256 tokenAmountIn,
-        uint256 minBPTAmountOut,
+        uint256 mintAmount,
         address recipient
-    ) external authenticate whenNotPaused returns (uint256) {
+    ) external authenticate whenNotPaused {
         uint256 weightSumAfterAdd = _validateAddToken(normalizedWeight);
 
         // Transfer tokens from the sender to this contract, since the sender for the join must be the pool
@@ -500,15 +500,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         _denormWeightSum = weightSumAfterAdd;
 
-        uint256 bptAmountOut = WeightedMath._calcBptOutAddToken(totalSupply(), normalizedWeight);
-        _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
-        if (bptAmountOut > 0) {
-            _mintPoolTokens(recipient, bptAmountOut);
+        if (mintAmount > 0) {
+            _mintPoolTokens(recipient, mintAmount);
         }
 
         emit TokenAdded(token, normalizedWeight, tokenAmountIn);
-
-        return bptAmountOut;
     }
 
     function _validateAddToken(uint256 normalizedWeight) private view returns (uint256) {

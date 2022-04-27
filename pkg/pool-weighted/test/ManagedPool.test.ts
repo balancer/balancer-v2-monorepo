@@ -20,7 +20,7 @@ import { random, range } from 'lodash';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-describe('ManagedPool', function () {
+describe.only('ManagedPool', function () {
   let allTokens: TokenList;
   let poolTokens: TokenList;
   let tooManyWeights: BigNumber[];
@@ -1697,12 +1697,15 @@ describe('ManagedPool', function () {
           describe('when parameters are valid', () => {
             const expectedWeightsAfter: Map<string, BigNumber> = new Map<string, BigNumber>();
             const expectedTokensAfter: string[] = [];
+            let recipientBalanceBefore: BigNumber;
             const tokenAmountIn = fp(1);
+            const mintAmount = fp(42);
 
             sharedBeforeEach('set swap state', async () => {
               if (swapsDisabled) {
                 await pool.setSwapEnabled(owner, false);
               }
+              recipientBalanceBefore = await pool.balanceOf(other);
 
               newTokenAddress = addedTokens[tokenIndex].address;
 
@@ -1723,21 +1726,6 @@ describe('ManagedPool', function () {
               );
             });
 
-            it('calculates bptAmountOut', async () => {
-              const weightSumBeforeAdd = await pool.instance.getDenormalizedWeightSum();
-              const weightSumAfterAdd = fp(weightSumBeforeAdd).mul(fp(1)).div(fp(1).sub(normalizedWeight));
-              const weightSumRatio = weightSumAfterAdd.div(weightSumBeforeAdd);
-
-              const totalSupply = await pool.totalSupply();
-              const expectedBptAmountOut = totalSupply.mul(weightSumRatio.sub(fp(1))).div(fp(1));
-
-              expect(
-                await pool.instance
-                  .connect(owner)
-                  .callStatic.addToken(addedTokens[tokenIndex].address, normalizedWeight, fp(1), 0, other.address)
-              ).to.be.eq(expectedBptAmountOut);
-            });
-
             context('when token is added', () => {
               sharedBeforeEach('add token', async () => {
                 const tx = await pool.addToken(
@@ -1745,7 +1733,7 @@ describe('ManagedPool', function () {
                   newTokenAddress,
                   normalizedWeight,
                   tokenAmountIn,
-                  0,
+                  mintAmount,
                   other.address
                 );
 
@@ -1786,6 +1774,12 @@ describe('ManagedPool', function () {
                 const { balances } = await pool.getTokens();
 
                 expect(balances[tokenIndex]).to.equal(tokenAmountIn);
+              });
+
+              it('mints BPT to the recipient', async () => {
+                const recipientBalanceAfter = await pool.balanceOf(other);
+                const actualMintAmount = recipientBalanceAfter.sub(recipientBalanceBefore);
+                expect(actualMintAmount).to.eq(mintAmount);
               });
             });
           });
@@ -1880,20 +1874,6 @@ describe('ManagedPool', function () {
             await expect(pool.addToken(owner, newTokenAddress, fp(0.98), fp(1), 0, other.address)).to.be.revertedWith(
               'MIN_WEIGHT'
             );
-          });
-
-          it('when the minBptAmountOut is too high', async () => {
-            const normalizedWeight = fp(0.1);
-            const weightSumBeforeAdd = await pool.instance.getDenormalizedWeightSum();
-            const weightSumAfterAdd = fp(weightSumBeforeAdd).mul(fp(1)).div(fp(1).sub(normalizedWeight));
-            const weightSumRatio = weightSumAfterAdd.div(weightSumBeforeAdd);
-
-            const totalSupply = await pool.totalSupply();
-            const expectedBptAmountOut = totalSupply.mul(weightSumRatio.sub(fp(1))).div(fp(1));
-
-            await expect(
-              pool.addToken(owner, newTokenAddress, normalizedWeight, fp(1), expectedBptAmountOut.add(1), other.address)
-            ).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
           });
 
           it('when the token is already in the pool', async () => {
