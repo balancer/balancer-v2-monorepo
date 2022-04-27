@@ -286,13 +286,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 currentTime = block.timestamp;
         bytes32 poolState = _getMiscData();
 
-        uint256 startTime = poolState.decodeUint31(_FEE_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint31(_FEE_END_TIME_OFFSET);
-
-        if (currentTime < startTime) {
-            _revert(Errors.SET_SWAP_FEE_PENDING_FEE_CHANGE);
-        } else if (currentTime < endTime) {
-            _revert(Errors.SET_SWAP_FEE_DURING_FEE_CHANGE);
+        if (currentTime < endTime) {
+            uint256 startTime = poolState.decodeUint31(_FEE_START_TIME_OFFSET);
+            _revert(
+                currentTime < startTime ? Errors.SET_SWAP_FEE_PENDING_FEE_CHANGE : Errors.SET_SWAP_FEE_DURING_FEE_CHANGE
+            );
         }
 
         _setSwapFeeData(currentTime, currentTime, swapFeePercentage);
@@ -531,13 +530,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 currentTime = block.timestamp;
         bytes32 poolState = _getMiscData();
 
-        uint256 startTime = poolState.decodeUint32(_WEIGHT_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_WEIGHT_END_TIME_OFFSET);
-
-        if (currentTime < startTime) {
-            _revert(Errors.CHANGE_TOKENS_PENDING_WEIGHT_CHANGE);
-        } else if (currentTime < endTime) {
-            _revert(Errors.CHANGE_TOKENS_DURING_WEIGHT_CHANGE);
+        if (currentTime < endTime) {
+            uint256 startTime = poolState.decodeUint32(_WEIGHT_START_TIME_OFFSET);
+            _revert(
+                currentTime < startTime
+                    ? Errors.CHANGE_TOKENS_PENDING_WEIGHT_CHANGE
+                    : Errors.CHANGE_TOKENS_DURING_WEIGHT_CHANGE
+            );
         }
     }
 
