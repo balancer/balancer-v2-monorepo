@@ -520,8 +520,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // Do not allow adding tokens if there is an ongoing or pending gradual weight change
         _ensureNoWeightChange();
 
-        uint256 weightSumBeforeAdd = _denormWeightSum;
-
         // The growth in the total weight of the pool can be easily calculated by:
         //
         // weightSumRatio = totalWeight / (totalWeight - newTokenWeight)
@@ -529,7 +527,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // As we're working with normalized weights `totalWeight` is equal to 1.
         //
         // We can then easily calculate the new denormalized weight sum by applying this ratio to the old sum.
-        weightSumAfterAdd = weightSumBeforeAdd.mulUp(FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight));
+        weightSumAfterAdd = _denormWeightSum.mulUp(FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight));
 
         // Now we need to make sure the other token weights don't get scaled down below the minimum
         // normalized weight[i] = denormalized weight[i] / weightSumAfterAdd
