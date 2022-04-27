@@ -452,8 +452,7 @@ library WeightedMath {
      * @param totalSupply - the total supply of the Pool's BPT.
      * @param normalizedWeight - the normalized weight of the token to be added (normalized relative to final weights)
      */
-    function _calcBptOutAddToken(uint256 totalSupply, uint256 normalizedWeight) internal pure returns (uint256){
-
+    function _calcBptOutAddToken(uint256 totalSupply, uint256 normalizedWeight) internal pure returns (uint256) {
         // The amount of BPT which is equivalent to the token being added may be calculated by the growth in the
         // sum of the token weights, i.e. if we add a token which will make up 50% of the pool then we should receive
         // 50% of the new supply of BPT.

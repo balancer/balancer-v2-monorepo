@@ -468,8 +468,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 minBPTAmountOut,
         address recipient
     ) external authenticate whenNotPaused returns (uint256) {
-        (uint256 weightSumAfterAdd, uint256 bptAmountOut) = _validateAddToken(normalizedWeight);
-        _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
+        uint256 weightSumAfterAdd = _validateAddToken(normalizedWeight);
 
         IERC20[] memory tokens = _registerNewToken(token, normalizedWeight.mulUp(weightSumAfterAdd), assetManager);
 
@@ -497,6 +496,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         _denormWeightSum = weightSumAfterAdd;
 
+        uint256 bptAmountOut = WeightedMath._calcBptOutAddToken(totalSupply(), normalizedWeight);
+        _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
         if (bptAmountOut > 0) {
             _mintPoolTokens(recipient, bptAmountOut);
         }
@@ -506,11 +507,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         return bptAmountOut;
     }
 
-    function _validateAddToken(uint256 normalizedWeight)
-        private
-        view
-        returns (uint256 weightSumAfterAdd, uint256 bptAmountOut)
-    {
+    function _validateAddToken(uint256 normalizedWeight) private view returns (uint256) {
         _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
         // The max weight actually depends on the number of other tokens, but this is handled below
         // by ensuring the final weights are all >= minimum
@@ -527,7 +524,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // As we're working with normalized weights `totalWeight` is equal to 1.
         //
         // We can then easily calculate the new denormalized weight sum by applying this ratio to the old sum.
-        weightSumAfterAdd = _denormWeightSum.mulUp(FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight));
+        uint256 weightSumAfterAdd = _denormWeightSum.mulUp(FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight));
 
         // Now we need to make sure the other token weights don't get scaled down below the minimum
         // normalized weight[i] = denormalized weight[i] / weightSumAfterAdd
@@ -541,7 +538,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             );
         }
 
-        bptAmountOut = WeightedMath._calcBptOutAddToken(totalSupply(), normalizedWeight);
+        return weightSumAfterAdd;
     }
 
     function _registerNewToken(
