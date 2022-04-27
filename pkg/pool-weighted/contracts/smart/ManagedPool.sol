@@ -21,7 +21,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IAumProtocolFeesCollector.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/AumProtocolFeeCache.sol";
 
 import "../lib/GradualValueChange.sol";
 import "../lib/WeightCompression.sol";
@@ -52,7 +52,7 @@ import "../WeightedPoolUserData.sol";
  * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of
  * protocol and management fees, allowlisting of LPs, and more.
  */
-contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
+contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -89,8 +89,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     uint256 private constant _FEE_END_TIME_OFFSET = 160;
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 191;
     uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
-
-    IAumProtocolFeesCollector private immutable _aumProtocolFeesCollector;
 
     // Store scaling factor and start/end denormalized weights for each token
     // Mapping should be more efficient than trying to compress it further
@@ -167,6 +165,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 protocolSwapFeePercentage;
         uint256 managementSwapFeePercentage;
         uint256 managementAumFeePercentage;
+        IAumProtocolFeesCollector aumProtocolFeesCollector; // Should be a constructor parameter, but blew up the stack
     }
 
     constructor(
@@ -174,8 +173,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         IVault vault,
         address owner,
         uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address aumProtocolFeesCollector
+        uint256 bufferPeriodDuration
     )
         BaseWeightedPool(
             vault,
@@ -188,14 +186,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             bufferPeriodDuration,
             owner
         )
-        ProtocolFeeCache(vault, params.protocolSwapFeePercentage)
+        AumProtocolFeeCache(vault, params.protocolSwapFeePercentage, params.aumProtocolFeesCollector)
     {
         uint256 totalTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
 
         _totalTokensCache = totalTokens;
-
-        _aumProtocolFeesCollector = IAumProtocolFeesCollector(aumProtocolFeesCollector);
 
         // Validate and set initial fees
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
@@ -311,13 +307,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      */
     function getManagementAumFeePercentage() public view returns (uint256) {
         return _managementAumFeePercentage;
-    }
-
-    /**
-     * @dev Getter for the AUM protocol fees collector singleton
-     */
-    function getAumProtocolFeesCollector() public view returns (IAumProtocolFeesCollector) {
-        return _aumProtocolFeesCollector;
     }
 
     /**
@@ -1043,7 +1032,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             bptAmount = annualizedFee.mulDown(fractionalTimePeriod);
 
             // Compute the protocol's share of the AUM fee
-            uint256 protocolBptAmount = bptAmount.mulUp(getAumProtocolFeesCollector().getAumFeePercentage());
+            uint256 protocolBptAmount = bptAmount.mulUp(getProtocolAumFeePercentageCache());
             bptAmount = bptAmount.sub(protocolBptAmount);
 
             _payProtocolFees(protocolBptAmount);

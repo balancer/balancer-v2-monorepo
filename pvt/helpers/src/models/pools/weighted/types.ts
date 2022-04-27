@@ -233,4 +233,5 @@ export type ManagedPoolParams = {
   protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
+  aumProtocolFeesCollector: string;
 };

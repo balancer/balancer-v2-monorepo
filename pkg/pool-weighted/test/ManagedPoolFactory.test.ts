@@ -29,6 +29,7 @@ describe('ManagedPoolFactory', function () {
   let assetManager: SignerWithAddress;
   let admin: SignerWithAddress;
   let poolControllerAddress: string;
+  let protocolFeesCollector: string;
 
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
@@ -52,6 +53,8 @@ describe('ManagedPoolFactory', function () {
 
     baseFactory = await deploy('BaseManagedPoolFactory', { args: [vault.address] });
     factory = await deploy('ManagedPoolFactory', { args: [baseFactory.address] });
+
+    protocolFeesCollector = baseFactory.aumProtocolFeesCollector();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
@@ -78,6 +81,7 @@ describe('ManagedPoolFactory', function () {
       protocolSwapFeePercentage: protocolSwapFeePercentage,
       managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+      aumProtocolFeesCollector: protocolFeesCollector,
     };
 
     const basePoolRights: BasePoolRights = {
@@ -182,10 +186,6 @@ describe('ManagedPoolFactory', function () {
 
     it('sets the decimals', async () => {
       expect(await pool.decimals()).to.equal(18);
-    });
-
-    it('sets the AUMProtocolFeesCollector', async () => {
-      expect(await pool.getAumProtocolFeesCollector()).to.not.equal(ZERO_ADDRESS);
     });
   });
 

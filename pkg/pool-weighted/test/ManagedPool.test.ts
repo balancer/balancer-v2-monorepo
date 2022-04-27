@@ -121,7 +121,6 @@ describe('ManagedPool', function () {
       const params = {
         tokens: allTokens.subset(1),
         weights: [fp(0.3)],
-        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         poolType: WeightedPoolType.MANAGED_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
@@ -140,6 +139,7 @@ describe('ManagedPool', function () {
       const params = {
         tokens: allTokens.subset(20),
         weights: tooManyWeights,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         poolType: WeightedPoolType.MANAGED_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
@@ -308,8 +308,7 @@ describe('ManagedPool', function () {
           tokens: poolTokens,
           weights: poolWeights,
           owner: owner.address,
-          //vault,
-          //aumProtocolFeesCollector: aumProtocolFeesCollector.address,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: false,
         };
@@ -625,6 +624,7 @@ describe('ManagedPool', function () {
         weights: poolWeights,
         owner: owner.address,
         swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
       };
@@ -668,6 +668,7 @@ describe('ManagedPool', function () {
         weights: poolWeights,
         owner: owner.address,
         swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
       };
@@ -787,6 +788,7 @@ describe('ManagedPool', function () {
         tokens: originalTokens,
         weights: range(TOTAL_TOKENS).map(() => fp(random(50))), // The deployer will normalize these
         owner: owner.address,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
         vault,
@@ -1138,6 +1140,7 @@ describe('ManagedPool', function () {
         weights: poolWeights,
         owner: owner.address,
         poolType: WeightedPoolType.MANAGED_POOL,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         swapEnabledOnStart: true,
         vault,
         swapFeePercentage,

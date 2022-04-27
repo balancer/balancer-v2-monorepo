@@ -58,13 +58,13 @@ contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWin
                         mustAllowlistLPs: poolParams.mustAllowlistLPs,
                         protocolSwapFeePercentage: poolParams.protocolSwapFeePercentage,
                         managementSwapFeePercentage: poolParams.managementSwapFeePercentage,
-                        managementAumFeePercentage: poolParams.managementAumFeePercentage
+                        managementAumFeePercentage: poolParams.managementAumFeePercentage,
+                        aumProtocolFeesCollector: aumProtocolFeesCollector
                     }),
                     getVault(),
                     owner,
                     pauseWindowDuration,
-                    bufferPeriodDuration,
-                    address(aumProtocolFeesCollector)
+                    bufferPeriodDuration
                 )
             );
     }

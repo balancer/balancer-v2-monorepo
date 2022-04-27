@@ -138,12 +138,12 @@ export default {
               protocolSwapFeePercentage: protocolSwapFeePercentage,
               managementSwapFeePercentage: managementSwapFeePercentage,
               managementAumFeePercentage: managementAumFeePercentage,
+              aumProtocolFeesCollector: aumProtocolFeesCollector,
             },
             vault.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
-            aumProtocolFeesCollector,
           ],
           from,
         });
@@ -183,6 +183,7 @@ export default {
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
+      aumProtocolFeesCollector,
       poolType,
       owner,
       from,
@@ -253,6 +254,7 @@ export default {
           protocolSwapFeePercentage: protocolSwapFeePercentage,
           managementSwapFeePercentage: managementSwapFeePercentage,
           managementAumFeePercentage: managementAumFeePercentage,
+          aumProtocolFeesCollector: aumProtocolFeesCollector,
         };
 
         const basePoolRights: BasePoolRights = {
