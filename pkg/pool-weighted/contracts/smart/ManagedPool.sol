@@ -857,13 +857,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     ) internal virtual {
         uint256 normalizedSum;
 
+        uint256 denormWeightSum = _denormWeightSum;
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
             normalizedSum = normalizedSum.add(endWeight);
 
             IERC20 token = tokens[i];
-            _tokenState[token] = _encodeTokenState(token, startWeights[i], endWeight);
+            _tokenState[token] = _encodeTokenState(token, startWeights[i], endWeight, denormWeightSum);
         }
 
         // Ensure that the normalized weights sum to ONE
@@ -911,7 +912,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     function _encodeTokenState(
         IERC20 token,
         uint256 normalizedStartWeight,
-        uint256 normalizedEndWeight
+        uint256 normalizedEndWeight,
+        uint256 denormWeightSum
     ) private view returns (bytes32) {
         bytes32 tokenState;
 
@@ -921,11 +923,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         return
             tokenState
                 .insertUint64(
-                _denormalizeWeight(normalizedStartWeight).compress64(_MAX_DENORM_WEIGHT),
+                _denormalizeWeight(normalizedStartWeight, denormWeightSum).compress64(_MAX_DENORM_WEIGHT),
                 _START_DENORM_WEIGHT_OFFSET
             )
                 .insertUint64(
-                _denormalizeWeight(normalizedEndWeight).compress64(_MAX_DENORM_WEIGHT),
+                _denormalizeWeight(normalizedEndWeight, denormWeightSum).compress64(_MAX_DENORM_WEIGHT),
                 _END_DENORM_WEIGHT_OFFSET
             )
                 .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
@@ -1048,5 +1050,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     // converts from normalized form to the internal representation (summing to _denormWeightSum)
     function _denormalizeWeight(uint256 weight) private view returns (uint256) {
         return weight.mulUp(_denormWeightSum);
+    }
+
+    // converts from normalized form to the internal representation (summing to customDenormWeightSum)
+    function _denormalizeWeight(uint256 weight, uint256 customDenormWeightSum) private pure returns (uint256) {
+        return weight.mulUp(customDenormWeightSum);
     }
 }
