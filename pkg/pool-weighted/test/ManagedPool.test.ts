@@ -1848,9 +1848,11 @@ describe('ManagedPool', function () {
         });
 
         context('when parameters are invalid', () => {
-          it('when the normalized weight is invalid', async () => {
+          sharedBeforeEach(async () => {
             newTokenAddress = addedTokens[0].address;
+          });
 
+          it('when the normalized weight is invalid', async () => {
             const weightTooLow = fp(0.005);
             const weightTooHigh = fp(1);
 
