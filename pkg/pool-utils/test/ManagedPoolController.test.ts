@@ -209,6 +209,18 @@ describe('ManagedPoolController', function () {
       });
     });
 
+    describe('management fee collection', () => {
+      it('lets the manager collect management fees', async () => {
+        await poolController.connect(manager).withdrawCollectedManagementFees(manager.address);
+      });
+
+      it('reverts if non-manager collects management fees', async () => {
+        await expect(poolController.connect(other).withdrawCollectedManagementFees(other.address)).to.be.revertedWith(
+          'CALLER_IS_NOT_OWNER'
+        );
+      });
+    });
+
     describe('update weights gradually', () => {
       it('lets the manager update weights gradually', async () => {
         const now = await currentTimestamp();
