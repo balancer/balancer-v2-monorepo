@@ -1755,7 +1755,7 @@ describe('ManagedPool', function () {
 
                 expectEvent.inReceipt(receipt, 'TokenAdded', {
                   token: newTokenAddress,
-                  weight: normalizedWeight,
+                  normalizedWeight,
                   initialBalance: tokenAmountIn,
                 });
               });
