@@ -183,7 +183,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             params.swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
-            owner
+            owner,
+            true
         )
         ProtocolFeeCache(vault, params.protocolSwapFeePercentage)
     {
