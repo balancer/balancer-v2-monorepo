@@ -21,7 +21,9 @@ interface IOrder {
         uint256 qty;
         uint256 dt;
         address party;
-        uint256 price;        
+        uint256 price;  
+        uint256 currencyBalance;  
+        uint256 securityBalance;    
     }
 
     function getOrderRef() external view returns(bytes32[] memory);

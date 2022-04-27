@@ -1,4 +1,5 @@
 // Implementation of pool for new issues of security tokens that allows price discovery
+// (c) Kallol Borah, 2022
 //"SPDX-License-Identifier: MIT"
 
 pragma solidity ^0.7.0;

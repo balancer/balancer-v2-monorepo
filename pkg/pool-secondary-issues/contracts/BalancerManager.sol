@@ -1,4 +1,5 @@
-// Settlement of trades
+// External interface for settlement of trades
+// (c) Kallol Borah, 2022
 //"SPDX-License-Identifier: MIT"
 
 pragma solidity 0.7.1;
@@ -18,14 +19,14 @@ contract BalancerManager is ISettlor, Ownable {
 
     using Math for uint256;
 
+    // mapping settlement ref to trade execution data
     mapping(bytes32 => ISettlor.settlement) settlements;
 
+    // mapping pool id to issuer address to asset ref
     mapping(address => mapping(address => bytes32)) private issuers;
 
     //mapping depository participants to trades they are part of
     mapping(bytes32 => bytes32[]) private trades;
-
-    bool success;
 
     event tradeSettled(address indexed transferor,
                         address indexed transferee,
@@ -35,6 +36,15 @@ contract BalancerManager is ISettlor, Ownable {
                         address currency
                     );
 
+    /**
+        Issues existing (secondary) tokenized assets into pool
+        @param  factory     reference to the secondary issue pool factory contract
+        @param  security    reference to asset issued
+        @param  currency    reference to cash (settlement) token
+        @param  amount      amount of asset issued in pool
+        @param  fee         percentage of trading fee to be charged by the asset manager
+        @param  id          identifier for asset issued
+     */
     function issueSecondary(address factory, address security, address currency, uint256 amount, uint256 fee, bytes32 id) override external {
         address pool = ISecondaryIssuePoolFactory(factory).create(
             ERC20(security).name(),
@@ -47,6 +57,11 @@ contract BalancerManager is ISettlor, Ownable {
         issuers[pool][msg.sender] = id;
     }
 
+    /**
+        Posts trades matched in pool
+        @param  newTrade    data structure with trade execution data
+        @param  ref         reference to the asset traded
+     */
     function postSettlement(ISettlor.settlement calldata newTrade, bytes32 ref) override external {
         trades[newTrade.transferorDPID].push(ref);
         trades[newTrade.transfereeDPID].push(ref);
@@ -64,10 +79,18 @@ contract BalancerManager is ISettlor, Ownable {
         settlements[ref].counterpartyRef = newTrade.counterpartyRef;
     }
 
+    /**
+        Fetches trade settlement requests for depository participant
+        @param  dpid         identifier of depository participant (eg, transfer agent) that is authorized to settle the asset 
+     */
     function getSettlementRequests(bytes32 dpid) override external view returns(bytes32[] memory){
         return trades[dpid];
     }
 
+    /**
+        Fetches a specific trade settlement request        
+        @param  ref         reference to the trade
+     */
     function getSettlementRequest(bytes32 ref) override external view returns(settlement memory){
         require(ref!=""); 
         ISettlor.settlement memory response = ISettlor.settlement({
@@ -89,9 +112,16 @@ contract BalancerManager is ISettlor, Ownable {
         return response;                                                              
     }
     
+    /**
+        Sets settlement status for trades executed
+        @param  ref         reference to the trade executed
+        @param  status      settlement status
+        @param  id          identifier of asset traded
+     */
     function setSettlementStatus(bytes32 ref, bytes32 status, bytes32 id) override external{
         require(status=="Confirm" || status=="Reject");
         settlements[ref].status = status;
+        bool success;
         if(status=="Confirm"){
             uint256 pay = Math.mul(settlements[ref].price, settlements[ref].unitsToTransfer);
             if(IERC20(settlements[ref].currency).transferFrom(settlements[ref].transferee, settlements[ref].transferor, pay)){                
@@ -130,6 +160,10 @@ contract BalancerManager is ISettlor, Ownable {
         }            
     }
 
+    /**
+        Gets transfer agent for any of the parties in the trade
+        @param  party         reference to the party or counterparty in a trade
+     */
     function getTransferAgent(address party) override external view returns(bytes32){
         return(issuers[msg.sender][party]);
     }

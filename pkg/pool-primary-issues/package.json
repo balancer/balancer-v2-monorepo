@@ -16,6 +16,9 @@
     "contracts/**/*",
     "!contracts/test/*"
   ],
+  "contributors": [
+    "Kallol Borah <kallol@verified.network>"    
+  ],
   "scripts": {
     "build": "yarn compile",
     "compile": "hardhat compile && rm -rf artifacts/build-info",

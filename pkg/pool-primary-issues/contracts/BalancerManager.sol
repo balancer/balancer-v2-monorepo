@@ -1,4 +1,5 @@
-// Verified asset manager
+// Balancer asset manager
+// (c) Kallol Borah, 2022
 //"SPDX-License-Identifier: MIT"
 
 pragma solidity ^0.7.1;
