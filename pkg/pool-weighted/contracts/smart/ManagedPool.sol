@@ -534,16 +534,23 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // We can then easily calculate the new denormalized weight sum by applying this ratio to the old sum.
         uint256 weightSumAfterAdd = _denormWeightSum.mulUp(FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight));
 
-        // Now we need to make sure the other token weights don't get scaled down below the minimum
-        // normalized weight[i] = denormalized weight[i] / weightSumAfterAdd
+        // We want to check if adding this new token results in any tokens falling below the minimum weight limit.
+        // If any would fail this check then it would be the token with the lowest weight, we then search through
+        // tokens to find the minimum weight. We can delay decompressing the weight until after the search.
+        uint256 minimumCompressedWeight = type(uint256).max;
         for (uint256 i = 0; i < numTokens; i++) {
-            _require(
-                _getTokenData(tokens[i]).decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT).divUp(
-                    weightSumAfterAdd
-                ) >= WeightedMath._MIN_WEIGHT,
-                Errors.MIN_WEIGHT
-            );
+            uint256 newCompressedWeight = _getTokenData(tokens[i]).decodeUint64(_END_DENORM_WEIGHT_OFFSET);
+            if (newCompressedWeight < minimumCompressedWeight) {
+                minimumCompressedWeight = newCompressedWeight;
+            }
         }
+
+        // Now we know the minimum weight we can decompress it and check that it doesn't get pushed below the minimum.
+        _require(
+            minimumCompressedWeight.uncompress64(_MAX_DENORM_WEIGHT).divUp(weightSumAfterAdd) >=
+                WeightedMath._MIN_WEIGHT,
+            Errors.MIN_WEIGHT
+        );
 
         return weightSumAfterAdd;
     }
