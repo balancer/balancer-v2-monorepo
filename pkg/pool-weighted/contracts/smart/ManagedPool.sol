@@ -542,7 +542,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         return weightSumAfterAdd;
     }
 
-    function _registerNewToken(IERC20 token, uint256 normalizedWeight, uint256 newDenormWeightSum) private returns (IERC20[] memory) {
+    function _registerNewToken(
+        IERC20 token,
+        uint256 normalizedWeight,
+        uint256 newDenormWeightSum
+    ) private returns (IERC20[] memory) {
         IERC20[] memory tokensToAdd = new IERC20[](1);
         tokensToAdd[0] = token;
 

@@ -51,7 +51,9 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             // gas savings.
             // If the pool is expected to be able register new tokens in future, we must choose MINIMAL_SWAP_INFO
             // as clearly the TWO_TOKEN specification doesn't support adding extra tokens in future.
-            tokens.length == 2 && !mutableTokens ? IVault.PoolSpecialization.TWO_TOKEN : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
+            tokens.length == 2 && !mutableTokens
+                ? IVault.PoolSpecialization.TWO_TOKEN
+                : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
             name,
             symbol,
             tokens,
