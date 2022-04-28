@@ -527,7 +527,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         uint256 numTokens = tokens.length;
-        _require(numTokens < _getMaxTokens(), Errors.MAX_TOKENS);
+        _require(numTokens + 1 <= _getMaxTokens(), Errors.MAX_TOKENS);
 
         // The growth in the total weight of the pool can be easily calculated by:
         //
