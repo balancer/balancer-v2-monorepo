@@ -484,7 +484,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // In order to add a token to a Pool we must perform a two step process:
         // - First the new token must be registered on the Vault as belonging to this Pool.
         // - Second a special join action must be performed to seed the Pool with it's initial balance of the new token.
-        
+
         // We only allow the Pool to perform the special join mentioned above to ensure it only happens
         // as part of adding a new token to the Pool, we then pull the necessary tokens from the caller.
         token.transferFrom(msg.sender, address(this), tokenAmountIn);
