@@ -474,11 +474,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     ) external authenticate whenNotPaused {
         uint256 weightSumAfterAdd = _validateAddToken(normalizedWeight);
 
-        // Transfer tokens from the sender to this contract, since the sender for the join must be the pool
+        // Transfer tokens from the sender to this contract, since the sender for the join must be the Pool
         token.transferFrom(msg.sender, address(this), tokenAmountIn);
         token.approve(address(getVault()), tokenAmountIn);
 
-        IERC20[] memory tokens = _registerNewToken(token, normalizedWeight, weightSumAfterAdd);
+        IERC20[] memory tokensAfterAdd = _registerNewToken(token, normalizedWeight, weightSumAfterAdd);
 
         // The Pool is now in an invalid state, since one of its tokens has a balance of zero (making the invariant also
         // zero). We immediately perform a join using the newly added token to restore a valid state.
@@ -487,16 +487,16 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // is in this inconsistent state (except for view calls).
 
         // A newly registered token will always be placed at the end of the array of tokens
-        // We can then safely calculate the index of the new token as we know the length of the `tokens` array.
-        uint256[] memory maxAmountsIn = new uint256[](tokens.length);
-        maxAmountsIn[tokens.length - 1] = tokenAmountIn;
+        // We can then safely calculate the index of the new token as we know the length of the `tokensAfterAdd` array.
+        uint256[] memory maxAmountsIn = new uint256[](tokensAfterAdd.length);
+        maxAmountsIn[tokensAfterAdd.length - 1] = tokenAmountIn;
 
         getVault().joinPool(
             getPoolId(),
             address(this),
             payable(recipient),
             IVault.JoinPoolRequest({
-                assets: _asIAsset(tokens),
+                assets: _asIAsset(tokensAfterAdd),
                 maxAmountsIn: maxAmountsIn,
                 userData: abi.encode(WeightedPoolUserData.JoinKind.ADD_TOKEN, tokenAmountIn),
                 fromInternalBalance: false
