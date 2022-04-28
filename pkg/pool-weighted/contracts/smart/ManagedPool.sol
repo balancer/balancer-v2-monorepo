@@ -567,6 +567,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         IERC20[] memory tokensToAdd = new IERC20[](1);
         tokensToAdd[0] = token;
 
+        // We do not allow an asset manager to be registered for the new token.
+        // We then pass an empty array for this value.
         getVault().registerTokens(getPoolId(), tokensToAdd, new address[](1));
 
         // Tokens array is now different
