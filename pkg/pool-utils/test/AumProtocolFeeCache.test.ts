@@ -7,15 +7,11 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 describe('AumProtocolFeeCache', () => {
-  const MAX_PROTOCOL_FEE = fp(0.5); // 50%
-  const VAULT_PROTOCOL_FEE = fp(0.5); // 50%
-  const NEW_VAULT_PROTOCOL_FEE = fp(0.3); // 30%
   const FIXED_PROTOCOL_FEE = fp(0.1); // 10%
 
   const AUM_PROTOCOL_FEE = fp(0.05); // 5%
@@ -26,7 +22,6 @@ describe('AumProtocolFeeCache', () => {
   let admin: SignerWithAddress;
   let vault: Contract;
   let authorizer: Contract;
-  let vaultObj: Vault;
 
   before('setup signers', async () => {
     [, admin] = await ethers.getSigners();
@@ -37,7 +32,6 @@ describe('AumProtocolFeeCache', () => {
 
     authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
     vault = await deploy('v2-vault/Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
-    vaultObj = new Vault(false, vault, authorizer, admin);
 
     aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', { args: [vault.address] });
 
