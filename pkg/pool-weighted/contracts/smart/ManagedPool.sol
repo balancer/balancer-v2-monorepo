@@ -153,6 +153,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     );
     event TokenRemoved(IERC20 indexed token, uint256 tokenAmountOut);
 
+    // Making aumProtocolFeesCollector a constructor parameter would be more consistent with the intent
+    // of NewPoolParams: it is supposed to be for parameters passed in by users. However, adding the
+    // argument caused "stack too deep" errors in the constructor.
     struct NewPoolParams {
         string name;
         string symbol;
@@ -165,7 +168,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         uint256 protocolSwapFeePercentage;
         uint256 managementSwapFeePercentage;
         uint256 managementAumFeePercentage;
-        IAumProtocolFeesCollector aumProtocolFeesCollector; // Should be a constructor parameter, but blew up the stack
+        IAumProtocolFeesCollector aumProtocolFeesCollector;
     }
 
     constructor(
