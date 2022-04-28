@@ -56,8 +56,8 @@ abstract contract AumProtocolFeeCache is ProtocolFeeCache {
         _updateProtocolAumFeeCache(_aumProtocolFeesCollector);
     }
 
-    function _updateProtocolAumFeeCache(IAumProtocolFeesCollector protocolFeeCollector) private {
-        uint256 currentProtocolAumFeePercentage = protocolFeeCollector.getAumFeePercentage();
+    function _updateProtocolAumFeeCache(IAumProtocolFeesCollector aumProtocolFeeCollector) private {
+        uint256 currentProtocolAumFeePercentage = aumProtocolFeeCollector.getAumFeePercentage();
 
         emit ProtocolAumFeePercentageCacheUpdated(currentProtocolAumFeePercentage);
 
