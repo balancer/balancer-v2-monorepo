@@ -1,6 +1,6 @@
 // External interface for settlement of trades
 // (c) Kallol Borah, 2022
-//"SPDX-License-Identifier: MIT"
+//"SPDX-License-Identifier: BUSL1.1"
 
 pragma solidity 0.7.1;
 pragma experimental ABIEncoderV2;

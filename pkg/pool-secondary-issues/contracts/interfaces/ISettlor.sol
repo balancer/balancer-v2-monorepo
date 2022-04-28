@@ -1,5 +1,5 @@
 // Interface for creating secondary trading pools and settling secondary trades
-//"SPDX-License-Identifier: MIT"
+//"SPDX-License-Identifier: BUSL1.1"
 
 pragma solidity 0.7.1;
 pragma experimental ABIEncoderV2;

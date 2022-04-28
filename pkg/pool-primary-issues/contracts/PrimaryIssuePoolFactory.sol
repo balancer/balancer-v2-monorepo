@@ -1,6 +1,6 @@
 // Factory to create pools of new issues for security token offerings
 // (c) Kallol Borah, 2022
-//"SPDX-License-Identifier: MIT"
+//"SPDX-License-Identifier: BUSL1.1"
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;

@@ -2,7 +2,7 @@
   "name": "@verified-network/pool-primary-issues",
   "version": "0.1.0",
   "description": "Balancer V2 Security token Pools",
-  "license": "MIT",
+  "license": "BUSL1.1",
   "homepage": "",
   "repository": {
     "type": "git",

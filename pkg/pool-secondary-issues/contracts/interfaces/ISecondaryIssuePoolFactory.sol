@@ -1,5 +1,5 @@
 // Factory interface to create pools of secondary issues for security token offerings
-//"SPDX-License-Identifier: MIT"
+//"SPDX-License-Identifier: BUSL1.1"
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
