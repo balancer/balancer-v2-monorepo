@@ -1036,14 +1036,14 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
 
             // Compute the protocol's share of the AUM fee
             uint256 protocolBptAmount = bptAmount.mulUp(getProtocolAumFeePercentageCache());
-            bptAmount = bptAmount.sub(protocolBptAmount);
+            uint256 managerBPTAmount = bptAmount.sub(protocolBptAmount);
 
             _payProtocolFees(protocolBptAmount);
 
             // Only show the amount collected by the manager
-            emit ManagementAumFeeCollected(bptAmount);
+            emit ManagementAumFeeCollected(managerBPTAmount);
 
-            _mintPoolTokens(getOwner(), bptAmount);
+            _mintPoolTokens(getOwner(), managerBPTAmount);
         }
     }
 
