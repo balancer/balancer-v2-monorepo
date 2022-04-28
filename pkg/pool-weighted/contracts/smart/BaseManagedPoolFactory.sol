@@ -31,10 +31,17 @@ import "./ManagedPool.sol";
  * deploy the pool, passing in the controller as the owner.
  */
 contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-    AumProtocolFeesCollector public immutable aumProtocolFeesCollector;
+    AumProtocolFeesCollector private immutable _aumProtocolFeesCollector;
 
     constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(ManagedPool).creationCode) {
-        aumProtocolFeesCollector = new AumProtocolFeesCollector(vault);
+        _aumProtocolFeesCollector = new AumProtocolFeesCollector(vault);
+    }
+
+    /**
+     * @dev Getter for the AUM protocol fees collector passed into all Managed Pools created from this factory.
+     */
+    function getAumProtocolFeesCollector() external view returns (AumProtocolFeesCollector) {
+        return _aumProtocolFeesCollector;
     }
 
     /**
@@ -59,7 +66,7 @@ contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWin
                         protocolSwapFeePercentage: poolParams.protocolSwapFeePercentage,
                         managementSwapFeePercentage: poolParams.managementSwapFeePercentage,
                         managementAumFeePercentage: poolParams.managementAumFeePercentage,
-                        aumProtocolFeesCollector: aumProtocolFeesCollector
+                        aumProtocolFeesCollector: _aumProtocolFeesCollector
                     }),
                     getVault(),
                     owner,

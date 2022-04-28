@@ -21,7 +21,7 @@ describe('BaseManagedPoolFactory', function () {
   let admin: SignerWithAddress;
   let manager: SignerWithAddress;
   let assetManager: SignerWithAddress;
-  let protocolFeesCollector: string;
+  let aumProtocolFeesCollector: string;
 
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
@@ -48,11 +48,11 @@ describe('BaseManagedPoolFactory', function () {
 
     createTime = await currentTimestamp();
 
-    protocolFeesCollector = factory.aumProtocolFeesCollector();
+    aumProtocolFeesCollector = await factory.getAumProtocolFeesCollector();
   });
 
   it('factory has the AumProtocolFeesController', async () => {
-    expect(protocolFeesCollector).to.not.equal(ZERO_ADDRESS);
+    expect(aumProtocolFeesCollector).to.not.equal(ZERO_ADDRESS);
   });
 
   async function createPool(
@@ -75,7 +75,7 @@ describe('BaseManagedPoolFactory', function () {
       protocolSwapFeePercentage: protocolSwapFeePercentage,
       managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
-      aumProtocolFeesCollector: protocolFeesCollector,
+      aumProtocolFeesCollector: aumProtocolFeesCollector,
     };
 
     const receipt = await (await factory.connect(manager).create(newPoolParams, manager.address)).wait();
