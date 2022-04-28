@@ -522,7 +522,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // by ensuring the final weights are all >= minimum
         _require(normalizedWeight < FixedPoint.ONE, Errors.MAX_WEIGHT);
 
-        // Do not allow adding tokens if there is an ongoing or pending gradual weight change
+        // Tokens cannot be removed during or before a weight change to reduce complexity of weight interactions.
+        // Otherwise we'd have to reason about how changes in the weights of other tokens could affect the pricing
+        // between them and the newly added token, etc.
         _ensureNoWeightChange();
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
