@@ -571,7 +571,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // We then pass an empty array for this value.
         getVault().registerTokens(getPoolId(), tokensToAdd, new address[](1));
 
-        // Tokens array is now different
+        // We've registered the new token on the Vault so it knows that the new token is included in this Pool.
+        // We now query the vault to get a list of the all of the Pool's tokens *including* this new token.
+        // Note: We could construct this new array locally by appending the new token to the existing token list.
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
         // `_encodeTokenState` performs an external call to `token` (to get it's decimals value), however this is
