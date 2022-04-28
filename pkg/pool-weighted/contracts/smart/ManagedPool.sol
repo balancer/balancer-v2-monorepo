@@ -479,7 +479,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 mintAmount,
         address recipient
     ) external authenticate whenNotPaused {
-        uint256 weightSumAfterAdd = _validateAddToken(normalizedWeight);
+        (IERC20[] memory currentTokens, , ) = getVault().getPoolTokens(getPoolId());
+
+        uint256 weightSumAfterAdd = _validateAddToken(currentTokens, normalizedWeight);
 
         // In order to add a token to a Pool we must perform a two step process:
         // - First the new token must be registered on the Vault as belonging to this Pool.
@@ -490,7 +492,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         token.transferFrom(msg.sender, address(this), tokenAmountIn);
         token.approve(address(getVault()), tokenAmountIn);
 
-        IERC20[] memory tokensAfterAdd = _registerNewToken(token, normalizedWeight, weightSumAfterAdd);
+        _registerNewToken(token, normalizedWeight, weightSumAfterAdd);
 
         // The Pool is now in an invalid state, since one of its tokens has a balance of zero (making the invariant also
         // zero). We immediately perform a join using the newly added token to restore a valid state.
@@ -498,8 +500,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // calls (`registerTokens` and `joinPool`), it is impossible for any actor to interact with the Pool while it
         // is in this inconsistent state (except for view calls).
 
-        // A newly registered token will always be placed at the end of the array of tokens
-        // We can then safely calculate the index of the new token as we know the length of the `tokensAfterAdd` array.
+        // We now need the updated list of tokens in the Pool to construct the join call.
+        // As we know that the new token will be appended to the end of the existing array of tokens we can save gas
+        // by constructing the updated list of tokens in memory rather than rereading from storage.
+        IERC20[] memory tokensAfterAdd = _appendToken(currentTokens, token);
+
+        // As described above, the new token corresponds the last position of the `maxAmountsIn` array.
         uint256[] memory maxAmountsIn = new uint256[](tokensAfterAdd.length);
         maxAmountsIn[tokensAfterAdd.length - 1] = tokenAmountIn;
 
@@ -526,7 +532,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         emit TokenAdded(token, normalizedWeight, tokenAmountIn);
     }
 
-    function _validateAddToken(uint256 normalizedWeight) private view returns (uint256) {
+    function _validateAddToken(IERC20[] memory tokens, uint256 normalizedWeight) private view returns (uint256) {
         // Sanity check that we're not saying that the new token will make up more than 100% of the Pool.
         _require(normalizedWeight < FixedPoint.ONE, Errors.MAX_WEIGHT);
 
@@ -535,7 +541,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // between them and the newly added token, etc.
         _ensureNoWeightChange();
 
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         uint256 numTokens = tokens.length;
         _require(numTokens + 1 <= _getMaxTokens(), Errors.MAX_TOKENS);
 
@@ -578,7 +583,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         IERC20 token,
         uint256 normalizedWeight,
         uint256 newDenormWeightSum
-    ) private returns (IERC20[] memory) {
+    ) private {
         IERC20[] memory tokensToAdd = new IERC20[](1);
         tokensToAdd[0] = token;
 
@@ -586,17 +591,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // We then pass an empty array for this value.
         getVault().registerTokens(getPoolId(), tokensToAdd, new address[](1));
 
-        // We've registered the new token on the Vault so it knows that the new token is included in this Pool.
-        // We now query the vault to get a list of the all of the Pool's tokens *including* this new token.
-        // Note: We could construct this new array locally by appending the new token to the existing token list.
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-
         // `_encodeTokenState` performs an external call to `token` (to get it's decimals value), however this is
         // reentrancy safe as view functions are called in a STATICCALL context and so will revert if it modifies state.
         _tokenState[token] = _encodeTokenState(token, normalizedWeight, normalizedWeight, newDenormWeightSum);
-        _totalTokensCache = tokens.length;
-
-        return tokens;
+        _totalTokensCache += 1;
     }
 
     /**
