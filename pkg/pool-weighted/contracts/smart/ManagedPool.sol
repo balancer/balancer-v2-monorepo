@@ -953,11 +953,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // call can be made resides in addToken.
         _require(sender == address(this), Errors.UNAUTHORIZED_JOIN);
 
-        // No BPT will be issued for the join operation itself. The `addToken` function calculates and returns
-        // the bptAmountOut, but leaves any further action, such as minting BPT, up to the caller.
+        // No BPT will be issued for the join operation itself.
+        // The `addToken` function mints a user specified `mintAmount` of BPT atomically with this call.
         uint256 bptAmountOut = 0;
-
-        // Note that there is no maximum amountsIn parameter: this is handled by `IVault.joinPool`.
 
         uint256 tokenIndex = scalingFactors.length - 1;
         uint256 amountIn = userData.addToken();
