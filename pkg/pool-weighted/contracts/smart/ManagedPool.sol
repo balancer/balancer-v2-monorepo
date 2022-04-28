@@ -924,8 +924,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal view override returns (uint256, uint256[] memory) {
-        // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps,
-        // and alter token prices.
+        // If swaps are disabled, only proportional joins and adding a new token to the pool are allowed.
+        // All others involve implicit swaps, and alter token prices.
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(
             getSwapEnabled() ||
@@ -974,8 +974,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal view override returns (uint256, uint256[] memory) {
-        // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps,
-        // and alter token prices.
+        // If swaps are disabled, only proportional exits and removing a token from the pool are allowed.
+        // All others involve implicit swaps, and alter token prices.
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
         _require(
             getSwapEnabled() ||
