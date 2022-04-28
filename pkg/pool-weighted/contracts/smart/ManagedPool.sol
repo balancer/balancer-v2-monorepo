@@ -330,9 +330,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         endWeights = new uint256[](totalTokens);
 
+        uint256 denormWeightSum = _denormWeightSum;
         for (uint256 i = 0; i < totalTokens; i++) {
             endWeights[i] = _normalizeWeight(
-                _tokenState[tokens[i]].decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT)
+                _tokenState[tokens[i]].decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT),
+                denormWeightSum
             );
         }
     }
@@ -513,7 +515,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // all other token weights accordingly.
         // Clean up data structures and update the token count
         delete _tokenState[token];
-        _denormWeightSum -= _denormalizeWeight(tokenNormalizedWeight);
+        _denormWeightSum -= _denormalizeWeight(tokenNormalizedWeight, _denormWeightSum);
 
         _totalTokensCache = tokens.length - 1;
 
@@ -626,7 +628,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 startTime = poolState.decodeUint32(_WEIGHT_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_WEIGHT_END_TIME_OFFSET);
 
-        return _normalizeWeight(GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime));
+        return
+            _normalizeWeight(
+                GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime),
+                _denormWeightSum
+            );
     }
 
     function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
@@ -639,13 +645,15 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 startTime = poolState.decodeUint32(_WEIGHT_START_TIME_OFFSET);
         uint256 endTime = poolState.decodeUint32(_WEIGHT_END_TIME_OFFSET);
 
+        uint256 denormWeightSum = _denormWeightSum;
         for (uint256 i = 0; i < numTokens; i++) {
             bytes32 tokenData = _tokenState[tokens[i]];
             uint256 startWeight = tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT);
             uint256 endWeight = tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT);
 
             normalizedWeights[i] = _normalizeWeight(
-                GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime)
+                GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime),
+                denormWeightSum
             );
         }
     }
@@ -1043,25 +1051,16 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     // Functions that convert weights between internal (denormalized) and external (normalized) representations
 
     /**
-     * @dev Converts a token weight from the internal representation to the normalized form (summing to ONE)
+     * @dev Converts a token weight from the internal representation to the normalized form (summing to denormWeightSum)
      */
-    function _normalizeWeight(uint256 denormWeight) private view returns (uint256) {
-        return denormWeight.divDown(_denormWeightSum);
+    function _normalizeWeight(uint256 denormWeight, uint256 denormWeightSum) private pure returns (uint256) {
+        return denormWeight.divDown(denormWeightSum);
     }
 
     /**
-     * @dev Converts a token weight from normalized form to the internal representation (summing to _denormWeightSum)
+     * @dev Converts a token weight from normalized form to the internal representation (summing to denormWeightSum)
      */
-    function _denormalizeWeight(uint256 weight) private view returns (uint256) {
-        // We could call into `_denormalizeWeight(uint256, uint256) here but it's overkill for a function so simple.
-        return weight.mulUp(_denormWeightSum);
-    }
-
-    /**
-     * @dev An equivalent of the unary form of `_denormalizeWeight` for when the denormalized weight sum is known.
-     * This allows avoiding repeated SLOADs when denormalizing many weights.
-     */
-    function _denormalizeWeight(uint256 weight, uint256 customDenormWeightSum) private pure returns (uint256) {
-        return weight.mulUp(customDenormWeightSum);
+    function _denormalizeWeight(uint256 weight, uint256 denormWeightSum) private pure returns (uint256) {
+        return weight.mulUp(denormWeightSum);
     }
 }
