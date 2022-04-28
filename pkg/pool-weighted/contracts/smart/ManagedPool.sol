@@ -452,6 +452,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @dev Adds a token to the Pool's composition, sending funds to the Vault from `msg.sender`,
      * and adjusting the weights of all other tokens.
      *
+     * When calling this function with particular values for `normalizedWeight` and `tokenAmountIn`,
+     * the caller is stating that `tokenAmountIn` of the added token will correspond to a fraction `normalizedWeight`
+     * of the Pool's total value after it is added. Choosing these values inappropriately could result in large
+     * mispricings occurring between the new token and the existing assets in the Pool, causing loss of funds.
+     *
      * Token addition is forbidden during a weight change, or if one is scheduled to happen in the future.
      *
      * The caller may additionally pass a non-zero `mintAmount` to have some BPT be minted for them, which might be
