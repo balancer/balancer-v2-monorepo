@@ -923,7 +923,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal view override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
+    ) internal view override returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps,
         // and alter token prices.
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
@@ -935,12 +935,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         );
 
         if (kind == WeightedPoolUserData.JoinKind.ADD_TOKEN) {
-            (bptAmountOut, amountsIn) = _doJoinAddToken(sender, scalingFactors, userData);
+            return _doJoinAddToken(sender, scalingFactors, userData);
         } else {
             // Check allowlist for LPs, if applicable
             _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
-            (bptAmountOut, amountsIn) = super._doJoin(sender, balances, normalizedWeights, scalingFactors, userData);
+            return super._doJoin(sender, balances, normalizedWeights, scalingFactors, userData);
         }
     }
 
