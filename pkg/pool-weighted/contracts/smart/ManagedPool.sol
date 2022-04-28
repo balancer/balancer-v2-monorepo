@@ -549,8 +549,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         // Now we know the minimum weight we can decompress it and check that it doesn't get pushed below the minimum.
         _require(
-            minimumCompressedWeight.uncompress64(_MAX_DENORM_WEIGHT).divUp(weightSumAfterAdd) >=
-                WeightedMath._MIN_WEIGHT,
+            minimumCompressedWeight.uncompress64(_MAX_DENORM_WEIGHT) >=
+                _denormalizeWeight(WeightedMath._MIN_WEIGHT, weightSumAfterAdd),
             Errors.MIN_WEIGHT
         );
 
