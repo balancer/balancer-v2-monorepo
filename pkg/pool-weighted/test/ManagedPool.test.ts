@@ -1020,11 +1020,13 @@ describe('ManagedPool', function () {
 
                     it('emits an event', async () => {
                       const { balances: beforeRemoveBalances } = await pool.getTokens();
+                      const normalizedWeights = await pool.getNormalizedWeights();
 
                       const tx = await pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address);
 
                       expectEvent.inReceipt(await tx.wait(), 'TokenRemoved', {
                         token: poolTokens.addresses[tokenIndex],
+                        normalizedWeight: normalizedWeights[tokenIndex],
                         tokenAmountOut: beforeRemoveBalances[tokenIndex],
                       });
                     });
@@ -1400,20 +1402,13 @@ describe('ManagedPool', function () {
 
                   it('emits an event', async () => {
                     const normalizedWeight = fp(0.5);
-                    const initialBalance = fp(100);
-                    const tx = await pool.addToken(
-                      sender,
-                      newToken,
-                      normalizedWeight,
-                      initialBalance,
-                      0,
-                      other.address
-                    );
+                    const tokenAmountIn = fp(100);
+                    const tx = await pool.addToken(sender, newToken, normalizedWeight, tokenAmountIn, 0, other.address);
 
                     expectEvent.inReceipt(await tx.wait(), 'TokenAdded', {
                       token: newToken.address,
                       normalizedWeight,
-                      initialBalance,
+                      tokenAmountIn,
                     });
                   });
 
