@@ -2,7 +2,6 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
