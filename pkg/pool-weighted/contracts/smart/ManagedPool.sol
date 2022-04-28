@@ -496,7 +496,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         getVault().joinPool(
             getPoolId(),
             address(this),
-            payable(recipient),
+            address(this),
             IVault.JoinPoolRequest({
                 assets: _asIAsset(tokensAfterAdd),
                 maxAmountsIn: maxAmountsIn,
