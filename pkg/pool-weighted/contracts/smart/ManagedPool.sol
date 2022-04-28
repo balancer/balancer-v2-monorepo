@@ -527,9 +527,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     }
 
     function _validateAddToken(uint256 normalizedWeight) private view returns (uint256) {
-        _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
-        // The max weight actually depends on the number of other tokens, but this is handled below
-        // by ensuring the final weights are all >= minimum
+        // Sanity check that we're not saying that the new token will make up more than 100% of the Pool.
         _require(normalizedWeight < FixedPoint.ONE, Errors.MAX_WEIGHT);
 
         // Tokens cannot be removed during or before a weight change to reduce complexity of weight interactions.
@@ -551,6 +549,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 weightSumAfterAdd = _denormWeightSum.mulUp(FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight));
 
         // We want to check if adding this new token results in any tokens falling below the minimum weight limit.
+
+        // First make sure that the new token is above the minimum weight.
+        _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
+
+        // Adding a new token could also cause one of the other tokens to be pushed below the minimum weight.
         // If any would fail this check then it would be the token with the lowest weight, we then search through
         // tokens to find the minimum weight. We can delay decompressing the weight until after the search.
         uint256 minimumCompressedWeight = type(uint256).max;
