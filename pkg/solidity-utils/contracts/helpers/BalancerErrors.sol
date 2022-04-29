@@ -165,7 +165,9 @@ library Errors {
     uint256 internal constant SET_SWAP_FEE_PENDING_FEE_CHANGE = 347;
     uint256 internal constant CHANGE_TOKENS_DURING_WEIGHT_CHANGE = 348;
     uint256 internal constant CHANGE_TOKENS_PENDING_WEIGHT_CHANGE = 349;
-    uint256 internal constant MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 350;
+    uint256 internal constant MAX_WEIGHT = 350;
+    uint256 internal constant UNAUTHORIZED_JOIN = 351;
+    uint256 internal constant MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 352;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

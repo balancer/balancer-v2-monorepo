@@ -41,14 +41,19 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        address owner
+        address owner,
+        bool mutableTokens
     )
         BasePool(
             vault,
             // Given BaseMinimalSwapInfoPool supports both of these specializations, and this Pool never registers
             // or deregisters any tokens after construction, picking Two Token when the Pool only has two tokens is free
             // gas savings.
-            tokens.length == 2 ? IVault.PoolSpecialization.TWO_TOKEN : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
+            // If the pool is expected to be able register new tokens in future, we must choose MINIMAL_SWAP_INFO
+            // as clearly the TWO_TOKEN specification doesn't support adding extra tokens in future.
+            tokens.length == 2 && !mutableTokens
+                ? IVault.PoolSpecialization.TWO_TOKEN
+                : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
             name,
             symbol,
             tokens,

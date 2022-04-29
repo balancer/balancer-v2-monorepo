@@ -66,7 +66,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
 
     // The upper bound is WeightedMath.MAX_WEIGHTED_TOKENS, but this is constrained by other factors, such as Pool
     // creation gas consumption.
-    uint256 private constant _MAX_MANAGED_TOKENS = 50;
+    uint256 private constant _MAX_MANAGED_TOKENS = 38;
 
     uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
 
@@ -151,7 +151,8 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     );
-    event TokenRemoved(IERC20 indexed token, uint256 tokenAmountOut);
+    event TokenAdded(IERC20 indexed token, uint256 normalizedWeight, uint256 tokenAmountIn);
+    event TokenRemoved(IERC20 indexed token, uint256 normalizedWeight, uint256 tokenAmountOut);
 
     // Making aumProtocolFeesCollector a constructor parameter would be more consistent with the intent
     // of NewPoolParams: it is supposed to be for parameters passed in by users. However, adding the
@@ -187,7 +188,8 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             params.swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
-            owner
+            owner,
+            true
         )
         AumProtocolFeeCache(vault, params.protocolSwapFeePercentage, params.aumProtocolFeesCollector)
     {
@@ -451,6 +453,156 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
+     * @notice Adds a token to the Pool's list of tradeable tokens.
+     * @dev Adds a token to the Pool's composition, sending funds to the Vault from `msg.sender`,
+     * and adjusting the weights of all other tokens.
+     *
+     * When calling this function with particular values for `normalizedWeight` and `tokenAmountIn`,
+     * the caller is stating that `tokenAmountIn` of the added token will correspond to a fraction `normalizedWeight`
+     * of the Pool's total value after it is added. Choosing these values inappropriately could result in large
+     * mispricings occurring between the new token and the existing assets in the Pool, causing loss of funds.
+     *
+     * Token addition is forbidden during a weight change, or if one is scheduled to happen in the future.
+     *
+     * The caller may additionally pass a non-zero `mintAmount` to have some BPT be minted for them, which might be
+     * useful in some scenarios to account for the fact that the Pool now has more tokens.
+     *
+     * This function takes the token, and the normalizedWeight it should have in the pool after being added.
+     * The stored (denormalized) weights of all other tokens remain unchanged, but the weightSum will increase,
+     * such that the normalized weight of the new token will match the target value, and the normalized weights of
+     * all other tokens will be reduced proportionately.
+     * @param token - The ERC20 token to be added to the Pool.
+     * @param normalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
+     * @param tokenAmountIn - The amount of `token` to be sent to the pool as its initial balance.
+     * @param mintAmount - An amount of BPT which is to be minted as a result of adding `token` to the Pool.
+     * @param recipient - The address which is to receive the BPT minted by the Pool.
+     */
+    function addToken(
+        IERC20 token,
+        uint256 normalizedWeight,
+        uint256 tokenAmountIn,
+        uint256 mintAmount,
+        address recipient
+    ) external authenticate whenNotPaused {
+        (IERC20[] memory currentTokens, , ) = getVault().getPoolTokens(getPoolId());
+
+        uint256 weightSumAfterAdd = _validateAddToken(currentTokens, normalizedWeight);
+
+        // In order to add a token to a Pool we must perform a two step process:
+        // - First the new token must be registered on the Vault as belonging to this Pool.
+        // - Second a special join action must be performed to seed the Pool with it's initial balance of the new token.
+
+        // We only allow the Pool to perform the special join mentioned above to ensure it only happens
+        // as part of adding a new token to the Pool, we then pull the necessary tokens from the caller.
+        token.transferFrom(msg.sender, address(this), tokenAmountIn);
+        token.approve(address(getVault()), tokenAmountIn);
+
+        _registerNewToken(token, normalizedWeight, weightSumAfterAdd);
+
+        // The Pool is now in an invalid state, since one of its tokens has a balance of zero (making the invariant also
+        // zero). We immediately perform a join using the newly added token to restore a valid state.
+        // Since all non-view Vault functions are non-reentrant, and we make no external calls between the two Vault
+        // calls (`registerTokens` and `joinPool`), it is impossible for any actor to interact with the Pool while it
+        // is in this inconsistent state (except for view calls).
+
+        // We now need the updated list of tokens in the Pool to construct the join call.
+        // As we know that the new token will be appended to the end of the existing array of tokens we can save gas
+        // by constructing the updated list of tokens in memory rather than rereading from storage.
+        IERC20[] memory tokensAfterAdd = _appendToken(currentTokens, token);
+
+        // As described above, the new token corresponds the last position of the `maxAmountsIn` array.
+        uint256[] memory maxAmountsIn = new uint256[](tokensAfterAdd.length);
+        maxAmountsIn[tokensAfterAdd.length - 1] = tokenAmountIn;
+
+        getVault().joinPool(
+            getPoolId(),
+            address(this),
+            address(this),
+            IVault.JoinPoolRequest({
+                assets: _asIAsset(tokensAfterAdd),
+                maxAmountsIn: maxAmountsIn,
+                userData: abi.encode(WeightedPoolUserData.JoinKind.ADD_TOKEN, tokenAmountIn),
+                fromInternalBalance: false
+            })
+        );
+
+        // Adding the new token to the pool increases the total weight across all the Pool's tokens.
+        // We then update the sum of denormalized weights used to account for this.
+        _denormWeightSum = weightSumAfterAdd;
+
+        if (mintAmount > 0) {
+            _mintPoolTokens(recipient, mintAmount);
+        }
+
+        emit TokenAdded(token, normalizedWeight, tokenAmountIn);
+    }
+
+    function _validateAddToken(IERC20[] memory tokens, uint256 normalizedWeight) private view returns (uint256) {
+        // Sanity check that we're not saying that the new token will make up more than 100% of the Pool.
+        _require(normalizedWeight < FixedPoint.ONE, Errors.MAX_WEIGHT);
+
+        // Tokens cannot be removed during or before a weight change to reduce complexity of weight interactions.
+        // Otherwise we'd have to reason about how changes in the weights of other tokens could affect the pricing
+        // between them and the newly added token, etc.
+        _ensureNoWeightChange();
+
+        uint256 numTokens = tokens.length;
+        _require(numTokens + 1 <= _getMaxTokens(), Errors.MAX_TOKENS);
+
+        // The growth in the total weight of the pool can be easily calculated by:
+        //
+        // weightSumRatio = totalWeight / (totalWeight - newTokenWeight)
+        //
+        // As we're working with normalized weights `totalWeight` is equal to 1.
+        //
+        // We can then easily calculate the new denormalized weight sum by applying this ratio to the old sum.
+        uint256 weightSumAfterAdd = _denormWeightSum.mulUp(FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight));
+
+        // We want to check if adding this new token results in any tokens falling below the minimum weight limit.
+
+        // First make sure that the new token is above the minimum weight.
+        _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
+
+        // Adding a new token could also cause one of the other tokens to be pushed below the minimum weight.
+        // If any would fail this check then it would be the token with the lowest weight, we then search through
+        // tokens to find the minimum weight. We can delay decompressing the weight until after the search.
+        uint256 minimumCompressedWeight = type(uint256).max;
+        for (uint256 i = 0; i < numTokens; i++) {
+            uint256 newCompressedWeight = _getTokenData(tokens[i]).decodeUint64(_END_DENORM_WEIGHT_OFFSET);
+            if (newCompressedWeight < minimumCompressedWeight) {
+                minimumCompressedWeight = newCompressedWeight;
+            }
+        }
+
+        // Now we know the minimum weight we can decompress it and check that it doesn't get pushed below the minimum.
+        _require(
+            minimumCompressedWeight.uncompress64(_MAX_DENORM_WEIGHT) >=
+                _denormalizeWeight(WeightedMath._MIN_WEIGHT, weightSumAfterAdd),
+            Errors.MIN_WEIGHT
+        );
+
+        return weightSumAfterAdd;
+    }
+
+    function _registerNewToken(
+        IERC20 token,
+        uint256 normalizedWeight,
+        uint256 newDenormWeightSum
+    ) private {
+        IERC20[] memory tokensToAdd = new IERC20[](1);
+        tokensToAdd[0] = token;
+
+        // We do not allow an asset manager to be registered for the new token.
+        // We then pass an empty array for this value.
+        getVault().registerTokens(getPoolId(), tokensToAdd, new address[](1));
+
+        // `_encodeTokenState` performs an external call to `token` (to get it's decimals value), however this is
+        // reentrancy safe as view functions are called in a STATICCALL context and so will revert if it modifies state.
+        _tokenState[token] = _encodeTokenState(token, normalizedWeight, normalizedWeight, newDenormWeightSum);
+        _totalTokensCache += 1;
+    }
+
+    /**
      * @notice Removes a token from the Pool's list of tradeable tokens.
      * @dev Removes a token from the Pool's composition, withdrawing all funds from the Vault and sending them to
      * `recipient`, and adjusting the weights of all other tokens.
@@ -528,7 +680,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             _burnPoolTokens(msg.sender, burnAmount);
         }
 
-        emit TokenRemoved(token, tokenBalance);
+        emit TokenRemoved(token, tokenNormalizedWeight, tokenBalance);
 
         return tokenBalance;
     }
@@ -788,16 +940,49 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal view override returns (uint256, uint256[] memory) {
-        // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps,
-        // and alter token prices.
+        // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
+        // token prices.
+        // Adding tokens is also allowed, as that action can only be performed by the manager, who is assumed to
+        // perform sensible checks.
+        WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(
-            getSwapEnabled() || userData.joinKind() == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
+            getSwapEnabled() ||
+                kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT ||
+                kind == WeightedPoolUserData.JoinKind.ADD_TOKEN,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
-        // Check allowlist for LPs, if applicable
-        _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
-        return super._doJoin(sender, balances, normalizedWeights, scalingFactors, userData);
+        if (kind == WeightedPoolUserData.JoinKind.ADD_TOKEN) {
+            return _doJoinAddToken(sender, scalingFactors, userData);
+        } else {
+            // Check allowlist for LPs, if applicable
+            _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
+
+            return super._doJoin(sender, balances, normalizedWeights, scalingFactors, userData);
+        }
+    }
+
+    function _doJoinAddToken(
+        address sender,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    ) private view returns (uint256, uint256[] memory) {
+        // This join function can only be called by the Pool itself - the authorization logic that governs when that
+        // call can be made resides in addToken.
+        _require(sender == address(this), Errors.UNAUTHORIZED_JOIN);
+
+        // No BPT will be issued for the join operation itself.
+        // The `addToken` function mints a user specified `mintAmount` of BPT atomically with this call.
+        uint256 bptAmountOut = 0;
+
+        uint256 tokenIndex = scalingFactors.length - 1;
+        uint256 amountIn = userData.addToken();
+
+        // amountIn is unscaled so we need to upscale it using the token's scale factor.
+        uint256[] memory amountsIn = new uint256[](scalingFactors.length);
+        amountsIn[tokenIndex] = _upscale(amountIn, scalingFactors[tokenIndex]);
+
+        return (bptAmountOut, amountsIn);
     }
 
     function _doExit(
@@ -807,8 +992,10 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal view override returns (uint256, uint256[] memory) {
-        // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps,
-        // and alter token prices.
+        // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
+        // token prices.
+        // Removing tokens is also allowed, as that action can only be performed by the manager, who is assumed to
+        // perform sensible checks.
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
         _require(
             getSwapEnabled() ||
@@ -964,6 +1151,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             (actionId == getActionId(ManagedPool.addAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPool.removeAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPool.setMustAllowlistLPs.selector)) ||
+            (actionId == getActionId(ManagedPool.addToken.selector)) ||
             (actionId == getActionId(ManagedPool.removeToken.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementSwapFeePercentage.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementAumFeePercentage.selector)) ||
