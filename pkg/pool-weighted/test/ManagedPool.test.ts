@@ -1342,6 +1342,19 @@ describe('ManagedPool', function () {
                     });
                   });
 
+                  it(`sets the token's weight`, async () => {
+                    const normalizedWeight = fp(0.5);
+                    await pool.addToken(sender, newToken, normalizedWeight, fp(100), 0, other.address);
+
+                    const { tokens: afterAddTokens } = await pool.getTokens();
+                    const afterAddWeights = await pool.getNormalizedWeights();
+
+                    expect(afterAddWeights[afterAddTokens.indexOf(newToken.address)]).to.equalWithError(
+                      normalizedWeight,
+                      0.00001
+                    );
+                  });
+
                   it('scales weights of all other tokens', async () => {
                     const { tokens: beforeTokens } = await pool.getTokens();
                     const beforeWeights = await pool.getNormalizedWeights();
