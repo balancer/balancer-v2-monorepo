@@ -1040,7 +1040,6 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
 
             _payProtocolFees(protocolBptAmount);
 
-            // Only show the amount collected by the manager
             emit ManagementAumFeeCollected(managerBPTAmount);
 
             _mintPoolTokens(getOwner(), managerBPTAmount);
