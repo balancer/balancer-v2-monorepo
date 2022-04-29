@@ -67,6 +67,7 @@ export default {
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
+      aumProtocolFeesCollector,
       poolType,
     } = params;
     if (!params.owner) params.owner = ZERO_ADDRESS;
@@ -79,6 +80,7 @@ export default {
     if (!oracleEnabled) oracleEnabled = true;
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
+    if (!aumProtocolFeesCollector) aumProtocolFeesCollector = ZERO_ADDRESS;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
     if (undefined == protocolSwapFeePercentage) protocolSwapFeePercentage = MAX_UINT256;
@@ -99,6 +101,7 @@ export default {
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
+      aumProtocolFeesCollector,
       owner: this.toAddress(params.owner),
       from: params.from,
       poolType,

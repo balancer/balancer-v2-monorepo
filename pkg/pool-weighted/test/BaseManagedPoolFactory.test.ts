@@ -18,8 +18,10 @@ describe('BaseManagedPoolFactory', function () {
   let tokens: TokenList;
   let factory: Contract;
   let vault: Vault;
+  let admin: SignerWithAddress;
   let manager: SignerWithAddress;
   let assetManager: SignerWithAddress;
+  let aumProtocolFeesCollector: string;
 
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
@@ -34,16 +36,22 @@ describe('BaseManagedPoolFactory', function () {
   let createTime: BigNumber;
 
   before('setup signers', async () => {
-    [, manager, assetManager] = await ethers.getSigners();
+    [, admin, manager, assetManager] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy factory & tokens', async () => {
-    vault = await Vault.create();
+    vault = await Vault.create({ admin });
 
     factory = await deploy('BaseManagedPoolFactory', { args: [vault.address] });
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
+
+    aumProtocolFeesCollector = await factory.getAumProtocolFeesCollector();
+  });
+
+  it('factory has the AumProtocolFeesController', async () => {
+    expect(aumProtocolFeesCollector).to.not.equal(ZERO_ADDRESS);
   });
 
   async function createPool(
@@ -66,6 +74,7 @@ describe('BaseManagedPoolFactory', function () {
       protocolSwapFeePercentage: protocolSwapFeePercentage,
       managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+      aumProtocolFeesCollector: aumProtocolFeesCollector,
     };
 
     const receipt = await (await factory.connect(manager).create(newPoolParams, manager.address)).wait();

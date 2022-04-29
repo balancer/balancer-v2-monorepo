@@ -14,10 +14,18 @@
 
 pragma solidity ^0.7.0;
 
-import "../ProtocolFeeCache.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-vault/contracts/interfaces/IAuthorizer.sol";
+import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-contract MockProtocolFeeCache is ProtocolFeeCache {
-    constructor(IVault vault, uint256 protocolSwapFeePercentage) ProtocolFeeCache(vault, protocolSwapFeePercentage) {
-        // solhint-disable-prev-line no-empty-blocks
-    }
+interface IAumProtocolFeesCollector {
+    event AumFeePercentageChanged(uint256 newAumFeePercentage);
+
+    function getAumFeePercentage() external view returns (uint256);
+
+    function setAumFeePercentage(uint256 newSwapFeePercentage) external;
+
+    function getAuthorizer() external view returns (IAuthorizer);
+
+    function vault() external view returns (IVault);
 }

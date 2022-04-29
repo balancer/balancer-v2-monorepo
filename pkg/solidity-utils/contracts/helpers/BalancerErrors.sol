@@ -240,4 +240,5 @@ library Errors {
     uint256 internal constant SWAP_FEE_PERCENTAGE_TOO_HIGH = 600;
     uint256 internal constant FLASH_LOAN_FEE_PERCENTAGE_TOO_HIGH = 601;
     uint256 internal constant INSUFFICIENT_FLASH_LOAN_FEE_AMOUNT = 602;
+    uint256 internal constant AUM_FEE_PERCENTAGE_TOO_HIGH = 603;
 }

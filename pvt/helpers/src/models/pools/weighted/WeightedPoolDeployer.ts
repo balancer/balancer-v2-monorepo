@@ -38,6 +38,7 @@ export default {
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
+      aumProtocolFeesCollector,
     } = deployment;
 
     const poolId = await pool.getPoolId();
@@ -54,7 +55,8 @@ export default {
       mustAllowlistLPs,
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
-      managementAumFeePercentage
+      managementAumFeePercentage,
+      aumProtocolFeesCollector
     );
   },
 
@@ -73,6 +75,7 @@ export default {
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
+      aumProtocolFeesCollector,
       owner,
       from,
     } = params;
@@ -135,6 +138,7 @@ export default {
               protocolSwapFeePercentage: protocolSwapFeePercentage,
               managementSwapFeePercentage: managementSwapFeePercentage,
               managementAumFeePercentage: managementAumFeePercentage,
+              aumProtocolFeesCollector: aumProtocolFeesCollector,
             },
             vault.address,
             owner,
@@ -179,6 +183,7 @@ export default {
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
+      aumProtocolFeesCollector,
       poolType,
       owner,
       from,
@@ -249,6 +254,7 @@ export default {
           protocolSwapFeePercentage: protocolSwapFeePercentage,
           managementSwapFeePercentage: managementSwapFeePercentage,
           managementAumFeePercentage: managementAumFeePercentage,
+          aumProtocolFeesCollector: aumProtocolFeesCollector,
         };
 
         const basePoolRights: BasePoolRights = {
