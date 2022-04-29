@@ -43,10 +43,9 @@ describe('BaseManagedPoolFactory', function () {
     vault = await Vault.create({ admin });
 
     factory = await deploy('BaseManagedPoolFactory', { args: [vault.address] });
+    createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
-
-    createTime = await currentTimestamp();
 
     aumProtocolFeesCollector = await factory.getAumProtocolFeesCollector();
   });
@@ -154,11 +153,8 @@ describe('BaseManagedPoolFactory', function () {
       const pool = await createPool();
       const { pauseWindowEndTime, bufferPeriodEndTime } = await pool.getPausedState();
 
-      expect(pauseWindowEndTime).to.equalWithError(createTime.add(BASE_PAUSE_WINDOW_DURATION), 0.00001);
-      expect(bufferPeriodEndTime).to.equalWithError(
-        createTime.add(BASE_PAUSE_WINDOW_DURATION + BASE_BUFFER_PERIOD_DURATION),
-        0.00001
-      );
+      expect(pauseWindowEndTime).to.equal(createTime.add(BASE_PAUSE_WINDOW_DURATION));
+      expect(bufferPeriodEndTime).to.equal(createTime.add(BASE_PAUSE_WINDOW_DURATION + BASE_BUFFER_PERIOD_DURATION));
     });
 
     it('multiple pools have the same window end times', async () => {
