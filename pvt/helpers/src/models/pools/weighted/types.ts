@@ -28,6 +28,7 @@ export type RawWeightedPoolDeployment = {
   protocolSwapFeePercentage?: BigNumberish;
   managementSwapFeePercentage?: BigNumberish;
   managementAumFeePercentage?: BigNumberish;
+  aumProtocolFeesCollector?: string;
   owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -50,6 +51,7 @@ export type WeightedPoolDeployment = {
   protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
+  aumProtocolFeesCollector: string;
   owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -231,4 +233,5 @@ export type ManagedPoolParams = {
   protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
+  aumProtocolFeesCollector: string;
 };

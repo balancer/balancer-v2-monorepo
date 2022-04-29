@@ -1,9 +1,18 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import {
+  MONTH,
+  WEEK,
+  DAY,
+  MINUTE,
+  SECOND,
+  advanceTime,
+  advanceToTimestamp,
+  currentTimestamp,
+} from '@balancer-labs/v2-helpers/src/time';
 import { BigNumberish, bn, fp, FP_SCALING_FACTOR, fromFp, pct } from '@balancer-labs/v2-helpers/src/numbers';
-import { MINUTE, DAY, currentTimestamp, WEEK, advanceToTimestamp, SECOND } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -14,11 +23,11 @@ import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/wei
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { ManagedPoolEncoder, toNormalizedWeights, SwapKind } from '@balancer-labs/balancer-js';
-import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
+import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import { random, range } from 'lodash';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 describe('ManagedPool', function () {
   let allTokens: TokenList;
@@ -26,6 +35,9 @@ describe('ManagedPool', function () {
   let tooManyWeights: BigNumber[];
   let admin: SignerWithAddress, owner: SignerWithAddress, other: SignerWithAddress;
   let pool: WeightedPool;
+  let aumProtocolFeesCollector: Contract;
+  let authorizer: Contract;
+  let vault: Vault;
 
   before('setup signers', async () => {
     [, admin, owner, other] = await ethers.getSigners();
@@ -45,11 +57,16 @@ describe('ManagedPool', function () {
   const initialBalances = Array(TOKEN_COUNT).fill(fp(1000));
   let sender: SignerWithAddress;
 
-  sharedBeforeEach('deploy tokens', async () => {
+  sharedBeforeEach('deploy tokens and AUMProtocolFeeCollector', async () => {
     allTokens = await TokenList.create(MAX_TOKENS + 1, { sorted: true, varyDecimals: true });
     tooManyWeights = Array(allTokens.length).fill(fp(0.01));
     poolTokens = allTokens.subset(20);
-    await poolTokens.mint({ to: [other], amount: fp(2000) });
+    await allTokens.mint({ to: [other, owner], amount: fp(2000) });
+
+    vault = await Vault.create({ admin });
+    aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', { args: [vault.address] });
+    await allTokens.approve({ from: other, to: vault });
+    await allTokens.approve({ from: owner, to: vault });
   });
 
   function itComputesWeightsAndScalingFactors(weightSum = 1): void {
@@ -65,9 +82,11 @@ describe('ManagedPool', function () {
               poolType: WeightedPoolType.MANAGED_POOL,
               tokens,
               weights: WEIGHTS.slice(0, numTokens),
+              vault,
               swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
               managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
               managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+              aumProtocolFeesCollector: aumProtocolFeesCollector.address,
             });
           });
 
@@ -119,6 +138,7 @@ describe('ManagedPool', function () {
       const params = {
         tokens: allTokens.subset(20),
         weights: tooManyWeights,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         poolType: WeightedPoolType.MANAGED_POOL,
       };
       await expect(WeightedPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
@@ -130,6 +150,7 @@ describe('ManagedPool', function () {
       const params = {
         tokens: poolTokens,
         weights: poolWeights,
+        vault,
         poolType: WeightedPoolType.MANAGED_POOL,
         from: owner,
         fromFactory: true,
@@ -151,6 +172,8 @@ describe('ManagedPool', function () {
         tokens: poolTokens,
         weights: poolWeights,
         poolType: WeightedPoolType.MANAGED_POOL,
+        vault,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         swapEnabledOnStart: true,
         mustAllowlistLPs: true,
         owner: owner.address,
@@ -240,7 +263,7 @@ describe('ManagedPool', function () {
 
     context('when mustAllowlistLPs is toggled', () => {
       sharedBeforeEach('initialize pool', async () => {
-        await pool.init({ from: owner, initialBalances });
+        await pool.init({ from: other, initialBalances });
       });
 
       it('allowlist is initially on', async () => {
@@ -284,6 +307,7 @@ describe('ManagedPool', function () {
           tokens: poolTokens,
           weights: poolWeights,
           owner: owner.address,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: false,
         };
@@ -304,6 +328,8 @@ describe('ManagedPool', function () {
         const params = {
           tokens: poolTokens,
           weights: poolWeights,
+          vault,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
         };
@@ -315,7 +341,7 @@ describe('ManagedPool', function () {
       });
 
       it('swaps are not blocked', async () => {
-        await pool.init({ from: owner, initialBalances });
+        await pool.init({ from: other, initialBalances });
 
         await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.not.be.reverted;
       });
@@ -363,6 +389,8 @@ describe('ManagedPool', function () {
           tokens: poolTokens,
           weights: poolWeights,
           owner: owner.address,
+          vault,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
         };
@@ -485,6 +513,8 @@ describe('ManagedPool', function () {
         const params = {
           tokens: poolTokens,
           weights: poolWeights,
+          vault,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
           owner: owner.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
@@ -510,7 +540,7 @@ describe('ManagedPool', function () {
         });
 
         sharedBeforeEach('initialize pool', async () => {
-          await pool.init({ from: sender, initialBalances });
+          await pool.init({ from: other, initialBalances });
         });
 
         context('with invalid parameters', () => {
@@ -593,6 +623,7 @@ describe('ManagedPool', function () {
         weights: poolWeights,
         owner: owner.address,
         swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
       };
@@ -636,6 +667,7 @@ describe('ManagedPool', function () {
         weights: poolWeights,
         owner: owner.address,
         swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
       };
@@ -755,6 +787,7 @@ describe('ManagedPool', function () {
         tokens: originalTokens,
         weights: range(TOTAL_TOKENS).map(() => fp(random(50))), // The deployer will normalize these
         owner: owner.address,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
         vault,
@@ -1481,6 +1514,7 @@ describe('ManagedPool', function () {
         weights: poolWeights,
         owner: owner.address,
         poolType: WeightedPoolType.MANAGED_POOL,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         swapEnabledOnStart: true,
         vault,
         swapFeePercentage,
@@ -1684,14 +1718,11 @@ describe('ManagedPool', function () {
   });
 
   describe('management fees', () => {
-    let vault: Vault;
     const swapFeePercentage = fp(0.02);
     const managementSwapFeePercentage = fp(0.8);
     const managementAumFeePercentage = fp(0.01);
 
     sharedBeforeEach('deploy pool', async () => {
-      vault = await Vault.create();
-
       const params = {
         tokens: poolTokens,
         weights: poolWeights,
@@ -1702,6 +1733,7 @@ describe('ManagedPool', function () {
         swapFeePercentage,
         managementSwapFeePercentage,
         managementAumFeePercentage,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
       };
       pool = await WeightedPool.create(params);
     });
@@ -2004,6 +2036,264 @@ describe('ManagedPool', function () {
           });
         });
       });
+
+      describe('management aum fee collection', () => {
+        function expectedAUMFees(
+          totalSupply: BigNumberish,
+          aumFeePercentage: BigNumberish,
+          timeElapsed: BigNumberish
+        ): BigNumber {
+          return bn(totalSupply)
+            .mul(timeElapsed)
+            .div(365 * DAY)
+            .mul(aumFeePercentage)
+            .div(fp(1).sub(aumFeePercentage));
+        }
+
+        function itCollectsNoAUMFees(collectAUMFees: () => Promise<ContractReceipt>) {
+          it('collects no AUM fees', async () => {
+            const balanceBefore = await pool.balanceOf(owner);
+
+            const receipt = await collectAUMFees();
+
+            const balanceAfter = await pool.balanceOf(owner);
+            expect(balanceAfter).to.equal(balanceBefore);
+
+            expectEvent.notEmitted(receipt, 'ManagementAumFeeCollected');
+          });
+        }
+
+        function itCollectsAUMFeesCorrectly(collectAUMFees: () => Promise<ContractReceipt>, timeElapsed: BigNumberish) {
+          it('collects the expected amount of fees', async () => {
+            const balanceBefore = await pool.balanceOf(owner);
+
+            const totalSupply = await pool.totalSupply();
+            const expectedManagementFeeBpt = expectedAUMFees(totalSupply, managementAumFeePercentage, timeElapsed);
+
+            const receipt = await collectAUMFees();
+
+            const balanceAfter = await pool.balanceOf(owner);
+            const actualManagementFeeBpt = balanceAfter.sub(balanceBefore);
+            expect(actualManagementFeeBpt).to.equalWithError(expectedManagementFeeBpt, 0.0001);
+
+            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'ManagementAumFeeCollected', {
+              bptAmount: actualManagementFeeBpt,
+            });
+          });
+        }
+
+        sharedBeforeEach('mint tokens', async () => {
+          await poolTokens.mint({ to: other, amount: fp(10000) });
+          await poolTokens.approve({ from: other, to: await pool.getVault() });
+        });
+
+        context('manual claiming of AUM fees', () => {
+          context('when the pool is uninitialized', () => {
+            it('reverts', async () => {
+              await expect(pool.collectAumManagementFees(owner)).to.be.revertedWith('UNINITIALIZED');
+            });
+          });
+
+          context('when the pool is initialized', () => {
+            const timeElapsed = 10 * DAY;
+
+            sharedBeforeEach('initialize pool and advance time', async () => {
+              await pool.init({ from: other, initialBalances });
+
+              await advanceTime(timeElapsed);
+            });
+
+            context('on the first attempt to collect fees', () => {
+              itCollectsNoAUMFees(async () => {
+                const tx = await pool.collectAumManagementFees(owner);
+                return tx.wait();
+              });
+            });
+
+            context('on subsequent attempts to collect fees', () => {
+              sharedBeforeEach('advance time', async () => {
+                // AUM fees only accrue after the first collection so we have to wait for more time to elapse.
+                await pool.collectAumManagementFees(owner);
+                await advanceTime(timeElapsed);
+              });
+
+              itCollectsAUMFeesCorrectly(async () => {
+                const tx = await pool.collectAumManagementFees(owner);
+                return tx.wait();
+              }, timeElapsed);
+
+              context('when the pool is paused', () => {
+                sharedBeforeEach('pause pool', async () => {
+                  await pool.pause();
+                });
+
+                itCollectsNoAUMFees(async () => {
+                  const tx = await pool.collectAumManagementFees(owner);
+                  return tx.wait();
+                });
+
+                context('when the pool is then unpaused', () => {
+                  sharedBeforeEach('collect fees and unpause pool', async () => {
+                    // Trigger a collection of the management fees, this will collect no fees but will update the
+                    // timestamp of the last collection. This avoids the pool overcharging AUM fees after the unpause.
+                    // Note that if nobody interacts with the pool before it is unpaused then AUM fees will be charged
+                    // as if the pool were never paused, however this is unlikely to occur.
+                    await pool.collectAumManagementFees(owner);
+
+                    await pool.setPaused(false);
+
+                    // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
+                    // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
+                    await advanceTime(timeElapsed);
+                  });
+
+                  itCollectsAUMFeesCorrectly(async () => {
+                    const tx = await pool.collectAumManagementFees(owner);
+                    return tx.wait();
+                  }, timeElapsed);
+                });
+              });
+            });
+          });
+        });
+
+        context('on pool joins', () => {
+          context('on pool initialization', () => {
+            itCollectsNoAUMFees(async () => {
+              const { receipt } = await pool.init({ from: other, recipient: other, initialBalances });
+              return receipt;
+            });
+          });
+
+          context('after pool initialization', () => {
+            const timeElapsed = 10 * DAY;
+
+            sharedBeforeEach('initialize pool and advance time', async () => {
+              await pool.init({ from: other, initialBalances });
+              // AUM fees only accrue after the first collection attempt so we attempt to collect fees here.
+              await pool.collectAumManagementFees(owner);
+
+              await advanceTime(timeElapsed);
+            });
+
+            sharedBeforeEach('mint tokens', async () => {
+              await poolTokens.mint({ to: other, amount: fp(10000) });
+              await poolTokens.approve({ from: other, to: await pool.getVault() });
+            });
+
+            itCollectsAUMFeesCorrectly(async () => {
+              const amountsIn = initialBalances.map((x) => x.div(2));
+              const { receipt } = await pool.joinGivenIn({ from: other, amountsIn });
+              return receipt;
+            }, timeElapsed);
+          });
+        });
+
+        context('on pool exits', () => {
+          const timeElapsed = 10 * DAY;
+
+          sharedBeforeEach('initialize pool and advance time', async () => {
+            await pool.init({ from: other, initialBalances });
+            // AUM fees only accrue after the first collection attempt so we attempt to collect fees here.
+            await pool.collectAumManagementFees(owner);
+
+            await advanceTime(timeElapsed);
+          });
+
+          itCollectsAUMFeesCorrectly(async () => {
+            const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
+            return receipt;
+          }, timeElapsed);
+
+          context('when the pool is paused', () => {
+            sharedBeforeEach('pause pool', async () => {
+              await pool.pause();
+            });
+
+            itCollectsNoAUMFees(async () => {
+              const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
+              return receipt;
+            });
+          });
+        });
+      });
+    });
+  });
+
+  describe('non-zero AUM protocol fees', () => {
+    let authorizedVault: Contract;
+    let feesCollector: Contract;
+    let vault: Vault;
+
+    const AUM_PROTOCOL_FEE_PERCENTAGE = fp(0.1);
+    const swapFeePercentage = fp(0.02);
+    const managementSwapFeePercentage = fp(0.8);
+    const managementAumFeePercentage = fp(0.1);
+
+    sharedBeforeEach('deploy and set protocol AUM fee', async () => {
+      const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
+
+      authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
+      authorizedVault = await deploy('v2-vault/Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
+      feesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', { args: [authorizedVault.address] });
+
+      const action = await actionId(feesCollector, 'setAumFeePercentage');
+      await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+      await feesCollector.connect(admin).setAumFeePercentage(AUM_PROTOCOL_FEE_PERCENTAGE);
+    });
+
+    sharedBeforeEach('deploy and initialize pool', async () => {
+      vault = new Vault(false, authorizedVault, authorizer, admin);
+
+      const params = {
+        tokens: poolTokens,
+        weights: poolWeights,
+        owner: owner.address,
+        poolType: WeightedPoolType.MANAGED_POOL,
+        swapEnabledOnStart: true,
+        vault,
+        swapFeePercentage,
+        managementSwapFeePercentage,
+        managementAumFeePercentage,
+        aumProtocolFeesCollector: feesCollector.address,
+      };
+      pool = await WeightedPool.create(params);
+
+      await poolTokens.mint({ to: owner, amount: fp(100) });
+      await poolTokens.approve({ from: owner, to: await pool.getVault() });
+      await pool.init({ from: owner, initialBalances });
+
+      // Clock no longer starts at initialization
+      // Now we have to do a join to start the clock
+      await expect(pool.joinAllGivenOut({ from: owner, bptOut: fp(0) }));
+    });
+
+    it('accounts for the protocol portion of the AUM fee', async () => {
+      const protocolFeesCollector = await vault.getFeesCollector();
+
+      const totalSupply = await pool.totalSupply();
+      const expectedBpt = totalSupply
+        .mul(180)
+        .div(365)
+        .mul(managementAumFeePercentage)
+        .div(fp(1).sub(managementAumFeePercentage));
+
+      const balanceBefore = await pool.balanceOf(owner);
+
+      const protocolPortion = expectedBpt.mul(AUM_PROTOCOL_FEE_PERCENTAGE).div(fp(1));
+      const ownerPortion = expectedBpt.sub(protocolPortion);
+
+      await advanceTime(180 * DAY);
+
+      const receipt = await pool.collectAumManagementFees(owner);
+      expectEvent.inReceipt(await receipt.wait(), 'ManagementAumFeeCollected');
+
+      const balanceAfter = await pool.balanceOf(owner);
+      expect(balanceAfter.sub(balanceBefore)).to.equalWithError(ownerPortion, 0.0001);
+
+      // Fee collector should have its balance
+      const protocolFees = await pool.balanceOf(protocolFeesCollector.address);
+      expect(protocolFees).to.equalWithError(protocolPortion, 0.00001);
     });
   });
 });

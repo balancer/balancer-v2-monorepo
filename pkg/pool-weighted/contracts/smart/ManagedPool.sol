@@ -19,8 +19,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IAumProtocolFeesCollector.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/AumProtocolFeeCache.sol";
 
 import "../lib/GradualValueChange.sol";
 import "../lib/WeightCompression.sol";
@@ -51,7 +52,7 @@ import "../WeightedPoolUserData.sol";
  * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of
  * protocol and management fees, allowlisting of LPs, and more.
  */
-contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
+contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -153,6 +154,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     event TokenAdded(IERC20 indexed token, uint256 normalizedWeight, uint256 tokenAmountIn);
     event TokenRemoved(IERC20 indexed token, uint256 normalizedWeight, uint256 tokenAmountOut);
 
+    // Making aumProtocolFeesCollector a constructor parameter would be more consistent with the intent
+    // of NewPoolParams: it is supposed to be for parameters passed in by users. However, adding the
+    // argument caused "stack too deep" errors in the constructor.
     struct NewPoolParams {
         string name;
         string symbol;
@@ -165,6 +169,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 protocolSwapFeePercentage;
         uint256 managementSwapFeePercentage;
         uint256 managementAumFeePercentage;
+        IAumProtocolFeesCollector aumProtocolFeesCollector;
     }
 
     constructor(
@@ -186,7 +191,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             owner,
             true
         )
-        ProtocolFeeCache(vault, params.protocolSwapFeePercentage)
+        AumProtocolFeeCache(vault, params.protocolSwapFeePercentage, params.aumProtocolFeesCollector)
     {
         uint256 totalTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
@@ -1230,9 +1235,15 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             uint256 fractionalTimePeriod = elapsedTime.divDown(365 days);
             bptAmount = annualizedFee.mulDown(fractionalTimePeriod);
 
-            emit ManagementAumFeeCollected(bptAmount);
+            // Compute the protocol's share of the AUM fee
+            uint256 protocolBptAmount = bptAmount.mulUp(getProtocolAumFeePercentageCache());
+            uint256 managerBPTAmount = bptAmount.sub(protocolBptAmount);
 
-            _mintPoolTokens(getOwner(), bptAmount);
+            _payProtocolFees(protocolBptAmount);
+
+            emit ManagementAumFeeCollected(managerBPTAmount);
+
+            _mintPoolTokens(getOwner(), managerBPTAmount);
         }
     }
 
