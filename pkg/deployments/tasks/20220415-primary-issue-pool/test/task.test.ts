@@ -4,7 +4,7 @@ import Task from '../../../src/task';
 import { Output } from '../../../src/types';
 
 describe('PrimaryIssuePoolFactory', function () {
-  const task = Task.forTest('20220415-primary-issue-pool', 'ropsten');
+  const task = Task.forTest('20220415-primary-issue-pool', 'test');
 
   context('with no previous deploy', () => {
     const itDeploysFactory = (force: boolean) => {

@@ -33,7 +33,7 @@ contract PrimaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
 
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
         
-        address assetManager = msg.sender;
+        /*address assetManager = msg.sender;
         address[] memory assetmanagers = new address[](2);
         assetmanagers[0] = assetManager;
         assetmanagers[1] = assetManager;
@@ -55,7 +55,19 @@ contract PrimaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
             owner: assetManager
         });
 
-        address pool = address(new PrimaryIssuePool(poolparams));
+        address pool = address(new PrimaryIssuePool(poolparams));*/
+        address pool = address(new PrimaryIssuePool(getVault(),
+                                                    _security,
+                                                    _currency,
+                                                    _minimumPrice,
+                                                    _basePrice,
+                                                    _maxAmountsIn,
+                                                    _issueFeePercentage,
+                                                    pauseWindowDuration,
+                                                    bufferPeriodDuration,
+                                                    _cutOffTime,
+                                                    msg.sender
+                                                    ));
         _register(pool);
         return pool;
     }

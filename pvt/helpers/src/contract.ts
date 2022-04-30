@@ -49,11 +49,17 @@ export async function getArtifact(contract: string): Promise<Artifact> {
   if (!contract.includes('/')) {
     artifactsPath = path.resolve('./artifacts');
   } else {
-    const packageName = `@balancer-labs/${contract.split('/')[0]}`;
-    const packagePath = path.dirname(require.resolve(`${packageName}/package.json`));
-    artifactsPath = `${packagePath}/artifacts`;
+    if(contract.split('/')[0]!="pool-primary-issues" && contract.split('/')[0]!="pool-secondary-issues"){
+      const packageName = `@balancer-labs/${contract.split('/')[0]}`;
+      const packagePath = path.dirname(require.resolve(`${packageName}/package.json`));
+      artifactsPath = `${packagePath}/artifacts`;
+    }
+    else{
+      const pName = `@verified-network/${contract.split('/')[0]}`;
+      const pPath = path.dirname(require.resolve(`${pName}/package.json`));
+      artifactsPath = `${pPath}/artifacts`;
+    }
   }
-
   const artifacts = new Artifacts(artifactsPath);
   return artifacts.readArtifact(contract.split('/').slice(-1)[0]);
 }

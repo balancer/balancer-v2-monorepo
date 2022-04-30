@@ -11,6 +11,7 @@ import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
 import { RawLinearPoolDeployment, LinearPoolDeployment } from '../pools/linear/types';
+import { RawPrimaryPoolDeployment, PrimaryPoolDeployment } from '../pools/primary-issue/types';
 import { RawStablePhantomPoolDeployment, StablePhantomPoolDeployment } from '../pools/stable-phantom/types';
 import {
   RawWeightedPoolDeployment,
@@ -152,6 +153,31 @@ export default {
       wrappedToken: params.wrappedToken,
       upperTarget,
       swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      owner: params.owner,
+    };
+  },
+
+  toPrimaryPoolDeployment(params: RawPrimaryPoolDeployment): PrimaryPoolDeployment {
+    let { minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
+
+    if (!minimumPrice) minimumPrice = bn(0);
+    if (!basePrice) basePrice = bn(100);
+    if (!maxSecurityOffered) maxSecurityOffered = bn(1000);
+    if (!swapFeePercentage) swapFeePercentage = bn(1e12);
+    if (!issueCutoffTime) issueCutoffTime = bn(new Date().getTime()*2);
+    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
+    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+
+    return {
+      securityToken: params.securityToken,
+      currencyToken: params.currencyToken,
+      minimumPrice,
+      basePrice,
+      maxSecurityOffered,
+      swapFeePercentage,
+      issueCutoffTime,
       pauseWindowDuration,
       bufferPeriodDuration,
       owner: params.owner,

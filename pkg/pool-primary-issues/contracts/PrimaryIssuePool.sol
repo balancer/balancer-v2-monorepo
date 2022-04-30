@@ -22,7 +22,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
     IERC20 private immutable _security;
     IERC20 private immutable _currency;
 
-    uint256 private constant _TOTAL_TOKENS = 3; //Balancer pool token, Security token, Currency token (ie, paired token)
+    uint256 private constant _TOTAL_TOKENS = 3;//Security token, Currency token (ie, paired token), and BPT although we don't use BPT in this pool
 
     uint256 private immutable _scalingFactorSecurity;
     uint256 private immutable _scalingFactorCurrency;
@@ -35,9 +35,9 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
     uint256 private _cutoffTime;
     uint256 private _startTime;
 
-    uint256 private immutable _bptIndex;
     uint256 private immutable _securityIndex;
     uint256 private immutable _currencyIndex;
+    uint256 private immutable _bptIndex;
 
     address payable private balancerManager;
 
@@ -47,7 +47,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         uint256 maxPrice;
     }
 
-    struct NewPoolParams {
+    /*struct NewPoolParams {
         IVault vault;
         string name;
         string symbol;
@@ -62,9 +62,67 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         uint256 bufferPeriodDuration;
         uint256 issueCutoffTime;
         address owner;
+    }*/
+
+    constructor(IVault vault,
+                address security,
+                address currency,
+                uint256 minimumPrice,
+                uint256 basePrice,
+                uint256 maxSecurityOffered,
+                uint256 issueFeePercentage,
+                uint256 pauseWindowDuration,
+                uint256 bufferPeriodDuration,
+                uint256 issueCutoffTime,
+                address owner    
+                )
+        BasePool(
+            vault,
+            IVault.PoolSpecialization.GENERAL,
+            ERC20(security).name(),
+            ERC20(security).symbol(),
+            _sortTokens(IERC20(security), IERC20(currency), IERC20(this)),
+            new address[](_TOTAL_TOKENS),
+            issueFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner
+        )
+    {
+        // set tokens
+        _security = IERC20(security);
+        _currency = IERC20(currency);
+
+        // Set token indexes
+        (uint256 securityIndex, uint256 currencyIndex, uint256 bptIndex) = _getSortedTokenIndexes(
+            IERC20(security),
+            IERC20(currency),
+            IERC20(this)
+        );
+        _securityIndex = securityIndex;
+        _currencyIndex = currencyIndex;
+        _bptIndex = bptIndex;
+
+        // set scaling factors
+        _scalingFactorSecurity = _computeScalingFactor(IERC20(security));
+        _scalingFactorCurrency = _computeScalingFactor(IERC20(currency));
+
+        // set price bounds
+        _minPrice = minimumPrice;
+        _maxPrice = basePrice;
+
+        // set max total balance of securities
+        _MAX_TOKEN_BALANCE = maxSecurityOffered;
+
+        // set issue time bounds
+        _cutoffTime = issueCutoffTime;
+        _startTime = block.timestamp;
+
+        //set owner 
+        balancerManager = payable(owner);
     }
 
-    constructor(NewPoolParams memory params)
+    /*constructor(NewPoolParams memory params)
         BasePool(
             params.vault,
             IVault.PoolSpecialization.GENERAL,
@@ -83,12 +141,11 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         _currency = params.currency;
 
         // Set token indexes
-        (uint256 securityIndex, uint256 currencyIndex, uint256 bptIndex) = _getSortedTokenIndexes(
+        (uint256 securityIndex, uint256 currencyIndex, ) = _getSortedTokenIndexes(
             params.security,
             params.currency,
             IERC20(this)
         );
-        _bptIndex = bptIndex;
         _securityIndex = securityIndex;
         _currencyIndex = currencyIndex;
 
@@ -109,7 +166,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
 
         //set owner 
         balancerManager = payable(params.owner);
-    }
+    }*/
 
     function getSecurity() external view returns (address) {
         return address(_security);
@@ -142,7 +199,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         _assets[0] = IAsset(address(_security));
         _assets[1] = IAsset(address(_currency));
         uint256[] memory _minAmountsOut = new uint256[](2);
-        _minAmountsOut[0] = _MAX_TOKEN_BALANCE;
+        _minAmountsOut[0] = 0;
         _minAmountsOut[1] = Math.div(_MAX_TOKEN_BALANCE, _maxPrice, false);
         IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
             assets: _assets,
@@ -164,7 +221,6 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         require(BokkyPooBahsDateTimeLibrary.addSeconds(_startTime, _cutoffTime) >= block.timestamp);
 
         // ensure that price is within price band
-
         uint256[] memory scalingFactors = _scalingFactors();
         Params memory params = Params({
             fee: getSwapFeePercentage(),
@@ -309,11 +365,8 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         _require(recipient == address(this), Errors.CALLER_IS_NOT_OWNER);
 
         uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
-        //setting balancer pool token balance to maximum amount of security tokens that can potentially be sold (at the minimum price)
-        amountsIn[_bptIndex] = _MAX_TOKEN_BALANCE;
 
-        return (_MAX_TOKEN_BALANCE, amountsIn);
-        
+        return (0, amountsIn);
     }
 
     function _onJoinPool(
@@ -367,7 +420,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        if (token == _security || token == _currency || token == IERC20(this)) {
+        if (token == _security || token == _currency ) {
             return FixedPoint.ONE;
         } else {
             _revert(Errors.INVALID_TOKEN);

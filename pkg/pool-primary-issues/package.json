@@ -17,7 +17,7 @@
     "!contracts/test/*"
   ],
   "contributors": [
-    "Kallol Borah <kallol@verified.network>"    
+    "Kallol Borah <kallol@verified.network>"
   ],
   "scripts": {
     "build": "yarn compile",
