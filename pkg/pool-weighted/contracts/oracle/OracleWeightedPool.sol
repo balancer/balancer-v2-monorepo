@@ -66,7 +66,8 @@ contract OracleWeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees, Po
             params.swapFeePercentage,
             params.pauseWindowDuration,
             params.bufferPeriodDuration,
-            params.owner
+            params.owner,
+            false
         )
     {
         _require(params.tokens.length == 2, Errors.TOKENS_LENGTH_MUST_BE_2);

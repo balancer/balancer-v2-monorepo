@@ -116,7 +116,8 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
-            owner
+            owner,
+            false
         )
     {
         uint256 numTokens = tokens.length;

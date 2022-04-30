@@ -55,7 +55,7 @@ contract MockRewardTokenDistributor is IRewardTokenDistributor {
         _rewardData[rewardToken].distributor = distributor;
     }
 
-    function deposit_reward_tokens(IERC20 rewardToken, uint256 amount) external override {
+    function deposit_reward_token(IERC20 rewardToken, uint256 amount) external override {
         require(_rewardData[rewardToken].distributor == msg.sender, "Only callable by reward distributor");
         rewardToken.transferFrom(msg.sender, address(this), amount);
 

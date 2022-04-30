@@ -130,9 +130,9 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
     }
 
     /**
-     * @dev Getter for the canChangeManagementSwapFeePercentage permission.
+     * @dev Getter for the canChangeManagementFees permission.
      */
-    function canChangeManagementSwapFeePercentage() public view returns (bool) {
+    function canChangeManagementFees() public view returns (bool) {
         return _controllerState.decodeBool(_CHANGE_MGMT_FEES_OFFSET);
     }
 
@@ -203,7 +203,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
     }
 
     /**
-     * @dev Transfer any BPT management fees from this contract to the recipient
+     * @dev Transfer any BPT management fees from this contract to the recipient.
      */
     function withdrawCollectedManagementFees(address recipient) external virtual override onlyManager withBoundPool {
         IERC20(pool).transfer(recipient, IERC20(pool).balanceOf(address(this)));
@@ -219,8 +219,23 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
         onlyManager
         withBoundPool
     {
-        _require(canChangeManagementSwapFeePercentage(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canChangeManagementFees(), Errors.UNAUTHORIZED_OPERATION);
 
         IControlledManagedPool(pool).setManagementSwapFeePercentage(managementSwapFeePercentage);
+    }
+
+    /**
+     * @dev Pass a call to ManagedPool's setManagementAumFeePercentage through to the underlying pool.
+     */
+    function setManagementAumFeePercentage(uint256 managementAumFeePercentage)
+        external
+        virtual
+        override
+        onlyManager
+        withBoundPool
+    {
+        _require(canChangeManagementFees(), Errors.UNAUTHORIZED_OPERATION);
+
+        IControlledManagedPool(pool).setManagementAumFeePercentage(managementAumFeePercentage);
     }
 }

@@ -105,7 +105,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
-            owner
+            owner,
+            false
         )
     {
         uint256 totalTokens = tokens.length;
