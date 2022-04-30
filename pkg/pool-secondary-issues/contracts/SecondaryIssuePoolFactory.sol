@@ -30,26 +30,17 @@ contract SecondaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        address assetManager = msg.sender;
-        address[] memory assetmanagers = new address[](2);
-        assetmanagers[0] = assetManager;
-        assetmanagers[1] = assetManager;
-        
-        SecondaryIssuePool.NewPoolParams memory poolparams = SecondaryIssuePool.NewPoolParams({
-            vault: getVault(),
-            name: _name,
-            symbol: _symbol,
-            security: _security,
-            currency: _currency,
-            assetManagers: assetmanagers,
-            tradeFeePercentage: _tradeFeePercentage,
-            maxSecurityOffered : _maxAmountsIn,
-            pauseWindowDuration: pauseWindowDuration,
-            bufferPeriodDuration: bufferPeriodDuration,
-            owner: msg.sender
-        });
-
-        address pool = address(new SecondaryIssuePool(poolparams));
+        address pool = address(new SecondaryIssuePool(  getVault(),
+                                                        _name,
+                                                        _symbol,
+                                                        _security,
+                                                        _currency,
+                                                        _tradeFeePercentage,
+                                                        _maxAmountsIn,
+                                                        pauseWindowDuration,
+                                                        bufferPeriodDuration,
+                                                        msg.sender
+                                                    ));
         _register(pool);
         return pool;
     }

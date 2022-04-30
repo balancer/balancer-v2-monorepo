@@ -44,20 +44,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
         uint256 price;
     }
 
-    struct NewPoolParams {
-        IVault vault;
-        string name;
-        string symbol;
-        address security;
-        address currency;
-        address[] assetManagers;
-        uint256 maxSecurityOffered;
-        uint256 tradeFeePercentage;
-        uint256 pauseWindowDuration;
-        uint256 bufferPeriodDuration;
-        address owner;
-    }
-
     //security trading status
     bool status = true;
 
@@ -124,28 +110,37 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                     bytes32 status,
                     uint256 executionDate
                 );
-    constructor(NewPoolParams memory params)
+    constructor(IVault vault,
+                string memory name,
+                string memory symbol,
+                address security,
+                address currency,
+                uint256 maxSecurityOffered,
+                uint256 tradeFeePercentage,
+                uint256 pauseWindowDuration,
+                uint256 bufferPeriodDuration,
+                address owner)
         BasePool(
-            params.vault,
+            vault,
             IVault.PoolSpecialization.GENERAL,
-            params.name,
-            params.symbol,
-            _sortTokens(IERC20(params.security), IERC20(params.currency), IERC20(this)),
-            params.assetManagers,
-            params.tradeFeePercentage,
-            params.pauseWindowDuration,
-            params.bufferPeriodDuration,
-            params.owner
+            name,
+            symbol,
+            _sortTokens(IERC20(security), IERC20(currency), IERC20(this)),
+            new address[](_TOTAL_TOKENS),
+            tradeFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner
         )
     {
         // set tokens
-        _security = params.security;
-        _currency = params.currency;
+        _security = security;
+        _currency = currency;
 
         // Set token indexes
         (uint256 securityIndex, uint256 currencyIndex, uint256 bptIndex) = _getSortedTokenIndexes(
-            IERC20(params.security),
-            IERC20(params.currency),
+            IERC20(security),
+            IERC20(currency),
             IERC20(this)
         );
         _bptIndex = bptIndex;
@@ -153,13 +148,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
         _currencyIndex = currencyIndex;
 
         // set scaling factors
-        _scalingFactorSecurity = _computeScalingFactor(IERC20(params.security));
-        _scalingFactorCurrency = _computeScalingFactor(IERC20(params.currency));
+        _scalingFactorSecurity = _computeScalingFactor(IERC20(security));
+        _scalingFactorCurrency = _computeScalingFactor(IERC20(currency));
 
         // set max total balance of securities
-        _MAX_TOKEN_BALANCE = params.maxSecurityOffered;
+        _MAX_TOKEN_BALANCE = maxSecurityOffered;
 
-        balancerManager = payable(params.owner);
+        balancerManager = payable(owner);
     }
 
     function getSecurity() external view returns (address) {

@@ -12,6 +12,7 @@ import { RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
 import { RawLinearPoolDeployment, LinearPoolDeployment } from '../pools/linear/types';
 import { RawPrimaryPoolDeployment, PrimaryPoolDeployment } from '../pools/primary-issue/types';
+import { RawSecondaryPoolDeployment, SecondaryPoolDeployment } from '../pools/secondary-issue/types';
 import { RawStablePhantomPoolDeployment, StablePhantomPoolDeployment } from '../pools/stable-phantom/types';
 import {
   RawWeightedPoolDeployment,
@@ -178,6 +179,25 @@ export default {
       maxSecurityOffered,
       swapFeePercentage,
       issueCutoffTime,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      owner: params.owner,
+    };
+  },
+
+  toSecondaryPoolDeployment(params: RawSecondaryPoolDeployment): SecondaryPoolDeployment {
+    let { maxSecurityOffered, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
+
+    if (!maxSecurityOffered) maxSecurityOffered = bn(1000);
+    if (!swapFeePercentage) swapFeePercentage = bn(1e12);
+    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
+    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+
+    return {
+      securityToken: params.securityToken,
+      currencyToken: params.currencyToken,
+      maxSecurityOffered,
+      swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
       owner: params.owner,
