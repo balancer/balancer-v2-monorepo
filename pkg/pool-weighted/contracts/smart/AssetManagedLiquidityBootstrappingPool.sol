@@ -110,7 +110,8 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
             params.swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
-            owner
+            owner,
+            false
         )
     {
         _projectToken = params.projectToken;

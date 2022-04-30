@@ -64,10 +64,24 @@ contract DistributionScheduler {
      * @param gauge - The gauge which is to distribute the reward token.
      * @param token - The token which is to be distributed among gauge depositors.
      */
-    function getPendingRewards(IRewardTokenDistributor gauge, IERC20 token) external view returns (uint256) {
+    function getPendingRewards(IRewardTokenDistributor gauge, IERC20 token) public view returns (uint256) {
+        return getPendingRewardsAt(gauge, token, block.timestamp);
+    }
+
+    /**
+     * @notice Returns the amount of `token` which is ready to be distributed by `gauge` as of a specified timestamp.
+     * @param gauge - The gauge which is to distribute the reward token.
+     * @param token - The token which is to be distributed among gauge depositors.
+     * @param timestamp - The future timestamp in which to query.
+     */
+    function getPendingRewardsAt(
+        IRewardTokenDistributor gauge,
+        IERC20 token,
+        uint256 timestamp
+    ) public view returns (uint256) {
         mapping(uint32 => RewardNode) storage rewardsList = _rewardsLists[_getRewardsListId(gauge, token)];
 
-        (, uint256 amount) = _getPendingRewards(rewardsList, block.timestamp);
+        (, uint256 amount) = _getPendingRewards(rewardsList, timestamp);
         return amount;
     }
 
@@ -139,7 +153,7 @@ contract DistributionScheduler {
         rewardsList[_HEAD].nextTimestamp = firstUnprocessedNodeKey;
 
         token.approve(address(gauge), rewardAmount);
-        gauge.deposit_reward_tokens(token, rewardAmount);
+        gauge.deposit_reward_token(token, rewardAmount);
     }
 
     // Internal functions

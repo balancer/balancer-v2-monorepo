@@ -53,6 +53,14 @@ function _insertSorted(IERC20[] memory tokens, IERC20 token) pure returns (IERC2
     sorted[i] = token;
 }
 
+function _appendToken(IERC20[] memory tokens, IERC20 newToken) pure returns (IERC20[] memory newTokens) {
+    uint256 numTokens = tokens.length;
+    newTokens = new IERC20[](numTokens + 1);
+
+    for (uint256 i = 0; i < numTokens; ++i) newTokens[i] = tokens[i];
+    newTokens[numTokens] = newToken;
+}
+
 function _getSortedTokenIndexes(
     IERC20 tokenA,
     IERC20 tokenB,

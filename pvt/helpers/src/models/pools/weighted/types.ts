@@ -30,6 +30,8 @@ export type RawWeightedPoolDeployment = {
   protocolSwapFeePercentage?: BigNumberish;
   managementSwapFeePercentage?: BigNumberish;
   reserveAssetManager?: string;
+  managementAumFeePercentage?: BigNumberish;
+  aumProtocolFeesCollector?: string;
   owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -52,6 +54,8 @@ export type WeightedPoolDeployment = {
   protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
   reserveAssetManager: string;
+  managementAumFeePercentage: BigNumberish;
+  aumProtocolFeesCollector: string;
   owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -193,10 +197,17 @@ export type Sample = {
 
 export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
 
-export type GradualUpdateParams = {
+export type GradualWeightUpdateParams = {
   startTime: BigNumber;
   endTime: BigNumber;
   endWeights: BigNumber[];
+};
+
+export type GradualSwapFeeUpdateParams = {
+  startTime: BigNumber;
+  endTime: BigNumber;
+  startSwapFeePercentage: BigNumber;
+  endSwapFeePercentage: BigNumber;
 };
 
 export type BasePoolRights = {
@@ -225,6 +236,8 @@ export type ManagedPoolParams = {
   mustAllowlistLPs: boolean;
   protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
+  managementAumFeePercentage: BigNumberish;
+  aumProtocolFeesCollector: string;
 };
 
 export type AMLiquidityBootstrappingPoolParams = {
