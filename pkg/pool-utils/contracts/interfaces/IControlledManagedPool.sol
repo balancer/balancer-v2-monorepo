@@ -34,4 +34,6 @@ interface IControlledManagedPool is IControlledPool {
     function withdrawCollectedManagementFees(address recipient) external;
 
     function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) external;
+
+    function setManagementAumFeePercentage(uint256 managementAumFeePercentage) external;
 }

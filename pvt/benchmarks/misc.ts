@@ -68,6 +68,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 
   const swapFeePercentage = fp(0.02); // 2%
   const managementFee = fp(0.5); // 50%
+  const aumFee = 0;
 
   let pool: Contract;
   let joinUserData: string;
@@ -77,6 +78,10 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
     const weights = toNormalizedWeights(WEIGHTS.map(bn)); // Equal weights for all tokens
     const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
     let params;
+
+    const aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', {
+      args: [vault.address],
+    });
 
     switch (poolName) {
       case 'ManagedPool': {
@@ -91,6 +96,8 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           mustAllowlistLPs: false,
           protocolSwapFeePercentage: MAX_UINT256,
           managementSwapFeePercentage: managementFee,
+          managementAumFeePercentage: aumFee,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         };
 
         const basePoolRights: BasePoolRights = {
@@ -107,6 +114,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           canChangeTokens: true,
           canChangeMgmtFees: true,
         };
+
         params = [newPoolParams, basePoolRights, managedPoolRights, DAY, creator.address];
         break;
       }
