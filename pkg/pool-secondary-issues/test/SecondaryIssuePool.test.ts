@@ -40,7 +40,7 @@ describe('SecondaryPool', function () {
     securityToken = tokens.DAI;
     currencyToken = tokens.CDAI;
   });
-  
+   
   async function deployPool(params: RawSecondaryPoolDeployment, mockedVault = true): Promise<void> {
     params = Object.assign({}, { swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, owner, admin }, params);
     pool = await SecondaryPool.create(params, mockedVault);
@@ -48,10 +48,8 @@ describe('SecondaryPool', function () {
   
   describe('creation', () => {
     context('when the creation succeeds', () => {
-      let upperTarget: BigNumber;
 
       sharedBeforeEach('deploy pool', async () => {
-        upperTarget = fp(2000);
         await deployPool({ securityToken, currencyToken }, false);
       });
 
@@ -104,7 +102,7 @@ describe('SecondaryPool', function () {
 
     });
   });
-  
+  /*
   describe('initialization', () => {
     sharedBeforeEach('deploy pool', async () => {
       await deployPool({ securityToken, currencyToken }, false);
@@ -137,5 +135,5 @@ describe('SecondaryPool', function () {
       await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_JOIN_KIND');
     });
   });
-  
+  */
 });

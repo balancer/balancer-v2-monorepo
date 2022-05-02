@@ -21,7 +21,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
 {   
     using Math for uint256;
-    using stringutils for *;
+    using StringUtils for string;
 
     address private immutable _security;
     address private immutable _currency;

@@ -40,9 +40,9 @@ export default class SecondaryPool {
       instance.getVault(),
       instance.getSecurityToken(),
       instance.getCurrencyToken(),
-      instance.maxSecurityOffered(),
+      instance.getMaxSecurityOffered(),
       instance.getSwapFeePercentage(),
-      instance.getOwner(),
+      instance.getOwner()
     ]);
     return new SecondaryPool(
       instance,

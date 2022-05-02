@@ -2,10 +2,10 @@
 
 pragma solidity 0.7.1;
 
-library stringutils { // Only relevant functions
+library StringUtils { // Only relevant functions
     
     //added from https://ethereum.stackexchange.com/questions/62371/convert-a-string-to-a-uint256-with-error-handling
-    function stringToUint(string memory s) public pure returns (uint) {
+    function stringToUint(string memory s) internal pure returns (uint) {
         bool hasError = false;
         bytes memory b = bytes(s);
         uint result = 0;
@@ -27,7 +27,7 @@ library stringutils { // Only relevant functions
         return (result); 
     }
 
-    function substring(bytes32 strBytes, uint startIndex, uint endIndex) public pure returns (string memory) {
+    function substring(bytes32 strBytes, uint startIndex, uint endIndex) internal pure returns (string memory) {
         bytes memory result = new bytes(endIndex-startIndex);
         for(uint i = startIndex; i < endIndex; i++) {
             result[i-startIndex] = strBytes[i];
@@ -35,7 +35,7 @@ library stringutils { // Only relevant functions
         return string(result);
     }
 
-    function substringinbytes(bytes32 strBytes, uint startIndex, uint endIndex) public pure returns (bytes32 res) {
+    function substringinbytes(bytes32 strBytes, uint startIndex, uint endIndex) internal pure returns (bytes32 res) {
         bytes memory result = new bytes(endIndex-startIndex);
         for(uint i = startIndex; i < endIndex; i++) {
             result[i-startIndex] = strBytes[i];
@@ -49,12 +49,12 @@ library stringutils { // Only relevant functions
         }
     }
 
-    function append(string memory a, string memory b) public pure returns (string memory) {
+    function append(string memory a, string memory b) internal pure returns (string memory) {
         return string(abi.encodePacked(a, b));
     }
 
     //convert from string to bytes32
-    function stringToBytes32(string memory source) public pure returns (bytes32 result) {
+    function stringToBytes32(string memory source) internal pure returns (bytes32 result) {
         bytes memory tempEmptyStringTest = bytes(source);
         if (tempEmptyStringTest.length == 0) {
             return 0x0;
@@ -68,7 +68,7 @@ library stringutils { // Only relevant functions
     /// @dev Does a byte-by-byte lexicographical comparison of two strings.
     /// @return a negative number if `_a` is smaller, zero if they are equal
     /// and a positive numbe if `_b` is smaller.
-    function compare(string memory _a, string memory _b) public pure returns (int) {
+    function compare(string memory _a, string memory _b) internal pure returns (int) {
         bytes memory a = bytes(_a);
         bytes memory b = bytes(_b);
         uint minLength = a.length;
@@ -88,12 +88,12 @@ library stringutils { // Only relevant functions
     }
 
     /// @dev Compares two strings and returns true iff they are equal.
-    function equal(string memory _a, string memory _b) public pure returns (bool) {
+    function equal(string memory _a, string memory _b) internal pure returns (bool) {
         return compare(_a, _b) == 0;
     }
 
     /// @dev Finds the index of the first occurrence of _needle in _haystack
-    function indexOf(string memory _haystack, string memory _needle) public pure returns (int)
+    function indexOf(string memory _haystack, string memory _needle) internal pure returns (int)
     {
     	bytes memory h = bytes(_haystack);
     	bytes memory n = bytes(_needle);

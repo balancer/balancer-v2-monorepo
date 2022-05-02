@@ -47,7 +47,7 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      from,
+      from
     } = params;
 
     const owner = TypesConverter.toAddress(params.owner);
@@ -63,7 +63,7 @@ export default {
         swapFeePercentage,
         pauseWindowDuration,
         bufferPeriodDuration,
-        owner,
+        owner
       ],
       from,
     });

@@ -48,10 +48,8 @@ describe('PrimaryPool', function () {
   
   describe('creation', () => {
     context('when the creation succeeds', () => {
-      let upperTarget: BigNumber;
 
       sharedBeforeEach('deploy pool', async () => {
-        upperTarget = fp(2000);
         await deployPool({ securityToken, currencyToken }, false);
       });
 
