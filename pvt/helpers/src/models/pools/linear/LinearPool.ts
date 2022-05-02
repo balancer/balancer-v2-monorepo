@@ -273,8 +273,9 @@ export default class LinearPool {
   }
 
   async pause(): Promise<void> {
-    const action = await actionId(this.instance, 'setPaused');
-    await this.vault.grantPermissionsGlobally([action]);
-    await this.instance.setPaused(true);
+    const pauseAction = await actionId(this.instance, 'pause');
+    const unpauseAction = await actionId(this.instance, 'unpause');
+    await this.vault.grantPermissionsGlobally([pauseAction, unpauseAction]);
+    await this.instance.pause();
   }
 }
