@@ -617,6 +617,8 @@ describe('ManagedPool', function () {
   });
 
   describe('update swap fee', () => {
+    const MAX_SWAP_FEE_PERCENTAGE = fp(0.8);
+
     sharedBeforeEach('deploy pool', async () => {
       const params = {
         tokens: poolTokens,
@@ -649,7 +651,7 @@ describe('ManagedPool', function () {
 
     context('with the max swap fee', () => {
       sharedBeforeEach('set swap fee to the max value (< 100%)', async () => {
-        await pool.setSwapFeePercentage(owner, fp(0.9999));
+        await pool.setSwapFeePercentage(owner, MAX_SWAP_FEE_PERCENTAGE);
       });
 
       it('allows (unfavorable) joinSwap', async () => {

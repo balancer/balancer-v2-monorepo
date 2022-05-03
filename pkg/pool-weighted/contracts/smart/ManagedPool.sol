@@ -69,7 +69,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     uint256 private constant _MAX_MANAGED_TOKENS = 38;
 
     // Must be < ONE for correct behavior of join/exit swaps
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 99.99e16; // 99.99%%
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 80e16; // 80%
 
     uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
 
