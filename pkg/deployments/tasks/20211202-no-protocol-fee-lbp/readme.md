@@ -5,6 +5,7 @@ Deployment of the `NoProtocolFeeLiquidityBootstrappingPool`, for Liquidity Boots
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [Arbitrum mainnet addresses](./output/arbitrum.json)
 - [Polygon mainnet addresses](./output/polygon.json)
+- [Arbitrum mainnet addresses](./output/arbitrum.json)
+- [Optimism mainnet address](./output/optimism.json)
 - [`NoProtocolFeeLiquidityBootstrappingPool` ABI](./abi/NoProtocolFeeLiquidityBootstrappingPool.json)
