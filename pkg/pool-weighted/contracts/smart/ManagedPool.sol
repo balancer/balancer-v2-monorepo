@@ -68,6 +68,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     // creation gas consumption.
     uint256 private constant _MAX_MANAGED_TOKENS = 38;
 
+    // Must be < ONE for correct behavior of join/exit swaps
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 99.99e16; // 99.99%%
+
     uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
 
     uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 1e17; // 10%
@@ -1159,7 +1162,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     function _getMaxSwapFeePercentage() internal pure virtual override returns (uint256) {
-        return _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE;
+        return _MAX_SWAP_FEE_PERCENTAGE;
     }
 
     function _getTokenData(IERC20 token) private view returns (bytes32 tokenData) {
