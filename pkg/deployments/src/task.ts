@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path, { extname } from 'path';
-import { BuildInfo, CompilerOutputContract, HardhatRuntimeEnvironment } from 'hardhat/types';
-import { BigNumber, Contract } from 'ethers';
+import { BuildInfo, CompilerOutputContract } from 'hardhat/types';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import logger from './logger';
@@ -30,10 +30,6 @@ export default class Task {
   _network?: Network;
   _verifier?: Verifier;
   _outputFile?: string;
-
-  static fromHRE(id: string, hre: HardhatRuntimeEnvironment, verifier?: Verifier): Task {
-    return new this(id, hre.network.name, verifier);
-  }
 
   static forTest(id: string, network: Network, outputTestFile = 'test'): Task {
     const task = new this(id, network);

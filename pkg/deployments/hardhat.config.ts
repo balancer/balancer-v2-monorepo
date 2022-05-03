@@ -21,7 +21,7 @@ task('deploy', 'Run deployment task')
     async (args: { id: string; force?: boolean; key?: string; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
       Logger.setDefaults(false, args.verbose || false);
       const verifier = args.key ? new Verifier(hre.network, args.key) : undefined;
-      await Task.fromHRE(args.id, hre, verifier).run(args);
+      await new Task(args.id, hre.network.name, verifier).run(args);
     }
   );
 
@@ -39,7 +39,7 @@ task('verify-contract', 'Run verification for a given contract')
       Logger.setDefaults(false, args.verbose || false);
       const verifier = args.key ? new Verifier(hre.network, args.key) : undefined;
 
-      await Task.fromHRE(args.id, hre, verifier).verify(args.name, args.address, args.args);
+      await new Task(args.id, hre.network.name, verifier).verify(args.name, args.address, args.args);
     }
   );
 
