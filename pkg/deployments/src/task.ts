@@ -27,13 +27,15 @@ const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 
 export default class Task {
   id: string;
+  _forTest = false;
+
   _network?: Network;
   _verifier?: Verifier;
-  _outputFile?: string;
 
-  static forTest(id: string, network: Network, outputTestFile = 'test'): Task {
+  static forTest(id: string, network: Network): Task {
     const task = new this(id, network);
-    task.outputFile = outputTestFile;
+    task._forTest = true;
+
     return task;
   }
 
@@ -44,16 +46,8 @@ export default class Task {
     this._verifier = verifier;
   }
 
-  get outputFile(): string {
-    return `${this._outputFile || this.network}.json`;
-  }
-
-  set outputFile(file: string) {
-    this._outputFile = file;
-  }
-
   get network(): string {
-    if (!this._network) throw Error('A network must be specified to define a task');
+    if (!this._network) throw Error('No network defined');
     return this._network;
   }
 
@@ -174,9 +168,10 @@ export default class Task {
   }
 
   output({ ensure = true, network }: { ensure?: boolean; network?: Network } = {}): Output {
-    if (network) this.network = network;
+    if (network === undefined) network = this.network;
+
     const taskOutputDir = this._dirAt(this.dir(), 'output', ensure);
-    const taskOutputFile = this._fileAt(taskOutputDir, `${this.network}.json`, ensure);
+    const taskOutputFile = this._fileAt(taskOutputDir, `${network}.json`, ensure);
     return this._read(taskOutputFile);
   }
 
@@ -184,7 +179,8 @@ export default class Task {
     const taskOutputDir = this._dirAt(this.dir(), 'output', false);
     if (!fs.existsSync(taskOutputDir)) fs.mkdirSync(taskOutputDir);
 
-    const taskOutputFile = this._fileAt(taskOutputDir, this.outputFile, false);
+    const outputFile = this._forTest ? 'test.json' : `${this.network}.json`;
+    const taskOutputFile = this._fileAt(taskOutputDir, outputFile, false);
     const previousOutput = this._read(taskOutputFile);
 
     const finalOutput = { ...previousOutput, ...this._parseRawOutput(output) };
