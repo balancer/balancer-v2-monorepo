@@ -4,17 +4,7 @@ import { RunSuperFunction, HardhatRuntimeEnvironment, HttpNetworkConfig, Hardhat
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 export default async function (args: any, hre: HardhatRuntimeEnvironment, run: RunSuperFunction<any>): Promise<void> {
-  if (args.fork) {
-    await runForkTests(args, hre, run);
-  } else {
-    await runNormalTests(args, hre, run);
-  }
-}
-
-async function runNormalTests(args: any, hre: HardhatRuntimeEnvironment, run: RunSuperFunction<any>): Promise<void> {
-  console.log('Running normal tests...');
-  args.testFiles = args.testFiles.filter((file: string) => file.endsWith('.test.ts'));
-  await run(args);
+  await runForkTests(args, hre, run);
 }
 
 async function runForkTests(args: any, hre: HardhatRuntimeEnvironment, run: RunSuperFunction<any>): Promise<void> {

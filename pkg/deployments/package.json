@@ -23,8 +23,7 @@
     "build": "tsc",
     "lint": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
     "prepack": "yarn build",
-    "test": "hardhat test ./**/test/*.ts",
-    "test:fork": "yarn test --fork mainnet --block-number 14623150"
+    "test": "hardhat test ./**/test/*.ts --fork mainnet --block-number 14623150"
   },
   "devDependencies": {
     "@balancer-labs/balancer-js": "workspace:*",
