@@ -195,23 +195,27 @@ export default class Task {
     this._write(taskOutputFile, finalOutput);
   }
 
-  delete(): void {
-    const taskOutputDir = this._dirAt(this.dir(), 'output');
-    const taskOutputFile = this._fileAt(taskOutputDir, this.outputFile);
-    fs.unlinkSync(taskOutputFile);
-  }
-
   private _parseRawInput(rawInput: RawInputKeyValue): Input {
     return Object.keys(rawInput).reduce((input: Input, key: Network | string) => {
       const item = rawInput[key];
-      if (Array.isArray(item)) input[key] = item;
-      else if (BigNumber.isBigNumber(item)) input[key] = item;
-      else if (typeof item !== 'object') input[key] = item;
-      else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const output: Output | any = this._isTask(item) ? (item as Task).output({ network: this.network }) : item;
-        input[key] = output[key] ? output[key] : output;
+
+      if (!this._isTask(item)) {
+        // Non-task inputs are simply their value
+        input[key] = item;
+      } else {
+        // For task inputs, we query the output file with the name of the key in the input object. For example, given
+        // { 'BalancerHelpers': new Task('20210418-vault') }
+        // the input value will be the output of the task of name 'BalancerHelpers'.
+        const task = item as Task;
+        const output = task.output({ network: this.network });
+
+        if (output[key] === undefined) {
+          throw Error(`No '${key}' value for task ${task.id} in output of network ${this.network}`);
+        }
+
+        input[key] = output[key];
       }
+
       return input;
     }, {});
   }
