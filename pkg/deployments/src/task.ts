@@ -95,7 +95,6 @@ export default class Task {
     const output = this.output({ ensure: false });
     if (force || !output[name]) {
       const instance = await this.deploy(name, args, from, libs);
-      this.save({ [name]: instance });
       await this.verify(name, instance.address, args, libs);
       return instance;
     } else {
@@ -107,6 +106,7 @@ export default class Task {
 
   async deploy(name: string, args: Array<Param> = [], from?: SignerWithAddress, libs?: Libraries): Promise<Contract> {
     const instance = await deploy(this.artifact(name), args, from, libs);
+    this.save({ [name]: instance });
     logger.success(`Deployed ${name} at ${instance.address}`);
     return instance;
   }
