@@ -20,7 +20,10 @@ task('deploy', 'Run deployment task')
   .setAction(
     async (args: { id: string; force?: boolean; key?: string; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
       Logger.setDefaults(false, args.verbose || false);
-      const verifier = args.key ? new Verifier(hre.network, args.key) : undefined;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const apiKey = args.key ?? (hre.config.networks[hre.network.name] as any).verificationAPIKey;
+      const verifier = apiKey ? new Verifier(hre.network, apiKey) : undefined;
       await new Task(args.id, hre.network.name, verifier).run(args);
     }
   );
