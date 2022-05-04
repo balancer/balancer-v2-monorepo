@@ -23,25 +23,25 @@ import {
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 
+export enum TaskMode {
+  LIVE, // Deploys and saves outputs
+  TEST, // Deploys but saves to test output
+  READ_ONLY, // Does not deploy
+}
+
 /* eslint-disable @typescript-eslint/no-var-requires */
 
 export default class Task {
   id: string;
-  _forTest = false;
+  mode: TaskMode;
 
   _network?: Network;
   _verifier?: Verifier;
 
-  static forTest(id: string, network: Network): Task {
-    const task = new this(id, network);
-    task._forTest = true;
-
-    return task;
-  }
-
-  constructor(id: string, network?: Network, verifier?: Verifier) {
+  constructor(id: string, mode: TaskMode, network?: Network, verifier?: Verifier) {
     if (network && !NETWORKS.includes(network)) throw Error(`Unknown network ${network}`);
     this.id = id;
+    this.mode = mode;
     this._network = network;
     this._verifier = verifier;
   }
@@ -95,6 +95,10 @@ export default class Task {
   }
 
   async deploy(name: string, args: Array<Param> = [], from?: SignerWithAddress, libs?: Libraries): Promise<Contract> {
+    if (this.mode !== TaskMode.LIVE && this.mode !== TaskMode.TEST) {
+      throw Error(`Cannot deploy in tasks of mode ${TaskMode[this.mode]}`);
+    }
+
     const instance = await deploy(this.artifact(name), args, from, libs);
     this.save({ [name]: instance });
     logger.success(`Deployed ${name} at ${instance.address}`);
@@ -107,6 +111,10 @@ export default class Task {
     constructorArguments: string | unknown[],
     libs?: Libraries
   ): Promise<void> {
+    if (this.mode !== TaskMode.LIVE) {
+      return;
+    }
+
     try {
       if (!this._verifier) return logger.warn('Skipping contract verification, no verifier defined');
       const url = await this._verifier.call(this, name, address, constructorArguments, libs);
@@ -168,7 +176,9 @@ export default class Task {
   }
 
   output({ ensure = true, network }: { ensure?: boolean; network?: Network } = {}): Output {
-    if (network === undefined) network = this.network;
+    if (network === undefined) {
+      network = this.mode !== TaskMode.TEST ? this.network : 'test';
+    }
 
     const taskOutputDir = this._dirAt(this.dir(), 'output', ensure);
     const taskOutputFile = this._fileAt(taskOutputDir, `${network}.json`, ensure);
@@ -179,7 +189,7 @@ export default class Task {
     const taskOutputDir = this._dirAt(this.dir(), 'output', false);
     if (!fs.existsSync(taskOutputDir)) fs.mkdirSync(taskOutputDir);
 
-    const outputFile = this._forTest ? 'test.json' : `${this.network}.json`;
+    const outputFile = this.mode === TaskMode.LIVE ? `${this.network}.json` : 'test.json';
     const taskOutputFile = this._fileAt(taskOutputDir, outputFile, false);
     const previousOutput = this._read(taskOutputFile);
 
@@ -196,8 +206,8 @@ export default class Task {
         input[key] = item;
       } else {
         // For task inputs, we query the output file with the name of the key in the input object. For example, given
-        // { 'BalancerHelpers': new Task('20210418-vault') }
-        // the input value will be the output of the task of name 'BalancerHelpers'.
+        // { 'BalancerHelpers': new Task('20210418-vault', TaskMode.READ_ONLY) }
+        // the input value will be the output of name 'BalancerHelpers' of said task.
         const task = item as Task;
         const output = task.output({ network: this.network });
 

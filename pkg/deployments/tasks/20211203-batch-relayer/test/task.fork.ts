@@ -4,7 +4,7 @@ import { BigNumber, Contract } from 'ethers';
 
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate, impersonateWhale, setBalance } from '../../../src/signers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -13,7 +13,7 @@ import { fromNow, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('BatchRelayerLibrary', function () {
-  const task = Task.forTest('20211203-batch-relayer', getForkedNetwork(hre));
+  const task = new Task('20211203-batch-relayer', TaskMode.TEST, getForkedNetwork(hre));
 
   let relayer: Contract, library: Contract;
   let sender: SignerWithAddress, admin: SignerWithAddress;
@@ -40,7 +40,7 @@ describe('BatchRelayerLibrary', function () {
   });
 
   before('load vault and tokens', async () => {
-    const vaultTask = Task.forTest('20210418-vault', getForkedNetwork(hre));
+    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
 
     vault = await vaultTask.instanceAt('Vault', await library.getVault());
     authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
