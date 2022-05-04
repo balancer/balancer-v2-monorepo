@@ -53,4 +53,10 @@ export default {
     pauseWindowDuration: 3 * MONTH,
     bufferPeriodDuration: MONTH,
   },
+  optimism: {
+    Authorizer,
+    weth: '0x4200000000000000000000000000000000000006',
+    pauseWindowDuration: 3 * MONTH,
+    bufferPeriodDuration: MONTH,
+  },
 };

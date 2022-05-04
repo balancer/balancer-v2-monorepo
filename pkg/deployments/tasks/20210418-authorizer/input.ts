@@ -24,4 +24,7 @@ export default {
   arbitrum: {
     admin: '0x6207ed574152496c9B072C24FD87cE9cd9E17320',
   },
+  optimism: {
+    admin: '0xFB2ac3989B6AD0e043a8958004484d6BAAb2c6Ab',
+  },
 };
