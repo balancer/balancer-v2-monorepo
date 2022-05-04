@@ -20,6 +20,7 @@ import {
   RawOutput,
   TaskRunOptions,
 } from './types';
+import { match } from 'assert';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 
@@ -38,9 +39,9 @@ export default class Task {
   _network?: Network;
   _verifier?: Verifier;
 
-  constructor(id: string, mode: TaskMode, network?: Network, verifier?: Verifier) {
+  constructor(idAlias: string, mode: TaskMode, network?: Network, verifier?: Verifier) {
     if (network && !NETWORKS.includes(network)) throw Error(`Unknown network ${network}`);
-    this.id = id;
+    this.id = this._findTaskId(idAlias);
     this.mode = mode;
     this._network = network;
     this._verifier = verifier;
@@ -263,5 +264,21 @@ export default class Task {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private _isTask(object: any): boolean {
     return object.constructor.name == 'Task';
+  }
+
+  private _findTaskId(idAlias: string): string {
+    const matches = fs.readdirSync(TASKS_DIRECTORY).filter((taskDirName) => taskDirName.includes(idAlias));
+
+    if (matches.length == 1) {
+      return matches[0];
+    } else {
+      if (matches.length == 0) {
+        throw Error(`Found no matching directory for task alias '${idAlias}'`);
+      } else {
+        throw Error(
+          `Multiple matching directories for task alias '${idAlias}', candidates are: \n${matches.join('\n')}`
+        );
+      }
+    }
   }
 }
