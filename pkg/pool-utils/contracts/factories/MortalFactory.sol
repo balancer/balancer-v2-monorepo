@@ -45,18 +45,19 @@ abstract contract MortalFactory is Authentication {
     }
 
     /**
-     * @dev Disable the factory. Can only be called by authorized accounts. Sets the `_disabled` flag to indicate
+     * @dev Disable the factory. Can only be called once, by authorized accounts. Sets the `_disabled` flag to indicate
      * that no further pools should be created using this factory.
-     *
-     * Derived contracts should enforce this by calling `_ensureEnabled` in their create functions.
      */
     function disable() external authenticate {
+        // prevent generating multiple events
+        _ensureEnabled();
+
         _disabled = true;
 
         emit FactoryDisabled();
     }
 
-    // Call in `create` to revert if the factory is disabled.
+    // Derived factories should call this in their `create` functions to revert if the factory is disabled.
     function _ensureEnabled() internal view {
         _require(!isDisabled(), Errors.DISABLED);
     }

@@ -60,5 +60,9 @@ describe('MortalFactory', () => {
     it('should not allow creation', async () => {
       await expect(factory.create()).to.be.revertedWith('DISABLED');
     });
+
+    it('should not allow disabling twice', async () => {
+      await expect(factory.connect(admin).disable()).to.be.revertedWith('DISABLED');
+    });
   });
 });
