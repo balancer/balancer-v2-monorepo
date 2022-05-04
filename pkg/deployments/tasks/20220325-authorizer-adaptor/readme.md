@@ -7,4 +7,7 @@ The adaptor may then be the admin for these systems and acts as a proxy forwardi
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
+- [Polygon mainnet address](./output/polygon.json)
+- [Arbitrum mainnet address](./output/arbitrum.json)
+- [Optimism mainnet address](./output/optimism.json)
 - [`AuthorizerAdaptor` ABI](./abi/AuthorizerAdaptor.json))
