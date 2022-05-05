@@ -52,7 +52,7 @@ task('verify-contract', `Verify a task's deployment on a block explorer`)
     }
   );
 
-task('check-deployment', `Check that all tasks' deployments correspond to their build-info and inputs`)
+task('check-deployments', `Check that all tasks' deployments correspond to their build-info and inputs`)
   .addOptionalParam('id', 'Specific task ID')
   .setAction(async (args: { id?: string; force?: boolean; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
     // The force argument above is actually not passed (and not required or used in CHECK mode), but it is the easiest
