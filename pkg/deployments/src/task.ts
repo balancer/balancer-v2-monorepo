@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import logger from './logger';
 import Verifier from './verifier';
-import { deploy, instanceAt } from './contracts';
+import { deploy, deploymentTxData, instanceAt } from './contracts';
 
 import {
   NETWORKS,
@@ -20,14 +20,14 @@ import {
   RawOutput,
   TaskRunOptions,
 } from './types';
-import { match } from 'assert';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 
 export enum TaskMode {
   LIVE, // Deploys and saves outputs
   TEST, // Deploys but saves to test output
-  READ_ONLY, // Does not deploy
+  CHECK, // Checks past deployments on deploy
+  READ_ONLY, // Fails on deploy
 }
 
 /* eslint-disable @typescript-eslint/no-var-requires */
@@ -83,6 +83,10 @@ export default class Task {
     force?: boolean,
     libs?: Libraries
   ): Promise<Contract> {
+    if (this.mode == TaskMode.CHECK) {
+      return await this.check(name, args, libs);
+    }
+
     const output = this.output({ ensure: false });
     if (force || !output[name]) {
       const instance = await this.deploy(name, args, from, libs);
@@ -96,6 +100,10 @@ export default class Task {
   }
 
   async deploy(name: string, args: Array<Param> = [], from?: SignerWithAddress, libs?: Libraries): Promise<Contract> {
+    if (this.mode == TaskMode.CHECK) {
+      return await this.check(name, args, libs);
+    }
+
     if (this.mode !== TaskMode.LIVE && this.mode !== TaskMode.TEST) {
       throw Error(`Cannot deploy in tasks of mode ${TaskMode[this.mode]}`);
     }
@@ -123,6 +131,40 @@ export default class Task {
     } catch (error) {
       logger.error(`Failed trying to verify ${name} at ${address}: ${error}`);
     }
+  }
+
+  async check(name: string, args: Array<Param> = [], libs?: Libraries): Promise<Contract> {
+    // There's multiple approaches to checking that a deployed contract matches known source code. A naive approach is
+    // to check for a match in the runtime code, but that doesn't account for actions taken during  construction,
+    // including calls, storage writes and setting immutable state variables. Since immutable state variables modify the
+    // runtime code, it can be actually quite tricky to produce a matching runtime code.
+    // What we do instead is check for both runtime code and constrcutor execution (including constructor arguments) by
+    // looking at the transaction in which the contract was deployed. The data of said transaction will be the contract
+    // creation code followed by the abi-encoded constructor arguments, which we can compare against what the task would
+    // attempt to deploy. In this way, we are testing the task's build info, inputs and deployment code.
+    // The only thing we're not checking is what account deployed the contract, but our code does not have dependencies
+    // on the deployer.
+
+    // The only problem with the approach described above is that it is not easy to find the transaction in which a
+    // contract is deployed. Tenderly has a dedicated endpoint for this however.
+
+    const { ethers } = await import('hardhat');
+
+    const deployedAddress = this.output()[name];
+    const deploymentTxHash = await getContractDeploymentTransactionHash(deployedAddress, this.network);
+    const deploymentTx = await ethers.provider.getTransaction(deploymentTxHash);
+
+    if (deploymentTx.data === deploymentTxData(this.artifact(name), args, libs)) {
+      logger.success(`Verified contract '${name}' on network '${this.network}' of task '${this.id}'`);
+    } else {
+      throw Error(
+        `The build info and inputs for contract '${name}' on network '${this.network}' of task '${this.id}' does not match the data used to deploy address ${deployedAddress}`
+      );
+    }
+
+    // We need to return an instance so that the task may carry on, potentially using this as input of future
+    // deployments.
+    return this.instanceAt(name, deployedAddress);
   }
 
   async run(options: TaskRunOptions = {}): Promise<void> {
@@ -280,5 +322,13 @@ export default class Task {
         );
       }
     }
+  }
+}
+async function getContractDeploymentTransactionHash(deployedAddress: string, network: string): Promise<string> {
+  // todo: replace with actual query
+  if (deployedAddress == '0xBA12222222228d8Ba445958a75a0704d566BF2C8') {
+    return '0x28c44bb10d469cbd42accf97bd00b73eabbace138e9d44593e851231fbed1cb7';
+  } else {
+    return '0x3a5218c06f36fed9c4965c75215e87423280317b757d65ef117f4ed69003396a';
   }
 }
