@@ -6,7 +6,7 @@ import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -18,7 +18,7 @@ describe('veBALGaugeFixCoordinator', function () {
 
   let authorizer: Contract, gaugeController: Contract, BAL: Contract;
 
-  const task = Task.forTest('20220418-veBAL-gauge-fix-coordinator', getForkedNetwork(hre));
+  const task = new Task('20220418-veBAL-gauge-fix-coordinator', TaskMode.TEST, getForkedNetwork(hre));
 
   const BAL_TOKEN = '0xba100000625a3754423978a60c9317c58a424e3D';
 
@@ -41,21 +41,21 @@ describe('veBALGaugeFixCoordinator', function () {
   });
 
   before('setup contracts', async () => {
-    const gaugeControllerTask = Task.forTest('20220325-gauge-controller', getForkedNetwork(hre));
+    const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeController = await gaugeControllerTask.instanceAt(
       'GaugeController',
       gaugeControllerTask.output({ network: 'mainnet' }).GaugeController
     );
 
     // We reuse this task as it contains an ABI similar to the one in the real BAL token
-    const testBALTokenTask = Task.forTest('20220325-test-balancer-token', getForkedNetwork(hre));
+    const testBALTokenTask = new Task('20220325-test-balancer-token', TaskMode.READ_ONLY, getForkedNetwork(hre));
     BAL = await testBALTokenTask.instanceAt('TestBalancerToken', BAL_TOKEN);
   });
 
   before('grant permissions', async () => {
     govMultisig = await impersonate(GOV_MULTISIG, fp(100));
 
-    const vaultTask = Task.forTest('20210418-vault', getForkedNetwork(hre));
+    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizer = await vaultTask.instanceAt('Authorizer', await coordinator.getAuthorizer());
 
     await authorizer
@@ -82,8 +82,9 @@ describe('veBALGaugeFixCoordinator', function () {
   });
 
   it('kills LCM SingleRecipient gauge', async () => {
-    const singleRecipientGaugeFactoryTask = Task.forTest(
+    const singleRecipientGaugeFactoryTask = new Task(
       '20220325-single-recipient-gauge-factory',
+      TaskMode.READ_ONLY,
       getForkedNetwork(hre)
     );
     const gaugeFactory = await singleRecipientGaugeFactoryTask.instanceAt(
@@ -96,7 +97,11 @@ describe('veBALGaugeFixCoordinator', function () {
 
     const gauge = await singleRecipientGaugeFactoryTask.instanceAt('SingleRecipientGauge', gaugeAddress);
 
-    const BALHolderFactoryTask = Task.forTest('20220325-bal-token-holder-factory', getForkedNetwork(hre));
+    const BALHolderFactoryTask = new Task(
+      '20220325-bal-token-holder-factory',
+      TaskMode.READ_ONLY,
+      getForkedNetwork(hre)
+    );
     expect(
       await (await BALHolderFactoryTask.instanceAt('BALTokenHolder', await gauge.getRecipient())).getName()
     ).to.equal('Liquidity Mining Committee BAL Holder');
