@@ -783,9 +783,13 @@ describe('ManagedPool', function () {
       const TOTAL_TOKENS = 5;
       originalTokens = allTokens.subset(TOTAL_TOKENS);
 
+      // We pick random weights, but ones that are not so far apart as to cause issues due to minimum weights. The
+      // deployer will normalize them.
+      const weights = range(TOTAL_TOKENS).map(() => fp(20 + random(50)));
+
       const params = {
         tokens: originalTokens,
-        weights: range(TOTAL_TOKENS).map(() => fp(random(50))), // The deployer will normalize these
+        weights,
         owner: owner.address,
         aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         poolType: WeightedPoolType.MANAGED_POOL,
@@ -809,7 +813,8 @@ describe('ManagedPool', function () {
 
     context('when the pool is initialized', () => {
       sharedBeforeEach('initialize pool', async () => {
-        await pool.init({ from: owner, initialBalances: range(originalTokens.length).map(() => fp(random(100))) });
+        // Random non-zero balances
+        await pool.init({ from: owner, initialBalances: range(originalTokens.length).map(() => fp(10 + random(100))) });
       });
 
       function removeTokensDownTo(finalAmount: number) {
@@ -1123,10 +1128,15 @@ describe('ManagedPool', function () {
       const TOTAL_TOKENS = 5;
       originalTokens = allTokens.subset(TOTAL_TOKENS);
 
+      // We pick random weights, but ones that are not so far apart as to cause issues due to minimum weights. The
+      // deployer will normalize them.
+      const weights = range(TOTAL_TOKENS).map(() => fp(20 + random(50)));
+
       const params = {
         tokens: originalTokens,
-        weights: range(TOTAL_TOKENS).map(() => fp(random(50))), // The deployer will normalize these
+        weights,
         owner: owner.address,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
         vault,
@@ -1142,6 +1152,7 @@ describe('ManagedPool', function () {
       let maxTokensPool: WeightedPool;
       let newToken: Token;
 
+      // We deploy a new pool at the max number of tokens instead of reusing the one that already exists
       sharedBeforeEach('deploy pool', async () => {
         const originalTokens = allTokens.subset(MAX_TOKENS);
 
@@ -1149,6 +1160,7 @@ describe('ManagedPool', function () {
           tokens: originalTokens,
           weights: range(MAX_TOKENS).map(() => fp(1)), // The deployer will normalize these
           owner: owner.address,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
           vault,
@@ -1158,7 +1170,11 @@ describe('ManagedPool', function () {
 
         await allTokens.mint({ to: owner, amount: fp(1000) });
         await allTokens.approve({ from: owner, to: await maxTokensPool.getVault() });
-        await maxTokensPool.init({ from: owner, initialBalances: range(originalTokens.length).map(() => fp(100)) });
+
+        await maxTokensPool.init({
+          from: owner,
+          initialBalances: range(originalTokens.length).map(() => fp(100)),
+        });
 
         newToken = allTokens.get(originalTokens.length);
         await newToken.approve(maxTokensPool, MAX_UINT256, { from: owner });
@@ -1183,7 +1199,8 @@ describe('ManagedPool', function () {
 
     context('when the pool is initialized', () => {
       sharedBeforeEach('initialize pool', async () => {
-        await pool.init({ from: owner, initialBalances: range(originalTokens.length).map(() => fp(random(100))) });
+        // Random non-zero balances
+        await pool.init({ from: owner, initialBalances: range(originalTokens.length).map(() => fp(10 + random(100))) });
       });
 
       function removeTokensDownTo(finalAmount: number) {
