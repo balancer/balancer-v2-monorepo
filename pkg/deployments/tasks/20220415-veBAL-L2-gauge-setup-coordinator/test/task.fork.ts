@@ -6,7 +6,7 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
 import { advanceTime, WEEK } from '@balancer-labs/v2-helpers/src/time';
@@ -23,7 +23,7 @@ describe('veBALL2GaugeSetupCoordinator', function () {
     arbitrumRootGaugeFactory: Contract,
     gaugeAdder: Contract;
 
-  const task = Task.forTest('20220415-veBAL-L2-gauge-setup-coordinator', getForkedNetwork(hre));
+  const task = new Task('20220415-veBAL-L2-gauge-setup-coordinator', TaskMode.TEST, getForkedNetwork(hre));
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
@@ -33,35 +33,43 @@ describe('veBALL2GaugeSetupCoordinator', function () {
   });
 
   before('setup contracts', async () => {
-    const vaultTask = Task.forTest('20210418-vault', getForkedNetwork(hre));
+    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     vault = await vaultTask.instanceAt('Vault', vaultTask.output({ network: 'mainnet' }).Vault);
     authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
 
-    const authorizerAdaptorTask = Task.forTest('20220325-authorizer-adaptor', getForkedNetwork(hre));
+    const authorizerAdaptorTask = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizerAdaptor = await authorizerAdaptorTask.instanceAt(
       'AuthorizerAdaptor',
       authorizerAdaptorTask.output({ network: 'mainnet' }).AuthorizerAdaptor
     );
 
-    const gaugeAdderTask = Task.forTest('20220325-gauge-adder', getForkedNetwork(hre));
+    const gaugeAdderTask = new Task('20220325-gauge-adder', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeAdder = await gaugeAdderTask.instanceAt(
       'GaugeAdder',
       gaugeAdderTask.output({ network: 'mainnet' }).GaugeAdder
     );
 
-    const gaugeControllerTask = Task.forTest('20220325-gauge-controller', getForkedNetwork(hre));
+    const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeController = await gaugeControllerTask.instanceAt(
       'GaugeController',
       gaugeControllerTask.output({ network: 'mainnet' }).GaugeController
     );
 
-    const polygonRootGaugeFactoryTask = Task.forTest('20220413-polygon-root-gauge-factory', getForkedNetwork(hre));
+    const polygonRootGaugeFactoryTask = new Task(
+      '20220413-polygon-root-gauge-factory',
+      TaskMode.READ_ONLY,
+      getForkedNetwork(hre)
+    );
     polygonRootGaugeFactory = await polygonRootGaugeFactoryTask.instanceAt(
       'PolygonRootGaugeFactory',
       polygonRootGaugeFactoryTask.output({ network: 'mainnet' }).PolygonRootGaugeFactory
     );
 
-    const arbitrumRootGaugeFactoryTask = Task.forTest('20220413-arbitrum-root-gauge-factory', getForkedNetwork(hre));
+    const arbitrumRootGaugeFactoryTask = new Task(
+      '20220413-arbitrum-root-gauge-factory',
+      TaskMode.READ_ONLY,
+      getForkedNetwork(hre)
+    );
     arbitrumRootGaugeFactory = await arbitrumRootGaugeFactoryTask.instanceAt(
       'ArbitrumRootGaugeFactory',
       arbitrumRootGaugeFactoryTask.output({ network: 'mainnet' }).ArbitrumRootGaugeFactory
@@ -72,7 +80,7 @@ describe('veBALL2GaugeSetupCoordinator', function () {
     govMultisig = await impersonate(GOV_MULTISIG, fp(100));
     checkpointMultisig = await impersonate(await coordinator.GAUGE_CHECKPOINTER_MULTISIG(), fp(100));
 
-    const vaultTask = Task.forTest('20210418-vault', getForkedNetwork(hre));
+    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizer = await vaultTask.instanceAt('Authorizer', await coordinator.getAuthorizer());
 
     await authorizer
@@ -91,8 +99,9 @@ describe('veBALL2GaugeSetupCoordinator', function () {
   });
 
   it('kills temporary SingleRecipient Polygon and Arbitrum gauges', async () => {
-    const singleRecipientGaugeFactoryTask = Task.forTest(
+    const singleRecipientGaugeFactoryTask = new Task(
       '20220325-single-recipient-gauge-factory',
+      TaskMode.READ_ONLY,
       getForkedNetwork(hre)
     );
     const gaugeFactory = await singleRecipientGaugeFactoryTask.instanceAt(
@@ -113,7 +122,11 @@ describe('veBALL2GaugeSetupCoordinator', function () {
       )
     );
 
-    const BALHolderFactoryTask = Task.forTest('20220325-bal-token-holder-factory', getForkedNetwork(hre));
+    const BALHolderFactoryTask = new Task(
+      '20220325-bal-token-holder-factory',
+      TaskMode.READ_ONLY,
+      getForkedNetwork(hre)
+    );
     expect(
       await (await BALHolderFactoryTask.instanceAt('BALTokenHolder', await gauges[0].getRecipient())).getName()
     ).to.equal('Temporary Polygon Liquidity Mining BAL Holder');
@@ -123,7 +136,11 @@ describe('veBALL2GaugeSetupCoordinator', function () {
   });
 
   it('adds the Polygon root gauge factory to the gauge adder', async () => {
-    const polygonRootGaugeFactoryTask = Task.forTest('20220413-polygon-root-gauge-factory', getForkedNetwork(hre));
+    const polygonRootGaugeFactoryTask = new Task(
+      '20220413-polygon-root-gauge-factory',
+      TaskMode.READ_ONLY,
+      getForkedNetwork(hre)
+    );
 
     const POLYGON_GAUGE_TYPE = 3;
     expect(await gaugeController.gauge_type_names(POLYGON_GAUGE_TYPE)).to.equal('Polygon');
@@ -135,7 +152,11 @@ describe('veBALL2GaugeSetupCoordinator', function () {
   });
 
   it('adds the Arbitrum root gauge factory to the gauge adder', async () => {
-    const arbitrumRootGaugeFactoryTask = Task.forTest('20220413-arbitrum-root-gauge-factory', getForkedNetwork(hre));
+    const arbitrumRootGaugeFactoryTask = new Task(
+      '20220413-arbitrum-root-gauge-factory',
+      TaskMode.READ_ONLY,
+      getForkedNetwork(hre)
+    );
 
     const ARBITRUM_GAUGE_TYPE = 4;
     expect(await gaugeController.gauge_type_names(ARBITRUM_GAUGE_TYPE)).to.equal('Arbitrum');
