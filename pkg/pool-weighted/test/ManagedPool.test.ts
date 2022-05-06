@@ -69,51 +69,50 @@ describe('ManagedPool', function () {
     await allTokens.approve({ from: owner, to: vault });
   });
 
-  function itComputesWeightsAndScalingFactors(weightSum = 1): void {
-    describe('weights and scaling factors', () => {
-      for (const numTokens of range(2, MAX_TOKENS + 1)) {
-        context(`with ${numTokens} tokens and a totalWeight of ${weightSum}`, () => {
-          let tokens: TokenList;
+  function itComputesWeightsAndScalingFactors(numTokens: number): void {
+    context(`with ${numTokens} tokens`, () => {
+      describe('weights and scaling factors', () => {
+        let tokens: TokenList;
+        let poolWeights: number[];
 
-          sharedBeforeEach('deploy pool', async () => {
-            tokens = allTokens.subset(numTokens);
+        sharedBeforeEach('deploy pool', async () => {
+          tokens = allTokens.subset(numTokens);
+          poolWeights = WEIGHTS.slice(0, numTokens);
 
-            pool = await WeightedPool.create({
-              poolType: WeightedPoolType.MANAGED_POOL,
-              tokens,
-              weights: WEIGHTS.slice(0, numTokens),
-              vault,
-              swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-              managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
-              managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
-              aumProtocolFeesCollector: aumProtocolFeesCollector.address,
-            });
-          });
-
-          it('has the correct total weight', async () => {
-            expect(await pool.instance.getDenormalizedWeightSum()).to.equal(fp(weightSum));
-          });
-
-          it('sets token weights', async () => {
-            const normalizedWeights = await pool.getNormalizedWeights();
-
-            for (let i = 0; i < numTokens; i++) {
-              expectEqualWithError(normalizedWeights[i], pool.normalizedWeights[i], 0.0000001);
-            }
-          });
-
-          it('sets scaling factors', async () => {
-            const poolScalingFactors = await pool.getScalingFactors();
-            const tokenScalingFactors = tokens.map((token) => fp(10 ** (18 - token.decimals)));
-
-            expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
+          pool = await WeightedPool.create({
+            poolType: WeightedPoolType.MANAGED_POOL,
+            tokens,
+            weights: poolWeights,
+            vault,
+            swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+            managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+            managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+            aumProtocolFeesCollector: aumProtocolFeesCollector.address,
           });
         });
-      }
+
+        it('sets token weights', async () => {
+          const expectedNormalizedWeights = toNormalizedWeights(poolWeights.map(bn));
+          const actualNormalizedWeights = await pool.getNormalizedWeights();
+
+          for (let i = 0; i < numTokens; i++) {
+            expectEqualWithError(actualNormalizedWeights[i], expectedNormalizedWeights[i], 0.0000001);
+          }
+        });
+
+        it('sets scaling factors', async () => {
+          const poolScalingFactors = await pool.getScalingFactors();
+          const tokenScalingFactors = tokens.map((token) => fp(10 ** (18 - token.decimals)));
+
+          expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
+        });
+      });
     });
   }
 
-  itComputesWeightsAndScalingFactors();
+  for (const numTokens of [2, 3, 17, 32, MAX_TOKENS]) {
+    itComputesWeightsAndScalingFactors(numTokens);
+  }
 
   context('with invalid creation parameters', () => {
     it('fails with < 2 tokens', async () => {
@@ -783,9 +782,13 @@ describe('ManagedPool', function () {
       const TOTAL_TOKENS = 5;
       originalTokens = allTokens.subset(TOTAL_TOKENS);
 
+      // We pick random weights, but ones that are not so far apart as to cause issues due to minimum weights. The
+      // deployer will normalize them.
+      const weights = range(TOTAL_TOKENS).map(() => fp(20 + random(50)));
+
       const params = {
         tokens: originalTokens,
-        weights: range(TOTAL_TOKENS).map(() => fp(random(50))), // The deployer will normalize these
+        weights,
         owner: owner.address,
         aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         poolType: WeightedPoolType.MANAGED_POOL,
@@ -809,7 +812,8 @@ describe('ManagedPool', function () {
 
     context('when the pool is initialized', () => {
       sharedBeforeEach('initialize pool', async () => {
-        await pool.init({ from: owner, initialBalances: range(originalTokens.length).map(() => fp(random(100))) });
+        // Random non-zero balances
+        await pool.init({ from: owner, initialBalances: range(originalTokens.length).map(() => fp(10 + random(100))) });
       });
 
       function removeTokensDownTo(finalAmount: number) {
@@ -1123,10 +1127,15 @@ describe('ManagedPool', function () {
       const TOTAL_TOKENS = 5;
       originalTokens = allTokens.subset(TOTAL_TOKENS);
 
+      // We pick random weights, but ones that are not so far apart as to cause issues due to minimum weights. The
+      // deployer will normalize them.
+      const weights = range(TOTAL_TOKENS).map(() => fp(20 + random(50)));
+
       const params = {
         tokens: originalTokens,
-        weights: range(TOTAL_TOKENS).map(() => fp(random(50))), // The deployer will normalize these
+        weights,
         owner: owner.address,
+        aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
         vault,
@@ -1142,6 +1151,7 @@ describe('ManagedPool', function () {
       let maxTokensPool: WeightedPool;
       let newToken: Token;
 
+      // We deploy a new pool at the max number of tokens instead of reusing the one that already exists
       sharedBeforeEach('deploy pool', async () => {
         const originalTokens = allTokens.subset(MAX_TOKENS);
 
@@ -1149,6 +1159,7 @@ describe('ManagedPool', function () {
           tokens: originalTokens,
           weights: range(MAX_TOKENS).map(() => fp(1)), // The deployer will normalize these
           owner: owner.address,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
           poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
           vault,
@@ -1158,7 +1169,11 @@ describe('ManagedPool', function () {
 
         await allTokens.mint({ to: owner, amount: fp(1000) });
         await allTokens.approve({ from: owner, to: await maxTokensPool.getVault() });
-        await maxTokensPool.init({ from: owner, initialBalances: range(originalTokens.length).map(() => fp(100)) });
+
+        await maxTokensPool.init({
+          from: owner,
+          initialBalances: range(originalTokens.length).map(() => fp(100)),
+        });
 
         newToken = allTokens.get(originalTokens.length);
         await newToken.approve(maxTokensPool, MAX_UINT256, { from: owner });
@@ -1183,7 +1198,8 @@ describe('ManagedPool', function () {
 
     context('when the pool is initialized', () => {
       sharedBeforeEach('initialize pool', async () => {
-        await pool.init({ from: owner, initialBalances: range(originalTokens.length).map(() => fp(random(100))) });
+        // Random non-zero balances
+        await pool.init({ from: owner, initialBalances: range(originalTokens.length).map(() => fp(10 + random(100))) });
       });
 
       function removeTokensDownTo(finalAmount: number) {

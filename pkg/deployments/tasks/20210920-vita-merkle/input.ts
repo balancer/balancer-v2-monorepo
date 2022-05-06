@@ -1,11 +1,11 @@
-import Task from '../../src/task';
+import Task, { TaskMode } from '../../src/task';
 
 export type MerkleRedeemDeployment = {
   Vault: string;
   rewardToken: string;
 };
 
-const Vault = new Task('20210418-vault');
+const Vault = new Task('20210418-vault', TaskMode.READ_ONLY);
 
 export default {
   mainnet: {
