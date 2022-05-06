@@ -69,51 +69,50 @@ describe('ManagedPool', function () {
     await allTokens.approve({ from: owner, to: vault });
   });
 
-  function itComputesWeightsAndScalingFactors(weightSum = 1): void {
-    describe('weights and scaling factors', () => {
-      for (const numTokens of range(2, MAX_TOKENS + 1)) {
-        context(`with ${numTokens} tokens and a totalWeight of ${weightSum}`, () => {
-          let tokens: TokenList;
+  function itComputesWeightsAndScalingFactors(numTokens: number): void {
+    context(`with ${numTokens} tokens`, () => {
+      describe('weights and scaling factors', () => {
+        let tokens: TokenList;
+        let poolWeights: number[];
 
-          sharedBeforeEach('deploy pool', async () => {
-            tokens = allTokens.subset(numTokens);
+        sharedBeforeEach('deploy pool', async () => {
+          tokens = allTokens.subset(numTokens);
+          poolWeights = WEIGHTS.slice(0, numTokens);
 
-            pool = await WeightedPool.create({
-              poolType: WeightedPoolType.MANAGED_POOL,
-              tokens,
-              weights: WEIGHTS.slice(0, numTokens),
-              vault,
-              swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-              managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
-              managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
-              aumProtocolFeesCollector: aumProtocolFeesCollector.address,
-            });
-          });
-
-          it('has the correct total weight', async () => {
-            expect(await pool.instance.getDenormalizedWeightSum()).to.equal(fp(weightSum));
-          });
-
-          it('sets token weights', async () => {
-            const normalizedWeights = await pool.getNormalizedWeights();
-
-            for (let i = 0; i < numTokens; i++) {
-              expectEqualWithError(normalizedWeights[i], pool.normalizedWeights[i], 0.0000001);
-            }
-          });
-
-          it('sets scaling factors', async () => {
-            const poolScalingFactors = await pool.getScalingFactors();
-            const tokenScalingFactors = tokens.map((token) => fp(10 ** (18 - token.decimals)));
-
-            expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
+          pool = await WeightedPool.create({
+            poolType: WeightedPoolType.MANAGED_POOL,
+            tokens,
+            weights: poolWeights,
+            vault,
+            swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+            managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+            managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+            aumProtocolFeesCollector: aumProtocolFeesCollector.address,
           });
         });
-      }
+
+        it('sets token weights', async () => {
+          const expectedNormalizedWeights = toNormalizedWeights(poolWeights.map(bn));
+          const actualNormalizedWeights = await pool.getNormalizedWeights();
+
+          for (let i = 0; i < numTokens; i++) {
+            expectEqualWithError(actualNormalizedWeights[i], expectedNormalizedWeights[i], 0.0000001);
+          }
+        });
+
+        it('sets scaling factors', async () => {
+          const poolScalingFactors = await pool.getScalingFactors();
+          const tokenScalingFactors = tokens.map((token) => fp(10 ** (18 - token.decimals)));
+
+          expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
+        });
+      });
     });
   }
 
-  itComputesWeightsAndScalingFactors();
+  for (const numTokens of [2, 3, 17, 32, MAX_TOKENS]) {
+    itComputesWeightsAndScalingFactors(numTokens);
+  }
 
   context('with invalid creation parameters', () => {
     it('fails with < 2 tokens', async () => {
