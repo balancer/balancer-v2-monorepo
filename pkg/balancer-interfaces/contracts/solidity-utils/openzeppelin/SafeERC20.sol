@@ -46,9 +46,11 @@ library SafeERC20 {
     function _callOptionalReturn(address token, bytes memory data) private {
         // We need to perform a low level call here, to bypass Solidity's return data size checking mechanism, since
         // we're implementing it ourselves.
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returndata) = token.call(data);
 
         // If the low-level call didn't succeed we return whatever was returned from it.
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             if eq(success, 0) {
                 returndatacopy(0, 0, returndatasize())

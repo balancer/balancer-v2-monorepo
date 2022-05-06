@@ -43,6 +43,8 @@ library EnumerableMap {
 
     // IERC20ToBytes32Map
 
+    // solhint-disable func-name-mixedcase
+
     struct IERC20ToBytes32MapEntry {
         IERC20 _key;
         bytes32 _value;

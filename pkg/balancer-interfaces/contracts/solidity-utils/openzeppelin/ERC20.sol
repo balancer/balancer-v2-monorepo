@@ -322,5 +322,7 @@ contract ERC20 is IERC20 {
         address from,
         address to,
         uint256 amount
-    ) internal virtual {}
+    ) internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }

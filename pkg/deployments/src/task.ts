@@ -20,7 +20,6 @@ import {
   RawOutput,
   TaskRunOptions,
 } from './types';
-import { match } from 'assert';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 

@@ -62,5 +62,7 @@ contract MockRewardTokenDistributor is IRewardTokenDistributor {
         // We don't care about the rest of the update.
     }
 
-    function claim_rewards(address user) external override {}
+    function claim_rewards(address user) external override {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }

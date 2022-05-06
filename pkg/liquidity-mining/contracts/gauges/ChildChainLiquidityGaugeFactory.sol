@@ -28,6 +28,7 @@ interface IRewardsOnlyGauge {
         bytes32 claimSignature
     ) external;
 
+    // solhint-disable-next-line func-name-mixedcase
     function lp_token() external view returns (IERC20);
 }
 
