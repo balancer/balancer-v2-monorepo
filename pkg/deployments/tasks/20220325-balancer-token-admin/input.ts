@@ -1,12 +1,12 @@
-import Task from '../../src/task';
+import Task, { TaskMode } from '../../src/task';
 
 export type BalancerTokenAdminDeployment = {
   BAL: string;
   Vault: string;
 };
 
-const TestBALTask = new Task('20220325-test-balancer-token');
-const Vault = new Task('20210418-vault');
+const TestBALTask = new Task('20220325-test-balancer-token', TaskMode.READ_ONLY);
+const Vault = new Task('20210418-vault', TaskMode.READ_ONLY);
 
 export default {
   Vault,

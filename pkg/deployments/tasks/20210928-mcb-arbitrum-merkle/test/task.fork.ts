@@ -6,7 +6,7 @@ import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativ
 import { MerkleTree } from '@balancer-labs/v2-distributors/lib/merkleTree';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
@@ -20,7 +20,7 @@ describe('MerkleRedeem', function () {
   let lp: SignerWithAddress, other: SignerWithAddress, whale: SignerWithAddress;
   let distributor: Contract, token: Contract;
 
-  const task = Task.forTest('20210928-mcb-arbitrum-merkle', getForkedNetwork(hre));
+  const task = new Task('20210928-mcb-arbitrum-merkle', TaskMode.TEST, getForkedNetwork(hre));
 
   const REWARD_TOKEN_ADDRESS = '0x4e352cf164e64adcbad318c3a1e222e9eba4ce42'; // MCB on arbitrum
   const REWARD_WHALE_ADDRESS = '0x34851ea13bde818b1efe26d31377906b47c9bbe2';

@@ -1,4 +1,4 @@
-import Task from '../../src/task';
+import Task, { TaskMode } from '../../src/task';
 
 export type veBALL2GaugeSetupCoordinatorDeployment = {
   AuthorizerAdaptor: string;
@@ -9,12 +9,12 @@ export type veBALL2GaugeSetupCoordinatorDeployment = {
   ArbitrumRootGaugeFactory: string;
 };
 
-const AuthorizerAdaptor = new Task('20220325-authorizer-adaptor');
-const VotingEscrow = new Task('20220325-gauge-controller');
-const GaugeAdder = new Task('20220325-gauge-adder');
-const LiquidityGaugeFactory = new Task('20220325-mainnet-gauge-factory');
-const PolygonRootGaugeFactory = new Task('20220413-polygon-root-gauge-factory');
-const ArbitrumRootGaugeFactory = new Task('20220413-arbitrum-root-gauge-factory');
+const AuthorizerAdaptor = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY);
+const VotingEscrow = new Task('20220325-gauge-controller', TaskMode.READ_ONLY);
+const GaugeAdder = new Task('20220325-gauge-adder', TaskMode.READ_ONLY);
+const LiquidityGaugeFactory = new Task('20220325-mainnet-gauge-factory', TaskMode.READ_ONLY);
+const PolygonRootGaugeFactory = new Task('20220413-polygon-root-gauge-factory', TaskMode.READ_ONLY);
+const ArbitrumRootGaugeFactory = new Task('20220413-arbitrum-root-gauge-factory', TaskMode.READ_ONLY);
 
 export default {
   mainnet: {

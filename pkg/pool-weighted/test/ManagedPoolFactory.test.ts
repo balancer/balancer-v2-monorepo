@@ -54,7 +54,7 @@ describe('ManagedPoolFactory', function () {
     baseFactory = await deploy('BaseManagedPoolFactory', { args: [vault.address] });
     factory = await deploy('ManagedPoolFactory', { args: [baseFactory.address] });
 
-    protocolFeesCollector = baseFactory.aumProtocolFeesCollector();
+    protocolFeesCollector = await baseFactory.getAumProtocolFeesCollector();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
