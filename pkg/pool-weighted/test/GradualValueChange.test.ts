@@ -2,7 +2,7 @@ import { BigNumber, Contract } from 'ethers';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { advanceTime, currentTimestamp, DAY, MINUTE } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, advanceToTimestamp, currentTimestamp, DAY, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 import { expect } from 'chai';
 
 const MAX_RELATIVE_ERROR = 0.0005;
@@ -79,7 +79,7 @@ describe('GradualValueChange', function () {
       });
 
       it('gets end weights if called after the end time', async () => {
-        await advanceTime(endTime.add(MINUTE));
+        await advanceToTimestamp(endTime.add(MINUTE));
         for (let i = 0; i < numValues; i++) {
           const interpolatedWeight = await mock.getInterpolatedValue(startValues[i], endValues[i], startTime, endTime);
 
