@@ -6,7 +6,7 @@ import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativ
 import { MerkleTree } from '@balancer-labs/v2-distributors/lib/merkleTree';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
@@ -20,7 +20,7 @@ describe('MerkleRedeem', function () {
   let lp: SignerWithAddress, other: SignerWithAddress, whale: SignerWithAddress;
   let distributor: Contract, token: Contract;
 
-  const task = Task.forTest('20210920-vita-merkle', getForkedNetwork(hre));
+  const task = new Task('20210920-vita-merkle', TaskMode.TEST, getForkedNetwork(hre));
 
   const REWARD_TOKEN_ADDRESS = '0x81f8f0bb1cB2A06649E51913A151F0E7Ef6FA321'; // VITA
   const REWARD_WHALE_ADDRESS = '0x9b530388c920f6b1dd3d05aefb9b4650fe388b2f';
