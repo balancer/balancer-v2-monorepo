@@ -14,18 +14,10 @@
 
 pragma solidity ^0.7.0;
 
-import "../solidity-utils/openzeppelin/IERC20.sol";
-import "../vault/IAuthorizer.sol";
-import "../vault/IVault.sol";
-
 interface IAumProtocolFeesCollector {
     event AumFeePercentageChanged(uint256 newAumFeePercentage);
 
     function getAumFeePercentage() external view returns (uint256);
 
     function setAumFeePercentage(uint256 newSwapFeePercentage) external;
-
-    function getAuthorizer() external view returns (IAuthorizer);
-
-    function vault() external view returns (IVault);
 }
