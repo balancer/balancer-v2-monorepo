@@ -6,7 +6,7 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
 
@@ -16,7 +16,7 @@ describe('SmartWalletCheckerCoordinator', function () {
 
   let vault: Contract, authorizer: Contract, veBAL: Contract, smartWalletChecker: Contract;
 
-  const task = Task.forTest('20220420-smart-wallet-checker-coordinator', getForkedNetwork(hre));
+  const task = new Task('20220420-smart-wallet-checker-coordinator', TaskMode.TEST, getForkedNetwork(hre));
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
@@ -29,14 +29,14 @@ describe('SmartWalletCheckerCoordinator', function () {
   });
 
   before('setup contracts', async () => {
-    const vaultTask = Task.forTest('20210418-vault', getForkedNetwork(hre));
+    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     vault = await vaultTask.instanceAt('Vault', vaultTask.output({ network: 'mainnet' }).Vault);
     authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
 
-    const veBALTask = Task.forTest('20220325-gauge-controller', getForkedNetwork(hre));
+    const veBALTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
     veBAL = await veBALTask.instanceAt('VotingEscrow', veBALTask.output({ network: 'mainnet' }).VotingEscrow);
 
-    const SmartWalletCheckerTask = Task.forTest('20220420-smart-wallet-checker', getForkedNetwork(hre));
+    const SmartWalletCheckerTask = new Task('20220420-smart-wallet-checker', TaskMode.READ_ONLY, getForkedNetwork(hre));
     smartWalletChecker = await SmartWalletCheckerTask.instanceAt(
       'SmartWalletChecker',
       SmartWalletCheckerTask.output({ network: 'mainnet' }).SmartWalletChecker
@@ -47,7 +47,7 @@ describe('SmartWalletCheckerCoordinator', function () {
     govMultisig = await impersonate(GOV_MULTISIG, fp(100));
     other = await getSigner(1);
 
-    const vaultTask = Task.forTest('20210418-vault', getForkedNetwork(hre));
+    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizer = await vaultTask.instanceAt('Authorizer', await coordinator.getAuthorizer());
 
     await authorizer

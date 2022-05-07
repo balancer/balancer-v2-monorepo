@@ -1,11 +1,11 @@
-import Task from '../../src/task';
+import Task, { TaskMode } from '../../src/task';
 
 export type FeeDistributorDeployment = {
   VotingEscrow: string;
   startTime: number;
 };
 
-const VotingEscrow = new Task('20220325-gauge-controller');
+const VotingEscrow = new Task('20220325-gauge-controller', TaskMode.READ_ONLY);
 
 export default {
   VotingEscrow,
