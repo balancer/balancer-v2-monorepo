@@ -14,14 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/Address.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/ReentrancyGuard.sol";
-
-import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IAuthorizer.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
-
-import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
 
 /**
  * @title Authorizer Adaptor
@@ -33,51 +28,11 @@ import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IAuthor
  * @dev When calculating the actionId to call a function on a target contract, it must be calculated as if it were
  * to be called on this adaptor. This can be done by passing the function selector to the `getActionId` function.
  */
-contract AuthorizerAdaptor is IAuthorizerAdaptor, ReentrancyGuard {
+contract AuthorizerAdaptor is SingletonAuthentication, ReentrancyGuard {
     using Address for address;
 
-    bytes32 private immutable _actionIdDisambiguator;
-    IVault private immutable _vault;
-
-    constructor(IVault vault) {
-        // AuthorizerAdaptor is a singleton, so it simply uses its own address to disambiguate action identifiers
-        _actionIdDisambiguator = bytes32(uint256(address(this)));
-        _vault = vault;
-    }
-
-    /**
-     * @notice Returns the Balancer Vault
-     */
-    function getVault() public view override returns (IVault) {
-        return _vault;
-    }
-
-    /**
-     * @notice Returns the Authorizer
-     */
-    function getAuthorizer() public view override returns (IAuthorizer) {
-        return getVault().getAuthorizer();
-    }
-
-    function _canPerform(
-        bytes32 actionId,
-        address account,
-        address where
-    ) internal view returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, where);
-    }
-
-    /**
-     * @notice Returns the action ID associated with calling a given function through this adaptor
-     * @dev As the contracts managed by this adaptor don't have action ID disambiguators, we use the adaptor's globally.
-     * This means that contracts with the same function selector will have a matching action ID:
-     * if granularity is required then permissions must not be granted globally in the Authorizer.
-     *
-     * @param selector - The 4 byte selector of the function to be called using `performAction`
-     * @return The associated action ID
-     */
-    function getActionId(bytes4 selector) public view override returns (bytes32) {
-        return keccak256(abi.encodePacked(_actionIdDisambiguator, selector));
+    constructor(IVault vault) SingletonAuthentication(vault) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
