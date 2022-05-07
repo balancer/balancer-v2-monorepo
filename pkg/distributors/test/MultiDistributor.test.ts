@@ -11,7 +11,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
-import { ANY_ADDRESS, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
+import { ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 
 import { MultiDistributor } from '@balancer-labs/v2-helpers/src/models/distributor/MultiDistributor';
@@ -67,22 +67,6 @@ describe('MultiDistributor', () => {
 
     await distributionTokens.mint({ to: distributionOwner, amount: DISTRIBUTION_SIZE.mul(1000) });
     await distributionTokens.approve({ to: distributor, from: distributionOwner });
-  });
-
-  describe('authorizer', () => {
-    it('uses the authorizer of the vault', async () => {
-      expect(await distributor.getAuthorizer()).to.equal(distributor.authorizer.address);
-    });
-
-    it('tracks authorizer changes in the vault', async () => {
-      const { vault, authorizer, admin } = distributor;
-      const action = await actionId(vault, 'setAuthorizer');
-      await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
-
-      await vault.connect(admin).setAuthorizer(user1.address);
-
-      expect(await distributor.getAuthorizer()).to.equal(user1.address);
-    });
   });
 
   describe('create', () => {

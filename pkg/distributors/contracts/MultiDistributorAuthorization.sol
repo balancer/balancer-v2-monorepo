@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/Authentication.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/SingletonAuthentication.sol";
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IAuthorizer.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
@@ -22,9 +22,7 @@ import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 /**
  * @dev Base authorization layer implementation for MultiDistributor
  */
-abstract contract MultiDistributorAuthorization is Authentication {
-    IVault private immutable _vault;
-
+abstract contract MultiDistributorAuthorization is SingletonAuthentication {
     /**
      * @dev Reverts unless `user` is the caller, or the caller is approved by the Authorizer to call the entry point
      * function (that is, it is a relayer for that function) and `user` approved the caller as a relayer
@@ -37,25 +35,8 @@ abstract contract MultiDistributorAuthorization is Authentication {
         _;
     }
 
-    constructor(IVault vault) Authentication(bytes32(uint256(address(this)))) {
-        // MultiDistributor is a singleton, so it simply uses its own address to disambiguate action identifiers
-        _vault = vault;
-    }
-
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
-
-    function getAuthorizer() external view returns (IAuthorizer) {
-        return _getAuthorizer();
-    }
-
-    function _getAuthorizer() internal view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
-    }
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return _getAuthorizer().canPerform(actionId, account, address(this));
+    constructor(IVault vault) SingletonAuthentication(vault) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
