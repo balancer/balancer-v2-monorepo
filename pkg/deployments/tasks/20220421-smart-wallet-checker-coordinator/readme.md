@@ -1,4 +1,4 @@
-# 2022-04-20 - Smart Wallet Checker Coordinator
+# 2022-04-21 - Smart Wallet Checker Coordinator
 
 Deployment of the `SmartWalletCheckerCoordinator`, responsible for setting up the Smart Wallet Checker in veBAL and performing initial authorization setup.
 
