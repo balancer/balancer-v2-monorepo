@@ -16,9 +16,8 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/ReentrancyGuard.sol";
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/IAuthorizerAdaptor.sol";
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IGaugeController.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IBalancerMinter.sol";
@@ -46,8 +45,6 @@ interface ICurrentAuthorizer is IAuthorizer {
 // solhint-disable-next-line contract-name-camelcase
 contract veBALDeploymentCoordinator is ReentrancyGuard {
     IBalancerTokenAdmin private immutable _balancerTokenAdmin;
-
-    IVault private immutable _vault;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
     IBalancerToken private immutable _balancerToken;
     IBalancerMinter private immutable _balancerMinter;
@@ -96,7 +93,6 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         IBalancerTokenAdmin balancerTokenAdmin = balancerMinter.getBalancerTokenAdmin();
 
         _balancerTokenAdmin = balancerTokenAdmin;
-        _vault = balancerTokenAdmin.getVault();
         _authorizerAdaptor = authorizerAdaptor;
         _balancerToken = balancerTokenAdmin.getBalancerToken();
         _balancerMinter = balancerMinter;
@@ -114,7 +110,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
      * @notice Returns the Balancer Vault.
      */
     function getVault() public view returns (IVault) {
-        return _vault;
+        return getAuthorizerAdaptor().getVault();
     }
 
     /**

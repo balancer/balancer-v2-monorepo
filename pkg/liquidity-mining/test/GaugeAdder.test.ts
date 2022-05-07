@@ -19,7 +19,6 @@ enum GaugeType {
 
 describe('GaugeAdder', () => {
   let vault: Vault;
-  let authorizer: Contract;
   let gaugeController: Contract;
   let gaugeFactory: Contract;
   let adaptor: Contract;
@@ -33,8 +32,6 @@ describe('GaugeAdder', () => {
 
   sharedBeforeEach('deploy authorizer', async () => {
     vault = await Vault.create({ admin });
-    if (!vault.authorizer) throw Error('Vault has no Authorizer');
-    authorizer = vault.authorizer;
 
     adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
@@ -58,29 +55,6 @@ describe('GaugeAdder', () => {
 
     return event.args.gauge;
   }
-
-  describe('constructor', () => {
-    it('sets the vault address', async () => {
-      expect(await gaugeAdder.getVault()).to.be.eq(vault.address);
-    });
-
-    it('sets the authorizer adaptor address', async () => {
-      expect(await gaugeAdder.getAuthorizerAdaptor()).to.be.eq(adaptor.address);
-    });
-
-    it('uses the authorizer of the vault', async () => {
-      expect(await gaugeAdder.getAuthorizer()).to.equal(authorizer.address);
-    });
-
-    it('tracks authorizer changes in the vault', async () => {
-      const action = await actionId(vault.instance, 'setAuthorizer');
-      await vault.grantPermissionsGlobally([action], admin.address);
-
-      await vault.instance.connect(admin).setAuthorizer(other.address);
-
-      expect(await gaugeAdder.getAuthorizer()).to.equal(other.address);
-    });
-  });
 
   describe('addGaugeFactory', () => {
     context('when caller is not authorized', () => {

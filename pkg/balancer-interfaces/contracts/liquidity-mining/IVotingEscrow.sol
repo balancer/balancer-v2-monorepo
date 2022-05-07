@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./IAuthorizerAdaptor.sol";
+import "../solidity-utils/helpers/IAuthorizerAdaptor.sol";
 
 // For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
 // naming convention.

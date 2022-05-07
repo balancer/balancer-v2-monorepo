@@ -15,8 +15,8 @@
 pragma solidity ^0.7.0;
 
 import "../solidity-utils/openzeppelin/IERC20.sol";
+import "../solidity-utils/helpers/IAuthorizerAdaptor.sol";
 
-import "./IAuthorizerAdaptor.sol";
 import "./IVotingEscrow.sol";
 
 // For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case

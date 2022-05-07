@@ -15,7 +15,6 @@
 pragma solidity ^0.7.0;
 
 import "../solidity-utils/helpers/IAuthentication.sol";
-import "../vault/IVault.sol";
 
 import "./IBalancerToken.sol";
 
@@ -35,11 +34,6 @@ interface IBalancerTokenAdmin is IAuthentication {
      * @notice Returns the address of the Balancer Governance Token
      */
     function getBalancerToken() external view returns (IBalancerToken);
-
-    /**
-     * @notice Returns the Balancer Vault.
-     */
-    function getVault() external view returns (IVault);
 
     function activate() external;
 

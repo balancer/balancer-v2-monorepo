@@ -14,14 +14,11 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/Authentication.sol";
-
-import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/SingletonAuthentication.sol";
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IVeDelegation.sol";
 
-contract VotingEscrowDelegationProxy is Authentication {
-    IVault private immutable _vault;
+contract VotingEscrowDelegationProxy is SingletonAuthentication {
     IERC20 private immutable _votingEscrow;
     IVeDelegation private _delegation;
 
@@ -31,10 +28,7 @@ contract VotingEscrowDelegationProxy is Authentication {
         IVault vault,
         IERC20 votingEscrow,
         IVeDelegation delegation
-    ) Authentication(bytes32(uint256(address(this)))) {
-        // VotingEscrowDelegationProxy is a singleton,
-        // so it simply uses its own address to disambiguate action identifiers
-        _vault = vault;
+    ) SingletonAuthentication(vault) {
         _votingEscrow = votingEscrow;
         _delegation = delegation;
     }
@@ -51,20 +45,6 @@ contract VotingEscrowDelegationProxy is Authentication {
      */
     function getVotingEscrow() external view returns (IERC20) {
         return _votingEscrow;
-    }
-
-    /**
-     * @notice Returns the Balancer Vault.
-     */
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
-
-    /**
-     * @notice Returns the Balancer Vault's current authorizer.
-     */
-    function getAuthorizer() public view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
     }
 
     /**
@@ -94,10 +74,6 @@ contract VotingEscrowDelegationProxy is Authentication {
             return IERC20(_votingEscrow).balanceOf(user);
         }
         return implementation.adjusted_balance_of(user);
-    }
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 
     // Admin functions
