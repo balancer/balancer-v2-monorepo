@@ -14,8 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "../solidity-utils/helpers/IAuthentication.sol";
-import "../vault/IVault.sol";
+import "../../vault/IVault.sol";
+
+import "./IAuthentication.sol";
 
 interface IAuthorizerAdaptor is IAuthentication {
     /**
