@@ -43,10 +43,6 @@ describe('BALTokenHolder', function () {
     expect(await holder.getBalancerToken()).to.equal(BAL.address);
   });
 
-  it('returns the address of the vault', async () => {
-    expect(await holder.getVault()).to.equal(vault.address);
-  });
-
   it('returns its name', async () => {
     expect(await holder.getName()).to.equal(holderName);
   });

@@ -42,12 +42,6 @@ describe('AUM Protocol Fees Collector', function () {
       const aumFee = await feesCollector.getAumFeePercentage();
       expect(aumFee).to.equal(AUM_FEE_PERCENTAGE);
     });
-
-    it('sets the authorizer', async () => {
-      const authorizer = await feesCollector.getAuthorizer();
-
-      expect(authorizer).to.equal(await vault.getAuthorizer());
-    });
   });
 
   context('setting aum fees', () => {
