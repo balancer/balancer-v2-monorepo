@@ -54,7 +54,7 @@ abstract contract SingletonAuthentication is Authentication, IAuthorizerAdaptor 
     }
 
     /**
-     * Subclasses must override - should not be called at this level
+     * Concrete authorizer adapters must override - reverts if called at this level
      */
     function performAction(address, bytes calldata) external payable virtual override returns (bytes memory) {
         _revert(Errors.INVALID_OPERATION);
