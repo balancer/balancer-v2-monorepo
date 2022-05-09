@@ -184,8 +184,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         IAssetManager(assetManager).setConfig(poolId, poolConfig);
     }
 
-    function setPaused(bool paused) external authenticate {
-        _setPaused(paused);
+    function pause() external authenticate {
+        _setPaused(true);
+    }
+
+    function unpause() external authenticate {
+        _setPaused(false);
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
