@@ -79,8 +79,10 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     // The first 64 bits are reserved for the swap fee
     //
     // Store non-token-based values:
-    // Start/end timestamps for gradual weight update
-    // Cache total tokens
+    // Start/end timestamps for gradual weight and swap fee updates
+    // Start/end values of the swap fee (The MSB "start" swap fee corresponds to the reserved bits in BasePool,
+    // and cannot be written from this contract.)
+    // Flags for the LP allowlist and enabling/disabling trading
     // [ 64 bits  |  1 bit  | 31 bits |   1 bit   |  31 bits  |  64 bits |  32 bits |  32 bits  ]
     // [ swap fee | LP flag | fee end | swap flag | fee start | end swap | end wgt  | start wgt ]
     // |MSB                                                                                  LSB|
@@ -130,7 +132,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     uint256 private _managementAumFeePercentage;
 
     // Timestamp of the most recent collection of management AUM fees.
-    // Note that this is only initialized the first times fees are collected.
+    // Note that this is only initialized the first time fees are collected.
     uint256 private _lastAumFeeCollectionTimestamp;
 
     // Event declarations
@@ -206,7 +208,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
 
         _setManagementAumFeePercentage(params.managementAumFeePercentage);
 
-        // Initialize the denorm weight sum to the initial normalized weight sum of ONE
+        // Initialize the denormalized weight sum to ONE. This value can only be changed by adding or removing tokens.
         _denormWeightSum = FixedPoint.ONE;
 
         uint256 currentTime = block.timestamp;
@@ -242,21 +244,25 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Verifies that a given address is allowed to hold tokens.
+     * @dev Returns whether a given address is allowed to join the pool.
      */
     function isAllowedAddress(address member) public view returns (bool) {
         return !getMustAllowlistLPs() || _allowedAddresses[member];
     }
 
     /**
-     * @dev Returns the management swap fee percentage as a 18-decimals fixed point number.
+     * @dev Returns the management swap fee percentage as an 18-decimal fixed point number.
      */
     function getManagementSwapFeePercentage() public view returns (uint256) {
         return _managementSwapFeePercentage;
     }
 
+    /**
+     * @dev Computes the current swap fee percentage, which can change every block if a gradual swap fee
+     * update is in progress.
+     */
     function getSwapFeePercentage() public view virtual override returns (uint256) {
-        // Load current pool state from storage
+        // Load the current pool state from storage
         bytes32 poolState = _getMiscData();
 
         uint256 startSwapFeePercentage = poolState.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
@@ -282,7 +288,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             uint256 endSwapFeePercentage
         )
     {
-        // Load current pool state from storage
+        // Load the current pool state from storage
         bytes32 poolState = _getMiscData();
 
         startTime = poolState.decodeUint31(_FEE_START_TIME_OFFSET);
@@ -310,7 +316,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the management AUM fee percentage as a 18-decimals fixed point number.
+     * @dev Returns the management AUM fee percentage as an 18-decimal fixed point number.
      */
     function getManagementAumFeePercentage() public view returns (uint256) {
         return _managementAumFeePercentage;
@@ -336,7 +342,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         endTime = poolState.decodeUint32(_WEIGHT_END_TIME_OFFSET);
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-        uint256 totalTokens = _getTotalTokens();
+        uint256 totalTokens = tokens.length;
 
         endWeights = new uint256[](totalTokens);
 
@@ -384,7 +390,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Schedule a gradual swap fee change, from the starting value (which may or may not be the current
+     * @dev Schedule a gradual swap fee update, from the starting value (which may or may not be the current
      * value) to the given ending fee percentage, over startTime to endTime. Calling this with a starting
      * value avoids requiring an explicit external `setSwapFeePercentage` call.
      */
@@ -408,7 +414,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Adds an address to the allowlist.
+     * @dev Adds an address to the LP allowlist.
      */
     function addAllowedAddress(address member) external authenticate whenNotPaused {
         _require(getMustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
@@ -419,7 +425,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Removes an address from the allowlist.
+     * @dev Removes an address from the LP allowlist.
      */
     function removeAllowedAddress(address member) external authenticate whenNotPaused {
         _require(_allowedAddresses[member], Errors.ADDRESS_NOT_ALLOWLISTED);
@@ -471,14 +477,14 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * useful in some scenarios to account for the fact that the Pool now has more tokens.
      *
      * This function takes the token, and the normalizedWeight it should have in the pool after being added.
-     * The stored (denormalized) weights of all other tokens remain unchanged, but the weightSum will increase,
+     * The stored (denormalized) weights of all other tokens remain unchanged, but `denormWeightSum` will increase,
      * such that the normalized weight of the new token will match the target value, and the normalized weights of
      * all other tokens will be reduced proportionately.
      * @param token - The ERC20 token to be added to the Pool.
      * @param normalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
      * @param tokenAmountIn - The amount of `token` to be sent to the pool as its initial balance.
-     * @param mintAmount - An amount of BPT which is to be minted as a result of adding `token` to the Pool.
-     * @param recipient - The address which is to receive the BPT minted by the Pool.
+     * @param mintAmount - The amount of BPT to be minted as a result of adding `token` to the Pool.
+     * @param recipient - The address to receive the BPT minted by the Pool.
      */
     function addToken(
         IERC20 token,
@@ -492,11 +498,12 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         uint256 weightSumAfterAdd = _validateAddToken(currentTokens, normalizedWeight);
 
         // In order to add a token to a Pool we must perform a two step process:
-        // - First the new token must be registered on the Vault as belonging to this Pool.
-        // - Second a special join action must be performed to seed the Pool with it's initial balance of the new token.
+        // - First, the new token must be registered in the Vault as belonging to this Pool.
+        // - Second, a special join must be performed to seed the Pool with its initial balance of the new token.
 
         // We only allow the Pool to perform the special join mentioned above to ensure it only happens
-        // as part of adding a new token to the Pool, we then pull the necessary tokens from the caller.
+        // as part of adding a new token to the Pool. The necessary tokens must then be held by the Pool.
+        // Transferring these tokens from the caller before the registration step ensures reentrancy safety.
         token.transferFrom(msg.sender, address(this), tokenAmountIn);
         token.approve(address(getVault()), tokenAmountIn);
 
@@ -509,7 +516,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         // is in this inconsistent state (except for view calls).
 
         // We now need the updated list of tokens in the Pool to construct the join call.
-        // As we know that the new token will be appended to the end of the existing array of tokens we can save gas
+        // As we know that the new token will be appended to the end of the existing array of tokens, we can save gas
         // by constructing the updated list of tokens in memory rather than rereading from storage.
         IERC20[] memory tokensAfterAdd = _appendToken(currentTokens, token);
 
@@ -541,10 +548,10 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     function _validateAddToken(IERC20[] memory tokens, uint256 normalizedWeight) private view returns (uint256) {
-        // Sanity check that we're not saying that the new token will make up more than 100% of the Pool.
+        // Sanity check that the new token will make up less than 100% of the Pool.
         _require(normalizedWeight < FixedPoint.ONE, Errors.MAX_WEIGHT);
 
-        // Tokens cannot be removed during or before a weight change to reduce complexity of weight interactions.
+        // To reduce the complexity of weight interactions, tokens cannot be removed during or before a weight change.
         // Otherwise we'd have to reason about how changes in the weights of other tokens could affect the pricing
         // between them and the newly added token, etc.
         _ensureNoWeightChange();
@@ -556,7 +563,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         //
         // weightSumRatio = totalWeight / (totalWeight - newTokenWeight)
         //
-        // As we're working with normalized weights `totalWeight` is equal to 1.
+        // As we're working with normalized weights, `totalWeight` is equal to 1.
         //
         // We can then easily calculate the new denormalized weight sum by applying this ratio to the old sum.
         uint256 weightSumAfterAdd = _denormWeightSum.mulUp(FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight));
@@ -595,29 +602,29 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         IERC20[] memory tokensToAdd = new IERC20[](1);
         tokensToAdd[0] = token;
 
-        // We do not allow an asset manager to be registered for the new token.
-        // We then pass an empty array for this value.
+        // Since we do not allow new tokens to be registered with asset managers,
+        // pass an empty array for this parameter.
         getVault().registerTokens(getPoolId(), tokensToAdd, new address[](1));
 
-        // `_encodeTokenState` performs an external call to `token` (to get it's decimals value), however this is
-        // reentrancy safe as view functions are called in a STATICCALL context and so will revert if it modifies state.
+        // `_encodeTokenState` performs an external call to `token` (to get its decimals). Nevertheless, this is
+        // reentrancy safe. View functions are called in a STATICCALL context, and will revert if they modify state.
         _tokenState[token] = _encodeTokenState(token, normalizedWeight, normalizedWeight, newDenormWeightSum);
         _totalTokensCache += 1;
     }
 
     /**
      * @notice Removes a token from the Pool's list of tradeable tokens.
-     * @dev Removes a token from the Pool's composition, withdrawing all funds from the Vault and sending them to
-     * `recipient`, and adjusting the weights of all other tokens.
+     * @dev Removes a token from the Pool's composition, withdraws all funds from the Vault (sending them to
+     * `recipient`), and finally adjusts the weights of all other tokens.
      *
      * Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token removal
      * is also forbidden during a weight change, or if one is scheduled to happen in the future.
      *
-     * The caller may additionally pass a non-zero `burnAmount` to have some of their BPT be burned, which might be
-     * useful in some scenarios to account for the fact that the Pool now has fewer tokens.
+     * The caller may additionally pass a non-zero `burnAmount` to burn some of their BPT, which might be useful
+     * in some scenarios to account for the fact that the Pool now has fewer tokens.
      * @param token - The ERC20 token to be removed from the Pool.
-     * @param recipient - The address which is to receive the Pool's balance of `token` after it is removed.
-     * @param burnAmount - An amount of BPT which is to be burnt as a result of removing `token` from the Pool.
+     * @param recipient - The address to receive the Pool's balance of `token` after it is removed.
+     * @param burnAmount - The amount of BPT to be burnt after removing `token` from the Pool.
      * @return The amount of tokens the Pool held, sent to `recipient`.
      */
     function removeToken(
@@ -635,20 +642,20 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         (IERC20[] memory tokens, uint256[] memory unscaledBalances, ) = getVault().getPoolTokens(getPoolId());
         _require(tokens.length > 2, Errors.MIN_TOKENS);
 
-        // Tokens cannot be removed during or before a weight change to reduce complexity of weight interactions
+        // To reduce the complexity of weight interactions, tokens cannot be removed during or before a weight change.
         _ensureNoWeightChange();
 
-        // Reverts if token does not exist in pool.
+        // Reverts if the token does not exist in the pool.
         uint256 tokenIndex = _tokenAddressToIndex(tokens, token);
         uint256 tokenBalance = unscaledBalances[tokenIndex];
         uint256 tokenNormalizedWeight = _getNormalizedWeight(token);
 
-        // We first perform a special exit operation at the Vault, which will withdraw the entire tokenBalance from it.
-        // Only the Pool itself is authorized to initiate such an exit.
+        // We first perform a special exit operation, which will withdraw the entire token balance from the Vault.
+        // Only the Pool itself is authorized to initiate this kind of exit.
         uint256[] memory minAmountsOut = new uint256[](tokens.length);
         minAmountsOut[tokenIndex] = minAmountOut;
 
-        // Note that this exit will trigger a collection of the AUM fees payable up to now.
+        // Note that this exit will trigger collection of the AUM fees payable up to now.
         getVault().exitPool(
             getPoolId(),
             address(this),
@@ -704,7 +711,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Set the management fee percentage
+     * @dev Validate and set the management fee percentage
      */
     function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) external authenticate whenNotPaused {
         _setManagementSwapFeePercentage(managementSwapFeePercentage);
@@ -721,8 +728,8 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @notice Sets the yearly percentage AUM management fee which is payable to the pool manager.
-     * @dev Attempting to collect AUM fees in excesss of 10% will result in this function reverting.
+     * @notice Sets the yearly percentage AUM management fee, which is payable to the pool manager.
+     * @dev Attempting to collect AUM fees in excess of the maximum permitted percentage will revert.
      */
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage)
         external
@@ -730,9 +737,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         whenNotPaused
         returns (uint256 amount)
     {
-        // We want to avoid a pool manager being able to retroactively increase the amount of AUM fees payable.
-        // We then perform a collection before updating the fee percentage to prevent this.
-        // This is only necessary if the pool has been initialized (which is shown by the total supply being nonzero).
+        // We want to prevent the pool manager from retroactively increasing the amount of AUM fees payable.
+        // To prevent this, we perform a collection before updating the fee percentage.
+        // This is only necessary if the pool has been initialized (which is indicated by a nonzero total supply).
         if (totalSupply() > 0) {
             amount = _collectAumManagementFees();
         }
@@ -1181,8 +1188,8 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     ) internal virtual override {
         // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
         // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
-        // for the period in which they are an LP within the pool, otherwise an LP could shift their share of AUM fees
-        // onto the remaining LPs in the pool by exiting before it was paid.
+        // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
+        // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
         _collectAumManagementFees();
     }
 
@@ -1208,9 +1215,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             // We also perform an early return if the AUM fee is zero, to save gas.
             //
             // If the Pool has been paused, all fee calculation and minting is skipped to reduce execution
-            // complexity to a minimum (and therefore likelihood of errors). We do still update the last
+            // complexity to a minimum (and therefore the likelihood of errors). We do still update the last
             // collection timestamp however, to avoid potentially collecting extra fees if the Pool were to
-            // be later unpaused. Any fees that would be collected while the Pool is paused are lost.
+            // be unpaused later. Any fees that would have been collected while the Pool was paused are lost.
             if (managementAumFeePercentage == 0 || lastCollection == 0 || !_isNotPaused()) {
                 return 0;
             }
@@ -1232,7 +1239,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
                 managementAumFeePercentage.complement()
             );
 
-            // This value is annualized, in reality we will be collecting fees regularly over the course of the year.
+            // This value is annualized: in normal operation we will collect fees regularly over the course of the year.
             // We then multiply this value by the fraction of the year which has elapsed since we last collected fees.
             uint256 elapsedTime = currentTime - lastCollection;
             uint256 fractionalTimePeriod = elapsedTime.divDown(365 days);
@@ -1253,7 +1260,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     // Functions that convert weights between internal (denormalized) and external (normalized) representations
 
     /**
-     * @dev Converts a token weight from the internal representation to the normalized form (summing to denormWeightSum)
+     * @dev Converts a token weight from the internal representation (summing to denormWeightSum) to the normalized form
      */
     function _normalizeWeight(uint256 denormWeight, uint256 denormWeightSum) private pure returns (uint256) {
         return denormWeight.divDown(denormWeightSum);
