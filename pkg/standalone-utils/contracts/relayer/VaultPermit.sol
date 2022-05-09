@@ -17,10 +17,9 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/IERC20Permit.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/IERC20PermitDAI.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBaseRelayerLibrary.sol";
+import "./IBaseRelayerLibrary.sol";
 
 /**
  * @title VaultPermit

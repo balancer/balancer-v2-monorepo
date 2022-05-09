@@ -17,9 +17,9 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/Address.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
-
-import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBaseRelayerLibrary.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IUnbuttonToken.sol";
+
+import "./IBaseRelayerLibrary.sol";
 
 /**
  * @title UnbuttonWrapping

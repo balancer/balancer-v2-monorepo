@@ -19,8 +19,9 @@ import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppe
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBaseRelayerLibrary.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IStaticATokenLM.sol";
+
+import "./IBaseRelayerLibrary.sol";
 
 /**
  * @title AaveWrapping

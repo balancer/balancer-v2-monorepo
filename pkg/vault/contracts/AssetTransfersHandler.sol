@@ -24,7 +24,8 @@ import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/misc/IWET
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IAsset.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/vault/AssetHelpers.sol";
+
+import "./AssetHelpers.sol";
 
 abstract contract AssetTransfersHandler is AssetHelpers {
     using SafeERC20 for IERC20;

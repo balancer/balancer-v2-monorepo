@@ -18,12 +18,10 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/VaultHelpers.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/Math.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBaseRelayerLibrary.sol";
+import "./IBaseRelayerLibrary.sol";
 
 /**
  * @title VaultActions

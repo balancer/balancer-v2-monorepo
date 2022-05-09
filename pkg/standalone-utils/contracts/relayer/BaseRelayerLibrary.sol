@@ -18,8 +18,8 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBalancerRelayer.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBaseRelayerLibrary.sol";
 
+import "./IBaseRelayerLibrary.sol";
 import "./BalancerRelayer.sol";
 
 /**

@@ -17,10 +17,9 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/Address.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/misc/IERC4626.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBaseRelayerLibrary.sol";
+import "./IBaseRelayerLibrary.sol";
 
 /**
  * @title ERC4626Wrapping

@@ -24,11 +24,11 @@ import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/B
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/vault/AssetHelpers.sol";
 
 import "@balancer-labs/v2-vault/contracts/balances/BalanceAllocation.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
+import "@balancer-labs/v2-vault/contracts/AssetHelpers.sol";
 
 /**
  * @dev This contract simply builds on top of the Balancer V2 architecture to provide useful helpers to users.
