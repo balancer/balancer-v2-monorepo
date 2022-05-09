@@ -499,7 +499,8 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         // - Second, a special join must be performed to seed the Pool with its initial balance of the new token.
 
         // We only allow the Pool to perform the special join mentioned above to ensure it only happens
-        // as part of adding a new token to the Pool. Then we pull the necessary tokens from the caller.
+        // as part of adding a new token to the Pool. The necessary tokens must then be held by the Pool.
+        // Transferring these tokens from the caller before the registration step ensures reentrancy safety.
         token.transferFrom(msg.sender, address(this), tokenAmountIn);
         token.approve(address(getVault()), tokenAmountIn);
 
