@@ -333,7 +333,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         endTime = poolState.decodeUint32(_WEIGHT_END_TIME_OFFSET);
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-        uint256 totalTokens = _getTotalTokens();
+        uint256 totalTokens = tokens.length;
 
         endWeights = new uint256[](totalTokens);
 
