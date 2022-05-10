@@ -15,9 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/ReentrancyGuard.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/Address.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBalancerRelayer.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/Address.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerRelayer.sol";
 
 /**
  * @title Balancer Relayer

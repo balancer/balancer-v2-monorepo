@@ -14,8 +14,6 @@
 
 pragma solidity ^0.7.0;
 
-import "../solidity-utils/helpers/IAuthentication.sol";
-
 import "./IAuthorizerAdaptor.sol";
 import "./IGaugeController.sol";
 import "./ILiquidityGauge.sol";

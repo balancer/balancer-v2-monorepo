@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
+import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
 
 import "@balancer-labs/v2-vault/contracts/test/MockPool.sol";
 

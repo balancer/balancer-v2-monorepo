@@ -15,8 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/pool-linear/IUnbuttonToken.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/pool-linear/IAToken.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-linear/IUnbuttonToken.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-linear/IAToken.sol";
 
 import "../LinearPool.sol";
 

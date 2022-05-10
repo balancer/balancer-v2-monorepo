@@ -2,8 +2,8 @@
 
 # Balancer V2 Interfaces
 
-[![NPM Package](https://img.shields.io/npm/v/@balancer-labs/v2-balancer-interfaces.svg)](https://www.npmjs.org/package/@balancer-labs/v2-balancer-interfaces)
-[![Docs](https://img.shields.io/badge/docs-%F0%9F%93%84-blue)](https://docs.balancer.fi/developers/smart-contracts/apis/balancer-interfaces)
+[![NPM Package](https://img.shields.io/npm/v/@balancer-labs/v2-interfaces.svg)](https://www.npmjs.org/package/@balancer-labs/v2-interfaces)
+[![Docs](https://img.shields.io/badge/docs-%F0%9F%93%84-blue)](https://docs.balancer.fi/developers/smart-contracts/apis/interfaces)
 
 ---
 

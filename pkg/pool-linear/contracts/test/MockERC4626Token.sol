@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/misc/IERC4626.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/misc/IERC4626.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";

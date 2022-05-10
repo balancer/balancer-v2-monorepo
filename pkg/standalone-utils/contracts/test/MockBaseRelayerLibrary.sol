@@ -16,7 +16,7 @@
 
 pragma solidity ^0.7.0;
 
-//import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBaseRelayerLibrary.sol";
+//import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBaseRelayerLibrary.sol";
 
 import "../relayer/BaseRelayerLibrary.sol";
 

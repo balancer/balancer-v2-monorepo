@@ -14,10 +14,10 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/ReentrancyGuard.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IVotingEscrow.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IVotingEscrow.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-liquidity-mining/contracts/SmartWalletChecker.sol";
 

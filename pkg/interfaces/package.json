@@ -1,13 +1,13 @@
 {
-  "name": "@balancer-labs/v2-balancer-interfaces",
+  "name": "@balancer-labs/v2-interfaces",
   "version": "0.0.1",
   "description": "V2 Interfaces",
   "license": "GPL-3.0-only",
-  "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/balancer-interfaces#readme",
+  "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/interfaces#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo.git",
-    "directory": "pkg/balancer-interfaces"
+    "directory": "pkg/interfaces"
   },
   "bugs": {
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"

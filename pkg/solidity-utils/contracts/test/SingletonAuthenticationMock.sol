@@ -12,22 +12,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-// https://github.com/buttonwood-protocol/button-wrappers/blob/main/contracts/UnbuttonToken.sol
-
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/IAToken.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
-import "./MockUnbuttonERC20.sol";
+import "../helpers/SingletonAuthentication.sol";
 
-contract MockAaveAMPLToken is MockUnbuttonERC20, IAToken {
-     constructor(
-        address underlying_,
-        string memory name_,
-        string memory symbol_
-    ) MockUnbuttonERC20(underlying_, name_, symbol_) { }
-
-    function UNDERLYING_ASSET_ADDRESS() external view override returns (address) {
-        return _underlying;
+contract SingletonAuthenticationMock is SingletonAuthentication {
+    constructor(IVault vault) SingletonAuthentication(vault) {
+      // solhint-disable-previous-line no-empty-blocks
     }
 }
