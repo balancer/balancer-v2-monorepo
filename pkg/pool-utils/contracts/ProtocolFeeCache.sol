@@ -14,9 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
 /**
  * @title Store a fixed or cache the delegated Protocol Swap Fee Percentage

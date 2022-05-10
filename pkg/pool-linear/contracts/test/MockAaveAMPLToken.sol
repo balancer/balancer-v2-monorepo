@@ -16,9 +16,9 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-standalone-utils/contracts/test/MockUnbuttonERC20.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/pool-linear/IAToken.sol";
+
+import "./MockUnbuttonERC20.sol";
 
 contract MockAaveAMPLToken is MockUnbuttonERC20, IAToken {
      constructor(

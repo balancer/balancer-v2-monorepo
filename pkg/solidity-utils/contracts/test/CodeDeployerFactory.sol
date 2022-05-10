@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/CodeDeployer.sol";
+import "../helpers/CodeDeployer.sol";
 
 contract CodeDeployerFactory {
     event CodeDeployed(address at);

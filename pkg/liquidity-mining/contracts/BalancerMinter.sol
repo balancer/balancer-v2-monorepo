@@ -15,13 +15,13 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/ReentrancyGuard.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/SafeMath.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/EIP712.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IBalancerMinter.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IGaugeController.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/ILiquidityGauge.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EIP712.sol";
 
 contract BalancerMinter is IBalancerMinter, ReentrancyGuard, EIP712 {
     using SafeMath for uint256;

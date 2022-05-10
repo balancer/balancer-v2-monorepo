@@ -15,12 +15,12 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/Address.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IAuthorizer.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import "./TimelockExecutor.sol";
 

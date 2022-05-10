@@ -14,14 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/Authentication.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/SafeERC20.sol";
-
+import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IBalancerToken.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBALTokenHolder.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IBalancerToken.sol";
-
-import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBALTokenHolder.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 /**
  * @dev This contract simply holds the BAL token and delegates to Balancer Governance the permission to withdraw it. It

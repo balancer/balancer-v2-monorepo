@@ -14,8 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/Authentication.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IAuthorizer.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 
 /**
  * @dev Base authorization layer implementation for Pools.

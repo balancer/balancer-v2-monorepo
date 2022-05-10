@@ -14,9 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "../../vault/IAsset.sol";
-
-import "../openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IAsset.sol";
 
 // solhint-disable
 

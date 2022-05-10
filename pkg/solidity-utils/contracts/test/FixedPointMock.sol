@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/FixedPoint.sol";
+import "../math/FixedPoint.sol";
 
 contract FixedPointMock {
     function powDown(uint256 x, uint256 y) public pure returns (uint256) {

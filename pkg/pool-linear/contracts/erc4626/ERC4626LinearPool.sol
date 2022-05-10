@@ -15,9 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/ERC20.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/Math.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/misc/IERC4626.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "../LinearPool.sol";
 

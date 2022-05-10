@@ -16,11 +16,10 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/FixedPoint.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IstETH.sol";
 
-import "./TestToken.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
 contract MockStETH is TestToken, IstETH {
     constructor(

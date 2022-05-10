@@ -16,7 +16,6 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/ReentrancyGuard.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IBalancerMinter.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IGaugeController.sol";

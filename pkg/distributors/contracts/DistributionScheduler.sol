@@ -15,9 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/SafeERC20.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/distributors/IDistributionScheduler.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 // solhint-disable not-rely-on-time
 

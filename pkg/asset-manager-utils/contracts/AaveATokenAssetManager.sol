@@ -15,7 +15,6 @@
 import "@balancer-labs/v2-balancer-interfaces/contracts/asset-manager-utils/aave/ILendingPoolAddressesProvider.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/asset-manager-utils/aave/ILendingPool.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/asset-manager-utils/aave/IAaveIncentivesController.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/distributors/IMultiDistributor.sol";
 
 import "./RewardsAssetManager.sol";

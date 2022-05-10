@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@balancer-labs/v2-vault": "workspace:*",
+    "@balancer-labs/solidity-utils": "workspace:*",
     "@balancer-labs/balancer-interfaces": "workspace:*"
   },
   "devDependencies": {
