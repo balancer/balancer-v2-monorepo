@@ -14,9 +14,10 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/SingletonAuthentication.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IVeDelegation.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
 contract VotingEscrowDelegationProxy is SingletonAuthentication {
     IERC20 private immutable _votingEscrow;

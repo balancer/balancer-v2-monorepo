@@ -15,14 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/EnumerableSet.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/distributors/IDistributorCallback.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IAsset.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
-
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/EnumerableSet.sol";
-
-import "@balancer-labs/v2-balancer-interfaces/contracts/distributors/IDistributorCallback.sol";
-
-import "@balancer-labs/v2-balancer-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
 import "./PoolTokenCache.sol";
 

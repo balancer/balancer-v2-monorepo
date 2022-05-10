@@ -15,15 +15,15 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/ReentrancyGuard.sol";
-
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/IAuthorizerAdaptor.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IGaugeController.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IBalancerMinter.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/ISingleRecipientGaugeFactory.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IStakelessGauge.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBALTokenHolderFactory.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
 // solhint-disable not-rely-on-time
 

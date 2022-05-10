@@ -15,17 +15,16 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/Math.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/FixedPoint.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/InputHelpers.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/TemporarilyPausable.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/WordCodec.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/ERC20.sol";
-
+import "@balancer-labs/v2-balancer-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IBasePool.sol";
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
@@ -184,8 +183,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         IAssetManager(assetManager).setConfig(poolId, poolConfig);
     }
 
-    function setPaused(bool paused) external authenticate {
-        _setPaused(paused);
+    function pause() external authenticate {
+        _setPaused(true);
+    }
+
+    function unpause() external authenticate {
+        _setPaused(false);
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {

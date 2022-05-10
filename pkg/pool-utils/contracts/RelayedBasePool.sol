@@ -17,7 +17,6 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/Address.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
-
 import "@balancer-labs/v2-balancer-interfaces/contracts/pool-utils/IRelayedBasePool.sol";
 
 import "./LegacyBasePool.sol";

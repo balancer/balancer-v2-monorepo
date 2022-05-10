@@ -14,10 +14,10 @@
 
 pragma solidity ^0.7.0;
 
-import "../../vault/IVault.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/IAuthorizerAdaptor.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
 import "./Authentication.sol";
-import "./IAuthorizerAdaptor.sol";
 
 abstract contract SingletonAuthentication is Authentication, IAuthorizerAdaptor {
     IVault private immutable _vault;

@@ -5,7 +5,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where

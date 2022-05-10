@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/LogCompression.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/LogCompression.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/oracle/PoolPriceOracle.sol";
 

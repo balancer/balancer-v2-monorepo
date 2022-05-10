@@ -29,7 +29,8 @@
   },
   "dependencies": {
     "@balancer-labs/v2-pool-utils": "workspace:*",
-    "@balancer-labs/v2-solidity-utils": "workspace:*"
+    "@balancer-labs/v2-solidity-utils": "workspace:*",
+    "@balancer-labs/balancer-interfaces": "workspace:*"
   },
   "devDependencies": {
     "@balancer-labs/v2-common": "workspace:*",

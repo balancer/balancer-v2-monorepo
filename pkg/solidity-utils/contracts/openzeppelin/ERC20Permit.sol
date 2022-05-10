@@ -2,8 +2,9 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/IERC20Permit.sol";
+
 import "./ERC20.sol";
-import "./IERC20Permit.sol";
 import "./EIP712.sol";
 
 /**

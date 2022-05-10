@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/math/LogExpMath.sol";
+import "../math/LogExpMath.sol";
 
 contract LogExpMathMock {
     function pow(uint256 x, uint256 y) public pure returns (uint256) {

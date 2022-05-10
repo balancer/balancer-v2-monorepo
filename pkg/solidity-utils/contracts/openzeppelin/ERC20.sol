@@ -2,9 +2,9 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
-import "./IERC20.sol";
 import "./SafeMath.sol";
 
 /**
