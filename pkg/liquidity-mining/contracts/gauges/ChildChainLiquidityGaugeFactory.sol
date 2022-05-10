@@ -41,7 +41,7 @@ contract ChildChainLiquidityGaugeFactory is IChildChainLiquidityGaugeFactory {
     /**
      * @notice Returns the address of the implementation used for gauge deployments.
      */
-    function getGaugeImplementation() external view override  returns (ILiquidityGauge) {
+    function getGaugeImplementation() external view override returns (ILiquidityGauge) {
         return _gaugeImplementation;
     }
 
@@ -55,7 +55,7 @@ contract ChildChainLiquidityGaugeFactory is IChildChainLiquidityGaugeFactory {
     /**
      * @notice Returns the address of the gauge belonging to `pool`.
      */
-    function getPoolGauge(address pool) public view override  returns (ILiquidityGauge) {
+    function getPoolGauge(address pool) public view override returns (ILiquidityGauge) {
         return ILiquidityGauge(_poolGauge[pool]);
     }
 
