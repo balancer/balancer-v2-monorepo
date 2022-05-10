@@ -37,7 +37,7 @@ contract ChildChainGaugeTokenAdder is Authentication {
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
 
     constructor(IAuthorizerAdaptor authorizerAdaptor) Authentication(bytes32(uint256(address(this)))) {
-        // ChildChainGaugeTokenAdder is a singleton, so it simply uses its own address to disambiguate action identifiers
+        // ChildChainGaugeTokenAdder is a singleton, so it uses its own address to disambiguate action identifiers.
 
         _vault = authorizerAdaptor.getVault();
         _authorizerAdaptor = authorizerAdaptor;

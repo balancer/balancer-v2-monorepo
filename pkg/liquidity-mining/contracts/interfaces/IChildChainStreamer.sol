@@ -16,6 +16,10 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
+// For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
+// naming convention.
+// solhint-disable func-name-mixedcase
+
 interface IChildChainStreamer {
     function reward_tokens(uint256 index) external view returns (IERC20);
 

@@ -16,6 +16,10 @@ pragma solidity ^0.7.0;
 
 import "./IChildChainStreamer.sol";
 
+// For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
+// naming convention.
+// solhint-disable func-name-mixedcase
+
 interface IRewardsOnlyGauge {
     function reward_contract() external view returns (IChildChainStreamer);
 
