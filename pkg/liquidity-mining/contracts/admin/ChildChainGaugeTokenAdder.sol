@@ -18,8 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 
 import "../interfaces/IAuthorizerAdaptor.sol";
-import "../interfaces/IChildChainStreamer.sol";
-import "../interfaces/IRewardsOnlyGauge.sol";
+import "../interfaces/IChildChainLiquidityGaugeFactory.sol";
 
 /**
  * @title ChildChainGaugeTokenAdder
@@ -35,12 +34,16 @@ contract ChildChainGaugeTokenAdder is Authentication {
 
     IVault private immutable _vault;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
+    IChildChainLiquidityGaugeFactory private immutable _gaugeFactory;
 
-    constructor(IAuthorizerAdaptor authorizerAdaptor) Authentication(bytes32(uint256(address(this)))) {
+    constructor(IChildChainLiquidityGaugeFactory gaugeFactory, IAuthorizerAdaptor authorizerAdaptor)
+        Authentication(bytes32(uint256(address(this))))
+    {
         // ChildChainGaugeTokenAdder is a singleton, so it uses its own address to disambiguate action identifiers.
 
         _vault = authorizerAdaptor.getVault();
         _authorizerAdaptor = authorizerAdaptor;
+        _gaugeFactory = gaugeFactory;
     }
 
     /**
@@ -72,7 +75,9 @@ contract ChildChainGaugeTokenAdder is Authentication {
         IERC20 rewardToken,
         address distributor
     ) external authenticate {
-        IChildChainStreamer streamer = gauge.reward_contract();
+        require(_gaugeFactory.isGaugeFromFactory(address(gauge)), "Invalid gauge");
+        IChildChainStreamer streamer = IChildChainStreamer(_gaugeFactory.getGaugeStreamer(address(gauge)));
+        require(streamer == gauge.reward_contract(), "Not original gauge streamer");
 
         // We first add the new token to the streamer so that the gauge can claim it when checkpointing.
         _addTokenToStreamer(streamer, rewardToken, distributor);

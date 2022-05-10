@@ -21,6 +21,15 @@ import "./IChildChainStreamer.sol";
 // solhint-disable func-name-mixedcase
 
 interface IRewardsOnlyGauge {
+    function initialize(
+        address pool,
+        address streamer,
+        bytes32 claimSignature
+    ) external;
+
+    // solhint-disable-next-line func-name-mixedcase
+    function lp_token() external view returns (IERC20);
+
     function reward_contract() external view returns (IChildChainStreamer);
 
     function set_rewards(

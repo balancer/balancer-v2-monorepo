@@ -21,6 +21,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 // solhint-disable func-name-mixedcase
 
 interface IChildChainStreamer {
+    function initialize(address gauge) external;
+
     function reward_tokens(uint256 index) external view returns (IERC20);
 
     function add_reward(
