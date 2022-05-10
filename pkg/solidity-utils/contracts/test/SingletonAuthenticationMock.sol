@@ -14,8 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
+
+import "../helpers/SingletonAuthentication.sol";
 
 contract SingletonAuthenticationMock is SingletonAuthentication {
     constructor(IVault vault) SingletonAuthentication(vault) {
