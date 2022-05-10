@@ -2,7 +2,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/ReentrancyGuard.sol";
+import "../openzeppelin/ReentrancyGuard.sol";
 
 import "./ReentrancyAttack.sol";
 
