@@ -41,14 +41,19 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        address owner
+        address owner,
+        bool mutableTokens
     )
         BasePool(
             vault,
             // Given BaseMinimalSwapInfoPool supports both of these specializations, and this Pool never registers
             // or deregisters any tokens after construction, picking Two Token when the Pool only has two tokens is free
             // gas savings.
-            tokens.length == 2 ? IVault.PoolSpecialization.TWO_TOKEN : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
+            // If the pool is expected to be able register new tokens in future, we must choose MINIMAL_SWAP_INFO
+            // as clearly the TWO_TOKEN specification doesn't support adding extra tokens in future.
+            tokens.length == 2 && !mutableTokens
+                ? IVault.PoolSpecialization.TWO_TOKEN
+                : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
             name,
             symbol,
             tokens,
@@ -143,7 +148,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     }
 
     /**
-     * @dev Called before any join or exit operation (including initialization). Empty by default, but derived contracts
+     * @dev Called after any join or exit operation (including initialization). Empty by default, but derived contracts
      * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
      *
      * If isJoin is true, balanceDeltas are the amounts in: otherwise they are the amounts out.
@@ -175,7 +180,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
-        InputHelpers.ensureInputLengthMatch(_getTotalTokens(), amountsIn.length);
+        InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
         _upscaleArray(amountsIn, scalingFactors);
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
@@ -183,7 +188,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
         // consistent in Pools with similar compositions but different number of tokens.
-        uint256 bptAmountOut = Math.mul(invariantAfterJoin, _getTotalTokens());
+        uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
 
         _afterJoinExit(true, new uint256[](amountsIn.length), amountsIn, normalizedWeights);
 
@@ -194,7 +199,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
     function _onJoinPool(
         bytes32,
-        address,
+        address sender,
         address,
         uint256[] memory balances,
         uint256,
@@ -208,6 +213,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
+            sender,
             balances,
             normalizedWeights,
             scalingFactors,
@@ -218,12 +224,18 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         return (bptAmountOut, amountsIn);
     }
 
+    /**
+     * @dev Dispatch code which decodes the provided userdata to perform the specified join type.
+     * Inheriting contracts may override this function to add additional join types or extra conditions to allow
+     * or disallow joins under certain circumstances.
+     */
     function _doJoin(
+        address,
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal view returns (uint256, uint256[] memory) {
+    ) internal view virtual returns (uint256, uint256[] memory) {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
         if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
@@ -244,7 +256,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
-        InputHelpers.ensureInputLengthMatch(_getTotalTokens(), amountsIn.length);
+        InputHelpers.ensureInputLengthMatch(balances.length, amountsIn.length);
 
         _upscaleArray(amountsIn, scalingFactors);
 
@@ -269,7 +281,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
         // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
 
-        _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
+        _require(tokenIndex < balances.length, Errors.OUT_OF_BOUNDS);
 
         uint256 amountIn = WeightedMath._calcTokenInGivenExactBptOut(
             balances[tokenIndex],
@@ -280,7 +292,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         );
 
         // We join in a single token, so we initialize amountsIn with zeros
-        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
+        uint256[] memory amountsIn = new uint256[](balances.length);
         // And then assign the result to the selected token
         amountsIn[tokenIndex] = amountIn;
 
@@ -308,7 +320,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
     function _onExitPool(
         bytes32,
-        address,
+        address sender,
         address,
         uint256[] memory balances,
         uint256,
@@ -324,6 +336,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
         (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
+            sender,
             balances,
             normalizedWeights,
             scalingFactors,
@@ -334,12 +347,18 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         return (bptAmountIn, amountsOut);
     }
 
+    /**
+     * @dev Dispatch code which decodes the provided userdata to perform the specified exit type.
+     * Inheriting contracts may override this function to add additional exit types or extra conditions to allow
+     * or disallow exit under certain circumstances.
+     */
     function _doExit(
+        address,
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal view returns (uint256, uint256[] memory) {
+    ) internal view virtual returns (uint256, uint256[] memory) {
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
@@ -363,7 +382,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
-        _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
+        _require(tokenIndex < balances.length, Errors.OUT_OF_BOUNDS);
 
         uint256 amountOut = WeightedMath._calcTokenOutGivenExactBptIn(
             balances[tokenIndex],
@@ -375,7 +394,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
         // We exit in a single token, so we initialize amountsOut with zeros
-        uint256[] memory amountsOut = new uint256[](_getTotalTokens());
+        uint256[] memory amountsOut = new uint256[](balances.length);
         // And then assign the result to the selected token
         amountsOut[tokenIndex] = amountOut;
 
@@ -408,7 +427,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         // This exit function is disabled if the contract is paused.
 
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
-        InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens());
+        InputHelpers.ensureInputLengthMatch(amountsOut.length, balances.length);
         _upscaleArray(amountsOut, scalingFactors);
 
         // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
