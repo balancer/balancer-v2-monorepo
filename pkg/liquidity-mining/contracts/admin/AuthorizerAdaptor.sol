@@ -15,10 +15,11 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/Address.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 
 /**
  * @title Authorizer Adaptor

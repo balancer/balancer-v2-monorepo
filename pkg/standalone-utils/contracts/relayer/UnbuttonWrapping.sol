@@ -15,9 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/Address.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IUnbuttonToken.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 
 import "./IBaseRelayerLibrary.sol";
 

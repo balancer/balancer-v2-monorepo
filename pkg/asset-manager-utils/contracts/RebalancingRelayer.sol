@@ -20,9 +20,9 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IAsset.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IBasePoolRelayer.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/misc/IWETH.sol";
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/Address.sol";
 import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-vault/contracts/AssetHelpers.sol";
 
 contract RebalancingRelayer is IBasePoolRelayer, AssetHelpers {
