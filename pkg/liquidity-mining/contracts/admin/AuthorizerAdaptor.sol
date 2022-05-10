@@ -21,6 +21,7 @@ import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IAuthorizer.sol";
 import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
+
 /**
  * @title Authorizer Adaptor
  * @notice This contract is intended to act as an adaptor between systems which expect a single admin address
