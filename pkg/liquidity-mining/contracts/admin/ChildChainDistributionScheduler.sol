@@ -56,6 +56,21 @@ contract ChildChainDistributionScheduler is Authentication {
     }
 
     /**
+     * @notice Returns the Balancer Vault
+     */
+    function getVault() public view returns (IVault) {
+        return _vault;
+    }
+
+    /**
+     * @notice Returns the Balancer Vault's current authorizer.
+     */
+    function getAuthorizer() public view returns (IAuthorizer) {
+        return getVault().getAuthorizer();
+    }
+
+
+    /**
      * @notice Returns information on the reward paid out to `gauge` in `token` over the week starting at `timestamp`
      * @param gauge - The gauge which is to distribute the reward token.
      * @param token - The token which is to be distributed among gauge depositors.
