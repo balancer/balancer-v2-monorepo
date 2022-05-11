@@ -15,10 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IChildChainLiquidityGaugeFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGauge.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
-import "../interfaces/IChildChainLiquidityGaugeFactory.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
 contract ChildChainLiquidityGaugeFactory is IChildChainLiquidityGaugeFactory {
     // RewardsOnlyGauge expects the claim function selector to be left padded with zeros.

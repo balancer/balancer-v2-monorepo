@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
+
 import "@balancer-labs/v2-standalone-utils/contracts/AumProtocolFeesCollector.sol";
 
 import "./ManagedPool.sol";

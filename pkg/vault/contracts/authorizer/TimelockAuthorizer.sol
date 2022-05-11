@@ -14,14 +14,14 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/IAuthentication.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "./TimelockExecutor.sol";
-import "../interfaces/IVault.sol";
-import "../interfaces/IAuthorizer.sol";
 
 /**
  * @dev Basic Authorizer implementation using timelocks.

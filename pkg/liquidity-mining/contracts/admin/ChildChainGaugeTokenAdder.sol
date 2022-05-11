@@ -15,49 +15,31 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IChildChainLiquidityGaugeFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
 
-import "../interfaces/IAuthorizerAdaptor.sol";
-import "../interfaces/IChildChainLiquidityGaugeFactory.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
 /**
  * @title ChildChainGaugeTokenAdder
  * @notice Allows atomically adding a new reward token to a RewardsOnlyGauge while ensuring that it remains in sync
  * with its ChildChainStreamer.
  */
-contract ChildChainGaugeTokenAdder is Authentication {
+contract ChildChainGaugeTokenAdder is SingletonAuthentication {
     // RewardsOnlyGauge expects the claim function selector to be left padded with zeros.
     // We then shift right 28 bytes so that the function selector (top 4 bytes) sits in the lowest 4 bytes.
     bytes32 private constant _CLAIM_SIG = keccak256("get_reward()") >> (28 * 8);
     uint256 private constant _MAX_TOKENS = 8;
     uint256 private constant _REWARD_DURATION = 1 weeks;
 
-    IVault private immutable _vault;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
     IChildChainLiquidityGaugeFactory private immutable _gaugeFactory;
 
     constructor(IChildChainLiquidityGaugeFactory gaugeFactory, IAuthorizerAdaptor authorizerAdaptor)
-        Authentication(bytes32(uint256(address(this))))
+        SingletonAuthentication(authorizerAdaptor.getVault())
     {
-        // ChildChainGaugeTokenAdder is a singleton, so it uses its own address to disambiguate action identifiers.
-
-        _vault = authorizerAdaptor.getVault();
         _authorizerAdaptor = authorizerAdaptor;
         _gaugeFactory = gaugeFactory;
-    }
-
-    /**
-     * @notice Returns the Balancer Vault
-     */
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
-
-    /**
-     * @notice Returns the Balancer Vault's current authorizer.
-     */
-    function getAuthorizer() public view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
     }
 
     /**
@@ -114,9 +96,5 @@ contract ChildChainGaugeTokenAdder is Authentication {
             address(gauge),
             abi.encodeWithSelector(IRewardsOnlyGauge.set_rewards.selector, streamer, _CLAIM_SIG, rewardTokens)
         );
-    }
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 }

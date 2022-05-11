@@ -14,18 +14,17 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeController.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerMinter.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGaugeFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGauge.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBALTokenHolderFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IAuthorizerAdaptor.sol";
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeAdder.sol";
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeController.sol";
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerMinter.sol";
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerTokenAdmin.sol";
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/ILiquidityGaugeFactory.sol";
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/ISingleRecipientGaugeFactory.sol";
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IStakelessGauge.sol";
-import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IBALTokenHolderFactory.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 // solhint-disable not-rely-on-time
 
