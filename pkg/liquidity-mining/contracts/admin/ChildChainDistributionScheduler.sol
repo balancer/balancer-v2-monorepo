@@ -15,8 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
+import "../interfaces/IAuthorizerAdaptor.sol";
 import "../interfaces/IRewardsOnlyGauge.sol";
 
 // solhint-disable not-rely-on-time
@@ -26,7 +28,7 @@ import "../interfaces/IRewardsOnlyGauge.sol";
  * @notice Scheduler for setting up permissionless distributions of liquidity gauge reward tokens.
  * @dev Any address may send tokens to the DistributionSchedule to be distributed among gauge depositors.
  */
-contract ChildChainDistributionScheduler {
+contract ChildChainDistributionScheduler is Authentication {
     using SafeERC20 for IERC20;
 
     uint256 private constant _MAX_REWARDS = 8;
@@ -41,6 +43,16 @@ contract ChildChainDistributionScheduler {
     struct RewardNode {
         uint224 amount;
         uint32 nextTimestamp;
+    }
+
+    IVault private immutable _vault;
+    IAuthorizerAdaptor private immutable _authorizerAdaptor;
+
+    constructor(IAuthorizerAdaptor authorizerAdaptor) Authentication(bytes32(uint256(address(this)))) {
+        // ChildChainDistributionScheduler is a singleton, so it uses its own address to disambiguate action identifiers
+
+        _vault = authorizerAdaptor.getVault();
+        _authorizerAdaptor = authorizerAdaptor;
     }
 
     /**
@@ -170,9 +182,13 @@ contract ChildChainDistributionScheduler {
      * @notice Recover any tokens held as pending rewards which can no longer be paid out to the desired gauge.
      * @param gauge - The gauge to which the tokens were to be distributed.
      * @param token - The token which is to be recovered.
-     * @param recipient - The address to which to send the recovered tokens 
+     * @param recipient - The address to which to send the recovered tokens
      */
-    function recoverInvalidPendingRewards(IRewardsOnlyGauge gauge, IERC20 token, address recipient) external {
+    function recoverInvalidPendingRewards(
+        IRewardsOnlyGauge gauge,
+        IERC20 token,
+        address recipient
+    ) external authenticate {
         IChildChainStreamer streamer = gauge.reward_contract();
         IChildChainStreamer.RewardToken memory rewardData = streamer.reward_data(token);
         require(rewardData.distributor == address(0), "Reward token can still be distributed to gauge");
@@ -261,5 +277,9 @@ contract ChildChainDistributionScheduler {
      */
     function _roundDownTimestamp(uint256 timestamp) private pure returns (uint256) {
         return (timestamp / 1 weeks) * 1 weeks;
+    }
+
+    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
+        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 }
