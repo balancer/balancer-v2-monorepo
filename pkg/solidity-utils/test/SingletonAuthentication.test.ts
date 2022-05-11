@@ -46,10 +46,6 @@ describe('SingletonAuthentication', () => {
     });
   });
 
-  it('reverts if performAction called on the base contract', async () => {
-    await expect(singleton.performAction(other.address, '0x')).to.be.revertedWith('INVALID_OPERATION');
-  });
-
   describe('disambiguation', () => {
     const selector = '0x12345678';
     let secondOne: Contract;
