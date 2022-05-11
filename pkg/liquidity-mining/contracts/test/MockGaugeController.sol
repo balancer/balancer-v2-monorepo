@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IGaugeController.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeController.sol";
 
 // For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
 // naming convention.

@@ -14,12 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/IAuthorizerAdaptor.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "./Authentication.sol";
 
-abstract contract SingletonAuthentication is Authentication, IAuthorizerAdaptor {
+abstract contract SingletonAuthentication is Authentication {
     IVault private immutable _vault;
 
     // Use the contract's own address to disambiguate action identifiers
@@ -30,19 +30,19 @@ abstract contract SingletonAuthentication is Authentication, IAuthorizerAdaptor 
     /**
      * @notice Returns the Balancer Vault
      */
-    function getVault() public view override returns (IVault) {
+    function getVault() public view returns (IVault) {
         return _vault;
     }
 
     /**
      * @notice Returns the Authorizer
      */
-    function getAuthorizer() public view override returns (IAuthorizer) {
+    function getAuthorizer() public view returns (IAuthorizer) {
         return getVault().getAuthorizer();
     }
 
     function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return _canPerform(actionId, account, address(this));
+        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 
     function _canPerform(
@@ -51,12 +51,5 @@ abstract contract SingletonAuthentication is Authentication, IAuthorizerAdaptor 
         address where
     ) internal view returns (bool) {
         return getAuthorizer().canPerform(actionId, account, where);
-    }
-
-    /**
-     * Concrete authorizer adapters must override - reverts if called at this level
-     */
-    function performAction(address, bytes calldata) external payable virtual override returns (bytes memory) {
-        _revert(Errors.INVALID_OPERATION);
     }
 }

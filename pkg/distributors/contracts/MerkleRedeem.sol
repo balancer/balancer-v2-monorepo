@@ -14,11 +14,11 @@
 
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/distributors/IDistributor.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/distributors/IDistributorCallback.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IAsset.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/distributors/IDistributor.sol";
+import "@balancer-labs/v2-interfaces/contracts/distributors/IDistributorCallback.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IAsset.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/MerkleProof.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";

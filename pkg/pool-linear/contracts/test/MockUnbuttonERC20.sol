@@ -16,7 +16,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/pool-linear/IButtonWrapper.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-linear/IButtonWrapper.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";

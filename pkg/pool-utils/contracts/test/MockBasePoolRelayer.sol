@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/pool-utils/IBasePoolRelayer.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IBasePoolRelayer.sol";
 
 contract MockBasePoolRelayer is IBasePoolRelayer {
     bool internal _hasCalledPool;

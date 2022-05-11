@@ -14,14 +14,15 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/openzeppelin/ReentrancyGuard.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/solidity-utils/helpers/IAuthorizerAdaptor.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IGaugeController.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/ISingleRecipientGauge.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/standalone-utils/IBALTokenHolderFactory.sol";
-import "@balancer-labs/v2-balancer-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeController.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGauge.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBALTokenHolderFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 /**
  * @dev The currently deployed Authorizer has a different interface relative to the Authorizer in the monorepo

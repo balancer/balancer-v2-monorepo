@@ -26,6 +26,25 @@ describe('AuthorizerAdaptor', () => {
     adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
   });
 
+  describe('constructor', () => {
+    it('sets the vault address', async () => {
+      expect(await adaptor.getVault()).to.be.eq(vault.address);
+    });
+
+    it('uses the authorizer of the vault', async () => {
+      expect(await adaptor.getAuthorizer()).to.equal(authorizer.address);
+    });
+
+    it('tracks authorizer changes in the vault', async () => {
+      const action = await actionId(vault.instance, 'setAuthorizer');
+      await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+
+      await vault.instance.connect(admin).setAuthorizer(other.address);
+
+      expect(await adaptor.getAuthorizer()).to.equal(other.address);
+    });
+  });
+
   describe('performAction', () => {
     let action: string;
     let target: string;
