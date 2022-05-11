@@ -15,7 +15,6 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
-
 import "./TimelockAuthorizer.sol";
 
 contract TimelockExecutor {

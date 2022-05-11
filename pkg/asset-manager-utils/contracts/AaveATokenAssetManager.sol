@@ -12,9 +12,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import "./aave/ILendingPoolAddressesProvider.sol";
-import "./aave/ILendingPool.sol";
-import "./aave/IAaveIncentivesController.sol";
+import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/aave/ILendingPoolAddressesProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/aave/ILendingPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/aave/IAaveIncentivesController.sol";
 
 import "./RewardsAssetManager.sol";
 
