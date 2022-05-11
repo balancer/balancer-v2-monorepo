@@ -195,6 +195,7 @@ contract ChildChainDistributionScheduler is Authentication {
 
         mapping(uint32 => RewardNode) storage rewardsList = _rewardsLists[_getRewardsListId(gauge, token)];
 
+        // We claim all pending reward distributions, not just those which would be ready to be started.
         (uint32 firstUnprocessedNodeKey, uint256 rewardAmount) = _getPendingRewards(rewardsList, type(uint256).max);
 
         // These calls are reentrancy-safe as we've already performed our only state transition (updating the head of
