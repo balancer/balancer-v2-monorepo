@@ -15,12 +15,13 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.sol";
+
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/LegacyBaseMinimalSwapInfoPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/BaseRateProvider.sol";
 
 import "./StableMath.sol";
-import "./StablePoolUserData.sol";
 
 abstract contract BaseStablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, BaseRateProvider {
     using WordCodec for bytes32;
