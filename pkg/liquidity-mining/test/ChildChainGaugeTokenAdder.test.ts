@@ -55,7 +55,7 @@ describe('ChildChainGaugeTokenAdder', () => {
     gauge = await deployedAt('RewardsOnlyGauge', await factory.getPoolGauge(token.address));
     streamer = await deployedAt('ChildChainStreamer', await factory.getPoolStreamer(token.address));
 
-    gaugeTokenAdder = await deploy('ChildChainGaugeTokenAdder', { args: [adaptor.address] });
+    gaugeTokenAdder = await deploy('ChildChainGaugeTokenAdder', { args: [factory.address, adaptor.address] });
   });
 
   sharedBeforeEach('set up permissions', async () => {
