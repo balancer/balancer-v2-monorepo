@@ -14,6 +14,27 @@
 
 pragma solidity ^0.7.0;
 
-interface IDistributor {
-    event RewardPaid(address indexed user, address indexed rewardToken, uint256 amount);
+import "./IChildChainStreamer.sol";
+
+// For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
+// naming convention.
+// solhint-disable func-name-mixedcase
+
+interface IRewardsOnlyGauge {
+    function initialize(
+        address pool,
+        address streamer,
+        bytes32 claimSignature
+    ) external;
+
+    // solhint-disable-next-line func-name-mixedcase
+    function lp_token() external view returns (IERC20);
+
+    function reward_contract() external view returns (IChildChainStreamer);
+
+    function set_rewards(
+        address childChainStreamer,
+        bytes32 claimSig,
+        address[8] calldata rewardTokens
+    ) external;
 }
