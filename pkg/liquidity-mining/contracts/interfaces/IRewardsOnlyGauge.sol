@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "./IChildChainStreamer.sol";
 
@@ -21,6 +22,15 @@ import "./IChildChainStreamer.sol";
 // solhint-disable func-name-mixedcase
 
 interface IRewardsOnlyGauge {
+    struct Reward {
+        IERC20 token;
+        address distributor;
+        uint256 period_finish;
+        uint256 rate;
+        uint256 last_update;
+        uint256 integral;
+    }
+
     function initialize(
         address pool,
         address streamer,
@@ -29,6 +39,10 @@ interface IRewardsOnlyGauge {
 
     // solhint-disable-next-line func-name-mixedcase
     function lp_token() external view returns (IERC20);
+
+    function reward_tokens(uint256 index) external view returns (IERC20);
+
+    function reward_data(IERC20 token) external view returns (Reward memory);
 
     function reward_contract() external view returns (IChildChainStreamer);
 

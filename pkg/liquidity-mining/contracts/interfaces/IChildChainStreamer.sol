@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
@@ -21,13 +22,26 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 // solhint-disable func-name-mixedcase
 
 interface IChildChainStreamer {
+    struct RewardToken {
+        address distributor;
+        uint256 period_finish;
+        uint256 rate;
+        uint256 duration;
+        uint256 received;
+        uint256 paid;
+    }
+
     function initialize(address gauge) external;
 
     function reward_tokens(uint256 index) external view returns (IERC20);
+
+    function reward_data(IERC20 token) external view returns (RewardToken memory);
 
     function add_reward(
         IERC20 rewardToken,
         address distributor,
         uint256 duration
     ) external;
+
+    function notify_reward_amount(IERC20 token) external;
 }
