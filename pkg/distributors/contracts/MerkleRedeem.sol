@@ -23,12 +23,11 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
 
-import "./interfaces/IDistributor.sol";
 import "./interfaces/IDistributorCallback.sol";
 
 pragma solidity ^0.7.0;
 
-contract MerkleRedeem is IDistributor, Ownable {
+contract MerkleRedeem is Ownable {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
@@ -41,6 +40,7 @@ contract MerkleRedeem is IDistributor, Ownable {
     IVault public immutable vault;
 
     event RewardAdded(address indexed token, uint256 amount);
+    event RewardPaid(address indexed user, address indexed rewardToken, uint256 amount);
 
     constructor(IVault _vault, IERC20 _rewardToken) {
         vault = _vault;
