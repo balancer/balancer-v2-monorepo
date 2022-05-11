@@ -14,8 +14,6 @@
 
 pragma solidity ^0.7.0;
 
-import "./LinearPool.sol";
-
 library LinearPoolUserData {
     enum ExitKind { EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT }
 
