@@ -904,12 +904,10 @@ describe('ManagedPool', function () {
             it('reverts if the token is not in the pool', async () => {
               await expect(pool.removeToken(sender, ZERO_ADDRESS, other.address)).to.be.revertedWith('INVALID_TOKEN');
             });
+
             context('when the pool is paused', () => {
               sharedBeforeEach('pause pool', async () => {
-                await vault.authorizer
-                  ?.connect(admin)
-                  .grantPermissions([await actionId(pool.instance, 'setPaused')], other.address, [pool.address]);
-                await pool.instance.connect(other).setPaused(true);
+                await pool.pause();
               });
 
               it('reverts', async () => {
@@ -1308,10 +1306,7 @@ describe('ManagedPool', function () {
 
             context('when the pool is paused', () => {
               sharedBeforeEach('pause pool', async () => {
-                await vault.authorizer
-                  ?.connect(admin)
-                  .grantPermissions([await actionId(pool.instance, 'setPaused')], other.address, [pool.address]);
-                await pool.instance.connect(other).setPaused(true);
+                await pool.pause();
               });
 
               it('reverts', async () => {
