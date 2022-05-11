@@ -14,12 +14,11 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISmartWalletChecker.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
-
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-
-import "./interfaces/ISmartWalletChecker.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 
 contract SmartWalletChecker is ISmartWalletChecker, Authentication {
     using EnumerableSet for EnumerableSet.AddressSet;

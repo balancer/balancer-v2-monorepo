@@ -15,10 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IChildChainLiquidityGaugeFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
 
-import "../interfaces/IAuthorizerAdaptor.sol";
-import "../interfaces/IChildChainLiquidityGaugeFactory.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 
 /**
  * @title ChildChainGaugeTokenAdder
