@@ -12,7 +12,7 @@ import { advanceTime, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { expect } from 'chai';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
-import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('ChildChainGaugeTokenAdder', () => {
   let vault: Vault;
@@ -98,54 +98,99 @@ describe('ChildChainGaugeTokenAdder', () => {
       await vault.grantPermissionsGlobally([addTokenToGaugeRole], admin);
     });
 
-    it('adds the token to the streamer', async () => {
-      const tx = await gaugeTokenAdder
-        .connect(admin)
-        .addTokenToGauge(gauge.address, newRewardToken.address, distributor.address);
-      const receipt = await tx.wait();
+    context('when interacting with a gauge from the expected factory', () => {
+      it('adds the token to the streamer', async () => {
+        const tx = await gaugeTokenAdder
+          .connect(admin)
+          .addTokenToGauge(gauge.address, newRewardToken.address, distributor.address);
+        const receipt = await tx.wait();
 
-      expectEvent.inIndirectReceipt(receipt, streamer.interface, 'RewardDistributorUpdated', {
-        reward_token: newRewardToken.address,
-        distributor: distributor.address,
+        expectEvent.inIndirectReceipt(receipt, streamer.interface, 'RewardDistributorUpdated', {
+          reward_token: newRewardToken.address,
+          distributor: distributor.address,
+        });
+        expectEvent.inIndirectReceipt(receipt, streamer.interface, 'RewardDurationUpdated', {
+          reward_token: newRewardToken.address,
+          duration: WEEK,
+        });
       });
-      expectEvent.inIndirectReceipt(receipt, streamer.interface, 'RewardDurationUpdated', {
-        reward_token: newRewardToken.address,
-        duration: WEEK,
-      });
-    });
 
-    it('leaves the streamer and gauge in a consistent state', async () => {
-      await gaugeTokenAdder.connect(admin).addTokenToGauge(gauge.address, newRewardToken.address, distributor.address);
-
-      const MAX_REWARDS = 8;
-      for (let i = 0; i < MAX_REWARDS; ++i) {
-        const streamerRewardToken = await streamer.reward_tokens(i);
-        const gaugeRewardToken = await gauge.reward_tokens(i);
-
-        expect(streamerRewardToken).to.be.eq(gaugeRewardToken);
-      }
-    });
-
-    context('when next claiming from the gauge', () => {
-      const rewardAmount = parseFixed('1', 18);
-
-      sharedBeforeEach('start reward distribution of new token', async () => {
+      it('leaves the streamer and gauge in a consistent state', async () => {
         await gaugeTokenAdder
           .connect(admin)
           .addTokenToGauge(gauge.address, newRewardToken.address, distributor.address);
 
-        await newRewardToken.mint(streamer.address, rewardAmount);
-        await streamer.connect(distributor).notify_reward_amount(newRewardToken.address);
-        await advanceTime(DAY);
+        const MAX_REWARDS = 8;
+        for (let i = 0; i < MAX_REWARDS; ++i) {
+          const streamerRewardToken = await streamer.reward_tokens(i);
+          const gaugeRewardToken = await gauge.reward_tokens(i);
+
+          expect(streamerRewardToken).to.be.eq(gaugeRewardToken);
+        }
       });
 
-      it('pulls the new token to the gauge', async () => {
-        const expectedRewardAmount = rewardAmount.mul(DAY).div(WEEK);
+      context('when next claiming from the gauge', () => {
+        const rewardAmount = parseFixed('1', 18);
 
-        await expectBalanceChange(() => streamer.get_reward(), new TokenList([newRewardToken]), [
-          { account: streamer, changes: { [newRewardToken.symbol]: ['near', expectedRewardAmount.mul(-1)] } },
-          { account: gauge, changes: { [newRewardToken.symbol]: ['near', expectedRewardAmount] } },
-        ]);
+        sharedBeforeEach('start reward distribution of new token', async () => {
+          await gaugeTokenAdder
+            .connect(admin)
+            .addTokenToGauge(gauge.address, newRewardToken.address, distributor.address);
+
+          await newRewardToken.mint(streamer.address, rewardAmount);
+          await streamer.connect(distributor).notify_reward_amount(newRewardToken.address);
+          await advanceTime(DAY);
+        });
+
+        it('pulls the new token to the gauge', async () => {
+          const expectedRewardAmount = rewardAmount.mul(DAY).div(WEEK);
+
+          await expectBalanceChange(() => streamer.get_reward(), new TokenList([newRewardToken]), [
+            { account: streamer, changes: { [newRewardToken.symbol]: ['near', expectedRewardAmount.mul(-1)] } },
+            { account: gauge, changes: { [newRewardToken.symbol]: ['near', expectedRewardAmount] } },
+          ]);
+        });
+      });
+
+      context('when interacting with a gauge not from the expected factory', () => {
+        it('reverts', async () => {
+          await expect(
+            gaugeTokenAdder.connect(admin).addTokenToGauge(ANY_ADDRESS, newRewardToken.address, distributor.address)
+          ).to.be.revertedWith('Invalid gauge');
+        });
+      });
+
+      context("when the gauge's streamer has been changed from the original", () => {
+        sharedBeforeEach("change the gauge's streamer", async () => {
+          const addTokenToGaugeRole = await actionId(adaptor, 'set_rewards', gauge.interface);
+          await vault.grantPermissionsGlobally([addTokenToGaugeRole], admin);
+
+          await adaptor
+            .connect(admin)
+            .performAction(
+              gauge.address,
+              gauge.interface.encodeFunctionData('set_rewards', [
+                ZERO_ADDRESS,
+                ZERO_BYTES32,
+                [
+                  balToken.address,
+                  ZERO_ADDRESS,
+                  ZERO_ADDRESS,
+                  ZERO_ADDRESS,
+                  ZERO_ADDRESS,
+                  ZERO_ADDRESS,
+                  ZERO_ADDRESS,
+                  ZERO_ADDRESS,
+                ],
+              ])
+            );
+        });
+
+        it('reverts', async () => {
+          await expect(
+            gaugeTokenAdder.connect(admin).addTokenToGauge(gauge.address, newRewardToken.address, distributor.address)
+          ).to.be.revertedWith('Not original gauge streamer');
+        });
       });
     });
   });
