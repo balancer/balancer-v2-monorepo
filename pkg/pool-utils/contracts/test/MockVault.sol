@@ -15,13 +15,13 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IPoolSwapStructs.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IMinimalSwapInfoPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IPoolSwapStructs.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 
 import "@balancer-labs/v2-vault/contracts/ProtocolFeesCollector.sol";
 

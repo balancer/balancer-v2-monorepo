@@ -14,9 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "../openzeppelin/IERC20.sol";
-
-import "./BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 library InputHelpers {
     function ensureInputLengthMatch(uint256 a, uint256 b) internal pure {

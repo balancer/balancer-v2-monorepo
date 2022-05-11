@@ -15,11 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IBasePoolController.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "../BasePoolAuthorization.sol";
-import "../interfaces/IBasePoolController.sol";
-import "../interfaces/IControlledPool.sol";
 
 /**
  * @dev Pool controller that serves as the owner of a Balancer pool, and is in turn owned by

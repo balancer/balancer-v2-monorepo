@@ -15,11 +15,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/vault/IBasicAuthorizer.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
-import "./IBasicAuthorizer.sol";
 import "./TimelockAuthorizer.sol";
-import "../interfaces/IVault.sol";
 
 contract TimelockAuthorizerMigrator {
     bytes32 public constant WHATEVER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
