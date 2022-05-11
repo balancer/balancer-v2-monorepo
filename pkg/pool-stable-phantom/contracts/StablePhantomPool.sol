@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/pool-stable-phantom/StablePhantomPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 
@@ -26,8 +27,6 @@ import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
 import "@balancer-labs/v2-pool-stable/contracts/StablePool.sol";
-
-import "./StablePhantomPoolUserDataHelpers.sol";
 
 /**
  * @dev StablePool with preminted BPT and rate providers for each token, allowing for e.g. wrapped tokens with a known
@@ -45,7 +44,7 @@ import "./StablePhantomPoolUserDataHelpers.sol";
 contract StablePhantomPool is StablePool, ProtocolFeeCache {
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
-    using StablePhantomPoolUserDataHelpers for bytes;
+    using StablePhantomPoolUserData for bytes;
 
     uint256 private constant _MIN_TOKENS = 2;
     uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
@@ -76,9 +75,6 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
     event DueProtocolFeeIncreased(uint256 bptAmount);
-
-    enum JoinKindPhantom { INIT, COLLECT_PROTOCOL_FEES }
-    enum ExitKindPhantom { EXACT_BPT_IN_FOR_TOKENS_OUT }
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -458,8 +454,8 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal override whenNotPaused returns (uint256, uint256[] memory) {
-        StablePhantomPool.JoinKindPhantom kind = userData.joinKind();
-        _require(kind == StablePhantomPool.JoinKindPhantom.INIT, Errors.UNINITIALIZED);
+        StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
+        _require(kind == StablePhantomPoolUserData.JoinKindPhantom.INIT, Errors.UNINITIALIZED);
 
         uint256[] memory amountsInIncludingBpt = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsInIncludingBpt.length, _getTotalTokens());
@@ -505,9 +501,9 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
             uint256[] memory
         )
     {
-        JoinKindPhantom kind = userData.joinKind();
+        StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
 
-        if (kind == JoinKindPhantom.COLLECT_PROTOCOL_FEES) {
+        if (kind == StablePhantomPoolUserData.JoinKindPhantom.COLLECT_PROTOCOL_FEES) {
             return _collectProtocolFees();
         }
 
@@ -560,11 +556,11 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        ExitKindPhantom kind = userData.exitKind();
+        StablePhantomPoolUserData.ExitKindPhantom kind = userData.exitKind();
 
         // Exits typically revert, except for the proportional exit when the emergency pause mechanism has been
         // triggered. This allows for a simple and safe way to exit the Pool.
-        if (kind == ExitKindPhantom.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        if (kind == StablePhantomPoolUserData.ExitKindPhantom.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             _ensurePaused();
 
             // Note that this will cause the user's BPT to be burned, which is not something that happens during

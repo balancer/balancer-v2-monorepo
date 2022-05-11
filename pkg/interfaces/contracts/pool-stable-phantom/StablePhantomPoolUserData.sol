@@ -14,26 +14,27 @@
 
 pragma solidity ^0.7.0;
 
-import "./StablePhantomPool.sol";
+library StablePhantomPoolUserData {
+    enum JoinKindPhantom { INIT, COLLECT_PROTOCOL_FEES }
+    enum ExitKindPhantom { EXACT_BPT_IN_FOR_TOKENS_OUT }
 
-library StablePhantomPoolUserDataHelpers {
-    function joinKind(bytes memory self) internal pure returns (StablePhantomPool.JoinKindPhantom) {
-        return abi.decode(self, (StablePhantomPool.JoinKindPhantom));
+    function joinKind(bytes memory self) internal pure returns (JoinKindPhantom) {
+        return abi.decode(self, (JoinKindPhantom));
     }
 
-    function exitKind(bytes memory self) internal pure returns (StablePhantomPool.ExitKindPhantom) {
-        return abi.decode(self, (StablePhantomPool.ExitKindPhantom));
+    function exitKind(bytes memory self) internal pure returns (ExitKindPhantom) {
+        return abi.decode(self, (ExitKindPhantom));
     }
 
     // Joins
 
     function initialAmountsIn(bytes memory self) internal pure returns (uint256[] memory amountsIn) {
-        (, amountsIn) = abi.decode(self, (StablePhantomPool.JoinKindPhantom, uint256[]));
+        (, amountsIn) = abi.decode(self, (JoinKindPhantom, uint256[]));
     }
 
     // Exits
 
     function exactBptInForTokensOut(bytes memory self) internal pure returns (uint256 bptAmountIn) {
-        (, bptAmountIn) = abi.decode(self, (StablePhantomPool.ExitKindPhantom, uint256));
+        (, bptAmountIn) = abi.decode(self, (ExitKindPhantom, uint256));
     }
 }
