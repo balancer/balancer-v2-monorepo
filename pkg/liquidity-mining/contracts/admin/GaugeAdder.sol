@@ -18,14 +18,14 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol"
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakingLiquidityGauge.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 
-contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
+contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    IVault private immutable _vault;
     IGaugeController private immutable _gaugeController;
     IAuthorizerAdaptor private _authorizerAdaptor;
 
@@ -34,27 +34,9 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
     // Mapping from mainnet BPT addresses to canonical liquidity gauge as listed on the GaugeController
     mapping(IERC20 => ILiquidityGauge) internal _poolGauge;
 
-    constructor(IGaugeController gaugeController) Authentication(bytes32(uint256(address(this)))) {
-        // GaugeAdder is a singleton, so it simply uses its own address to disambiguate action identifiers
-        IAuthorizerAdaptor authorizerAdaptor = gaugeController.admin();
-
-        _vault = authorizerAdaptor.getVault();
+    constructor(IGaugeController gaugeController) SingletonAuthentication(gaugeController.admin().getVault()) {
         _gaugeController = gaugeController;
-        _authorizerAdaptor = authorizerAdaptor;
-    }
-
-    /**
-     * @notice Returns the Balancer Vault
-     */
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
-
-    /**
-     * @notice Returns the Balancer Vault's current authorizer.
-     */
-    function getAuthorizer() public view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
+        _authorizerAdaptor = gaugeController.admin();
     }
 
     /**
@@ -169,10 +151,6 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
     }
 
     // Internal functions
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, address(this));
-    }
 
     /**
      * @dev Adds `gauge` to the GaugeController with type `gaugeType` and an initial weight of zero

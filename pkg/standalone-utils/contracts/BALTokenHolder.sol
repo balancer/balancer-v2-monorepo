@@ -18,7 +18,7 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerToken.s
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBALTokenHolder.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 /**
@@ -28,11 +28,10 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
  *
  * There is also a separate auxiliary function to sweep any non-BAL tokens sent here by mistake.
  */
-contract BALTokenHolder is IBALTokenHolder, Authentication {
+contract BALTokenHolder is IBALTokenHolder, SingletonAuthentication {
     using SafeERC20 for IERC20;
 
     IBalancerToken private immutable _balancerToken;
-    IVault private immutable _vault;
 
     string private _name;
 
@@ -40,13 +39,12 @@ contract BALTokenHolder is IBALTokenHolder, Authentication {
         IBalancerToken balancerToken,
         IVault vault,
         string memory name
-    ) Authentication(bytes32(uint256(address(this)))) {
+    ) SingletonAuthentication(vault) {
         // BALTokenHolder is often deployed from a factory for convenience, but it uses its own address instead of
         // the factory's as a disambiguator to make sure the action IDs of all instances are unique, reducing likelihood
         // of errors.
 
         _balancerToken = balancerToken;
-        _vault = vault;
         _name = name;
     }
 
@@ -54,20 +52,8 @@ contract BALTokenHolder is IBALTokenHolder, Authentication {
         return _balancerToken;
     }
 
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
-
     function getName() external view override returns (string memory) {
         return _name;
-    }
-
-    function getAuthorizer() public view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
-    }
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 
     function withdrawFunds(address recipient, uint256 amount) external override authenticate {

@@ -19,7 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IAumProtocolFees
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 /**
@@ -30,13 +30,11 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
  * sent to this contract, where they may be withdrawn by authorized entities. All authorization tasks are delegated
  * to the Vault's own authorizer.
  */
-contract AumProtocolFeesCollector is IAumProtocolFeesCollector, Authentication, ReentrancyGuard {
+contract AumProtocolFeesCollector is IAumProtocolFeesCollector, SingletonAuthentication, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
     uint256 private constant _MAX_PROTOCOL_AUM_FEE_PERCENTAGE = 20e16; // 20%
-
-    IVault public immutable override vault;
 
     // All fee percentages are 18-decimal fixed point numbers.
 
@@ -45,12 +43,8 @@ contract AumProtocolFeesCollector is IAumProtocolFeesCollector, Authentication, 
     // when users join and exit them.
     uint256 private _aumFeePercentage;
 
-    constructor(IVault _vault)
-        // The AumProtocolFeesCollector is a singleton, so it simply uses its own address to disambiguate action
-        // identifiers.
-        Authentication(bytes32(uint256(address(this))))
-    {
-        vault = _vault;
+    constructor(IVault vault) SingletonAuthentication(vault) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function setAumFeePercentage(uint256 newAumFeePercentage) external override authenticate {
@@ -61,17 +55,5 @@ contract AumProtocolFeesCollector is IAumProtocolFeesCollector, Authentication, 
 
     function getAumFeePercentage() external view override returns (uint256) {
         return _aumFeePercentage;
-    }
-
-    function getAuthorizer() external view override returns (IAuthorizer) {
-        return _getAuthorizer();
-    }
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return _getAuthorizer().canPerform(actionId, account, address(this));
-    }
-
-    function _getAuthorizer() internal view returns (IAuthorizer) {
-        return vault.getAuthorizer();
     }
 }

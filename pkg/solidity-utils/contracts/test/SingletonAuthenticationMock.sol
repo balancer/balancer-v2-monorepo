@@ -14,10 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-interface IAumProtocolFeesCollector {
-    event AumFeePercentageChanged(uint256 newAumFeePercentage);
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
-    function getAumFeePercentage() external view returns (uint256);
+import "../helpers/SingletonAuthentication.sol";
 
-    function setAumFeePercentage(uint256 newSwapFeePercentage) external;
+contract SingletonAuthenticationMock is SingletonAuthentication {
+    constructor(IVault vault) SingletonAuthentication(vault) {
+      // solhint-disable-previous-line no-empty-blocks
+    }
 }

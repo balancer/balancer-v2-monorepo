@@ -15,6 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "../solidity-utils/openzeppelin/IERC20.sol";
+
 import "./IVotingEscrow.sol";
 
 /**

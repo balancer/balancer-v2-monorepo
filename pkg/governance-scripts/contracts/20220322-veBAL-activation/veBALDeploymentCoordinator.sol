@@ -44,8 +44,6 @@ interface ICurrentAuthorizer is IAuthorizer {
 // solhint-disable-next-line contract-name-camelcase
 contract veBALDeploymentCoordinator is ReentrancyGuard {
     IBalancerTokenAdmin private immutable _balancerTokenAdmin;
-
-    IVault private immutable _vault;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
     IBalancerToken private immutable _balancerToken;
     IBalancerMinter private immutable _balancerMinter;
@@ -94,7 +92,6 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         IBalancerTokenAdmin balancerTokenAdmin = balancerMinter.getBalancerTokenAdmin();
 
         _balancerTokenAdmin = balancerTokenAdmin;
-        _vault = balancerTokenAdmin.getVault();
         _authorizerAdaptor = authorizerAdaptor;
         _balancerToken = balancerTokenAdmin.getBalancerToken();
         _balancerMinter = balancerMinter;
@@ -112,7 +109,7 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
      * @notice Returns the Balancer Vault.
      */
     function getVault() public view returns (IVault) {
-        return _vault;
+        return getAuthorizerAdaptor().getVault();
     }
 
     /**

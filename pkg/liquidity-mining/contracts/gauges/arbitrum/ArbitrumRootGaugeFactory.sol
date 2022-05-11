@@ -18,14 +18,13 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGaugeFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
 import "./ArbitrumRootGauge.sol";
 import "./IArbitrumFeeProvider.sol";
 
-contract ArbitrumRootGaugeFactory is ILiquidityGaugeFactory, IArbitrumFeeProvider, Authentication {
-    IVault private immutable _vault;
+contract ArbitrumRootGaugeFactory is ILiquidityGaugeFactory, IArbitrumFeeProvider, SingletonAuthentication {
     ArbitrumRootGauge private _gaugeImplementation;
 
     mapping(address => bool) private _isGaugeFromFactory;
@@ -45,27 +44,12 @@ contract ArbitrumRootGaugeFactory is ILiquidityGaugeFactory, IArbitrumFeeProvide
         uint64 gasLimit,
         uint64 gasPrice,
         uint64 maxSubmissionCost
-    ) Authentication(bytes32(uint256(address(this)))) {
-        _vault = vault;
+    ) SingletonAuthentication(vault) {
         _gaugeImplementation = new ArbitrumRootGauge(minter, gatewayRouter);
 
         _gasLimit = gasLimit;
         _gasPrice = gasPrice;
         _maxSubmissionCost = maxSubmissionCost;
-    }
-
-    /**
-     * @dev Returns the address of the Vault.
-     */
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
-
-    /**
-     * @dev Returns the address of the Vault's Authorizer.
-     */
-    function getAuthorizer() public view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
     }
 
     /**
@@ -147,11 +131,5 @@ contract ArbitrumRootGaugeFactory is ILiquidityGaugeFactory, IArbitrumFeeProvide
         _gasPrice = gasPrice;
         _maxSubmissionCost = maxSubmissionCost;
         emit ArbitrumFeesModified(gasLimit, gasPrice, maxSubmissionCost);
-    }
-
-    // Authorization
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 }
