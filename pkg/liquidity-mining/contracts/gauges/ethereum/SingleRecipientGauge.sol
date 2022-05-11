@@ -14,10 +14,11 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGauge.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "../StakelessGauge.sol";
-import "../../interfaces/ISingleRecipientGauge.sol";
 
 contract SingleRecipientGauge is ISingleRecipientGauge, StakelessGauge {
     using SafeERC20 for IERC20;

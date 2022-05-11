@@ -14,8 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "./BalancerErrors.sol";
-import "./ITemporarilyPausable.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/ITemporarilyPausable.sol";
 
 /**
  * @dev Allows for a contract to be paused during an initial period after deployment, disabling functionality. Can be

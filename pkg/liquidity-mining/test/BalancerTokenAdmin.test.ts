@@ -22,7 +22,6 @@ const RATE_REDUCTION_COEFFICIENT = BigNumber.from('1189207115002721024');
 
 describe('BalancerTokenAdmin', () => {
   let vault: Vault;
-  let authorizer: Contract;
   let token: Contract;
   let tokenAdmin: Contract;
   let admin: SignerWithAddress, other: SignerWithAddress;
@@ -33,28 +32,13 @@ describe('BalancerTokenAdmin', () => {
 
   sharedBeforeEach('deploy authorizer', async () => {
     vault = await Vault.create({ admin });
-    if (!vault.authorizer) throw Error('Vault has no Authorizer');
-    authorizer = vault.authorizer;
     token = await deploy('TestBalancerToken', { args: [admin.address, 'Balancer', 'BAL'] });
     tokenAdmin = await deploy('BalancerTokenAdmin', { args: [vault.address, token.address] });
   });
 
   describe('constructor', () => {
-    it('sets the vault address', async () => {
-      expect(await tokenAdmin.getVault()).to.be.eq(vault.address);
-    });
-
-    it('uses the authorizer of the vault', async () => {
-      expect(await tokenAdmin.getAuthorizer()).to.equal(authorizer.address);
-    });
-
-    it('tracks authorizer changes in the vault', async () => {
-      const action = await actionId(vault.instance, 'setAuthorizer');
-      await vault.grantPermissionsGlobally([action], admin.address);
-
-      await vault.instance.connect(admin).setAuthorizer(other.address);
-
-      expect(await tokenAdmin.getAuthorizer()).to.equal(other.address);
+    it('sets the Balancer token', async () => {
+      expect(await tokenAdmin.getBalancerToken()).to.eq(token.address);
     });
 
     it('sets the startEpochTime to the sentinel value', async () => {

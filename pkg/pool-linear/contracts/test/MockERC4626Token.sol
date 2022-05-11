@@ -14,11 +14,11 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/misc/IERC4626.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/misc/IERC4626.sol";
 
-import "@balancer-labs/v2-standalone-utils/contracts/test/TestToken.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 contract MockERC4626Token is TestToken, IERC4626 {
     using FixedPoint for uint256;
