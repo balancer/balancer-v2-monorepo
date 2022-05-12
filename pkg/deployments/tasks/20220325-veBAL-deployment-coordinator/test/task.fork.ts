@@ -6,7 +6,7 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { advanceToTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
 
@@ -14,7 +14,7 @@ describe('veBALDeploymentCoordinator', function () {
   let balMultisig: SignerWithAddress, govMultisig: SignerWithAddress;
   let coordinator: Contract, authorizer: Contract, BAL: Contract;
 
-  const task = Task.forTest('20220325-veBAL-deployment-coordinator', getForkedNetwork(hre));
+  const task = new Task('20220325-veBAL-deployment-coordinator', TaskMode.TEST, getForkedNetwork(hre));
 
   const BAL_TOKEN = '0xba100000625a3754423978a60c9317c58a424e3D';
   const BAL_MULTISIG = '0xCDcEBF1f28678eb4A1478403BA7f34C94F7dDBc5';
@@ -29,11 +29,11 @@ describe('veBALDeploymentCoordinator', function () {
     balMultisig = await impersonate(BAL_MULTISIG, fp(100));
     govMultisig = await impersonate(GOV_MULTISIG, fp(100));
 
-    const vaultTask = Task.forTest('20210418-vault', getForkedNetwork(hre));
+    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizer = await vaultTask.instanceAt('Authorizer', await coordinator.getAuthorizer());
 
     // We reuse this task as it contains an ABI similar to the one in the real BAL token
-    const testBALTokenTask = Task.forTest('20220325-test-balancer-token', getForkedNetwork(hre));
+    const testBALTokenTask = new Task('20220325-test-balancer-token', TaskMode.READ_ONLY, getForkedNetwork(hre));
     BAL = await testBALTokenTask.instanceAt('TestBalancerToken', BAL_TOKEN);
 
     await authorizer

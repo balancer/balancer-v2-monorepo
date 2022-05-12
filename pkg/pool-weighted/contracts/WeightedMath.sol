@@ -14,9 +14,9 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 // These functions start with an underscore, as if they were part of a contract and not a library. At some point this
 // should be fixed.
@@ -442,5 +442,33 @@ library WeightedMath {
         uint256 denominator = k.complement();
 
         return denominator == 0 ? 0 : numerator.divDown(denominator);
+    }
+
+    /**
+     * @dev Calculate the amount of BPT which should be minted when adding a new token to the Pool.
+     *
+     * Note that normalizedWeight is set that it corresponds to the desired weight of this token *after* adding it.
+     * i.e. For a two token 50:50 pool which we want to turn into a 33:33:33 pool, we use a normalized weight of 33%
+     * @param totalSupply - the total supply of the Pool's BPT.
+     * @param normalizedWeight - the normalized weight of the token to be added (normalized relative to final weights)
+     */
+    function _calcBptOutAddToken(uint256 totalSupply, uint256 normalizedWeight) internal pure returns (uint256) {
+        // The amount of BPT which is equivalent to the token being added may be calculated by the growth in the
+        // sum of the token weights, i.e. if we add a token which will make up 50% of the pool then we should receive
+        // 50% of the new supply of BPT.
+        //
+        // The growth in the total weight of the pool can be easily calculated by:
+        //
+        // weightSumRatio = totalWeight / (totalWeight - newTokenWeight)
+        //
+        // As we're working with normalized weights `totalWeight` is equal to 1.
+
+        uint256 weightSumRatio = FixedPoint.ONE.divDown(FixedPoint.ONE.sub(normalizedWeight));
+
+        // The amount of BPT to mint is then simply:
+        //
+        // toMint = totalSupply * (weightSumRatio - 1)
+
+        return totalSupply.mulDown(weightSumRatio.sub(FixedPoint.ONE));
     }
 }

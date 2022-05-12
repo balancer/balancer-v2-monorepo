@@ -4,22 +4,7 @@ import { RunSuperFunction, HardhatRuntimeEnvironment, HttpNetworkConfig, Hardhat
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 export default async function (args: any, hre: HardhatRuntimeEnvironment, run: RunSuperFunction<any>): Promise<void> {
-  if (hre.network.name === 'hardhat' && !args.fork) await runNormalTests(args, hre, run);
-  else if (hre.network.name === 'hardhat' && args.fork) await runForkTests(args, hre, run);
-  else await runDeployTests(args, hre, run);
-}
-
-async function runNormalTests(args: any, hre: HardhatRuntimeEnvironment, run: RunSuperFunction<any>): Promise<void> {
-  console.log('Running normal tests...');
-  args.testFiles = args.testFiles.filter((file: string) => file.endsWith('.test.ts'));
-  await run(args);
-}
-
-async function runDeployTests(args: any, hre: HardhatRuntimeEnvironment, run: RunSuperFunction<any>): Promise<void> {
-  console.log('Running deployment tests...');
-  if (args.fork) throw Error("The 'fork' option is invalid when testing deployments on livenetwork");
-  args.testFiles = args.testFiles.filter((file: string) => file.endsWith('.deploy.ts'));
-  await run(args);
+  await runForkTests(args, hre, run);
 }
 
 async function runForkTests(args: any, hre: HardhatRuntimeEnvironment, run: RunSuperFunction<any>): Promise<void> {

@@ -12,18 +12,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-
-import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRelayedBasePool.sol";
-
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-
-import "./IAssetManager.sol";
-
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
+
+import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRelayedBasePool.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 /**
  * @title RewardsAssetManager

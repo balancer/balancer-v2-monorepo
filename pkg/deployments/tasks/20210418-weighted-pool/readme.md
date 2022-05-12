@@ -7,5 +7,6 @@ Deployment of the `WeightedPoolFactory`, for Weighted Pools of up to 8 tokens, a
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Polygon mainnet address](./output/polygon.json)
 - [Arbitrum mainnet address](./output/arbitrum.json)
+- [Optimism mainnet address](./output/optimism.json)
 - [`WeightedPool` ABI](./abi/WeightedPool.json)
 - [`WeightedPool2Tokens` ABI](./abi/WeightedPool2Tokens.json)
