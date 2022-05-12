@@ -80,7 +80,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     address private _root;
     ScheduledExecution[] private _scheduledExecutions;
-    mapping(bytes32 => bool) public isPermissionGranted;
+    mapping(bytes32 => bool) private _isPermissionGranted;
     mapping(bytes32 => uint256) private _delaysPerActionId;
 
     /**
@@ -213,6 +213,21 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
+     * @dev Returns true if `account` is has the permission defined by action `actionId` and target `where`.
+     * This function is specific for the strict permission defined by the tuple `(actionId, where)`, `account` may also
+     * hold the global permission for the action `actionId` which would allow them to perform this action on `where`.
+     * For this reason, it's recommended to use `hasPermission` if checking whether `account` is allowed to perform
+     * a given action.
+     */
+    function isPermissionGranted(
+        bytes32 actionId,
+        address account,
+        address where
+    ) external view returns (bool) {
+        return _isPermissionGranted[permissionId(actionId, account, where)];
+    }
+
+    /**
      * @dev Returns true if `account` is allowed to perform action `actionId` in target `where`.
      */
     function hasPermission(
@@ -221,8 +236,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where
     ) public view returns (bool) {
         return
-            isPermissionGranted[permissionId(actionId, account, where)] ||
-            isPermissionGranted[permissionId(actionId, account, EVERYWHERE)];
+            _isPermissionGranted[permissionId(actionId, account, where)] ||
+            _isPermissionGranted[permissionId(actionId, account, EVERYWHERE)];
     }
 
     /**
@@ -521,8 +536,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where
     ) private {
         bytes32 permission = permissionId(actionId, account, where);
-        if (!isPermissionGranted[permission]) {
-            isPermissionGranted[permission] = true;
+        if (!_isPermissionGranted[permission]) {
+            _isPermissionGranted[permission] = true;
             emit PermissionGranted(actionId, account, where);
         }
     }
@@ -533,8 +548,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where
     ) private {
         bytes32 permission = permissionId(actionId, account, where);
-        if (isPermissionGranted[permission]) {
-            isPermissionGranted[permission] = false;
+        if (_isPermissionGranted[permission]) {
+            _isPermissionGranted[permission] = false;
             emit PermissionRevoked(actionId, account, where);
         }
     }
