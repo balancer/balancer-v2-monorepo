@@ -61,7 +61,7 @@ export default class TimelockAuthorizer {
   }
 
   async delay(action: string): Promise<BigNumberish> {
-    return this.instance.delaysPerActionId(action);
+    return this.instance.getActionIdDelay(action);
   }
 
   async scheduledExecutions(

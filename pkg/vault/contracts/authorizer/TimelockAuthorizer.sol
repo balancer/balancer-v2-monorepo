@@ -80,7 +80,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     address private _root;
     ScheduledExecution[] public scheduledExecutions;
     mapping(bytes32 => bool) public isPermissionGranted;
-    mapping(bytes32 => uint256) public delaysPerActionId;
+    mapping(bytes32 => uint256) private _delaysPerActionId;
 
     /**
      * @dev Emitted when a new execution `scheduledExecutionId` is scheduled.
@@ -194,6 +194,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
+     * @dev Returns the execution delay for action `actionId`.
+     */
+    function getActionIdDelay(bytes32 actionId) external view returns (uint256) {
+        return _delaysPerActionId[actionId];
+    }
+
+    /**
      * @dev Returns the permission ID for action `actionId`, account `account` and target `where`.
      */
     function permissionId(
@@ -248,7 +255,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where
     ) public view override returns (bool) {
         return
-            (delaysPerActionId[actionId] > 0) ? account == address(_executor) : hasPermission(actionId, account, where);
+            (_delaysPerActionId[actionId] > 0) ? account == address(_executor) : hasPermission(actionId, account, where);
     }
 
     /**
@@ -314,10 +321,10 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      */
     function setDelay(bytes32 actionId, uint256 delay) external onlyExecutor {
         bytes32 setAuthorizerActionId = _vault.getActionId(IVault.setAuthorizer.selector);
-        bool isAllowed = actionId == setAuthorizerActionId || delay <= delaysPerActionId[setAuthorizerActionId];
+        bool isAllowed = actionId == setAuthorizerActionId || delay <= _delaysPerActionId[setAuthorizerActionId];
         require(isAllowed, "DELAY_EXCEEDS_SET_AUTHORIZER");
 
-        delaysPerActionId[actionId] = delay;
+        _delaysPerActionId[actionId] = delay;
         emit ActionDelaySet(actionId, delay);
     }
 
@@ -337,7 +344,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         // critical, as otherwise it'd be possible to execute an action with a delay shorter than its current one
         // by first changing it to a smaller (or zero) value.
 
-        uint256 actionDelay = delaysPerActionId[actionId];
+        uint256 actionDelay = _delaysPerActionId[actionId];
         bytes32 scheduleDelayActionId = getActionId(SCHEDULE_DELAY_ACTION_ID, actionId);
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);
         return _scheduleWithDelay(scheduleDelayActionId, address(this), data, actionDelay, executors);
@@ -530,7 +537,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         bytes memory data,
         address[] memory executors
     ) private returns (uint256 scheduledExecutionId) {
-        uint256 delay = delaysPerActionId[actionId];
+        uint256 delay = _delaysPerActionId[actionId];
         require(delay > 0, "CANNOT_SCHEDULE_ACTION");
         return _scheduleWithDelay(actionId, where, data, delay, executors);
     }
@@ -576,7 +583,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         // If there is a delay defined for the granular action ID, then the sender must be the authorizer (scheduled
         // execution)
         bytes32 granularActionId = getActionId(actionId, how);
-        if (delaysPerActionId[granularActionId] > 0) {
+        if (_delaysPerActionId[granularActionId] > 0) {
             return account == address(_executor);
         }
 
