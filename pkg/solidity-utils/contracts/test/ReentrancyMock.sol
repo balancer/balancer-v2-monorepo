@@ -3,6 +3,7 @@
 pragma solidity ^0.7.0;
 
 import "../openzeppelin/ReentrancyGuard.sol";
+
 import "./ReentrancyAttack.sol";
 
 contract ReentrancyMock is ReentrancyGuard {

@@ -1,0 +1,246 @@
+[
+    {
+        "name": "RewardDistributorUpdated",
+        "inputs": [
+            {
+                "name": "reward_token",
+                "type": "address",
+                "indexed": true
+            },
+            {
+                "name": "distributor",
+                "type": "address",
+                "indexed": false
+            }
+        ],
+        "anonymous": false,
+        "type": "event"
+    },
+    {
+        "name": "RewardDurationUpdated",
+        "inputs": [
+            {
+                "name": "reward_token",
+                "type": "address",
+                "indexed": true
+            },
+            {
+                "name": "duration",
+                "type": "uint256",
+                "indexed": false
+            }
+        ],
+        "anonymous": false,
+        "type": "event"
+    },
+    {
+        "stateMutability": "nonpayable",
+        "type": "constructor",
+        "inputs": [
+            {
+                "name": "_bal_token",
+                "type": "address"
+            },
+            {
+                "name": "_authorizerAdaptor",
+                "type": "address"
+            }
+        ],
+        "outputs": []
+    },
+    {
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "add_reward",
+        "inputs": [
+            {
+                "name": "_token",
+                "type": "address"
+            },
+            {
+                "name": "_distributor",
+                "type": "address"
+            },
+            {
+                "name": "_duration",
+                "type": "uint256"
+            }
+        ],
+        "outputs": []
+    },
+    {
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "remove_reward",
+        "inputs": [
+            {
+                "name": "_token",
+                "type": "address"
+            },
+            {
+                "name": "_recipient",
+                "type": "address"
+            }
+        ],
+        "outputs": []
+    },
+    {
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "get_reward",
+        "inputs": [],
+        "outputs": []
+    },
+    {
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "notify_reward_amount",
+        "inputs": [
+            {
+                "name": "_token",
+                "type": "address"
+            }
+        ],
+        "outputs": []
+    },
+    {
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "set_reward_duration",
+        "inputs": [
+            {
+                "name": "_token",
+                "type": "address"
+            },
+            {
+                "name": "_duration",
+                "type": "uint256"
+            }
+        ],
+        "outputs": []
+    },
+    {
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "set_reward_distributor",
+        "inputs": [
+            {
+                "name": "_token",
+                "type": "address"
+            },
+            {
+                "name": "_distributor",
+                "type": "address"
+            }
+        ],
+        "outputs": []
+    },
+    {
+        "stateMutability": "nonpayable",
+        "type": "function",
+        "name": "initialize",
+        "inputs": [
+            {
+                "name": "reward_receiver",
+                "type": "address"
+            }
+        ],
+        "outputs": []
+    },
+    {
+        "stateMutability": "view",
+        "type": "function",
+        "name": "reward_receiver",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "address"
+            }
+        ]
+    },
+    {
+        "stateMutability": "view",
+        "type": "function",
+        "name": "reward_tokens",
+        "inputs": [
+            {
+                "name": "arg0",
+                "type": "uint256"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "address"
+            }
+        ]
+    },
+    {
+        "stateMutability": "view",
+        "type": "function",
+        "name": "reward_count",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256"
+            }
+        ]
+    },
+    {
+        "stateMutability": "view",
+        "type": "function",
+        "name": "reward_data",
+        "inputs": [
+            {
+                "name": "arg0",
+                "type": "address"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "tuple",
+                "components": [
+                    {
+                        "name": "distributor",
+                        "type": "address"
+                    },
+                    {
+                        "name": "period_finish",
+                        "type": "uint256"
+                    },
+                    {
+                        "name": "rate",
+                        "type": "uint256"
+                    },
+                    {
+                        "name": "duration",
+                        "type": "uint256"
+                    },
+                    {
+                        "name": "received",
+                        "type": "uint256"
+                    },
+                    {
+                        "name": "paid",
+                        "type": "uint256"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "stateMutability": "view",
+        "type": "function",
+        "name": "last_update_time",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256"
+            }
+        ]
+    }
+]

@@ -1,4 +1,4 @@
-import Task from '../../src/task';
+import Task, { TaskMode } from '../../src/task';
 
 export type GaugeSystemDeployment = {
   BPT: string;
@@ -6,8 +6,8 @@ export type GaugeSystemDeployment = {
   AuthorizerAdaptor: string;
 };
 
-const AuthorizerAdaptor = new Task('20220325-authorizer-adaptor');
-const BalancerTokenAdmin = new Task('20220325-balancer-token-admin');
+const AuthorizerAdaptor = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY);
+const BalancerTokenAdmin = new Task('20220325-balancer-token-admin', TaskMode.READ_ONLY);
 
 export default {
   AuthorizerAdaptor,

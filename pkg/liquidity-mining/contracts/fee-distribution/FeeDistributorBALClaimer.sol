@@ -15,10 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IBALTokenHolder.sol";
-
-import "../interfaces/IFeeDistributor.sol";
-import "../interfaces/ISingleRecipientGauge.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGauge.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IFeeDistributor.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBALTokenHolder.sol";
 
 /**
  * @title FeeDistributorBALClaimer

@@ -15,17 +15,16 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
-
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
-
-import "@balancer-labs/v2-asset-manager-utils/contracts/IAssetManager.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
@@ -140,7 +139,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _DEFAULT_MINIMUM_BPT;
     }
 
-    function getSwapFeePercentage() public view returns (uint256) {
+    function getSwapFeePercentage() public view virtual returns (uint256) {
         return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
     }
 
@@ -152,12 +151,20 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _setSwapFeePercentage(swapFeePercentage);
     }
 
-    function _setSwapFeePercentage(uint256 swapFeePercentage) private {
-        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
-        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
+    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual {
+        _require(swapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
 
         _miscData = _miscData.insertUint64(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET);
         emit SwapFeePercentageChanged(swapFeePercentage);
+    }
+
+    function _getMinSwapFeePercentage() internal pure virtual returns (uint256) {
+        return _MIN_SWAP_FEE_PERCENTAGE;
+    }
+
+    function _getMaxSwapFeePercentage() internal pure virtual returns (uint256) {
+        return _MAX_SWAP_FEE_PERCENTAGE;
     }
 
     function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig)
@@ -176,8 +183,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         IAssetManager(assetManager).setConfig(poolId, poolConfig);
     }
 
-    function setPaused(bool paused) external authenticate {
-        _setPaused(paused);
+    function pause() external authenticate {
+        _setPaused(true);
+    }
+
+    function unpause() external authenticate {
+        _setPaused(false);
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {

@@ -2,8 +2,9 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20Permit.sol";
+
 import "./ERC20.sol";
-import "./IERC20Permit.sol";
 import "./EIP712.sol";
 
 /**
@@ -20,15 +21,18 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712 {
     mapping(address => uint256) private _nonces;
 
     // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _PERMIT_TYPEHASH =
-        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+    bytes32 private immutable _PERMIT_TYPEHASH = keccak256(
+        "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+    );
 
     /**
      * @dev Initializes the {EIP712} domain separator using the `name` parameter, and setting `version` to `"1"`.
      *
      * It's a good idea to use the same `name` that is defined as the ERC20 token name.
      */
-    constructor(string memory name) EIP712(name, "1") {}
+    constructor(string memory name) EIP712(name, "1") {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     /**
      * @dev See {IERC20Permit-permit}.
