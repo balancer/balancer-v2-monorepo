@@ -77,7 +77,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     IAuthentication private immutable _vault;
     uint256 private immutable _rootTransferDelay;
 
-    address public root;
+    address private _root;
     ScheduledExecution[] public scheduledExecutions;
     mapping(bytes32 => bool) public isPermissionGranted;
     mapping(bytes32 => uint256) public delaysPerActionId;
@@ -127,7 +127,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         IAuthentication vault,
         uint256 rootTransferDelay
     ) {
-        root = admin;
+        _root = admin;
         _vault = vault;
         _executor = new TimelockExecutor();
         _rootTransferDelay = rootTransferDelay;
@@ -148,7 +148,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      * @dev Returns true if `account` is the root.
      */
     function isRoot(address account) public view returns (bool) {
-        return account == root;
+        return account == _root;
     }
 
     /**
@@ -170,6 +170,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      */
     function getExecutor() external view returns (address) {
         return address(_executor);
+    }
+
+    /**
+     * @dev Returns the root address.
+     */
+    function getRoot() external view returns (address) {
+        return _root;
     }
 
     /**
@@ -284,7 +291,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      * @dev Sets the root address to `newRoot`.
      */
     function setRoot(address newRoot) external onlyExecutor {
-        root = newRoot;
+        _root = newRoot;
         emit RootSet(newRoot);
     }
 
