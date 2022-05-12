@@ -42,7 +42,8 @@ contract SmartWalletCheckerCoordinator is BaseCoordinator {
         if (deploymentStage == 0) {
             // Step 1: Activate a SmartWalletChecker contract for veBAL
             //
-            // This allows an allowlisted set of contracts to lock veBAL, contracts are generally prevented from doing so.
+            // This allows an allowlisted set of contracts to lock veBAL,
+            // contracts are generally prevented from doing so.
             _setSmartWalletChecker();
 
             // Step 2: Allow the Governance multisig to allow/denylist future smart contracts to mint veBAL

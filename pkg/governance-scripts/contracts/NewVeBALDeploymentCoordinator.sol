@@ -121,6 +121,7 @@ contract veBALDeploymentCoordinator is BaseCoordinator {
         if (currentStage == 0) {
             require(block.timestamp >= _activationScheduledTime, "Not ready for activation");
         } else if (currentStage == 1) {
+            // solhint-disable-previous-line no-empty-blocks
             // Immediately ready after first stage
         } else if (currentStage == 2) {
             require(_getTimeSinceLastStageActivation() >= _thirdStageDelay, "Delay from second stage not yet elapsed");

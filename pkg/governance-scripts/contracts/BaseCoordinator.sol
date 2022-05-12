@@ -103,7 +103,7 @@ abstract contract BaseCoordinator is ReentrancyGuard {
     }
 
     function _checkReady(uint256) internal view virtual {
-        // solhint-ignore-previous-line no-empty-blocks
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function _performNextStage(uint256 currentStage) internal virtual;
@@ -123,6 +123,6 @@ abstract contract BaseCoordinator is ReentrancyGuard {
     }
 
     function _cleanup() internal view virtual {
-        // solhint-ignore-previous-line no-empty-blocks
+        // solhint-disable-previous-line no-empty-blocks
     }
 }
