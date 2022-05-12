@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
@@ -78,7 +79,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     uint256 private immutable _rootTransferDelay;
 
     address private _root;
-    ScheduledExecution[] public scheduledExecutions;
+    ScheduledExecution[] private _scheduledExecutions;
     mapping(bytes32 => bool) public isPermissionGranted;
     mapping(bytes32 => uint256) private _delaysPerActionId;
 
@@ -281,12 +282,19 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
+     * @dev Returns the scheduled execution `scheduledExecutionId`.
+     */
+    function getScheduledExecution(uint256 scheduledExecutionId) external view returns (ScheduledExecution memory) {
+        return _scheduledExecutions[scheduledExecutionId];
+    }
+
+    /**
      * @dev Returns true if execution `scheduledExecutionId` can be executed.
      * Only true if it is not already executed or cancelled, and if the execution delay has passed.
      */
     function canExecute(uint256 scheduledExecutionId) external view returns (bool) {
-        require(scheduledExecutionId < scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
-        ScheduledExecution storage scheduledExecution = scheduledExecutions[scheduledExecutionId];
+        require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
+        ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
         return
             !scheduledExecution.executed &&
             !scheduledExecution.cancelled &&
@@ -368,8 +376,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      * @dev Executes a scheduled action `scheduledExecutionId`.
      */
     function execute(uint256 scheduledExecutionId) external returns (bytes memory result) {
-        require(scheduledExecutionId < scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
-        ScheduledExecution storage scheduledExecution = scheduledExecutions[scheduledExecutionId];
+        require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
+        ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
         require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
 
@@ -390,8 +398,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      * @dev Cancels a scheduled action `scheduledExecutionId`.
      */
     function cancel(uint256 scheduledExecutionId) external {
-        require(scheduledExecutionId < scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
-        ScheduledExecution storage scheduledExecution = scheduledExecutions[scheduledExecutionId];
+        require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
+        ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
 
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
         require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
@@ -549,13 +557,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         uint256 delay,
         address[] memory executors
     ) private returns (uint256 scheduledExecutionId) {
-        scheduledExecutionId = scheduledExecutions.length;
+        scheduledExecutionId = _scheduledExecutions.length;
         emit ExecutionScheduled(actionId, scheduledExecutionId);
 
         // solhint-disable-next-line not-rely-on-time
         uint256 executableAt = block.timestamp + delay;
         bool protected = executors.length > 0;
-        scheduledExecutions.push(ScheduledExecution(where, data, false, false, protected, executableAt));
+        _scheduledExecutions.push(ScheduledExecution(where, data, false, false, protected, executableAt));
 
         bytes32 executeActionId = getActionId(EXECUTE_ACTION_ID, bytes32(scheduledExecutionId));
         for (uint256 i = 0; i < executors.length; i++) {

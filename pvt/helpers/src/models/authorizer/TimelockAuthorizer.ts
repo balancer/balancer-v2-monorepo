@@ -64,7 +64,7 @@ export default class TimelockAuthorizer {
     return this.instance.getActionIdDelay(action);
   }
 
-  async scheduledExecutions(
+  async getScheduledExecution(
     id: BigNumberish
   ): Promise<{
     executed: boolean;
@@ -74,7 +74,7 @@ export default class TimelockAuthorizer {
     data: string;
     where: string;
   }> {
-    return this.instance.scheduledExecutions(id);
+    return this.instance.getScheduledExecution(id);
   }
 
   async canPerform(action: string, account: Account, where: Account): Promise<boolean> {
