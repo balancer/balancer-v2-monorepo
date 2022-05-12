@@ -14,7 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IVotingEscrow.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IVotingEscrow.sol";
+
 import "@balancer-labs/v2-liquidity-mining/contracts/SmartWalletChecker.sol";
 
 import "./BaseCoordinator.sol";

@@ -14,12 +14,13 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeAdder.sol";
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IGaugeController.sol";
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerMinter.sol";
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/IBalancerTokenAdmin.sol";
-import "@balancer-labs/v2-liquidity-mining/contracts/interfaces/ILiquidityGaugeFactory.sol";
-import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IBALTokenHolderFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGaugeFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeController.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerMinter.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
+
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBALTokenHolderFactory.sol";
 
 import "./BaseCoordinator.sol";
 
