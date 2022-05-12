@@ -271,7 +271,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where
     ) public view override returns (bool) {
         return
-            (_delaysPerActionId[actionId] > 0) ? account == address(_executor) : hasPermission(actionId, account, where);
+            _delaysPerActionId[actionId] > 0 ? account == address(_executor) : hasPermission(actionId, account, where);
     }
 
     /**
