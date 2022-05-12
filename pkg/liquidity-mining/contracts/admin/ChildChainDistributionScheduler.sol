@@ -15,11 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IRewardsOnlyGauge.sol";
 
-import "../interfaces/IAuthorizerAdaptor.sol";
-import "../interfaces/IRewardsOnlyGauge.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 // solhint-disable not-rely-on-time
 
@@ -28,7 +28,7 @@ import "../interfaces/IRewardsOnlyGauge.sol";
  * @notice Scheduler for setting up permissionless distributions of liquidity gauge reward tokens.
  * @dev Any address may send tokens to the DistributionSchedule to be distributed among gauge depositors.
  */
-contract ChildChainDistributionScheduler is Authentication {
+contract ChildChainDistributionScheduler is SingletonAuthentication {
     using SafeERC20 for IERC20;
 
     uint256 private constant _MAX_REWARDS = 8;
@@ -45,30 +45,11 @@ contract ChildChainDistributionScheduler is Authentication {
         uint32 nextTimestamp;
     }
 
-    IVault private immutable _vault;
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
 
-    constructor(IAuthorizerAdaptor authorizerAdaptor) Authentication(bytes32(uint256(address(this)))) {
-        // ChildChainDistributionScheduler is a singleton, so it uses its own address to disambiguate action identifiers
-
-        _vault = authorizerAdaptor.getVault();
+    constructor(IAuthorizerAdaptor authorizerAdaptor) SingletonAuthentication(authorizerAdaptor.getVault()) {
         _authorizerAdaptor = authorizerAdaptor;
     }
-
-    /**
-     * @notice Returns the Balancer Vault
-     */
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
-
-    /**
-     * @notice Returns the Balancer Vault's current authorizer.
-     */
-    function getAuthorizer() public view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
-    }
-
 
     /**
      * @notice Returns information on the reward paid out to `gauge` in `token` over the week starting at `timestamp`
@@ -293,9 +274,5 @@ contract ChildChainDistributionScheduler is Authentication {
      */
     function _roundDownTimestamp(uint256 timestamp) private pure returns (uint256) {
         return (timestamp / 1 weeks) * 1 weeks;
-    }
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 }

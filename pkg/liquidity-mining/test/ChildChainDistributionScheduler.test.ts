@@ -87,7 +87,7 @@ describe('ChildChainDistributionScheduler', () => {
   });
 
   sharedBeforeEach('deploy ChildChainDistributionScheduler', async () => {
-    distributionScheduler = await deploy('ChildChainDistributionScheduler');
+    distributionScheduler = await deploy('ChildChainDistributionScheduler', { args: [adaptor.address] });
   });
 
   sharedBeforeEach('deploy Token', async () => {

@@ -19,7 +19,7 @@ import "./IChildChainStreamer.sol";
 
 // For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
 // naming convention.
-// solhint-disable func-name-mixedcase
+// solhint-disable func-name-mixedcase, var-name-mixedcase
 
 interface IRewardsOnlyGauge {
     struct Reward {
@@ -37,7 +37,6 @@ interface IRewardsOnlyGauge {
         bytes32 claimSignature
     ) external;
 
-    // solhint-disable-next-line func-name-mixedcase
     function lp_token() external view returns (IERC20);
 
     function reward_tokens(uint256 index) external view returns (IERC20);
