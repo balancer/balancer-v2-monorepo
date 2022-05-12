@@ -1915,7 +1915,7 @@ describe('TimelockAuthorizer', () => {
             expectedData = authorizer.instance.interface.encodeFunctionData('setDelay', [action, delay]);
           });
 
-          context('when the delay is greater than or equal to the delay to set the authorizer in the vault', () => {
+          context('when the delay is less than or equal to the delay to set the authorizer in the vault', () => {
             sharedBeforeEach('set delay to set authorizer', async () => {
               const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
               await authorizer.setDelay(setAuthorizerAction, delay, { from: admin });
@@ -1987,7 +1987,7 @@ describe('TimelockAuthorizer', () => {
             });
           });
 
-          context('when the delay is not greater than the delay to set the authorizer in the vault', () => {
+          context('when the delay is greater than the delay to set the authorizer in the vault', () => {
             it('reverts on execution', async () => {
               const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
               await expect(authorizer.execute(id)).to.be.revertedWith('DELAY_EXCEEDS_SET_AUTHORIZER');
