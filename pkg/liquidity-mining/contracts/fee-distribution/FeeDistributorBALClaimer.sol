@@ -88,6 +88,9 @@ contract FeeDistributorBALClaimer {
      */
     function distributeBAL() external {
         _checkpointGauge(_gauge);
+
+        // We checkpoint before and after depositing tokens to ensure that the BAL is assigned to the correct week.
+        _feeDistributor.checkpointToken(_balToken);
         _balTokenHolder.withdrawFunds(address(_feeDistributor), _balToken.balanceOf(address(_balTokenHolder)));
         _feeDistributor.checkpointToken(_balToken);
     }
