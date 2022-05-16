@@ -14,10 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
-
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
 /**
  * @author Balancer Labs
@@ -25,17 +22,15 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
  * @dev This can be used to deprecate a factory (e.g., one that doesn't charge protocol fees) once it has been
  * superceded by a new version.
  */
-abstract contract MortalFactory is Authentication {
-    IVault private immutable _vault;
-
+abstract contract MortalFactory is SingletonAuthentication {
     bool private _disabled;
 
     event FactoryDisabled();
 
     // Factories should be singletons, so use the address of the derived contract (this)
     // to disambiguate action identifiers.
-    constructor(IVault vault) Authentication(bytes32(uint256(address(this)))) {
-        _vault = vault;
+    constructor(IVault vault) SingletonAuthentication(vault) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
@@ -61,9 +56,5 @@ abstract contract MortalFactory is Authentication {
     // Derived factories should call this in their `create` functions to revert if the factory is disabled.
     function _ensureEnabled() internal view {
         _require(!isDisabled(), Errors.DISABLED);
-    }
-
-    function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
-        return (_vault.getAuthorizer().canPerform(actionId, user, address(this)));
     }
 }

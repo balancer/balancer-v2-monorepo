@@ -17,11 +17,11 @@ pragma solidity ^0.7.0;
 import "../factories/MortalFactory.sol";
 
 contract MockMortalFactory is MortalFactory {
-  constructor(IVault vault) MortalFactory(vault) {
-    // solhint-disable-previous-line no-empty-blocks
-  }
+    constructor(IVault vault) MortalFactory(vault) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
-  function create() external {
-    _ensureEnabled();
-  }
+    function create() external {
+        _ensureEnabled();
+    }
 }
