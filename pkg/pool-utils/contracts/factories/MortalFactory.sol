@@ -27,8 +27,6 @@ abstract contract MortalFactory is SingletonAuthentication {
 
     event FactoryDisabled();
 
-    // Factories should be singletons, so use the address of the derived contract (this)
-    // to disambiguate action identifiers.
     constructor(IVault vault) SingletonAuthentication(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
