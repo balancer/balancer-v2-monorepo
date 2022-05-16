@@ -11,7 +11,7 @@ import { impersonate } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { StablePoolEncoder, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 
-describe.only('DoubleEntrypointFixRelayer', function () {
+describe('DoubleEntrypointFixRelayer', function () {
   let govMultisig: SignerWithAddress;
   let btcBptHolder: SignerWithAddress, snxBptHolder: SignerWithAddress;
   let relayer: Contract;
