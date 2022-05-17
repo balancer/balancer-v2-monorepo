@@ -40,7 +40,7 @@ describe('NoProtocolFeeLiquidityBootstrappingPoolFactory', function () {
 
   before('run task', async () => {
     await task.run({ force: true });
-    factory = await task.instanceAt('NoProtocolFeeLiquidityBootstrappingPoolFactory', task.output().factory);
+    factory = await task.deployedInstance('NoProtocolFeeLiquidityBootstrappingPoolFactory');
   });
 
   before('load signers', async () => {

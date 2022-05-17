@@ -21,9 +21,11 @@
   ],
   "scripts": {
     "build": "tsc",
+    "check": "hardhat check-deployments --network mainnet && hardhat check-deployments --network polygon && hardhat check-deployments --network arbitrum && hardhat check-deployments --network optimism",
     "lint": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
     "prepack": "yarn build",
-    "test": "hardhat test ./**/test/*.ts --fork mainnet --block-number 14623150"
+    "test": "hardhat test ./**/test/*.ts --fork mainnet --block-number 14769900",
+    "ci:prepare-config": "ts-node ci/prepare-config.ts"
   },
   "devDependencies": {
     "@balancer-labs/balancer-js": "workspace:*",
