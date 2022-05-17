@@ -13,7 +13,7 @@ import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
 import { Logger } from './src/logger';
 import path from 'path';
-import { readdirSync } from 'fs';
+import { existsSync, readdirSync, statSync } from 'fs';
 
 task('deploy', 'Run deployment task')
   .addParam('id', 'Deployment task ID')
@@ -66,13 +66,14 @@ task('check-deployments', `Check that all tasks' deployments correspond to their
       const taskDirectory = path.resolve(__dirname, './tasks');
 
       for (const taskID of readdirSync(taskDirectory)) {
-        const outputFiles = readdirSync(path.resolve(taskDirectory, taskID, 'output'));
-        if (!outputFiles.some((outputFile) => outputFile.includes(hre.network.name))) {
-          // Not all tasks have outputs for all networks, so we skip those that don't
-          continue;
+        const outputDir = path.resolve(taskDirectory, taskID, 'output');
+        if (existsSync(outputDir) && statSync(outputDir).isDirectory()) {
+          const outputFiles = readdirSync(outputDir);
+          if (outputFiles.some((outputFile) => outputFile.includes(hre.network.name))) {
+            // Not all tasks have outputs for all networks, so we skip those that don't
+            await new Task(taskID, TaskMode.CHECK, hre.network.name).run(args);
+          }
         }
-
-        await new Task(taskID, TaskMode.CHECK, hre.network.name).run(args);
       }
     }
   });

@@ -20,6 +20,7 @@ import {
   RawOutput,
   TaskRunOptions,
 } from './types';
+import { getContractDeploymentTransactionHash } from './network';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 
@@ -322,13 +323,5 @@ export default class Task {
         );
       }
     }
-  }
-}
-async function getContractDeploymentTransactionHash(deployedAddress: string, network: string): Promise<string> {
-  // todo: replace with actual query
-  if (deployedAddress == '0xBA12222222228d8Ba445958a75a0704d566BF2C8') {
-    return '0x28c44bb10d469cbd42accf97bd00b73eabbace138e9d44593e851231fbed1cb7';
-  } else {
-    return '0x3a5218c06f36fed9c4965c75215e87423280317b757d65ef117f4ed69003396a';
   }
 }
