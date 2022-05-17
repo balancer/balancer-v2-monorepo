@@ -25,7 +25,7 @@
     "lint": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
     "prepack": "yarn build",
     "test": "hardhat test ./**/test/*.ts --fork mainnet --block-number 14769900",
-    "ci:prepare-config": "ts-node ci/prepare-config.js"
+    "ci:prepare-config": "ts-node ci/prepare-config.ts"
   },
   "devDependencies": {
     "@balancer-labs/balancer-js": "workspace:*",
