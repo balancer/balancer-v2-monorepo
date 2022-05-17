@@ -268,7 +268,7 @@ jobs:
           INFURA_ARBITRUM_NONARCHIVE_ENDPOINT: ${{ secrets.INFURA_ARBITRUM_NONARCHIVE_ENDPOINT }}
           INFURA_OPTIMISM_NONARCHIVE_ENDPOINT: ${{ secrets.INFURA_OPTIMISM_NONARCHIVE_ENDPOINT }}
       - name: Test
-        run: yarn workspace @balancer-labs/v2-deployments test:fork
+        run: yarn workspace @balancer-labs/v2-deployments test
 
   check-deployments:
     runs-on: ubuntu-latest
