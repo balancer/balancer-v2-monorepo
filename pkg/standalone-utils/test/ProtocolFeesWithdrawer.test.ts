@@ -112,14 +112,14 @@ describe('ProtocolFeesWithdrawer', function () {
               changes: allowlistedTokens.reduce((acc, token, amount) => {
                 acc[token.symbol] = -amount;
                 return acc;
-              }, {} as any),
+              }, {} as Record<string, number>),
             },
             {
               account: recipient,
               changes: allowlistedTokens.reduce((acc, token, amount) => {
                 acc[token.symbol] = amount;
                 return acc;
-              }, {} as any),
+              }, {} as Record<string, number>),
             },
           ];
 
@@ -193,14 +193,14 @@ describe('ProtocolFeesWithdrawer', function () {
               changes: denylistedTokens.reduce((acc, token, amount) => {
                 acc[token.symbol] = -amount;
                 return acc;
-              }, {} as any),
+              }, {} as Record<string, number>),
             },
             {
               account: recipient,
               changes: denylistedTokens.reduce((acc, token, amount) => {
                 acc[token.symbol] = amount;
                 return acc;
-              }, {} as any),
+              }, {} as Record<string, number>),
             },
           ];
 
