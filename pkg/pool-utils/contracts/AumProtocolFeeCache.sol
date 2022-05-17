@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-standalone-utils/contracts/interfaces/IAumProtocolFeesCollector.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IAumProtocolFeesCollector.sol";
 
 import "./ProtocolFeeCache.sol";
 
