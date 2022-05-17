@@ -11,13 +11,13 @@ if (process.env.CI) {
         "url": "${process.env.ALCHEMY_MAINNET_ARCHIVE_ENDPOINT}"
       },
       "polygon": {
-        "url": "${process.env.INFURA_POLYGON_NONARCHIVE_ENDPOINT}"
+        "url": "${process.env.ALCHEMY_POLYGON_ARCHIVE_ENDPOINT}"
       },
       "arbitrum": {
-        "url": "${process.env.INFURA_ARBITRUM_NONARCHIVE_ENDPOINT}"
+        "url": "${process.env.ALCHEMY_ARBITRUM_ARCHIVE_ENDPOINT}"
       },
       "optimism": {
-        "url": "${process.env.INFURA_OPTIMISM_NONARCHIVE_ENDPOINT}"
+        "url": "${process.env.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT}"
       }
     },
     "defaultConfig": {

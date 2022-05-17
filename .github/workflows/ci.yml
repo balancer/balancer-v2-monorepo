@@ -247,9 +247,9 @@ jobs:
         run: yarn workspace @balancer-labs/v2-deployments ci:prepare-config
         env:
           ALCHEMY_MAINNET_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_MAINNET_ARCHIVE_ENDPOINT }}
-          INFURA_POLYGON_NONARCHIVE_ENDPOINT: ${{ secrets.INFURA_POLYGON_NONARCHIVE_ENDPOINT }}
-          INFURA_ARBITRUM_NONARCHIVE_ENDPOINT: ${{ secrets.INFURA_ARBITRUM_NONARCHIVE_ENDPOINT }}
-          INFURA_OPTIMISM_NONARCHIVE_ENDPOINT: ${{ secrets.INFURA_OPTIMISM_NONARCHIVE_ENDPOINT }}
+          ALCHEMY_POLYGON_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_POLYGON_ARCHIVE_ENDPOINT }}
+          ALCHEMY_ARBITRUM_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_ARBITRUM_ARCHIVE_ENDPOINT }}
+          ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT }}
       - name: Check Deployments
         run: yarn workspace @balancer-labs/v2-deployments check
 
