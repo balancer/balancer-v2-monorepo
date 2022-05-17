@@ -183,6 +183,28 @@ const CONTRACT_DEPLOYMENT_TRANSACTION_HASHES: Partial<Record<Network, Record<str
     // DoubleEntrypointFixRelayer
     '0x8E5698dC4897DC12243c8642e77B4f21349Db97C': '0x88cce60b9ac6ef8842840f583bce4a3bd3299975999c9aa492a08db8a451526f',
   },
+  optimism: {
+    // Authorizer
+    '0xA331D84eC860Bf466b4CdCcFb4aC09a1B43F3aE6': '0x86c386207f3c5fd1f909aa1af7d140c9aaace9ede25b270312268cc629479682',
+    // Vault
+    '0xBA12222222228d8Ba445958a75a0704d566BF2C8': '0xa03cb990595df9eed6c5db17a09468cab534aed5f5589a06c0bb3d19dd2f7ce9',
+    // BalancerHelpers
+    '0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9': '0x2a9a9870e2a3cbd7f696bea5a2a24105725757ca318805c08868269a01011f07',
+    // WeightedPoolFactory
+    '0xdAE7e32ADc5d490a43cCba1f0c736033F2b4eFca': '0xd5754950d47179d822ea976a8b2af82ffa80e992cf0660b02c0c218359cc8987',
+    // WeightedPool2TokensFactory
+    '0x0F3e0c4218b7b0108a3643cFe9D3ec0d4F57c54e': '0xc9bfd52a242c6aabe7e9ee8ff1c03a89ca6e15ebd0296b0f6aa8398243961beb',
+    // StablePoolFactory
+    '0x41B953164995c11C81DA73D212ED8Af25741b7Ac': '0xe070ab051451f885f8e4c9e33d9776465fe71f91f370fea57c77550155175e4d',
+    // QueryProcessor
+    '0xD7FAD3bd59D6477cbe1BE7f646F7f1BA25b230f8': '0x2bfc5f5af74273160748c9ae7f969775d17276fc50eaa2adf9f61455573d0612',
+    // MetaStablePoolFactory
+    '0xb08E16cFc07C684dAA2f93C70323BAdb2A6CBFd2': '0x14cf5c6f55ba12c120c66940758d6f67ee04316f07d0abaf352ab4571b41fc1a',
+    // NoProtocolFeeLiquidityBootstrappingPoolFactory
+    '0xf302f9F50958c5593770FDf4d4812309fF77414f': '0x14fb43f051eebdec645abf0125e52348dc875b0887b689f8db026d75f9c78dda',
+    // AuthorizerAdaptor
+    '0x8F42aDBbA1B16EaAE3BB5754915E0D06059aDd75': '0xec800daf64f1abbe293ce34cc8d1b6bb6fcbc33670bc673716561b5732a00b40',
+  },
 };
 
 export async function getContractDeploymentTransactionHash(deployedAddress: string, network: Network): Promise<string> {
