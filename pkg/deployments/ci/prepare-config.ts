@@ -12,7 +12,7 @@ if (process.env.CI) {
       },
       "polygon": {
         "url": "${process.env.INFURA_POLYGON_NONARCHIVE_ENDPOINT}"
-      }
+      },
       "arbitrum": {
         "url": "${process.env.INFURA_ARBITRUM_NONARCHIVE_ENDPOINT}"
       },
