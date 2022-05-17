@@ -5,7 +5,7 @@ import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { MerkleTree } from '@balancer-labs/v2-distributors/lib/merkleTree';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
@@ -19,7 +19,7 @@ describe.skip('MerkleRedeem', function () {
   let lp: SignerWithAddress, other: SignerWithAddress, whale: SignerWithAddress;
   let distributor: Contract, token: Contract;
 
-  const task = Task.forTest('20210913-bal-arbitrum-merkle', getForkedNetwork(hre));
+  const task = new Task('20210913-bal-arbitrum-merkle', TaskMode.TEST, getForkedNetwork(hre));
 
   const BAL_TOKEN_ADDRESS = '0x040d1edc9569d4bab2d15287dc5a4f10f56a56b8'; // BAL on arbitrum
   const BAL_WHALE_ADDRESS = '0x056d433ad1eafcab3c4544bf4f98b9f40b1b1738';

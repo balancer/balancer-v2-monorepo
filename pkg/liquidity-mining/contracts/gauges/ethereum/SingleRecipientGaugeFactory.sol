@@ -15,10 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGaugeFactory.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
 import "./SingleRecipientGauge.sol";
-import "../../interfaces/ISingleRecipientGaugeFactory.sol";
 
 contract SingleRecipientGaugeFactory is ISingleRecipientGaugeFactory {
     ISingleRecipientGauge private _gaugeImplementation;

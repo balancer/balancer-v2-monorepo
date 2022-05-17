@@ -38,7 +38,7 @@ describe('UnbuttonWrapping', function () {
     });
     ampl = new Token('Mock Ampleforth', 'AMPL', 9, amplContract);
 
-    const wamplContract = await deploy('MockUnbuttonERC20', {
+    const wamplContract = await deploy('v2-pool-linear/MockUnbuttonERC20', {
       args: [ampl.address, 'Mock Wrapped Ampleforth', 'wAMPL'],
     });
     wampl = new Token('wampl', 'wampl', 18, wamplContract);

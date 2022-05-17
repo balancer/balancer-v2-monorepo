@@ -18,6 +18,8 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
+import "@balancer-labs/v2-standalone-utils/contracts/AumProtocolFeesCollector.sol";
+
 import "./ManagedPool.sol";
 
 /**
@@ -30,8 +32,17 @@ import "./ManagedPool.sol";
  * deploy the pool, passing in the controller as the owner.
  */
 contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+    AumProtocolFeesCollector private immutable _aumProtocolFeesCollector;
+
     constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(ManagedPool).creationCode) {
-        // solhint-disable-previous-line no-empty-blocks
+        _aumProtocolFeesCollector = new AumProtocolFeesCollector(vault);
+    }
+
+    /**
+     * @dev Getter for the AUM protocol fees collector passed into all Managed Pools created from this factory.
+     */
+    function getAumProtocolFeesCollector() external view returns (AumProtocolFeesCollector) {
+        return _aumProtocolFeesCollector;
     }
 
     /**
@@ -54,7 +65,9 @@ contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWin
                         swapEnabledOnStart: poolParams.swapEnabledOnStart,
                         mustAllowlistLPs: poolParams.mustAllowlistLPs,
                         protocolSwapFeePercentage: poolParams.protocolSwapFeePercentage,
-                        managementSwapFeePercentage: poolParams.managementSwapFeePercentage
+                        managementSwapFeePercentage: poolParams.managementSwapFeePercentage,
+                        managementAumFeePercentage: poolParams.managementAumFeePercentage,
+                        aumProtocolFeesCollector: _aumProtocolFeesCollector
                     }),
                     getVault(),
                     owner,

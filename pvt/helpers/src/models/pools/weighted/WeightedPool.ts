@@ -31,7 +31,8 @@ import {
   PoolQueryResult,
   MiscData,
   Sample,
-  GradualUpdateParams,
+  GradualWeightUpdateParams,
+  GradualSwapFeeUpdateParams,
   WeightedPoolType,
   VoidResult,
 } from './types';
@@ -68,6 +69,8 @@ export default class WeightedPool {
   mustAllowlistLPs: boolean;
   protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
+  managementAumFeePercentage: BigNumberish;
+  aumProtocolFeesCollector: string;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
     return WeightedPoolDeployer.deploy(params);
@@ -85,7 +88,9 @@ export default class WeightedPool {
     swapEnabledOnStart: boolean,
     mustAllowlistLPs: boolean,
     protocolSwapFeePercentage: BigNumberish,
-    managementSwapFeePercentage: BigNumberish
+    managementSwapFeePercentage: BigNumberish,
+    managementAumFeePercentage: BigNumberish,
+    aumProtocolFeesCollector: string
   ) {
     this.instance = instance;
     this.poolId = poolId;
@@ -99,6 +104,8 @@ export default class WeightedPool {
     this.mustAllowlistLPs = mustAllowlistLPs;
     this.protocolSwapFeePercentage = protocolSwapFeePercentage;
     this.managementSwapFeePercentage = managementSwapFeePercentage;
+    this.managementAumFeePercentage = managementAumFeePercentage;
+    this.aumProtocolFeesCollector = aumProtocolFeesCollector;
   }
 
   get address(): string {
@@ -205,6 +212,10 @@ export default class WeightedPool {
 
   async getManagementSwapFeePercentage(): Promise<BigNumber> {
     return this.instance.getManagementSwapFeePercentage();
+  }
+
+  async getManagementAumFeePercentage(): Promise<BigNumber> {
+    return this.instance.getManagementAumFeePercentage();
   }
 
   async getNormalizedWeights(): Promise<BigNumber[]> {
@@ -616,13 +627,14 @@ export default class WeightedPool {
   }
 
   async pause(): Promise<void> {
-    const action = await actionId(this.instance, 'setPaused');
-    await this.vault.grantPermissionsGlobally([action]);
-    await this.instance.setPaused(true);
+    const pauseAction = await actionId(this.instance, 'pause');
+    const unpauseAction = await actionId(this.instance, 'unpause');
+    await this.vault.grantPermissionsGlobally([pauseAction, unpauseAction]);
+    await this.instance.pause();
   }
 
   async setPaused(paused: boolean): Promise<void> {
-    await this.instance.setPaused(paused);
+    paused ? await this.instance.pause() : await this.instance.unpause();
   }
 
   async isPaused(): Promise<boolean> {
@@ -643,12 +655,25 @@ export default class WeightedPool {
     return pool.setSwapEnabled(swapEnabled);
   }
 
+  async setSwapFeePercentage(from: SignerWithAddress, swapFeePercentage: BigNumberish): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.setSwapFeePercentage(swapFeePercentage);
+  }
+
   async setManagementSwapFeePercentage(
     from: SignerWithAddress,
     managementFee: BigNumberish
   ): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
     return pool.setManagementSwapFeePercentage(managementFee);
+  }
+
+  async setManagementAumFeePercentage(
+    from: SignerWithAddress,
+    managementFee: BigNumberish
+  ): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.setManagementAumFeePercentage(managementFee);
   }
 
   async addAllowedAddress(from: SignerWithAddress, member: string): Promise<ContractTransaction> {
@@ -674,14 +699,9 @@ export default class WeightedPool {
     return this.instance.isAllowedAddress(member);
   }
 
-  async withdrawCollectedManagementFees(
-    from: SignerWithAddress,
-    recipient?: SignerWithAddress
-  ): Promise<ContractTransaction> {
-    if (recipient === undefined) recipient = from;
-
+  async collectAumManagementFees(from: SignerWithAddress): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    return pool.withdrawCollectedManagementFees(recipient.address);
+    return pool.collectAumManagementFees();
   }
 
   async updateWeightsGradually(
@@ -694,8 +714,46 @@ export default class WeightedPool {
     return await pool.updateWeightsGradually(startTime, endTime, endWeights);
   }
 
-  async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualUpdateParams> {
+  async updateSwapFeeGradually(
+    from: SignerWithAddress,
+    startTime: BigNumberish,
+    endTime: BigNumberish,
+    startSwapFeePercentage: BigNumberish,
+    endSwapFeePercentage: BigNumberish
+  ): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return await pool.updateSwapFeeGradually(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+  }
+
+  async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualWeightUpdateParams> {
     const pool = from ? this.instance.connect(from) : this.instance;
     return await pool.getGradualWeightUpdateParams();
+  }
+
+  async getGradualSwapFeeUpdateParams(from?: SignerWithAddress): Promise<GradualSwapFeeUpdateParams> {
+    const pool = from ? this.instance.connect(from) : this.instance;
+    return await pool.getGradualSwapFeeUpdateParams();
+  }
+
+  async addToken(
+    from: SignerWithAddress,
+    token: Token,
+    normalizedWeight: BigNumberish,
+    tokenAmountIn: BigNumberish,
+    mintAmount: BigNumberish,
+    recipient: string
+  ): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return await pool.addToken(token.address, normalizedWeight, tokenAmountIn, mintAmount, recipient);
+  }
+
+  async removeToken(
+    from: SignerWithAddress,
+    token: string,
+    recipient: string,
+    extra: { burnAmount?: BigNumberish; minAmountOut?: BigNumberish } = {}
+  ): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return await pool.removeToken(token, recipient, extra.burnAmount ?? 0, extra.minAmountOut ?? 0);
   }
 }

@@ -1,4 +1,4 @@
-import Task from '../../src/task';
+import Task, { TaskMode } from '../../src/task';
 
 export type PolygonRootGaugeFactoryDeployment = {
   BalancerMinter: string;
@@ -6,7 +6,7 @@ export type PolygonRootGaugeFactoryDeployment = {
   PolygonERC20Predicate: string;
 };
 
-const BalancerMinter = new Task('20220325-gauge-controller');
+const BalancerMinter = new Task('20220325-gauge-controller', TaskMode.READ_ONLY);
 
 export default {
   mainnet: {

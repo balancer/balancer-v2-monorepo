@@ -5,7 +5,7 @@ import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { MerkleTree } from '@balancer-labs/v2-distributors/lib/merkleTree';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
@@ -19,7 +19,7 @@ describe('MerkleRedeem', function () {
   let lp: SignerWithAddress, other: SignerWithAddress, whale: SignerWithAddress;
   let distributor: Contract, token: Contract;
 
-  const task = Task.forTest('20210811-ldo-merkle', getForkedNetwork(hre));
+  const task = new Task('20210811-ldo-merkle', TaskMode.TEST, getForkedNetwork(hre));
 
   const LDO_TOKEN_ADDRESS = '0x5a98fcbea516cf06857215779fd812ca3bef1b32'; // LDO
   const LDO_WHALE_ADDRESS = '0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c';

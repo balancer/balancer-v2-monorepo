@@ -1,12 +1,13 @@
 import fs from 'fs';
 import path, { extname } from 'path';
-import { BuildInfo, CompilerOutputContract, HardhatRuntimeEnvironment } from 'hardhat/types';
-import { BigNumber, Contract } from 'ethers';
+import { BuildInfo, CompilerOutputContract } from 'hardhat/types';
+import { Contract } from 'ethers';
+import { getContractAddress } from '@ethersproject/address';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import logger from './logger';
 import Verifier from './verifier';
-import { deploy, instanceAt } from './contracts';
+import { deploy, deploymentTxData, instanceAt } from './contracts';
 
 import {
   NETWORKS,
@@ -20,44 +21,36 @@ import {
   RawOutput,
   TaskRunOptions,
 } from './types';
+import { getContractDeploymentTransactionHash } from './network';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
+
+export enum TaskMode {
+  LIVE, // Deploys and saves outputs
+  TEST, // Deploys but saves to test output
+  CHECK, // Checks past deployments on deploy
+  READ_ONLY, // Fails on deploy
+}
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 
 export default class Task {
   id: string;
+  mode: TaskMode;
+
   _network?: Network;
   _verifier?: Verifier;
-  _outputFile?: string;
 
-  static fromHRE(id: string, hre: HardhatRuntimeEnvironment, verifier?: Verifier): Task {
-    return new this(id, hre.network.name, verifier);
-  }
-
-  static forTest(id: string, network: Network, outputTestFile = 'test'): Task {
-    const task = new this(id, network);
-    task.outputFile = outputTestFile;
-    return task;
-  }
-
-  constructor(id: string, network?: Network, verifier?: Verifier) {
+  constructor(idAlias: string, mode: TaskMode, network?: Network, verifier?: Verifier) {
     if (network && !NETWORKS.includes(network)) throw Error(`Unknown network ${network}`);
-    this.id = id;
+    this.id = this._findTaskId(idAlias);
+    this.mode = mode;
     this._network = network;
     this._verifier = verifier;
   }
 
-  get outputFile(): string {
-    return `${this._outputFile || this.network}.json`;
-  }
-
-  set outputFile(file: string) {
-    this._outputFile = file;
-  }
-
   get network(): string {
-    if (!this._network) throw Error('A network must be specified to define a task');
+    if (!this._network) throw Error('No network defined');
     return this._network;
   }
 
@@ -92,10 +85,13 @@ export default class Task {
     force?: boolean,
     libs?: Libraries
   ): Promise<Contract> {
+    if (this.mode == TaskMode.CHECK) {
+      return await this.check(name, args, libs);
+    }
+
     const output = this.output({ ensure: false });
     if (force || !output[name]) {
       const instance = await this.deploy(name, args, from, libs);
-      this.save({ [name]: instance });
       await this.verify(name, instance.address, args, libs);
       return instance;
     } else {
@@ -106,7 +102,16 @@ export default class Task {
   }
 
   async deploy(name: string, args: Array<Param> = [], from?: SignerWithAddress, libs?: Libraries): Promise<Contract> {
+    if (this.mode == TaskMode.CHECK) {
+      return await this.check(name, args, libs);
+    }
+
+    if (this.mode !== TaskMode.LIVE && this.mode !== TaskMode.TEST) {
+      throw Error(`Cannot deploy in tasks of mode ${TaskMode[this.mode]}`);
+    }
+
     const instance = await deploy(this.artifact(name), args, from, libs);
+    this.save({ [name]: instance });
     logger.success(`Deployed ${name} at ${instance.address}`);
     return instance;
   }
@@ -117,6 +122,10 @@ export default class Task {
     constructorArguments: string | unknown[],
     libs?: Libraries
   ): Promise<void> {
+    if (this.mode !== TaskMode.LIVE) {
+      return;
+    }
+
     try {
       if (!this._verifier) return logger.warn('Skipping contract verification, no verifier defined');
       const url = await this._verifier.call(this, name, address, constructorArguments, libs);
@@ -124,6 +133,47 @@ export default class Task {
     } catch (error) {
       logger.error(`Failed trying to verify ${name} at ${address}: ${error}`);
     }
+  }
+
+  async check(name: string, args: Array<Param> = [], libs?: Libraries): Promise<Contract> {
+    // There's multiple approaches to checking that a deployed contract matches known source code. A naive approach is
+    // to check for a match in the runtime code, but that doesn't account for actions taken during  construction,
+    // including calls, storage writes and setting immutable state variables. Since immutable state variables modify the
+    // runtime code, it can be actually quite tricky to produce a matching runtime code.
+    // What we do instead is check for both runtime code and constrcutor execution (including constructor arguments) by
+    // looking at the transaction in which the contract was deployed. The data of said transaction will be the contract
+    // creation code followed by the abi-encoded constructor arguments, which we can compare against what the task would
+    // attempt to deploy. In this way, we are testing the task's build info, inputs and deployment code.
+    // The only thing we're not checking is what account deployed the contract, but our code does not have dependencies
+    // on the deployer.
+
+    // The only problem with the approach described above is that it is not easy to find the transaction in which a
+    // contract is deployed. Tenderly has a dedicated endpoint for this however.
+
+    const { ethers } = await import('hardhat');
+
+    const deployedAddress = this.output()[name];
+    const deploymentTxHash = await getContractDeploymentTransactionHash(deployedAddress, this.network);
+    const deploymentTx = await ethers.provider.getTransaction(deploymentTxHash);
+
+    const expectedDeploymentAddress = getContractAddress(deploymentTx);
+    if (deployedAddress !== expectedDeploymentAddress) {
+      throw Error(
+        `The stated deployment address of '${name}' on network '${this.network}' of task '${this.id}' does not match the address which would be deployed by the transaction ${deploymentTxHash} (${expectedDeploymentAddress})`
+      );
+    }
+
+    if (deploymentTx.data === deploymentTxData(this.artifact(name), args, libs)) {
+      logger.success(`Verified contract '${name}' on network '${this.network}' of task '${this.id}'`);
+    } else {
+      throw Error(
+        `The build info and inputs for contract '${name}' on network '${this.network}' of task '${this.id}' does not match the data used to deploy address ${deployedAddress}`
+      );
+    }
+
+    // We need to return an instance so that the task may carry on, potentially using this as input of future
+    // deployments.
+    return this.instanceAt(name, deployedAddress);
   }
 
   async run(options: TaskRunOptions = {}): Promise<void> {
@@ -178,9 +228,12 @@ export default class Task {
   }
 
   output({ ensure = true, network }: { ensure?: boolean; network?: Network } = {}): Output {
-    if (network) this.network = network;
+    if (network === undefined) {
+      network = this.mode !== TaskMode.TEST ? this.network : 'test';
+    }
+
     const taskOutputDir = this._dirAt(this.dir(), 'output', ensure);
-    const taskOutputFile = this._fileAt(taskOutputDir, this.outputFile, ensure);
+    const taskOutputFile = this._fileAt(taskOutputDir, `${network}.json`, ensure);
     return this._read(taskOutputFile);
   }
 
@@ -188,30 +241,35 @@ export default class Task {
     const taskOutputDir = this._dirAt(this.dir(), 'output', false);
     if (!fs.existsSync(taskOutputDir)) fs.mkdirSync(taskOutputDir);
 
-    const taskOutputFile = this._fileAt(taskOutputDir, this.outputFile, false);
+    const outputFile = this.mode === TaskMode.LIVE ? `${this.network}.json` : 'test.json';
+    const taskOutputFile = this._fileAt(taskOutputDir, outputFile, false);
     const previousOutput = this._read(taskOutputFile);
 
     const finalOutput = { ...previousOutput, ...this._parseRawOutput(output) };
     this._write(taskOutputFile, finalOutput);
   }
 
-  delete(): void {
-    const taskOutputDir = this._dirAt(this.dir(), 'output');
-    const taskOutputFile = this._fileAt(taskOutputDir, this.outputFile);
-    fs.unlinkSync(taskOutputFile);
-  }
-
   private _parseRawInput(rawInput: RawInputKeyValue): Input {
     return Object.keys(rawInput).reduce((input: Input, key: Network | string) => {
       const item = rawInput[key];
-      if (Array.isArray(item)) input[key] = item;
-      else if (BigNumber.isBigNumber(item)) input[key] = item;
-      else if (typeof item !== 'object') input[key] = item;
-      else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const output: Output | any = this._isTask(item) ? (item as Task).output({ network: this.network }) : item;
-        input[key] = output[key] ? output[key] : output;
+
+      if (!this._isTask(item)) {
+        // Non-task inputs are simply their value
+        input[key] = item;
+      } else {
+        // For task inputs, we query the output file with the name of the key in the input object. For example, given
+        // { 'BalancerHelpers': new Task('20210418-vault', TaskMode.READ_ONLY) }
+        // the input value will be the output of name 'BalancerHelpers' of said task.
+        const task = item as Task;
+        const output = task.output({ network: this.network });
+
+        if (output[key] === undefined) {
+          throw Error(`No '${key}' value for task ${task.id} in output of network ${this.network}`);
+        }
+
+        input[key] = output[key];
       }
+
       return input;
     }, {});
   }
@@ -257,5 +315,21 @@ export default class Task {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private _isTask(object: any): boolean {
     return object.constructor.name == 'Task';
+  }
+
+  private _findTaskId(idAlias: string): string {
+    const matches = fs.readdirSync(TASKS_DIRECTORY).filter((taskDirName) => taskDirName.includes(idAlias));
+
+    if (matches.length == 1) {
+      return matches[0];
+    } else {
+      if (matches.length == 0) {
+        throw Error(`Found no matching directory for task alias '${idAlias}'`);
+      } else {
+        throw Error(
+          `Multiple matching directories for task alias '${idAlias}', candidates are: \n${matches.join('\n')}`
+        );
+      }
+    }
   }
 }

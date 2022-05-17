@@ -123,10 +123,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-asset-manager-utils@workspace:pkg/asset-manager-utils"
   dependencies:
-    "@balancer-labs/balancer-js": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
-    "@balancer-labs/v2-distributors": "workspace:*"
-    "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-interfaces": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
@@ -216,6 +214,8 @@ __metadata:
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-etherscan": latest
     "@solidity-parser/parser": ^0.14.0
+    "@types/lodash": ^4.14.181
+    "@types/lodash.range": ^3
     "@types/lodash.sum": ^4
     "@types/node": ^14.6.0
     "@typescript-eslint/eslint-plugin": ^4.1.1
@@ -223,8 +223,10 @@ __metadata:
     chalk: ^4.1.1
     eslint: ^7.9.0
     eslint-plugin-prettier: ^3.1.4
+    ethers: ^5.4.1
     hardhat: ^2.8.3
     hardhat-local-networks-config-plugin: 0.0.5
+    lodash.range: ^3.2.0
     lodash.sum: ^4.0.2
     node-fetch: ^2.6.1
     prettier: ^2.1.2
@@ -236,17 +238,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v2-distributors@workspace:*, @balancer-labs/v2-distributors@workspace:pkg/distributors":
+"@balancer-labs/v2-distributors@workspace:pkg/distributors":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-distributors@workspace:pkg/distributors"
   dependencies:
     "@balancer-labs/balancer-js": "workspace:*"
-    "@balancer-labs/v2-common": "workspace:*"
-    "@balancer-labs/v2-helpers": "workspace:*"
-    "@balancer-labs/v2-pool-utils": "workspace:*"
+    "@balancer-labs/v2-interfaces": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
-    "@balancer-labs/v2-standalone-utils": "workspace:*"
-    "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -286,6 +284,8 @@ __metadata:
   dependencies:
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-interfaces": "workspace:*"
+    "@balancer-labs/v2-liquidity-mining": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -334,12 +334,50 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@balancer-labs/v2-interfaces@workspace:*, @balancer-labs/v2-interfaces@workspace:pkg/interfaces":
+  version: 0.0.0-use.local
+  resolution: "@balancer-labs/v2-interfaces@workspace:pkg/interfaces"
+  dependencies:
+    "@nomiclabs/hardhat-ethers": ^2.0.1
+    "@nomiclabs/hardhat-waffle": ^2.0.0
+    "@types/chai": ^4.2.12
+    "@types/lodash": ^4.14.161
+    "@types/mocha": ^8.0.3
+    "@types/node": ^14.6.0
+    "@typescript-eslint/eslint-plugin": ^4.1.1
+    "@typescript-eslint/parser": ^4.1.1
+    chai: ^4.2.0
+    decimal.js: ^10.2.1
+    eslint: ^7.9.0
+    eslint-plugin-mocha-no-only: ^1.1.1
+    eslint-plugin-prettier: ^3.1.4
+    ethereum-waffle: ^3.0.2
+    ethers: ^5.4.1
+    hardhat: ^2.8.3
+    lodash.frompairs: ^4.0.1
+    lodash.pick: ^4.4.0
+    lodash.range: ^3.2.0
+    lodash.times: ^4.3.2
+    lodash.zip: ^4.2.0
+    mocha: ^8.2.1
+    nodemon: ^2.0.4
+    prettier: ^2.1.2
+    prettier-plugin-solidity: v1.0.0-alpha.59
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.4
+    ts-node: ^8.10.2
+    typescript: ^4.0.2
+  languageName: unknown
+  linkType: soft
+
 "@balancer-labs/v2-liquidity-mining@workspace:*, @balancer-labs/v2-liquidity-mining@workspace:pkg/liquidity-mining":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-liquidity-mining@workspace:pkg/liquidity-mining"
   dependencies:
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-interfaces": "workspace:*"
+    "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-vyper": ^3.0.0
     "@nomiclabs/hardhat-waffle": ^2.0.0
@@ -380,9 +418,9 @@ __metadata:
   dependencies:
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-interfaces": "workspace:*"
     "@balancer-labs/v2-pool-utils": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
-    "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -421,9 +459,10 @@ __metadata:
   dependencies:
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-interfaces": "workspace:*"
+    "@balancer-labs/v2-pool-stable": "workspace:*"
     "@balancer-labs/v2-pool-utils": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
-    "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -462,9 +501,9 @@ __metadata:
   dependencies:
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-interfaces": "workspace:*"
     "@balancer-labs/v2-pool-utils": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
-    "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -501,9 +540,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-pool-utils@workspace:pkg/pool-utils"
   dependencies:
-    "@balancer-labs/v2-asset-manager-utils": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-interfaces": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
@@ -545,9 +584,9 @@ __metadata:
     "@balancer-labs/balancer-js": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-interfaces": "workspace:*"
     "@balancer-labs/v2-pool-utils": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
-    "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -587,6 +626,7 @@ __metadata:
     "@balancer-labs/balancer-js": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-interfaces": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -619,14 +659,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v2-standalone-utils@workspace:*, @balancer-labs/v2-standalone-utils@workspace:pkg/standalone-utils":
+"@balancer-labs/v2-standalone-utils@workspace:pkg/standalone-utils":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-standalone-utils@workspace:pkg/standalone-utils"
   dependencies:
     "@balancer-labs/balancer-js": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
-    "@balancer-labs/v2-liquidity-mining": "workspace:*"
+    "@balancer-labs/v2-interfaces": "workspace:*"
     "@balancer-labs/v2-pool-utils": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@balancer-labs/v2-vault": "workspace:*"
@@ -664,8 +704,8 @@ __metadata:
     "@balancer-labs/balancer-js": "workspace:*"
     "@balancer-labs/v2-common": "workspace:*"
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@balancer-labs/v2-interfaces": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
-    "@balancer-labs/v2-standalone-utils": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
@@ -2233,6 +2273,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/lodash.range@npm:^3":
+  version: 3.2.6
+  resolution: "@types/lodash.range@npm:3.2.6"
+  dependencies:
+    "@types/lodash": "*"
+  checksum: 8b56371c8af7b678f9700edf2b191971ba4148b517622bae3e471b07057332068bb06b78ab605cc4c05ef2b0ad171e8983d4e582805d77f40f1b1d7a808fab44
+  languageName: node
+  linkType: hard
+
 "@types/lodash.sum@npm:^4":
   version: 4.0.7
   resolution: "@types/lodash.sum@npm:4.0.7"
@@ -2242,10 +2291,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/lodash@npm:*":
-  version: 4.14.182
-  resolution: "@types/lodash@npm:4.14.182"
-  checksum: e84c3e6bb03a241f648c8c8c8e0b3c26e00b932104d8d52599ff068adcc88d818a41aef9c3243b02d2e97273a9a605656d8ab3b64fb3c1afcbaa54a3ecf62f81
+"@types/lodash@npm:*, @types/lodash@npm:^4.14.181":
+  version: 4.14.181
+  resolution: "@types/lodash@npm:4.14.181"
+  checksum: 633c02517483a52413f0824c44b4fc2089668f421b3eb0f075acb4cebd9b53146bbb662f6a871e466badfbe52ecc9ddfbcf59e299ec6922871be14d7c167b674
   languageName: node
   linkType: hard
 

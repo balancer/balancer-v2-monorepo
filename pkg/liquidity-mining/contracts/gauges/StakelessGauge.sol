@@ -14,15 +14,15 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerMinter.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeController.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGauge.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
-import "../interfaces/IBalancerMinter.sol";
-import "../interfaces/IBalancerTokenAdmin.sol";
-import "../interfaces/IGaugeController.sol";
-import "../interfaces/ILiquidityGauge.sol";
-
-abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
+abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
     IERC20 internal immutable _balToken;
     IBalancerTokenAdmin private immutable _tokenAdmin;
     IBalancerMinter private immutable _minter;
@@ -78,7 +78,7 @@ abstract contract StakelessGauge is ILiquidityGauge, ReentrancyGuard {
         _startEpochTime = _tokenAdmin.startEpochTimeWrite();
     }
 
-    function checkpoint() external payable nonReentrant returns (bool) {
+    function checkpoint() external payable override nonReentrant returns (bool) {
         require(msg.sender == address(_authorizerAdaptor), "SENDER_NOT_ALLOWED");
         uint256 lastPeriod = _period;
         uint256 currentPeriod = _currentPeriod();

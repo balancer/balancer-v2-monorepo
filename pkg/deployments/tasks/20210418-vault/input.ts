@@ -1,4 +1,4 @@
-import Task from '../../src/task';
+import Task, { TaskMode } from '../../src/task';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 export type VaultDeployment = {
@@ -8,7 +8,7 @@ export type VaultDeployment = {
   bufferPeriodDuration: number;
 };
 
-const Authorizer = new Task('20210418-authorizer');
+const Authorizer = new Task('20210418-authorizer', TaskMode.READ_ONLY);
 
 export default {
   goerli: {
@@ -50,6 +50,12 @@ export default {
   arbitrum: {
     Authorizer,
     weth: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+    pauseWindowDuration: 3 * MONTH,
+    bufferPeriodDuration: MONTH,
+  },
+  optimism: {
+    Authorizer,
+    weth: '0x4200000000000000000000000000000000000006',
     pauseWindowDuration: 3 * MONTH,
     bufferPeriodDuration: MONTH,
   },

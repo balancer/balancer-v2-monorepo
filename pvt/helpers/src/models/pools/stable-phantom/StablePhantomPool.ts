@@ -175,12 +175,12 @@ export default class StablePhantomPool {
     return this.instance.updateTokenRateCache(token.address);
   }
 
-  async getCachedProtocolSwapFeePercentage(): Promise<BigNumber> {
-    return this.instance.getCachedProtocolSwapFeePercentage();
+  async getProtocolSwapFeePercentageCache(): Promise<BigNumber> {
+    return this.instance.getProtocolSwapFeePercentageCache();
   }
 
-  async updateCachedProtocolSwapFeePercentage(): Promise<ContractTransaction> {
-    return this.instance.updateCachedProtocolSwapFeePercentage();
+  async updateProtocolSwapFeePercentageCache(): Promise<ContractTransaction> {
+    return this.instance.updateProtocolSwapFeePercentageCache();
   }
 
   async setTokenRateCacheDuration(token: Token, duration: BigNumber, params?: TxParams): Promise<ContractTransaction> {
@@ -189,9 +189,10 @@ export default class StablePhantomPool {
   }
 
   async pause(): Promise<void> {
-    const action = await actionId(this.instance, 'setPaused');
-    await this.vault.grantPermissionsGlobally([action]);
-    await this.instance.setPaused(true);
+    const pauseAction = await actionId(this.instance, 'pause');
+    const unpauseAction = await actionId(this.instance, 'unpause');
+    await this.vault.grantPermissionsGlobally([pauseAction, unpauseAction]);
+    await this.instance.pause();
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
