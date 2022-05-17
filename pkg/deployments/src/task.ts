@@ -2,6 +2,7 @@ import fs from 'fs';
 import path, { extname } from 'path';
 import { BuildInfo, CompilerOutputContract } from 'hardhat/types';
 import { Contract } from 'ethers';
+import { getContractAddress } from '@ethersproject/address';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import logger from './logger';
@@ -154,6 +155,13 @@ export default class Task {
     const deployedAddress = this.output()[name];
     const deploymentTxHash = await getContractDeploymentTransactionHash(deployedAddress, this.network);
     const deploymentTx = await ethers.provider.getTransaction(deploymentTxHash);
+
+    const expectedDeploymentAddress = getContractAddress(deploymentTx);
+    if (deployedAddress !== expectedDeploymentAddress) {
+      throw Error(
+        `The stated deployment address of '${name}' on network '${this.network}' of task '${this.id}' does not match the address which would be deployed by the transaction ${deploymentTxHash} (${expectedDeploymentAddress})`
+      );
+    }
 
     if (deploymentTx.data === deploymentTxData(this.artifact(name), args, libs)) {
       logger.success(`Verified contract '${name}' on network '${this.network}' of task '${this.id}'`);
