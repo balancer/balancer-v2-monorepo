@@ -241,6 +241,8 @@ jobs:
       - name: Install
         run: yarn --immutable
         if: steps.cache.outputs.cache-hit != 'true'
+      - name: Compile balancer-js
+        run: yarn workspace @balancer-labs/balancer-js build
       - name: Check Deployments
         run: yarn workspace @balancer-labs/v2-deployments check
 
