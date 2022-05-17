@@ -17,4 +17,13 @@ export default {
       '0x639032d3900875a4cf4960aD6b9ee441657aA93C', // SNX (Implementation)
     ],
   },
+  polygon: {
+    InitialDeniedTokens: [],
+  },
+  arbitrum: {
+    InitialDeniedTokens: [],
+  },
+  optimism: {
+    InitialDeniedTokens: [],
+  },
 };
