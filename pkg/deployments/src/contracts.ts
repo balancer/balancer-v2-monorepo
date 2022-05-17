@@ -51,6 +51,6 @@ function linkBytecode(artifact: Artifact, libraries: Libraries): Artifact {
     }
   }
 
-  artifact.evm.bytecode.object = bytecode;
+  artifact.evm.bytecode.object = bytecode.toLowerCase();
   return artifact;
 }
