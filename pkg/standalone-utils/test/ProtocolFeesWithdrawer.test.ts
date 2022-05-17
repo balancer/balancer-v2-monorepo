@@ -7,6 +7,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('ProtocolFeesWithdrawer', function () {
   let vault: Vault;
@@ -72,6 +73,19 @@ describe('ProtocolFeesWithdrawer', function () {
       expect(await protocolFeesWithdrawer.getDenylistedToken(newDenylistLength.sub(1))).to.be.eq(newDenylistedToken);
       expect(await protocolFeesWithdrawer.isWithdrawableToken(newDenylistedToken)).to.be.false;
     });
+
+    it('emits an event', async () => {
+      const newDenylistedToken = allowlistedTokens.first.address;
+      const receipt = await (await protocolFeesWithdrawer.connect(admin).denylistToken(newDenylistedToken)).wait();
+
+      expectEvent.inReceipt(receipt, 'TokenDenylisted', { token: newDenylistedToken });
+    });
+
+    it('reverts if already denylisted', async () => {
+      await expect(
+        protocolFeesWithdrawer.connect(admin).denylistToken(denylistedTokens.first.address)
+      ).to.be.revertedWith('Token already denylisted');
+    });
   });
 
   describe('allowlistToken', () => {
@@ -86,6 +100,19 @@ describe('ProtocolFeesWithdrawer', function () {
 
       expect(newDenylistLength).to.be.eq(oldDenylistLength.sub(1));
       expect(await protocolFeesWithdrawer.isWithdrawableToken(newAllowlistedToken)).to.be.true;
+    });
+
+    it('emits an event', async () => {
+      const newAllowlistedToken = denylistedTokens.first.address;
+      const receipt = await (await protocolFeesWithdrawer.connect(admin).allowlistToken(newAllowlistedToken)).wait();
+
+      expectEvent.inReceipt(receipt, 'TokenAllowlisted', { token: newAllowlistedToken });
+    });
+
+    it('reverts if not denylisted', async () => {
+      await expect(
+        protocolFeesWithdrawer.connect(admin).allowlistToken(allowlistedTokens.first.address)
+      ).to.be.revertedWith('Token is not denylisted');
     });
   });
 
