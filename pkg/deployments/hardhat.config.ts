@@ -67,7 +67,7 @@ task('check-deployments', `Check that all tasks' deployments correspond to their
 
       for (const taskID of readdirSync(taskDirectory)) {
         const outputFiles = readdirSync(path.resolve(taskDirectory, taskID, 'output'));
-        if (outputFiles.filter((outputFile) => outputFile.includes(hre.network.name)).length == 0) {
+        if (!outputFiles.some((outputFile) => outputFile.includes(hre.network.name))) {
           // Not all tasks have outputs for all networks, so we skip those that don't
           continue;
         }
