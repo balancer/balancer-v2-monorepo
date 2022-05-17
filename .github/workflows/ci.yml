@@ -243,6 +243,10 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
       - name: Compile balancer-js
         run: yarn workspace @balancer-labs/balancer-js build
+      - name: Prepare Config
+        run: yarn workspace @balancer-labs/v2-deployments ci:prepare-config
+        env:
+          ALCHEMY_MAINNET_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_MAINNET_ARCHIVE_ENDPOINT }}
       - name: Check Deployments
         run: yarn workspace @balancer-labs/v2-deployments check
 
