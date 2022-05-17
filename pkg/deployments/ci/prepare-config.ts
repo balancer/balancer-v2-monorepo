@@ -9,6 +9,15 @@ if (process.env.CI) {
     "networks": {
       "mainnet": {
         "url": "${process.env.ALCHEMY_MAINNET_ARCHIVE_ENDPOINT}"
+      },
+      "polygon": {
+        "url": "${process.env.INFURA_POLYGON_NONARCHIVE_ENDPOINT}"
+      }
+      "arbitrum": {
+        "url": "${process.env.INFURA_ARBITRUM_NONARCHIVE_ENDPOINT}"
+      },
+      "optimism": {
+        "url": "${process.env.INFURA_OPTIMISM_NONARCHIVE_ENDPOINT}"
       }
     },
     "defaultConfig": {
