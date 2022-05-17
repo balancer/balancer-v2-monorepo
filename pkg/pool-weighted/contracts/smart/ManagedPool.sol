@@ -109,6 +109,19 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     uint256 private constant _END_DENORM_WEIGHT_OFFSET = 64;
     uint256 private constant _DECIMAL_DIFF_OFFSET = 128;
 
+    // Store circuit breaker information
+    // [ 96 bits |  128 bits  |  16 bits  |  16 bits  |
+    // [ unused  | ref Price  | min Ratio | max Ratio |
+    // |MSB                                        LSB|
+    mapping(IERC20 => bytes32) private _circuitBreakerState;
+
+    uint256 private constant _MAX_RATIO_OFFSET = 0;
+    uint256 private constant _MIN_RATIO_OFFSET = 16;
+    uint256 private constant _REF_BPT_PRICE_OFFSET = 32;
+
+    uint256 private constant _MIN_CIRCUIT_BREAKER_RATIO = 0.1e18;
+    uint256 private constant _MAX_CIRCUIT_BREAKER_RATIO = 10e18;
+
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
@@ -156,6 +169,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     );
     event TokenAdded(IERC20 indexed token, uint256 normalizedWeight, uint256 tokenAmountIn);
     event TokenRemoved(IERC20 indexed token, uint256 normalizedWeight, uint256 tokenAmountOut);
+    event CircuitBreakerRatioSet(address indexed token, uint256 minRatio, uint256 maxRatio);
 
     // Making aumProtocolFeesCollector a constructor parameter would be more consistent with the intent
     // of NewPoolParams: it is supposed to be for parameters passed in by users. However, adding the
@@ -680,6 +694,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         // all other token weights accordingly.
         // Clean up data structures and update the token count
         delete _tokenState[token];
+        delete _circuitBreakerState[token];
         _denormWeightSum -= _denormalizeWeight(tokenNormalizedWeight, _denormWeightSum);
 
         _totalTokensCache = tokens.length - 1;
@@ -769,6 +784,35 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         return _collectAumManagementFees();
     }
 
+    /**
+     * @dev Update the circuit breaker ratios
+     */
+    function setCircuitBreakerRatio(uint256[] memory minRatios, uint256[] memory maxRatios)
+        external
+        authenticate
+        whenNotPaused
+    {
+        (IERC20[] memory tokens, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+        InputHelpers.ensureInputLengthMatch(tokens.length, minRatios.length, maxRatios.length);
+
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256 supply = totalSupply();
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            // Can we remove? - if so, pass through 0s? - maybe leave it and document that we can't remove it.
+            // Or do you have to set it on every token?
+            if (minRatios[i] != 0 || maxRatios[i] != 0) {
+                // priceOfTokenInBpt = totalSupply / (token.balance / token.weight)
+                _setCircuitBreakerRatio(
+                    tokens[i],
+                    supply.divUp(balances[i].divDown(normalizedWeights[i])),
+                    minRatios[i],
+                    maxRatios[i]
+                );
+            }
+        }
+    }
+
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
         return _readScalingFactor(_getTokenData(token));
     }
@@ -838,8 +882,27 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             currentBalanceTokenOut
         );
 
+        // Check that the final amount in (= currentBalance + swap amount) doesn't trip the breaker
+        // Higher balance = lower BPT price
+        // Upper Bound check means BptPrice must be >= startPrice/MaxRatio
+        _checkCircuitBreakerUpperBound(
+            _circuitBreakerState[swapRequest.tokenIn],
+            currentBalanceTokenIn.add(swapRequest.amount),
+            swapRequest.tokenIn
+        );
+
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
         uint256 amountOut = super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+
+        // Since amountIn is valid, calculate the amount out (price quote), and check
+        // that it doesn't trip that token's breaker
+
+        // Lower Bound check means BptPrice must be <= startPrice/MinRatio
+        _checkCircuitBreakerLowerBound(
+            _circuitBreakerState[swapRequest.tokenOut],
+            currentBalanceTokenOut.sub(amountOut),
+            swapRequest.tokenOut
+        );
 
         uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
             currentBalanceTokenIn.add(_addSwapFeeAmount(swapRequest.amount)),
@@ -858,6 +921,12 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
+        _checkCircuitBreakerUpperBound(
+            _circuitBreakerState[swapRequest.tokenOut],
+            currentBalanceTokenOut.add(swapRequest.amount),
+            swapRequest.tokenOut
+        );
+
         (uint256[] memory normalizedWeights, uint256[] memory preSwapBalances) = _getWeightsAndPreSwapBalances(
             swapRequest,
             currentBalanceTokenIn,
@@ -866,6 +935,13 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
 
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
         uint256 amountIn = super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+
+        // Lower Bound check means BptPrice must be <= startPrice/MinRatio
+        _checkCircuitBreakerLowerBound(
+            _circuitBreakerState[swapRequest.tokenIn],
+            currentBalanceTokenIn.sub(amountIn),
+            swapRequest.tokenIn
+        );
 
         uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
             currentBalanceTokenIn.add(_addSwapFeeAmount(amountIn)),
@@ -947,7 +1023,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal view override returns (uint256, uint256[] memory) {
+    ) internal view override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
         // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
         // token prices.
         // Adding tokens is also allowed, as that action can only be performed by the manager, who is assumed to
@@ -965,8 +1041,19 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         } else {
             // Check allowlist for LPs, if applicable
             _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
+        }
 
-            return super._doJoin(sender, balances, normalizedWeights, scalingFactors, userData);
+        (bptAmountOut, amountsIn) = super._doJoin(sender, balances, normalizedWeights, scalingFactors, userData);
+
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            // Check that the final amount in (= currentBalance + swap amount) doesn't trip the breaker
+            // Higher balance = lower BPT price
+            // Upper Bound check means BptPrice must be >= startPrice/MaxRatio
+            IERC20 token = tokens[i];
+
+            _checkCircuitBreakerUpperBound(_circuitBreakerState[token], balances[i].add(amountsIn[i]), token);
         }
     }
 
@@ -999,7 +1086,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal view override returns (uint256, uint256[] memory) {
+    ) internal view override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
         // token prices.
         // Removing tokens is also allowed, as that action can only be performed by the manager, who is assumed to
@@ -1012,10 +1099,25 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
-        return
-            kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN
-                ? _doExitRemoveToken(sender, balances, userData)
-                : super._doExit(sender, balances, normalizedWeights, scalingFactors, userData);
+        (bptAmountIn, amountsOut) = kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN
+            ? _doExitRemoveToken(sender, balances, userData)
+            : super._doExit(sender, balances, normalizedWeights, scalingFactors, userData);
+
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        uint256 tokenIndex = kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN
+            ? userData.removeToken()
+            : type(uint256).max;
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (i != tokenIndex) {
+                // Check that the final amount in (= currentBalance + swap amount) doesn't trip the breaker
+                // Higher balance = lower BPT price
+                // Upper Bound check means BptPrice must be >= startPrice/MaxRatio
+                IERC20 token = tokens[i];
+
+                _checkCircuitBreakerLowerBound(_circuitBreakerState[token], balances[i].sub(amountsOut[i]), token);
+            }
+        }
     }
 
     function _doExitRemoveToken(
@@ -1141,6 +1243,46 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
                 .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
     }
 
+    // If the ratio is 0, there is no breaker in this direction on this token
+    function _checkCircuitBreakerUpperBound(
+        bytes32 tokenData,
+        uint256 endingBalance,
+        IERC20 token
+    ) private view {
+        uint256 maxRatio = _decodeRatio(tokenData.decodeUint16(_MAX_RATIO_OFFSET).uncompress16());
+
+        if (maxRatio != 0) {
+            uint256 initialPrice = tokenData.decodeUint128(_REF_BPT_PRICE_OFFSET);
+            uint256 lowerBound = initialPrice.divUp(maxRatio);
+
+            // Validate that token price is within bounds
+            // Can be front run!
+            // Once turned on, all need to have values
+            // BPT price can be manipulated - but lower bound protects against most of it
+            // can snapshot
+            uint256 finalPrice = totalSupply().divDown(endingBalance.divUp(_getNormalizedWeight(token)));
+            _require(finalPrice >= lowerBound, Errors.CIRCUIT_BREAKER_TRIPPED_MAX_RATIO);
+        }
+    }
+
+    function _checkCircuitBreakerLowerBound(
+        bytes32 tokenData,
+        uint256 endingBalance,
+        IERC20 token
+    ) private view {
+        uint256 minRatio = _decodeRatio(tokenData.decodeUint16(_MIN_RATIO_OFFSET).uncompress16());
+
+        // If the ratio is 0, there is no breaker in this direction on this token
+        if (minRatio != 0) {
+            uint256 initialPrice = tokenData.decodeUint128(_REF_BPT_PRICE_OFFSET);
+            uint256 upperBound = initialPrice.divDown(minRatio);
+
+            // Validate that token price is within bounds
+            uint256 finalPrice = totalSupply().divUp(endingBalance.divDown(_getNormalizedWeight(token)));
+            _require(finalPrice <= upperBound, Errors.CIRCUIT_BREAKER_TRIPPED_MIN_RATIO);
+        }
+    }
+
     // Convert a decimal difference value to the scaling factor
     function _readScalingFactor(bytes32 tokenState) private pure returns (uint256) {
         uint256 decimalsDifference = tokenState.decodeUint5(_DECIMAL_DIFF_OFFSET);
@@ -1175,6 +1317,45 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
 
         // A valid token can't be zero (must have non-zero weights)
         _require(tokenData != 0, Errors.INVALID_TOKEN);
+    }
+
+    function _setCircuitBreakerRatio(
+        IERC20 token,
+        uint256 initialPrice,
+        uint256 minRatio,
+        uint256 maxRatio
+    ) internal {
+        // Has to be > minRatio (if equal, encoded value would be 0, indistinguishable from no circuit breaker)
+        _require(minRatio == 0 || minRatio > _MIN_CIRCUIT_BREAKER_RATIO, Errors.MIN_CIRCUIT_BREAKER_RATIO);
+        _require(maxRatio == 0 || maxRatio <= _MAX_CIRCUIT_BREAKER_RATIO, Errors.MAX_CIRCUIT_BREAKER_RATIO);
+        _require(maxRatio >= minRatio, Errors.INVALID_CIRCUIT_BREAKER_RATIOS);
+
+        bytes32 tokenData = _circuitBreakerState[token];
+
+        _circuitBreakerState[token] = tokenData
+            .insertUint128(initialPrice, _REF_BPT_PRICE_OFFSET)
+            .insertUint16(_encodeRatio(minRatio).compress16(), _MIN_RATIO_OFFSET)
+            .insertUint16(_encodeRatio(maxRatio).compress16(), _MAX_RATIO_OFFSET);
+
+        emit CircuitBreakerRatioSet(address(token), minRatio, maxRatio);
+    }
+
+    // Encoded value = (value - MIN)/range
+    // e.g., if range is 0.1 - 10, 1.5 = (1.5 - 0.1)/9.9 = 0.1414
+    function _encodeRatio(uint256 ratio) private pure returns (uint256) {
+        return
+            ratio == 0
+                ? 0
+                : (ratio - _MIN_CIRCUIT_BREAKER_RATIO) / (_MAX_CIRCUIT_BREAKER_RATIO - _MIN_CIRCUIT_BREAKER_RATIO);
+    }
+
+    // Scale back to a numeric ratio
+    // 0.1 + 0.1414 * 9.9 ~ 1.5
+    function _decodeRatio(uint256 ratio) private pure returns (uint256) {
+        return
+            ratio == 0
+                ? 0
+                : _MIN_CIRCUIT_BREAKER_RATIO + ratio * (_MAX_CIRCUIT_BREAKER_RATIO - _MIN_CIRCUIT_BREAKER_RATIO);
     }
 
     // Join/exit callbacks

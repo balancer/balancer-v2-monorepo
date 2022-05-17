@@ -168,6 +168,11 @@ library Errors {
     uint256 internal constant MAX_WEIGHT = 350;
     uint256 internal constant UNAUTHORIZED_JOIN = 351;
     uint256 internal constant MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 352;
+    uint256 internal constant MIN_CIRCUIT_BREAKER_RATIO = 353;
+    uint256 internal constant MAX_CIRCUIT_BREAKER_RATIO = 354;
+    uint256 internal constant INVALID_CIRCUIT_BREAKER_RATIOS = 355;
+    uint256 internal constant CIRCUIT_BREAKER_TRIPPED_MIN_RATIO = 356;
+    uint256 internal constant CIRCUIT_BREAKER_TRIPPED_MAX_RATIO = 357;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

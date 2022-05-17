@@ -172,6 +172,21 @@ library WordCodec {
         return clearedWord | bytes32(value << offset);
     }
 
+    /**
+     * @dev Inserts a 128 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value.
+     * Returns the new word.
+     *
+     * Assumes `value` only uses its least significant 32 bits, otherwise it may overwrite sibling bytes.
+     */
+    function insertUint128(
+        bytes32 word,
+        uint256 value,
+        uint256 offset
+    ) internal pure returns (bytes32) {
+        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_128 << offset));
+        return clearedWord | bytes32(value << offset);
+    }
+
     // Signed
 
     /**
