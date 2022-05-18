@@ -21,7 +21,7 @@ import {
   RawOutput,
   TaskRunOptions,
 } from './types';
-import { getContractDeploymentTransactionHash } from './network';
+import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from './network';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 
@@ -113,6 +113,7 @@ export default class Task {
     const instance = await deploy(this.artifact(name), args, from, libs);
     this.save({ [name]: instance });
     logger.success(`Deployed ${name} at ${instance.address}`);
+    await saveContractDeploymentTransactionHash(instance.address, instance.deployTransaction.hash, this.network);
     return instance;
   }
 
