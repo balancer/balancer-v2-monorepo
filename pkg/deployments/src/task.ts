@@ -21,7 +21,7 @@ import {
   RawOutput,
   TaskRunOptions,
 } from './types';
-import { getContractDeploymentTransactionHash } from './network';
+import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from './network';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 
@@ -92,6 +92,7 @@ export default class Task {
     const output = this.output({ ensure: false });
     if (force || !output[name]) {
       const instance = await this.deploy(name, args, from, libs);
+      await saveContractDeploymentTransactionHash(instance.address, instance.deployTransaction.hash, this.network);
       await this.verify(name, instance.address, args, libs);
       return instance;
     } else {
