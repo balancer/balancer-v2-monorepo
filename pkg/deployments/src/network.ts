@@ -85,7 +85,7 @@ const CONTRACT_DEPLOYMENT_TRANSACTION_HASHES: Partial<Record<Network, Record<str
     // DoubleEntrypointFixRelayer
     '0xcA96C4f198d343E251b1a01F3EBA061ef3DA73C1': '0x0dd98227681a13fde11f9943b285bfdd8b3ad67d12f0ead07a17f483a99de7ff',
     // ProtocolFeesWithdrawer
-    '0x8c8951476529b0710cD878D3318Cf64B475654A7': '0xefa029a7f101e43804ab6d4c784dc20412dc99985354adf41d9055d5ff44380b',
+    '0x5ef4c5352882b10893b70DbcaA0C000965bd23c5': '0x6aa7d8c816f1fe9e4f1be5c1ebbf85ea2327502229a036a37f12d5dc13c51e4a',
   },
   polygon: {
     // Authorizer
