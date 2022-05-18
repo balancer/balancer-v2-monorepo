@@ -56,7 +56,7 @@ abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
         return _stageActivationTime.length;
     }
 
-    function getStagesLength() external view returns (uint256) {
+    function getStagesLength() public view returns (uint256) {
         return _coordinatorStages.length;
     }
 
@@ -65,7 +65,7 @@ abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
     }
 
     function registerStages() external nonReentrant {
-        require(_coordinatorStages.length == 0, "Coordinator stages already registered");
+        require(getStagesLength() == 0, "Coordinator stages already registered");
         _registerStages();
     }
 
@@ -77,7 +77,7 @@ abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
 
     function performNextStage() external nonReentrant {
         // If nobody has explicitly registered the stages manually before performing the first stage then do so now.
-        if (_coordinatorStages.length == 0) _registerStages();
+        if (getStagesLength() == 0) _registerStages();
         
         uint256 currentStage = getCurrentStage();
 
@@ -93,7 +93,7 @@ abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
     function _advanceCurrentStage(uint256 currentStage) internal {
         _stageActivationTime[currentStage] = block.timestamp;
 
-        if (currentStage == _coordinatorStages.length - 1) {
+        if (currentStage == getStagesLength() - 1) {
             _afterLastStage();
         }
     }
