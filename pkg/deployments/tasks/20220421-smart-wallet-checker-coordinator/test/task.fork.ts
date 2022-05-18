@@ -16,7 +16,7 @@ describe('SmartWalletCheckerCoordinator', function () {
 
   let vault: Contract, authorizer: Contract, veBAL: Contract, smartWalletChecker: Contract;
 
-  const task = new Task('20220420-smart-wallet-checker-coordinator', TaskMode.TEST, getForkedNetwork(hre));
+  const task = new Task('20220421-smart-wallet-checker-coordinator', TaskMode.TEST, getForkedNetwork(hre));
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 

@@ -93,3 +93,5 @@ Returns an object with all contracts from a deployment and their addresses.
 | veBAL Smart Wallet Checker Coordinator               | [`20220421-smart-wallet-checker-coordinator`](./tasks/20220421-smart-wallet-checker-coordinator) |
 | Fee Distributor for veBAL holders                    | [`20220420-fee-distributor`](./tasks/20220420-fee-distributor)                                   |
 | Distribution Scheduler for reward tokens on gauges   | [`20220422-distribution-scheduler`](./tasks/20220422-distribution-scheduler)                     |
+| Relayer with the fix for the Double Entrypoint issue | [`20220513-double-entrypoint-fix-relayer`](./tasks/20220513-double-entrypoint-fix-relayer)       |
+| Protocol Fee Withdrawer                              | [`20220517-protocol-fee-withdrawer`](./tasks/20220517-protocol-fee-withdrawer)                   |
