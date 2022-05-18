@@ -92,7 +92,6 @@ export default class Task {
     const output = this.output({ ensure: false });
     if (force || !output[name]) {
       const instance = await this.deploy(name, args, from, libs);
-      await saveContractDeploymentTransactionHash(instance.address, instance.deployTransaction.hash, this.network);
       await this.verify(name, instance.address, args, libs);
       return instance;
     } else {
@@ -114,6 +113,7 @@ export default class Task {
     const instance = await deploy(this.artifact(name), args, from, libs);
     this.save({ [name]: instance });
     logger.success(`Deployed ${name} at ${instance.address}`);
+    await saveContractDeploymentTransactionHash(instance.address, instance.deployTransaction.hash, this.network);
     return instance;
   }
 
