@@ -113,7 +113,10 @@ export default class Task {
     const instance = await deploy(this.artifact(name), args, from, libs);
     this.save({ [name]: instance });
     logger.success(`Deployed ${name} at ${instance.address}`);
-    await saveContractDeploymentTransactionHash(instance.address, instance.deployTransaction.hash, this.network);
+
+    if (this.mode === TaskMode.LIVE) {
+      await saveContractDeploymentTransactionHash(instance.address, instance.deployTransaction.hash, this.network);
+    }
     return instance;
   }
 
