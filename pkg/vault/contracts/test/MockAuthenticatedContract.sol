@@ -17,6 +17,13 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
+/*
+ * @author Balancer Labs
+ * @title MockAuthenticatedContract
+ * @notice Generic authenticated contract
+ * @dev A general purpose contract that can be used for testing permissioned functions in a more abstract way,
+ * to test Authorizer functionality independent of specific Vault functions.
+ */
 contract MockAuthenticatedContract is SingletonAuthentication {
 
     event ProtectedFunctionCalled(bytes data);
