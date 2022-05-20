@@ -219,7 +219,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      * For this reason, it's recommended to use `hasPermission` if checking whether `account` is allowed to perform
      * a given action.
      */
-    function isPermissionGranted(
+    function isPermissionGrantedOnTarget(
         bytes32 actionId,
         address account,
         address where
