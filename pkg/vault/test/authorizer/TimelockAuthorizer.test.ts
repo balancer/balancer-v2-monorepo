@@ -1926,7 +1926,7 @@ describe('TimelockAuthorizer', () => {
               it('schedules a delay change', async () => {
                 const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
 
-                const scheduledExecution = await authorizer.scheduledExecutions(id);
+                const scheduledExecution = await authorizer.getScheduledExecution(id);
                 expect(scheduledExecution.executed).to.be.false;
                 expect(scheduledExecution.data).to.be.equal(expectedData);
                 expect(scheduledExecution.where).to.be.equal(authorizer.address);
@@ -1960,7 +1960,7 @@ describe('TimelockAuthorizer', () => {
               it('schedules a delay change', async () => {
                 const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
 
-                const scheduledExecution = await authorizer.scheduledExecutions(id);
+                const scheduledExecution = await authorizer.getScheduledExecution(id);
                 expect(scheduledExecution.executed).to.be.false;
                 expect(scheduledExecution.data).to.be.equal(expectedData);
                 expect(scheduledExecution.where).to.be.equal(authorizer.address);
@@ -2082,7 +2082,7 @@ describe('TimelockAuthorizer', () => {
                 it('schedules a non-protected execution', async () => {
                   const id = await schedule();
 
-                  const scheduledExecution = await authorizer.scheduledExecutions(id);
+                  const scheduledExecution = await authorizer.getScheduledExecution(id);
                   expect(scheduledExecution.executed).to.be.false;
                   expect(scheduledExecution.data).to.be.equal(data);
                   expect(scheduledExecution.where).to.be.equal(where.address);
@@ -2102,7 +2102,7 @@ describe('TimelockAuthorizer', () => {
                   const receipt = await authorizer.execute(id);
                   expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
 
-                  const scheduledExecution = await authorizer.scheduledExecutions(id);
+                  const scheduledExecution = await authorizer.getScheduledExecution(id);
                   expect(scheduledExecution.executed).to.be.true;
 
                   expectEvent.inIndirectReceipt(
@@ -2132,7 +2132,7 @@ describe('TimelockAuthorizer', () => {
                 it('schedules the requested execution', async () => {
                   const id = await schedule();
 
-                  const scheduledExecution = await authorizer.scheduledExecutions(id);
+                  const scheduledExecution = await authorizer.getScheduledExecution(id);
                   expect(scheduledExecution.executed).to.be.false;
                   expect(scheduledExecution.data).to.be.equal(data);
                   expect(scheduledExecution.where).to.be.equal(where.address);
@@ -2156,7 +2156,7 @@ describe('TimelockAuthorizer', () => {
                   const receipt = await authorizer.execute(id, { from: executors[0] });
                   expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
 
-                  const scheduledExecution = await authorizer.scheduledExecutions(id);
+                  const scheduledExecution = await authorizer.getScheduledExecution(id);
                   expect(scheduledExecution.executed).to.be.true;
 
                   expectEvent.inIndirectReceipt(
@@ -2275,7 +2275,7 @@ describe('TimelockAuthorizer', () => {
               it('executes the action', async () => {
                 const receipt = await authorizer.execute(id, { from });
 
-                const scheduledExecution = await authorizer.scheduledExecutions(id);
+                const scheduledExecution = await authorizer.getScheduledExecution(id);
                 expect(scheduledExecution.executed).to.be.true;
 
                 expectEvent.inIndirectReceipt(
@@ -2345,7 +2345,7 @@ describe('TimelockAuthorizer', () => {
 
           const receipt = await authorizer.execute(id);
 
-          const scheduledExecution = await authorizer.scheduledExecutions(id);
+          const scheduledExecution = await authorizer.getScheduledExecution(id);
           expect(scheduledExecution.executed).to.be.true;
 
           expectEvent.inIndirectReceipt(
@@ -2402,7 +2402,7 @@ describe('TimelockAuthorizer', () => {
           it('cancels the action', async () => {
             await authorizer.cancel(id, { from });
 
-            const scheduledExecution = await authorizer.scheduledExecutions(id);
+            const scheduledExecution = await authorizer.getScheduledExecution(id);
             expect(scheduledExecution.cancelled).to.be.true;
           });
 
@@ -2472,7 +2472,7 @@ describe('TimelockAuthorizer', () => {
 
           const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
 
-          const scheduledExecution = await authorizer.scheduledExecutions(id);
+          const scheduledExecution = await authorizer.getScheduledExecution(id);
           expect(scheduledExecution.executed).to.be.false;
           expect(scheduledExecution.data).to.be.equal(expectedData);
           expect(scheduledExecution.where).to.be.equal(authorizer.address);
