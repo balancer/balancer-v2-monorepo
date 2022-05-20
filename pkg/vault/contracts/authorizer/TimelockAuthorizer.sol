@@ -213,7 +213,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
-     * @dev Returns true if `account` is has the permission defined by action `actionId` and target `where`.
+     * @dev Returns true if `account` has the permission defined by action `actionId` and target `where`.
      * This function is specific for the strict permission defined by the tuple `(actionId, where)`, `account` may also
      * hold the global permission for the action `actionId` which would allow them to perform this action on `where`.
      * For this reason, it's recommended to use `hasPermission` if checking whether `account` is allowed to perform
