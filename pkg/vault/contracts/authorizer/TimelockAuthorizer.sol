@@ -360,8 +360,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
-        bool isAllowed = _hasPermissionOrWhatever(SCHEDULE_DELAY_ACTION_ID, msg.sender, address(this), actionId);
-        _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
 
         // The delay change is scheduled to execute after the current delay for the action has elapsed. This is
         // critical, as otherwise it'd be possible to execute an action with a delay shorter than its current one
