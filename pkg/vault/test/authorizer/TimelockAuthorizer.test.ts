@@ -2462,13 +2462,13 @@ describe('TimelockAuthorizer', () => {
     context('when the sender is the root', async () => {
       context('when trying to execute it directly', async () => {
         it('reverts', async () => {
-          await expect(authorizer.instance.setRoot(grantee.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          await expect(authorizer.instance.setRootCandidate(grantee.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
         });
       });
 
       context('when trying to schedule a call', async () => {
         it('schedules a root change', async () => {
-          const expectedData = authorizer.instance.interface.encodeFunctionData('setRoot', [grantee.address]);
+          const expectedData = authorizer.instance.interface.encodeFunctionData('setRootCandidate', [grantee.address]);
 
           const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
 
@@ -2480,24 +2480,59 @@ describe('TimelockAuthorizer', () => {
           expect(scheduledExecution.executableAt).to.be.at.most((await currentTimestamp()).add(ROOT_CHANGE_DELAY));
         });
 
-        it('can be executed after the delay', async () => {
-          const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
+        context('when root change executed', () => {
+          let id: number;
 
-          await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_EXECUTABLE');
+          sharedBeforeEach('schedule the root change', async () => {
+            id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
 
-          await advanceTime(ROOT_CHANGE_DELAY);
-          await authorizer.execute(id);
+            await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_EXECUTABLE');
+            await advanceTime(ROOT_CHANGE_DELAY);
+          });
 
-          expect(await authorizer.isRoot(admin)).to.be.false;
-          expect(await authorizer.isRoot(grantee)).to.be.true;
-        });
+          it('can be executed after the delay', async () => {
+            await authorizer.execute(id);
 
-        it('emits an event', async () => {
-          const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
+            // Not yet claimed
+            expect(await authorizer.isRoot(admin)).to.be.true;
+            expect(await authorizer.isRoot(grantee)).to.be.false;
 
-          await advanceTime(ROOT_CHANGE_DELAY);
-          const receipt = await authorizer.execute(id);
-          expectEvent.inReceipt(await receipt.wait(), 'RootSet', { root: grantee.address });
+            expect(await authorizer.getRootCandidate()).to.equal(grantee.address);
+          });
+
+          it('setting the candidate emits an event', async () => {
+            const receipt = await authorizer.execute(id);
+
+            expectEvent.inReceipt(await receipt.wait(), 'RootCandidateSet', { rootCandidate: grantee.address });
+          });
+
+          describe('claiming ownership', () => {
+            sharedBeforeEach('execute the root change', async () => {
+              await authorizer.execute(id);
+            });
+
+            it('can be claimed by the grantee', async () => {
+              expect(await authorizer.isRoot(admin)).to.be.true;
+              expect(await authorizer.isRoot(grantee)).to.be.false;
+
+              await authorizer.claimRoot({ from: grantee });
+
+              expect(await authorizer.isRoot(admin)).to.be.false;
+              expect(await authorizer.isRoot(grantee)).to.be.true;
+
+              expect(await authorizer.getRootCandidate()).to.equal(ZERO_ADDRESS);
+            });
+
+            it('claiming emits an event', async () => {
+              const receipt = await authorizer.claimRoot({ from: grantee });
+
+              expectEvent.inReceipt(await receipt.wait(), 'RootSet', { root: grantee.address });
+            });
+
+            it('rejects invalid claims', async () => {
+              await expect(authorizer.claimRoot()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            });
+          });
         });
       });
     });

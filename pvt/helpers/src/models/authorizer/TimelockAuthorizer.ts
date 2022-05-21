@@ -60,6 +60,14 @@ export default class TimelockAuthorizer {
     return this.instance.isRoot(this.toAddress(account));
   }
 
+  async getRootCandidate(): Promise<Account> {
+    return this.instance.getRootCandidate();
+  }
+
+  async claimRoot(params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).claimRoot();
+  }
+
   async delay(action: string): Promise<BigNumberish> {
     return this.instance.getActionIdDelay(action);
   }

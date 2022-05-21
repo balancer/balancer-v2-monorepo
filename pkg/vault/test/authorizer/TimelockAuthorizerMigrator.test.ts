@@ -119,6 +119,10 @@ describe('TimelockAuthorizerMigrator', () => {
 
       await migrator.finalizeMigration();
       expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
+
+      // Root account must claim ownership
+      await newAuthorizer.connect(root).claimRoot();
+
       expect(await newAuthorizer.isRoot(root.address)).to.be.true;
       expect(await newAuthorizer.isRoot(migrator.address)).to.be.false;
     });

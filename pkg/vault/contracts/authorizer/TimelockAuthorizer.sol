@@ -79,6 +79,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     uint256 private immutable _rootTransferDelay;
 
     address private _root;
+    address private _rootCandidate;
+
     ScheduledExecution[] private _scheduledExecutions;
     mapping(bytes32 => bool) private _isPermissionGranted;
     mapping(bytes32 => uint256) private _delaysPerActionId;
@@ -114,7 +116,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     event PermissionRevoked(bytes32 indexed actionId, address indexed account, address indexed where);
 
     /**
-     * @dev Emitted when a new `root` is set.
+     * @dev Emitted when a new candidate `root` is set. The new account must claim ownership for it to take effect.
+     */
+    event RootCandidateSet(address indexed rootCandidate);
+
+    /**
+     * @dev Emitted when the new `root` account calls `claimRoot`, and the root account is changed.
      */
     event RootSet(address indexed root);
 
@@ -318,11 +325,34 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
-     * @dev Sets the root address to `newRoot`.
+     * @dev Sets the candidate root address to `newRoot`. To complete the transfer, this account must call
+     * `claimRoot`;
      */
-    function setRoot(address newRoot) external onlyExecutor {
-        _root = newRoot;
-        emit RootSet(newRoot);
+    function setRootCandidate(address newRoot) external onlyExecutor {
+        _rootCandidate = newRoot;
+
+        emit RootCandidateSet(newRoot);
+    }
+
+    /**
+     * @dev Getter for the root candidate. This address will be non-zero if there is a pending root transfer,
+     * awaiting the final claim step.
+     */
+    function getRootCandidate() external view returns (address) {
+        return _rootCandidate;
+    }
+
+    /**
+     * @dev Prevent accidentally setting the root to an invalid account. `setRootCandidate` only
+     * sets a candidate address. The new root must explicitly claim ownership by calling this function.
+     */
+    function claimRoot() external {
+        _require(msg.sender == _rootCandidate, Errors.SENDER_NOT_ALLOWED);
+
+        _root = _rootCandidate;
+        _rootCandidate = address(0);
+
+        emit RootSet(_root);
     }
 
     /**
@@ -333,9 +363,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         returns (uint256 scheduledExecutionId)
     {
         _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
-        bytes32 actionId = getActionId(this.setRoot.selector);
+        bytes32 actionId = getActionId(this.setRootCandidate.selector);
         bytes32 scheduleRootChangeActionId = getActionId(SCHEDULE_DELAY_ACTION_ID, actionId);
-        bytes memory data = abi.encodeWithSelector(this.setRoot.selector, newRoot);
+        bytes memory data = abi.encodeWithSelector(this.setRootCandidate.selector, newRoot);
         return _scheduleWithDelay(scheduleRootChangeActionId, address(this), data, getRootTransferDelay(), executors);
     }
 
