@@ -35,14 +35,17 @@ task('verify-contract', `Verify a task's deployment on a block explorer`)
   .addParam('name', 'Contract name')
   .addParam('address', 'Contract address')
   .addParam('args', 'ABI-encoded constructor arguments')
-  .addParam('key', 'Etherscan API key to verify contracts')
+  .addOptionalParam('key', 'Etherscan API key to verify contracts')
   .setAction(
     async (
       args: { id: string; name: string; address: string; key: string; args: string; verbose?: boolean },
       hre: HardhatRuntimeEnvironment
     ) => {
       Logger.setDefaults(false, args.verbose || false);
-      const verifier = args.key ? new Verifier(hre.network, args.key) : undefined;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const apiKey = args.key ?? (hre.config.networks[hre.network.name] as any).verificationAPIKey;
+      const verifier = apiKey ? new Verifier(hre.network, apiKey) : undefined;
 
       await new Task(args.id, TaskMode.READ_ONLY, hre.network.name, verifier).verify(
         args.name,
