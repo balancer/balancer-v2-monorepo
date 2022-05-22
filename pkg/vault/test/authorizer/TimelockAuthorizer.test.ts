@@ -12,7 +12,7 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 
 describe('TimelockAuthorizer', () => {
-  let authorizer: TimelockAuthorizer, vault: Contract;
+  let authorizer: TimelockAuthorizer, vault: Contract, authenticatedContract: Contract;
   let admin: SignerWithAddress, grantee: SignerWithAddress, other: SignerWithAddress, from: SignerWithAddress;
 
   before('setup signers', async () => {
@@ -36,6 +36,7 @@ describe('TimelockAuthorizer', () => {
 
     vault = await deploy('Vault', { args: [oldAuthorizer.address, ZERO_ADDRESS, 0, 0] });
     authorizer = await TimelockAuthorizer.create({ admin, vault });
+    authenticatedContract = await deploy('MockAuthenticatedContract', { args: [vault.address] });
 
     const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
     await oldAuthorizer.grantPermissions(setAuthorizerAction, admin, vault, { from: admin });
@@ -1915,7 +1916,7 @@ describe('TimelockAuthorizer', () => {
             expectedData = authorizer.instance.interface.encodeFunctionData('setDelay', [action, delay]);
           });
 
-          context('when the delay is greater than or equal to the delay to set the authorizer in the vault', () => {
+          context('when the delay is less than or equal to the delay to set the authorizer in the vault', () => {
             sharedBeforeEach('set delay to set authorizer', async () => {
               const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
               await authorizer.setDelay(setAuthorizerAction, delay, { from: admin });
@@ -1925,7 +1926,7 @@ describe('TimelockAuthorizer', () => {
               it('schedules a delay change', async () => {
                 const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
 
-                const scheduledExecution = await authorizer.scheduledExecutions(id);
+                const scheduledExecution = await authorizer.getScheduledExecution(id);
                 expect(scheduledExecution.executed).to.be.false;
                 expect(scheduledExecution.data).to.be.equal(expectedData);
                 expect(scheduledExecution.where).to.be.equal(authorizer.address);
@@ -1959,7 +1960,7 @@ describe('TimelockAuthorizer', () => {
               it('schedules a delay change', async () => {
                 const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
 
-                const scheduledExecution = await authorizer.scheduledExecutions(id);
+                const scheduledExecution = await authorizer.getScheduledExecution(id);
                 expect(scheduledExecution.executed).to.be.false;
                 expect(scheduledExecution.data).to.be.equal(expectedData);
                 expect(scheduledExecution.where).to.be.equal(authorizer.address);
@@ -1987,7 +1988,7 @@ describe('TimelockAuthorizer', () => {
             });
           });
 
-          context('when the delay is not greater than the delay to set the authorizer in the vault', () => {
+          context('when the delay is greater than the delay to set the authorizer in the vault', () => {
             it('reverts on execution', async () => {
               const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
               await expect(authorizer.execute(id)).to.be.revertedWith('DELAY_EXCEEDS_SET_AUTHORIZER');
@@ -2029,33 +2030,41 @@ describe('TimelockAuthorizer', () => {
   });
 
   describe('schedule', () => {
+    const delay = DAY * 5;
+    const functionData = '0x0123456789abcdef';
+
     let where: Contract, action: string, data: string, executors: SignerWithAddress[];
-    let anotherVault: Contract, newAuthorizer: TimelockAuthorizer;
+    let anotherAuthenticatedContract: Contract;
 
     sharedBeforeEach('deploy sample instances', async () => {
-      newAuthorizer = await TimelockAuthorizer.create({ admin });
-      anotherVault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
+      anotherAuthenticatedContract = await deploy('MockAuthenticatedContract', { args: [vault.address] });
+    });
+
+    sharedBeforeEach('set authorizer permission delay', async () => {
+      // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`
+      const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
+      await authorizer.setDelay(setAuthorizerAction, 2 * delay, { from: admin });
     });
 
     const schedule = async (): Promise<number> => {
-      data = vault.interface.encodeFunctionData('setAuthorizer', [newAuthorizer.address]);
+      data = authenticatedContract.interface.encodeFunctionData('protectedFunction', [functionData]);
       return authorizer.schedule(where, data, executors || [], { from: grantee });
     };
 
     context('when the target is not the authorizer', () => {
       sharedBeforeEach('set where', async () => {
-        where = vault;
+        where = authenticatedContract;
       });
 
       context('when the sender has permission', () => {
         context('when the sender has permission for the requested action', () => {
           sharedBeforeEach('set action', async () => {
-            action = await actionId(vault, 'setAuthorizer');
+            action = await actionId(authenticatedContract, 'protectedFunction');
           });
 
           context('when the sender has permission for the requested contract', () => {
             sharedBeforeEach('grant permission', async () => {
-              await authorizer.grantPermissions(action, grantee, vault, { from: admin });
+              await authorizer.grantPermissions(action, grantee, authenticatedContract, { from: admin });
             });
 
             context('when there is a delay set', () => {
@@ -2073,7 +2082,7 @@ describe('TimelockAuthorizer', () => {
                 it('schedules a non-protected execution', async () => {
                   const id = await schedule();
 
-                  const scheduledExecution = await authorizer.scheduledExecutions(id);
+                  const scheduledExecution = await authorizer.getScheduledExecution(id);
                   expect(scheduledExecution.executed).to.be.false;
                   expect(scheduledExecution.data).to.be.equal(data);
                   expect(scheduledExecution.where).to.be.equal(where.address);
@@ -2093,10 +2102,17 @@ describe('TimelockAuthorizer', () => {
                   const receipt = await authorizer.execute(id);
                   expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
 
-                  const scheduledExecution = await authorizer.scheduledExecutions(id);
+                  const scheduledExecution = await authorizer.getScheduledExecution(id);
                   expect(scheduledExecution.executed).to.be.true;
 
-                  expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
+                  expectEvent.inIndirectReceipt(
+                    await receipt.wait(),
+                    authenticatedContract.interface,
+                    'ProtectedFunctionCalled',
+                    {
+                      data: functionData,
+                    }
+                  );
                 });
 
                 it('cannot be executed twice', async () => {
@@ -2116,7 +2132,7 @@ describe('TimelockAuthorizer', () => {
                 it('schedules the requested execution', async () => {
                   const id = await schedule();
 
-                  const scheduledExecution = await authorizer.scheduledExecutions(id);
+                  const scheduledExecution = await authorizer.getScheduledExecution(id);
                   expect(scheduledExecution.executed).to.be.false;
                   expect(scheduledExecution.data).to.be.equal(data);
                   expect(scheduledExecution.where).to.be.equal(where.address);
@@ -2140,10 +2156,17 @@ describe('TimelockAuthorizer', () => {
                   const receipt = await authorizer.execute(id, { from: executors[0] });
                   expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
 
-                  const scheduledExecution = await authorizer.scheduledExecutions(id);
+                  const scheduledExecution = await authorizer.getScheduledExecution(id);
                   expect(scheduledExecution.executed).to.be.true;
 
-                  expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
+                  expectEvent.inIndirectReceipt(
+                    await receipt.wait(),
+                    authenticatedContract.interface,
+                    'ProtectedFunctionCalled',
+                    {
+                      data: functionData,
+                    }
+                  );
                 });
 
                 it('cannot be executed twice', async () => {
@@ -2167,7 +2190,7 @@ describe('TimelockAuthorizer', () => {
 
           context('when the sender has permissions for another contract', () => {
             sharedBeforeEach('grant permission', async () => {
-              await authorizer.grantPermissions(action, grantee, anotherVault, { from: admin });
+              await authorizer.grantPermissions(action, grantee, anotherAuthenticatedContract, { from: admin });
             });
 
             it('reverts', async () => {
@@ -2178,8 +2201,8 @@ describe('TimelockAuthorizer', () => {
 
         context('when the sender has permissions for another action', () => {
           sharedBeforeEach('grant permission', async () => {
-            action = await actionId(vault, 'setRelayerApproval');
-            await authorizer.grantPermissions(action, grantee, vault, { from: admin });
+            action = await actionId(authenticatedContract, 'secondProtectedFunction');
+            await authorizer.grantPermissions(action, grantee, authenticatedContract, { from: admin });
           });
 
           it('reverts', async () => {
@@ -2208,21 +2231,22 @@ describe('TimelockAuthorizer', () => {
 
   describe('execute', () => {
     const delay = DAY;
-    let executors: SignerWithAddress[], newAuthorizer: TimelockAuthorizer;
+    const functionData = '0x0123456789abcdef';
+    let executors: SignerWithAddress[];
 
-    sharedBeforeEach('deploy sample instances', async () => {
-      newAuthorizer = await TimelockAuthorizer.create({ admin });
-    });
-
-    sharedBeforeEach('grant set authorizer permission with delay', async () => {
+    sharedBeforeEach('grant protected function permission with delay', async () => {
+      // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`
       const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
       await authorizer.setDelay(setAuthorizerAction, delay, { from: admin });
-      await authorizer.grantPermissions(setAuthorizerAction, grantee, vault, { from: admin });
+
+      const protectedFunctionAction = await actionId(authenticatedContract, 'protectedFunction');
+      await authorizer.setDelay(protectedFunctionAction, delay, { from: admin });
+      await authorizer.grantPermissions(protectedFunctionAction, grantee, authenticatedContract, { from: admin });
     });
 
     const schedule = async (): Promise<number> => {
-      const data = vault.interface.encodeFunctionData('setAuthorizer', [newAuthorizer.address]);
-      return authorizer.schedule(vault, data, executors || [], { from: grantee });
+      const data = authenticatedContract.interface.encodeFunctionData('protectedFunction', [functionData]);
+      return authorizer.schedule(authenticatedContract, data, executors || [], { from: grantee });
     };
 
     context('when the given id is valid', () => {
@@ -2249,18 +2273,25 @@ describe('TimelockAuthorizer', () => {
               });
 
               it('executes the action', async () => {
-                await authorizer.execute(id, { from });
+                const receipt = await authorizer.execute(id, { from });
 
-                const scheduledExecution = await authorizer.scheduledExecutions(id);
+                const scheduledExecution = await authorizer.getScheduledExecution(id);
                 expect(scheduledExecution.executed).to.be.true;
 
-                expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
+                expectEvent.inIndirectReceipt(
+                  await receipt.wait(),
+                  authenticatedContract.interface,
+                  'ProtectedFunctionCalled',
+                  { data: functionData }
+                );
               });
 
               it('emits an event', async () => {
                 const receipt = await authorizer.execute(id, { from });
 
-                expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', { scheduledExecutionId: id });
+                expectEvent.inReceipt(await receipt.wait(), 'ExecutionExecuted', {
+                  scheduledExecutionId: id,
+                });
               });
 
               it('cannot be executed twice', async () => {
@@ -2312,12 +2343,19 @@ describe('TimelockAuthorizer', () => {
           id = await schedule();
           await advanceTime(delay);
 
-          await authorizer.execute(id);
+          const receipt = await authorizer.execute(id);
 
-          const scheduledExecution = await authorizer.scheduledExecutions(id);
+          const scheduledExecution = await authorizer.getScheduledExecution(id);
           expect(scheduledExecution.executed).to.be.true;
 
-          expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
+          expectEvent.inIndirectReceipt(
+            await receipt.wait(),
+            authenticatedContract.interface,
+            'ProtectedFunctionCalled',
+            {
+              data: functionData,
+            }
+          );
         });
       });
     });
@@ -2331,21 +2369,21 @@ describe('TimelockAuthorizer', () => {
 
   describe('cancel', () => {
     const delay = DAY;
-    let executors: SignerWithAddress[], newAuthorizer: TimelockAuthorizer;
+    let executors: SignerWithAddress[];
 
-    sharedBeforeEach('deploy sample instances', async () => {
-      newAuthorizer = await TimelockAuthorizer.create({ admin });
-    });
-
-    sharedBeforeEach('grant set authorizer permission with delay', async () => {
+    sharedBeforeEach('grant protected function permission with delay', async () => {
+      // We must set a delay for the `setAuthorizer` function as well to be able to give one to `protectedFunction`
       const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
       await authorizer.setDelay(setAuthorizerAction, delay, { from: admin });
-      await authorizer.grantPermissions(setAuthorizerAction, grantee, vault, { from: admin });
+
+      const protectedFunctionAction = await actionId(authenticatedContract, 'protectedFunction');
+      await authorizer.setDelay(protectedFunctionAction, delay, { from: admin });
+      await authorizer.grantPermissions(protectedFunctionAction, grantee, authenticatedContract, { from: admin });
     });
 
     const schedule = async (): Promise<number> => {
-      const data = vault.interface.encodeFunctionData('setAuthorizer', [newAuthorizer.address]);
-      return authorizer.schedule(vault, data, executors || [], { from: grantee });
+      const data = authenticatedContract.interface.encodeFunctionData('protectedFunction', ['0x']);
+      return authorizer.schedule(authenticatedContract, data, executors || [], { from: grantee });
     };
 
     context('when the given id is valid', () => {
@@ -2364,7 +2402,7 @@ describe('TimelockAuthorizer', () => {
           it('cancels the action', async () => {
             await authorizer.cancel(id, { from });
 
-            const scheduledExecution = await authorizer.scheduledExecutions(id);
+            const scheduledExecution = await authorizer.getScheduledExecution(id);
             expect(scheduledExecution.cancelled).to.be.true;
           });
 
@@ -2434,7 +2472,7 @@ describe('TimelockAuthorizer', () => {
 
           const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
 
-          const scheduledExecution = await authorizer.scheduledExecutions(id);
+          const scheduledExecution = await authorizer.getScheduledExecution(id);
           expect(scheduledExecution.executed).to.be.false;
           expect(scheduledExecution.data).to.be.equal(expectedData);
           expect(scheduledExecution.where).to.be.equal(authorizer.address);
