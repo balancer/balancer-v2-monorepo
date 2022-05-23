@@ -159,6 +159,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
+     * @dev Returns true if `account` is the pending root.
+     */
+    function isPendingRoot(address account) public view returns (bool) {
+        return account == _pendingRoot;
+    }
+
+    /**
      * @dev Returns the delay required to transfer the root address.
      */
     function getRootTransferDelay() public view returns (uint256) {
