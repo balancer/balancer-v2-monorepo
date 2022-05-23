@@ -1894,18 +1894,7 @@ describe('TimelockAuthorizer', () => {
   describe('setDelay', () => {
     const action = ACTION_1;
 
-    const grantPermission = async (actionId: string) => {
-      const SCHEDULE_DELAY_ACTION_ID = await authorizer.SCHEDULE_DELAY_ACTION_ID();
-      const args = [SCHEDULE_DELAY_ACTION_ID, actionId];
-      const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
-      await authorizer.grantPermissions(setDelayAction, admin, authorizer, { from: admin });
-    };
-
-    context('when the sender has permission for the requested action', () => {
-      sharedBeforeEach('grant permission', async () => {
-        await grantPermission(action);
-      });
-
+    context('when the sender is the root', () => {
       context('when the new delay is less than 2 years', () => {
         const delay = DAY;
 
@@ -2012,19 +2001,20 @@ describe('TimelockAuthorizer', () => {
       });
     });
 
-    context('when the sender has permission for another action', () => {
+    context('when the sender is not the root', () => {
       sharedBeforeEach('grant permission', async () => {
-        await grantPermission(ACTION_2);
+        // We never check that the caller has this permission but if we were to check a permission
+        // it would be this one, we then grant it to the caller so we can be sure about why the call is reverting.
+        const SCHEDULE_DELAY_ACTION_ID = await authorizer.SCHEDULE_DELAY_ACTION_ID();
+        const args = [SCHEDULE_DELAY_ACTION_ID, action];
+        const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
+        await authorizer.grantPermissions(setDelayAction, grantee, authorizer, { from: admin });
       });
 
       it('reverts', async () => {
-        await expect(authorizer.scheduleDelayChange(action, DAY, [])).to.be.revertedWith('SENDER_NOT_ALLOWED');
-      });
-    });
-
-    context('when the sender does not have permission', () => {
-      it('reverts', async () => {
-        await expect(authorizer.scheduleDelayChange(action, DAY, [])).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(authorizer.scheduleDelayChange(action, DAY, [], { from: grantee })).to.be.revertedWith(
+          'SENDER_NOT_ALLOWED'
+        );
       });
     });
   });
