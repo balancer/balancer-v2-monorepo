@@ -353,12 +353,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     /**
      * @notice Transfers root powers from the current to the pending root address.
      * @dev This function prevents accidentally transferring root to an invalid address.
-     * To become root, the pending root must call this function ensuring that it's able to interact with this contract.
+     * To become root, the pending root must call this function to ensure that it's able to interact with this contract.
      */
     function claimRoot() external {
         address pendingRoot = _pendingRoot;
         _require(msg.sender == pendingRoot, Errors.SENDER_NOT_ALLOWED);
-        
+
         _root = pendingRoot;
         emit RootSet(pendingRoot);
 

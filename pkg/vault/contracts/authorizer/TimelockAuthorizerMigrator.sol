@@ -97,7 +97,7 @@ contract TimelockAuthorizerMigrator {
      * @dev Revoke migrator permissions and trigger change root action
      */
     function finalizeMigration() external {
-        require(isComplete(), "MIGRATION_NOT_COMPLETE");       
+        require(isComplete(), "MIGRATION_NOT_COMPLETE");
         // Safety check to avoid us migrating to a authorizer with an invalid root.
         // `root` must call `claimRoot` on `newAuthorizer` in order for us to set it on the Vault.
         require(newAuthorizer.isRoot(root), "ROOT_NOT_CLAIMED_YET");
