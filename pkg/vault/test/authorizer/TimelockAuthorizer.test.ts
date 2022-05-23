@@ -891,26 +891,7 @@ describe('TimelockAuthorizer', () => {
                 await authorizer.addRevoker(actionId, from, where, { from: admin });
               });
 
-              it('can grant permission for that action in that contract only', async () => {
-                await authorizer.addRevoker(actionId, grantee, where, { from });
-
-                expect(await authorizer.canRevoke(ACTION_1, grantee, WHERE_1)).to.be.true;
-                expect(await authorizer.isRevoker(ACTION_1, grantee, WHERE_1)).to.be.true;
-              });
-
-              it('cannot grant permission for any other action', async () => {
-                await authorizer.addRevoker(actionId, grantee, where, { from });
-
-                expect(await authorizer.canRevoke(ACTION_2, grantee, WHERE_1)).to.be.false;
-                expect(await authorizer.canRevoke(WHATEVER, grantee, WHERE_1)).to.be.false;
-                expect(await authorizer.canRevoke(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-                expect(await authorizer.canRevoke(WHATEVER, grantee, EVERYWHERE)).to.be.false;
-
-                expect(await authorizer.isRevoker(ACTION_2, grantee, WHERE_1)).to.be.false;
-                expect(await authorizer.isRevoker(WHATEVER, grantee, WHERE_1)).to.be.false;
-                expect(await authorizer.isRevoker(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-                expect(await authorizer.isRevoker(WHATEVER, grantee, EVERYWHERE)).to.be.false;
-              });
+              itReverts(actionId, where);
             });
 
             context('when the sender does not have permission', () => {
@@ -926,27 +907,7 @@ describe('TimelockAuthorizer', () => {
                 await authorizer.addRevoker(actionId, from, where, { from: admin });
               });
 
-              it('can grant permission for that action on any contract', async () => {
-                await authorizer.addRevoker(actionId, grantee, where, { from });
-
-                expect(await authorizer.canRevoke(ACTION_1, grantee, WHERE_1)).to.be.true;
-                expect(await authorizer.canRevoke(ACTION_1, grantee, EVERYWHERE)).to.be.true;
-
-                expect(await authorizer.isRevoker(ACTION_1, grantee, WHERE_1)).to.be.true;
-                expect(await authorizer.isRevoker(ACTION_1, grantee, EVERYWHERE)).to.be.true;
-              });
-
-              it('cannot grant permission for that any other action anywhere', async () => {
-                await authorizer.addRevoker(actionId, grantee, where, { from });
-
-                expect(await authorizer.canRevoke(ACTION_2, grantee, WHERE_1)).to.be.false;
-                expect(await authorizer.canRevoke(ACTION_2, grantee, EVERYWHERE)).to.be.false;
-                expect(await authorizer.canRevoke(WHATEVER, grantee, EVERYWHERE)).to.be.false;
-
-                expect(await authorizer.isRevoker(ACTION_2, grantee, WHERE_1)).to.be.false;
-                expect(await authorizer.isRevoker(ACTION_2, grantee, EVERYWHERE)).to.be.false;
-                expect(await authorizer.isRevoker(WHATEVER, grantee, EVERYWHERE)).to.be.false;
-              });
+              itReverts(actionId, where);
             });
 
             context('when the sender does not have permission', () => {
@@ -966,27 +927,7 @@ describe('TimelockAuthorizer', () => {
                 await authorizer.addRevoker(actionId, from, where, { from: admin });
               });
 
-              it('can grant permission for any action in that contract only', async () => {
-                await authorizer.addRevoker(actionId, grantee, where, { from });
-
-                expect(await authorizer.canRevoke(ACTION_1, grantee, WHERE_1)).to.be.true;
-                expect(await authorizer.canRevoke(WHATEVER, grantee, WHERE_1)).to.be.true;
-
-                expect(await authorizer.isRevoker(ACTION_1, grantee, WHERE_1)).to.be.true;
-                expect(await authorizer.isRevoker(WHATEVER, grantee, WHERE_1)).to.be.true;
-              });
-
-              it('cannot grant permissions in any other contract', async () => {
-                await authorizer.addRevoker(actionId, grantee, where, { from });
-
-                expect(await authorizer.canRevoke(ACTION_1, grantee, WHERE_2)).to.be.false;
-                expect(await authorizer.canRevoke(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-                expect(await authorizer.canRevoke(WHATEVER, grantee, EVERYWHERE)).to.be.false;
-
-                expect(await authorizer.isRevoker(ACTION_1, grantee, WHERE_2)).to.be.false;
-                expect(await authorizer.isRevoker(ACTION_1, grantee, EVERYWHERE)).to.be.false;
-                expect(await authorizer.isRevoker(WHATEVER, grantee, EVERYWHERE)).to.be.false;
-              });
+              itReverts(actionId, where);
             });
 
             context('when the sender does not have permission', () => {
@@ -1002,19 +943,7 @@ describe('TimelockAuthorizer', () => {
                 await authorizer.addRevoker(actionId, from, where, { from: admin });
               });
 
-              it('can grant permission for any action anywhere', async () => {
-                await authorizer.addRevoker(actionId, grantee, where, { from });
-
-                expect(await authorizer.canRevoke(ACTION_1, grantee, WHERE_1)).to.be.true;
-                expect(await authorizer.canRevoke(WHATEVER, grantee, WHERE_1)).to.be.true;
-                expect(await authorizer.canRevoke(ACTION_1, grantee, EVERYWHERE)).to.be.true;
-                expect(await authorizer.canRevoke(WHATEVER, grantee, EVERYWHERE)).to.be.true;
-
-                expect(await authorizer.isRevoker(ACTION_1, grantee, WHERE_1)).to.be.true;
-                expect(await authorizer.isRevoker(WHATEVER, grantee, WHERE_1)).to.be.true;
-                expect(await authorizer.isRevoker(ACTION_1, grantee, EVERYWHERE)).to.be.true;
-                expect(await authorizer.isRevoker(WHATEVER, grantee, EVERYWHERE)).to.be.true;
-              });
+              itReverts(actionId, where);
             });
 
             context('when the sender does not have permission', () => {
