@@ -430,7 +430,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     /**
      * @dev Sets `account`'s granter status to `allowed` for action `actionId` in target `where`.
-     * Note that pairs can manage themselves, even banning the root, but the root can allow itself back at any time.
+     * Note that granters can revoke the granter status of other granters, even banning the root.
+     * However the root can allow themself back at any time while revoking the malicious granters.
      */
     function manageGranter(
         bytes32 actionId,
@@ -438,8 +439,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where,
         bool allowed
     ) external {
-        bool isAllowed = isRoot(msg.sender) || isGranter(actionId, msg.sender, where);
+        // Root may grant or revoke granter status from any address.
+        // Granters may only revoke a granter status from any address.
+        bool isAllowed = isRoot(msg.sender) || (!allowed && isGranter(actionId, msg.sender, where));
         _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+
         bytes32 grantPermissionsActionId = getActionId(GRANT_ACTION_ID, actionId);
         (allowed ? _grantPermission : _revokePermission)(grantPermissionsActionId, account, where);
     }
