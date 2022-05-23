@@ -480,7 +480,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     /**
      * @dev Sets `account`'s revoker status to `allowed` for action `actionId` in target `where`.
-     * Note that pairs can manage themselves, even banning the root, but the root can allow himself back at any time
+     * Note that revokers can revoke the revoker status of other revokers, even banning the root.
+     * However the root can allow themself back at any time while revoking the malicious revokers.
      */
     function manageRevoker(
         bytes32 actionId,
@@ -488,8 +489,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where,
         bool allowed
     ) external {
-        bool isAllowed = isRoot(msg.sender) || isRevoker(actionId, msg.sender, where);
+        // Root may grant or revoke revoker status from any address.
+        // Revokers may only revoke a revoker status from any address.
+        bool isAllowed = isRoot(msg.sender) || (!allowed && isRevoker(actionId, msg.sender, where));
         _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+
         bytes32 revokePermissionsActionId = getActionId(REVOKE_ACTION_ID, actionId);
         (allowed ? _grantPermission : _revokePermission)(revokePermissionsActionId, account, where);
     }
