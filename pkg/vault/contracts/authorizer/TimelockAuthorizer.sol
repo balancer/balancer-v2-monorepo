@@ -120,7 +120,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     event RootSet(address indexed root);
 
     /**
-     * @dev Emitted when a new `pendingRoot` is set.
+     * @dev Emitted when a new `pendingRoot` is set. The new account must claim ownership for it to take effect.
      */
     event PendingRootSet(address indexed pendingRoot);
 
@@ -352,7 +352,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     /**
      * @notice Transfers root powers from the current to the pending root address.
-     * @dev Callable only by the pending root address.
+     * @dev This function prevents accidentally transferring root to an invalid address.
+     * To become root, the pending root must call this function ensuring that it's able to interact with this contract.
      */
     function claimRoot() external {
         address pendingRoot = _pendingRoot;
