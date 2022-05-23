@@ -79,6 +79,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     uint256 private immutable _rootTransferDelay;
 
     address private _root;
+    address private _pendingRoot;
     ScheduledExecution[] private _scheduledExecutions;
     mapping(bytes32 => bool) private _isPermissionGranted;
     mapping(bytes32 => uint256) private _delaysPerActionId;
@@ -117,6 +118,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      * @dev Emitted when a new `root` is set.
      */
     event RootSet(address indexed root);
+
+    /**
+     * @dev Emitted when a new `pendingRoot` is set.
+     */
+    event PendingRootSet(address indexed pendingRoot);
 
     modifier onlyExecutor() {
         _require(msg.sender == address(_executor), Errors.SENDER_NOT_ALLOWED);
@@ -178,6 +184,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      */
     function getRoot() external view returns (address) {
         return _root;
+    }
+
+    /**
+     * @dev Returns the currently pending new root address.
+     */
+    function getPendingRoot() external view returns (address) {
+        return _pendingRoot;
     }
 
     /**
@@ -318,11 +331,31 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
-     * @dev Sets the root address to `newRoot`.
+     * @notice Sets the pending root address to `pendingRoot`.
+     * @dev Once set as the pending root, `pendingRoot` may then call `claimRoot` to become the new root.
      */
-    function setRoot(address newRoot) external onlyExecutor {
-        _root = newRoot;
-        emit RootSet(newRoot);
+    function setPendingRoot(address pendingRoot) external onlyExecutor {
+        _setPendingRoot(pendingRoot);
+    }
+
+    function _setPendingRoot(address pendingRoot) internal {
+        _pendingRoot = pendingRoot;
+        emit PendingRootSet(pendingRoot);
+    }
+
+    /**
+     * @notice Transfers root powers from the current to the pending root address.
+     * @dev Callable only by the pending root address.
+     */
+    function claimRoot() external {
+        address pendingRoot = _pendingRoot;
+        _require(msg.sender == pendingRoot, Errors.SENDER_NOT_ALLOWED);
+        
+        _root = pendingRoot;
+        emit RootSet(pendingRoot);
+
+        // Reset the pending root.
+        _setPendingRoot(address(0));
     }
 
     /**
@@ -333,9 +366,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         returns (uint256 scheduledExecutionId)
     {
         _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
-        bytes32 actionId = getActionId(this.setRoot.selector);
+        bytes32 actionId = getActionId(this.setPendingRoot.selector);
         bytes32 scheduleRootChangeActionId = getActionId(SCHEDULE_DELAY_ACTION_ID, actionId);
-        bytes memory data = abi.encodeWithSelector(this.setRoot.selector, newRoot);
+        bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
         return _scheduleWithDelay(scheduleRootChangeActionId, address(this), data, getRootTransferDelay(), executors);
     }
 
