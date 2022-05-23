@@ -34,14 +34,11 @@ contract TimelockAuthorizerMigrator {
     TimelockAuthorizer public immutable newAuthorizer;
 
     uint256 public migratedRoles;
-    OldRoleData[] public rolesData;
+    RoleData[] public rolesData;
     uint256 public rootChangeExecutionId;
 
-    /**
-     * @dev This structure is required to tell the migrator which roles need to be
-     * granted for which targets in the new timelock authorizer.
-     */
-    struct OldRoleData {
+    struct RoleData {
+        address grantee;
         bytes32 role;
         address target;
     }
@@ -50,7 +47,7 @@ contract TimelockAuthorizerMigrator {
         IVault _vault,
         address _root,
         IBasicAuthorizer _oldAuthorizer,
-        OldRoleData[] memory _rolesData
+        RoleData[] memory _rolesData
     ) {
         // At creation, the migrator will be the root of the TimelockAuthorizer.
         // Once the migration is complete, the root permission will be transferred to `_root`.
@@ -61,7 +58,7 @@ contract TimelockAuthorizerMigrator {
         vault = _vault;
 
         for (uint256 i = 0; i < _rolesData.length; i++) {
-            rolesData.push(OldRoleData(_rolesData[i].role, _rolesData[i].target));
+            rolesData.push(RoleData(_rolesData[i].grantee, _rolesData[i].role, _rolesData[i].target));
         }
 
         // Enqueue a root change execution in the new authorizer to set it to the desired root address
@@ -106,21 +103,14 @@ contract TimelockAuthorizerMigrator {
     function _migrate(uint256 n) internal {
         uint256 i = migratedRoles;
         uint256 to = Math.min(i + n, rolesData.length);
-        for (; i < to; i++) _migrate(rolesData[i]);
-        migratedRoles = i;
-    }
 
-    function _migrate(OldRoleData memory roleData) internal {
-        address[] memory wheres = _arr(roleData.target);
-        bytes32[] memory actionIds = _arr(roleData.role);
-        uint256 membersCount = oldAuthorizer.getRoleMemberCount(roleData.role);
-
-        // Iterate over the accounts that had the role granted in the old authorizer, granting
-        // the permission for the same role for the specified target in the new authorizer.
-        for (uint256 i = 0; i < membersCount; i++) {
-            address member = oldAuthorizer.getRoleMember(roleData.role, i);
-            newAuthorizer.grantPermissions(actionIds, member, wheres);
+        for (; i < to; i++) {
+            RoleData memory roleData = rolesData[i];
+            require(oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target), "UNEXPECTED_ROLE");
+            newAuthorizer.grantPermissions(_arr(roleData.role), roleData.grantee, _arr(roleData.target));
         }
+
+        migratedRoles = i;
     }
 
     function _afterMigrate() internal {

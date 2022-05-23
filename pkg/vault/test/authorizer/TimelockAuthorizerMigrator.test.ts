@@ -16,7 +16,7 @@ describe('TimelockAuthorizerMigrator', () => {
     [, user1, user2, user3, root] = await ethers.getSigners();
   });
 
-  let rolesData: Array<{ role: string; target: string }>;
+  let rolesData: Array<{ grantee: string; role: string; target: string }>;
   const ROLE_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
   const ROLE_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
   const ROLE_3 = '0x0000000000000000000000000000000000000000000000000000000000000003';
@@ -30,9 +30,9 @@ describe('TimelockAuthorizerMigrator', () => {
     const target = await deploy('MockBasicAuthorizer'); // any contract
     await oldAuthorizer.grantRolesToMany([ROLE_1, ROLE_2, ROLE_3], [user1.address, user2.address, user3.address]);
     rolesData = [
-      { role: ROLE_1, target: target.address },
-      { role: ROLE_2, target: target.address },
-      { role: ROLE_3, target: target.address },
+      { grantee: user1.address, role: ROLE_1, target: target.address },
+      { grantee: user2.address, role: ROLE_2, target: target.address },
+      { grantee: user3.address, role: ROLE_3, target: target.address },
     ];
   });
 
@@ -61,11 +61,7 @@ describe('TimelockAuthorizerMigrator', () => {
       await migrate();
 
       for (const roleData of rolesData) {
-        const membersCount = await oldAuthorizer.getRoleMemberCount(roleData.role);
-        for (let i = 0; i < membersCount; i++) {
-          const member = await oldAuthorizer.getRoleMember(roleData.role, i);
-          expect(await newAuthorizer.hasPermission(roleData.role, member, roleData.target)).to.be.true;
-        }
+        expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
       }
     });
 
