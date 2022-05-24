@@ -60,6 +60,10 @@ export default class TimelockAuthorizer {
     return this.instance.isRoot(this.toAddress(account));
   }
 
+  async isPendingRoot(account: Account): Promise<boolean> {
+    return this.instance.isPendingRoot(this.toAddress(account));
+  }
+
   async delay(action: string): Promise<BigNumberish> {
     return this.instance.getActionIdDelay(action);
   }
@@ -101,6 +105,10 @@ export default class TimelockAuthorizer {
     const receipt = await this.with(params).scheduleRootChange(this.toAddress(root), this.toAddresses(executors));
     const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
     return event.args.scheduledExecutionId;
+  }
+
+  async claimRoot(params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).claimRoot();
   }
 
   async scheduleDelayChange(action: string, delay: number, executors: Account[], params?: TxParams): Promise<number> {
