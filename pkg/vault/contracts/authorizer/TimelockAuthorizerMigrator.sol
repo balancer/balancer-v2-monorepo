@@ -33,9 +33,13 @@ contract TimelockAuthorizerMigrator {
     IBasicAuthorizer public immutable oldAuthorizer;
     TimelockAuthorizer public immutable newAuthorizer;
 
-    uint256 public migratedRoles;
-    RoleData[] public rolesData;
     uint256 public rootChangeExecutionId;
+
+    uint256 public existingRolesMigrated;
+    RoleData[] public rolesData;
+
+    uint256 public grantersMigrated;
+    RoleData[] public grantersData;
 
     struct RoleData {
         address grantee;
@@ -47,7 +51,8 @@ contract TimelockAuthorizerMigrator {
         IVault _vault,
         address _root,
         IBasicAuthorizer _oldAuthorizer,
-        RoleData[] memory _rolesData
+        RoleData[] memory _rolesData,
+        RoleData[] memory _grantersData
     ) {
         // At creation, the migrator will be the root of the TimelockAuthorizer.
         // Once the migration is complete, the root permission will be transferred to `_root`.
@@ -60,6 +65,9 @@ contract TimelockAuthorizerMigrator {
         for (uint256 i = 0; i < _rolesData.length; i++) {
             rolesData.push(RoleData(_rolesData[i].grantee, _rolesData[i].role, _rolesData[i].target));
         }
+        for (uint256 i = 0; i < _grantersData.length; i++) {
+            grantersData.push(RoleData(_grantersData[i].grantee, _grantersData[i].role, _grantersData[i].target));
+        }
 
         // Enqueue a root change execution in the new authorizer to set it to the desired root address
         rootChangeExecutionId = _newAuthorizer.scheduleRootChange(_root, _arr(address(this)));
@@ -69,7 +77,7 @@ contract TimelockAuthorizerMigrator {
      * @dev Tells whether the migration has been completed or not
      */
     function isComplete() public view returns (bool) {
-        return migratedRoles >= rolesData.length;
+        return existingRolesMigrated >= rolesData.length && grantersMigrated >= grantersData.length;
     }
 
     /**
@@ -101,7 +109,15 @@ contract TimelockAuthorizerMigrator {
     }
 
     function _migrate(uint256 n) internal {
-        uint256 i = migratedRoles;
+        if (existingRolesMigrated < rolesData.length) {
+            _migrateExistingRoles(n);
+        } else {
+            _setupGranters(n);
+        }
+    }
+
+    function _migrateExistingRoles(uint256 n) internal {
+        uint256 i = existingRolesMigrated;
         uint256 to = Math.min(i + n, rolesData.length);
 
         for (; i < to; i++) {
@@ -110,7 +126,19 @@ contract TimelockAuthorizerMigrator {
             newAuthorizer.grantPermissions(_arr(roleData.role), roleData.grantee, _arr(roleData.target));
         }
 
-        migratedRoles = i;
+        existingRolesMigrated = i;
+    }
+
+    function _setupGranters(uint256 n) internal {
+        uint256 i = grantersMigrated;
+        uint256 to = Math.min(i + n, grantersData.length);
+
+        for (; i < to; i++) {
+            RoleData memory granterData = grantersData[i];
+            newAuthorizer.manageGranter(granterData.role, granterData.grantee, granterData.target, true);
+        }
+
+        grantersMigrated = i;
     }
 
     function _afterMigrate() internal {

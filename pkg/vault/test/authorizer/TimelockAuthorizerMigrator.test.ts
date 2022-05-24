@@ -9,14 +9,17 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('TimelockAuthorizerMigrator', () => {
-  let user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress, root: SignerWithAddress;
+  let root: SignerWithAddress;
+  let user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress;
+  let granter1: SignerWithAddress, granter2: SignerWithAddress, granter3: SignerWithAddress;
   let vault: Contract, oldAuthorizer: Contract, newAuthorizer: Contract, migrator: Contract;
 
   before('set up signers', async () => {
-    [, user1, user2, user3, root] = await ethers.getSigners();
+    [, user1, user2, user3, granter1, granter2, granter3, root] = await ethers.getSigners();
   });
 
   let rolesData: Array<{ grantee: string; role: string; target: string }>;
+  let grantersData: Array<{ grantee: string; role: string; target: string }>;
   const ROLE_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
   const ROLE_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
   const ROLE_3 = '0x0000000000000000000000000000000000000000000000000000000000000003';
@@ -34,10 +37,15 @@ describe('TimelockAuthorizerMigrator', () => {
       { grantee: user2.address, role: ROLE_2, target: target.address },
       { grantee: user3.address, role: ROLE_3, target: target.address },
     ];
+    grantersData = [
+      { grantee: granter1.address, role: ROLE_1, target: target.address },
+      { grantee: granter2.address, role: ROLE_2, target: target.address },
+      { grantee: granter3.address, role: ROLE_3, target: target.address },
+    ];
   });
 
   sharedBeforeEach('set up migrator', async () => {
-    const args = [vault.address, root.address, oldAuthorizer.address, rolesData];
+    const args = [vault.address, root.address, oldAuthorizer.address, rolesData, grantersData];
     migrator = await deploy('TimelockAuthorizerMigrator', { args });
     newAuthorizer = await deployedAt('TimelockAuthorizer', await migrator.newAuthorizer());
     const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
@@ -49,11 +57,11 @@ describe('TimelockAuthorizerMigrator', () => {
 
   const itMigratesPermissionsProperly = (migrate: () => Promise<unknown>) => {
     it('runs the migration properly', async () => {
-      expect(await migrator.migratedRoles()).to.be.equal(0);
+      expect(await migrator.existingRolesMigrated()).to.be.equal(0);
 
       await migrate();
 
-      expect(await migrator.migratedRoles()).to.be.equal(rolesData.length);
+      expect(await migrator.existingRolesMigrated()).to.be.equal(rolesData.length);
       expect(await migrator.isComplete()).to.be.true;
     });
 
@@ -62,6 +70,14 @@ describe('TimelockAuthorizerMigrator', () => {
 
       for (const roleData of rolesData) {
         expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
+      }
+    });
+
+    it('sets up granters properly', async () => {
+      await migrate();
+
+      for (const granterData of grantersData) {
+        expect(await newAuthorizer.isGranter(granterData.role, granterData.grantee, granterData.target)).to.be.true;
       }
     });
 
@@ -98,10 +114,12 @@ describe('TimelockAuthorizerMigrator', () => {
   };
 
   context('with a partial migration', () => {
-    itMigratesPermissionsProperly(() => migrator.migrate(0));
+    itMigratesPermissionsProperly(() => Promise.all([migrator.migrate(0), migrator.migrate(0)]));
   });
 
   context('with a full migration', () => {
-    itMigratesPermissionsProperly(() => Promise.all(rolesData.map(async () => await migrator.migrate(1))));
+    itMigratesPermissionsProperly(() =>
+      Promise.all(Array.from({ length: rolesData.length + grantersData.length }).map(() => migrator.migrate(1)))
+    );
   });
 });
