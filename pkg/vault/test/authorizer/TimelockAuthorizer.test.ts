@@ -2452,7 +2452,7 @@ describe('TimelockAuthorizer', () => {
     });
   });
 
-  describe('setRoot', () => {
+  describe('setPendingRoot', () => {
     let ROOT_CHANGE_DELAY: BigNumberish;
 
     beforeEach('fetch root change delay', async () => {
@@ -2462,42 +2462,71 @@ describe('TimelockAuthorizer', () => {
     context('when the sender is the root', async () => {
       context('when trying to execute it directly', async () => {
         it('reverts', async () => {
-          await expect(authorizer.instance.setRoot(grantee.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          await expect(authorizer.instance.setPendingRoot(grantee.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
         });
       });
 
       context('when trying to schedule a call', async () => {
-        it('schedules a root change', async () => {
-          const expectedData = authorizer.instance.interface.encodeFunctionData('setRoot', [grantee.address]);
+        let newPendingRoot: SignerWithAddress;
 
-          const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
+        function itSetsThePendingRootCorrectly() {
+          it('schedules a root change', async () => {
+            const expectedData = authorizer.instance.interface.encodeFunctionData('setPendingRoot', [
+              newPendingRoot.address,
+            ]);
 
-          const scheduledExecution = await authorizer.getScheduledExecution(id);
-          expect(scheduledExecution.executed).to.be.false;
-          expect(scheduledExecution.data).to.be.equal(expectedData);
-          expect(scheduledExecution.where).to.be.equal(authorizer.address);
-          expect(scheduledExecution.protected).to.be.false;
-          expect(scheduledExecution.executableAt).to.be.at.most((await currentTimestamp()).add(ROOT_CHANGE_DELAY));
+            const id = await authorizer.scheduleRootChange(newPendingRoot, [], { from: admin });
+
+            const scheduledExecution = await authorizer.getScheduledExecution(id);
+            expect(scheduledExecution.executed).to.be.false;
+            expect(scheduledExecution.data).to.be.equal(expectedData);
+            expect(scheduledExecution.where).to.be.equal(authorizer.address);
+            expect(scheduledExecution.protected).to.be.false;
+            expect(scheduledExecution.executableAt).to.be.at.most((await currentTimestamp()).add(ROOT_CHANGE_DELAY));
+          });
+
+          it('can be executed after the delay', async () => {
+            const id = await authorizer.scheduleRootChange(newPendingRoot, [], { from: admin });
+
+            await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_EXECUTABLE');
+
+            await advanceTime(ROOT_CHANGE_DELAY);
+            await authorizer.execute(id);
+
+            expect(await authorizer.isRoot(admin)).to.be.true;
+            expect(await authorizer.isPendingRoot(newPendingRoot)).to.be.true;
+          });
+
+          it('emits an event', async () => {
+            const id = await authorizer.scheduleRootChange(newPendingRoot, [], { from: admin });
+
+            await advanceTime(ROOT_CHANGE_DELAY);
+            const receipt = await authorizer.execute(id);
+            expectEvent.inReceipt(await receipt.wait(), 'PendingRootSet', { pendingRoot: newPendingRoot.address });
+          });
+        }
+
+        before('set desired pending root', () => {
+          newPendingRoot = grantee;
         });
 
-        it('can be executed after the delay', async () => {
-          const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
+        itSetsThePendingRootCorrectly();
 
-          await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_EXECUTABLE');
+        context('starting a new root transfer while pending root is set', () => {
+          // We test this to ensure that executing an action which sets the pending root to an address which cannot
+          // call `claimRoot` won't result in the Authorizer being unable to transfer root power to a different address.
 
-          await advanceTime(ROOT_CHANGE_DELAY);
-          await authorizer.execute(id);
+          sharedBeforeEach('initiate a root transfer', async () => {
+            const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
+            await advanceTime(ROOT_CHANGE_DELAY);
+            await authorizer.execute(id);
+          });
 
-          expect(await authorizer.isRoot(admin)).to.be.false;
-          expect(await authorizer.isRoot(grantee)).to.be.true;
-        });
+          before('set desired pending root', () => {
+            newPendingRoot = other;
+          });
 
-        it('emits an event', async () => {
-          const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
-
-          await advanceTime(ROOT_CHANGE_DELAY);
-          const receipt = await authorizer.execute(id);
-          expectEvent.inReceipt(await receipt.wait(), 'RootSet', { root: grantee.address });
+          itSetsThePendingRootCorrectly();
         });
       });
     });
@@ -2507,6 +2536,47 @@ describe('TimelockAuthorizer', () => {
         await expect(authorizer.scheduleRootChange(grantee, [], { from: grantee })).to.be.revertedWith(
           'SENDER_NOT_ALLOWED'
         );
+      });
+    });
+  });
+
+  describe('claimRoot', () => {
+    let ROOT_CHANGE_DELAY: BigNumberish;
+
+    beforeEach('fetch root change delay', async () => {
+      ROOT_CHANGE_DELAY = await authorizer.instance.getRootTransferDelay();
+    });
+
+    sharedBeforeEach('initiate a root transfer', async () => {
+      const id = await authorizer.scheduleRootChange(grantee, [], { from: admin });
+      await advanceTime(ROOT_CHANGE_DELAY);
+      await authorizer.execute(id);
+    });
+
+    context('when the sender is the pending root', async () => {
+      it('transfers root powers from the current to the pending root', async () => {
+        await authorizer.claimRoot({ from: grantee });
+        expect(await authorizer.isRoot(admin)).to.be.false;
+        expect(await authorizer.isRoot(grantee)).to.be.true;
+      });
+
+      it('resets the pending root address to the zero address', async () => {
+        await authorizer.claimRoot({ from: grantee });
+        expect(await authorizer.isPendingRoot(admin)).to.be.false;
+        expect(await authorizer.isPendingRoot(grantee)).to.be.false;
+        expect(await authorizer.isPendingRoot(ZERO_ADDRESS)).to.be.true;
+      });
+
+      it('emits an event', async () => {
+        const receipt = await authorizer.claimRoot({ from: grantee });
+        expectEvent.inReceipt(await receipt.wait(), 'RootSet', { root: grantee.address });
+        expectEvent.inReceipt(await receipt.wait(), 'PendingRootSet', { pendingRoot: ZERO_ADDRESS });
+      });
+    });
+
+    context('when the sender is not the pending root', async () => {
+      it('reverts', async () => {
+        await expect(authorizer.claimRoot({ from: other })).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
   });
