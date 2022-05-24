@@ -71,6 +71,9 @@ contract TimelockAuthorizerMigrator {
         bytes32 id = bytes32(uint256(address(_newAuthorizer)));
         GRANT_PERMISSION_ACTION_ID = keccak256(abi.encodePacked(id, TimelockAuthorizer.grantPermissions.selector));
         REVOKE_PERMISSION_ACTION_ID = keccak256(abi.encodePacked(id, TimelockAuthorizer.revokePermissions.selector));
+
+        // Enqueue a root change execution in the new authorizer to set it to the desired root address
+        rootChangeExecutionId = _newAuthorizer.scheduleRootChange(_root, _arr(address(this)));
     }
 
     /**
@@ -86,7 +89,6 @@ contract TimelockAuthorizerMigrator {
      */
     function migrate(uint256 n) external {
         require(!isComplete(), "MIGRATION_COMPLETE");
-        _beforeMigrate();
         _migrate(n == 0 ? rolesData.length : n);
         _afterMigrate();
     }
@@ -96,7 +98,9 @@ contract TimelockAuthorizerMigrator {
      */
     function finalizeMigration() external {
         require(isComplete(), "MIGRATION_NOT_COMPLETE");
-        require(newAuthorizer.canExecute(rootChangeExecutionId), "CANNOT_TRIGGER_ROOT_CHANGE_YET");
+        // Safety check to avoid us migrating to a authorizer with an invalid root.
+        // `root` must call `claimRoot` on `newAuthorizer` in order for us to set it on the Vault.
+        require(newAuthorizer.isRoot(root), "ROOT_NOT_CLAIMED_YET");
 
         // Ensure the migrator contract has authority to change the vault's authorizer
         bytes32 setAuthorizerId = IAuthentication(address(vault)).getActionId(IVault.setAuthorizer.selector);
@@ -105,7 +109,6 @@ contract TimelockAuthorizerMigrator {
 
         // Finally change the authorizer in the vault and trigger root change
         vault.setAuthorizer(newAuthorizer);
-        newAuthorizer.execute(rootChangeExecutionId);
     }
 
     function _migrate(uint256 n) internal {
@@ -133,14 +136,6 @@ contract TimelockAuthorizerMigrator {
         }
     }
 
-    function _beforeMigrate() internal {
-        // Execute only once before the migration starts
-        if (migratedRoles > 0) return;
-
-        // Enqueue a root change execution in the new authorizer to set it to the desire root address
-        rootChangeExecutionId = newAuthorizer.scheduleRootChange(root, _arr(address(this)));
-    }
-
     function _afterMigrate() internal {
         // Execute only once after the migration ends
         if (!isComplete()) return;
@@ -158,6 +153,11 @@ contract TimelockAuthorizerMigrator {
             newAuthorizer.grantPermissions(actionIds, defaultAdmin, wheres);
         }
         newAuthorizer.revokePermissions(actionIds, address(this), wheres);
+
+        // Finally trigger the first step of transferring root ownership over the TimelockAuthorizer to `root`.
+        // Before the migration can be finalized, `root` must call `claimRoot` on the `TimelockAuthorizer`.
+        require(newAuthorizer.canExecute(rootChangeExecutionId), "CANNOT_TRIGGER_ROOT_CHANGE_YET");
+        newAuthorizer.execute(rootChangeExecutionId);
     }
 
     function _arr(bytes32 a) internal pure returns (bytes32[] memory arr) {
