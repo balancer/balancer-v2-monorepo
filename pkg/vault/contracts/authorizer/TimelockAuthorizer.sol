@@ -431,7 +431,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     /**
      * @dev Sets `account`'s granter status to `allowed` for action `actionId` in target `where`.
      * Note that granters can revoke the granter status of other granters, even banning the root.
-     * However the root can allow themself back at any time while revoking the malicious granters.
+     * However, the root can always rejoin, and then revoke any malicious granters.
      */
     function manageGranter(
         bytes32 actionId,
@@ -481,7 +481,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     /**
      * @dev Sets `account`'s revoker status to `allowed` for action `actionId` in target `where`.
      * Note that revokers can revoke the revoker status of other revokers, even banning the root.
-     * However the root can allow themself back at any time while revoking the malicious revokers.
+     * However, the root can always rejoin, and then revoke any malicious revokers.
      */
     function manageRevoker(
         bytes32 actionId,
