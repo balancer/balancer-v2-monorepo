@@ -470,7 +470,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     /**
      * @dev Sets `account`'s granter status to `allowed` for action `actionId` in target `where`.
-     * Note that pairs can manage themselves, even banning the root, but the root can allow itself back at any time.
+     * Note that granters can revoke the granter status of other granters, even banning the root.
+     * However, the root can always rejoin, and then revoke any malicious granters.
      */
     function manageGranter(
         bytes32 actionId,
@@ -478,8 +479,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where,
         bool allowed
     ) external {
-        bool isAllowed = isRoot(msg.sender) || isGranter(actionId, msg.sender, where);
+        // Root may grant or revoke granter status from any address.
+        // Granters may only revoke a granter status from any address.
+        bool isAllowed = isRoot(msg.sender) || (!allowed && isGranter(actionId, msg.sender, where));
         _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+
         bytes32 grantPermissionsActionId = getActionId(GRANT_ACTION_ID, actionId);
         (allowed ? _grantPermission : _revokePermission)(grantPermissionsActionId, account, where);
     }
@@ -516,7 +520,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     /**
      * @dev Sets `account`'s revoker status to `allowed` for action `actionId` in target `where`.
-     * Note that pairs can manage themselves, even banning the root, but the root can allow himself back at any time
+     * Note that revokers can revoke the revoker status of other revokers, even banning the root.
+     * However, the root can always rejoin, and then revoke any malicious revokers.
      */
     function manageRevoker(
         bytes32 actionId,
@@ -524,8 +529,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where,
         bool allowed
     ) external {
-        bool isAllowed = isRoot(msg.sender) || isRevoker(actionId, msg.sender, where);
+        // Root may grant or revoke revoker status from any address.
+        // Revokers may only revoke a revoker status from any address.
+        bool isAllowed = isRoot(msg.sender) || (!allowed && isRevoker(actionId, msg.sender, where));
         _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+
         bytes32 revokePermissionsActionId = getActionId(REVOKE_ACTION_ID, actionId);
         (allowed ? _grantPermission : _revokePermission)(revokePermissionsActionId, account, where);
     }
