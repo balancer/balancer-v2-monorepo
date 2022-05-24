@@ -33,14 +33,12 @@ import "hardhat/console.sol";
 contract DoubleEntrypointFixRelayer is IFlashLoanRecipient {
     using SafeERC20 for IERC20;
 
-    // solhint-disable const-name-snakecase
     IERC20 public constant BTC_STABLE_POOL_ADDRESS = IERC20(0xFeadd389a5c427952D8fdb8057D6C8ba1156cC56);
     bytes32 public constant BTC_STABLE_POOL_ID = 0xfeadd389a5c427952d8fdb8057d6c8ba1156cc56000000000000000000000066;
     IERC20 public constant wBTC = IERC20(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599);
     IERC20 public constant renBTC = IERC20(0xEB4C2781e4ebA804CE9a9803C67d0893436bB27D);
     IERC20 public constant sBTC = IERC20(0xfE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6);
     IERC20 public constant sBTC_IMPLEMENTATION = IERC20(0x18FcC34bdEaaF9E3b69D2500343527c0c995b1d6);
-    // solhint-enable const-name-snakecase
 
     IERC20 public constant SNX_WEIGHTED_POOL_ADDRESS = IERC20(0x072f14B85ADd63488DDaD88f855Fda4A99d6aC9B);
     bytes32 public constant SNX_WEIGHTED_POOL_ID = 0x072f14b85add63488ddad88f855fda4a99d6ac9b000200000000000000000027;

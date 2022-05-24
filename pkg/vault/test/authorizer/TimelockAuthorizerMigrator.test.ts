@@ -42,6 +42,9 @@ describe('TimelockAuthorizerMigrator', () => {
     newAuthorizer = await deployedAt('TimelockAuthorizer', await migrator.newAuthorizer());
     const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
     await oldAuthorizer.grantRolesToMany([setAuthorizerActionId], [migrator.address]);
+
+    const CHANGE_ROOT_DELAY = await newAuthorizer.getRootTransferDelay();
+    await advanceTime(CHANGE_ROOT_DELAY);
   });
 
   sharedBeforeEach('setup constants', async () => {
@@ -112,10 +115,10 @@ describe('TimelockAuthorizerMigrator', () => {
     it('finalizes the migration after the set root delay', async () => {
       await migrate();
 
-      await expect(migrator.finalizeMigration()).to.be.revertedWith('CANNOT_TRIGGER_ROOT_CHANGE_YET');
+      await expect(migrator.finalizeMigration()).to.be.revertedWith('ROOT_NOT_CLAIMED_YET');
 
-      const CHANGE_ROOT_DELAY = await newAuthorizer.getRootTransferDelay();
-      await advanceTime(CHANGE_ROOT_DELAY);
+      // Root account must claim ownership
+      await newAuthorizer.connect(root).claimRoot();
 
       await migrator.finalizeMigration();
       expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
