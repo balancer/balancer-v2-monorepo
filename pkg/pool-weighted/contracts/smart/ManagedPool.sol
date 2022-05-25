@@ -371,7 +371,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
 
     /**
      * @dev Getter for the current sum of denormalized weights.
-     * @dev The normalization factor, which is used to efficiently scale weights when adding and removing
+     * @dev The normalization factor, which is used to efficiently scale weights when adding and removing.
      * tokens. This value is an internal implementation detail and typically useless from the outside.
      * @return The denormalized weight sum.
      */
