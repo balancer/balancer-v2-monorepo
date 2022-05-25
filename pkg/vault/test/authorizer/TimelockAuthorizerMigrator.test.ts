@@ -73,31 +73,6 @@ describe('TimelockAuthorizerMigrator', () => {
       }
     });
 
-    it('migrates all admin roles properly', async () => {
-      await migrate();
-
-      for (const roleData of rolesData) {
-        const adminRole = await oldAuthorizer.getRoleAdmin(roleData.role);
-        const adminsCount = await oldAuthorizer.getRoleMemberCount(adminRole);
-        for (let i = 0; i < adminsCount; i++) {
-          const admin = await oldAuthorizer.getRoleMember(adminRole, i);
-          expect(await newAuthorizer.isGranter(ONES_BYTES32, admin, roleData.target)).to.be.true;
-          expect(await newAuthorizer.isRevoker(ONES_BYTES32, admin, roleData.target)).to.be.true;
-        }
-      }
-    });
-
-    it('migrates all the default admins properly', async () => {
-      await migrate();
-
-      const adminsCount = await oldAuthorizer.getRoleMemberCount(ZERO_BYTES32);
-      for (let i = 0; i < adminsCount; i++) {
-        const admin = await oldAuthorizer.getRoleMember(ZERO_BYTES32, i);
-        expect(await newAuthorizer.isGranter(ONES_BYTES32, admin, EVERYWHERE)).to.be.true;
-        expect(await newAuthorizer.isRevoker(ONES_BYTES32, admin, EVERYWHERE)).to.be.true;
-      }
-    });
-
     it('does not set the new authorizer immediately', async () => {
       await migrate();
 
@@ -105,25 +80,49 @@ describe('TimelockAuthorizerMigrator', () => {
       expect(await vault.getAuthorizer()).to.be.equal(oldAuthorizer.address);
     });
 
-    it('revokes the admin roles from the migrator', async () => {
-      await migrate();
+    context('finalization', () => {
+      sharedBeforeEach('migrate all roles', async () => {
+        await migrate();
+      });
 
-      expect(await newAuthorizer.isGranter(ONES_BYTES32, migrator.address, EVERYWHERE)).to.be.false;
-      expect(await newAuthorizer.isRevoker(ONES_BYTES32, migrator.address, EVERYWHERE)).to.be.false;
-    });
+      context('when new root has not claimed ownership over TimelockAuthorizer', () => {
+        it('reverts', async () => {
+          await expect(migrator.finalizeMigration()).to.be.revertedWith('ROOT_NOT_CLAIMED_YET');
+        });
+      });
 
-    it('finalizes the migration after the set root delay', async () => {
-      await migrate();
+      context('when new root has claimed ownership over TimelockAuthorizer', () => {
+        sharedBeforeEach('claim root', async () => {
+          await newAuthorizer.connect(root).claimRoot();
+        });
 
-      await expect(migrator.finalizeMigration()).to.be.revertedWith('ROOT_NOT_CLAIMED_YET');
+        it('sets the new Authorizer on the Vault', async () => {
+          await migrator.finalizeMigration();
 
-      // Root account must claim ownership
-      await newAuthorizer.connect(root).claimRoot();
+          expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
+        });
 
-      await migrator.finalizeMigration();
-      expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
-      expect(await newAuthorizer.isRoot(root.address)).to.be.true;
-      expect(await newAuthorizer.isRoot(migrator.address)).to.be.false;
+        it('transfers root over to the specified address', async () => {
+          await migrator.finalizeMigration();
+
+          expect(await newAuthorizer.isRoot(root.address)).to.be.true;
+          expect(await newAuthorizer.isRoot(migrator.address)).to.be.false;
+        });
+
+        it('revokes the admin roles from the migrator', async () => {
+          await migrator.finalizeMigration();
+
+          expect(await newAuthorizer.isGranter(ONES_BYTES32, migrator.address, EVERYWHERE)).to.be.false;
+          expect(await newAuthorizer.isRevoker(ONES_BYTES32, migrator.address, EVERYWHERE)).to.be.false;
+        });
+
+        it('grants the admin roles to the new root', async () => {
+          await migrator.finalizeMigration();
+
+          expect(await newAuthorizer.isGranter(ONES_BYTES32, root.address, EVERYWHERE)).to.be.true;
+          expect(await newAuthorizer.isRevoker(ONES_BYTES32, root.address, EVERYWHERE)).to.be.true;
+        });
+      });
     });
   };
 
