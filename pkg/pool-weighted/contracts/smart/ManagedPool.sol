@@ -779,7 +779,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @notice Setter for the management AUM fee percentage.
+     * @notice Setter for the yearly percentage AUM management fee, which is payable to the pool manager.
      * @dev Attempting to collect AUM fees in excess of the maximum permitted percentage will revert.
      * To avoid retroactive fee increases, we force collection at the current fee percentage before processing
      * the update. Emits the ManagementAumFeePercentageChanged event. This is a permissioned function.
