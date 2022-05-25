@@ -134,7 +134,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         IAuthentication vault,
         uint256 rootTransferDelay
     ) {
-        _root = admin;
+        _setRoot(admin);
         _vault = vault;
         _executor = new TimelockExecutor();
         _rootTransferDelay = rootTransferDelay;
@@ -359,11 +359,15 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address pendingRoot = _pendingRoot;
         _require(msg.sender == pendingRoot, Errors.SENDER_NOT_ALLOWED);
 
-        _root = pendingRoot;
-        emit RootSet(pendingRoot);
 
-        // Reset the pending root.
+        // Complete the root transfer and reset the pending root.
+        _setRoot(pendingRoot);
         _setPendingRoot(address(0));
+    }
+
+    function _setRoot(address root) internal {
+        _root = root;
+        emit RootSet(root);
     }
 
     /**
