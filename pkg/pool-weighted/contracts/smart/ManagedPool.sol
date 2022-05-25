@@ -143,8 +143,14 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     );
     event SwapEnabledSet(bool swapEnabled);
     event MustAllowlistLPsSet(bool mustAllowlistLPs);
-    event ManagementSwapFeePercentageChanged(uint256 managementSwapFeePercentage);
-    event ManagementAumFeePercentageChanged(uint256 managementAumFeePercentage);
+    event ManagementSwapFeePercentageChanged(
+        uint256 oldManagementSwapFeePercentage,
+        uint256 newManagementSwapFeePercentage
+    );
+    event ManagementAumFeePercentageChanged(
+        uint256 oldManagementAumFeePercentage,
+        uint256 newManagementAumFeePercentage
+    );
     event ManagementAumFeeCollected(uint256 bptAmount);
     event AllowlistAddressAdded(address indexed member);
     event AllowlistAddressRemoved(address indexed member);
@@ -721,8 +727,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             Errors.MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE
         );
 
+        emit ManagementSwapFeePercentageChanged(_managementSwapFeePercentage, managementSwapFeePercentage);
+
         _managementSwapFeePercentage = managementSwapFeePercentage;
-        emit ManagementSwapFeePercentageChanged(managementSwapFeePercentage);
     }
 
     /**
@@ -751,8 +758,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             Errors.MAX_MANAGEMENT_AUM_FEE_PERCENTAGE
         );
 
+        emit ManagementAumFeePercentageChanged(_managementAumFeePercentage, managementAumFeePercentage);
+
         _managementAumFeePercentage = managementAumFeePercentage;
-        emit ManagementAumFeePercentageChanged(managementAumFeePercentage);
     }
 
     /**

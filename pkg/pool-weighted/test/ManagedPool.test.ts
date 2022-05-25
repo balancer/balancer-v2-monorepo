@@ -50,6 +50,7 @@ describe('ManagedPool', function () {
   const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.7);
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
   const NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.8);
+  const NEW_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.04);
 
   const WEIGHTS = range(10000, 10000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
 
@@ -1729,10 +1730,6 @@ describe('ManagedPool', function () {
   });
 
   describe('management fees', () => {
-    const swapFeePercentage = fp(0.02);
-    const managementSwapFeePercentage = fp(0.8);
-    const managementAumFeePercentage = fp(0.01);
-
     sharedBeforeEach('deploy pool', async () => {
       const params = {
         tokens: poolTokens,
@@ -1741,40 +1738,84 @@ describe('ManagedPool', function () {
         poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
         vault,
-        swapFeePercentage,
-        managementSwapFeePercentage,
-        managementAumFeePercentage,
+        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+        managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+        managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
         aumProtocolFeesCollector: aumProtocolFeesCollector.address,
       };
       pool = await WeightedPool.create(params);
     });
 
-    describe('set management fee', () => {
+    describe('set management swap fee', () => {
+      it('sets the initial management swap fee', async () => {
+        const swapFee = await pool.getManagementSwapFeePercentage();
+        expect(swapFee).to.equal(POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE);
+      });
+
       context('when the sender is not the owner', () => {
-        it('non-owners cannot set the management fee', async () => {
+        it('non-owners cannot set the management swap fee', async () => {
           await expect(
             pool.setManagementSwapFeePercentage(other, NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE)
           ).to.be.revertedWith('SENDER_NOT_ALLOWED');
         });
       });
+
       context('when the sender is the owner', () => {
         it('the management fee can be set', async () => {
           await pool.setManagementSwapFeePercentage(owner, NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE);
           expect(await pool.getManagementSwapFeePercentage()).to.equal(NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE);
         });
 
-        it('setting the management fee emits an event', async () => {
+        it('setting the management swap fee emits an event', async () => {
           const receipt = await pool.setManagementSwapFeePercentage(owner, NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE);
 
           expectEvent.inReceipt(await receipt.wait(), 'ManagementSwapFeePercentageChanged', {
-            managementSwapFeePercentage: NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+            oldManagementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+            newManagementSwapFeePercentage: NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE,
           });
+        });
 
-          it('cannot be set above the maximum AUM fee', async () => {
-            await expect(pool.setManagementAumFeePercentage(owner, fp(0.2))).to.be.revertedWith(
-              'MAX_MANAGEMENT_AUM_FEE_PERCENTAGE'
-            );
+        it('cannot be set above the maximum management swap fee', async () => {
+          await expect(pool.setManagementSwapFeePercentage(owner, fp(2))).to.be.revertedWith(
+            'MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE'
+          );
+        });
+      });
+    });
+
+    describe('set management AUM fee', () => {
+      it('sets the initial management AUM fee', async () => {
+        const aumFee = await pool.getManagementAumFeePercentage();
+        expect(aumFee).to.equal(POOL_MANAGEMENT_AUM_FEE_PERCENTAGE);
+      });
+
+      context('when the sender is not the owner', () => {
+        it('non-owners cannot set the management AUM fee', async () => {
+          await expect(pool.setManagementAumFeePercentage(other, NEW_MANAGEMENT_AUM_FEE_PERCENTAGE)).to.be.revertedWith(
+            'SENDER_NOT_ALLOWED'
+          );
+        });
+      });
+
+      context('when the sender is the owner', () => {
+        it('the management AUM fee can be set', async () => {
+          await pool.setManagementAumFeePercentage(owner, NEW_MANAGEMENT_AUM_FEE_PERCENTAGE);
+          expect(await pool.getManagementAumFeePercentage()).to.equal(NEW_MANAGEMENT_AUM_FEE_PERCENTAGE);
+        });
+
+        it('setting the management AUM fee emits an event', async () => {
+          const receipt = await pool.setManagementAumFeePercentage(owner, NEW_MANAGEMENT_AUM_FEE_PERCENTAGE);
+
+          expectEvent.inReceipt(await receipt.wait(), 'ManagementAumFeePercentageChanged', {
+            oldManagementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+            newManagementAumFeePercentage: NEW_MANAGEMENT_AUM_FEE_PERCENTAGE,
           });
+        });
+
+        it('cannot be set above the maximum management AUM fee', async () => {
+          await expect(pool.setManagementAumFeePercentage(owner, fp(0.2))).to.be.revertedWith(
+            'MAX_MANAGEMENT_AUM_FEE_PERCENTAGE'
+          );
         });
       });
     });
@@ -1810,7 +1851,11 @@ describe('ManagedPool', function () {
           const balanceBefore = await pool.balanceOf(owner);
 
           const totalSupply = await pool.totalSupply();
-          const expectedManagementFeeBpt = expectedAUMFees(totalSupply, managementAumFeePercentage, timeElapsed);
+          const expectedManagementFeeBpt = expectedAUMFees(
+            totalSupply,
+            POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+            timeElapsed
+          );
 
           const receipt = await collectAUMFees();
 
@@ -2079,7 +2124,11 @@ describe('ManagedPool', function () {
             const balanceBefore = await pool.balanceOf(owner);
 
             const totalSupply = await pool.totalSupply();
-            const expectedManagementFeeBpt = expectedAUMFees(totalSupply, managementAumFeePercentage, timeElapsed);
+            const expectedManagementFeeBpt = expectedAUMFees(
+              totalSupply,
+              POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+              timeElapsed
+            );
 
             const receipt = await collectAUMFees();
 
