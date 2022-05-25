@@ -141,9 +141,7 @@ describe('TimelockAuthorizerMigrator', () => {
     };
 
     context('with a partial migration', () => {
-      itMigratesPermissionsProperly(() =>
-        Promise.all([migrator.migrate(MAX_UINT256), migrator.migrate(MAX_UINT256), migrator.migrate(MAX_UINT256)])
-      );
+      itMigratesPermissionsProperly(() => migrator.migrate(MAX_UINT256));
     });
 
     context('with a full migration', () => {

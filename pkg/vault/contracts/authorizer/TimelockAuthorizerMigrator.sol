@@ -121,18 +121,15 @@ contract TimelockAuthorizerMigrator {
     }
 
     function _migrate(uint256 n) internal {
-        if (existingRolesMigrated < rolesData.length) {
-            _migrateExistingRoles(n);
-        } else if (grantersMigrated < grantersData.length) {
-            _setupGranters(n);
-        } else {
-            _setupRevokers(n);
-        }
+        uint256 rolesToMigrate = _migrateExistingRoles(n);
+        rolesToMigrate = _setupGranters(rolesToMigrate);
+        _setupRevokers(rolesToMigrate);
     }
 
-    function _migrateExistingRoles(uint256 n) internal {
+    function _migrateExistingRoles(uint256 n) internal returns (uint256 remainingRolesToMigrate) {
         uint256 i = existingRolesMigrated;
         uint256 to = Math.min(i + n, rolesData.length);
+        remainingRolesToMigrate = (i + n) - to;
 
         for (; i < to; i++) {
             RoleData memory roleData = rolesData[i];
@@ -142,9 +139,10 @@ contract TimelockAuthorizerMigrator {
         existingRolesMigrated = i;
     }
 
-    function _setupGranters(uint256 n) internal {
+    function _setupGranters(uint256 n) internal returns (uint256 remainingRolesToMigrate) {
         uint256 i = grantersMigrated;
         uint256 to = Math.min(i + n, grantersData.length);
+        remainingRolesToMigrate = (i + n) - to;
 
         for (; i < to; i++) {
             RoleData memory granterData = grantersData[i];
