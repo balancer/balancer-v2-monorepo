@@ -86,10 +86,8 @@ contract TimelockAuthorizerMigrator {
      * @dev Tells whether the migration has been completed or not
      */
     function isComplete() public view returns (bool) {
-        return
-            existingRolesMigrated >= rolesData.length &&
-            grantersMigrated >= grantersData.length &&
-            revokersMigrated >= revokersData.length;
+        // As we set up the revoker roles last we can use them to determine whether the full migration is complete.
+        return revokersMigrated >= revokersData.length;
     }
 
     /**
