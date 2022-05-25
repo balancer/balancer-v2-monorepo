@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { ONES_BYTES32, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
+import { ONES_BYTES32, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('TimelockAuthorizerMigrator', () => {
   let user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress, root: SignerWithAddress;
