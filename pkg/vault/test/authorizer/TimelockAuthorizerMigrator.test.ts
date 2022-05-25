@@ -20,6 +20,7 @@ describe('TimelockAuthorizerMigrator', () => {
 
   let rolesData: Array<{ grantee: string; role: string; target: string }>;
   let grantersData: Array<{ grantee: string; role: string; target: string }>;
+  let revokersData: Array<{ grantee: string; role: string; target: string }>;
   const ROLE_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
   const ROLE_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
   const ROLE_3 = '0x0000000000000000000000000000000000000000000000000000000000000003';
@@ -42,10 +43,15 @@ describe('TimelockAuthorizerMigrator', () => {
       { grantee: granter2.address, role: ROLE_2, target: target.address },
       { grantee: granter3.address, role: ROLE_3, target: target.address },
     ];
+    revokersData = [
+      { grantee: user1.address, role: ROLE_1, target: target.address },
+      { grantee: granter1.address, role: ROLE_2, target: target.address },
+      { grantee: user3.address, role: ROLE_3, target: target.address },
+    ];
   });
 
   sharedBeforeEach('set up migrator', async () => {
-    const args = [vault.address, root.address, oldAuthorizer.address, rolesData, grantersData];
+    const args = [vault.address, root.address, oldAuthorizer.address, rolesData, grantersData, revokersData];
     migrator = await deploy('TimelockAuthorizerMigrator', { args });
     newAuthorizer = await deployedAt('TimelockAuthorizer', await migrator.newAuthorizer());
     const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
@@ -78,6 +84,14 @@ describe('TimelockAuthorizerMigrator', () => {
 
       for (const granterData of grantersData) {
         expect(await newAuthorizer.isGranter(granterData.role, granterData.grantee, granterData.target)).to.be.true;
+      }
+    });
+
+    it('sets up revokers properly', async () => {
+      await migrate();
+
+      for (const revokerData of revokersData) {
+        expect(await newAuthorizer.isGranter(revokerData.role, revokerData.grantee, revokerData.target)).to.be.true;
       }
     });
 
@@ -114,12 +128,16 @@ describe('TimelockAuthorizerMigrator', () => {
   };
 
   context('with a partial migration', () => {
-    itMigratesPermissionsProperly(() => Promise.all([migrator.migrate(0), migrator.migrate(0)]));
+    itMigratesPermissionsProperly(() => Promise.all([migrator.migrate(0), migrator.migrate(0), migrator.migrate(0)]));
   });
 
   context('with a full migration', () => {
     itMigratesPermissionsProperly(() =>
-      Promise.all(Array.from({ length: rolesData.length + grantersData.length }).map(() => migrator.migrate(1)))
+      Promise.all(
+        Array.from({ length: rolesData.length + grantersData.length + revokersData.length }).map(() =>
+          migrator.migrate(1)
+        )
+      )
     );
   });
 });
