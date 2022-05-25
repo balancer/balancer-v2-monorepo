@@ -463,7 +463,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * @notice Removes an address from the LP allowlist.
      * @dev Will fail if the LP allowlist is not enabled, or the address was not previously allowlisted.
      * Emits the AllowlistAddressRemoved event. This is a permissioned function.
-     * @param member - The address to be removed.
+     * @param member - The address to be removed from the allowlist.
      */
     function removeAllowedAddress(address member) external authenticate whenNotPaused {
         _require(_allowedAddresses[member], Errors.ADDRESS_NOT_ALLOWLISTED);
