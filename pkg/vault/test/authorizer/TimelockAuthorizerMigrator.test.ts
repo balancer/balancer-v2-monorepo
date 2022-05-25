@@ -32,7 +32,6 @@ describe('TimelockAuthorizerMigrator', () => {
 
   sharedBeforeEach('set up permissions', async () => {
     const target = await deploy('MockBasicAuthorizer'); // any contract
-    await oldAuthorizer.grantRolesToMany([ROLE_1, ROLE_2, ROLE_3], [user1.address, user2.address, user3.address]);
     rolesData = [
       { grantee: user1.address, role: ROLE_1, target: target.address },
       { grantee: user2.address, role: ROLE_2, target: target.address },
@@ -127,17 +126,29 @@ describe('TimelockAuthorizerMigrator', () => {
     });
   };
 
-  context('with a partial migration', () => {
-    itMigratesPermissionsProperly(() => Promise.all([migrator.migrate(0), migrator.migrate(0), migrator.migrate(0)]));
+  context('when migrating a role which does not exist on previous Authorizer', () => {
+    it('reverts', async () => {
+      await expect(migrator.migrate(0)).to.be.revertedWith('UNEXPECTED_ROLE');
+    });
   });
 
-  context('with a full migration', () => {
-    itMigratesPermissionsProperly(() =>
-      Promise.all(
-        Array.from({ length: rolesData.length + grantersData.length + revokersData.length }).map(() =>
-          migrator.migrate(1)
+  context('when migrating roles which all exist on previous Authorizer', () => {
+    sharedBeforeEach('grant roles on old Authorizer', async () => {
+      await oldAuthorizer.grantRolesToMany([ROLE_1, ROLE_2, ROLE_3], [user1.address, user2.address, user3.address]);
+    });
+
+    context('with a partial migration', () => {
+      itMigratesPermissionsProperly(() => Promise.all([migrator.migrate(0), migrator.migrate(0), migrator.migrate(0)]));
+    });
+
+    context('with a full migration', () => {
+      itMigratesPermissionsProperly(() =>
+        Promise.all(
+          Array.from({ length: rolesData.length + grantersData.length + revokersData.length }).map(() =>
+            migrator.migrate(1)
+          )
         )
-      )
-    );
+      );
+    });
   });
 });
