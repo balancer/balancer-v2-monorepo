@@ -229,8 +229,13 @@ describe('ManagedPool', function () {
 
         // Open up for public LPs
         await pool.setMustAllowlistLPs(owner, false);
+
         // Owner is now allowed
         expect(await pool.isAllowedAddress(owner.address)).to.be.true;
+        expect(await pool.isAllowedAddress(other.address)).to.be.true;
+
+        // Cannot remove addresses when the allowlist is disabled
+        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('UNAUTHORIZED_OPERATION');
 
         // Turn the allowlist back on
         await pool.setMustAllowlistLPs(owner, true);
@@ -289,9 +294,9 @@ describe('ManagedPool', function () {
         // And allow joins from anywhere
         await expect(pool.joinAllGivenOut({ from: other, bptOut: startingBpt })).to.not.be.reverted;
 
-        // Does not allow adding addresses now
+        // Does not allow adding or removing addresses now
         await expect(pool.addAllowedAddress(owner, other.address)).to.be.revertedWith('UNAUTHORIZED_OPERATION');
-        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('ADDRESS_NOT_ALLOWLISTED');
+        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('UNAUTHORIZED_OPERATION');
       });
 
       it('reverts if non-owner tries to enable public LPs', async () => {
