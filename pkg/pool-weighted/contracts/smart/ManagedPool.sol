@@ -283,8 +283,10 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     /**
      * @notice Getter for the current gradual swap fee update parameters.
      * @dev The current swap fee can be retrieved via `getSwapFeePercentage()`.
-     * @return The starting and ending values for the swap fee percentage, and the starting and ending timestamps
-     * over which the update will occur.
+     * @return startTime - The timestamp when the swap fee update will begin.
+     * @return endTime - The timestamp when the swap fee update will end.
+     * @return startSwapFeePercentage - The starting swap fee percentage (could be different from the current value).
+     * @return endSwapFeePercentage - The final swap fee percentage, when the current timestamp >= endTime.
      */
     function getGradualSwapFeeUpdateParams()
         external
@@ -334,8 +336,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     /**
      * @notice Getter for the current gradual weight change update parameters.
      * @dev The current weights can be retrieved via `getNormalizedWeights()`.
-     * @return The starting and ending values for the weights, and the starting and ending timestamps
-     * over which the update will occur.
+     * @return startTime - The timestamp when the weight update will begin.
+     * @return endTime - The timestamp when the weight update will end.
+     * @return endWeights - The final weights, when the current timestamp >= endTime.
      */
     function getGradualWeightUpdateParams()
         external
@@ -781,7 +784,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * To avoid retroactive fee increases, we force collection at the current fee percentage before processing
      * the update. Emits the ManagementAumFeePercentageChanged event. This is a permissioned function.
      * @param managementAumFeePercentage - The new management AUM fee percentage.
-     * @return The amount of BPT minted to the manager before the update, if any.
+     * @return amount - The amount of BPT minted to the manager before the update, if any.
      */
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage)
         external
