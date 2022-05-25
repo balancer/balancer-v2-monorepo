@@ -551,6 +551,8 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     function _validateAddToken(IERC20[] memory tokens, uint256 normalizedWeight) private view returns (uint256) {
         // Sanity check that the new token will make up less than 100% of the Pool.
         _require(normalizedWeight < FixedPoint.ONE, Errors.MAX_WEIGHT);
+        // Make sure the new token is above the minimum weight.
+        _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
         // To reduce the complexity of weight interactions, tokens cannot be removed during or before a weight change.
         // Otherwise we'd have to reason about how changes in the weights of other tokens could affect the pricing
@@ -570,12 +572,8 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         uint256 weightSumAfterAdd = _denormWeightSum.mulUp(FixedPoint.ONE.divDown(FixedPoint.ONE - normalizedWeight));
 
         // We want to check if adding this new token results in any tokens falling below the minimum weight limit.
-
-        // First make sure that the new token is above the minimum weight.
-        _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
-
-        // Adding a new token could also cause one of the other tokens to be pushed below the minimum weight.
-        // If any would fail this check then it would be the token with the lowest weight, we then search through
+        // Adding a new token could cause one of the other tokens to be pushed below the minimum weight.
+        // If any would fail this check, it would be the token with the lowest weight, so we search through all
         // tokens to find the minimum weight. We can delay decompressing the weight until after the search.
         uint256 minimumCompressedWeight = type(uint256).max;
         for (uint256 i = 0; i < numTokens; i++) {
