@@ -119,19 +119,14 @@ contract TimelockAuthorizerMigrator {
     }
 
     function _migrate(OldRoleData memory roleData) internal {
-        _migrate(roleData.role, roleData.target);
-        _migrate(oldAuthorizer.getRoleAdmin(roleData.role), roleData.target);
-    }
-
-    function _migrate(bytes32 role, address target) internal {
-        address[] memory wheres = _arr(target);
-        bytes32[] memory actionIds = _arr(role);
-        uint256 membersCount = oldAuthorizer.getRoleMemberCount(role);
+        address[] memory wheres = _arr(roleData.target);
+        bytes32[] memory actionIds = _arr(roleData.role);
+        uint256 membersCount = oldAuthorizer.getRoleMemberCount(roleData.role);
 
         // Iterate over the accounts that had the role granted in the old authorizer, granting
         // the permission for the same role for the specified target in the new authorizer.
         for (uint256 i = 0; i < membersCount; i++) {
-            address member = oldAuthorizer.getRoleMember(role, i);
+            address member = oldAuthorizer.getRoleMember(roleData.role, i);
             newAuthorizer.grantPermissions(actionIds, member, wheres);
         }
     }
