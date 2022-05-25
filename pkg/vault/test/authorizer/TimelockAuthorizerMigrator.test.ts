@@ -73,20 +73,6 @@ describe('TimelockAuthorizerMigrator', () => {
       }
     });
 
-    it('migrates all admin roles properly', async () => {
-      await migrate();
-
-      for (const roleData of rolesData) {
-        const adminRole = await oldAuthorizer.getRoleAdmin(roleData.role);
-        const adminsCount = await oldAuthorizer.getRoleMemberCount(adminRole);
-        for (let i = 0; i < adminsCount; i++) {
-          const admin = await oldAuthorizer.getRoleMember(adminRole, i);
-          expect(await newAuthorizer.isGranter(ONES_BYTES32, admin, roleData.target)).to.be.true;
-          expect(await newAuthorizer.isRevoker(ONES_BYTES32, admin, roleData.target)).to.be.true;
-        }
-      }
-    });
-
     it('migrates all the default admins properly', async () => {
       await migrate();
 
