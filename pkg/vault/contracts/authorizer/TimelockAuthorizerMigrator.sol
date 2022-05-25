@@ -94,11 +94,11 @@ contract TimelockAuthorizerMigrator {
 
     /**
      * @dev Migrate roles from the old authorizer to the new one
-     * @param n Number of roles to migrate, use 0 to migrate all the remaining ones
+     * @param n Number of roles to migrate, use MAX_UINT256 to migrate all the remaining ones
      */
     function migrate(uint256 n) external {
         require(!isComplete(), "MIGRATION_COMPLETE");
-        _migrate(n == 0 ? rolesData.length : n);
+        _migrate(n);
         _afterMigrate();
     }
 

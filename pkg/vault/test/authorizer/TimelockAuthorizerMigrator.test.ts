@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('TimelockAuthorizerMigrator', () => {
   let root: SignerWithAddress;
@@ -141,7 +141,9 @@ describe('TimelockAuthorizerMigrator', () => {
     };
 
     context('with a partial migration', () => {
-      itMigratesPermissionsProperly(() => Promise.all([migrator.migrate(0), migrator.migrate(0), migrator.migrate(0)]));
+      itMigratesPermissionsProperly(() =>
+        Promise.all([migrator.migrate(MAX_UINT256), migrator.migrate(MAX_UINT256), migrator.migrate(MAX_UINT256)])
+      );
     });
 
     context('with a full migration', () => {
