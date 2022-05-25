@@ -101,27 +101,6 @@ describe('TimelockAuthorizerMigrator', () => {
 
           expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
         });
-
-        it('transfers root over to the specified address', async () => {
-          await migrator.finalizeMigration();
-
-          expect(await newAuthorizer.isRoot(root.address)).to.be.true;
-          expect(await newAuthorizer.isRoot(migrator.address)).to.be.false;
-        });
-
-        it('revokes the admin roles from the migrator', async () => {
-          await migrator.finalizeMigration();
-
-          expect(await newAuthorizer.isGranter(ONES_BYTES32, migrator.address, EVERYWHERE)).to.be.false;
-          expect(await newAuthorizer.isRevoker(ONES_BYTES32, migrator.address, EVERYWHERE)).to.be.false;
-        });
-
-        it('grants the admin roles to the new root', async () => {
-          await migrator.finalizeMigration();
-
-          expect(await newAuthorizer.isGranter(ONES_BYTES32, root.address, EVERYWHERE)).to.be.true;
-          expect(await newAuthorizer.isRevoker(ONES_BYTES32, root.address, EVERYWHERE)).to.be.true;
-        });
       });
     });
   };
