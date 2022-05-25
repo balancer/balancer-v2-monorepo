@@ -421,7 +421,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * change at `startTime`. Emits the GradualSwapFeeUpdateScheduled event. This is a permissioned function.
      *
      * @param startTime - The timestamp when the swap fee change will begin.
-     * @param endTime - The timestamp when the swap fee change will end (can be >= startTime).
+     * @param endTime - The timestamp when the swap fee change will end (must be >= startTime).
      * @param startSwapFeePercentage - The starting value for the swap fee change.
      * @param endSwapFeePercentage - The ending value for the swap fee change. If the current timestamp >= endTime,
      * `getSwapFeePercentage()` will return this value.
