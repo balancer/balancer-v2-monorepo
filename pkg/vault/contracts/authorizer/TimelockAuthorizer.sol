@@ -74,6 +74,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     bytes32 public immutable EXECUTE_ACTION_ID;
     bytes32 public immutable SCHEDULE_DELAY_ACTION_ID;
 
+    // These action ids do not need to be used by external actors as the action ids above do.
+    // Instead they're saved just for gas savings so we can keep them private.
+    bytes32 private immutable _GRANT_WHATEVER_ACTION_ID;
+    bytes32 private immutable _REVOKE_WHATEVER_ACTION_ID;
+
     TimelockExecutor private immutable _executor;
     IAuthentication private immutable _vault;
     uint256 private immutable _rootTransferDelay;
@@ -140,15 +145,19 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         _rootTransferDelay = rootTransferDelay;
 
         bytes32 grantActionId = getActionId(TimelockAuthorizer.grantPermissions.selector);
-        _grantPermission(getActionId(grantActionId, WHATEVER), admin, EVERYWHERE);
-
         bytes32 revokeActionId = getActionId(TimelockAuthorizer.revokePermissions.selector);
-        _grantPermission(getActionId(revokeActionId, WHATEVER), admin, EVERYWHERE);
+        bytes32 grantWhateverActionId = getActionId(grantActionId, WHATEVER);
+        bytes32 revokeWhateverActionId = getActionId(revokeActionId, WHATEVER);
+
+        _grantPermission(grantWhateverActionId, admin, EVERYWHERE);
+        _grantPermission(revokeWhateverActionId, admin, EVERYWHERE);
 
         GRANT_ACTION_ID = grantActionId;
         REVOKE_ACTION_ID = revokeActionId;
         EXECUTE_ACTION_ID = getActionId(TimelockAuthorizer.execute.selector);
         SCHEDULE_DELAY_ACTION_ID = getActionId(TimelockAuthorizer.scheduleDelayChange.selector);
+        _GRANT_WHATEVER_ACTION_ID = grantWhateverActionId;
+        _REVOKE_WHATEVER_ACTION_ID = revokeWhateverActionId;
     }
 
     /**
@@ -356,9 +365,17 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      * To become root, the pending root must call this function to ensure that it's able to interact with this contract.
      */
     function claimRoot() external {
+        address currentRoot = _root;
         address pendingRoot = _pendingRoot;
         _require(msg.sender == pendingRoot, Errors.SENDER_NOT_ALLOWED);
 
+        // Grant powers to new root to grant or revoke any permission over any contract.
+        _grantPermission(_GRANT_WHATEVER_ACTION_ID, pendingRoot, EVERYWHERE);
+        _grantPermission(_REVOKE_WHATEVER_ACTION_ID, pendingRoot, EVERYWHERE);
+
+        // Revoke these powers from the outgoing root.
+        _revokePermission(_GRANT_WHATEVER_ACTION_ID, currentRoot, EVERYWHERE);
+        _revokePermission(_REVOKE_WHATEVER_ACTION_ID, currentRoot, EVERYWHERE);
 
         // Complete the root transfer and reset the pending root.
         _setRoot(pendingRoot);
