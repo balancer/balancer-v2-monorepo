@@ -449,7 +449,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * @notice Adds an address to the LP allowlist.
      * @dev Will fail if the LP allowlist is not enabled, or the address is already allowlisted.
      * Emits the AllowlistAddressAdded event. This is a permissioned function.
-     * @param member - The address to be added.
+     * @param member - The address to be added to the allowlist.
      */
     function addAllowedAddress(address member) external authenticate whenNotPaused {
         _require(getMustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
