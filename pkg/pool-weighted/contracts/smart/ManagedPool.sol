@@ -423,9 +423,11 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Removes an address from the LP allowlist.
+     * @dev Removes an address from the LP allowlist. Do not allow removing addresses while the allowlist
+     * is disabled.
      */
     function removeAllowedAddress(address member) external authenticate whenNotPaused {
+        _require(getMustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
         _require(_allowedAddresses[member], Errors.ADDRESS_NOT_ALLOWLISTED);
 
         delete _allowedAddresses[member];
@@ -434,7 +436,8 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
 
     /**
      * @dev Can enable/disable the LP allowlist. Note that any addresses added to the allowlist
-     * will be retained if the allowlist is toggled off and back on again.
+     * will be retained if the allowlist is toggled off and back on again, because removing addresses
+     * is not allowed while the allowlist is disabled.
      */
     function setMustAllowlistLPs(bool mustAllowlistLPs) external authenticate whenNotPaused {
         _setMustAllowlistLPs(mustAllowlistLPs);
