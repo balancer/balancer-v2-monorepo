@@ -246,7 +246,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     /**
      * @notice Check an LP address against the allowlist.
      * @dev If the allowlist is not enabled, this returns true for every address.
-     * @param member - The address to check aainst the allowlist.
+     * @param member - The address to check against the allowlist.
      * @return true if the given address is allowed to join the pool.
      */
     function isAllowedAddress(address member) public view returns (bool) {
