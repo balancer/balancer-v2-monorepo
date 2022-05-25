@@ -391,6 +391,10 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * @notice Schedule a gradual weight change.
      * @dev The weights will change from their current values to the given endWeights, over startTime to endTime.
      * This is a permissioned function.
+     *
+     * Since, unlike with swap fee updates, we do not generally want to allow instantanous weight changes,
+     * the weights always start from their current values. This also guarantees a smooth transition when
+     * updateWeightsGradually is called during an ongoing weight change.
      * @param startTime - The timestamp when the weight change will begin.
      * @param endTime - The timestamp when the weight change will end (can be >= startTime).
      * @param endWeights - The target weights. If the current timestamp >= endTime, `getNormalizedWeights()`
@@ -417,8 +421,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * value avoids requiring an explicit external `setSwapFeePercentage` call.
      *
      * Note that calling this with a starting swap fee different from the current value will immediately change the
-     * current swap fee to `startSwapFeePercentage` (including emitting the SwapFeePercentageChanged event), before commencing the gradual
-     * change at `startTime`. Emits the GradualSwapFeeUpdateScheduled event. This is a permissioned function.
+     * current swap fee to `startSwapFeePercentage` (including emitting the SwapFeePercentageChanged event),
+     * before commencing the gradual change at `startTime`. Emits the GradualSwapFeeUpdateScheduled event.
+     * This is a permissioned function.
      *
      * @param startTime - The timestamp when the swap fee change will begin.
      * @param endTime - The timestamp when the swap fee change will end (must be >= startTime).
