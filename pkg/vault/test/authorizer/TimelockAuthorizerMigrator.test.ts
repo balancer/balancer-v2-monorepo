@@ -6,11 +6,11 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { ONES_BYTES32, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('TimelockAuthorizerMigrator', () => {
   let user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress, root: SignerWithAddress;
-  let vault: Contract, oldAuthorizer: Contract, newAuthorizer: Contract, migrator: Contract, EVERYWHERE: string;
+  let vault: Contract, oldAuthorizer: Contract, newAuthorizer: Contract, migrator: Contract;
 
   before('set up signers', async () => {
     [, user1, user2, user3, root] = await ethers.getSigners();
@@ -45,10 +45,6 @@ describe('TimelockAuthorizerMigrator', () => {
 
     const CHANGE_ROOT_DELAY = await newAuthorizer.getRootTransferDelay();
     await advanceTime(CHANGE_ROOT_DELAY);
-  });
-
-  sharedBeforeEach('setup constants', async () => {
-    EVERYWHERE = await newAuthorizer.EVERYWHERE();
   });
 
   const itMigratesPermissionsProperly = (migrate: () => Promise<unknown>) => {
