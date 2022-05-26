@@ -30,7 +30,7 @@ contract MockMortalFactory is MortalFactory, MockPoolFactory {
         return super.getVault();
     }
 
-    function create() external override returns (address) {
+    function create() public override returns (address) {
         _ensureEnabled();
         return super.create();
     }

@@ -30,7 +30,7 @@ abstract contract SingletonAuthentication is Authentication {
     /**
      * @notice Returns the Balancer Vault
      */
-    function getVault() public view returns (IVault) {
+    function getVault() public view virtual returns (IVault) {
         return _vault;
     }
 
