@@ -25,7 +25,10 @@ export type RawWeightedPoolDeployment = {
   oracleEnabled?: boolean;
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
+  protocolSwapFeePercentage?: BigNumberish;
   managementSwapFeePercentage?: BigNumberish;
+  managementAumFeePercentage?: BigNumberish;
+  aumProtocolFeesCollector?: string;
   owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -45,7 +48,10 @@ export type WeightedPoolDeployment = {
   oracleEnabled: boolean;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
+  managementAumFeePercentage: BigNumberish;
+  aumProtocolFeesCollector: string;
   owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -187,15 +193,18 @@ export type Sample = {
 
 export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
 
-export type GradualUpdateParams = {
+export type GradualWeightUpdateParams = {
   startTime: BigNumber;
   endTime: BigNumber;
+  startWeights: BigNumber[];
   endWeights: BigNumber[];
 };
 
-export type TokenCollectedFees = {
-  amounts: BigNumber[];
-  tokenAddresses: string[];
+export type GradualSwapFeeUpdateParams = {
+  startTime: BigNumber;
+  endTime: BigNumber;
+  startSwapFeePercentage: BigNumber;
+  endSwapFeePercentage: BigNumber;
 };
 
 export type BasePoolRights = {
@@ -210,21 +219,20 @@ export type ManagedPoolRights = {
   canSetMustAllowlistLPs: boolean;
   canSetCircuitBreakers: boolean;
   canChangeTokens: boolean;
-  canChangeMgmtSwapFee: boolean;
+  canChangeMgmtFees: boolean;
 };
 
 export type ManagedPoolParams = {
-  vault: string;
   name: string;
   symbol: string;
   tokens: string[];
   normalizedWeights: BigNumberish[];
   assetManagers: string[];
   swapFeePercentage: BigNumberish;
-  pauseWindowDuration: number;
-  bufferPeriodDuration: number;
-  owner: string;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
+  managementAumFeePercentage: BigNumberish;
+  aumProtocolFeesCollector: string;
 };

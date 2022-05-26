@@ -2,7 +2,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
@@ -59,7 +59,11 @@ library SafeMath {
      *
      * - Subtraction cannot overflow.
      */
-    function sub(uint256 a, uint256 b, uint256 errorCode) internal pure returns (uint256) {
+    function sub(
+        uint256 a,
+        uint256 b,
+        uint256 errorCode
+    ) internal pure returns (uint256) {
         _require(b <= a, errorCode);
         uint256 c = a - b;
 

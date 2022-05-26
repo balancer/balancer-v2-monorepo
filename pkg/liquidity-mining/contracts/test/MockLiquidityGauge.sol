@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 contract MockLiquidityGauge {
+    // solhint-disable-next-line var-name-mixedcase
     address public lp_token;
 
     constructor(address pool) {

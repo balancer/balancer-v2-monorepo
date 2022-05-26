@@ -68,6 +68,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 
   const swapFeePercentage = fp(0.02); // 2%
   const managementFee = fp(0.5); // 50%
+  const aumFee = 0;
 
   let pool: Contract;
   let joinUserData: string;
@@ -78,22 +79,25 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
     const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
     let params;
 
+    const aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', {
+      args: [vault.address],
+    });
+
     switch (poolName) {
       case 'ManagedPool': {
         const newPoolParams: ManagedPoolParams = {
-          vault: vault.address,
           name: name,
           symbol: symbol,
           tokens: tokens.addresses,
           normalizedWeights: weights,
           assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
           swapFeePercentage: swapFeePercentage,
-          pauseWindowDuration: MONTH * 3,
-          bufferPeriodDuration: MONTH,
-          owner: creator.address,
           swapEnabledOnStart: true,
           mustAllowlistLPs: false,
+          protocolSwapFeePercentage: MAX_UINT256,
           managementSwapFeePercentage: managementFee,
+          managementAumFeePercentage: aumFee,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         };
 
         const basePoolRights: BasePoolRights = {
@@ -108,9 +112,10 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           canSetMustAllowlistLPs: true,
           canSetCircuitBreakers: true,
           canChangeTokens: true,
-          canChangeMgmtSwapFee: true,
+          canChangeMgmtFees: true,
         };
-        params = [newPoolParams, basePoolRights, managedPoolRights, DAY];
+
+        params = [newPoolParams, basePoolRights, managedPoolRights, DAY, creator.address];
         break;
       }
       case 'OracleWeightedPool': {

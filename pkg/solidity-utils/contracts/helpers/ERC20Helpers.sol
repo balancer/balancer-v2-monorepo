@@ -14,9 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol";
-
-import "../openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IAsset.sol";
 
 // solhint-disable
 
@@ -51,6 +50,14 @@ function _insertSorted(IERC20[] memory tokens, IERC20 token) pure returns (IERC2
     for (i = tokens.length; i > 0 && tokens[i - 1] > token; i--) sorted[i] = tokens[i - 1];
     for (uint256 j = 0; j < i; j++) sorted[j] = tokens[j];
     sorted[i] = token;
+}
+
+function _appendToken(IERC20[] memory tokens, IERC20 newToken) pure returns (IERC20[] memory newTokens) {
+    uint256 numTokens = tokens.length;
+    newTokens = new IERC20[](numTokens + 1);
+
+    for (uint256 i = 0; i < numTokens; ++i) newTokens[i] = tokens[i];
+    newTokens[numTokens] = newToken;
 }
 
 function _getSortedTokenIndexes(

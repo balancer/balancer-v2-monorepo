@@ -18,6 +18,8 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
+import "@balancer-labs/v2-standalone-utils/contracts/AumProtocolFeesCollector.sol";
+
 import "./ManagedPool.sol";
 
 /**
@@ -30,35 +32,47 @@ import "./ManagedPool.sol";
  * deploy the pool, passing in the controller as the owner.
  */
 contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+    AumProtocolFeesCollector private immutable _aumProtocolFeesCollector;
+
     constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(ManagedPool).creationCode) {
-        // solhint-disable-previous-line no-empty-blocks
+        _aumProtocolFeesCollector = new AumProtocolFeesCollector(vault);
+    }
+
+    /**
+     * @dev Getter for the AUM protocol fees collector passed into all Managed Pools created from this factory.
+     */
+    function getAumProtocolFeesCollector() external view returns (AumProtocolFeesCollector) {
+        return _aumProtocolFeesCollector;
     }
 
     /**
      * @dev Deploys a new `ManagedPool`. The owner should be a managed pool controller, deployed by
      * another factory.
      */
-    function create(ManagedPool.NewPoolParams memory poolParams) external returns (address pool) {
+    function create(ManagedPool.NewPoolParams memory poolParams, address owner) external returns (address pool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
         return
             _create(
                 abi.encode(
                     ManagedPool.NewPoolParams({
-                        vault: getVault(),
                         name: poolParams.name,
                         symbol: poolParams.symbol,
                         tokens: poolParams.tokens,
                         normalizedWeights: poolParams.normalizedWeights,
                         assetManagers: poolParams.assetManagers,
                         swapFeePercentage: poolParams.swapFeePercentage,
-                        pauseWindowDuration: pauseWindowDuration,
-                        bufferPeriodDuration: bufferPeriodDuration,
-                        owner: poolParams.owner,
                         swapEnabledOnStart: poolParams.swapEnabledOnStart,
                         mustAllowlistLPs: poolParams.mustAllowlistLPs,
-                        managementSwapFeePercentage: poolParams.managementSwapFeePercentage
-                    })
+                        protocolSwapFeePercentage: poolParams.protocolSwapFeePercentage,
+                        managementSwapFeePercentage: poolParams.managementSwapFeePercentage,
+                        managementAumFeePercentage: poolParams.managementAumFeePercentage,
+                        aumProtocolFeesCollector: _aumProtocolFeesCollector
+                    }),
+                    getVault(),
+                    owner,
+                    pauseWindowDuration,
+                    bufferPeriodDuration
                 )
             );
     }
