@@ -228,8 +228,13 @@ describe('ManagedPool', function () {
 
         // Open up for public LPs
         await pool.setMustAllowlistLPs(owner, false);
+
         // Owner is now allowed
         expect(await pool.isAllowedAddress(owner.address)).to.be.true;
+        expect(await pool.isAllowedAddress(other.address)).to.be.true;
+
+        // Cannot remove addresses when the allowlist is disabled
+        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('UNAUTHORIZED_OPERATION');
 
         // Turn the allowlist back on
         await pool.setMustAllowlistLPs(owner, true);
@@ -288,9 +293,9 @@ describe('ManagedPool', function () {
         // And allow joins from anywhere
         await expect(pool.joinAllGivenOut({ from: other, bptOut: startingBpt })).to.not.be.reverted;
 
-        // Does not allow adding addresses now
+        // Does not allow adding or removing addresses now
         await expect(pool.addAllowedAddress(owner, other.address)).to.be.revertedWith('UNAUTHORIZED_OPERATION');
-        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('ADDRESS_NOT_ALLOWLISTED');
+        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('UNAUTHORIZED_OPERATION');
       });
 
       it('reverts if non-owner tries to enable public LPs', async () => {
@@ -353,9 +358,10 @@ describe('ManagedPool', function () {
       });
 
       it('stores the initial weights as a zero duration weight change', async () => {
-        const { startTime, endTime, endWeights } = await pool.getGradualWeightUpdateParams();
+        const { startTime, endTime, startWeights, endWeights } = await pool.getGradualWeightUpdateParams();
 
         expect(startTime).to.equal(endTime);
+        expect(startWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
         expect(endWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
       });
 
@@ -580,6 +586,7 @@ describe('ManagedPool', function () {
         });
 
         context('with valid parameters (ongoing weight update)', () => {
+          let startWeights: BigNumber[];
           const endWeights = poolWeights.map((weight, i) => (i % 2 == 0 ? weight.add(fp(0.02)) : weight.sub(fp(0.02))));
 
           let now, startTime: BigNumber, endTime: BigNumber;
@@ -589,6 +596,7 @@ describe('ManagedPool', function () {
             now = await currentTimestamp();
             startTime = now.add(START_DELAY);
             endTime = startTime.add(UPDATE_DURATION);
+            startWeights = await pool.getNormalizedWeights();
 
             await pool.updateWeightsGradually(owner, startTime, endTime, endWeights);
           });
@@ -608,6 +616,7 @@ describe('ManagedPool', function () {
 
             expect(updateParams.startTime).to.equalWithError(startTime, 0.001);
             expect(updateParams.endTime).to.equalWithError(endTime, 0.001);
+            expect(updateParams.startWeights).to.equalWithError(startWeights, 0.001);
             expect(updateParams.endWeights).to.equalWithError(endWeights, 0.001);
           });
         });
