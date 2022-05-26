@@ -228,34 +228,38 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns true if swaps are enabled.
+     * @notice Returns whether swaps are enabled.
      */
     function getSwapEnabled() public view returns (bool) {
         return _getMiscData().decodeBool(_SWAP_ENABLED_OFFSET);
     }
 
     /**
-     * @dev Returns true if the allowlist for LPs is enabled.
+     * @notice Returns whether the allowlist for LPs is enabled.
      */
     function getMustAllowlistLPs() public view returns (bool) {
         return _getMiscData().decodeBool(_MUST_ALLOWLIST_LPS_OFFSET);
     }
 
     /**
-     * @dev Returns whether a given address is allowed to join the pool.
+     * @notice Check an LP address against the allowlist.
+     * @dev If the allowlist is not enabled, this returns true for every address.
+     * @param member - The address to check against the allowlist.
+     * @return true if the given address is allowed to join the pool.
      */
     function isAllowedAddress(address member) public view returns (bool) {
         return !getMustAllowlistLPs() || _allowedAddresses[member];
     }
 
     /**
-     * @dev Returns the management swap fee percentage as an 18-decimal fixed point number.
+     * @notice Returns the management swap fee percentage as an 18-decimal fixed point number.
      */
     function getManagementSwapFeePercentage() public view returns (uint256) {
         return _managementSwapFeePercentage;
     }
 
     /**
+     * @notice Returns the current value of the swap fee percentage.
      * @dev Computes the current swap fee percentage, which can change every block if a gradual swap fee
      * update is in progress.
      */
@@ -272,8 +276,12 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Return start/end times and swap fee percentages. The current swap fee
-     * can be retrieved via `getSwapFeePercentage()`.
+     * @notice Returns the current gradual swap fee update parameters.
+     * @dev The current swap fee can be retrieved via `getSwapFeePercentage()`.
+     * @return startTime - The timestamp when the swap fee update will begin.
+     * @return endTime - The timestamp when the swap fee update will end.
+     * @return startSwapFeePercentage - The starting swap fee percentage (could be different from the current value).
+     * @return endSwapFeePercentage - The final swap fee percentage, when the current timestamp >= endTime.
      */
     function getGradualSwapFeeUpdateParams()
         external
@@ -326,15 +334,19 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the management AUM fee percentage as an 18-decimal fixed point number.
+     * @notice Returns the management AUM fee percentage as an 18-decimal fixed point number.
      */
     function getManagementAumFeePercentage() public view returns (uint256) {
         return _managementAumFeePercentage;
     }
 
     /**
-     * @dev Return starting and ending times and weights.
-     * Current weights should be retrieved via `getNormalizedWeights()`.
+     * @notice Returns the current gradual weight change update parameters.
+     * @dev The current weights can be retrieved via `getNormalizedWeights()`.
+     * @return startTime - The timestamp when the weight update will begin.
+     * @return endTime - The timestamp when the weight update will end.
+     * @return startWeights - The starting weights, when the weight change was initiated.
+     * @return endWeights - The final weights, when the current timestamp >= endTime.
      */
     function getGradualWeightUpdateParams()
         external
@@ -374,7 +386,8 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the normalization factor, which is used to efficiently scale weights when adding and removing
+     * @dev Returns the current sum of denormalized weights.
+     * @dev The normalization factor, which is used to efficiently scale weights when adding and removing.
      * tokens. This value is an internal implementation detail and typically useless from the outside.
      */
     function getDenormalizedWeightSum() public view returns (uint256) {
@@ -390,8 +403,17 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Schedule a gradual weight change, from the current weights to the given endWeights,
-     * over startTime to endTime.
+     * @notice Schedule a gradual weight change.
+     * @dev The weights will change from their current values to the given endWeights, over startTime to endTime.
+     * This is a permissioned function.
+     *
+     * Since, unlike with swap fee updates, we do not generally want to allow instantanous weight changes,
+     * the weights always start from their current values. This also guarantees a smooth transition when
+     * updateWeightsGradually is called during an ongoing weight change.
+     * @param startTime - The timestamp when the weight change will begin.
+     * @param endTime - The timestamp when the weight change will end (can be >= startTime).
+     * @param endWeights - The target weights. If the current timestamp >= endTime, `getNormalizedWeights()`
+     * will return these values.
      */
     function updateWeightsGradually(
         uint256 startTime,
@@ -408,9 +430,21 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Schedule a gradual swap fee update, from the starting value (which may or may not be the current
+     * @notice Schedule a gradual swap fee update.
+     * @dev The swap fee will change from the given starting value (which may or may not be the current
      * value) to the given ending fee percentage, over startTime to endTime. Calling this with a starting
      * value avoids requiring an explicit external `setSwapFeePercentage` call.
+     *
+     * Note that calling this with a starting swap fee different from the current value will immediately change the
+     * current swap fee to `startSwapFeePercentage` (including emitting the SwapFeePercentageChanged event),
+     * before commencing the gradual change at `startTime`. Emits the GradualSwapFeeUpdateScheduled event.
+     * This is a permissioned function.
+     *
+     * @param startTime - The timestamp when the swap fee change will begin.
+     * @param endTime - The timestamp when the swap fee change will end (must be >= startTime).
+     * @param startSwapFeePercentage - The starting value for the swap fee change.
+     * @param endSwapFeePercentage - The ending value for the swap fee change. If the current timestamp >= endTime,
+     * `getSwapFeePercentage()` will return this value.
      */
     function updateSwapFeeGradually(
         uint256 startTime,
@@ -432,7 +466,10 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Adds an address to the LP allowlist.
+     * @notice Adds an address to the LP allowlist.
+     * @dev Will fail if the LP allowlist is not enabled, or the address is already allowlisted.
+     * Emits the AllowlistAddressAdded event. This is a permissioned function.
+     * @param member - The address to be added to the allowlist.
      */
     function addAllowedAddress(address member) external authenticate whenNotPaused {
         _require(getMustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
@@ -443,8 +480,11 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Removes an address from the LP allowlist. Do not allow removing addresses while the allowlist
-     * is disabled.
+     * @notice Removes an address from the LP allowlist.
+     * @dev Will fail if the LP allowlist is not enabled, or the address was not previously allowlisted.
+     * Emits the AllowlistAddressRemoved event. Do not allow removing addresses while the allowlist
+     * is disabled. This is a permissioned function.
+     * @param member - The address to be removed from the allowlist.
      */
     function removeAllowedAddress(address member) external authenticate whenNotPaused {
         _require(getMustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
@@ -455,9 +495,11 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Can enable/disable the LP allowlist. Note that any addresses added to the allowlist
-     * will be retained if the allowlist is toggled off and back on again, because adding or removing
-     * addresses is not allowed while the allowlist is disabled.
+     * @notice Enable or disable the LP allowlist.
+     * @dev Note that any addresses added to the allowlist will be retained if the allowlist is toggled off and
+     * back on again, because adding or removing addresses is not allowed while the allowlist is disabled.
+     * Emits the MustAllowlistLPsSet event. This is a permissioned function.
+     * @param mustAllowlistLPs - The new value of the mustAllowlistLPs flag.
      */
     function setMustAllowlistLPs(bool mustAllowlistLPs) external authenticate whenNotPaused {
         _setMustAllowlistLPs(mustAllowlistLPs);
@@ -470,7 +512,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Enable/disable trading
+     * @notice Enable or disable trading.
+     * @dev Emits the SwapEnabledSet event. This is a permissioned function.
+     * @param swapEnabled - The new value of the swap enabled flag.
      */
     function setSwapEnabled(bool swapEnabled) external authenticate whenNotPaused {
         _setSwapEnabled(swapEnabled);
@@ -501,6 +545,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * The stored (denormalized) weights of all other tokens remain unchanged, but `denormWeightSum` will increase,
      * such that the normalized weight of the new token will match the target value, and the normalized weights of
      * all other tokens will be reduced proportionately.
+     *
+     * Emits the TokenAdded event. This is a permissioned function.
+     *
      * @param token - The ERC20 token to be added to the Pool.
      * @param normalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
      * @param tokenAmountIn - The amount of `token` to be sent to the pool as its initial balance.
@@ -639,11 +686,14 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token removal
      * is also forbidden during a weight change, or if one is scheduled to happen in the future.
      *
+     * Emits the TokenRemoved event. This is a permissioned function.
+     *
      * The caller may additionally pass a non-zero `burnAmount` to burn some of their BPT, which might be useful
-     * in some scenarios to account for the fact that the Pool now has fewer tokens.
+     * in some scenarios to account for the fact that the Pool now has fewer tokens. This is a permissioned function.
      * @param token - The ERC20 token to be removed from the Pool.
      * @param recipient - The address to receive the Pool's balance of `token` after it is removed.
-     * @param burnAmount - The amount of BPT to be burnt after removing `token` from the Pool.
+     * @param burnAmount - The amount of BPT to be burned after removing `token` from the Pool.
+     * @param minAmountOut - Will revert if the number of tokens transferred from the Vault is less than this value.
      * @return The amount of tokens the Pool held, sent to `recipient`.
      */
     function removeToken(
@@ -730,7 +780,10 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Validate and set the management fee percentage
+     * @notice Setter for the management swap fee percentage.
+     * @dev Attempting to collect swap fees in excess of the maximum permitted percentage will revert.
+     * Emits the ManagementSwapFeePercentageChanged event. This is a permissioned function.
+     * @param managementSwapFeePercentage - The new management swap fee percentage.
      */
     function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) external authenticate whenNotPaused {
         _setManagementSwapFeePercentage(managementSwapFeePercentage);
@@ -747,8 +800,12 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @notice Sets the yearly percentage AUM management fee, which is payable to the pool manager.
+     * @notice Setter for the yearly percentage AUM management fee, which is payable to the pool manager.
      * @dev Attempting to collect AUM fees in excess of the maximum permitted percentage will revert.
+     * To avoid retroactive fee increases, we force collection at the current fee percentage before processing
+     * the update. Emits the ManagementAumFeePercentageChanged event. This is a permissioned function.
+     * @param managementAumFeePercentage - The new management AUM fee percentage.
+     * @return amount - The amount of BPT minted to the manager before the update, if any.
      */
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage)
         external
@@ -780,6 +837,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * @notice Collect any accrued AUM fees and send them to the pool manager.
      * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
      * joins and exits.
+     * @return The amount of BPT minted to the manager.
      */
     function collectAumManagementFees() external returns (uint256) {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
