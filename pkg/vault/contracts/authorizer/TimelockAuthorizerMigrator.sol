@@ -197,7 +197,7 @@ contract TimelockAuthorizerMigrator {
         require(newAuthorizer.canExecute(rootChangeExecutionId), "CANNOT_TRIGGER_ROOT_CHANGE_YET");
         newAuthorizer.execute(rootChangeExecutionId);
     }
-    
+
     // Helper functions
 
     function _arr(bytes32 a) internal pure returns (bytes32[] memory arr) {
