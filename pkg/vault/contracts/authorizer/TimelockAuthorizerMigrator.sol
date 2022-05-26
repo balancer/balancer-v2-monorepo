@@ -50,6 +50,9 @@ contract TimelockAuthorizerMigrator {
         address target;
     }
 
+    /**
+     * @dev Reverts if _rolesData contains a role for an account which doesn't hold the same role on the old Authorizer.
+     */
     constructor(
         IVault _vault,
         address _root,
@@ -68,14 +71,19 @@ contract TimelockAuthorizerMigrator {
 
         for (uint256 i = 0; i < _rolesData.length; i++) {
             RoleData memory roleData = _rolesData[i];
+            // We require that any permissions being copied from the old Authorizer must exist on the old Authorizer.
+            // This simplifies verification of the permissions being added to the new TimelockAuthorizer.
             require(_oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target), "UNEXPECTED_ROLE");
             rolesData.push(roleData);
         }
         for (uint256 i = 0; i < _grantersData.length; i++) {
-            grantersData.push(_grantersData[i]);
+            // There's no concept of a "granter" on the old Authorizer so we cannot verify these onchain.
+            // We must manually verify that these permissions are set sensibly.
+            grantersData.push(RoleData(_grantersData[i].grantee, _grantersData[i].role, _grantersData[i].target));
         }
         for (uint256 i = 0; i < _revokersData.length; i++) {
-            revokersData.push(_revokersData[i]);
+            // Similarly to granters, we must manually verify that these permissions are set sensibly.
+            revokersData.push(RoleData(_revokersData[i].grantee, _revokersData[i].role, _revokersData[i].target));
         }
 
         // Enqueue a root change execution in the new authorizer to set it to the desired root address
@@ -83,7 +91,7 @@ contract TimelockAuthorizerMigrator {
     }
 
     /**
-     * @dev Tells whether the migration has been completed or not
+     * @notice Returns whether the migration has been completed or not
      */
     function isComplete() public view returns (bool) {
         // As we set up the revoker roles last we can use them to determine whether the full migration is complete.
@@ -118,12 +126,21 @@ contract TimelockAuthorizerMigrator {
         vault.setAuthorizer(newAuthorizer);
     }
 
+    // Internal Functions
+
+    /**
+     * @notice Migrates to TimelockAuthorizer by setting up roles from the old Authorizer and new granters/revokers.
+     * @param n The number of permissions to set up on the new TimelockAuthorizer.
+     */
     function _migrate(uint256 n) internal {
         uint256 rolesToMigrate = _migrateExistingRoles(n);
         rolesToMigrate = _setupGranters(rolesToMigrate);
         _setupRevokers(rolesToMigrate);
     }
 
+    /**
+     * @notice Migrates listed roles from the old Authorizer to the new TimelockAuthorizer.
+     */
     function _migrateExistingRoles(uint256 n) internal returns (uint256 remainingRolesToMigrate) {
         uint256 i = existingRolesMigrated;
         uint256 to = Math.min(i + n, rolesData.length);
@@ -137,6 +154,9 @@ contract TimelockAuthorizerMigrator {
         existingRolesMigrated = i;
     }
 
+    /**
+     * @notice Sets up granters for the listed roles on the new TimelockAuthorizer.
+     */
     function _setupGranters(uint256 n) internal returns (uint256 remainingRolesToMigrate) {
         uint256 i = grantersMigrated;
         uint256 to = Math.min(i + n, grantersData.length);
@@ -150,6 +170,9 @@ contract TimelockAuthorizerMigrator {
         grantersMigrated = i;
     }
 
+    /**
+     * @notice Sets up revokers for the listed roles on the new TimelockAuthorizer.
+     */
     function _setupRevokers(uint256 n) internal {
         uint256 i = revokersMigrated;
         uint256 to = Math.min(i + n, revokersData.length);
@@ -162,6 +185,9 @@ contract TimelockAuthorizerMigrator {
         revokersMigrated = i;
     }
 
+    /**
+     * @notice Begins transfer of root powers from the migrator to the specified address once all roles are migrated.
+     */
     function _afterMigrate() internal {
         // Execute only once after the migration ends
         if (!isComplete()) return;
@@ -171,6 +197,8 @@ contract TimelockAuthorizerMigrator {
         require(newAuthorizer.canExecute(rootChangeExecutionId), "CANNOT_TRIGGER_ROOT_CHANGE_YET");
         newAuthorizer.execute(rootChangeExecutionId);
     }
+    
+    // Helper functions
 
     function _arr(bytes32 a) internal pure returns (bytes32[] memory arr) {
         arr = new bytes32[](1);
