@@ -200,6 +200,7 @@ export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
 export type GradualWeightUpdateParams = {
   startTime: BigNumber;
   endTime: BigNumber;
+  startWeights: BigNumber[];
   endWeights: BigNumber[];
 };
 
