@@ -37,7 +37,7 @@ describe('TimelockAuthorizerMigrator', () => {
   });
 
   sharedBeforeEach('set up permissions', async () => {
-    const target = await deploy('MockAuthenticatedContract');
+    const target = await deploy('MockAuthenticatedContract', { args: [vault.address] });
     rolesData = [
       { grantee: user1.address, role: ROLE_1, target: target.address },
       { grantee: user2.address, role: ROLE_2, target: target.address },
