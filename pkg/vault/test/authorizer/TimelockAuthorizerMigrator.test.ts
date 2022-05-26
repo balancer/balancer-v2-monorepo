@@ -18,9 +18,15 @@ describe('TimelockAuthorizerMigrator', () => {
     [, user1, user2, user3, granter1, granter2, granter3, root] = await ethers.getSigners();
   });
 
-  let rolesData: Array<{ grantee: string; role: string; target: string }>;
-  let grantersData: Array<{ grantee: string; role: string; target: string }>;
-  let revokersData: Array<{ grantee: string; role: string; target: string }>;
+  interface RoleData {
+    grantee: string;
+    role: string;
+    target: string;
+  }
+
+  let rolesData: RoleData[];
+  let grantersData: RoleData[];
+  let revokersData: RoleData[];
   const ROLE_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
   const ROLE_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
   const ROLE_3 = '0x0000000000000000000000000000000000000000000000000000000000000003';
@@ -31,21 +37,21 @@ describe('TimelockAuthorizerMigrator', () => {
   });
 
   sharedBeforeEach('set up permissions', async () => {
-    const target = await deploy('MockBasicAuthorizer'); // any contract
+    const target = await deploy('MockAuthenticatedContract');
     rolesData = [
       { grantee: user1.address, role: ROLE_1, target: target.address },
       { grantee: user2.address, role: ROLE_2, target: target.address },
-      { grantee: user3.address, role: ROLE_3, target: target.address },
+      { grantee: user3.address, role: ROLE_3, target: ZERO_ADDRESS },
     ];
     grantersData = [
       { grantee: granter1.address, role: ROLE_1, target: target.address },
-      { grantee: granter2.address, role: ROLE_2, target: target.address },
+      { grantee: granter2.address, role: ROLE_2, target: ZERO_ADDRESS },
       { grantee: granter3.address, role: ROLE_3, target: target.address },
     ];
     revokersData = [
       { grantee: user1.address, role: ROLE_1, target: target.address },
       { grantee: granter1.address, role: ROLE_2, target: target.address },
-      { grantee: user3.address, role: ROLE_3, target: target.address },
+      { grantee: user3.address, role: ROLE_3, target: ZERO_ADDRESS },
     ];
   });
 
