@@ -6,11 +6,13 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
-import { ANY_ADDRESS, MAX_UINT256, MAX_UINT32 } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, MAX_UINT256, MAX_UINT32, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceToTimestamp, currentTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { BigNumberish, maxUint } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 const MAX_UINT224 = maxUint(224);
 const HEAD = 0;
@@ -29,7 +31,7 @@ type RewardNode = {
   nextTimestamp: number;
 };
 
-describe('ChildChainDistributionScheduler', () => {
+describe.only('ChildChainDistributionScheduler', () => {
   let vault: Vault;
   let adaptor: Contract;
 
@@ -42,10 +44,10 @@ describe('ChildChainDistributionScheduler', () => {
 
   let gaugeTokenAdder: Contract;
 
-  let admin: SignerWithAddress, caller: SignerWithAddress;
+  let admin: SignerWithAddress, caller: SignerWithAddress, other: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, admin, caller] = await ethers.getSigners();
+    [, admin, caller, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy gauge', async () => {
@@ -437,6 +439,89 @@ describe('ChildChainDistributionScheduler', () => {
         },
         rewardToken2.address
       );
+    });
+  });
+
+  describe('recoverInvalidPendingRewards', () => {
+    const amount = 42;
+
+    sharedBeforeEach('set reward token distributor to DistributionScheduler', async () => {
+      await gaugeTokenAdder
+        .connect(admin)
+        .addTokenToGauge(gauge.address, rewardToken.address, distributionScheduler.address);
+    });
+
+    sharedBeforeEach('schedule distributions', async () => {
+      const startTime = roundUpTimestamp(await currentTimestamp());
+      const distributionTimes = [0, WEEK, 2 * WEEK, 10 * 52 * WEEK].map((delay) => startTime.add(delay));
+      for (const distributionTime of distributionTimes) {
+        await scheduleDistribution(amount, distributionTime);
+      }
+    });
+
+    context('when caller is not authorized', () => {
+      it('reverts', async () => {
+        await expect(
+          distributionScheduler
+            .connect(other)
+            .recoverInvalidPendingRewards(gauge.address, rewardToken.address, other.address)
+        ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+    });
+
+    context('when caller is authorized', () => {
+      sharedBeforeEach('authorize admin to recover funds', async () => {
+        const recoverRewardsActionId = await actionId(distributionScheduler, 'recoverInvalidPendingRewards');
+        await vault.grantPermissionsGlobally([recoverRewardsActionId], admin);
+      });
+
+      context('when rewards are still able to be sent to the gauge', () => {
+        it('reverts', async () => {
+          await expect(
+            distributionScheduler
+              .connect(admin)
+              .recoverInvalidPendingRewards(gauge.address, rewardToken.address, other.address)
+          ).to.be.revertedWith('Reward token can still be distributed to gauge');
+        });
+      });
+
+      context('when rewards are no longer able to be sent to the gauge', () => {
+        sharedBeforeEach('remove reward token from streamer', async () => {
+          const removeRewardActionId = await actionId(adaptor, 'remove_reward', streamer.interface);
+          await vault.grantPermissionsGlobally([removeRewardActionId], admin);
+
+          await adaptor
+            .connect(admin)
+            .performAction(
+              streamer.address,
+              streamer.interface.encodeFunctionData('remove_reward', [rewardToken.address, ANY_ADDRESS])
+            );
+        });
+
+        it('sends the expected number of reward tokens to the recipient', async () => {
+          const schedulerBalanceBefore = await rewardToken.balanceOf(distributionScheduler);
+          await expectBalanceChange(
+            () =>
+              distributionScheduler
+                .connect(admin)
+                .recoverInvalidPendingRewards(gauge.address, rewardToken.address, other.address),
+            new TokenList([rewardToken]),
+            [
+              { account: distributionScheduler, changes: { [rewardToken.symbol]: schedulerBalanceBefore.mul(-1) } },
+              { account: other, changes: { [rewardToken.symbol]: schedulerBalanceBefore } },
+            ]
+          );
+        });
+
+        it('resets the head node for this token and gauge', async () => {
+          await distributionScheduler
+            .connect(admin)
+            .recoverInvalidPendingRewards(gauge.address, rewardToken.address, other.address);
+
+          const headNode = await getRewardNode(0);
+          expect(headNode.nextTimestamp).to.be.eq(0);
+        });
+      });
     });
   });
 });
