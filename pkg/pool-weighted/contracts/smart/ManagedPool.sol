@@ -260,13 +260,12 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * update is in progress.
      */
     function getSwapFeePercentage() public view virtual override returns (uint256) {
-        // Load the current pool state from storage
-        bytes32 poolState = _getMiscData();
-
-        uint256 startSwapFeePercentage = poolState.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
-        uint256 endSwapFeePercentage = poolState.decodeUint64(_END_SWAP_FEE_PERCENTAGE_OFFSET);
-        uint256 startTime = poolState.decodeUint31(_FEE_START_TIME_OFFSET);
-        uint256 endTime = poolState.decodeUint31(_FEE_END_TIME_OFFSET);
+        (
+            uint256 startTime,
+            uint256 endTime,
+            uint256 startSwapFeePercentage,
+            uint256 endSwapFeePercentage
+        ) = _getSwapFeeFields();
 
         return
             GradualValueChange.getInterpolatedValue(startSwapFeePercentage, endSwapFeePercentage, startTime, endTime);
@@ -278,6 +277,19 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      */
     function getGradualSwapFeeUpdateParams()
         external
+        view
+        returns (
+            uint256 startTime,
+            uint256 endTime,
+            uint256 startSwapFeePercentage,
+            uint256 endSwapFeePercentage
+        )
+    {
+        (startTime, endTime, startSwapFeePercentage, endSwapFeePercentage) = _getSwapFeeFields();
+    }
+
+    function _getSwapFeeFields()
+        private
         view
         returns (
             uint256 startTime,
@@ -321,7 +333,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @dev Return start time, end time, and endWeights as an array.
+     * @dev Return starting and ending times and weights.
      * Current weights should be retrieved via `getNormalizedWeights()`.
      */
     function getGradualWeightUpdateParams()
@@ -330,6 +342,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         returns (
             uint256 startTime,
             uint256 endTime,
+            uint256[] memory startWeights,
             uint256[] memory endWeights
         )
     {
@@ -342,12 +355,19 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         uint256 totalTokens = tokens.length;
 
+        startWeights = new uint256[](totalTokens);
         endWeights = new uint256[](totalTokens);
 
         uint256 denormWeightSum = _denormWeightSum;
         for (uint256 i = 0; i < totalTokens; i++) {
+            bytes32 state = _tokenState[tokens[i]];
+
+            startWeights[i] = _normalizeWeight(
+                state.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT),
+                denormWeightSum
+            );
             endWeights[i] = _normalizeWeight(
-                _tokenState[tokens[i]].decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT),
+                state.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT),
                 denormWeightSum
             );
         }
@@ -801,6 +821,8 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             );
     }
 
+    // This could be simplified by simply iteratively calling _getNormalizedWeight(), but this routine is
+    // called very frequently, so we are optimizing for runtime performance.
     function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         uint256 numTokens = tokens.length;
