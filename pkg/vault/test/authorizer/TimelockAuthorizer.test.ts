@@ -2408,6 +2408,22 @@ describe('TimelockAuthorizer', () => {
         expect(await authorizer.isRoot(grantee)).to.be.true;
       });
 
+      it('revokes powers to grant and revoke WHATEVER on EVERYWHERE from current root', async () => {
+        expect(await authorizer.isGranter(WHATEVER, admin, EVERYWHERE)).to.be.true;
+        expect(await authorizer.isRevoker(WHATEVER, admin, EVERYWHERE)).to.be.true;
+        await authorizer.claimRoot({ from: grantee });
+        expect(await authorizer.isGranter(WHATEVER, admin, EVERYWHERE)).to.be.false;
+        expect(await authorizer.isRevoker(WHATEVER, admin, EVERYWHERE)).to.be.false;
+      });
+
+      it('grants powers to grant and revoke WHATEVER on EVERYWHERE to the pending root', async () => {
+        expect(await authorizer.isGranter(WHATEVER, grantee, EVERYWHERE)).to.be.false;
+        expect(await authorizer.isRevoker(WHATEVER, grantee, EVERYWHERE)).to.be.false;
+        await authorizer.claimRoot({ from: grantee });
+        expect(await authorizer.isGranter(WHATEVER, grantee, EVERYWHERE)).to.be.true;
+        expect(await authorizer.isRevoker(WHATEVER, grantee, EVERYWHERE)).to.be.true;
+      });
+
       it('resets the pending root address to the zero address', async () => {
         await authorizer.claimRoot({ from: grantee });
         expect(await authorizer.isPendingRoot(admin)).to.be.false;

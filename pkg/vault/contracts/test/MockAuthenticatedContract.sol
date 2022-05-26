@@ -25,7 +25,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
  * to test Authorizer functionality independent of specific Vault functions.
  */
 contract MockAuthenticatedContract is SingletonAuthentication {
-
     event ProtectedFunctionCalled(bytes data);
     event SecondProtectedFunctionCalled(bytes data);
 
