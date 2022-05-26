@@ -228,16 +228,14 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @notice Getter for the swap enabled flag.
-     * @return true if swaps are enabled.
+     * @notice Returns whether swaps are enabled.
      */
     function getSwapEnabled() public view returns (bool) {
         return _getMiscData().decodeBool(_SWAP_ENABLED_OFFSET);
     }
 
     /**
-     * @notice Getter for the LP allowlist flag.
-     * @return true if the allowlist for LPs is enabled.
+     * @notice Returns whether the allowlist for LPs is enabled.
      */
     function getMustAllowlistLPs() public view returns (bool) {
         return _getMiscData().decodeBool(_MUST_ALLOWLIST_LPS_OFFSET);
@@ -254,34 +252,31 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @notice Getter for the management swap fee percentage.
-     * @return The management swap fee percentage as an 18-decimal fixed point number.
+     * @notice Returns the management swap fee percentage as an 18-decimal fixed point number.
      */
     function getManagementSwapFeePercentage() public view returns (uint256) {
         return _managementSwapFeePercentage;
     }
 
     /**
-     * @notice Getter for the current swap fee percentage.
+     * @notice Returns the current value of the swap fee percentage.
      * @dev Computes the current swap fee percentage, which can change every block if a gradual swap fee
      * update is in progress.
-     * @return The current value of the swap fee percentage.
      */
     function getSwapFeePercentage() public view virtual override returns (uint256) {
-        // Load the current pool state from storage
-        bytes32 poolState = _getMiscData();
-
-        uint256 startSwapFeePercentage = poolState.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
-        uint256 endSwapFeePercentage = poolState.decodeUint64(_END_SWAP_FEE_PERCENTAGE_OFFSET);
-        uint256 startTime = poolState.decodeUint31(_FEE_START_TIME_OFFSET);
-        uint256 endTime = poolState.decodeUint31(_FEE_END_TIME_OFFSET);
+        (
+            uint256 startTime,
+            uint256 endTime,
+            uint256 startSwapFeePercentage,
+            uint256 endSwapFeePercentage
+        ) = _getSwapFeeFields();
 
         return
             GradualValueChange.getInterpolatedValue(startSwapFeePercentage, endSwapFeePercentage, startTime, endTime);
     }
 
     /**
-     * @notice Getter for the current gradual swap fee update parameters.
+     * @notice Returns the current gradual swap fee update parameters.
      * @dev The current swap fee can be retrieved via `getSwapFeePercentage()`.
      * @return startTime - The timestamp when the swap fee update will begin.
      * @return endTime - The timestamp when the swap fee update will end.
@@ -290,6 +285,19 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      */
     function getGradualSwapFeeUpdateParams()
         external
+        view
+        returns (
+            uint256 startTime,
+            uint256 endTime,
+            uint256 startSwapFeePercentage,
+            uint256 endSwapFeePercentage
+        )
+    {
+        (startTime, endTime, startSwapFeePercentage, endSwapFeePercentage) = _getSwapFeeFields();
+    }
+
+    function _getSwapFeeFields()
+        private
         view
         returns (
             uint256 startTime,
@@ -326,15 +334,14 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     }
 
     /**
-     * @notice Getter for the management AUM fee percentage.
-     * @return The management AUM fee percentage as an 18-decimal fixed point number.
+     * @notice Returns the management AUM fee percentage as an 18-decimal fixed point number.
      */
     function getManagementAumFeePercentage() public view returns (uint256) {
         return _managementAumFeePercentage;
     }
 
     /**
-     * @notice Getter for the current gradual weight change update parameters.
+     * @notice Returns the current gradual weight change update parameters.
      * @dev The current weights can be retrieved via `getNormalizedWeights()`.
      * @return startTime - The timestamp when the weight update will begin.
      * @return endTime - The timestamp when the weight update will end.
@@ -346,6 +353,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         returns (
             uint256 startTime,
             uint256 endTime,
+            uint256[] memory startWeights,
             uint256[] memory endWeights
         )
     {
@@ -358,22 +366,28 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         uint256 totalTokens = tokens.length;
 
+        startWeights = new uint256[](totalTokens);
         endWeights = new uint256[](totalTokens);
 
         uint256 denormWeightSum = _denormWeightSum;
         for (uint256 i = 0; i < totalTokens; i++) {
+            bytes32 state = _tokenState[tokens[i]];
+
+            startWeights[i] = _normalizeWeight(
+                state.decodeUint64(_START_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT),
+                denormWeightSum
+            );
             endWeights[i] = _normalizeWeight(
-                _tokenState[tokens[i]].decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT),
+                state.decodeUint64(_END_DENORM_WEIGHT_OFFSET).uncompress64(_MAX_DENORM_WEIGHT),
                 denormWeightSum
             );
         }
     }
 
     /**
-     * @dev Getter for the current sum of denormalized weights.
+     * @dev Returns the current sum of denormalized weights.
      * @dev The normalization factor, which is used to efficiently scale weights when adding and removing.
      * tokens. This value is an internal implementation detail and typically useless from the outside.
-     * @return The denormalized weight sum.
      */
     function getDenormalizedWeightSum() public view returns (uint256) {
         return _denormWeightSum;
@@ -864,6 +878,8 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             );
     }
 
+    // This could be simplified by simply iteratively calling _getNormalizedWeight(), but this routine is
+    // called very frequently, so we are optimizing for runtime performance.
     function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         uint256 numTokens = tokens.length;
