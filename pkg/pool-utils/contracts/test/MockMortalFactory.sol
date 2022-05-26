@@ -16,12 +16,22 @@ pragma solidity ^0.7.0;
 
 import "../factories/MortalFactory.sol";
 
-contract MockMortalFactory is MortalFactory {
-    constructor(IVault vault) MortalFactory(vault) {
+import "./MockPoolFactory.sol";
+
+contract MockMortalFactory is MortalFactory, MockPoolFactory {
+    constructor(IVault vault) MortalFactory(vault) MockPoolFactory(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function create() external {
+    /**
+     * @dev Returns the Vault's address.
+     */
+    function getVault() public view override(BasePoolFactory, SingletonAuthentication) returns (IVault) {
+        return super.getVault();
+    }
+
+    function create() external override returns (address) {
         _ensureEnabled();
+        return super.create();
     }
 }

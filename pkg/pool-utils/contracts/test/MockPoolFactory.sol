@@ -25,7 +25,7 @@ contract MockPoolFactory is BasePoolFactory {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function create() external returns (address) {
+    function create() external virtual returns (address) {
         address pool = address(new MockFactoryCreatedPool());
         _register(pool);
         return pool;
