@@ -6,7 +6,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
-import { ANY_ADDRESS, MAX_UINT256, MAX_UINT32, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, MAX_UINT256, MAX_UINT32 } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceToTimestamp, currentTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { BigNumberish, maxUint } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
