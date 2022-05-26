@@ -69,13 +69,13 @@ contract TimelockAuthorizerMigrator {
         for (uint256 i = 0; i < _rolesData.length; i++) {
             RoleData memory roleData = _rolesData[i];
             require(_oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target), "UNEXPECTED_ROLE");
-            rolesData.push(RoleData(roleData.grantee, roleData.role, roleData.target));
+            rolesData.push(roleData);
         }
         for (uint256 i = 0; i < _grantersData.length; i++) {
-            grantersData.push(RoleData(_grantersData[i].grantee, _grantersData[i].role, _grantersData[i].target));
+            grantersData.push(_grantersData[i]);
         }
         for (uint256 i = 0; i < _revokersData.length; i++) {
-            revokersData.push(RoleData(_revokersData[i].grantee, _revokersData[i].role, _revokersData[i].target));
+            revokersData.push(_revokersData[i]);
         }
 
         // Enqueue a root change execution in the new authorizer to set it to the desired root address
