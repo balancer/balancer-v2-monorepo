@@ -22,4 +22,7 @@ export default {
   arbitrum: {
     BAL: '0x040d1EdC9569d4Bab2D15287Dc5A4F10F56a56B8',
   },
+  optimism: {
+    BAL: '0xFE8B128bA8C78aabC59d4c64cEE7fF28e9379921',
+  },
 };
