@@ -14,41 +14,25 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISmartWalletChecker.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-
-import "./interfaces/ISmartWalletChecker.sol";
-
-contract SmartWalletChecker is ISmartWalletChecker, Authentication {
+contract SmartWalletChecker is ISmartWalletChecker, SingletonAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
-
-    IVault private immutable _vault;
 
     event ContractAddressAdded(address contractAddress);
     event ContractAddressRemoved(address contractAddress);
 
     EnumerableSet.AddressSet private _allowlistedAddresses;
 
-    constructor(IVault vault, address[] memory initialAllowedAddresses)
-        Authentication(bytes32(uint256(address(this))))
-    {
-        // SmartWalletChecker is a singleton, so it simply uses its own address to disambiguate action identifiers
-        _vault = vault;
-
+    constructor(IVault vault, address[] memory initialAllowedAddresses) SingletonAuthentication(vault) {
         uint256 addressesLength = initialAllowedAddresses.length;
         for (uint256 i = 0; i < addressesLength; ++i) {
             _allowlistAddress(initialAllowedAddresses[i]);
         }
-    }
-
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
-
-    function getAuthorizer() public view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
     }
 
     function check(address contractAddress) external view override returns (bool) {
@@ -77,9 +61,5 @@ contract SmartWalletChecker is ISmartWalletChecker, Authentication {
     function _allowlistAddress(address contractAddress) internal {
         require(_allowlistedAddresses.add(contractAddress), "Address already allowlisted");
         emit ContractAddressAdded(contractAddress);
-    }
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, address(this));
     }
 }

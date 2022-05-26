@@ -15,20 +15,22 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+
+import "@balancer-labs/v2-interfaces/contracts/vault/IPoolSwapStructs.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeCast.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "./PoolBalances.sol";
-import "./interfaces/IPoolSwapStructs.sol";
-import "./interfaces/IGeneralPool.sol";
-import "./interfaces/IMinimalSwapInfoPool.sol";
 import "./balances/BalanceAllocation.sol";
 
 /**

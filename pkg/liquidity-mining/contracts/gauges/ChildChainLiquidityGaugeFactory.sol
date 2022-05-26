@@ -15,27 +15,13 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IChildChainLiquidityGaugeFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGauge.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
-import "../interfaces/ILiquidityGauge.sol";
-import "../interfaces/ILiquidityGaugeFactory.sol";
-
-interface IRewardsOnlyGauge {
-    function initialize(
-        address pool,
-        address streamer,
-        bytes32 claimSignature
-    ) external;
-
-    function lp_token() external view returns (IERC20);
-}
-
-interface IChildChainStreamer {
-    function initialize(address gauge) external;
-}
-
-contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory {
+contract ChildChainLiquidityGaugeFactory is IChildChainLiquidityGaugeFactory {
     // RewardsOnlyGauge expects the claim function selector to be left padded with zeros.
     // We then shift right 28 bytes so that the function selector (top 4 bytes) sits in the lowest 4 bytes.
     bytes32 private constant _CLAIM_SIG = keccak256("get_reward()") >> (28 * 8);
@@ -48,8 +34,6 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory {
     mapping(address => address) private _poolGauge;
     mapping(address => address) private _gaugeStreamer;
 
-    event RewardsOnlyGaugeCreated(address indexed gauge, address indexed pool, address streamer);
-
     constructor(ILiquidityGauge gauge, IChildChainStreamer childChainStreamer) {
         _gaugeImplementation = gauge;
         _childChainStreamerImplementation = childChainStreamer;
@@ -58,21 +42,21 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory {
     /**
      * @notice Returns the address of the implementation used for gauge deployments.
      */
-    function getGaugeImplementation() external view returns (ILiquidityGauge) {
+    function getGaugeImplementation() external view override returns (ILiquidityGauge) {
         return _gaugeImplementation;
     }
 
     /**
      * @notice Returns the address of the implementation used for streamer deployments.
      */
-    function getChildChainStreamerImplementation() external view returns (IChildChainStreamer) {
+    function getChildChainStreamerImplementation() external view override returns (IChildChainStreamer) {
         return _childChainStreamerImplementation;
     }
 
     /**
      * @notice Returns the address of the gauge belonging to `pool`.
      */
-    function getPoolGauge(address pool) public view returns (ILiquidityGauge) {
+    function getPoolGauge(address pool) public view override returns (ILiquidityGauge) {
         return ILiquidityGauge(_poolGauge[pool]);
     }
 
@@ -86,28 +70,28 @@ contract ChildChainLiquidityGaugeFactory is ILiquidityGaugeFactory {
     /**
      * @notice Returns the address of the streamer belonging to `gauge`.
      */
-    function getGaugeStreamer(address gauge) public view returns (address) {
+    function getGaugeStreamer(address gauge) public view override returns (address) {
         return _gaugeStreamer[gauge];
     }
 
     /**
      * @notice Returns true if `streamer` was created by this factory.
      */
-    function isStreamerFromFactory(address streamer) external view returns (bool) {
+    function isStreamerFromFactory(address streamer) external view override returns (bool) {
         return _isStreamerFromFactory[streamer];
     }
 
     /**
      * @notice Returns the address of the pool which `gauge` belongs.
      */
-    function getGaugePool(address gauge) external view returns (IERC20) {
+    function getGaugePool(address gauge) external view override returns (IERC20) {
         return IRewardsOnlyGauge(gauge).lp_token();
     }
 
     /**
      * @notice Returns the address of the streamer belonging to `pool`'s gauge.
      */
-    function getPoolStreamer(address pool) external view returns (address) {
+    function getPoolStreamer(address pool) external view override returns (address) {
         return getGaugeStreamer(address(getPoolGauge(pool)));
     }
 

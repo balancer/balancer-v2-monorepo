@@ -11,7 +11,7 @@ import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/w
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { advanceToTimestamp, currentTimestamp, DAY, MINUTE, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigners, impersonateWhale } from '../../../src/signers';
 
@@ -19,7 +19,7 @@ describe('InvestmentPoolFactory', function () {
   let owner: SignerWithAddress, wallet: SignerWithAddress, whale: SignerWithAddress;
   let pool: Contract, factory: Contract, vault: Contract, usdc: Contract, dai: Contract;
 
-  const task = Task.forTest('20210907-investment-pool', getForkedNetwork(hre));
+  const task = new Task('20210907-investment-pool', TaskMode.TEST, getForkedNetwork(hre));
 
   const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f';
   const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -49,7 +49,7 @@ describe('InvestmentPoolFactory', function () {
   });
 
   before('load vault and tokens', async () => {
-    const vaultTask = Task.forTest('20210418-vault', getForkedNetwork(hre));
+    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     vault = await vaultTask.instanceAt('Vault', await factory.getVault());
     dai = await task.instanceAt('IERC20', DAI);
     usdc = await task.instanceAt('IERC20', USDC);

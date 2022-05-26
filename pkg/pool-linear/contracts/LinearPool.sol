@@ -15,18 +15,18 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-linear/LinearPoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
+
+import "@balancer-labs/v2-pool-utils/contracts/LegacyBasePool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/LegacyBasePool.sol";
-import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
-import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
-
-import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
-
 import "./LinearMath.sol";
-import "./LinearPoolUserData.sol";
 
 /**
  * @dev Linear Pools are designed to hold two assets: "main" and "wrapped" tokens that have an equal value underlying

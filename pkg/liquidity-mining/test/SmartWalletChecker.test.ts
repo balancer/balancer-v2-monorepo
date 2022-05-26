@@ -11,7 +11,6 @@ import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constan
 
 describe('SmartWalletChecker', () => {
   let vault: Vault;
-  let authorizer: Contract;
   let smartWalletChecker: Contract;
 
   let admin: SignerWithAddress, caller: SignerWithAddress;
@@ -22,8 +21,6 @@ describe('SmartWalletChecker', () => {
 
   sharedBeforeEach('deploy SmartWalletChecker', async () => {
     vault = await Vault.create({ admin });
-    if (!vault.authorizer) throw Error('Vault has no Authorizer');
-    authorizer = vault.authorizer;
 
     smartWalletChecker = await deploy('SmartWalletChecker', { args: [vault.address, []] });
   });
@@ -35,23 +32,6 @@ describe('SmartWalletChecker', () => {
   });
 
   describe('constructor', () => {
-    it('sets the vault address', async () => {
-      expect(await smartWalletChecker.getVault()).to.be.eq(vault.address);
-    });
-
-    it('uses the authorizer of the vault', async () => {
-      expect(await smartWalletChecker.getAuthorizer()).to.equal(authorizer.address);
-    });
-
-    it('tracks authorizer changes in the vault', async () => {
-      const action = await actionId(vault.instance, 'setAuthorizer');
-      await vault.grantPermissionsGlobally([action], admin.address);
-
-      await vault.instance.connect(admin).setAuthorizer(caller.address);
-
-      expect(await smartWalletChecker.getAuthorizer()).to.equal(caller.address);
-    });
-
     context('when provided with an array of addresses', () => {
       it('adds them all to the allowlist', async () => {
         const initialAllowlistedAddresses = [ZERO_ADDRESS, ANY_ADDRESS];
