@@ -31,7 +31,7 @@ type RewardNode = {
   nextTimestamp: number;
 };
 
-describe.only('ChildChainDistributionScheduler', () => {
+describe('ChildChainDistributionScheduler', () => {
   let vault: Vault;
   let adaptor: Contract;
 
