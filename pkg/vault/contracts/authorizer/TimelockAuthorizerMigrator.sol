@@ -67,7 +67,9 @@ contract TimelockAuthorizerMigrator {
         vault = _vault;
 
         for (uint256 i = 0; i < _rolesData.length; i++) {
-            rolesData.push(RoleData(_rolesData[i].grantee, _rolesData[i].role, _rolesData[i].target));
+            RoleData memory roleData = _rolesData[i];
+            require(_oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target), "UNEXPECTED_ROLE");
+            rolesData.push(RoleData(roleData.grantee, roleData.role, roleData.target));
         }
         for (uint256 i = 0; i < _grantersData.length; i++) {
             grantersData.push(RoleData(_grantersData[i].grantee, _grantersData[i].role, _grantersData[i].target));
@@ -134,7 +136,6 @@ contract TimelockAuthorizerMigrator {
 
         for (; i < to; i++) {
             RoleData memory roleData = rolesData[i];
-            require(oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target), "UNEXPECTED_ROLE");
             newAuthorizer.grantPermissions(_arr(roleData.role), roleData.grantee, _arr(roleData.target));
         }
 
