@@ -28,10 +28,6 @@ contract TimelockAuthorizerMigrator {
     uint256 public constant CHANGE_ROOT_DELAY = 7 days;
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
-    // solhint-disable var-name-mixedcase
-    bytes32 public immutable GRANT_PERMISSION_ACTION_ID;
-    bytes32 public immutable REVOKE_PERMISSION_ACTION_ID;
-
     IVault public immutable vault;
     address public immutable root;
     IBasicAuthorizer public immutable oldAuthorizer;
@@ -67,10 +63,6 @@ contract TimelockAuthorizerMigrator {
         for (uint256 i = 0; i < _rolesData.length; i++) {
             rolesData.push(OldRoleData(_rolesData[i].role, _rolesData[i].target));
         }
-
-        bytes32 id = bytes32(uint256(address(_newAuthorizer)));
-        GRANT_PERMISSION_ACTION_ID = keccak256(abi.encodePacked(id, TimelockAuthorizer.grantPermissions.selector));
-        REVOKE_PERMISSION_ACTION_ID = keccak256(abi.encodePacked(id, TimelockAuthorizer.revokePermissions.selector));
 
         // Enqueue a root change execution in the new authorizer to set it to the desired root address
         rootChangeExecutionId = _newAuthorizer.scheduleRootChange(_root, _arr(address(this)));
@@ -119,19 +111,14 @@ contract TimelockAuthorizerMigrator {
     }
 
     function _migrate(OldRoleData memory roleData) internal {
-        _migrate(roleData.role, roleData.target);
-        _migrate(oldAuthorizer.getRoleAdmin(roleData.role), roleData.target);
-    }
-
-    function _migrate(bytes32 role, address target) internal {
-        address[] memory wheres = _arr(target);
-        bytes32[] memory actionIds = _arr(role);
-        uint256 membersCount = oldAuthorizer.getRoleMemberCount(role);
+        address[] memory wheres = _arr(roleData.target);
+        bytes32[] memory actionIds = _arr(roleData.role);
+        uint256 membersCount = oldAuthorizer.getRoleMemberCount(roleData.role);
 
         // Iterate over the accounts that had the role granted in the old authorizer, granting
         // the permission for the same role for the specified target in the new authorizer.
         for (uint256 i = 0; i < membersCount; i++) {
-            address member = oldAuthorizer.getRoleMember(role, i);
+            address member = oldAuthorizer.getRoleMember(roleData.role, i);
             newAuthorizer.grantPermissions(actionIds, member, wheres);
         }
     }
@@ -139,20 +126,6 @@ contract TimelockAuthorizerMigrator {
     function _afterMigrate() internal {
         // Execute only once after the migration ends
         if (!isComplete()) return;
-
-        // Grant permissions for `TimelockAuthorizer.grantPermissions` and `TimelockAuthorizer.revokePermissions`
-        // on `TimelockAuthorizer.EVERYWHERE` and `TimelockAuthorizer.WHATEVER` to all the default admins defined
-        // in the old authorizer
-        bytes32 grantWhateverActionId = newAuthorizer.getActionId(GRANT_PERMISSION_ACTION_ID, WHATEVER);
-        bytes32 revokeWhateverActionId = newAuthorizer.getActionId(REVOKE_PERMISSION_ACTION_ID, WHATEVER);
-        bytes32[] memory actionIds = _arr(grantWhateverActionId, revokeWhateverActionId);
-        address[] memory wheres = _arr(EVERYWHERE, EVERYWHERE);
-        uint256 defaultAdminsCount = oldAuthorizer.getRoleMemberCount(DEFAULT_ADMIN_ROLE);
-        for (uint256 i = 0; i < defaultAdminsCount; i++) {
-            address defaultAdmin = oldAuthorizer.getRoleMember(DEFAULT_ADMIN_ROLE, i);
-            newAuthorizer.grantPermissions(actionIds, defaultAdmin, wheres);
-        }
-        newAuthorizer.revokePermissions(actionIds, address(this), wheres);
 
         // Finally trigger the first step of transferring root ownership over the TimelockAuthorizer to `root`.
         // Before the migration can be finalized, `root` must call `claimRoot` on the `TimelockAuthorizer`.
@@ -165,20 +138,8 @@ contract TimelockAuthorizerMigrator {
         arr[0] = a;
     }
 
-    function _arr(bytes32 a, bytes32 b) internal pure returns (bytes32[] memory arr) {
-        arr = new bytes32[](2);
-        arr[0] = a;
-        arr[1] = b;
-    }
-
     function _arr(address a) internal pure returns (address[] memory arr) {
         arr = new address[](1);
         arr[0] = a;
-    }
-
-    function _arr(address a, address b) internal pure returns (address[] memory arr) {
-        arr = new address[](2);
-        arr[0] = a;
-        arr[1] = b;
     }
 }
