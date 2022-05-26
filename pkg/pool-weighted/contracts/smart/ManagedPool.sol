@@ -345,6 +345,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * @dev The current weights can be retrieved via `getNormalizedWeights()`.
      * @return startTime - The timestamp when the weight update will begin.
      * @return endTime - The timestamp when the weight update will end.
+     * @return startWeights - The starting weights, when the weight change was initiated.
      * @return endWeights - The final weights, when the current timestamp >= endTime.
      */
     function getGradualWeightUpdateParams()
