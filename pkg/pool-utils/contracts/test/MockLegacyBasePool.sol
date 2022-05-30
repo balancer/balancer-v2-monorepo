@@ -122,4 +122,16 @@ contract MockLegacyBasePool is LegacyBasePool {
             scalingFactors[i] = FixedPoint.ONE;
         }
     }
+
+    function doNotCallInRecovery() external view whenNotInRecoveryMode {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function notCallableInRecovery() external view {
+        _ensureNotInRecoveryMode();
+    }
+
+    function onlyCallableInRecovery() external view {
+        _ensureInRecoveryMode();
+    }
 }

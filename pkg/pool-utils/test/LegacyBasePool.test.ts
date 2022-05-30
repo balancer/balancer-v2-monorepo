@@ -287,95 +287,69 @@ describe('LegacyBasePool', function () {
     //  - authorization (owner, delegated owner)
   });
 
-  describe('set paused', () => {
+  describe('special modes', () => {
     let pool: Contract;
     const PAUSE_WINDOW_DURATION = MONTH * 3;
     const BUFFER_PERIOD_DURATION = MONTH;
 
     let sender: SignerWithAddress;
 
-    function itCanPause() {
-      it('can pause', async () => {
-        await pool.connect(sender).pause();
+    describe('set paused', () => {
+      function itCanPause() {
+        it('can pause', async () => {
+          await pool.connect(sender).pause();
 
-        const { paused } = await pool.getPausedState();
-        expect(paused).to.be.true;
-      });
-
-      it('can unpause', async () => {
-        await pool.connect(sender).pause();
-        await pool.connect(sender).unpause();
-
-        const { paused } = await pool.getPausedState();
-        expect(paused).to.be.false;
-      });
-
-      it('cannot unpause after the pause window', async () => {
-        await advanceTime(PAUSE_WINDOW_DURATION + DAY);
-        await expect(pool.connect(sender).pause()).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
-      });
-    }
-
-    function itRevertsWithUnallowedSender() {
-      it('reverts', async () => {
-        await expect(pool.connect(sender).pause()).to.be.revertedWith('SENDER_NOT_ALLOWED');
-        await expect(pool.connect(sender).unpause()).to.be.revertedWith('SENDER_NOT_ALLOWED');
-      });
-    }
-
-    context('with a delegated owner', () => {
-      const owner = DELEGATE_OWNER;
-
-      sharedBeforeEach('deploy pool', async () => {
-        pool = await deployBasePool({
-          pauseWindowDuration: PAUSE_WINDOW_DURATION,
-          bufferPeriodDuration: BUFFER_PERIOD_DURATION,
-          owner,
-        });
-      });
-
-      beforeEach('set sender', () => {
-        sender = other;
-      });
-
-      context('when the sender does not have the pause permission in the authorizer', () => {
-        itRevertsWithUnallowedSender();
-      });
-
-      context('when the sender has the pause permission in the authorizer', () => {
-        sharedBeforeEach('grant permission', async () => {
-          const pauseAction = await actionId(pool, 'pause');
-          const unpauseAction = await actionId(pool, 'unpause');
-          await authorizer
-            .connect(admin)
-            .grantPermissions([pauseAction, unpauseAction], sender.address, [ANY_ADDRESS, ANY_ADDRESS]);
+          const { paused } = await pool.getPausedState();
+          expect(paused).to.be.true;
         });
 
-        itCanPause();
-      });
-    });
+        it('pausing also enters recovery mode', async () => {
+          await pool.connect(sender).pause();
 
-    context('with an owner', () => {
-      let owner: SignerWithAddress;
-
-      sharedBeforeEach('deploy pool', async () => {
-        owner = poolOwner;
-        pool = await deployBasePool({
-          pauseWindowDuration: PAUSE_WINDOW_DURATION,
-          bufferPeriodDuration: BUFFER_PERIOD_DURATION,
-          owner,
-        });
-      });
-
-      context('when the sender is the owner', () => {
-        beforeEach('set sender', () => {
-          sender = owner;
+          const recoveryMode = await pool.inRecoveryMode();
+          expect(recoveryMode).to.be.true;
         });
 
-        itRevertsWithUnallowedSender();
-      });
+        it('can unpause', async () => {
+          await pool.connect(sender).pause();
+          await pool.connect(sender).unpause();
 
-      context('when the sender is not the owner', () => {
+          const { paused } = await pool.getPausedState();
+          expect(paused).to.be.false;
+        });
+
+        it('unpause does not exit recovery mode', async () => {
+          await pool.connect(sender).pause();
+          await pool.connect(sender).unpause();
+
+          const recoveryMode = await pool.inRecoveryMode();
+          expect(recoveryMode).to.be.true;
+        });
+
+        it('cannot unpause after the pause window', async () => {
+          await advanceTime(PAUSE_WINDOW_DURATION + DAY);
+          await expect(pool.connect(sender).pause()).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
+        });
+      }
+
+      function itRevertsWithUnallowedSender() {
+        it('reverts', async () => {
+          await expect(pool.connect(sender).pause()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          await expect(pool.connect(sender).unpause()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        });
+      }
+
+      context('with a delegated owner', () => {
+        const owner = DELEGATE_OWNER;
+
+        sharedBeforeEach('deploy pool', async () => {
+          pool = await deployBasePool({
+            pauseWindowDuration: PAUSE_WINDOW_DURATION,
+            bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+            owner,
+          });
+        });
+
         beforeEach('set sender', () => {
           sender = other;
         });
@@ -385,7 +359,7 @@ describe('LegacyBasePool', function () {
         });
 
         context('when the sender has the pause permission in the authorizer', () => {
-          sharedBeforeEach(async () => {
+          sharedBeforeEach('grant permission', async () => {
             const pauseAction = await actionId(pool, 'pause');
             const unpauseAction = await actionId(pool, 'unpause');
             await authorizer
@@ -394,6 +368,167 @@ describe('LegacyBasePool', function () {
           });
 
           itCanPause();
+        });
+      });
+
+      context('with an owner', () => {
+        let owner: SignerWithAddress;
+
+        sharedBeforeEach('deploy pool', async () => {
+          owner = poolOwner;
+          pool = await deployBasePool({
+            pauseWindowDuration: PAUSE_WINDOW_DURATION,
+            bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+            owner,
+          });
+        });
+
+        context('when the sender is the owner', () => {
+          beforeEach('set sender', () => {
+            sender = owner;
+          });
+
+          itRevertsWithUnallowedSender();
+        });
+
+        context('when the sender is not the owner', () => {
+          beforeEach('set sender', () => {
+            sender = other;
+          });
+
+          context('when the sender does not have the pause permission in the authorizer', () => {
+            itRevertsWithUnallowedSender();
+          });
+
+          context('when the sender has the pause permission in the authorizer', () => {
+            sharedBeforeEach(async () => {
+              const pauseAction = await actionId(pool, 'pause');
+              const unpauseAction = await actionId(pool, 'unpause');
+              await authorizer
+                .connect(admin)
+                .grantPermissions([pauseAction, unpauseAction], sender.address, [ANY_ADDRESS, ANY_ADDRESS]);
+            });
+
+            itCanPause();
+          });
+        });
+      });
+    });
+
+    describe('recovery mode', () => {
+      let pool: Contract;
+      let sender: SignerWithAddress;
+
+      function itCanEnterRecoveryMode() {
+        it('can enter recovery mode', async () => {
+          await pool.connect(sender).enterRecoveryMode();
+
+          const recoveryMode = await pool.inRecoveryMode();
+          expect(recoveryMode).to.be.true;
+        });
+
+        it('can exit recovery mode', async () => {
+          await pool.connect(sender).enterRecoveryMode();
+          await pool.connect(sender).exitRecoveryMode();
+
+          const recoveryMode = await pool.inRecoveryMode();
+          expect(recoveryMode).to.be.false;
+        });
+
+        it('reverts when calling functions in the wrong mode', async () => {
+          await expect(pool.notCallableInRecovery()).to.not.be.reverted;
+          await expect(pool.onlyCallableInRecovery()).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
+
+          await pool.connect(sender).enterRecoveryMode();
+
+          await expect(pool.doNotCallInRecovery()).to.be.revertedWith('IN_RECOVERY_MODE');
+          await expect(pool.notCallableInRecovery()).to.be.revertedWith('IN_RECOVERY_MODE');
+          await expect(pool.onlyCallableInRecovery()).to.not.be.reverted;
+        });
+      }
+
+      function itRevertsWithUnallowedSender() {
+        it('reverts', async () => {
+          await expect(pool.connect(sender).enterRecoveryMode()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          await expect(pool.connect(sender).exitRecoveryMode()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        });
+      }
+
+      context('with a delegated owner', () => {
+        const owner = DELEGATE_OWNER;
+
+        sharedBeforeEach('deploy pool', async () => {
+          pool = await deployBasePool({
+            pauseWindowDuration: PAUSE_WINDOW_DURATION,
+            bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+            owner,
+          });
+        });
+
+        beforeEach('set sender', () => {
+          sender = other;
+        });
+
+        context('when the sender does not have the recovery mode permission in the authorizer', () => {
+          itRevertsWithUnallowedSender();
+        });
+
+        context('when the sender has the recovery mode permission in the authorizer', () => {
+          sharedBeforeEach('grant permission', async () => {
+            const enterRecoveryAction = await actionId(pool, 'enterRecoveryMode');
+            const exitRecoveryAction = await actionId(pool, 'exitRecoveryMode');
+            await authorizer
+              .connect(admin)
+              .grantPermissions([enterRecoveryAction, exitRecoveryAction], sender.address, [ANY_ADDRESS, ANY_ADDRESS]);
+          });
+
+          itCanEnterRecoveryMode();
+        });
+      });
+
+      context('with an owner', () => {
+        let owner: SignerWithAddress;
+
+        sharedBeforeEach('deploy pool', async () => {
+          owner = poolOwner;
+          pool = await deployBasePool({
+            pauseWindowDuration: PAUSE_WINDOW_DURATION,
+            bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+            owner,
+          });
+        });
+
+        context('when the sender is the owner', () => {
+          beforeEach('set sender', () => {
+            sender = owner;
+          });
+
+          itRevertsWithUnallowedSender();
+        });
+
+        context('when the sender is not the owner', () => {
+          beforeEach('set sender', () => {
+            sender = other;
+          });
+
+          context('when the sender does not have the recovery mode permission in the authorizer', () => {
+            itRevertsWithUnallowedSender();
+          });
+
+          context('when the sender has the recovery mode permission in the authorizer', () => {
+            sharedBeforeEach('grant permission', async () => {
+              const enterRecoveryAction = await actionId(pool, 'enterRecoveryMode');
+              const exitRecoveryAction = await actionId(pool, 'exitRecoveryMode');
+              await authorizer
+                .connect(admin)
+                .grantPermissions([enterRecoveryAction, exitRecoveryAction], sender.address, [
+                  ANY_ADDRESS,
+                  ANY_ADDRESS,
+                ]);
+            });
+
+            itCanEnterRecoveryMode();
+          });
         });
       });
     });
