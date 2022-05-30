@@ -21,8 +21,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "check": "yarn check-abi && yarn check-deployments",
-    "check-abi": "hardhat check-abi",
+    "check": "yarn check-artifacts && yarn check-deployments",
+    "check-artifacts": "hardhat check-artifacts",
     "check-deployments": "hardhat check-deployments --network mainnet && hardhat check-deployments --network polygon && hardhat check-deployments --network arbitrum && hardhat check-deployments --network optimism",
     "lint": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
     "prepack": "yarn build",

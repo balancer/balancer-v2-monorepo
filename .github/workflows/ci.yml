@@ -224,7 +224,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-governance-scripts test
 
-  check-abi:
+  check-artifacts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -243,8 +243,8 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
       - name: Compile balancer-js
         run: yarn workspace @balancer-labs/balancer-js build
-      - name: Check ABIs and Bytecode
-        run: yarn workspace @balancer-labs/v2-deployments check-abi
+      - name: Check Artifacts
+        run: yarn workspace @balancer-labs/v2-deployments check-artifacts
 
   check-deployments:
     runs-on: ubuntu-latest
