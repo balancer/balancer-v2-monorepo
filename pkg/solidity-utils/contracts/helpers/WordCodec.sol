@@ -223,7 +223,7 @@ library WordCodec {
         uint256 offset,
         uint256 bitLength
     ) internal pure returns (bytes32) {
-        _require(value < 2**(bitLength), Errors.CODEC_OVERFLOW);
+        _require(value >> bitLength == 0, Errors.CODEC_OVERFLOW);
 
         return bytes32(value << offset);
     }
