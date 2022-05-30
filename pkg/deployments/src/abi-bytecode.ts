@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
+import { CompilerOutputContract } from 'hardhat/types';
 import path from 'path';
 import { findContractSourceName } from './buildinfo';
 import logger from './logger';
@@ -12,8 +13,8 @@ export function extractABIAndBytecode(task: Task): void {
   if (existsSync(buildInfoDirectory) && statSync(buildInfoDirectory).isDirectory()) {
     for (const buildInfoFileName of readdirSync(buildInfoDirectory)) {
       const contractName = path.parse(buildInfoFileName).name;
-      const output = extractContractABIAndBytecode(task, contractName);
-      writeContractABIAndBytecode(task, contractName, output);
+      const artifact = extractContractArtifact(task, contractName);
+      writeContractArtifact(task, contractName, artifact);
     }
   }
 }
@@ -28,10 +29,12 @@ export function checkABIAndBytecode(task: Task): void {
     for (const buildInfoFileName of readdirSync(buildInfoDirectory)) {
       const contractName = path.parse(buildInfoFileName).name;
 
-      const expectedOutput = extractContractABIAndBytecode(task, contractName);
-      const output = readContractABIAndBytecode(task, contractName);
+      const expectedArtifact = extractContractArtifact(task, contractName);
+      const { abi, bytecode } = readContractABIAndBytecode(task, contractName);
 
-      if (JSON.stringify(output) === JSON.stringify(expectedOutput)) {
+      const bytecodeMatch = bytecode === expectedArtifact.evm.bytecode.object;
+      const abiMatch = JSON.stringify(abi) === JSON.stringify(expectedArtifact.abi);
+      if (bytecodeMatch && abiMatch) {
         logger.success(`Verified ABI and bytecode integrity of contract '${contractName}' of task '${task.id}'`);
       } else {
         throw Error(
@@ -45,21 +48,18 @@ export function checkABIAndBytecode(task: Task): void {
 /**
  * Read the build-info file for the contract `contractName` and extract the ABI and bytecode.
  */
-function extractContractABIAndBytecode(task: Task, contractName: string): { abi: any; bytecode: string } {
+function extractContractArtifact(task: Task, contractName: string): CompilerOutputContract {
   const buildInfo = task.buildInfo(contractName);
 
   // Read ABI and bytecode from build-info file.
   const contractSourceName = findContractSourceName(buildInfo, contractName);
-  const contractInfo = buildInfo.output.contracts[contractSourceName][contractName];
-  const abi = contractInfo.abi;
-  const bytecode = contractInfo.evm.bytecode.object;
-
-  return { abi, bytecode };
+  return buildInfo.output.contracts[contractSourceName][contractName];
 }
 
 /**
  * Read the ABI and bytecode for the contract `contractName` from the ABI and bytecode files.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function readContractABIAndBytecode(task: Task, contractName: string): { abi: any; bytecode: string } {
   // Read contract ABI from file
   const abiFilePath = path.resolve(task.dir(), 'abi', `${contractName}.json`);
@@ -76,15 +76,15 @@ function readContractABIAndBytecode(task: Task, contractName: string): { abi: an
 /**
  * Write the ABI and bytecode for the contract `contractName` to the ABI and bytecode files.
  */
-function writeContractABIAndBytecode(task: Task, contractName: string, output: { abi: any; bytecode: string }): void {
+function writeContractArtifact(task: Task, contractName: string, artifact: CompilerOutputContract): void {
   // Save contract ABI to file
-  if (output.abi.length > 0) {
+  if (artifact.abi.length > 0) {
     const abiDirectory = path.resolve(task.dir(), 'abi');
     if (!existsSync(abiDirectory)) {
       mkdirSync(abiDirectory);
     }
     const abiFilePath = path.resolve(abiDirectory, `${contractName}.json`);
-    writeFileSync(abiFilePath, JSON.stringify(output.abi, null, 2));
+    writeFileSync(abiFilePath, JSON.stringify(artifact.abi, null, 2));
   }
 
   // Save contract bytecode to file
@@ -93,5 +93,5 @@ function writeContractABIAndBytecode(task: Task, contractName: string, output: {
     mkdirSync(bytecodeDirectory);
   }
   const bytecodeFilePath = path.resolve(bytecodeDirectory, `${contractName}.json`);
-  writeFileSync(bytecodeFilePath, JSON.stringify({ creationCode: output.bytecode }, null, 2));
+  writeFileSync(bytecodeFilePath, JSON.stringify({ creationCode: artifact.evm.bytecode.object }, null, 2));
 }
