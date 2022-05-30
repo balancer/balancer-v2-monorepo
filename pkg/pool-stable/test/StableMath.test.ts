@@ -1,8 +1,6 @@
 import { Contract } from 'ethers';
-import { expect } from 'chai';
-
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { bn, decimal, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, decimal, fp, BigNumber } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import {
   calculateAnalyticalInvariantForTwoTokens,
@@ -11,6 +9,7 @@ import {
   calcOutGivenIn,
   calculateOneTokenSwapFeeAmount,
 } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
+import { random } from 'lodash';
 
 const MAX_RELATIVE_ERROR = 0.001; //Max relative error
 
@@ -27,18 +26,33 @@ describe('StableMath', function () {
   });
 
   context('invariant', () => {
+    async function checkInvariant(balances: BigNumber[], amp: number): Promise<void> {
+      const ampParameter = bn(amp).mul(AMP_PRECISION);
+
+      const result = await mock.invariant(ampParameter, balances, true);
+      const expectedInvariant = calculateInvariant(balances, ampParameter);
+
+      expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
+    }
+
+    context('check over a range of inputs', () => {
+      for (let numTokens = 2; numTokens <= 5; numTokens++) {
+        let balances = Array(numTokens).fill(300);
+        balances = balances.map((b) => (random(100) > 50 ? b + random(50) : b - random(50)));
+
+        it(`computes the invariant for ${numTokens} tokens`, async () => {
+          for (let amp = 100; amp < 5000; amp += 100) {
+            await checkInvariant(
+              balances.map((b) => fp(b)),
+              amp
+            );
+          }
+        });
+      }
+    });
+
     context('two tokens', () => {
-      it('returns invariant', async () => {
-        const amp = bn(100);
-        const balances = [fp(10), fp(12)];
-
-        const result = await mock.invariant(amp.mul(AMP_PRECISION), balances, true);
-        const expectedInvariant = calculateInvariant(balances, amp);
-
-        expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
-      });
-
-      it('returns invariant equals analytical solution', async () => {
+      it('invariant equals analytical solution', async () => {
         const amp = bn(100);
         const balances = [fp(10), fp(12)];
 
@@ -47,27 +61,16 @@ describe('StableMath', function () {
 
         expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
       });
-
-      it('reverts if it does not converge', async () => {
-        const amp = bn(5000);
-        const balances = [fp(0.00001), fp(1200000), fp(300)];
-
-        await expect(mock.invariant(amp.mul(AMP_PRECISION), balances, true)).to.be.revertedWith(
-          'STABLE_INVARIANT_DIDNT_CONVERGE'
-        );
-      });
     });
 
-    context('three tokens', () => {
-      it('returns invariant', async () => {
-        const amp = bn(100);
-        const balances = [fp(10), fp(12), fp(14)];
+    it('still converges at extreme values', async () => {
+      const amp = bn(1);
+      const balances = [fp(0.00000001), fp(1200000000), fp(300)];
 
-        const result = await mock.invariant(amp.mul(AMP_PRECISION), balances, true);
-        const expectedInvariant = calculateInvariant(balances, amp);
+      const result = await mock.invariant(amp.mul(AMP_PRECISION), balances, true);
+      const expectedInvariant = calculateInvariant(balances, amp);
 
-        expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
-      });
+      expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
     });
   });
 

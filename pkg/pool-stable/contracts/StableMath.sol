@@ -68,8 +68,10 @@ library StableMath {
 
         // We support rounding up or down.
 
-        uint256 sum = 0;
         uint256 numTokens = balances.length;
+        uint256 prevInvariant;
+        uint256 sum;
+
         for (uint256 i = 0; i < numTokens; i++) {
             sum = sum.add(balances[i]);
         }
@@ -77,24 +79,24 @@ library StableMath {
             return 0;
         }
 
-        uint256 prevInvariant = 0;
-        uint256 invariant = sum;
         uint256 ampTimesTotal = amplificationParameter * numTokens;
+        uint256 invariant = sum;
 
         for (uint256 i = 0; i < 255; i++) {
-            uint256 P_D = balances[0] * numTokens;
-            for (uint256 j = 1; j < numTokens; j++) {
-                P_D = Math.div(Math.mul(Math.mul(P_D, balances[j]), numTokens), invariant, roundUp);
+            uint256 P_D = invariant;
+
+            for (uint256 j = 0; j < numTokens; j++) {
+                P_D = Math.div(Math.mul(P_D, invariant), Math.mul(balances[j], numTokens), roundUp);
             }
+
             prevInvariant = invariant;
             invariant = Math.div(
-                Math.mul(Math.mul(numTokens, invariant), invariant).add(
-                    Math.div(Math.mul(Math.mul(ampTimesTotal, sum), P_D), _AMP_PRECISION, roundUp)
+                Math.mul(
+                    (Math.div(Math.mul(ampTimesTotal, sum), _AMP_PRECISION, roundUp).add(Math.mul(P_D, numTokens))),
+                    invariant
                 ),
-                Math.mul(numTokens + 1, invariant).add(
-                    // No need to use checked arithmetic for the amp precision, the amp is guaranteed to be at least 1
-                    Math.div(Math.mul(ampTimesTotal - _AMP_PRECISION, P_D), _AMP_PRECISION, !roundUp)
-                ),
+                (Math.div(Math.mul((ampTimesTotal - _AMP_PRECISION), invariant), _AMP_PRECISION, !roundUp) +
+                    Math.mul((numTokens + 1), P_D)),
                 roundUp
             );
 
