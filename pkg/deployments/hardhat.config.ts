@@ -12,8 +12,9 @@ import test from './src/test';
 import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
 import { Logger } from './src/logger';
+import { findContractSourceName } from './src/buildinfo';
 import path from 'path';
-import { existsSync, readdirSync, statSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'fs';
 
 task('deploy', 'Run deployment task')
   .addParam('id', 'Deployment task ID')
@@ -78,6 +79,36 @@ task('check-deployments', `Check that all tasks' deployments correspond to their
           }
         }
       }
+    }
+  });
+
+task('abi', `Extracts a contract's abi from their build-info file`)
+  .addOptionalParam('id', 'Specific task ID')
+  .setAction(async (args: { id?: string; verbose?: boolean }) => {
+    Logger.setDefaults(false, args.verbose || false);
+
+    if (args.id) {
+      const taskDirectory = path.resolve(__dirname, './tasks');
+      const abiDirectory = path.resolve(taskDirectory, args.id, 'abi');
+      const buildInfoDir = path.resolve(taskDirectory, args.id, 'build-info');
+      const task = new Task(args.id, TaskMode.READ_ONLY);
+      if (existsSync(buildInfoDir) && statSync(buildInfoDir).isDirectory()) {
+        for (const buildInfoFileName of readdirSync(buildInfoDir)) {
+          const contractName = path.parse(buildInfoFileName).name;
+          const buildInfo = task.buildInfo(buildInfoFileName);
+          const contractSourceName = findContractSourceName(buildInfo, contractName);
+          const contractInfo = buildInfo.output.contracts[contractSourceName][contractName];
+
+          const abi = contractInfo.abi;
+          const abiFilePath = path.resolve(abiDirectory, buildInfoFileName);
+          if (!existsSync(abiDirectory)) {
+            mkdirSync(abiDirectory);
+          }
+          writeFileSync(abiFilePath, JSON.stringify(abi, null, 2));
+        }
+      }
+    } else {
+      throw 'no';
     }
   });
 
