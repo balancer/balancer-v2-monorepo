@@ -95,4 +95,4 @@ Returns an object with all contracts from a deployment and their addresses.
 | Distribution Scheduler for reward tokens on gauges   | [`20220422-distribution-scheduler`](./tasks/20220422-distribution-scheduler)                     |
 | Relayer with the fix for the Double Entrypoint issue | [`20220513-double-entrypoint-fix-relayer`](./tasks/20220513-double-entrypoint-fix-relayer)       |
 | Protocol Fee Withdrawer                              | [`20220517-protocol-fee-withdrawer`](./tasks/20220517-protocol-fee-withdrawer)                   |
-| Child Chain Gauge Token Adder                        | ['20220527-child-chain-gauge-token-adder'](./tasks/20220527-child-chain-gauge-token-adder)       |
+| Child Chain Gauge Token Adder                        | [`20220527-child-chain-gauge-token-adder`](./tasks/20220527-child-chain-gauge-token-adder)       |
