@@ -27,6 +27,7 @@ import {
   SingleExitGivenInStablePool,
   MultiExitGivenInStablePool,
   ExitGivenOutStablePool,
+  RecoveryModeExitStablePool,
   SwapStablePool,
   ExitQueryResult,
   JoinQueryResult,
@@ -382,6 +383,10 @@ export default class StablePool {
     return this.exit(this._buildMultiExitGivenInParams(params));
   }
 
+  async recoveryModeExit(params: MultiExitGivenInStablePool): Promise<ExitResult> {
+    return this.exit(this._buildRecoveryModeExitParams(params));
+  }
+
   async queryMultiExitGivenIn(params: MultiExitGivenInStablePool): Promise<ExitQueryResult> {
     return this.queryExit(this._buildMultiExitGivenInParams(params));
   }
@@ -436,6 +441,30 @@ export default class StablePool {
     const receipt = await (await tx).wait();
     const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
     return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees };
+  }
+
+  async enterRecoveryMode(from: SignerWithAddress): Promise<ContractTransaction> {
+    const enterRecoveryAction = await actionId(this.instance, 'enterRecoveryMode');
+    const exitRecoveryAction = await actionId(this.instance, 'exitRecoveryMode');
+    await this.vault.grantPermissionsGlobally([enterRecoveryAction, exitRecoveryAction], this.vault.admin);
+    const pool = this.instance.connect(from);
+    return await pool.enterRecoveryMode();
+  }
+
+  async exitRecoveryMode(from: SignerWithAddress): Promise<ContractTransaction> {
+    const enterRecoveryAction = await actionId(this.instance, 'enterRecoveryMode');
+    const exitRecoveryAction = await actionId(this.instance, 'exitRecoveryMode');
+    await this.vault.grantPermissionsGlobally([enterRecoveryAction, exitRecoveryAction], this.vault.admin);
+    const pool = this.instance.connect(from);
+    return await pool.exitRecoveryMode();
+  }
+
+  async inRecoveryMode(): Promise<boolean> {
+    return await this.instance.inRecoveryMode();
+  }
+
+  async setInvariantFailure(invariantFailsToConverge: boolean): Promise<void> {
+    await this.instance.setInvariantFailure(invariantFailsToConverge);
   }
 
   private async _executeQuery(params: JoinExitStablePool, fn: ContractFunction): Promise<PoolQueryResult> {
@@ -522,6 +551,15 @@ export default class StablePool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: StablePoolEncoder.exitExactBPTInForTokensOut(params.bptIn),
+    };
+  }
+
+  private _buildRecoveryModeExitParams(params: RecoveryModeExitStablePool): JoinExitStablePool {
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      currentBalances: params.currentBalances,
+      data: StablePoolEncoder.exitRecoveryMode(params.bptIn),
     };
   }
 

@@ -16,6 +16,7 @@ export enum StablePoolExitKind {
   EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0,
   EXACT_BPT_IN_FOR_TOKENS_OUT,
   BPT_IN_FOR_EXACT_TOKENS_OUT,
+  RECOVERY_MODE = 255,
 }
 
 export class StablePoolEncoder {
@@ -89,4 +90,12 @@ export class StablePoolEncoder {
       ['uint256', 'uint256[]', 'uint256'],
       [StablePoolExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT, amountsOut, maxBPTAmountIn]
     );
+
+  /**
+   * Encodes the userData parameter for exiting a StablePool in recovery mode, by removing tokens in return for
+   * an exact amount of BPT
+   * @param bptAmountIn - the amount of BPT to be burned
+   */
+  static exitRecoveryMode = (bptAmountIn: BigNumberish): string =>
+    defaultAbiCoder.encode(['uint256', 'uint256'], [StablePoolExitKind.RECOVERY_MODE, bptAmountIn]);
 }

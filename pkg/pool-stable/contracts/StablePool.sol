@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -27,10 +28,18 @@ import "@balancer-labs/v2-pool-utils/contracts/LegacyBaseMinimalSwapInfoPool.sol
 
 import "./StableMath.sol";
 
+/**
+ * @notice Pool designed to hold tokens of similar value.
+ * @dev Stable Pools are designed specifically for assets that are expected to consistently trade at near parity,
+ * such as different varieties of stablecoins or synthetics. Stable Pools use Stable Math (based on StableSwap,
+ * popularized by Curve) which allows for significantly larger trades before encountering substantial price impact,
+ * vastly increasing capital efficiency for like-kind swaps.
+ */
 contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProvider {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using StablePoolUserData for bytes;
+    using BasePoolUserData for bytes;
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
@@ -509,6 +518,42 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         return (bptAmountIn, amountsOut);
     }
 
+    function _recoveryModeExit(uint256[] memory balances, bytes memory userData)
+        internal
+        virtual
+        override
+        returns (uint256, uint256[] memory)
+    {
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = super._recoveryModeExit(balances, userData);
+
+        // Maintain the invariant. Since this is a proportional withdrawal, the invariant should decrease
+        // in proportion to the amount of BPT being burned.
+        uint256 proportionBurned = bptAmountIn.divUp(totalSupply());
+
+        // Note that any ongoing AMP update was halted upon entering recovery mode, so the invariant depends
+        // only on the balances.
+        _lastInvariant = _lastInvariant.mulDown(proportionBurned.complement());
+
+        return (bptAmountIn, amountsOut);
+    }
+
+    // If we are entering recovery mode, stop any ongoing AMP update. We are "scaling" down the invariant to keep
+    // it accurate as people do proportional exits - but this is only true if the AMP value stays constant.
+    function _setRecoveryMode(bool recoveryMode) internal virtual override {
+        super._setRecoveryMode(recoveryMode);
+
+        // Stop any ongoing Amplification Parameter update when entering Recovery Mode.
+        // In Recovery Mode, we are simply scaling the invariant, which is only accurate
+        // if the AMP value is constant.
+        if (recoveryMode) {
+            (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
+
+            if (isUpdating) {
+                _setAmplificationData(currentValue);
+            }
+        }
+    }
+
     // Helpers
 
     /**
@@ -609,12 +654,18 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
      * underlying tokens. This starts at 1 when the pool is created and grows over time
      */
     function getRate() public view virtual override returns (uint256) {
-        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
-        _upscaleArray(balances, _scalingFactors());
+        if (inRecoveryMode()) {
+            // We maintain _lastInvariant in recovery mode, and the amp is constant, so we can
+            // compute a valid rate without recalculating the invariant (which could fail).
+            return _lastInvariant.divDown(totalSupply());
+        } else {
+            (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+            _upscaleArray(balances, _scalingFactors());
 
-        (uint256 currentAmp, ) = _getAmplificationParameter();
+            (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        return StableMath._getRate(balances, currentAmp, totalSupply());
+            return StableMath._getRate(balances, currentAmp, totalSupply());
+        }
     }
 
     // Amplification
@@ -625,8 +676,14 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
      *
      * NOTE: Internally, the amplification parameter is represented using higher precision. The values returned by
      * `getAmplificationParameter` have to be corrected to account for this when comparing to `rawEndValue`.
+     * Not supported in recovery mode, since it would invalidate the _lastInvariant, which is simply scaled down with
+     * each proportional exit, instead of running the full calculation (which involves the Amplification parameter).
      */
-    function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticate {
+    function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime)
+        external
+        whenNotInRecoveryMode
+        authenticate
+    {
         _require(rawEndValue >= StableMath._MIN_AMP, Errors.MIN_AMP);
         _require(rawEndValue <= StableMath._MAX_AMP, Errors.MAX_AMP);
 
