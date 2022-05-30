@@ -73,11 +73,28 @@ contract MockWordCodec {
         return WordCodec.insertUint64(word, value, offset);
     }
 
+    function insertUint(
+        bytes32 word,
+        uint256 value,
+        uint256 offset,
+        uint256 bitLength
+    ) external pure returns (bytes32) {
+        return WordCodec.insertUint(word, value, offset, bitLength);
+    }
+
     function encodeUint(
         uint256 value,
         uint256 offset,
         uint256 bitLength
     ) external pure returns (bytes32) {
         return WordCodec.encodeUint(value, offset, bitLength);
+    }
+
+    function decodeUint(
+        bytes32 value,
+        uint256 offset,
+        uint256 bitLength
+    ) external pure returns (uint256) {
+        return WordCodec.decodeUint(value, offset, bitLength);
     }
 }

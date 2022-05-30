@@ -174,6 +174,23 @@ library WordCodec {
         return clearedWord | bytes32(value << offset);
     }
 
+    /**
+     * @dev Inserts an unsigned integer of bitLength, shifted by an offset, into a 256 bit word,
+     * replacing the old value. Returns the new word.
+     */
+    function insertUint(
+        bytes32 word,
+        uint256 value,
+        uint256 offset,
+        uint256 bitLength
+    ) internal pure returns (bytes32) {
+        _require(value >> bitLength == 0, Errors.CODEC_OVERFLOW);
+        uint256 mask = (1 << bitLength) - 1;
+
+        bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
+        return clearedWord | bytes32(value << offset);
+    }
+
     // Signed
 
     /**
@@ -322,6 +339,17 @@ library WordCodec {
      */
     function decodeUint128(bytes32 word, uint256 offset) internal pure returns (uint256) {
         return uint256(word >> offset) & _MASK_128;
+    }
+
+    /**
+     * @dev Decodes and returns a 128 bit unsigned integer shifted by an offset from a 256 bit word.
+     */
+    function decodeUint(
+        bytes32 word,
+        uint256 offset,
+        uint256 bitLength
+    ) internal pure returns (uint256) {
+        return uint256(word >> offset) & ((1 << bitLength) - 1);
     }
 
     // Signed
