@@ -112,6 +112,36 @@ task('abi', `Extracts a contract's abi from their build-info file`)
     }
   });
 
+task('bytecode', `Extracts a contract's bytecode from their build-info file`)
+  .addOptionalParam('id', 'Specific task ID')
+  .setAction(async (args: { id?: string; verbose?: boolean }) => {
+    Logger.setDefaults(false, args.verbose || false);
+
+    if (args.id) {
+      const taskDirectory = path.resolve(__dirname, './tasks');
+      const bytecodeDirectory = path.resolve(taskDirectory, args.id, 'bytecode');
+      const buildInfoDir = path.resolve(taskDirectory, args.id, 'build-info');
+      const task = new Task(args.id, TaskMode.READ_ONLY);
+      if (existsSync(buildInfoDir) && statSync(buildInfoDir).isDirectory()) {
+        for (const buildInfoFileName of readdirSync(buildInfoDir)) {
+          const contractName = path.parse(buildInfoFileName).name;
+          const buildInfo = task.buildInfo(buildInfoFileName);
+          const contractSourceName = findContractSourceName(buildInfo, contractName);
+          const contractInfo = buildInfo.output.contracts[contractSourceName][contractName];
+
+          const bytecode = `0x${contractInfo.evm.bytecode.object}`;
+          const bytecodeFilePath = path.resolve(bytecodeDirectory, buildInfoFileName);
+          if (!existsSync(bytecodeDirectory)) {
+            mkdirSync(bytecodeDirectory);
+          }
+          writeFileSync(bytecodeFilePath, JSON.stringify({ creationCode: bytecode }, null, 2));
+        }
+      }
+    } else {
+      throw 'no';
+    }
+  });
+
 task(TASK_TEST)
   .addOptionalParam('fork', 'Optional network name to be forked block number to fork in case of running fork tests.')
   .addOptionalParam('blockNumber', 'Optional block number to fork in case of running fork tests.', undefined, types.int)
