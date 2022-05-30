@@ -41,7 +41,7 @@ describe('StableMath', function () {
         balances = balances.map((b) => (random(100) > 50 ? b + random(50) : b - random(50)));
 
         it(`computes the invariant for ${numTokens} tokens`, async () => {
-          for (let amp = 100; amp < 5000; amp += 100) {
+          for (let amp = 100; amp <= 5000; amp += 100) {
             await checkInvariant(
               balances.map((b) => fp(b)),
               amp
