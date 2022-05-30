@@ -53,6 +53,7 @@ function extractContractABIAndBytecode(task: Task, contractName: string): { abi:
   const contractInfo = buildInfo.output.contracts[contractSourceName][contractName];
   const abi = contractInfo.abi;
   const bytecode = contractInfo.evm.bytecode.object;
+
   return { abi, bytecode };
 }
 
@@ -77,12 +78,14 @@ function readContractABIAndBytecode(task: Task, contractName: string): { abi: an
  */
 function writeContractABIAndBytecode(task: Task, contractName: string, output: { abi: any; bytecode: string }): void {
   // Save contract ABI to file
-  const abiDirectory = path.resolve(task.dir(), 'abi');
-  if (!existsSync(abiDirectory)) {
-    mkdirSync(abiDirectory);
+  if (output.abi.length > 0) {
+    const abiDirectory = path.resolve(task.dir(), 'abi');
+    if (!existsSync(abiDirectory)) {
+      mkdirSync(abiDirectory);
+    }
+    const abiFilePath = path.resolve(abiDirectory, `${contractName}.json`);
+    writeFileSync(abiFilePath, JSON.stringify(output.abi, null, 2));
   }
-  const abiFilePath = path.resolve(abiDirectory, `${contractName}.json`);
-  writeFileSync(abiFilePath, JSON.stringify(output.abi, null, 2));
 
   // Save contract bytecode to file
   const bytecodeDirectory = path.resolve(task.dir(), 'bytecode');
