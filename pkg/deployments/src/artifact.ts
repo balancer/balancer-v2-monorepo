@@ -8,7 +8,7 @@ import Task from './task';
 /**
  * Reads each of the task's build-info files and extract the ABI and bytecode for the matching contract.
  */
-export function extractABIAndBytecode(task: Task): void {
+export function extractArtifact(task: Task): void {
   const buildInfoDirectory = path.resolve(task.dir(), 'build-info');
   if (existsSync(buildInfoDirectory) && statSync(buildInfoDirectory).isDirectory()) {
     for (const buildInfoFileName of readdirSync(buildInfoDirectory)) {
@@ -23,7 +23,7 @@ export function extractABIAndBytecode(task: Task): void {
  * Checks that the ABI and bytecode files for `task` matches what is contained in the build-info file.
  * @param task - The task for which to check ABI and bytecode integrity.
  */
-export function checkABIAndBytecode(task: Task): void {
+export function checkArtifact(task: Task): void {
   const buildInfoDirectory = path.resolve(task.dir(), 'build-info');
   if (existsSync(buildInfoDirectory) && statSync(buildInfoDirectory).isDirectory()) {
     for (const buildInfoFileName of readdirSync(buildInfoDirectory)) {
