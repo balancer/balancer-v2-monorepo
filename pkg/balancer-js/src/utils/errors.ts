@@ -115,6 +115,7 @@ const balancerErrorCodes: Record<string, string> = {
   '433': 'ADDRESS_NOT_ALLOWLISTED',
   '434': 'ERC20_BURN_EXCEEDS_BALANCE',
   '435': 'INVALID_OPERATION',
+  '436': 'CODEC_OVERFLOW',
   '500': 'INVALID_POOL_ID',
   '501': 'CALLER_NOT_POOL',
   '502': 'SENDER_NOT_ASSET_MANAGER',

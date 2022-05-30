@@ -206,6 +206,7 @@ library Errors {
     uint256 internal constant ADDRESS_NOT_ALLOWLISTED = 433;
     uint256 internal constant ERC20_BURN_EXCEEDS_BALANCE = 434;
     uint256 internal constant INVALID_OPERATION = 435;
+    uint256 internal constant CODEC_OVERFLOW = 436;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;

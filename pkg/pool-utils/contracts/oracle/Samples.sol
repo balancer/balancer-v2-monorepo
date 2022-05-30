@@ -186,7 +186,7 @@ library Samples {
             accLogBptPrice.encodeInt53(_ACC_LOG_BPT_PRICE_OFFSET) |
             instLogInvariant.encodeInt22(_INST_LOG_INVARIANT_OFFSET) |
             accLogInvariant.encodeInt53(_ACC_LOG_INVARIANT_OFFSET) |
-            _timestamp.encodeUint(_TIMESTAMP_OFFSET); // Using 31 bits
+            _timestamp.encodeUint(_TIMESTAMP_OFFSET, 31); // Using 31 bits
     }
 
     /**

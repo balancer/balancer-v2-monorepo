@@ -762,10 +762,10 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         uint256 endTime
     ) private {
         _packedAmplificationData =
-            WordCodec.encodeUint(uint64(startValue), 0) |
-            WordCodec.encodeUint(uint64(endValue), 64) |
-            WordCodec.encodeUint(uint64(startTime), 64 * 2) |
-            WordCodec.encodeUint(uint64(endTime), 64 * 3);
+            WordCodec.encodeUint(startValue, 0, 64) |
+            WordCodec.encodeUint(endValue, 64, 64) |
+            WordCodec.encodeUint(startTime, 64 * 2, 64) |
+            WordCodec.encodeUint(endTime, 64 * 3, 64);
     }
 
     function _getAmplificationData()

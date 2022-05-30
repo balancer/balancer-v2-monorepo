@@ -14,6 +14,8 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+
 /**
  * @dev Library for encoding and decoding values stored inside a 256 bit word. Typically used to pack multiple values in
  * a single storage slot, saving gas by performing less storage accesses.
@@ -70,14 +72,14 @@ library WordCodec {
     /**
      * @dev Inserts a 5 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
      * the new word.
-     *
-     * Assumes `value` only uses its least significant 5 bits, otherwise it may overwrite sibling bytes.
      */
     function insertUint5(
         bytes32 word,
         uint256 value,
         uint256 offset
     ) internal pure returns (bytes32) {
+        _require(value <= _MASK_5, Errors.CODEC_OVERFLOW);
+
         bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_5 << offset));
         return clearedWord | bytes32(value << offset);
     }
@@ -85,14 +87,14 @@ library WordCodec {
     /**
      * @dev Inserts a 7 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
      * the new word.
-     *
-     * Assumes `value` only uses its least significant 7 bits, otherwise it may overwrite sibling bytes.
      */
     function insertUint7(
         bytes32 word,
         uint256 value,
         uint256 offset
     ) internal pure returns (bytes32) {
+        _require(value <= _MASK_7, Errors.CODEC_OVERFLOW);
+
         bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_7 << offset));
         return clearedWord | bytes32(value << offset);
     }
@@ -100,14 +102,14 @@ library WordCodec {
     /**
      * @dev Inserts a 10 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
      * the new word.
-     *
-     * Assumes `value` only uses its least significant 10 bits, otherwise it may overwrite sibling bytes.
      */
     function insertUint10(
         bytes32 word,
         uint256 value,
         uint256 offset
     ) internal pure returns (bytes32) {
+        _require(value <= _MASK_10, Errors.CODEC_OVERFLOW);
+
         bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_10 << offset));
         return clearedWord | bytes32(value << offset);
     }
@@ -115,14 +117,14 @@ library WordCodec {
     /**
      * @dev Inserts a 16 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value.
      * Returns the new word.
-     *
-     * Assumes `value` only uses its least significant 16 bits, otherwise it may overwrite sibling bytes.
      */
     function insertUint16(
         bytes32 word,
         uint256 value,
         uint256 offset
     ) internal pure returns (bytes32) {
+        _require(value <= _MASK_16, Errors.CODEC_OVERFLOW);
+
         bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_16 << offset));
         return clearedWord | bytes32(value << offset);
     }
@@ -130,14 +132,14 @@ library WordCodec {
     /**
      * @dev Inserts a 31 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
      * the new word.
-     *
-     * Assumes `value` can be represented using 31 bits.
      */
     function insertUint31(
         bytes32 word,
         uint256 value,
         uint256 offset
     ) internal pure returns (bytes32) {
+        _require(value <= _MASK_31, Errors.CODEC_OVERFLOW);
+
         bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_31 << offset));
         return clearedWord | bytes32(value << offset);
     }
@@ -145,14 +147,14 @@ library WordCodec {
     /**
      * @dev Inserts a 32 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
      * the new word.
-     *
-     * Assumes `value` only uses its least significant 32 bits, otherwise it may overwrite sibling bytes.
      */
     function insertUint32(
         bytes32 word,
         uint256 value,
         uint256 offset
     ) internal pure returns (bytes32) {
+        _require(value <= _MASK_32, Errors.CODEC_OVERFLOW);
+
         bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_32 << offset));
         return clearedWord | bytes32(value << offset);
     }
@@ -160,14 +162,14 @@ library WordCodec {
     /**
      * @dev Inserts a 64 bit unsigned integer shifted by an offset into a 256 bit word, replacing the old value. Returns
      * the new word.
-     *
-     * Assumes `value` only uses its least significant 64 bits, otherwise it may overwrite sibling bytes.
      */
     function insertUint64(
         bytes32 word,
         uint256 value,
         uint256 offset
     ) internal pure returns (bytes32) {
+        _require(value <= _MASK_64, Errors.CODEC_OVERFLOW);
+
         bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_64 << offset));
         return clearedWord | bytes32(value << offset);
     }
@@ -211,12 +213,18 @@ library WordCodec {
     // Unsigned
 
     /**
-     * @dev Encodes an unsigned integer shifted by an offset. This performs no size checks: it is up to the caller to
-     * ensure that the values are bounded.
+     * @dev Encodes an unsigned integer shifted by an offset. Ensures value fits within
+     * `bitLength` bits.
      *
      * The return value can be logically ORed with other encoded values to form a 256 bit word.
      */
-    function encodeUint(uint256 value, uint256 offset) internal pure returns (bytes32) {
+    function encodeUint(
+        uint256 value,
+        uint256 offset,
+        uint256 bitLength
+    ) internal pure returns (bytes32) {
+        _require(value < 2**(bitLength), Errors.CODEC_OVERFLOW);
+
         return bytes32(value << offset);
     }
 
