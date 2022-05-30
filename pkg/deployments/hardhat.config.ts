@@ -8,13 +8,14 @@ import { task, types } from 'hardhat/config';
 import { TASK_TEST } from 'hardhat/builtin-tasks/task-names';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 
+import path from 'path';
+import { existsSync, readdirSync, statSync } from 'fs';
+
 import test from './src/test';
 import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
 import { Logger } from './src/logger';
-import { findContractSourceName } from './src/buildinfo';
-import path from 'path';
-import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'fs';
+import { checkABIAndBytecode, extractABIAndBytecode } from './src/abi-bytecode';
 
 task('deploy', 'Run deployment task')
   .addParam('id', 'Deployment task ID')
@@ -56,6 +57,24 @@ task('verify-contract', `Verify a task's deployment on a block explorer`)
     }
   );
 
+task('extract-abi', `Extract contract abis and bytecodes from their build-info`)
+  .addOptionalParam('id', 'Specific task ID')
+  .setAction(async (args: { id?: string; verbose?: boolean }) => {
+    Logger.setDefaults(false, args.verbose || false);
+
+    if (args.id) {
+      const task = new Task(args.id, TaskMode.READ_ONLY);
+      extractABIAndBytecode(task);
+    } else {
+      const taskDirectory = path.resolve(__dirname, './tasks');
+
+      for (const taskID of readdirSync(taskDirectory)) {
+        const task = new Task(taskID, TaskMode.READ_ONLY);
+        extractABIAndBytecode(task);
+      }
+    }
+  });
+
 task('check-deployments', `Check that all tasks' deployments correspond to their build-info and inputs`)
   .addOptionalParam('id', 'Specific task ID')
   .setAction(async (args: { id?: string; force?: boolean; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
@@ -82,63 +101,21 @@ task('check-deployments', `Check that all tasks' deployments correspond to their
     }
   });
 
-task('abi', `Extracts a contract's abi from their build-info file`)
+task('check-abi', `Extract contract abis and bytecodes from their build-info`)
   .addOptionalParam('id', 'Specific task ID')
   .setAction(async (args: { id?: string; verbose?: boolean }) => {
     Logger.setDefaults(false, args.verbose || false);
 
     if (args.id) {
-      const taskDirectory = path.resolve(__dirname, './tasks');
-      const abiDirectory = path.resolve(taskDirectory, args.id, 'abi');
-      const buildInfoDir = path.resolve(taskDirectory, args.id, 'build-info');
       const task = new Task(args.id, TaskMode.READ_ONLY);
-      if (existsSync(buildInfoDir) && statSync(buildInfoDir).isDirectory()) {
-        for (const buildInfoFileName of readdirSync(buildInfoDir)) {
-          const contractName = path.parse(buildInfoFileName).name;
-          const buildInfo = task.buildInfo(buildInfoFileName);
-          const contractSourceName = findContractSourceName(buildInfo, contractName);
-          const contractInfo = buildInfo.output.contracts[contractSourceName][contractName];
-
-          const abi = contractInfo.abi;
-          const abiFilePath = path.resolve(abiDirectory, buildInfoFileName);
-          if (!existsSync(abiDirectory)) {
-            mkdirSync(abiDirectory);
-          }
-          writeFileSync(abiFilePath, JSON.stringify(abi, null, 2));
-        }
-      }
+      checkABIAndBytecode(task);
     } else {
-      throw 'no';
-    }
-  });
-
-task('bytecode', `Extracts a contract's bytecode from their build-info file`)
-  .addOptionalParam('id', 'Specific task ID')
-  .setAction(async (args: { id?: string; verbose?: boolean }) => {
-    Logger.setDefaults(false, args.verbose || false);
-
-    if (args.id) {
       const taskDirectory = path.resolve(__dirname, './tasks');
-      const bytecodeDirectory = path.resolve(taskDirectory, args.id, 'bytecode');
-      const buildInfoDir = path.resolve(taskDirectory, args.id, 'build-info');
-      const task = new Task(args.id, TaskMode.READ_ONLY);
-      if (existsSync(buildInfoDir) && statSync(buildInfoDir).isDirectory()) {
-        for (const buildInfoFileName of readdirSync(buildInfoDir)) {
-          const contractName = path.parse(buildInfoFileName).name;
-          const buildInfo = task.buildInfo(buildInfoFileName);
-          const contractSourceName = findContractSourceName(buildInfo, contractName);
-          const contractInfo = buildInfo.output.contracts[contractSourceName][contractName];
 
-          const bytecode = `0x${contractInfo.evm.bytecode.object}`;
-          const bytecodeFilePath = path.resolve(bytecodeDirectory, buildInfoFileName);
-          if (!existsSync(bytecodeDirectory)) {
-            mkdirSync(bytecodeDirectory);
-          }
-          writeFileSync(bytecodeFilePath, JSON.stringify({ creationCode: bytecode }, null, 2));
-        }
+      for (const taskID of readdirSync(taskDirectory)) {
+        const task = new Task(taskID, TaskMode.READ_ONLY);
+        checkABIAndBytecode(task);
       }
-    } else {
-      throw 'no';
     }
   });
 
