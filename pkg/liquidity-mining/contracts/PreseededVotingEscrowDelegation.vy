@@ -1,6 +1,6 @@
 # @version 0.3.1
 """
-@title Voting Escrow Delegation
+@title Preseeded Voting Escrow Delegation
 @author Curve Finance
 @license MIT
 @dev Provides test functions only available in test mode (`brownie test`)
@@ -87,6 +87,17 @@ struct Point:
     bias: int256
     slope: int256
 
+struct CreateBoostCall:
+    delegator: address
+    receiver: address
+    percentage: int256
+    cancel_time: uint256
+    expire_time: uint256
+    id: uint256
+
+struct SetApprovalForAllCall:
+    operator: address
+    delegator: address # In the actual function call, this is msg.sender
 
 IDENTITY_PRECOMPILE: constant(address) = 0x0000000000000000000000000000000000000004
 MAX_PCT: constant(uint256) = 10_000
@@ -128,15 +139,25 @@ account_expiries: public(HashMap[address, HashMap[uint256, uint256]])
 # Delegation will go through if: not (grey_list[_receiver][ZERO_ADDRESS] ^ grey_list[_receiver][_delegator])
 grey_list: public(HashMap[address, HashMap[address, bool]])
 
+preseeded: public(bool)
+
+MAX_PRESEEDED_BOOSTS: constant(uint256) = 10
+preseeded_boost_calls: public(CreateBoostCall[MAX_PRESEEDED_BOOSTS])
+
+MAX_PRESEEDED_APPROVALS: constant(uint256) = 10
+preseeded_approval_calls: public(SetApprovalForAllCall[MAX_PRESEEDED_APPROVALS])
 
 @external
-def __init__(_voting_escrow: address, _name: String[32], _symbol: String[32], _base_uri: String[128], _authorizer_adaptor: address):
+def __init__(_voting_escrow: address, _name: String[32], _symbol: String[32], _base_uri: String[128], _authorizer_adaptor: address, _preseeded_boost_calls: CreateBoostCall[MAX_PRESEEDED_BOOSTS], _preseeded_approval_calls: SetApprovalForAllCall[MAX_PRESEEDED_APPROVALS]):
     VOTING_ESCROW = _voting_escrow
     AUTHORIZER_ADAPTOR = _authorizer_adaptor
 
     self.name = _name
     self.symbol = _symbol
     self.base_uri = _base_uri
+
+    self.preseeded_boost_calls = _preseeded_boost_calls
+    self.preseeded_approval_calls = _preseeded_approval_calls
 
 @view
 @external
@@ -494,6 +515,12 @@ def safeTransferFrom(_from: address, _to: address, _token_id: uint256, _data: By
         )  # dev: invalid response
 
 
+@internal
+def _setApprovalForAll(_delegator: address, _operator: address, _approved: bool):
+    self.isApprovedForAll[_delegator][_operator] = _approved
+    log ApprovalForAll(_delegator, _operator, _approved)
+
+
 @external
 def setApprovalForAll(_operator: address, _approved: bool):
     """
@@ -503,8 +530,7 @@ def setApprovalForAll(_operator: address, _approved: bool):
     @param _operator Address to add to the set of authorized operators.
     @param _approved True if the operator is approved, false to revoke approval.
     """
-    self.isApprovedForAll[msg.sender][_operator] = _approved
-    log ApprovalForAll(msg.sender, _operator, _approved)
+    self._setApprovalForAll(msg.sender, _operator, _approved)
 
 
 @external
@@ -554,8 +580,8 @@ def burn(_token_id: uint256):
     self._burn(_token_id)
 
 
-@external
-def create_boost(
+@internal
+def _create_boost(
     _delegator: address,
     _receiver: address,
     _percentage: int256,
@@ -563,25 +589,6 @@ def create_boost(
     _expire_time: uint256,
     _id: uint256,
 ):
-    """
-    @notice Create a boost and delegate it to another account.
-    @dev Delegated boost can become negative, and requires active management, else
-        the adjusted veCRV balance of the delegator's account will decrease until reaching 0
-    @param _delegator The account to delegate boost from
-    @param _receiver The account to receive the delegated boost
-    @param _percentage Since veCRV is a constantly decreasing asset, we use percentage to determine
-        the amount of delegator's boost to delegate
-    @param _cancel_time A point in time before _expire_time in which the delegator or their operator
-        can cancel the delegated boost
-    @param _expire_time The point in time, atleast a day in the future, at which the value of the boost
-        will reach 0. After which the negative value is deducted from the delegator's account (and the
-        receiver's received boost only) until it is cancelled. This value is rounded down to the nearest
-        WEEK.
-    @param _id The token id, within the range of [0, 2 ** 96). Useful for contracts given operator status
-        to have specific ranges.
-    """
-    assert msg.sender == _delegator or self.isApprovedForAll[_delegator][msg.sender]  # dev: only delegator or operator
-
     expire_time: uint256 = (_expire_time / WEEK) * WEEK
 
     expiry_data: uint256 = self.boost[_delegator].expiry_data
@@ -629,6 +636,36 @@ def create_boost(
     self.boost[_delegator].expiry_data = shift(active_delegations + 1, 128) + next_expiry
 
     log DelegateBoost(_delegator, _receiver, token_id, convert(y, uint256), _cancel_time, _expire_time)
+
+
+@external
+def create_boost(
+    _delegator: address,
+    _receiver: address,
+    _percentage: int256,
+    _cancel_time: uint256,
+    _expire_time: uint256,
+    _id: uint256,
+):
+    """
+    @notice Create a boost and delegate it to another account.
+    @dev Delegated boost can become negative, and requires active management, else
+        the adjusted veCRV balance of the delegator's account will decrease until reaching 0
+    @param _delegator The account to delegate boost from
+    @param _receiver The account to receive the delegated boost
+    @param _percentage Since veCRV is a constantly decreasing asset, we use percentage to determine
+        the amount of delegator's boost to delegate
+    @param _cancel_time A point in time before _expire_time in which the delegator or their operator
+        can cancel the delegated boost
+    @param _expire_time The point in time, atleast a day in the future, at which the value of the boost
+        will reach 0. After which the negative value is deducted from the delegator's account (and the
+        receiver's received boost only) until it is cancelled. This value is rounded down to the nearest
+        WEEK.
+    @param _id The token id, within the range of [0, 2 ** 96). Useful for contracts given operator status
+        to have specific ranges.
+    """
+    assert msg.sender == _delegator or self.isApprovedForAll[_delegator][msg.sender]  # dev: only delegator or operator
+    self._create_boost(_delegator, _receiver, _percentage, _cancel_time, _expire_time, _id)
 
 
 @external
@@ -970,3 +1007,30 @@ def get_token_id(_delegator: address, _id: uint256) -> uint256:
 def set_base_uri(_base_uri: String[128]):
     assert msg.sender == AUTHORIZER_ADAPTOR
     self.base_uri = _base_uri
+
+
+# Preseeding
+# Some initial boosts are created and blanket approvals granted. This action can only be performed once (ideally early
+# in the contract's lifetime)
+
+@external
+def preseed():
+    assert not self.preseeded # dev: already preseeded
+    self.preseeded = True
+
+    for i in range(MAX_PRESEEDED_BOOSTS):
+        boost_call: CreateBoostCall = self.preseeded_boost_calls[i]
+        if boost_call.delegator != ZERO_ADDRESS:
+            self._create_boost(
+                boost_call.delegator,
+                boost_call.receiver,
+                boost_call.percentage,
+                boost_call.cancel_time,
+                boost_call.expire_time,
+                boost_call.id
+            )
+
+    for i in range(MAX_PRESEEDED_APPROVALS):
+        approval_call: SetApprovalForAllCall = self.preseeded_approval_calls[i]
+        if approval_call.delegator != ZERO_ADDRESS:
+            self._setApprovalForAll(approval_call.delegator, approval_call.operator, True)
