@@ -28,7 +28,7 @@ library SafeCast {
      * - input must be less than or equal to maxInt256.
      */
     function toInt256(uint256 value) internal pure returns (int256) {
-        _require(value < 2**255, Errors.SAFE_CAST_VALUE_CANT_FIT_INT256);
+        _require(value >> 255 == 0, Errors.SAFE_CAST_VALUE_CANT_FIT_INT256);
         return int256(value);
     }
 }
