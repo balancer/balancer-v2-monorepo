@@ -86,15 +86,15 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     // Start/end values of the swap fee (The MSB "start" swap fee corresponds to the reserved bits in BasePool,
     // and cannot be written from this contract.)
     // Flags for the LP allowlist and enabling/disabling trading
-    // [ 64 bits  |  1 bit  | 31 bits |   1 bit   |  31 bits  |  64 bits |  32 bits |  32 bits  ]
-    // [ swap fee | LP flag | fee end | swap flag | fee start | end swap | end wgt  | start wgt ]
+    // [ 64 bits  |  1 bit  |   1 bit   |  62 bits | 32 bits |  32 bits  |  32 bits |  32 bits  ]
+    // [ swap fee | LP flag | swap flag | end swap | fee end | fee start | end wgt  | start wgt ]
     // |MSB                                                                                  LSB|
     uint256 private constant _WEIGHT_START_TIME_OFFSET = 0;
     uint256 private constant _WEIGHT_END_TIME_OFFSET = 32;
-    uint256 private constant _END_SWAP_FEE_PERCENTAGE_OFFSET = 64;
-    uint256 private constant _FEE_START_TIME_OFFSET = 128;
-    uint256 private constant _SWAP_ENABLED_OFFSET = 159;
-    uint256 private constant _FEE_END_TIME_OFFSET = 160;
+    uint256 private constant _FEE_START_TIME_OFFSET = 64;
+    uint256 private constant _FEE_END_TIME_OFFSET = 96;
+    uint256 private constant _END_SWAP_FEE_PERCENTAGE_OFFSET = 128;
+    uint256 private constant _SWAP_ENABLED_OFFSET = 190;
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 191;
     uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
 
@@ -317,7 +317,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         startTime = poolState.decodeUint31(_FEE_START_TIME_OFFSET);
         endTime = poolState.decodeUint31(_FEE_END_TIME_OFFSET);
         startSwapFeePercentage = poolState.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
-        endSwapFeePercentage = poolState.decodeUint64(_END_SWAP_FEE_PERCENTAGE_OFFSET);
+        endSwapFeePercentage = poolState.decodeUint(_END_SWAP_FEE_PERCENTAGE_OFFSET, 62);
     }
 
     function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual override {
@@ -1196,9 +1196,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     ) private {
         _setMiscData(
             _getMiscData()
-                .insertUint31(startTime, _FEE_START_TIME_OFFSET)
-                .insertUint31(endTime, _FEE_END_TIME_OFFSET)
-                .insertUint64(endSwapFeePercentage, _END_SWAP_FEE_PERCENTAGE_OFFSET)
+                .insertUint32(startTime, _FEE_START_TIME_OFFSET)
+                .insertUint32(endTime, _FEE_END_TIME_OFFSET)
+                .insertUint(endSwapFeePercentage, _END_SWAP_FEE_PERCENTAGE_OFFSET, 62)
         );
     }
 
