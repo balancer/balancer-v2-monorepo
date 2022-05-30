@@ -440,8 +440,15 @@ describe('BasePool', function () {
         it('can enter recovery mode', async () => {
           await pool.connect(sender).enterRecoveryMode();
 
-          const recoveryMode = await pool.inRecoveryMode();
-          expect(recoveryMode).to.be.true;
+          expect(await pool.inRecoveryMode()).to.be.true;
+        });
+
+        it('entering recovery mode emits an event', async () => {
+          const tx = await pool.connect(sender).enterRecoveryMode();
+          const receipt = await tx.wait();
+          expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', {
+            recoveryMode: true,
+          });
         });
 
         it('can exit recovery mode', async () => {
@@ -450,6 +457,16 @@ describe('BasePool', function () {
 
           const recoveryMode = await pool.inRecoveryMode();
           expect(recoveryMode).to.be.false;
+        });
+
+        it('exiting recovery mode emits an event', async () => {
+          await pool.connect(sender).enterRecoveryMode();
+
+          const tx = await pool.connect(sender).exitRecoveryMode();
+          const receipt = await tx.wait();
+          expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', {
+            recoveryMode: false,
+          });
         });
 
         it('reverts when calling functions in the wrong mode', async () => {
