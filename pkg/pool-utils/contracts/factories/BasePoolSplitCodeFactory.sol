@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/ SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -20,7 +20,14 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BaseSplitCodeFactory.sol";
 
 /**
- * @dev Same as `BasePoolFactory`, for Pools whose creation code is so large that the factory cannot hold it.
+ * @dev Base contract for Pool factories.
+ *
+ * Pools are deployed from factories to allow third parties to reason about them. Unknown Pools may have arbitrary
+ * logic: being able to assert that a Pool's behavior follows certain rules (those imposed by the contracts created by
+ * the factory) is very powerful.
+ *
+ * By using the split code mechanism, we can deploy Pools with creation code so large that a regular factory
+ * contract would not be able to store it.
  */
 abstract contract BasePoolSplitCodeFactory is BaseSplitCodeFactory {
     IVault private immutable _vault;
