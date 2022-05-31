@@ -79,9 +79,9 @@ library StableMath {
             return 0;
         }
 
-        uint256 ampTimesTotal = amplificationParameter * numTokens;
-        uint256 invariant = sum; // D in the Curve version
         uint256 prevInvariant; // Dprev in the Curve version
+        uint256 invariant = sum; // D in the Curve version
+        uint256 ampTimesTotal = amplificationParameter * numTokens;
 
         for (uint256 i = 0; i < 255; i++) {
             uint256 P_D = invariant;
