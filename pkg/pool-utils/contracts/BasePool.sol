@@ -16,14 +16,12 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Recoverable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
@@ -34,14 +32,12 @@ import "./BasePoolAuthorization.sol";
 // solhint-disable max-states-count
 
 /**
- * @notice Reference implementation for the base layer of a Pool contract
- * @dev Manages a single Pool with optional Asset Managers, an admin-controlled swap fee percentage, a temporary
- * emergency pause mechanism that disables the pool, and a permanent Recovery Mode option that ensures LPs can
- * always safely exit the pool, even if it's in a pathological state.
+ * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with optional
+ * Asset Managers, an admin-controlled swap fee percentage, and an emergency pause mechanism.
  *
- * This Pool pays protocol fees by minting BPT directly to the ProtocolFeeCollector, instead of using the
+ * This Pool pays protocol fees by minting BPT directly to the ProtocolFeeCollector instead of using the
  * `dueProtocolFees` return value. This results in the underlying tokens continuing to provide liquidity
- * for traders, while still keeping gas usage to a minimum, since only a single token (the BPT) is transferred.
+ * for traders, while still keeping gas usage to a minimum since only a single token (the BPT) is transferred.
  *
  * Note that neither swap fees nor the pause mechanism are used by this contract. They are passed through so that
  * derived contracts can use them via the `_addSwapFeeAmount` and `_subtractSwapFeeAmount` functions, and the
@@ -53,10 +49,9 @@ import "./BasePoolAuthorization.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable, Recoverable {
+abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
-    using BasePoolUserData for bytes;
 
     uint256 private constant _MIN_TOKENS = 2;
 
@@ -125,9 +120,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     // Getters / Setters
 
-    /**
-     * @notice Return the pool id.
-     */
     function getPoolId() public view override returns (bytes32) {
         return _poolId;
     }
@@ -147,27 +139,14 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _DEFAULT_MINIMUM_BPT;
     }
 
-    /**
-     * @notice Return the current value of the swap fee percentage.
-     * @dev This is stored in the MSB 64 bits of the `_miscData`.
-     */
     function getSwapFeePercentage() public view virtual returns (uint256) {
         return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
     }
 
-    /**
-     * @notice Return the ProtocolFeesCollector contract.
-     * @dev This is immutable, and retrieved from the Vault on construction. (It is also immutable in the Vault.)
-     */
     function getProtocolFeesCollector() public view returns (IProtocolFeesCollector) {
         return _protocolFeesCollector;
     }
 
-    /**
-     * @notice Set the swap fee percentage.
-     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
-     * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
-     */
     function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
@@ -188,12 +167,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _MAX_SWAP_FEE_PERCENTAGE;
     }
 
-    /**
-     * @notice Set the asset manager parameters for the given token.
-     * @dev This is a permissioned function, unavailable when the pool is paused.
-     * The details of the configuration data are set by each Asset Manager. (For an example, see
-     * `RewardsAssetManager`.)
-     */
     function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig)
         public
         virtual
@@ -210,44 +183,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         IAssetManager(assetManager).setConfig(poolId, poolConfig);
     }
 
-    /**
-     * @notice Pause the pool: an emergency action which disables all pool functions.
-     * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
-     * deployment (see `TemporarilyPausable`). It also puts the pool in Recovery Mode, so that LPs can safely exit.
-     */
     function pause() external authenticate {
         _setPaused(true);
-        _setRecoveryMode(true);
     }
 
-    /**
-     * @notice Reverse a `pause` operation, and restore a pool to normal functionality.
-     * @dev This is a permissioned function that will only work on a paused pool within the Buffer Period set during
-     * pool factory deployment (see `TemporarilyPausable`). It does not automatically exit Recovery Mode. Note that
-     * any paused pools will automatically unpause after the Buffer Period expires.
-     */
     function unpause() external authenticate {
         _setPaused(false);
-    }
-
-    /**
-     * @notice Enter recovery mode, which enables a special safe exit path for LPs.
-     * @dev Does not otherwise affect pool operations, though some pools may perform certain operations in a "safer"
-     * manner that is less likely to fail, in an attempt to keep the pool running, even in a pathological state.
-     * Unlike the Pause operation, which is only available during a short window after factory deployment, Recovery Mode
-     * is a permanent feature.
-     */
-    function enterRecoveryMode() external authenticate {
-        _setRecoveryMode(true);
-    }
-
-    /**
-     * @notice Exit recovery mode, which disables the special safe exit path for LPs.
-     * @dev The special exit path enabled in Recovery Mode pays no protocol fees, so should not be enabled unless
-     * something has gone wrong, and LPs are unable to exit.
-     */
-    function exitRecoveryMode() external authenticate {
-        _setRecoveryMode(false);
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
@@ -261,7 +202,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @dev Inserts data into the least-significant 192 bits of the misc data storage slot.
+     * Inserts data into the least-significant 192 bits of the misc data storage slot.
      * Note that the remaining 64 bits are used for the swap fee percentage and cannot be overloaded.
      */
     function _setMiscData(bytes32 newData) internal {
@@ -276,10 +217,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _;
     }
 
-    /**
-     * @notice Add liquidity to a pool (including for the first time, known as "initializing" the pool).
-     * @dev This function can only be called from the Vault, from `joinPool`.
-     */
     function onJoinPool(
         bytes32 poolId,
         address sender,
@@ -336,18 +273,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         }
     }
 
-    /**
-     * @notice Remove liquidity from a pool.
-     * @dev This function can only be called from the Vault, from `exitPool`. If this is a special recovery mode exit,
-     * ensure we are in Recovery Mode, and invoke `_recoveryModeExit`. This performs a proportional exit in the simplest
-     * possible manner (e.g., without scaling, so lower-decimal tokens will have less precision). It should not perform
-     * any operations that might fail: no external calls, no iterative calculations, etc.
-     *
-     * This contract implements a default version `_recoveryModeExit`; pools can override it if there are special
-     * considerations, or other operations that need to be performed to maintain pool functions.
-     *
-     * Otherwise, call `_onExitPool`, which each pool type implements to handle all the exits it supports.
-     */
     function onExitPool(
         bytes32 poolId,
         address sender,
@@ -357,38 +282,26 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
-        uint256[] memory amountsOut;
-        uint256 bptAmountIn;
+        uint256[] memory scalingFactors = _scalingFactors();
+        _upscaleArray(balances, scalingFactors);
 
-        // When a user calls `exitPool`, this is the first point of entry from the Vault.
-        // First check whether this is a Recovery Mode exit; if so, call the special lightweight
-        // `_recoveryModeExit`. Otherwise, use the normal exit path.
-        if (userData.isRecoveryModeExitKind()) {
-            // This exit kind is only available in Recovery Mode.
-            _ensureInRecoveryMode();
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = _onExitPool(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            scalingFactors,
+            userData
+        );
 
-            (bptAmountIn, amountsOut) = _recoveryModeExit(balances, userData);
-        } else {
-            uint256[] memory scalingFactors = _scalingFactors();
-            _upscaleArray(balances, scalingFactors);
-
-            // Note do not use `balances` after calling `_onExitPool`, which may mutate it.
-            (bptAmountIn, amountsOut) = _onExitPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                protocolSwapFeePercentage,
-                scalingFactors,
-                userData
-            );
-
-            // amountsOut are amounts exiting the Pool, so we round down.
-            _downscaleDownArray(amountsOut, scalingFactors);
-        }
+        // Note we no longer use `balances` after calling `_onExitPool`, which may mutate it.
 
         _burnPoolTokens(sender, bptAmountIn);
+
+        // amountsOut are amounts exiting the Pool, so we round down.
+        _downscaleDownArray(amountsOut, scalingFactors);
 
         // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
         return (amountsOut, new uint256[](balances.length));
@@ -397,7 +310,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     // Query functions
 
     /**
-     * @notice "Dry run" `onJoinPool`.
      * @dev Returns the amount of BPT that would be granted to `recipient` if the `onJoinPool` hook were called by the
      * Vault with the same arguments, along with the number of tokens `sender` would have to supply.
      *
@@ -436,7 +348,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @notice "Dry run" `onExitPool`.
      * @dev Returns the amount of BPT that would be burned from `sender` if the `onExitPool` hook were called by the
      * Vault with the same arguments, along with the number of tokens `recipient` would receive.
      *
@@ -554,40 +465,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes memory userData
     ) internal virtual returns (uint256 bptAmountIn, uint256[] memory amountsOut);
 
-    /**
-     * @dev A minimal proportional exit, suitable as is for most pools: though not for pools with Phantom BPT
-     * or other special considerations. Designed to be overridden if a pool needs to do extra processing,
-     * such as scaling a stored invariant, or caching the new total supply.
-     *
-     * No complex code or external calls should be made in derived contracts that override this!
-     */
-    function _recoveryModeExit(uint256[] memory balances, bytes memory userData)
-        internal
-        virtual
-        returns (uint256, uint256[] memory)
-    {
-        /**********************************************************************************************
-        // exactBPTInForTokensOut                                                                    //
-        // (per token)                                                                               //
-        // aO = tokenAmountOut             /        bptIn         \                                  //
-        // b = tokenBalance      a0 = b * | ---------------------  |                                 //
-        // bptIn = bptAmountIn             \     bptTotalSupply    /                                 //
-        // bpt = bptTotalSupply                                                                      //
-        **********************************************************************************************/
-
-        // Since we're computing an amount out, we round down overall. This means rounding down on both the
-        // multiplication and division.
-
-        uint256 bptAmountIn = userData.recoveryModeExit();
-        uint256 bptRatio = bptAmountIn.divDown(totalSupply());
-
-        uint256[] memory amountsOut = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            amountsOut[i] = balances[i].mulDown(bptRatio);
-        }
-
-        return (bptAmountIn, amountsOut);
-    }
+    // Internal functions
 
     /**
      * @dev Pays protocol fees by minting `bptAmount` to the Protocol Fee Collector.
@@ -653,14 +531,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _scalingFactors() internal view virtual returns (uint256[] memory);
 
-    /**
-     * @notice Return the set of scaling factors for the pool tokens.
-     * @dev Scaling factors are used to convert token balances to and from 18-decimal floating point values.
-     * The Vault expects all values to be 18-decimal, yet all I/O is performed in native decimals. So we scale "up"
-     * when sending user-supplied balances to the Vault, and scale "down" to return results.
-     * For instance, an 18-decimal token has a scaling factor of 1, while a 6-decimal token has a scaling factor or
-     * 10^12.
-     */
     function getScalingFactors() external view returns (uint256[] memory) {
         return _scalingFactors();
     }
