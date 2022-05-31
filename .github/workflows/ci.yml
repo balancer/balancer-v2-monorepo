@@ -224,7 +224,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-governance-scripts test
 
-  check-artifacts:
+  check-deployment-artifacts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -243,10 +243,10 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
       - name: Compile balancer-js
         run: yarn workspace @balancer-labs/balancer-js build
-      - name: Check Artifacts
+      - name: Check Deployment Artifacts
         run: yarn workspace @balancer-labs/v2-deployments check-artifacts
 
-  check-deployments:
+  check-deployment-addresses:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -272,7 +272,7 @@ jobs:
           ALCHEMY_POLYGON_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_POLYGON_ARCHIVE_ENDPOINT }}
           ALCHEMY_ARBITRUM_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_ARBITRUM_ARCHIVE_ENDPOINT }}
           ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT }}
-      - name: Check Deployments
+      - name: Check Deployment Addresses
         run: yarn workspace @balancer-labs/v2-deployments check-deployments
 
   benchmark:
