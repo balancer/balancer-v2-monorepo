@@ -20,13 +20,13 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BaseSplitCodeFactory.sol";
 
 /**
- * @dev Base contract for Pool factories.
+ * @notice Base contract for Pool factories.
  *
  * Pools are deployed from factories to allow third parties to reason about them. Unknown Pools may have arbitrary
  * logic: being able to assert that a Pool's behavior follows certain rules (those imposed by the contracts created by
  * the factory) is very powerful.
  *
- * By using the split code mechanism, we can deploy Pools with creation code so large that a regular factory
+ * @dev By using the split code mechanism, we can deploy Pools with creation code so large that a regular factory
  * contract would not be able to store it.
  */
 abstract contract BasePoolSplitCodeFactory is BaseSplitCodeFactory {
