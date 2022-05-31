@@ -171,7 +171,7 @@ library WordCodec {
     // Signed
 
     /**
-     * @dev Decodes and returns signed integer with `bitLength` bits, shifted by an offset, from a 256 bit word.
+     * @dev Decodes and returns a signed integer with `bitLength` bits, shifted by an offset, from a 256 bit word.
      */
     function decodeInt(
         bytes32 word,
