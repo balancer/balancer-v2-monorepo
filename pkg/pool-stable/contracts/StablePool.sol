@@ -17,7 +17,6 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -39,7 +38,6 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using StablePoolUserData for bytes;
-    using BasePoolUserData for bytes;
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
@@ -537,8 +535,6 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         return (bptAmountIn, amountsOut);
     }
 
-    // If we are entering recovery mode, stop any ongoing AMP update. We are "scaling" down the invariant to keep
-    // it accurate as people do proportional exits - but this is only true if the AMP value stays constant.
     function _setRecoveryMode(bool recoveryMode) internal virtual override {
         super._setRecoveryMode(recoveryMode);
 

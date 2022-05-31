@@ -1186,6 +1186,14 @@ describe('StablePool', function () {
             expect(isUpdating).to.be.false;
           });
 
+          it('cannot start an AMP change in recovery mode', async () => {
+            await pool.enterRecoveryMode(admin);
+
+            await expect(
+              pool.startAmpChange(AMPLIFICATION_PARAMETER.div(2), await fromNow(MONTH), { from: owner })
+            ).to.be.revertedWith('IN_RECOVERY_MODE');
+          });
+
           it('entering recovery mode emits two events', async () => {
             const { value } = await pool.getAmplificationParameter();
             const tx = await pool.enterRecoveryMode(admin);
@@ -1214,25 +1222,34 @@ describe('StablePool', function () {
           async function LPsCanExit(): Promise<void> {
             it('LPs can exit without changing the rate', async () => {
               const totalBPT = await pool.totalSupply();
-              const bptAmount = await pool.balanceOf(lp);
-              const expectedAmountsOut = initialBalances.map((balance) => balance.div(2));
+              const totalBptBalance = await pool.balanceOf(lp);
+              const N = 4; // Number of sequential withdrawals
+              // Remove 1/(N+1) per step, so that we don't go down to zero (keeping rate valid)
+              const expectedAmountsOut = initialBalances.map((balance) => balance.div(N + 1));
               const originalRate = await pool.getRate();
+              const bptBurnedPerExit = totalBptBalance.div(N + 1);
 
-              const result = await pool.recoveryModeExit({ from: lp, bptIn: bptAmount.div(2) });
+              // Exit N times, ensuring we get the correct amount out, the tokens are burned, and the rate calculation remains valid
+              for (let i = 1; i <= N; i++) {
+                const result = await pool.recoveryModeExit({ from: lp, bptIn: bptBurnedPerExit });
 
-              // Protocol fees should be zero
-              expect(result.dueProtocolFeeAmounts).to.be.zeros;
+                // Protocol fees should be zero
+                expect(result.dueProtocolFeeAmounts).to.be.zeros;
 
-              // Balances are reduced by half because we are returning half of the BPT supply
-              expect(result.amountsOut).to.equalWithError(expectedAmountsOut, 0.001);
+                // Balances are reduced by half because we are returning half of the BPT supply
+                expect(result.amountsOut).to.equalWithError(expectedAmountsOut, 0.001);
 
-              // Current BPT balance should have been reduced by half
-              expect(await pool.balanceOf(lp)).to.be.equalWithError(bptAmount.div(2), 0.001);
+                // Current BPT balance should have been reduced by half
+                expect(await pool.balanceOf(lp)).to.be.equalWithError(
+                  totalBptBalance.sub(bptBurnedPerExit.mul(i)),
+                  0.001
+                );
 
-              // Total supply should be reduced by half (ensure tokens are burned)
-              expect(await pool.totalSupply()).to.equalWithError(totalBPT.div(2), 0.000001);
+                // Total supply should be reduced by half (ensure tokens are burned)
+                expect(await pool.totalSupply()).to.equalWithError(totalBPT.sub(bptBurnedPerExit.mul(i)), 0.000001);
 
-              expect(await pool.getRate()).to.equalWithError(originalRate, 0.000001);
+                expect(await pool.getRate()).to.equalWithError(originalRate, 0.000001);
+              }
             });
           }
 
