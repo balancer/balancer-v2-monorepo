@@ -193,8 +193,8 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
         endTime = poolState.decodeUint32(_END_TIME_OFFSET);
         endWeights = new uint256[](2);
 
-        endWeights[0] = poolState.decodeUint32(_END_WEIGHT_OFFSET).uncompress32();
-        endWeights[1] = poolState.decodeUint32(_END_WEIGHT_OFFSET + 32).uncompress32();
+        endWeights[0] = poolState.decodeUint32(_END_WEIGHT_OFFSET).decompress(32);
+        endWeights[1] = poolState.decodeUint32(_END_WEIGHT_OFFSET + 32).decompress(32);
     }
 
     /**
@@ -243,8 +243,8 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
     }
 
     function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
-        uint256 startWeight = poolState.decodeUint32(_START_WEIGHT_OFFSET + i * 32).uncompress32();
-        uint256 endWeight = poolState.decodeUint32(_END_WEIGHT_OFFSET + i * 32).uncompress32();
+        uint256 startWeight = poolState.decodeUint32(_START_WEIGHT_OFFSET + i * 32).decompress(32);
+        uint256 endWeight = poolState.decodeUint32(_END_WEIGHT_OFFSET + i * 32).decompress(32);
 
         uint256 pctProgress = _calculateWeightChangeProgress(poolState);
 
@@ -465,8 +465,8 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
             _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             newPoolState = newPoolState
-                .insertUint32(startWeights[i].compress32(), _START_WEIGHT_OFFSET + i * 32)
-                .insertUint32(endWeight.compress32(), _END_WEIGHT_OFFSET + i * 32);
+                .insertUint32(startWeights[i].compress(32), _START_WEIGHT_OFFSET + i * 32)
+                .insertUint32(endWeight.compress(32), _END_WEIGHT_OFFSET + i * 32);
 
             normalizedSum = normalizedSum.add(endWeight);
         }
