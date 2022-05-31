@@ -564,7 +564,7 @@ abstract contract LegacyBasePool is IBasePool, BasePoolAuthorization, BalancerPo
      * @dev Scaling factors are used to convert token balances to and from 18-decimal floating point values.
      * The Vault expects all values to be 18-decimal, yet all I/O is performed in native decimals. So we scale "up"
      * when sending user-supplied balances to the Vault, and scale "down" to return results.
-     * For instance, an 18-decimal token has a scaling factor of 1, while a 6-decimal token has a scaling factor or
+     * For instance, an 18-decimal token has a scaling factor of 1, while a 6-decimal token has a scaling factor of
      * 10^12.
      */
     function getScalingFactors() external view returns (uint256[] memory) {
