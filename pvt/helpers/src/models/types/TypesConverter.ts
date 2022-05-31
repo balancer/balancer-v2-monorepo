@@ -2,10 +2,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { ethers } from 'ethers';
 
-import { bn, fp } from '../../numbers';
+import { BigNumberish, bn, fp } from '../../numbers';
 import { DAY, MONTH } from '../../time';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
-import { BigNumberish } from '../../numbers';
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
