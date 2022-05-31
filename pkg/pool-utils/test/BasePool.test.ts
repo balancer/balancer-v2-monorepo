@@ -320,27 +320,12 @@ describe('BasePool', function () {
           expect(paused).to.be.true;
         });
 
-        it('pausing also enters recovery mode', async () => {
-          await pool.connect(sender).pause();
-
-          const recoveryMode = await pool.inRecoveryMode();
-          expect(recoveryMode).to.be.true;
-        });
-
         it('can unpause', async () => {
           await pool.connect(sender).pause();
           await pool.connect(sender).unpause();
 
           const { paused } = await pool.getPausedState();
           expect(paused).to.be.false;
-        });
-
-        it('unpause does not exit recovery mode', async () => {
-          await pool.connect(sender).pause();
-          await pool.connect(sender).unpause();
-
-          const recoveryMode = await pool.inRecoveryMode();
-          expect(recoveryMode).to.be.true;
         });
 
         it('cannot unpause after the pause window', async () => {
@@ -427,141 +412,6 @@ describe('BasePool', function () {
             });
 
             itCanPause();
-          });
-        });
-      });
-    });
-
-    describe('recovery mode', () => {
-      let pool: Contract;
-      let sender: SignerWithAddress;
-
-      function itCanEnterRecoveryMode() {
-        it('can enter recovery mode', async () => {
-          await pool.connect(sender).enterRecoveryMode();
-
-          expect(await pool.inRecoveryMode()).to.be.true;
-        });
-
-        it('entering recovery mode emits an event', async () => {
-          const tx = await pool.connect(sender).enterRecoveryMode();
-          const receipt = await tx.wait();
-          expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', {
-            recoveryMode: true,
-          });
-        });
-
-        it('can exit recovery mode', async () => {
-          await pool.connect(sender).enterRecoveryMode();
-          await pool.connect(sender).exitRecoveryMode();
-
-          const recoveryMode = await pool.inRecoveryMode();
-          expect(recoveryMode).to.be.false;
-        });
-
-        it('exiting recovery mode emits an event', async () => {
-          await pool.connect(sender).enterRecoveryMode();
-
-          const tx = await pool.connect(sender).exitRecoveryMode();
-          const receipt = await tx.wait();
-          expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', {
-            recoveryMode: false,
-          });
-        });
-
-        it('reverts when calling functions in the wrong mode', async () => {
-          await expect(pool.notCallableInRecovery()).to.not.be.reverted;
-          await expect(pool.onlyCallableInRecovery()).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
-
-          await pool.connect(sender).enterRecoveryMode();
-
-          await expect(pool.doNotCallInRecovery()).to.be.revertedWith('IN_RECOVERY_MODE');
-          await expect(pool.notCallableInRecovery()).to.be.revertedWith('IN_RECOVERY_MODE');
-          await expect(pool.onlyCallableInRecovery()).to.not.be.reverted;
-        });
-      }
-
-      function itRevertsWithUnallowedSender() {
-        it('reverts', async () => {
-          await expect(pool.connect(sender).enterRecoveryMode()).to.be.revertedWith('SENDER_NOT_ALLOWED');
-          await expect(pool.connect(sender).exitRecoveryMode()).to.be.revertedWith('SENDER_NOT_ALLOWED');
-        });
-      }
-
-      context('with a delegated owner', () => {
-        const owner = DELEGATE_OWNER;
-
-        sharedBeforeEach('deploy pool', async () => {
-          pool = await deployBasePool({
-            pauseWindowDuration: PAUSE_WINDOW_DURATION,
-            bufferPeriodDuration: BUFFER_PERIOD_DURATION,
-            owner,
-          });
-        });
-
-        beforeEach('set sender', () => {
-          sender = other;
-        });
-
-        context('when the sender does not have the recovery mode permission in the authorizer', () => {
-          itRevertsWithUnallowedSender();
-        });
-
-        context('when the sender has the recovery mode permission in the authorizer', () => {
-          sharedBeforeEach('grant permission', async () => {
-            const enterRecoveryAction = await actionId(pool, 'enterRecoveryMode');
-            const exitRecoveryAction = await actionId(pool, 'exitRecoveryMode');
-            await authorizer
-              .connect(admin)
-              .grantPermissions([enterRecoveryAction, exitRecoveryAction], sender.address, [ANY_ADDRESS, ANY_ADDRESS]);
-          });
-
-          itCanEnterRecoveryMode();
-        });
-      });
-
-      context('with an owner', () => {
-        let owner: SignerWithAddress;
-
-        sharedBeforeEach('deploy pool', async () => {
-          owner = poolOwner;
-          pool = await deployBasePool({
-            pauseWindowDuration: PAUSE_WINDOW_DURATION,
-            bufferPeriodDuration: BUFFER_PERIOD_DURATION,
-            owner,
-          });
-        });
-
-        context('when the sender is the owner', () => {
-          beforeEach('set sender', () => {
-            sender = owner;
-          });
-
-          itRevertsWithUnallowedSender();
-        });
-
-        context('when the sender is not the owner', () => {
-          beforeEach('set sender', () => {
-            sender = other;
-          });
-
-          context('when the sender does not have the recovery mode permission in the authorizer', () => {
-            itRevertsWithUnallowedSender();
-          });
-
-          context('when the sender has the recovery mode permission in the authorizer', () => {
-            sharedBeforeEach('grant permission', async () => {
-              const enterRecoveryAction = await actionId(pool, 'enterRecoveryMode');
-              const exitRecoveryAction = await actionId(pool, 'exitRecoveryMode');
-              await authorizer
-                .connect(admin)
-                .grantPermissions([enterRecoveryAction, exitRecoveryAction], sender.address, [
-                  ANY_ADDRESS,
-                  ANY_ADDRESS,
-                ]);
-            });
-
-            itCanEnterRecoveryMode();
           });
         });
       });
