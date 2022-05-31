@@ -1338,7 +1338,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         uint256 endingBalance,
         IERC20 token
     ) private view {
-        uint256 maxRatio = _decodeRatio(tokenData.decodeUint16(_MAX_RATIO_OFFSET).uncompress16());
+        uint256 maxRatio = _decodeRatio(tokenData.decodeUint16(_MAX_RATIO_OFFSET).decompress(16));
 
         if (maxRatio != 0) {
             uint256 initialPrice = tokenData.decodeUint128(_REF_BPT_PRICE_OFFSET);
@@ -1359,7 +1359,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         uint256 endingBalance,
         IERC20 token
     ) private view {
-        uint256 minRatio = _decodeRatio(tokenData.decodeUint16(_MIN_RATIO_OFFSET).uncompress16());
+        uint256 minRatio = _decodeRatio(tokenData.decodeUint16(_MIN_RATIO_OFFSET).decompress(16));
 
         // If the ratio is 0, there is no breaker in this direction on this token
         if (minRatio != 0) {
@@ -1423,8 +1423,8 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
 
         _circuitBreakerState[token] = tokenData
             .insertUint128(initialPrice, _REF_BPT_PRICE_OFFSET)
-            .insertUint16(_encodeRatio(minRatio).compress16(), _MIN_RATIO_OFFSET)
-            .insertUint16(_encodeRatio(maxRatio).compress16(), _MAX_RATIO_OFFSET);
+            .insertUint16(_encodeRatio(minRatio).compress(16), _MIN_RATIO_OFFSET)
+            .insertUint16(_encodeRatio(maxRatio).compress(16), _MAX_RATIO_OFFSET);
 
         emit CircuitBreakerRatioSet(address(token), minRatio, maxRatio);
     }
