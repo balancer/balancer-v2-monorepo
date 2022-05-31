@@ -37,7 +37,8 @@ describe('StableMath', function () {
 
     context('check over a range of inputs', () => {
       for (let numTokens = 2; numTokens <= 5; numTokens++) {
-        const balances = Array(numTokens).fill(300)
+        const balances = Array(numTokens)
+          .fill(300)
           .map((b) => (random(100) > 50 ? b + random(50) : b - random(50)))
           .map(fp);
 
