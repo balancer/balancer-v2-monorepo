@@ -80,4 +80,18 @@ describe('WordCodec', () => {
       expect(decoded).to.equal(-1);
     }
   });
+
+  it('rejects bitLength 0', async () => {
+    await expect(lib.insertUint(ZERO_BYTES32, getMaxValue(255), 0, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
+    await expect(lib.insertInt(ZERO_BYTES32, getMaxValue(255), 0, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
+    await expect(lib.encodeUint(getMaxValue(255), 0, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
+    await expect(lib.encodeInt(getMaxValue(255), 0, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
+  });
+
+  it('handles bitLength > 255', async () => {
+    await expect(lib.insertUint(ZERO_BYTES32, getMaxValue(255), 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
+    await expect(lib.insertInt(ZERO_BYTES32, getMaxValue(255), 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
+    await expect(lib.encodeUint(getMaxValue(255), 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
+    await expect(lib.encodeInt(getMaxValue(255), 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
+  });
 });
