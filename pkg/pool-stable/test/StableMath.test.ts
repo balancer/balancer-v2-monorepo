@@ -37,15 +37,13 @@ describe('StableMath', function () {
 
     context('check over a range of inputs', () => {
       for (let numTokens = 2; numTokens <= 5; numTokens++) {
-        let balances = Array(numTokens).fill(300);
-        balances = balances.map((b) => (random(100) > 50 ? b + random(50) : b - random(50)));
+        const balances = Array(numTokens).fill(300)
+          .map((b) => (random(100) > 50 ? b + random(50) : b - random(50)))
+          .map(fp);
 
         it(`computes the invariant for ${numTokens} tokens`, async () => {
           for (let amp = 100; amp <= 5000; amp += 100) {
-            await checkInvariant(
-              balances.map((b) => fp(b)),
-              amp
-            );
+            await checkInvariant(balances, amp);
           }
         });
       }
