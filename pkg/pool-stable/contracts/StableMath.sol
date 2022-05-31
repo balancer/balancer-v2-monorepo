@@ -84,25 +84,24 @@ library StableMath {
         uint256 ampTimesTotal = amplificationParameter * numTokens; // Ann in the Curve version
 
         for (uint256 i = 0; i < 255; i++) {
-            uint256 P_D = invariant;
+            uint256 D_P = invariant;
 
             for (uint256 j = 0; j < numTokens; j++) {
-                // (P_D * invariant) / (balances[j] * numTokens)
-                P_D = Math.div(Math.mul(P_D, invariant), Math.mul(balances[j], numTokens), roundUp);
+                // (D_P * invariant) / (balances[j] * numTokens)
+                D_P = Math.div(Math.mul(D_P, invariant), Math.mul(balances[j], numTokens), roundUp);
             }
 
             prevInvariant = invariant;
 
-            //
             invariant = Math.div(
                 Math.mul(
-                    // (ampTimesTotal * sum) / AMP_PRECISION + P_D * numTokens
-                    (Math.div(Math.mul(ampTimesTotal, sum), _AMP_PRECISION, roundUp).add(Math.mul(P_D, numTokens))),
+                    // (ampTimesTotal * sum) / AMP_PRECISION + D_P * numTokens
+                    (Math.div(Math.mul(ampTimesTotal, sum), _AMP_PRECISION, roundUp).add(Math.mul(D_P, numTokens))),
                     invariant
                 ),
-                // ((ampTimesTotal - _AMP_PRECISION) * invariant) / _AMP_PRECISION + (numTokens + 1) * P_D
+                // ((ampTimesTotal - _AMP_PRECISION) * invariant) / _AMP_PRECISION + (numTokens + 1) * D_P
                 (Math.div(Math.mul((ampTimesTotal - _AMP_PRECISION), invariant), _AMP_PRECISION, !roundUp) +
-                    Math.mul((numTokens + 1), P_D)),
+                    Math.mul((numTokens + 1), D_P)),
                 roundUp
             );
 
