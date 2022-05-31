@@ -123,9 +123,6 @@ abstract contract LegacyBasePool is
 
     // Getters / Setters
 
-    /**
-     * @notice Return the pool id.
-     */
     function getPoolId() public view override returns (bytes32) {
         return _poolId;
     }
@@ -145,19 +142,10 @@ abstract contract LegacyBasePool is
         return _DEFAULT_MINIMUM_BPT;
     }
 
-    /**
-     * @notice Return the current value of the swap fee percentage.
-     * @dev This is stored in the MSB 64 bits of the `_miscData`.
-     */
     function getSwapFeePercentage() public view returns (uint256) {
         return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
     }
 
-    /**
-     * @notice Set the swap fee percentage.
-     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
-     * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
-     */
     function setSwapFeePercentage(uint256 swapFeePercentage) public virtual authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
@@ -170,12 +158,6 @@ abstract contract LegacyBasePool is
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
-    /**
-     * @notice Set the asset manager parameters for the given token.
-     * @dev This is a permissioned function, unavailable when the pool is paused.
-     * The details of the configuration data are set by each Asset Manager. (For an example, see
-     * `RewardsAssetManager`.)
-     */
     function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig)
         public
         virtual
@@ -192,22 +174,11 @@ abstract contract LegacyBasePool is
         IAssetManager(assetManager).setConfig(poolId, poolConfig);
     }
 
-    /**
-     * @notice Pause the pool: an emergency action which disables all pool functions.
-     * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
-     * deployment (see `TemporarilyPausable`). It also puts the pool in Recovery Mode, so that LPs can safely exit.
-     */
     function pause() external authenticate {
         _setPaused(true);
         _setRecoveryMode(true);
     }
 
-    /**
-     * @notice Reverse a `pause` operation, and restore a pool to normal functionality.
-     * @dev This is a permissioned function that will only work on a paused pool within the Buffer Period set during
-     * pool factory deployment (see `TemporarilyPausable`). It does not automatically exit Recovery Mode. Note that
-     * any paused pools will automatically unpause after the Buffer Period expires.
-     */
     function unpause() external authenticate {
         _setPaused(false);
     }
@@ -258,10 +229,6 @@ abstract contract LegacyBasePool is
         _;
     }
 
-    /**
-     * @notice Add liquidity to a pool (including for the first time, known as "initializing" the pool).
-     * @dev This function can only be called from the Vault, from `joinPool`.
-     */
     function onJoinPool(
         bytes32 poolId,
         address sender,
@@ -319,18 +286,6 @@ abstract contract LegacyBasePool is
         }
     }
 
-    /**
-     * @notice Remove liquidity from a pool.
-     * @dev This function can only be called from the Vault, from `exitPool`. If this is a special recovery mode exit,
-     * ensure we are in Recovery Mode, and invoke `_recoveryModeExit`. This performs a proportional exit in the simplest
-     * possible manner (e.g., without scaling, so lower-decimal tokens will have less precision). It should not perform
-     * any operations that might fail: no external calls, no iterative calculations, etc.
-     *
-     * This contract implements a default version `_recoveryModeExit`; pools can override it if there are special
-     * considerations, or other operations that need to be performed to maintain pool functions.
-     *
-     * Otherwise, call `_onExitPool`, which each pool type implements to handle all the exits it supports.
-     */
     function onExitPool(
         bytes32 poolId,
         address sender,
@@ -384,7 +339,6 @@ abstract contract LegacyBasePool is
     // Query functions
 
     /**
-     * @notice "Dry run" `onJoinPool`.
      * @dev Returns the amount of BPT that would be granted to `recipient` if the `onJoinPool` hook were called by the
      * Vault with the same arguments, along with the number of tokens `sender` would have to supply.
      *
@@ -423,7 +377,6 @@ abstract contract LegacyBasePool is
     }
 
     /**
-     * @notice "Dry run" `onExitPool`.
      * @dev Returns the amount of BPT that would be burned from `sender` if the `onExitPool` hook were called by the
      * Vault with the same arguments, along with the number of tokens `recipient` would receive.
      *
@@ -647,14 +600,6 @@ abstract contract LegacyBasePool is
      */
     function _scalingFactors() internal view virtual returns (uint256[] memory);
 
-    /**
-     * @notice Return the set of scaling factors for the pool tokens.
-     * @dev Scaling factors are used to convert token balances to and from 18-decimal floating point values.
-     * The Vault expects all values to be 18-decimal, yet all I/O is performed in native decimals. So we scale "up"
-     * when sending user-supplied balances to the Vault, and scale "down" to return results.
-     * For instance, an 18-decimal token has a scaling factor of 1, while a 6-decimal token has a scaling factor or
-     * 10^12.
-     */
     function getScalingFactors() external view returns (uint256[] memory) {
         return _scalingFactors();
     }
