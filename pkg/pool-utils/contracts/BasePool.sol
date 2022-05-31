@@ -32,7 +32,7 @@ import "./BasePoolAuthorization.sol";
 // solhint-disable max-states-count
 
 /**
- * @notice Reference implementation for the base layer of a Pool contract
+ * @notice Reference implementation for the base layer of a Pool contract.
  * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with optional
  * Asset Managers, an admin-controlled swap fee percentage, and an emergency pause mechanism.
  *
