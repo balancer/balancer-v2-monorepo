@@ -179,7 +179,7 @@ library Samples {
         int256 accLogInvariant,
         uint256 _timestamp
     ) internal pure returns (bytes32) {
-        // Adding the bitLength arguments causes "stack too deep"
+        // We rely on helper functions to work around stack-too-deep issues
         return
             _packPrices(instLogPairPrice, accLogPairPrice, instLogBptPrice, accLogBptPrice) |
             _packInvariants(instLogInvariant, accLogInvariant) |
