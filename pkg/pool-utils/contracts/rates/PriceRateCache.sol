@@ -65,7 +65,7 @@ library PriceRateCache {
      * from the current time.
      */
     function encode(uint256 rate, uint256 duration) internal view returns (bytes32) {
-        _require(rate < 2**128, Errors.PRICE_RATE_OVERFLOW);
+        _require(rate >> 128 == 0, Errors.PRICE_RATE_OVERFLOW);
 
         // solhint-disable not-rely-on-time
         return
