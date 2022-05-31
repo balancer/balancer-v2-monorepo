@@ -228,7 +228,7 @@ abstract contract LegacyBasePool is IBasePool, BasePoolAuthorization, BalancerPo
     }
 
     /**
-     * @notice Add liquidity to a pool (including for the first time, known as "initializing" the pool).
+     * @notice Vault hook for adding liquidity to a pool (including the first time, "initializing" the pool).
      * @dev This function can only be called from the Vault, from `joinPool`.
      */
     function onJoinPool(
@@ -289,7 +289,7 @@ abstract contract LegacyBasePool is IBasePool, BasePoolAuthorization, BalancerPo
     }
 
     /**
-     * @notice Remove liquidity from a pool.
+     * @notice Vault hook for removing liquidity from a pool.
      * @dev This function can only be called from the Vault, from `exitPool`.
      */
     function onExitPool(
