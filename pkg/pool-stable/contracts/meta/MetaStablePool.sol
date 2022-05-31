@@ -605,7 +605,7 @@ contract MetaStablePool is StablePool, PoolPriceOracle {
         returns (bytes32 cache, uint256 rate)
     {
         rate = provider.getRate();
-        _require(rate < 2**128, Errors.PRICE_RATE_OVERFLOW);
+        _require(rate >> 128 == 0, Errors.PRICE_RATE_OVERFLOW);
 
         cache =
             WordCodec.encodeUint(rate, _PRICE_RATE_CACHE_VALUE_OFFSET, 128) |
