@@ -29,10 +29,10 @@ describe('StableMath', function () {
     async function checkInvariant(balances: BigNumber[], amp: number): Promise<void> {
       const ampParameter = bn(amp).mul(AMP_PRECISION);
 
-      const result = await mock.invariant(ampParameter, balances, true);
+      const actualInvariant = await mock.invariant(ampParameter, balances, true);
       const expectedInvariant = calculateInvariant(balances, ampParameter);
 
-      expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
+      expectEqualWithError(actualInvariant, expectedInvariant, MAX_RELATIVE_ERROR);
     }
 
     context('check over a range of inputs', () => {
