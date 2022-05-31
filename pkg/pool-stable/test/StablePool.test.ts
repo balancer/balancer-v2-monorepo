@@ -1219,14 +1219,18 @@ describe('StablePool', function () {
             expect(await pool.inRecoveryMode()).to.be.true;
           });
 
-          async function LPsCanExit(): Promise<void> {
-            it('LPs can exit without changing the rate', async () => {
+          async function LPsCanExit(intersperseTrades = false): Promise<void> {
+            it(`${
+              intersperseTrades
+                ? 'LPs can exit without changing the rate (even if people are also trading)'
+                : 'LPs can exit without changing the rate'
+            }`, async () => {
               const totalBPT = await pool.totalSupply();
               const totalBptBalance = await pool.balanceOf(lp);
               const N = 4; // Number of sequential withdrawals
               // Remove 1/(N+1) per step, so that we don't go down to zero (keeping rate valid)
               const expectedAmountsOut = initialBalances.map((balance) => balance.div(N + 1));
-              const originalRate = await pool.getRate();
+              let currentRate = await pool.getRate();
               const bptBurnedPerExit = totalBptBalance.div(N + 1);
 
               // Exit N times, ensuring we get the correct amount out, the tokens are burned, and the rate calculation remains valid
@@ -1247,14 +1251,28 @@ describe('StablePool', function () {
 
                 // Total supply should be reduced by half (ensure tokens are burned)
                 expect(await pool.totalSupply()).to.equalWithError(totalBPT.sub(bptBurnedPerExit.mul(i)), 0.000001);
+                expect(await pool.getRate()).to.equalWithError(currentRate, 0.0001);
 
-                expect(await pool.getRate()).to.equalWithError(originalRate, 0.000001);
+                if (intersperseTrades) {
+                  if (await pool.instance.invariantConverges()) {
+                    await pool.swapGivenIn({ in: 0, out: 1, amount: fp(100) });
+
+                    // Update the expected rate
+                    currentRate = await pool.getRate();
+                  } else {
+                    // Trade will fail
+                    await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(1) })).to.be.revertedWith(
+                      'STABLE_INVARIANT_DIDNT_CONVERGE'
+                    );
+                  }
+                }
               }
             });
           }
 
           context('with invariant working', async () => {
             LPsCanExit();
+            LPsCanExit(true); // with trades in the middle
           });
 
           context('with invariant broken', async () => {
@@ -1263,6 +1281,7 @@ describe('StablePool', function () {
             });
 
             LPsCanExit();
+            LPsCanExit(true); // with trades in the middle
           });
         });
 

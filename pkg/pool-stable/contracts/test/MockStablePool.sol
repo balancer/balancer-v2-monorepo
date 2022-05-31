@@ -40,13 +40,27 @@ contract MockStablePool is StablePool {
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
-    ) StablePool(vault, name, symbol, tokens, amplificationParameter, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner) {
+    ) StablePool(
+        vault,
+        name,
+        symbol,
+        tokens,
+        amplificationParameter,
+        swapFeePercentage,
+        pauseWindowDuration,
+        bufferPeriodDuration,
+        owner
+    ) {
       // solhint-disable-previous-line no-empty-blocks
     }
 
     // Simulate failure of the invariant to converge
     function setInvariantFailure(bool invariantFailsToConverge) external {
         _simulateInvariantFailure = invariantFailsToConverge;
+    }
+
+    function invariantConverges() external view returns (bool) {
+        return !_simulateInvariantFailure;
     }
 
     function _ensureInvariantConverges() private view {
@@ -93,7 +107,17 @@ contract MockStablePool is StablePool {
             uint256[] memory
         )
     {
-      return super._onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, scalingFactors, userData);
+      return
+        super._onJoinPool(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            scalingFactors,
+            userData
+        );
     }
 
     function _onExitPool(
@@ -116,7 +140,17 @@ contract MockStablePool is StablePool {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-      return super._onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, scalingFactors, userData);
+      return
+        super._onExitPool(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            scalingFactors,
+            userData
+        );
     }
 
     function getRate() public view virtual override returns (uint256) {
