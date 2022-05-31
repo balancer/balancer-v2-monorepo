@@ -185,7 +185,7 @@ abstract contract LegacyBasePool is IBasePool, BasePoolAuthorization, BalancerPo
     /**
      * @notice Pause the pool: an emergency action which disables all pool functions.
      * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
-     * deployment (see `TemporarilyPausable`). It also puts the pool in Recovery Mode, so that LPs can safely exit.
+     * deployment (see `TemporarilyPausable`).
      */
     function pause() external authenticate {
         _setPaused(true);
@@ -194,8 +194,8 @@ abstract contract LegacyBasePool is IBasePool, BasePoolAuthorization, BalancerPo
     /**
      * @notice Reverse a `pause` operation, and restore a pool to normal functionality.
      * @dev This is a permissioned function that will only work on a paused pool within the Buffer Period set during
-     * pool factory deployment (see `TemporarilyPausable`). It does not automatically exit Recovery Mode. Note that
-     * any paused pools will automatically unpause after the Buffer Period expires.
+     * pool factory deployment (see `TemporarilyPausable`). Note that ny paused pools will automatically unpause after
+     * the Buffer Period expires.
      */
     function unpause() external authenticate {
         _setPaused(false);

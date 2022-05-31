@@ -209,7 +209,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     /**
      * @notice Pause the pool: an emergency action which disables all pool functions.
      * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
-     * deployment (see `TemporarilyPausable`). It also puts the pool in Recovery Mode, so that LPs can safely exit.
+     * deployment (see `TemporarilyPausable`).
      */
     function pause() external authenticate {
         _setPaused(true);
@@ -218,8 +218,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     /**
      * @notice Reverse a `pause` operation, and restore a pool to normal functionality.
      * @dev This is a permissioned function that will only work on a paused pool within the Buffer Period set during
-     * pool factory deployment (see `TemporarilyPausable`). It does not automatically exit Recovery Mode. Note that
-     * any paused pools will automatically unpause after the Buffer Period expires.
+     * pool factory deployment (see `TemporarilyPausable`). Note that any paused pools will automatically unpause
+     * after the Buffer Period expires.
      */
     function unpause() external authenticate {
         _setPaused(false);
@@ -252,7 +252,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @notice Add liquidity to a pool (including for the first time, known as "initializing" the pool).
+     * @notice Vault hook for adding liquidity to a pool (including the first time, "initializing" the pool).
      * @dev This function can only be called from the Vault, from `joinPool`.
      */
     function onJoinPool(
@@ -312,7 +312,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @notice Remove liquidity from a pool.
+     * @notice Vault hook for removing liquidity from a pool.
      * @dev This function can only be called from the Vault, from `exitPool`.
      */
     function onExitPool(
