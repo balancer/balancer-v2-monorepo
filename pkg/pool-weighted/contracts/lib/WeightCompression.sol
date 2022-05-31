@@ -17,7 +17,7 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 /**
- * @dev Library for compressing and uncompresing numbers by using smaller types.
+ * @dev Library for compressing and decompressing numbers by using smaller types.
  * All values are 18 decimal fixed-point numbers in the [0.0, 1.0] range,
  * so heavier compression (fewer bits) results in fewer decimals.
  */
@@ -41,12 +41,12 @@ library WeightCompression {
     }
 
     // Reverse a compression operation (normalized to 1).
-    function uncompress(uint256 value, uint256 bitLength) internal pure returns (uint256) {
-        return uncompress(value, bitLength, FixedPoint.ONE);
+    function decompress(uint256 value, uint256 bitLength) internal pure returns (uint256) {
+        return decompress(value, bitLength, FixedPoint.ONE);
     }
 
     // Reverse a compression operation (normalized to a given value).
-    function uncompress(
+    function decompress(
         uint256 value,
         uint256 bitLength,
         uint256 normalizedTo
