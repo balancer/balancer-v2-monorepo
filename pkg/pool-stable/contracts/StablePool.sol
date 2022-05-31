@@ -778,10 +778,10 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
             uint256 endTime
         )
     {
-        startValue = _packedAmplificationData.decodeUint64(0);
-        endValue = _packedAmplificationData.decodeUint64(64);
-        startTime = _packedAmplificationData.decodeUint64(64 * 2);
-        endTime = _packedAmplificationData.decodeUint64(64 * 3);
+        startValue = _packedAmplificationData.decodeUint(0, 64);
+        endValue = _packedAmplificationData.decodeUint(64, 64);
+        startTime = _packedAmplificationData.decodeUint(64 * 2, 64);
+        endTime = _packedAmplificationData.decodeUint(64 * 3, 64);
     }
 
     function _isToken0(IERC20 token) internal view returns (bool) {

@@ -44,28 +44,28 @@ library OracleMiscData {
      * @dev Returns the cached logarithm of the invariant.
      */
     function logInvariant(bytes32 data) internal pure returns (int256) {
-        return data.decodeInt22(_LOG_INVARIANT_OFFSET);
+        return data.decodeInt(_LOG_INVARIANT_OFFSET, 22);
     }
 
     /**
      * @dev Returns the cached logarithm of the total supply.
      */
     function logTotalSupply(bytes32 data) internal pure returns (int256) {
-        return data.decodeInt22(_LOG_TOTAL_SUPPLY_OFFSET);
+        return data.decodeInt(_LOG_TOTAL_SUPPLY_OFFSET, 22);
     }
 
     /**
      * @dev Returns the timestamp of the creation of the oracle's latest sample.
      */
     function oracleSampleCreationTimestamp(bytes32 data) internal pure returns (uint256) {
-        return data.decodeUint31(_ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET);
+        return data.decodeUint(_ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET, 31);
     }
 
     /**
      * @dev Returns the index of the oracle's latest sample.
      */
     function oracleIndex(bytes32 data) internal pure returns (uint256) {
-        return data.decodeUint10(_ORACLE_INDEX_OFFSET);
+        return data.decodeUint(_ORACLE_INDEX_OFFSET, 10);
     }
 
     /**
@@ -79,28 +79,28 @@ library OracleMiscData {
      * @dev Sets the logarithm of the invariant in `data`, returning the updated value.
      */
     function setLogInvariant(bytes32 data, int256 _logInvariant) internal pure returns (bytes32) {
-        return data.insertInt22(_logInvariant, _LOG_INVARIANT_OFFSET);
+        return data.insertInt(_logInvariant, _LOG_INVARIANT_OFFSET, 22);
     }
 
     /**
      * @dev Sets the logarithm of the total supply in `data`, returning the updated value.
      */
     function setLogTotalSupply(bytes32 data, int256 _logTotalSupply) internal pure returns (bytes32) {
-        return data.insertInt22(_logTotalSupply, _LOG_TOTAL_SUPPLY_OFFSET);
+        return data.insertInt(_logTotalSupply, _LOG_TOTAL_SUPPLY_OFFSET, 22);
     }
 
     /**
      * @dev Sets the timestamp of the creation of the oracle's latest sample in `data`, returning the updated value.
      */
     function setOracleSampleCreationTimestamp(bytes32 data, uint256 _initialTimestamp) internal pure returns (bytes32) {
-        return data.insertUint31(_initialTimestamp, _ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET);
+        return data.insertUint(_initialTimestamp, _ORACLE_SAMPLE_CREATION_TIMESTAMP_OFFSET, 31);
     }
 
     /**
      * @dev Sets the index of the  oracle's latest sample in `data`, returning the updated value.
      */
     function setOracleIndex(bytes32 data, uint256 _oracleIndex) internal pure returns (bytes32) {
-        return data.insertUint10(_oracleIndex, _ORACLE_INDEX_OFFSET);
+        return data.insertUint(_oracleIndex, _ORACLE_INDEX_OFFSET, 10);
     }
 
     /**

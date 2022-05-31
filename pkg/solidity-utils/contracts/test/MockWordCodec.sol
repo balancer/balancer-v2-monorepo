@@ -17,62 +17,6 @@ pragma solidity ^0.7.0;
 import "../helpers/WordCodec.sol";
 
 contract MockWordCodec {
-    function insertUint5(
-        bytes32 word,
-        uint256 value,
-        uint256 offset
-    ) external pure returns (bytes32) {
-        return WordCodec.insertUint5(word, value, offset);
-    }
-
-    function insertUint7(
-        bytes32 word,
-        uint256 value,
-        uint256 offset
-    ) external pure returns (bytes32) {
-        return WordCodec.insertUint7(word, value, offset);
-    }
-
-    function insertUint10(
-        bytes32 word,
-        uint256 value,
-        uint256 offset
-    ) external pure returns (bytes32) {
-        return WordCodec.insertUint10(word, value, offset);
-    }
-
-    function insertUint16(
-        bytes32 word,
-        uint256 value,
-        uint256 offset
-    ) external pure returns (bytes32) {
-        return WordCodec.insertUint16(word, value, offset);
-    }
-
-    function insertUint31(
-        bytes32 word,
-        uint256 value,
-        uint256 offset
-    ) external pure returns (bytes32) {
-        return WordCodec.insertUint31(word, value, offset);
-    }
-
-    function insertUint32(
-        bytes32 word,
-        uint256 value,
-        uint256 offset
-    ) external pure returns (bytes32) {
-        return WordCodec.insertUint32(word, value, offset);
-    }
-
-    function insertUint64(
-        bytes32 word,
-        uint256 value,
-        uint256 offset
-    ) external pure returns (bytes32) {
-        return WordCodec.insertUint64(word, value, offset);
-    }
-
     function insertUint(
         bytes32 word,
         uint256 value,
@@ -80,6 +24,15 @@ contract MockWordCodec {
         uint256 bitLength
     ) external pure returns (bytes32) {
         return WordCodec.insertUint(word, value, offset, bitLength);
+    }
+
+    function insertInt(
+        bytes32 word,
+        int256 value,
+        uint256 offset,
+        uint256 bitLength
+    ) external pure returns (bytes32) {
+        return WordCodec.insertInt(word, value, offset, bitLength);
     }
 
     function encodeUint(
@@ -90,11 +43,27 @@ contract MockWordCodec {
         return WordCodec.encodeUint(value, offset, bitLength);
     }
 
+    function encodeInt(
+        int256 value,
+        uint256 offset,
+        uint256 bitLength
+    ) external pure returns (bytes32) {
+        return WordCodec.encodeInt(value, offset, bitLength);
+    }
+
     function decodeUint(
         bytes32 value,
         uint256 offset,
         uint256 bitLength
     ) external pure returns (uint256) {
         return WordCodec.decodeUint(value, offset, bitLength);
+    }
+
+    function decodeInt(
+        bytes32 value,
+        uint256 offset,
+        uint256 bitLength
+    ) external pure returns (int256) {
+        return WordCodec.decodeInt(value, offset, bitLength);
     }
 }

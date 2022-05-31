@@ -20,18 +20,7 @@ describe('WordCodec', () => {
     return BigNumber.from(1).shl(bits);
   }
 
-  const bitLengths = [5, 7, 10, 16, 31, 32, 64];
-  for (const bitLength of bitLengths) {
-    it(`validates ${bitLength} bit inserts`, async () => {
-      const MAX_VALID = getMaxValue(bitLength);
-      const insertFunction = `insertUint${bitLength}`;
-
-      expect(await lib[insertFunction](ZERO_BYTES32, MAX_VALID, 0)).to.equal(TypesConverter.toBytes32(MAX_VALID));
-      await expect(lib[insertFunction](ZERO_BYTES32, getOverMax(bitLength), 0)).to.be.revertedWith('CODEC_OVERFLOW');
-    });
-  }
-
-  it('validates general insertUint', async () => {
+  it('validates insertUint', async () => {
     for (let bits = 2; bits < 256; bits++) {
       const MAX_VALID = getMaxValue(bits);
 
@@ -40,7 +29,15 @@ describe('WordCodec', () => {
     }
   });
 
-  it('validates general encodeUint', async () => {
+  it('validates insertInt', async () => {
+    for (let bits = 2; bits < 256; bits++) {
+      const MAX_VALID = getMaxValue(bits);
+
+      expect(await lib.insertInt(ZERO_BYTES32, MAX_VALID, 0, bits)).to.equal(TypesConverter.toBytes32(MAX_VALID));
+    }
+  });
+
+  it('validates encodeUint', async () => {
     for (let bits = 2; bits < 256; bits++) {
       const MAX_VALID = getMaxValue(bits);
 
@@ -49,13 +46,38 @@ describe('WordCodec', () => {
     }
   });
 
-  it('validates general decodeUint', async () => {
+  it('validates encodeInt', async () => {
+    for (let bits = 2; bits < 256; bits++) {
+      const MAX_VALID = getMaxValue(bits);
+
+      expect(await lib.encodeInt(MAX_VALID, 0, bits)).to.equal(TypesConverter.toBytes32(MAX_VALID));
+    }
+  });
+
+  it('validates decodeUint', async () => {
     for (let bits = 2; bits < 256; bits++) {
       const MAX_VALID = getMaxValue(bits);
       const encoded = await lib.encodeUint(MAX_VALID, 0, bits);
       const decoded = await lib.decodeUint(encoded, 0, bits);
 
       expect(decoded).to.equal(encoded);
+    }
+  });
+
+  it('validates decodeInt', async () => {
+    for (let bits = 2; bits < 256; bits++) {
+      const MAX_POSITIVE = getMaxValue(bits - 1);
+
+      let encoded = await lib.encodeInt(MAX_POSITIVE, 0, bits);
+      let decoded = await lib.decodeInt(encoded, 0, bits);
+      expect(decoded).to.equal(encoded);
+
+      // Test negative values
+      const MAX_VALID = getMaxValue(bits);
+      encoded = await lib.encodeInt(MAX_VALID, 0, bits);
+      decoded = await lib.decodeInt(encoded, 0, bits);
+
+      expect(decoded).to.equal(-1);
     }
   });
 });

@@ -577,8 +577,8 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
 
     function getTargets() public view returns (uint256 lowerTarget, uint256 upperTarget) {
         bytes32 miscData = _getMiscData();
-        lowerTarget = miscData.decodeUint96(_LOWER_TARGET_OFFSET);
-        upperTarget = miscData.decodeUint96(_UPPER_TARGET_OFFSET);
+        lowerTarget = miscData.decodeUint(_LOWER_TARGET_OFFSET, 96);
+        upperTarget = miscData.decodeUint(_UPPER_TARGET_OFFSET, 96);
     }
 
     function _setTargets(
