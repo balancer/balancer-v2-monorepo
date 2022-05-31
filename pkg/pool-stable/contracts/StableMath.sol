@@ -92,7 +92,7 @@ library StableMath {
             }
 
             prevInvariant = invariant;
-            
+
             //
             invariant = Math.div(
                 Math.mul(
