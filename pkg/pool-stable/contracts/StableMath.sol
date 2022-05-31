@@ -72,7 +72,6 @@ library StableMath {
 
         uint256 sum = 0; // S in the Curve version
         uint256 numTokens = balances.length;
-
         for (uint256 i = 0; i < numTokens; i++) {
             sum = sum.add(balances[i]);
         }
