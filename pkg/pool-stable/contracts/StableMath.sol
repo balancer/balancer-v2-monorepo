@@ -70,9 +70,8 @@ library StableMath {
 
         // We support rounding up or down.
 
+        uint256 sum = 0; // S in the Curve version
         uint256 numTokens = balances.length;
-        uint256 prevInvariant;
-        uint256 sum;
 
         for (uint256 i = 0; i < numTokens; i++) {
             sum = sum.add(balances[i]);
@@ -82,7 +81,8 @@ library StableMath {
         }
 
         uint256 ampTimesTotal = amplificationParameter * numTokens;
-        uint256 invariant = sum;
+        uint256 invariant = sum; // D in the Curve version
+        uint256 prevInvariant; // Dprev in the Curve version
 
         for (uint256 i = 0; i < 255; i++) {
             uint256 P_D = invariant;
