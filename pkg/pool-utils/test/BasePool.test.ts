@@ -304,54 +304,95 @@ describe('BasePool', function () {
     //  - authorization (owner, delegated owner)
   });
 
-  describe('special modes', () => {
+  describe('set paused', () => {
     let pool: Contract;
     const PAUSE_WINDOW_DURATION = MONTH * 3;
     const BUFFER_PERIOD_DURATION = MONTH;
 
     let sender: SignerWithAddress;
 
-    describe('set paused', () => {
-      function itCanPause() {
-        it('can pause', async () => {
-          await pool.connect(sender).pause();
+    function itCanPause() {
+      it('can pause', async () => {
+        await pool.connect(sender).pause();
 
-          const { paused } = await pool.getPausedState();
-          expect(paused).to.be.true;
+        const { paused } = await pool.getPausedState();
+        expect(paused).to.be.true;
+      });
+
+      it('can unpause', async () => {
+        await pool.connect(sender).pause();
+        await pool.connect(sender).unpause();
+
+        const { paused } = await pool.getPausedState();
+        expect(paused).to.be.false;
+      });
+
+      it('cannot unpause after the pause window', async () => {
+        await advanceTime(PAUSE_WINDOW_DURATION + DAY);
+        await expect(pool.connect(sender).pause()).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
+      });
+    }
+
+    function itRevertsWithUnallowedSender() {
+      it('reverts', async () => {
+        await expect(pool.connect(sender).pause()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(pool.connect(sender).unpause()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+    }
+
+    context('with a delegated owner', () => {
+      const owner = DELEGATE_OWNER;
+
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployBasePool({
+          pauseWindowDuration: PAUSE_WINDOW_DURATION,
+          bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+          owner,
+        });
+      });
+
+      beforeEach('set sender', () => {
+        sender = other;
+      });
+
+      context('when the sender does not have the pause permission in the authorizer', () => {
+        itRevertsWithUnallowedSender();
+      });
+
+      context('when the sender has the pause permission in the authorizer', () => {
+        sharedBeforeEach('grant permission', async () => {
+          const pauseAction = await actionId(pool, 'pause');
+          const unpauseAction = await actionId(pool, 'unpause');
+          await authorizer
+            .connect(admin)
+            .grantPermissions([pauseAction, unpauseAction], sender.address, [ANY_ADDRESS, ANY_ADDRESS]);
         });
 
-        it('can unpause', async () => {
-          await pool.connect(sender).pause();
-          await pool.connect(sender).unpause();
+        itCanPause();
+      });
+    });
 
-          const { paused } = await pool.getPausedState();
-          expect(paused).to.be.false;
+    context('with an owner', () => {
+      let owner: SignerWithAddress;
+
+      sharedBeforeEach('deploy pool', async () => {
+        owner = poolOwner;
+        pool = await deployBasePool({
+          pauseWindowDuration: PAUSE_WINDOW_DURATION,
+          bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+          owner,
+        });
+      });
+
+      context('when the sender is the owner', () => {
+        beforeEach('set sender', () => {
+          sender = owner;
         });
 
-        it('cannot unpause after the pause window', async () => {
-          await advanceTime(PAUSE_WINDOW_DURATION + DAY);
-          await expect(pool.connect(sender).pause()).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
-        });
-      }
+        itRevertsWithUnallowedSender();
+      });
 
-      function itRevertsWithUnallowedSender() {
-        it('reverts', async () => {
-          await expect(pool.connect(sender).pause()).to.be.revertedWith('SENDER_NOT_ALLOWED');
-          await expect(pool.connect(sender).unpause()).to.be.revertedWith('SENDER_NOT_ALLOWED');
-        });
-      }
-
-      context('with a delegated owner', () => {
-        const owner = DELEGATE_OWNER;
-
-        sharedBeforeEach('deploy pool', async () => {
-          pool = await deployBasePool({
-            pauseWindowDuration: PAUSE_WINDOW_DURATION,
-            bufferPeriodDuration: BUFFER_PERIOD_DURATION,
-            owner,
-          });
-        });
-
+      context('when the sender is not the owner', () => {
         beforeEach('set sender', () => {
           sender = other;
         });
@@ -361,7 +402,7 @@ describe('BasePool', function () {
         });
 
         context('when the sender has the pause permission in the authorizer', () => {
-          sharedBeforeEach('grant permission', async () => {
+          sharedBeforeEach(async () => {
             const pauseAction = await actionId(pool, 'pause');
             const unpauseAction = await actionId(pool, 'unpause');
             await authorizer
@@ -370,49 +411,6 @@ describe('BasePool', function () {
           });
 
           itCanPause();
-        });
-      });
-
-      context('with an owner', () => {
-        let owner: SignerWithAddress;
-
-        sharedBeforeEach('deploy pool', async () => {
-          owner = poolOwner;
-          pool = await deployBasePool({
-            pauseWindowDuration: PAUSE_WINDOW_DURATION,
-            bufferPeriodDuration: BUFFER_PERIOD_DURATION,
-            owner,
-          });
-        });
-
-        context('when the sender is the owner', () => {
-          beforeEach('set sender', () => {
-            sender = owner;
-          });
-
-          itRevertsWithUnallowedSender();
-        });
-
-        context('when the sender is not the owner', () => {
-          beforeEach('set sender', () => {
-            sender = other;
-          });
-
-          context('when the sender does not have the pause permission in the authorizer', () => {
-            itRevertsWithUnallowedSender();
-          });
-
-          context('when the sender has the pause permission in the authorizer', () => {
-            sharedBeforeEach(async () => {
-              const pauseAction = await actionId(pool, 'pause');
-              const unpauseAction = await actionId(pool, 'unpause');
-              await authorizer
-                .connect(admin)
-                .grantPermissions([pauseAction, unpauseAction], sender.address, [ANY_ADDRESS, ANY_ADDRESS]);
-            });
-
-            itCanPause();
-          });
         });
       });
     });
