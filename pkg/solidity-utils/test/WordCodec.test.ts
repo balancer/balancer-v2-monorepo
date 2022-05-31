@@ -8,7 +8,7 @@ import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConv
 describe('WordCodec', () => {
   let lib: Contract;
 
-  sharedBeforeEach('deploy lib', async () => {
+  before('deploy lib', async () => {
     lib = await deploy('MockWordCodec');
   });
 
