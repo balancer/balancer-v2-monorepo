@@ -8,6 +8,9 @@ import { task, types } from 'hardhat/config';
 import { TASK_TEST } from 'hardhat/builtin-tasks/task-names';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 
+import { Contract } from 'ethers';
+import { Interface } from 'ethers/lib/utils';
+
 import path from 'path';
 import { existsSync, readdirSync, statSync } from 'fs';
 
@@ -118,6 +121,55 @@ task('check-artifacts', `check that contract artifacts correspond to their build
       }
     }
   });
+
+task('action-ids', `Print the action IDs for a particular contract`)
+  .addParam('id', 'Specific task ID')
+  .addParam('name', 'Contract name')
+  .addOptionalParam('address', 'Contract address')
+  .setAction(
+    async (args: { id: string; name: string; address?: string; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
+      Logger.setDefaults(false, args.verbose || false);
+
+      const task = new Task(args.id, TaskMode.READ_ONLY, hre.network.name);
+      const artifact = task.artifact(args.name);
+
+      const contractInterface = new Interface(artifact.abi as any);
+      const contractFunctions = Object.entries(contractInterface.functions).filter(([, func]) =>
+        ['nonpayable', 'payable'].includes(func.stateMutability)
+      );
+      // Not all contracts use the Authorizer directly for authentication.
+      // Only if it has the `getActionId` function does it use the Authorizer directly.
+      // Contracts without this function either are permissionless or use another method such as the AuthorizerAdaptor.
+      const contractIsAuthorizerAware = Object.values(contractInterface.functions).some(
+        (func) => func.name === 'getActionId'
+      );
+      if (contractIsAuthorizerAware) {
+        let contract: Contract;
+        if (args.address) {
+          contract = await task.instanceAt(args.name, args.address);
+        } else {
+          contract = await task.deployedInstance(args.name);
+        }
+
+        for (const [signature, contractFunction] of contractFunctions) {
+          const functionSelector = Interface.getSighash(contractFunction);
+          console.log(`${signature}: ${await contract.getActionId(functionSelector)}`);
+        }
+      } else {
+        const adaptorTask = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY, hre.network.name);
+        const authorizerAdaptor = await adaptorTask.deployedInstance('AuthorizerAdaptor');
+
+        console.log('This contract does not use the Authorizer for authentication');
+        console.log('We assume that you are calling these functions through the AuthorizerAdaptor');
+        console.log('');
+
+        for (const [signature, contractFunction] of contractFunctions) {
+          const functionSelector = Interface.getSighash(contractFunction);
+          console.log(`${signature}: ${await authorizerAdaptor.getActionId(functionSelector)}`);
+        }
+      }
+    }
+  );
 
 task(TASK_TEST)
   .addOptionalParam('fork', 'Optional network name to be forked block number to fork in case of running fork tests.')
