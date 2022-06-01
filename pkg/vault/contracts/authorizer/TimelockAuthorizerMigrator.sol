@@ -79,11 +79,11 @@ contract TimelockAuthorizerMigrator {
         for (uint256 i = 0; i < _grantersData.length; i++) {
             // There's no concept of a "granter" on the old Authorizer so we cannot verify these onchain.
             // We must manually verify that these permissions are set sensibly.
-            grantersData.push(RoleData(_grantersData[i].grantee, _grantersData[i].role, _grantersData[i].target));
+            grantersData.push(_grantersData[i]);
         }
         for (uint256 i = 0; i < _revokersData.length; i++) {
             // Similarly to granters, we must manually verify that these permissions are set sensibly.
-            revokersData.push(RoleData(_revokersData[i].grantee, _revokersData[i].role, _revokersData[i].target));
+            revokersData.push(_revokersData[i]);
         }
 
         // Enqueue a root change execution in the new authorizer to set it to the desired root address
