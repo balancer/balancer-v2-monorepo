@@ -18,7 +18,9 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IRecoverab
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 
-import "../math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+
+import "./BasePoolAuthorization.sol";
 
 /**
  * @notice Handle storage and state changes for pools that support "Recovery Mode".
@@ -48,7 +50,7 @@ import "../math/FixedPoint.sol";
  *
  * It is critical to ensure that turning on Recovery Mode would do no harm, if activated maliciously or in error.
  */
-abstract contract Recoverable is IRecoverable {
+abstract contract Recoverable is IRecoverable, BasePoolAuthorization {
     using FixedPoint for uint256;
     using BasePoolUserData for bytes;
 
@@ -60,6 +62,26 @@ abstract contract Recoverable is IRecoverable {
     modifier whenNotInRecoveryMode() {
         _ensureNotInRecoveryMode();
         _;
+    }
+
+    /**
+     * @notice Enter recovery mode, which enables a special safe exit path for LPs.
+     * @dev Does not otherwise affect pool operations, though some pools may perform certain operations in a "safer"
+     * manner that is less likely to fail, in an attempt to keep the pool running, even in a pathological state.
+     * Unlike the Pause operation, which is only available during a short window after factory deployment, Recovery Mode
+     * is a permanent feature.
+     */
+    function enterRecoveryMode() external authenticate {
+        _setRecoveryMode(true);
+    }
+
+    /**
+     * @notice Exit recovery mode, which disables the special safe exit path for LPs.
+     * @dev The special exit path enabled in Recovery Mode pays no protocol fees, so should not be enabled unless
+     * something has gone wrong, and LPs are unable to exit.
+     */
+    function exitRecoveryMode() external authenticate {
+        _setRecoveryMode(false);
     }
 
     /**
@@ -94,5 +116,40 @@ abstract contract Recoverable is IRecoverable {
      */
     function _ensureNotInRecoveryMode() internal view {
         _require(!_recoveryMode, Errors.IN_RECOVERY_MODE);
+    }
+
+    /**
+     * @dev A minimal proportional exit, suitable as is for most pools: though not for pools with Phantom BPT
+     * or other special considerations. Designed to be overridden if a pool needs to do extra processing,
+     * such as scaling a stored invariant, or caching the new total supply.
+     *
+     * No complex code or external calls should be made in derived contracts that override this!
+     */
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        bytes memory userData
+    ) internal view virtual returns (uint256, uint256[] memory) {
+        /**********************************************************************************************
+        // exactBPTInForTokensOut                                                                    //
+        // (per token)                                                                               //
+        // aO = tokenAmountOut             /        bptIn         \                                  //
+        // b = tokenBalance      a0 = b * | ---------------------  |                                 //
+        // bptIn = bptAmountIn             \     bptTotalSupply    /                                 //
+        // bpt = bptTotalSupply                                                                      //
+        **********************************************************************************************/
+
+        // Since we're computing an amount out, we round down overall. This means rounding down on both the
+        // multiplication and division.
+
+        uint256 bptAmountIn = userData.recoveryModeExit();
+        uint256 bptRatio = bptAmountIn.divDown(totalSupply);
+
+        uint256[] memory amountsOut = new uint256[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            amountsOut[i] = balances[i].mulDown(bptRatio);
+        }
+
+        return (bptAmountIn, amountsOut);
     }
 }

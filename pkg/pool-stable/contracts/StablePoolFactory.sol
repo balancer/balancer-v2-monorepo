@@ -17,13 +17,13 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
+import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "./StablePool.sol";
 
-contract StablePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
-    constructor(IVault vault) BasePoolFactory(vault) {
+contract StablePoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(StablePool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -40,20 +40,19 @@ contract StablePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     ) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        address pool = address(
-            new StablePool(
-                getVault(),
-                name,
-                symbol,
-                tokens,
-                amplificationParameter,
-                swapFeePercentage,
-                pauseWindowDuration,
-                bufferPeriodDuration,
-                owner
-            )
-        );
-        _register(pool);
-        return pool;
+        return
+            _create(
+                abi.encode(
+                    getVault(),
+                    name,
+                    symbol,
+                    tokens,
+                    amplificationParameter,
+                    swapFeePercentage,
+                    pauseWindowDuration,
+                    bufferPeriodDuration,
+                    owner
+                )
+            );
     }
 }

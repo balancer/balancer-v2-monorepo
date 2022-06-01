@@ -16,20 +16,18 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Recoverable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "./BalancerPoolToken.sol";
-import "./BasePoolAuthorization.sol";
+import "./Recoverable.sol";
 
 // solhint-disable max-states-count
 
@@ -49,13 +47,7 @@ import "./BasePoolAuthorization.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract LegacyBasePool is
-    IBasePool,
-    BasePoolAuthorization,
-    BalancerPoolToken,
-    TemporarilyPausable,
-    Recoverable
-{
+abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPausable, Recoverable {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using BasePoolUserData for bytes;
@@ -123,6 +115,9 @@ abstract contract LegacyBasePool is
 
     // Getters / Setters
 
+    /**
+     * @notice Return the pool id.
+     */
     function getPoolId() public view override returns (bytes32) {
         return _poolId;
     }
@@ -142,10 +137,19 @@ abstract contract LegacyBasePool is
         return _DEFAULT_MINIMUM_BPT;
     }
 
+    /**
+     * @notice Return the current value of the swap fee percentage.
+     * @dev This is stored in the MSB 64 bits of the `_miscData`.
+     */
     function getSwapFeePercentage() public view returns (uint256) {
         return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
     }
 
+    /**
+     * @notice Set the swap fee percentage.
+     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
+     * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
+     */
     function setSwapFeePercentage(uint256 swapFeePercentage) public virtual authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
@@ -167,6 +171,12 @@ abstract contract LegacyBasePool is
         _setAssetManagerPoolConfig(token, poolConfig);
     }
 
+    /**
+     * @notice Set the asset manager parameters for the given token.
+     * @dev This is a permissioned function, unavailable when the pool is paused.
+     * The details of the configuration data are set by each Asset Manager. (For an example, see
+     * `RewardsAssetManager`.)
+     */
     function _setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig) private {
         bytes32 poolId = getPoolId();
         (, , , address assetManager) = getVault().getPoolTokenInfo(poolId, token);
@@ -174,33 +184,24 @@ abstract contract LegacyBasePool is
         IAssetManager(assetManager).setConfig(poolId, poolConfig);
     }
 
+    /**
+     * @notice Pause the pool: an emergency action which disables all pool functions.
+     * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
+     * deployment (see `TemporarilyPausable`).
+     */
     function pause() external authenticate {
         _setPaused(true);
         _setRecoveryMode(true);
     }
 
+    /**
+     * @notice Reverse a `pause` operation, and restore a pool to normal functionality.
+     * @dev This is a permissioned function that will only work on a paused pool within the Buffer Period set during
+     * pool factory deployment (see `TemporarilyPausable`). Note that ny paused pools will automatically unpause after
+     * the Buffer Period expires.
+     */
     function unpause() external authenticate {
         _setPaused(false);
-    }
-
-    /**
-     * @notice Enter recovery mode, which enables a special safe exit path for LPs.
-     * @dev Does not otherwise affect pool operations, though some pools may perform certain operations in a "safer"
-     * manner that is less likely to fail, in an attempt to keep the pool running, even in a pathological state.
-     * Unlike the Pause operation, which is only available during a short window after factory deployment, Recovery Mode
-     * is a permanent feature.
-     */
-    function enterRecoveryMode() external authenticate {
-        _setRecoveryMode(true);
-    }
-
-    /**
-     * @notice Exit recovery mode, which disables the special safe exit path for LPs.
-     * @dev The special exit path enabled in Recovery Mode pays no protocol fees, so should not be enabled unless
-     * something has gone wrong, and LPs are unable to exit.
-     */
-    function exitRecoveryMode() external authenticate {
-        _setRecoveryMode(false);
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
@@ -229,6 +230,10 @@ abstract contract LegacyBasePool is
         _;
     }
 
+    /**
+     * @notice Vault hook for adding liquidity to a pool (including the first time, "initializing" the pool).
+     * @dev This function can only be called from the Vault, from `joinPool`.
+     */
     function onJoinPool(
         bytes32 poolId,
         address sender,
@@ -286,6 +291,10 @@ abstract contract LegacyBasePool is
         }
     }
 
+    /**
+     * @notice Vault hook for removing liquidity from a pool.
+     * @dev This function can only be called from the Vault, from `exitPool`.
+     */
     function onExitPool(
         bytes32 poolId,
         address sender,
@@ -309,7 +318,7 @@ abstract contract LegacyBasePool is
             // Do not charge protocol fees on emergency exits
             dueProtocolFeeAmounts = new uint256[](balances.length);
 
-            (bptAmountIn, amountsOut) = _recoveryModeExit(balances, userData);
+            (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
         } else {
             uint256[] memory scalingFactors = _scalingFactors();
             _upscaleArray(balances, scalingFactors);
@@ -339,6 +348,7 @@ abstract contract LegacyBasePool is
     // Query functions
 
     /**
+     * @notice "Dry run" `onJoinPool`.
      * @dev Returns the amount of BPT that would be granted to `recipient` if the `onJoinPool` hook were called by the
      * Vault with the same arguments, along with the number of tokens `sender` would have to supply.
      *
@@ -377,6 +387,7 @@ abstract contract LegacyBasePool is
     }
 
     /**
+     * @notice "Dry run" `onExitPool`.
      * @dev Returns the amount of BPT that would be burned from `sender` if the `onExitPool` hook were called by the
      * Vault with the same arguments, along with the number of tokens `recipient` would receive.
      *
@@ -509,41 +520,6 @@ abstract contract LegacyBasePool is
         );
 
     /**
-     * @dev A minimal proportional exit, suitable as is for most pools: though not for pools with Phantom BPT
-     * or other special considerations. Designed to be overridden if a pool needs to do extra processing,
-     * such as scaling a stored invariant, or caching the new total supply.
-     *
-     * No complex code or external calls should be made in derived contracts that override this!
-     */
-    function _recoveryModeExit(uint256[] memory balances, bytes memory userData)
-        internal
-        virtual
-        returns (uint256, uint256[] memory)
-    {
-        /**********************************************************************************************
-        // exactBPTInForTokensOut                                                                    //
-        // (per token)                                                                               //
-        // aO = tokenAmountOut             /        bptIn         \                                  //
-        // b = tokenBalance      a0 = b * | ---------------------  |                                 //
-        // bptIn = bptAmountIn             \     bptTotalSupply    /                                 //
-        // bpt = bptTotalSupply                                                                      //
-        **********************************************************************************************/
-
-        // Since we're computing an amount out, we round down overall. This means rounding down on both the
-        // multiplication and division.
-
-        uint256 bptAmountIn = userData.recoveryModeExit();
-        uint256 bptRatio = bptAmountIn.divDown(totalSupply());
-
-        uint256[] memory amountsOut = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            amountsOut[i] = balances[i].mulDown(bptRatio);
-        }
-
-        return (bptAmountIn, amountsOut);
-    }
-
-    /**
      * @dev Adds swap fee amount to `amount`, returning a higher value.
      */
     function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
@@ -600,6 +576,14 @@ abstract contract LegacyBasePool is
      */
     function _scalingFactors() internal view virtual returns (uint256[] memory);
 
+    /**
+     * @notice Return the set of scaling factors for the pool tokens.
+     * @dev Scaling factors are used to convert token balances to and from 18-decimal floating point values.
+     * The Vault expects all values to be 18-decimal, yet all I/O is performed in native decimals. So we scale "up"
+     * when sending user-supplied balances to the Vault, and scale "down" to return results.
+     * For instance, an 18-decimal token has a scaling factor of 1, while a 6-decimal token has a scaling factor of
+     * 10^12.
+     */
     function getScalingFactors() external view returns (uint256[] memory) {
         return _scalingFactors();
     }

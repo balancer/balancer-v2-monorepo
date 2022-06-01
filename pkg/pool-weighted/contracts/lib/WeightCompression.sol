@@ -17,82 +17,42 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 /**
- * @dev Library for compressing and uncompresing numbers by using smaller types.
+ * @dev Library for compressing and decompressing numbers by using smaller types.
  * All values are 18 decimal fixed-point numbers in the [0.0, 1.0] range,
  * so heavier compression (fewer bits) results in fewer decimals.
  */
 library WeightCompression {
-    uint256 private constant _UINT31_MAX = 2**(31) - 1;
-
     using FixedPoint for uint256;
 
-    /**
-     * @dev Convert a 16-bit value to full FixedPoint
-     */
-    function uncompress16(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(FixedPoint.ONE).divUp(type(uint16).max);
+    // If no normalization value is given, assume it is 1.
+    function compress(uint256 value, uint256 bitLength) internal pure returns (uint256) {
+        return compress(value, bitLength, FixedPoint.ONE);
     }
 
-    /**
-     * @dev Compress a FixedPoint value to 16 bits
-     */
-    function compress16(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(type(uint16).max).divUp(FixedPoint.ONE);
+    // If a normalization factor is given (e.g., 10_000), normalize against that.
+    function compress(
+        uint256 value,
+        uint256 bitLength,
+        uint256 normalizedTo
+    ) internal pure returns (uint256) {
+        uint256 maxValue = (1 << bitLength) - 1;
+
+        return value.mulUp(maxValue).divUp(normalizedTo);
     }
 
-    /**
-     * @dev Convert a 31-bit value to full FixedPoint
-     */
-    function uncompress31(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(FixedPoint.ONE).divUp(_UINT31_MAX);
+    // Reverse a compression operation (normalized to 1).
+    function decompress(uint256 value, uint256 bitLength) internal pure returns (uint256) {
+        return decompress(value, bitLength, FixedPoint.ONE);
     }
 
-    /**
-     * @dev Compress a FixedPoint value to 31 bits
-     */
-    function compress31(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(_UINT31_MAX).divUp(FixedPoint.ONE);
-    }
+    // Reverse a compression operation (normalized to a given value).
+    function decompress(
+        uint256 value,
+        uint256 bitLength,
+        uint256 normalizedTo
+    ) internal pure returns (uint256) {
+        uint256 maxValue = (1 << bitLength) - 1;
 
-    /**
-     * @dev Convert a 32-bit value to full FixedPoint
-     */
-    function uncompress32(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(FixedPoint.ONE).divUp(type(uint32).max);
-    }
-
-    /**
-     * @dev Compress a FixedPoint value to 32 bits
-     */
-    function compress32(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(type(uint32).max).divUp(FixedPoint.ONE);
-    }
-
-    /**
-     * @dev Convert a 64-bit value to full FixedPoint (assuming a max value of ONE)
-     */
-    function uncompress64(uint256 value) internal pure returns (uint256) {
-        return uncompress64(value, FixedPoint.ONE);
-    }
-
-    /**
-     * @dev Compress a FixedPoint value to 64 bits (assuming a max value of ONE)
-     */
-    function compress64(uint256 value) internal pure returns (uint256) {
-        return compress64(value, FixedPoint.ONE);
-    }
-
-    /**
-     * @dev Convert a 64-bit value to full FixedPoint
-     */
-    function uncompress64(uint256 value, uint256 maxValue) internal pure returns (uint256) {
-        return value.mulUp(maxValue).divUp(type(uint64).max);
-    }
-
-    /**
-     * @dev Compress a FixedPoint value to 64 bits
-     */
-    function compress64(uint256 value, uint256 maxValue) internal pure returns (uint256) {
-        return value.mulUp(type(uint64).max).divUp(maxValue);
+        return value.mulUp(normalizedTo).divUp(maxValue);
     }
 }
