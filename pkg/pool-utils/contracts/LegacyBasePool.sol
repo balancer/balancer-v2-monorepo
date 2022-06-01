@@ -16,20 +16,18 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Recoverable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "./BalancerPoolToken.sol";
-import "./BasePoolAuthorization.sol";
+import "./Recoverable.sol";
 
 // solhint-disable max-states-count
 
@@ -49,13 +47,7 @@ import "./BasePoolAuthorization.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract LegacyBasePool is
-    IBasePool,
-    BasePoolAuthorization,
-    BalancerPoolToken,
-    TemporarilyPausable,
-    Recoverable
-{
+abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPausable, Recoverable {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using BasePoolUserData for bytes;
@@ -212,26 +204,6 @@ abstract contract LegacyBasePool is
         _setPaused(false);
     }
 
-    /**
-     * @notice Enter recovery mode, which enables a special safe exit path for LPs.
-     * @dev Does not otherwise affect pool operations, though some pools may perform certain operations in a "safer"
-     * manner that is less likely to fail, in an attempt to keep the pool running, even in a pathological state.
-     * Unlike the Pause operation, which is only available during a short window after factory deployment, Recovery Mode
-     * is a permanent feature.
-     */
-    function enterRecoveryMode() external authenticate {
-        _setRecoveryMode(true);
-    }
-
-    /**
-     * @notice Exit recovery mode, which disables the special safe exit path for LPs.
-     * @dev The special exit path enabled in Recovery Mode pays no protocol fees, so should not be enabled unless
-     * something has gone wrong, and LPs are unable to exit.
-     */
-    function exitRecoveryMode() external authenticate {
-        _setRecoveryMode(false);
-    }
-
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
             (actionId == getActionId(this.setSwapFeePercentage.selector)) ||
@@ -346,7 +318,7 @@ abstract contract LegacyBasePool is
             // Do not charge protocol fees on emergency exits
             dueProtocolFeeAmounts = new uint256[](balances.length);
 
-            (bptAmountIn, amountsOut) = _recoveryModeExit(balances, userData);
+            (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
         } else {
             uint256[] memory scalingFactors = _scalingFactors();
             _upscaleArray(balances, scalingFactors);
@@ -546,41 +518,6 @@ abstract contract LegacyBasePool is
             uint256[] memory amountsOut,
             uint256[] memory dueProtocolFeeAmounts
         );
-
-    /**
-     * @dev A minimal proportional exit, suitable as is for most pools: though not for pools with Phantom BPT
-     * or other special considerations. Designed to be overridden if a pool needs to do extra processing,
-     * such as scaling a stored invariant, or caching the new total supply.
-     *
-     * No complex code or external calls should be made in derived contracts that override this!
-     */
-    function _recoveryModeExit(uint256[] memory balances, bytes memory userData)
-        internal
-        virtual
-        returns (uint256, uint256[] memory)
-    {
-        /**********************************************************************************************
-        // exactBPTInForTokensOut                                                                    //
-        // (per token)                                                                               //
-        // aO = tokenAmountOut             /        bptIn         \                                  //
-        // b = tokenBalance      a0 = b * | ---------------------  |                                 //
-        // bptIn = bptAmountIn             \     bptTotalSupply    /                                 //
-        // bpt = bptTotalSupply                                                                      //
-        **********************************************************************************************/
-
-        // Since we're computing an amount out, we round down overall. This means rounding down on both the
-        // multiplication and division.
-
-        uint256 bptAmountIn = userData.recoveryModeExit();
-        uint256 bptRatio = bptAmountIn.divDown(totalSupply());
-
-        uint256[] memory amountsOut = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            amountsOut[i] = balances[i].mulDown(bptRatio);
-        }
-
-        return (bptAmountIn, amountsOut);
-    }
 
     /**
      * @dev Adds swap fee amount to `amount`, returning a higher value.
