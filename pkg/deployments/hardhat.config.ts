@@ -8,12 +8,14 @@ import { task, types } from 'hardhat/config';
 import { TASK_TEST } from 'hardhat/builtin-tasks/task-names';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 
+import path from 'path';
+import { existsSync, readdirSync, statSync } from 'fs';
+
+import { checkArtifact, extractArtifact } from './src/artifact';
 import test from './src/test';
 import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
 import { Logger } from './src/logger';
-import path from 'path';
-import { existsSync, readdirSync, statSync } from 'fs';
 
 task('deploy', 'Run deployment task')
   .addParam('id', 'Deployment task ID')
@@ -55,6 +57,24 @@ task('verify-contract', `Verify a task's deployment on a block explorer`)
     }
   );
 
+task('extract-artifacts', `Extract contract artifacts from their build-info`)
+  .addOptionalParam('id', 'Specific task ID')
+  .setAction(async (args: { id?: string; verbose?: boolean }) => {
+    Logger.setDefaults(false, args.verbose || false);
+
+    if (args.id) {
+      const task = new Task(args.id, TaskMode.READ_ONLY);
+      extractArtifact(task);
+    } else {
+      const taskDirectory = path.resolve(__dirname, './tasks');
+
+      for (const taskID of readdirSync(taskDirectory)) {
+        const task = new Task(taskID, TaskMode.READ_ONLY);
+        extractArtifact(task);
+      }
+    }
+  });
+
 task('check-deployments', `Check that all tasks' deployments correspond to their build-info and inputs`)
   .addOptionalParam('id', 'Specific task ID')
   .setAction(async (args: { id?: string; force?: boolean; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
@@ -77,6 +97,24 @@ task('check-deployments', `Check that all tasks' deployments correspond to their
             await new Task(taskID, TaskMode.CHECK, hre.network.name).run(args);
           }
         }
+      }
+    }
+  });
+
+task('check-artifacts', `check that contract artifacts correspond to their build-info`)
+  .addOptionalParam('id', 'Specific task ID')
+  .setAction(async (args: { id?: string; verbose?: boolean }) => {
+    Logger.setDefaults(false, args.verbose || false);
+
+    if (args.id) {
+      const task = new Task(args.id, TaskMode.READ_ONLY);
+      checkArtifact(task);
+    } else {
+      const taskDirectory = path.resolve(__dirname, './tasks');
+
+      for (const taskID of readdirSync(taskDirectory)) {
+        const task = new Task(taskID, TaskMode.READ_ONLY);
+        checkArtifact(task);
       }
     }
   });
