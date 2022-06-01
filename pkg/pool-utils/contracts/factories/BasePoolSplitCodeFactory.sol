@@ -63,11 +63,10 @@ abstract contract BasePoolSplitCodeFactory is BaseSplitCodeFactory, SingletonAut
     }
 
     /**
-     * @dev Disable the factory. Can only be called once, by authorized accounts. Sets the `_disabled` flag to indicate
-     * that no further pools should be created using this factory.
+     * @dev Disable the factory, preventing the creation of more pools. Already existing pools are unaffected.
+     * Once a factory is disabled, it cannot be re-enabled.
      */
     function disable() external authenticate {
-        // prevent generating multiple events
         _ensureEnabled();
 
         _disabled = true;

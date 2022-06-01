@@ -60,7 +60,7 @@ describe('BasePoolSplitCodeFactory', function () {
     });
   });
 
-  describe('mortality', () => {
+  describe('disable', () => {
     context('when enabled', () => {
       it('disabled should be false', async () => {
         expect(await factory.isDisabled()).to.be.false;
