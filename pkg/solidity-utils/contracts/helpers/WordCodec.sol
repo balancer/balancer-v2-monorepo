@@ -87,9 +87,9 @@ library WordCodec {
         uint256 bitLength
     ) internal pure returns (bytes32) {
         _require(bitLength > 0 && bitLength < 256, Errors.OUT_OF_BOUNDS);
-        _require((value < 0 ? uint256(-value) : uint256(value)) >> bitLength == 0, Errors.CODEC_OVERFLOW);
-        uint256 mask = (1 << bitLength) - 1;
+        _validateSignedInts(value, bitLength);
 
+        uint256 mask = (1 << bitLength) - 1;
         bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
         // Integer values need masking to remove the upper bits of negative values.
         return clearedWord | bytes32((uint256(value) & mask) << offset);
@@ -145,7 +145,8 @@ library WordCodec {
         uint256 bitLength
     ) internal pure returns (bytes32) {
         _require(bitLength > 0 && bitLength < 256, Errors.OUT_OF_BOUNDS);
-        _require((value < 0 ? uint256(-value) : uint256(value)) >> bitLength == 0, Errors.CODEC_OVERFLOW);
+        _validateSignedInts(value, bitLength);
+
         uint256 mask = (1 << bitLength) - 1;
 
         // Integer values need masking to remove the upper bits of negative values.
@@ -192,5 +193,15 @@ library WordCodec {
         // bits, we know it was originally a negative integer. Therefore, we mask it to restore the sign in the 256 bit
         // representation.
         return value > maxInt ? (value | int256(~mask)) : value;
+    }
+
+    // Helpers
+
+    function _validateSignedInts(int256 value, uint256 bitLength) private pure {
+        if (value < 0) {
+            _require(uint256(-value) >> bitLength == 0, Errors.CODEC_OVERFLOW);
+        } else {
+            _require(uint256(value) >> (bitLength - 1) == 0, Errors.CODEC_OVERFLOW);
+        }
     }
 }

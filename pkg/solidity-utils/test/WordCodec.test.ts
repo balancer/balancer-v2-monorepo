@@ -31,12 +31,10 @@ describe('WordCodec', () => {
 
   it('validates insertInt', async () => {
     for (let bits = 2; bits < 256; bits++) {
-      const MAX_VALID = getMaxValue(bits);
+      const MAX_VALID = getMaxValue(bits - 1);
 
       expect(await lib.insertInt(ZERO_BYTES32, MAX_VALID, 0, bits)).to.equal(TypesConverter.toBytes32(MAX_VALID));
-      if (bits < 255) {
-        await expect(lib.insertInt(ZERO_BYTES32, getOverMax(bits), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
-      }
+      await expect(lib.insertInt(ZERO_BYTES32, getMaxValue(bits), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
     }
   });
 
@@ -51,12 +49,9 @@ describe('WordCodec', () => {
 
   it('validates encodeInt', async () => {
     for (let bits = 2; bits < 256; bits++) {
-      const MAX_VALID = getMaxValue(bits);
-
+      const MAX_VALID = getMaxValue(bits - 1);
       expect(await lib.encodeInt(MAX_VALID, 0, bits)).to.equal(TypesConverter.toBytes32(MAX_VALID));
-      if (bits < 255) {
-        await expect(lib.encodeInt(getOverMax(bits), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
-      }
+      await expect(lib.encodeInt(getMaxValue(bits), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
     }
   });
 
@@ -79,10 +74,8 @@ describe('WordCodec', () => {
       expect(decoded).to.equal(encoded);
 
       // Test negative values
-      const MAX_VALID = getMaxValue(bits);
-      encoded = await lib.encodeInt(MAX_VALID, 0, bits);
+      encoded = await lib.encodeInt(-1, 0, bits);
       decoded = await lib.decodeInt(encoded, 0, bits);
-
       expect(decoded).to.equal(-1);
     }
   });
