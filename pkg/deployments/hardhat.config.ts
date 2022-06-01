@@ -57,7 +57,7 @@ task('verify-contract', `Verify a task's deployment on a block explorer`)
     }
   );
 
-task('extract-artifact', `Extract contract artifacts from their build-info`)
+task('extract-artifacts', `Extract contract artifacts from their build-info`)
   .addOptionalParam('id', 'Specific task ID')
   .setAction(async (args: { id?: string; verbose?: boolean }) => {
     Logger.setDefaults(false, args.verbose || false);
@@ -101,7 +101,7 @@ task('check-deployments', `Check that all tasks' deployments correspond to their
     }
   });
 
-task('check-artifact', `check that contract artifacts correspond to their build-info`)
+task('check-artifacts', `check that contract artifacts correspond to their build-info`)
   .addOptionalParam('id', 'Specific task ID')
   .setAction(async (args: { id?: string; verbose?: boolean }) => {
     Logger.setDefaults(false, args.verbose || false);
