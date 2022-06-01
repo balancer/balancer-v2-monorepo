@@ -331,7 +331,7 @@ def _burn_boost(_token_id: uint256, _delegator: address, _receiver: address, _bi
     next_expiry: uint256 = expiry_data % 2 ** 128
     active_delegations: uint256 = shift(expiry_data, -128) - 1
 
-    expiries: uint256 = self.account_expiries[_delegator][expire_time]
+    expiries: uint256 = self.account_expiries[_delegator][expire_time] - 1
 
     if active_delegations != 0 and expire_time == next_expiry and expiries == 0:
         # Will be passed if
@@ -353,7 +353,7 @@ def _burn_boost(_token_id: uint256, _delegator: address, _receiver: address, _bi
         next_expiry = 0
 
     self.boost[_delegator].expiry_data = shift(active_delegations, 128) + next_expiry
-    self.account_expiries[_delegator][expire_time] = expiries - 1
+    self.account_expiries[_delegator][expire_time] = expiries
 
 
 @internal
