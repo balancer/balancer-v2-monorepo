@@ -87,6 +87,7 @@ library WordCodec {
         uint256 bitLength
     ) internal pure returns (bytes32) {
         _require(bitLength > 0 && bitLength < 256, Errors.OUT_OF_BOUNDS);
+        _require((value < 0 ? uint256(-value) : uint256(value)) >> bitLength == 0, Errors.CODEC_OVERFLOW);
         uint256 mask = (1 << bitLength) - 1;
 
         bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
@@ -144,6 +145,7 @@ library WordCodec {
         uint256 bitLength
     ) internal pure returns (bytes32) {
         _require(bitLength > 0 && bitLength < 256, Errors.OUT_OF_BOUNDS);
+        _require((value < 0 ? uint256(-value) : uint256(value)) >> bitLength == 0, Errors.CODEC_OVERFLOW);
         uint256 mask = (1 << bitLength) - 1;
 
         // Integer values need masking to remove the upper bits of negative values.
