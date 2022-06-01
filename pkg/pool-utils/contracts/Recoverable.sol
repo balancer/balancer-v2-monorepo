@@ -129,7 +129,7 @@ abstract contract Recoverable is IRecoverable, BasePoolAuthorization {
         uint256[] memory balances,
         uint256 totalSupply,
         bytes memory userData
-    ) internal view virtual returns (uint256, uint256[] memory) {
+    ) internal virtual returns (uint256, uint256[] memory) {
         /**********************************************************************************************
         // exactBPTInForTokensOut                                                                    //
         // (per token)                                                                               //
