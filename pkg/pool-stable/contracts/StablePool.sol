@@ -516,12 +516,11 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         return (bptAmountIn, amountsOut);
     }
 
-    function _doRecoveryModeExit(uint256[] memory balances, uint256 totalSupply, bytes memory userData)
-        internal
-        virtual
-        override
-        returns (uint256, uint256[] memory)
-    {
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        bytes memory userData
+    ) internal virtual override returns (uint256, uint256[] memory) {
         (uint256 bptAmountIn, uint256[] memory amountsOut) = super._doRecoveryModeExit(balances, totalSupply, userData);
 
         // Maintain the invariant. Since this is a proportional withdrawal, the invariant should decrease
