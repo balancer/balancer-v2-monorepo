@@ -199,8 +199,12 @@ library WordCodec {
 
     // Helpers
 
-    // Limits are different for positive and negative numbers; positive numbers are one less because of the sign bit.
     function _validateSignedInts(int256 value, uint256 bitLength) private pure {
-        _require(Math.abs(value) >> (value < 0 ? bitLength : bitLength - 1) == 0, Errors.CODEC_OVERFLOW);
+        if (value >= 0) {
+            _require(value >> (bitLength - 1) == 0, Errors.CODEC_OVERFLOW);
+        } else {
+            // The range for negative values in two's complement supports one more value than for the positive case
+            _require(Math.abs(value + 1) >> (bitLength - 1) == 0, Errors.CODEC_OVERFLOW);
+        }
     }
 }
