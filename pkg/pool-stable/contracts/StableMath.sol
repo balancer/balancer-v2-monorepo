@@ -56,8 +56,7 @@ library StableMath {
     // solhint-disable-previous-line max-line-length
     function _calculateInvariant(
         uint256 amplificationParameter,
-        uint256[] memory balances,
-        bool roundUp
+        uint256[] memory balances
     ) internal pure returns (uint256) {
         /**********************************************************************************************
         // invariant                                                                                 //
@@ -68,7 +67,7 @@ library StableMath {
         // n = number of tokens                                                                      //
         **********************************************************************************************/
 
-        // We support rounding up or down.
+        // Always round down, to match Vyper's arithmetic (which always truncates).
 
         uint256 sum = 0; // S in the Curve version
         uint256 numTokens = balances.length;
@@ -88,7 +87,7 @@ library StableMath {
 
             for (uint256 j = 0; j < numTokens; j++) {
                 // (D_P * invariant) / (balances[j] * numTokens)
-                D_P = Math.div(Math.mul(D_P, invariant), Math.mul(balances[j], numTokens), roundUp);
+                D_P = Math.div(Math.mul(D_P, invariant), Math.mul(balances[j], numTokens), false);
             }
 
             prevInvariant = invariant;
@@ -96,13 +95,13 @@ library StableMath {
             invariant = Math.div(
                 Math.mul(
                     // (ampTimesTotal * sum) / AMP_PRECISION + D_P * numTokens
-                    (Math.div(Math.mul(ampTimesTotal, sum), _AMP_PRECISION, roundUp).add(Math.mul(D_P, numTokens))),
+                    (Math.div(Math.mul(ampTimesTotal, sum), _AMP_PRECISION, false).add(Math.mul(D_P, numTokens))),
                     invariant
                 ),
                 // ((ampTimesTotal - _AMP_PRECISION) * invariant) / _AMP_PRECISION + (numTokens + 1) * D_P
-                (Math.div(Math.mul((ampTimesTotal - _AMP_PRECISION), invariant), _AMP_PRECISION, !roundUp) +
+                (Math.div(Math.mul((ampTimesTotal - _AMP_PRECISION), invariant), _AMP_PRECISION, false) +
                     Math.mul((numTokens + 1), D_P)),
-                roundUp
+                false
             );
 
             if (invariant > prevInvariant) {
@@ -243,8 +242,8 @@ library StableMath {
         }
 
         // Get current and new invariants, taking swap fees into account
-        uint256 currentInvariant = _calculateInvariant(amp, balances, true);
-        uint256 newInvariant = _calculateInvariant(amp, newBalances, false);
+        uint256 currentInvariant = _calculateInvariant(amp, balances);
+        uint256 newInvariant = _calculateInvariant(amp, newBalances);
         uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
         // If the invariant didn't increase for any reason, we simply don't mint BPT
@@ -266,7 +265,7 @@ library StableMath {
         // Token in, so we round up overall.
 
         // Get the current invariant
-        uint256 currentInvariant = _calculateInvariant(amp, balances, true);
+        uint256 currentInvariant = _calculateInvariant(amp, balances);
 
         // Calculate new invariant
         uint256 newInvariant = bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply).mulUp(currentInvariant);
@@ -348,8 +347,8 @@ library StableMath {
         }
 
         // Get current and new invariants, taking into account swap fees
-        uint256 currentInvariant = _calculateInvariant(amp, balances, true);
-        uint256 newInvariant = _calculateInvariant(amp, newBalances, false);
+        uint256 currentInvariant = _calculateInvariant(amp, balances);
+        uint256 newInvariant = _calculateInvariant(amp, newBalances);
         uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
         // return amountBPTIn
@@ -366,8 +365,8 @@ library StableMath {
     ) internal pure returns (uint256) {
         // Token out, so we round down overall.
 
-        // Get the current and new invariants. Since we need a bigger new invariant, we round the current one up.
-        uint256 currentInvariant = _calculateInvariant(amp, balances, true);
+        // Get the current and new invariants.
+        uint256 currentInvariant = _calculateInvariant(amp, balances);
         uint256 newInvariant = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply).mulUp(currentInvariant);
 
         // Calculate amount out without fee
@@ -528,7 +527,7 @@ library StableMath {
     ) internal pure returns (uint256) {
         // When calculating the current BPT rate, we may not have paid the protocol fees, therefore
         // the invariant should be smaller than its current value. Then, we round down overall.
-        uint256 invariant = _calculateInvariant(amp, balances, false);
+        uint256 invariant = _calculateInvariant(amp, balances);
         return invariant.divDown(supply);
     }
 }
