@@ -20,6 +20,16 @@ describe('WordCodec', () => {
     return BigNumber.from(1).shl(bits);
   }
 
+  function getMaxPositive(bits: number): BigNumber {
+    return BigNumber.from(1)
+      .shl(bits - 1)
+      .sub(1);
+  }
+
+  function getMaxNegative(bits: number): BigNumber {
+    return BigNumber.from(1).shl(bits).mul(-1).add(1);
+  }
+
   it('validates insertUint', async () => {
     for (let bits = 2; bits < 256; bits++) {
       const MAX_VALID = getMaxValue(bits);
@@ -92,5 +102,31 @@ describe('WordCodec', () => {
     await expect(lib.insertInt(ZERO_BYTES32, getMaxValue(255), 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
     await expect(lib.encodeUint(getMaxValue(255), 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
     await expect(lib.encodeInt(getMaxValue(255), 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
+  });
+
+  it('validates max/min positive/negative (insertInt)', async () => {
+    for (let bits = 2; bits < 256; bits++) {
+      const maxPositive = getMaxPositive(bits);
+      const maxNegative = getMaxNegative(bits);
+
+      expect(await lib.insertInt(ZERO_BYTES32, maxPositive, 0, bits)).to.equal(TypesConverter.toBytes32(maxPositive));
+      expect(await lib.insertInt(ZERO_BYTES32, maxNegative, 0, bits)).to.equal(TypesConverter.toBytes32(1));
+
+      await expect(lib.insertInt(ZERO_BYTES32, maxPositive.add(1), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
+      await expect(lib.insertInt(ZERO_BYTES32, maxNegative.sub(1), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
+    }
+  });
+
+  it('validates max/min positive/negative (encodeInt)', async () => {
+    for (let bits = 2; bits < 256; bits++) {
+      const maxPositive = getMaxPositive(bits);
+      const maxNegative = getMaxNegative(bits);
+
+      expect(await lib.encodeInt(maxPositive, 0, bits)).to.equal(TypesConverter.toBytes32(maxPositive));
+      expect(await lib.encodeInt(maxNegative, 0, bits)).to.equal(TypesConverter.toBytes32(1));
+
+      await expect(lib.encodeInt(maxPositive.add(1), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
+      await expect(lib.encodeInt(maxNegative.sub(1), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
+    }
   });
 });
