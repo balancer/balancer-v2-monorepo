@@ -16,6 +16,8 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
+import "../math/Math.sol";
+
 /**
  * @dev Library for encoding and decoding values stored inside a 256 bit word. Typically used to pack multiple values in
  * a single storage slot, saving gas by performing less storage accesses.
@@ -199,7 +201,7 @@ library WordCodec {
 
     function _validateSignedInts(int256 value, uint256 bitLength) private pure {
         if (value < 0) {
-            _require(uint256(-value) >> bitLength == 0, Errors.CODEC_OVERFLOW);
+            _require(Math.abs(value) >> bitLength == 0, Errors.CODEC_OVERFLOW);
         } else {
             _require(uint256(value) >> (bitLength - 1) == 0, Errors.CODEC_OVERFLOW);
         }
