@@ -42,21 +42,6 @@ library WordCodec {
     // In-place insertion
 
     /**
-     * @dev Inserts a boolean value shifted by an offset into a 256 bit word, replacing the old value. Returns the new
-     * word.
-     */
-    function insertBool(
-        bytes32 word,
-        bool value,
-        uint256 offset
-    ) internal pure returns (bytes32) {
-        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_1 << offset));
-        return clearedWord | bytes32(uint256(value ? 1 : 0) << offset);
-    }
-
-    // Unsigned
-
-    /**
      * @dev Inserts an unsigned integer of bitLength, shifted by an offset, into a 256 bit word,
      * replacing the old value. Returns the new word.
      */
@@ -67,13 +52,11 @@ library WordCodec {
         uint256 bitLength
     ) internal pure returns (bytes32) {
         _validateEncodingParams(value, offset, bitLength);
-        uint256 mask = (1 << bitLength) - 1;
 
+        uint256 mask = (1 << bitLength) - 1;
         bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
         return clearedWord | bytes32(value << offset);
     }
-
-    // Signed
 
     /**
      * @dev Inserts a signed integer shifted by an offset into a 256 bit word, replacing the old value. Returns
@@ -95,25 +78,7 @@ library WordCodec {
         return clearedWord | bytes32((uint256(value) & mask) << offset);
     }
 
-    // Bytes
-
-    /**
-     * @dev Inserts 192 bit shifted by an offset into a 256 bit word, replacing the old value. Returns the new word.
-     *
-     * Assumes `value` can be represented using 192 bits.
-     */
-    function insertBits192(
-        bytes32 word,
-        bytes32 value,
-        uint256 offset
-    ) internal pure returns (bytes32) {
-        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_192 << offset));
-        return clearedWord | bytes32((uint256(value) & _MASK_192) << offset);
-    }
-
     // Encoding
-
-    // Unsigned
 
     /**
      * @dev Encodes an unsigned integer shifted by an offset. Ensures value fits within
@@ -131,8 +96,6 @@ library WordCodec {
         return bytes32(value << offset);
     }
 
-    // Signed
-
     /**
      * @dev Encodes a signed integer shifted by an offset.
      *
@@ -146,21 +109,11 @@ library WordCodec {
         _validateEncodingParams(value, offset, bitLength);
 
         uint256 mask = (1 << bitLength) - 1;
-
         // Integer values need masking to remove the upper bits of negative values.
         return bytes32((uint256(value) & mask) << offset);
     }
 
     // Decoding
-
-    /**
-     * @dev Decodes and returns a boolean shifted by an offset from a 256 bit word.
-     */
-    function decodeBool(bytes32 word, uint256 offset) internal pure returns (bool) {
-        return (uint256(word >> offset) & _MASK_1) == 1;
-    }
-
-    // Unsigned
 
     /**
      * @dev Decodes and returns an unsigned integer with `bitLength` bits, shifted by an offset, from a 256 bit word.
@@ -172,8 +125,6 @@ library WordCodec {
     ) internal pure returns (uint256) {
         return uint256(word >> offset) & ((1 << bitLength) - 1);
     }
-
-    // Signed
 
     /**
      * @dev Decodes and returns a signed integer with `bitLength` bits, shifted by an offset, from a 256 bit word.
@@ -191,6 +142,42 @@ library WordCodec {
         // bits, we know it was originally a negative integer. Therefore, we mask it to restore the sign in the 256 bit
         // representation.
         return value > maxInt ? (value | int256(~mask)) : value;
+    }
+
+    // Special cases
+
+    /**
+     * @dev Decodes and returns a boolean shifted by an offset from a 256 bit word.
+     */
+    function decodeBool(bytes32 word, uint256 offset) internal pure returns (bool) {
+        return (uint256(word >> offset) & _MASK_1) == 1;
+    }
+
+    /**
+     * @dev Inserts 192 bit shifted by an offset into a 256 bit word, replacing the old value. Returns the new word.
+     *
+     * Assumes `value` can be represented using 192 bits.
+     */
+    function insertBits192(
+        bytes32 word,
+        bytes32 value,
+        uint256 offset
+    ) internal pure returns (bytes32) {
+        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_192 << offset));
+        return clearedWord | bytes32((uint256(value) & _MASK_192) << offset);
+    }
+
+    /**
+     * @dev Inserts a boolean value shifted by an offset into a 256 bit word, replacing the old value. Returns the new
+     * word.
+     */
+    function insertBool(
+        bytes32 word,
+        bool value,
+        uint256 offset
+    ) internal pure returns (bytes32) {
+        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_1 << offset));
+        return clearedWord | bytes32(uint256(value ? 1 : 0) << offset);
     }
 
     // Helpers
