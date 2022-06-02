@@ -66,8 +66,7 @@ library WordCodec {
         uint256 offset,
         uint256 bitLength
     ) internal pure returns (bytes32) {
-        _require(bitLength > 0 && bitLength < 256, Errors.OUT_OF_BOUNDS);
-        _require(value >> bitLength == 0, Errors.CODEC_OVERFLOW);
+        _validateEncodingParams(value, offset, bitLength);
         uint256 mask = (1 << bitLength) - 1;
 
         bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
@@ -88,8 +87,7 @@ library WordCodec {
         uint256 offset,
         uint256 bitLength
     ) internal pure returns (bytes32) {
-        _require(bitLength > 0 && bitLength < 256, Errors.OUT_OF_BOUNDS);
-        _validateSignedInts(value, bitLength);
+        _validateEncodingParams(value, offset, bitLength);
 
         uint256 mask = (1 << bitLength) - 1;
         bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
@@ -128,8 +126,7 @@ library WordCodec {
         uint256 offset,
         uint256 bitLength
     ) internal pure returns (bytes32) {
-        _require(bitLength > 0 && bitLength < 256, Errors.OUT_OF_BOUNDS);
-        _require(value >> bitLength == 0, Errors.CODEC_OVERFLOW);
+        _validateEncodingParams(value, offset, bitLength);
 
         return bytes32(value << offset);
     }
@@ -146,8 +143,7 @@ library WordCodec {
         uint256 offset,
         uint256 bitLength
     ) internal pure returns (bytes32) {
-        _require(bitLength > 0 && bitLength < 256, Errors.OUT_OF_BOUNDS);
-        _validateSignedInts(value, bitLength);
+        _validateEncodingParams(value, offset, bitLength);
 
         uint256 mask = (1 << bitLength) - 1;
 
@@ -199,11 +195,38 @@ library WordCodec {
 
     // Helpers
 
-    function _validateSignedInts(int256 value, uint256 bitLength) private pure {
+    function _validateEncodingParams(
+        uint256 value,
+        uint256 offset,
+        uint256 bitLength
+    ) private pure {
+        _require(offset < 256, Errors.OUT_OF_BOUNDS);
+        // We never accept 256 bit values (which would make the codec pointless), and the larger the offset the smaller
+        // the maximum bit length.
+        _require(bitLength >= 1 && bitLength <= Math.min(255, 256 - offset), Errors.OUT_OF_BOUNDS);
+
+        // Testing unsigned values for size is straightforward: their upper bits must be cleared.
+        _require(value >> bitLength == 0, Errors.CODEC_OVERFLOW);
+    }
+
+    function _validateEncodingParams(
+        int256 value,
+        uint256 offset,
+        uint256 bitLength
+    ) private pure {
+        _require(offset < 256, Errors.OUT_OF_BOUNDS);
+        // We never accept 256 bit values (which would make the codec pointless), and the larger the offset the smaller
+        // the maximum bit length.
+        _require(bitLength >= 1 && bitLength <= Math.min(255, 256 - offset), Errors.OUT_OF_BOUNDS);
+
+        // Testing signed values for size is a bit more involved.
         if (value >= 0) {
+            // For positive values, we can simply check that the upper bits are clear. Notice we remove one bit from the
+            // length for the sign bit.
             _require(value >> (bitLength - 1) == 0, Errors.CODEC_OVERFLOW);
         } else {
-            // The range for negative values in two's complement supports one more value than for the positive case
+            // Negative values can receive the same treatment by making them positive, with the caveat that the range
+            // for negative values in two's complement supports one more value than for the positive case.
             _require(Math.abs(value + 1) >> (bitLength - 1) == 0, Errors.CODEC_OVERFLOW);
         }
     }

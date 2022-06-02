@@ -38,6 +38,10 @@ describe('WordCodec', () => {
         await expect(lib.encodeUint(0, 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
       });
 
+      it('reverts with large offset', async () => {
+        await expect(lib.encodeUint(0, 256, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
+
       async function assertUnsignedEncoding(value: BigNumberish, offset: number, bits: number) {
         const result = await lib.encodeUint(value, offset, bits);
 
@@ -72,6 +76,10 @@ describe('WordCodec', () => {
               );
             }
           });
+
+          it('reverts with large bitsize', async () => {
+            await expect(assertUnsignedEncoding(0, offset, MAX_BITS + 1)).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
         });
       }
     });
@@ -83,6 +91,10 @@ describe('WordCodec', () => {
 
       it('reverts with 256 bit length', async () => {
         await expect(lib.encodeInt(0, 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
+
+      it('reverts with large offset', async () => {
+        await expect(lib.encodeInt(0, 256, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
       });
 
       async function assertSignedEncoding(value: BigNumberish, offset: number, bits: number) {
@@ -139,6 +151,10 @@ describe('WordCodec', () => {
               );
             }
           });
+
+          it('reverts with large bitsize', async () => {
+            await expect(assertSignedEncoding(0, offset, MAX_BITS + 1)).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
         });
       }
     });
@@ -154,6 +170,10 @@ describe('WordCodec', () => {
 
       it('reverts with 256 bit length', async () => {
         await expect(lib.insertUint(word, 0, 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
+
+      it('reverts with large offset', async () => {
+        await expect(lib.insertUint(word, 256, 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
       });
 
       async function assertUnsignedInsertion(value: BigNumberish, offset: number, bits: number) {
@@ -193,6 +213,10 @@ describe('WordCodec', () => {
               );
             }
           });
+
+          it('reverts with large bitsize', async () => {
+            await expect(assertUnsignedInsertion(0, offset, MAX_BITS + 1)).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
         });
       }
     });
@@ -204,6 +228,10 @@ describe('WordCodec', () => {
 
       it('reverts with 256 bit length', async () => {
         await expect(lib.insertInt(word, 0, 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
+
+      it('reverts with large offset', async () => {
+        await expect(lib.insertInt(word, 256, 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
       });
 
       async function assertSignedInsertion(value: BigNumberish, offset: number, bits: number) {
@@ -262,6 +290,10 @@ describe('WordCodec', () => {
                 'CODEC_OVERFLOW'
               );
             }
+          });
+
+          it('reverts with large bitsize', async () => {
+            await expect(assertSignedInsertion(0, offset, MAX_BITS + 1)).to.be.revertedWith('OUT_OF_BOUNDS');
           });
         });
       }
