@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IRecoverable.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IRecoveryMode.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 
@@ -27,8 +27,7 @@ import "./BasePoolAuthorization.sol";
  *
  * @dev This is intended to provide a safe way to exit any pool during some kind of emergency, to avoid locking funds
  * in the event the pool enters a non-functional state (i.e., some code that normally runs during exits is causing
- * them to revert). Pool contracts should provide permissioned functions that call `setRecoveryMode` to enter and
- * exit this state.
+ * them to revert).
  *
  * Recovery Mode is *not* the same as pausing the pool. The pause function is only available during a short window
  * after factory deployment. Pausing can only be intentionally reversed during a buffer period, and the contract
@@ -50,7 +49,7 @@ import "./BasePoolAuthorization.sol";
  *
  * It is critical to ensure that turning on Recovery Mode would do no harm, if activated maliciously or in error.
  */
-abstract contract Recoverable is IRecoverable, BasePoolAuthorization {
+abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
     using FixedPoint for uint256;
     using BasePoolUserData for bytes;
 
@@ -66,10 +65,10 @@ abstract contract Recoverable is IRecoverable, BasePoolAuthorization {
 
     /**
      * @notice Enter recovery mode, which enables a special safe exit path for LPs.
-     * @dev Does not otherwise affect pool operations, though some pools may perform certain operations in a "safer"
-     * manner that is less likely to fail, in an attempt to keep the pool running, even in a pathological state.
-     * Unlike the Pause operation, which is only available during a short window after factory deployment, Recovery Mode
-     * is a permanent feature.
+     * @dev Does not otherwise affect pool operations (beyond deferring payment of protocol fees), though some pools may
+     * perform certain operations in a "safer" manner that is less likely to fail, in an attempt to keep the pool
+     * running, even in a pathological state. Unlike the Pause operation, which is only available during a short window
+     * after factory deployment, Recovery Mode can always be entered.
      */
     function enterRecoveryMode() external authenticate {
         _setRecoveryMode(true);
@@ -77,8 +76,8 @@ abstract contract Recoverable is IRecoverable, BasePoolAuthorization {
 
     /**
      * @notice Exit recovery mode, which disables the special safe exit path for LPs.
-     * @dev The special exit path enabled in Recovery Mode pays no protocol fees, so should not be enabled unless
-     * something has gone wrong, and LPs are unable to exit.
+     * @dev Protocol fees are not paid while in Recovery Mode, so it should only remain active for as long as strictly
+     * necessary.
      */
     function exitRecoveryMode() external authenticate {
         _setRecoveryMode(false);

@@ -15,9 +15,9 @@
 pragma solidity ^0.7.0;
 
 /**
- * @dev Interface for the Recoverable helper.
+ * @dev Interface for the RecoveryMode helper.
  */
-interface IRecoverable {
+interface IRecoveryMode {
     /**
      * @dev Emitted every time the recovery mode changes through `_setRecoveryMode`.
      */
