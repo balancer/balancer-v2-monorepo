@@ -54,10 +54,11 @@ library StableMath {
     // The amplification parameter equals: A n^(n-1)
     // See: https://github.com/curvefi/curve-contract/blob/b0bbf77f8f93c9c5f4e415bce9cd71f0cdee960e/contracts/pool-templates/base/SwapTemplateBase.vy#L206
     // solhint-disable-previous-line max-line-length
-    function _calculateInvariant(
-        uint256 amplificationParameter,
-        uint256[] memory balances
-    ) internal pure returns (uint256) {
+    function _calculateInvariant(uint256 amplificationParameter, uint256[] memory balances)
+        internal
+        pure
+        returns (uint256)
+    {
         /**********************************************************************************************
         // invariant                                                                                 //
         // D = invariant                                                  D^(n+1)                    //
