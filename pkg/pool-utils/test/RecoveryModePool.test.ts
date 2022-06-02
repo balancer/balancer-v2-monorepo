@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -88,6 +88,14 @@ describe('RecoveryModePool', function () {
         const { paused } = await pool.getPausedState();
         expect(paused).to.be.true;
         expect(await pool.inRecoveryMode()).to.be.true;
+      });
+
+      it('pausing emits events', async () => {
+        const tx = await pool.connect(sender).pause();
+        const receipt = await tx.wait();
+
+        expectEvent.inReceipt(receipt, 'PausedStateChanged', { paused: true });
+        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { recoveryMode: true });
       });
 
       it('unpause does not exit recovery mode', async () => {
@@ -209,6 +217,12 @@ describe('RecoveryModePool', function () {
         expect(recoveryMode).to.be.true;
       });
 
+      it('entering recovery mode emits an event', async () => {
+        const tx = await pool.connect(sender).enterRecoveryMode();
+        const receipt = await tx.wait();
+        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { recoveryMode: true });
+      });
+
       it('entering recovery mode does not pause the pool', async () => {
         await pool.connect(sender).enterRecoveryMode();
 
@@ -221,6 +235,16 @@ describe('RecoveryModePool', function () {
       it('can exit recovery mode', async () => {
         await pool.connect(sender).enterRecoveryMode();
         await pool.connect(sender).exitRecoveryMode();
+
+        const recoveryMode = await pool.inRecoveryMode();
+        expect(recoveryMode).to.be.false;
+      });
+
+      it('exiting recovery mode emits an event', async () => {
+        await pool.connect(sender).enterRecoveryMode();
+        const tx = await pool.connect(sender).exitRecoveryMode();
+        const receipt = await tx.wait();
+        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { recoveryMode: false });
 
         const recoveryMode = await pool.inRecoveryMode();
         expect(recoveryMode).to.be.false;
