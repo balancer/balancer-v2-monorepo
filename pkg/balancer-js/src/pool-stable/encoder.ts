@@ -12,6 +12,8 @@ export enum StablePhantomPoolJoinKind {
   COLLECT_PROTOCOL_FEES,
 }
 
+// RECOVERY_MODE must match BasePoolUserData.RECOVERY_MODE_EXIT_KIND, the value that
+// (Legacy)BasePool uses to detect the special exit enabled in recovery mode.
 export enum StablePoolExitKind {
   EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0,
   EXACT_BPT_IN_FOR_TOKENS_OUT,

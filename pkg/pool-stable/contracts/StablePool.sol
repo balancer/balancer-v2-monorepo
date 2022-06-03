@@ -526,9 +526,6 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         // Maintain the invariant. Since this is a proportional withdrawal, the invariant should decrease
         // in proportion to the amount of BPT being burned.
         uint256 proportionBurned = bptAmountIn.divUp(totalSupply);
-
-        // Note that any ongoing AMP update was halted upon entering recovery mode, so the invariant depends
-        // only on the balances.
         _lastInvariant = _lastInvariant.mulDown(proportionBurned.complement());
 
         return (bptAmountIn, amountsOut);
@@ -651,7 +648,7 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
     function getRate() public view virtual override returns (uint256) {
         if (inRecoveryMode()) {
             // We maintain _lastInvariant in recovery mode, and the amp is constant, so we can
-            // compute a valid rate without recalculating the invariant (which could fail).
+            // compute the rate directly, without recalculating the invariant (which could fail).
             return _lastInvariant.divDown(totalSupply());
         } else {
             (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
@@ -671,8 +668,9 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
      *
      * NOTE: Internally, the amplification parameter is represented using higher precision. The values returned by
      * `getAmplificationParameter` have to be corrected to account for this when comparing to `rawEndValue`.
-     * Not supported in recovery mode, since it would invalidate the _lastInvariant, which is simply scaled down with
-     * each proportional exit, instead of running the full calculation (which involves the Amplification parameter).
+     *
+     * This is not supported in recovery mode, since it would invalidate the method used to maintain the _lastInvariant
+     * (and therefore the value returned by `getRate`) after recovery mode exits.
      */
     function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime)
         external
