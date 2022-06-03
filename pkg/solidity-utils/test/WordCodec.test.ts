@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 
-import { Contract, BigNumber } from 'ethers';
+import { Contract, BigNumber, BigNumberish } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
-import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
+import { bn, negate } from '@balancer-labs/v2-helpers/src/numbers';
+import { random } from 'lodash';
 
 describe('WordCodec', () => {
   let lib: Contract;
@@ -12,121 +12,291 @@ describe('WordCodec', () => {
     lib = await deploy('MockWordCodec');
   });
 
-  function getMaxValue(bits: number): BigNumber {
-    return getOverMax(bits).sub(1);
+  function getMaxUnsigned(bits: number): BigNumber {
+    return bn(1).shl(bits).sub(1);
   }
 
-  function getOverMax(bits: number): BigNumber {
-    return BigNumber.from(1).shl(bits);
-  }
-
-  function getMaxPositive(bits: number): BigNumber {
-    return BigNumber.from(1)
+  function getMaxSigned(bits: number): BigNumber {
+    return bn(1)
       .shl(bits - 1)
       .sub(1);
   }
 
-  function getMaxNegative(bits: number): BigNumber {
-    return BigNumber.from(1).shl(bits).mul(-1).add(1);
+  function getMinSigned(bits: number): BigNumber {
+    return bn(1)
+      .shl(bits - 1)
+      .mul(-1);
   }
 
-  it('validates insertUint', async () => {
-    for (let bits = 2; bits < 256; bits++) {
-      const MAX_VALID = getMaxValue(bits);
+  describe('encode', () => {
+    describe('unsigned', () => {
+      it('reverts with zero bit length', async () => {
+        await expect(lib.encodeUint(0, 0, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
 
-      expect(await lib.insertUint(ZERO_BYTES32, MAX_VALID, 0, bits)).to.equal(TypesConverter.toBytes32(MAX_VALID));
-      await expect(lib.insertUint(ZERO_BYTES32, getOverMax(bits), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
-    }
+      it('reverts with 256 bit length', async () => {
+        await expect(lib.encodeUint(0, 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
+
+      it('reverts with large offset', async () => {
+        await expect(lib.encodeUint(0, 256, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
+
+      async function assertUnsignedEncoding(value: BigNumberish, offset: number, bits: number) {
+        const result = await lib.encodeUint(value, offset, bits);
+
+        // We must be able to restore the original value
+        expect(await lib.decodeUint(result, offset, bits)).to.equal(value);
+        // All other bits should be clear
+        expect(negate(bn(1).shl(bits).sub(1).shl(offset)).and(bn(result))).to.equal(0);
+      }
+
+      // We want to be able to use 2 bit values, so we can only go up to offset 254. We only cover part of the offset
+      // range to keep test duration reasonable.
+      for (const offset of [0, 50, 150, 254]) {
+        const MAX_BITS = Math.min(256 - offset, 255);
+
+        context(`with offset ${offset}`, () => {
+          it('encodes small values of all bit sizes', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await assertUnsignedEncoding(1, offset, bits);
+            }
+          });
+
+          it('encodes max values of all bit sizes', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await assertUnsignedEncoding(getMaxUnsigned(bits), offset, bits);
+            }
+          });
+
+          it('reverts with large values', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await expect(assertUnsignedEncoding(getMaxUnsigned(bits).add(1), offset, bits)).to.be.revertedWith(
+                'CODEC_OVERFLOW'
+              );
+            }
+          });
+
+          it('reverts with large bitsize', async () => {
+            await expect(assertUnsignedEncoding(0, offset, MAX_BITS + 1)).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
+        });
+      }
+    });
+
+    describe('signed', () => {
+      it('reverts with zero bit length', async () => {
+        await expect(lib.encodeInt(0, 0, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
+
+      it('reverts with 256 bit length', async () => {
+        await expect(lib.encodeInt(0, 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
+
+      it('reverts with large offset', async () => {
+        await expect(lib.encodeInt(0, 256, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
+
+      async function assertSignedEncoding(value: BigNumberish, offset: number, bits: number) {
+        const result = await lib.encodeInt(value, offset, bits);
+
+        // We must be able to restore the original value
+        expect(await lib.decodeInt(result, offset, bits)).to.equal(value);
+        // All other bits should be clear
+        expect(negate(bn(1).shl(bits).sub(1).shl(offset)).and(bn(result))).to.equal(0);
+      }
+
+      // We want to be able to use 2 bit values, so we can only go up to offset 254. We only cover part of the offset
+      // range to keep test duration reasonable.
+      for (const offset of [0, 50, 150, 254]) {
+        const MAX_BITS = Math.min(256 - offset, 255);
+
+        context(`with offset ${offset}`, () => {
+          it('encodes small positive values of all bit sizes', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await assertSignedEncoding(1, offset, bits);
+            }
+          });
+
+          it('encodes small negative values of all bit sizes', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await assertSignedEncoding(-1, offset, bits);
+            }
+          });
+
+          it('encodes max values of all bit sizes', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await assertSignedEncoding(getMaxSigned(bits), offset, bits);
+            }
+          });
+
+          it('encodes min values of all bit sizes', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await assertSignedEncoding(getMinSigned(bits), offset, bits);
+            }
+          });
+
+          it('reverts with large positive values', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await expect(assertSignedEncoding(getMaxSigned(bits).add(1), offset, bits)).to.be.revertedWith(
+                'CODEC_OVERFLOW'
+              );
+            }
+          });
+
+          it('reverts with large negative values', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await expect(assertSignedEncoding(getMinSigned(bits).sub(1), offset, bits)).to.be.revertedWith(
+                'CODEC_OVERFLOW'
+              );
+            }
+          });
+
+          it('reverts with large bitsize', async () => {
+            await expect(assertSignedEncoding(0, offset, MAX_BITS + 1)).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
+        });
+      }
+    });
   });
 
-  it('validates insertInt', async () => {
-    for (let bits = 2; bits < 256; bits++) {
-      const MAX_VALID = getMaxValue(bits - 1);
+  describe('insert', () => {
+    const word = bn(random(2 ** 255));
 
-      expect(await lib.insertInt(ZERO_BYTES32, MAX_VALID, 0, bits)).to.equal(TypesConverter.toBytes32(MAX_VALID));
-      await expect(lib.insertInt(ZERO_BYTES32, getMaxValue(bits), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
-    }
-  });
+    describe('unsigned', () => {
+      it('reverts with zero bit length', async () => {
+        await expect(lib.insertUint(word, 0, 0, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
 
-  it('validates encodeUint', async () => {
-    for (let bits = 2; bits < 256; bits++) {
-      const MAX_VALID = getMaxValue(bits);
+      it('reverts with 256 bit length', async () => {
+        await expect(lib.insertUint(word, 0, 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
 
-      expect(await lib.encodeUint(MAX_VALID, 0, bits)).to.equal(TypesConverter.toBytes32(MAX_VALID));
-      await expect(lib.encodeUint(getOverMax(bits), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
-    }
-  });
+      it('reverts with large offset', async () => {
+        await expect(lib.insertUint(word, 256, 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
 
-  it('validates encodeInt', async () => {
-    for (let bits = 2; bits < 256; bits++) {
-      const MAX_VALID = getMaxValue(bits - 1);
-      expect(await lib.encodeInt(MAX_VALID, 0, bits)).to.equal(TypesConverter.toBytes32(MAX_VALID));
-      await expect(lib.encodeInt(getMaxValue(bits), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
-    }
-  });
+      async function assertUnsignedInsertion(value: BigNumberish, offset: number, bits: number) {
+        const result = await lib.insertUint(word, value, offset, bits);
 
-  it('validates decodeUint', async () => {
-    for (let bits = 2; bits < 256; bits++) {
-      const MAX_VALID = getMaxValue(bits);
-      const encoded = await lib.encodeUint(MAX_VALID, 0, bits);
-      const decoded = await lib.decodeUint(encoded, 0, bits);
+        // We must be able to restore the original value
+        expect(await lib.decodeUint(result, offset, bits)).to.equal(value);
+        // All other bits should match the original word
+        const mask = negate(bn(1).shl(bits).sub(1).shl(offset));
+        const clearedResult = mask.and(result);
+        const clearedWord = mask.and(word);
+        expect(clearedResult).to.equal(clearedWord);
+      }
 
-      expect(decoded).to.equal(encoded);
-    }
-  });
+      // We want to be able to use 2 bit values, so we can only go up to offset 254. We only cover part of the offset
+      // range to keep test duration reasonable.
+      for (const offset of [0, 50, 150, 254]) {
+        const MAX_BITS = Math.min(256 - offset, 255);
 
-  it('validates decodeInt', async () => {
-    for (let bits = 2; bits < 256; bits++) {
-      const MAX_POSITIVE = getMaxValue(bits - 1);
+        context(`with offset ${offset}`, () => {
+          it('inserts small values of all bit sizes', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await assertUnsignedInsertion(1, offset, bits);
+            }
+          });
 
-      let encoded = await lib.encodeInt(MAX_POSITIVE, 0, bits);
-      let decoded = await lib.decodeInt(encoded, 0, bits);
-      expect(decoded).to.equal(encoded);
+          it('inserts max values of all bit sizes', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await assertUnsignedInsertion(getMaxUnsigned(bits), offset, bits);
+            }
+          });
 
-      // Test negative values
-      encoded = await lib.encodeInt(-1, 0, bits);
-      decoded = await lib.decodeInt(encoded, 0, bits);
-      expect(decoded).to.equal(-1);
-    }
-  });
+          it('reverts with large values', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await expect(assertUnsignedInsertion(getMaxUnsigned(bits).add(1), offset, bits)).to.be.revertedWith(
+                'CODEC_OVERFLOW'
+              );
+            }
+          });
 
-  it('rejects bitLength 0', async () => {
-    await expect(lib.insertUint(ZERO_BYTES32, getMaxValue(255), 0, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
-    await expect(lib.insertInt(ZERO_BYTES32, getMaxValue(255), 0, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
-    await expect(lib.encodeUint(getMaxValue(255), 0, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
-    await expect(lib.encodeInt(getMaxValue(255), 0, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
-  });
+          it('reverts with large bitsize', async () => {
+            await expect(assertUnsignedInsertion(0, offset, MAX_BITS + 1)).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
+        });
+      }
+    });
 
-  it('rejects bitLength > 255', async () => {
-    await expect(lib.insertUint(ZERO_BYTES32, getMaxValue(255), 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
-    await expect(lib.insertInt(ZERO_BYTES32, getMaxValue(255), 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
-    await expect(lib.encodeUint(getMaxValue(255), 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
-    await expect(lib.encodeInt(getMaxValue(255), 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
-  });
+    describe('signed', () => {
+      it('reverts with zero bit length', async () => {
+        await expect(lib.insertInt(word, 0, 0, 0)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
 
-  it('validates max/min positive/negative (insertInt)', async () => {
-    for (let bits = 2; bits < 256; bits++) {
-      const maxPositive = getMaxPositive(bits);
-      const maxNegative = getMaxNegative(bits);
+      it('reverts with 256 bit length', async () => {
+        await expect(lib.insertInt(word, 0, 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
 
-      expect(await lib.insertInt(ZERO_BYTES32, maxPositive, 0, bits)).to.equal(TypesConverter.toBytes32(maxPositive));
-      expect(await lib.insertInt(ZERO_BYTES32, maxNegative, 0, bits)).to.equal(TypesConverter.toBytes32(1));
+      it('reverts with large offset', async () => {
+        await expect(lib.insertInt(word, 256, 0, 256)).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
 
-      await expect(lib.insertInt(ZERO_BYTES32, maxPositive.add(1), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
-      await expect(lib.insertInt(ZERO_BYTES32, maxNegative.sub(1), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
-    }
-  });
+      async function assertSignedInsertion(value: BigNumberish, offset: number, bits: number) {
+        const result = await lib.insertInt(word, value, offset, bits);
 
-  it('validates max/min positive/negative (encodeInt)', async () => {
-    for (let bits = 2; bits < 256; bits++) {
-      const maxPositive = getMaxPositive(bits);
-      const maxNegative = getMaxNegative(bits);
+        // We must be able to restore the original value
+        expect(await lib.decodeInt(result, offset, bits)).to.equal(value);
+        // All other bits should match the original word
+        const mask = negate(bn(1).shl(bits).sub(1).shl(offset));
+        const clearedResult = mask.and(result);
+        const clearedWord = mask.and(word);
+        expect(clearedResult).to.equal(clearedWord);
+      }
 
-      expect(await lib.encodeInt(maxPositive, 0, bits)).to.equal(TypesConverter.toBytes32(maxPositive));
-      expect(await lib.encodeInt(maxNegative, 0, bits)).to.equal(TypesConverter.toBytes32(1));
+      // We want to be able to use 2 bit values, so we can only go up to offset 254. We only cover part of the offset
+      // range to keep test duration reasonable.
+      for (const offset of [0, 50, 150, 254]) {
+        const MAX_BITS = Math.min(256 - offset, 255);
 
-      await expect(lib.encodeInt(maxPositive.add(1), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
-      await expect(lib.encodeInt(maxNegative.sub(1), 0, bits)).to.be.revertedWith('CODEC_OVERFLOW');
-    }
+        context(`with offset ${offset}`, () => {
+          it('inserts small positive values of all bit sizes', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await assertSignedInsertion(1, offset, bits);
+            }
+          });
+
+          it('inserts small negative values of all bit sizes', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await assertSignedInsertion(-1, offset, bits);
+            }
+          });
+
+          it('inserts max values of all bit sizes', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await assertSignedInsertion(getMaxSigned(bits), offset, bits);
+            }
+          });
+
+          it('inserts min values of all bit sizes', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await assertSignedInsertion(getMinSigned(bits), offset, bits);
+            }
+          });
+
+          it('reverts with large positive values', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await expect(assertSignedInsertion(getMaxSigned(bits).add(1), offset, bits)).to.be.revertedWith(
+                'CODEC_OVERFLOW'
+              );
+            }
+          });
+
+          it('reverts with large negative values', async () => {
+            for (let bits = 2; bits <= MAX_BITS; bits++) {
+              await expect(assertSignedInsertion(getMinSigned(bits).sub(1), offset, bits)).to.be.revertedWith(
+                'CODEC_OVERFLOW'
+              );
+            }
+          });
+
+          it('reverts with large bitsize', async () => {
+            await expect(assertSignedInsertion(0, offset, MAX_BITS + 1)).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
+        });
+      }
+    });
   });
 });

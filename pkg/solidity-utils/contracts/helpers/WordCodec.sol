@@ -42,21 +42,6 @@ library WordCodec {
     // In-place insertion
 
     /**
-     * @dev Inserts a boolean value shifted by an offset into a 256 bit word, replacing the old value. Returns the new
-     * word.
-     */
-    function insertBool(
-        bytes32 word,
-        bool value,
-        uint256 offset
-    ) internal pure returns (bytes32) {
-        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_1 << offset));
-        return clearedWord | bytes32(uint256(value ? 1 : 0) << offset);
-    }
-
-    // Unsigned
-
-    /**
      * @dev Inserts an unsigned integer of bitLength, shifted by an offset, into a 256 bit word,
      * replacing the old value. Returns the new word.
      */
@@ -66,15 +51,12 @@ library WordCodec {
         uint256 offset,
         uint256 bitLength
     ) internal pure returns (bytes32) {
-        _require(bitLength > 0 && bitLength < 256, Errors.OUT_OF_BOUNDS);
-        _require(value >> bitLength == 0, Errors.CODEC_OVERFLOW);
-        uint256 mask = (1 << bitLength) - 1;
+        _validateEncodingParams(value, offset, bitLength);
 
+        uint256 mask = (1 << bitLength) - 1;
         bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
         return clearedWord | bytes32(value << offset);
     }
-
-    // Signed
 
     /**
      * @dev Inserts a signed integer shifted by an offset into a 256 bit word, replacing the old value. Returns
@@ -88,8 +70,7 @@ library WordCodec {
         uint256 offset,
         uint256 bitLength
     ) internal pure returns (bytes32) {
-        _require(bitLength > 0 && bitLength < 256, Errors.OUT_OF_BOUNDS);
-        _validateSignedInts(value, bitLength);
+        _validateEncodingParams(value, offset, bitLength);
 
         uint256 mask = (1 << bitLength) - 1;
         bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
@@ -97,25 +78,7 @@ library WordCodec {
         return clearedWord | bytes32((uint256(value) & mask) << offset);
     }
 
-    // Bytes
-
-    /**
-     * @dev Inserts 192 bit shifted by an offset into a 256 bit word, replacing the old value. Returns the new word.
-     *
-     * Assumes `value` can be represented using 192 bits.
-     */
-    function insertBits192(
-        bytes32 word,
-        bytes32 value,
-        uint256 offset
-    ) internal pure returns (bytes32) {
-        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_192 << offset));
-        return clearedWord | bytes32((uint256(value) & _MASK_192) << offset);
-    }
-
     // Encoding
-
-    // Unsigned
 
     /**
      * @dev Encodes an unsigned integer shifted by an offset. Ensures value fits within
@@ -128,13 +91,10 @@ library WordCodec {
         uint256 offset,
         uint256 bitLength
     ) internal pure returns (bytes32) {
-        _require(bitLength > 0 && bitLength < 256, Errors.OUT_OF_BOUNDS);
-        _require(value >> bitLength == 0, Errors.CODEC_OVERFLOW);
+        _validateEncodingParams(value, offset, bitLength);
 
         return bytes32(value << offset);
     }
-
-    // Signed
 
     /**
      * @dev Encodes a signed integer shifted by an offset.
@@ -146,25 +106,14 @@ library WordCodec {
         uint256 offset,
         uint256 bitLength
     ) internal pure returns (bytes32) {
-        _require(bitLength > 0 && bitLength < 256, Errors.OUT_OF_BOUNDS);
-        _validateSignedInts(value, bitLength);
+        _validateEncodingParams(value, offset, bitLength);
 
         uint256 mask = (1 << bitLength) - 1;
-
         // Integer values need masking to remove the upper bits of negative values.
         return bytes32((uint256(value) & mask) << offset);
     }
 
     // Decoding
-
-    /**
-     * @dev Decodes and returns a boolean shifted by an offset from a 256 bit word.
-     */
-    function decodeBool(bytes32 word, uint256 offset) internal pure returns (bool) {
-        return (uint256(word >> offset) & _MASK_1) == 1;
-    }
-
-    // Unsigned
 
     /**
      * @dev Decodes and returns an unsigned integer with `bitLength` bits, shifted by an offset, from a 256 bit word.
@@ -176,8 +125,6 @@ library WordCodec {
     ) internal pure returns (uint256) {
         return uint256(word >> offset) & ((1 << bitLength) - 1);
     }
-
-    // Signed
 
     /**
      * @dev Decodes and returns a signed integer with `bitLength` bits, shifted by an offset, from a 256 bit word.
@@ -197,10 +144,77 @@ library WordCodec {
         return value > maxInt ? (value | int256(~mask)) : value;
     }
 
+    // Special cases
+
+    /**
+     * @dev Decodes and returns a boolean shifted by an offset from a 256 bit word.
+     */
+    function decodeBool(bytes32 word, uint256 offset) internal pure returns (bool) {
+        return (uint256(word >> offset) & _MASK_1) == 1;
+    }
+
+    /**
+     * @dev Inserts a 192 bit value shifted by an offset into a 256 bit word, replacing the old value. Returns the new word.
+     *
+     * Assumes `value` can be represented using 192 bits.
+     */
+    function insertBits192(
+        bytes32 word,
+        bytes32 value,
+        uint256 offset
+    ) internal pure returns (bytes32) {
+        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_192 << offset));
+        return clearedWord | bytes32((uint256(value) & _MASK_192) << offset);
+    }
+
+    /**
+     * @dev Inserts a boolean value shifted by an offset into a 256 bit word, replacing the old value. Returns the new
+     * word.
+     */
+    function insertBool(
+        bytes32 word,
+        bool value,
+        uint256 offset
+    ) internal pure returns (bytes32) {
+        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_1 << offset));
+        return clearedWord | bytes32(uint256(value ? 1 : 0) << offset);
+    }
+
     // Helpers
 
-    // Limits are different for positive and negative numbers; positive numbers are one less because of the sign bit.
-    function _validateSignedInts(int256 value, uint256 bitLength) private pure {
-        _require(Math.abs(value) >> (value < 0 ? bitLength : bitLength - 1) == 0, Errors.CODEC_OVERFLOW);
+    function _validateEncodingParams(
+        uint256 value,
+        uint256 offset,
+        uint256 bitLength
+    ) private pure {
+        _require(offset < 256, Errors.OUT_OF_BOUNDS);
+        // We never accept 256 bit values (which would make the codec pointless), and the larger the offset the smaller
+        // the maximum bit length.
+        _require(bitLength >= 1 && bitLength <= Math.min(255, 256 - offset), Errors.OUT_OF_BOUNDS);
+
+        // Testing unsigned values for size is straightforward: their upper bits must be cleared.
+        _require(value >> bitLength == 0, Errors.CODEC_OVERFLOW);
+    }
+
+    function _validateEncodingParams(
+        int256 value,
+        uint256 offset,
+        uint256 bitLength
+    ) private pure {
+        _require(offset < 256, Errors.OUT_OF_BOUNDS);
+        // We never accept 256 bit values (which would make the codec pointless), and the larger the offset the smaller
+        // the maximum bit length.
+        _require(bitLength >= 1 && bitLength <= Math.min(255, 256 - offset), Errors.OUT_OF_BOUNDS);
+
+        // Testing signed values for size is a bit more involved.
+        if (value >= 0) {
+            // For positive values, we can simply check that the upper bits are clear. Notice we remove one bit from the
+            // length for the sign bit.
+            _require(value >> (bitLength - 1) == 0, Errors.CODEC_OVERFLOW);
+        } else {
+            // Negative values can receive the same treatment by making them positive, with the caveat that the range
+            // for negative values in two's complement supports one more value than for the positive case.
+            _require(Math.abs(value + 1) >> (bitLength - 1) == 0, Errors.CODEC_OVERFLOW);
+        }
     }
 }
