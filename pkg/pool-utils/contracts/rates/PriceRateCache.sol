@@ -42,14 +42,14 @@ library PriceRateCache {
      * @dev Returns the rate of a price rate cache.
      */
     function getRate(bytes32 cache) internal pure returns (uint256) {
-        return cache.decodeUint128(_PRICE_RATE_CACHE_VALUE_OFFSET);
+        return cache.decodeUint(_PRICE_RATE_CACHE_VALUE_OFFSET, 128);
     }
 
     /**
      * @dev Returns the duration of a price rate cache.
      */
     function getDuration(bytes32 cache) internal pure returns (uint256) {
-        return cache.decodeUint64(_PRICE_RATE_CACHE_DURATION_OFFSET);
+        return cache.decodeUint(_PRICE_RATE_CACHE_DURATION_OFFSET, 64);
     }
 
     /**
@@ -57,7 +57,7 @@ library PriceRateCache {
      */
     function getTimestamps(bytes32 cache) internal pure returns (uint256 duration, uint256 expires) {
         duration = getDuration(cache);
-        expires = cache.decodeUint64(_PRICE_RATE_CACHE_EXPIRES_OFFSET);
+        expires = cache.decodeUint(_PRICE_RATE_CACHE_EXPIRES_OFFSET, 64);
     }
 
     /**
@@ -69,9 +69,9 @@ library PriceRateCache {
 
         // solhint-disable not-rely-on-time
         return
-            WordCodec.encodeUint(uint128(rate), _PRICE_RATE_CACHE_VALUE_OFFSET) |
-            WordCodec.encodeUint(uint64(duration), _PRICE_RATE_CACHE_DURATION_OFFSET) |
-            WordCodec.encodeUint(uint64(block.timestamp + duration), _PRICE_RATE_CACHE_EXPIRES_OFFSET);
+            WordCodec.encodeUint(rate, _PRICE_RATE_CACHE_VALUE_OFFSET, 128) |
+            WordCodec.encodeUint(duration, _PRICE_RATE_CACHE_DURATION_OFFSET, 64) |
+            WordCodec.encodeUint(block.timestamp + duration, _PRICE_RATE_CACHE_EXPIRES_OFFSET, 64);
     }
 
     /**
