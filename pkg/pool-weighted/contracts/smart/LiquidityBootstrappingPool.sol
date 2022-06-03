@@ -158,13 +158,13 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         // Load current pool state from storage
         bytes32 poolState = _poolState;
 
-        startTime = poolState.decodeUint32(_START_TIME_OFFSET);
-        endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+        startTime = poolState.decodeUint(_START_TIME_OFFSET, 32);
+        endTime = poolState.decodeUint(_END_TIME_OFFSET, 32);
         uint256 totalTokens = _getTotalTokens();
         endWeights = new uint256[](totalTokens);
 
         for (uint256 i = 0; i < totalTokens; i++) {
-            endWeights[i] = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).decompress(16);
+            endWeights[i] = poolState.decodeUint(_END_WEIGHT_OFFSET + i * 16, 16).decompress(16);
         }
     }
 
@@ -210,10 +210,10 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     }
 
     function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
-        uint256 startWeight = poolState.decodeUint31(_START_WEIGHT_OFFSET + i * 31).decompress(31);
-        uint256 endWeight = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).decompress(16);
-        uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
-        uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+        uint256 startWeight = poolState.decodeUint(_START_WEIGHT_OFFSET + i * 31, 31).decompress(31);
+        uint256 endWeight = poolState.decodeUint(_END_WEIGHT_OFFSET + i * 16, 16).decompress(16);
+        uint256 startTime = poolState.decodeUint(_START_TIME_OFFSET, 32);
+        uint256 endTime = poolState.decodeUint(_END_TIME_OFFSET, 32);
 
         return GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
     }
@@ -332,15 +332,19 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             newPoolState = newPoolState
-                .insertUint31(startWeights[i].compress(31), _START_WEIGHT_OFFSET + i * 31)
-                .insertUint16(endWeight.compress(16), _END_WEIGHT_OFFSET + i * 16);
+                .insertUint(startWeights[i].compress(31), _START_WEIGHT_OFFSET + i * 31, 31)
+                .insertUint(endWeight.compress(16), _END_WEIGHT_OFFSET + i * 16, 16);
 
             normalizedSum = normalizedSum.add(endWeight);
         }
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        _poolState = newPoolState.insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET);
+        _poolState = newPoolState.insertUint(startTime, _START_TIME_OFFSET, 32).insertUint(
+            endTime,
+            _END_TIME_OFFSET,
+            32
+        );
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }

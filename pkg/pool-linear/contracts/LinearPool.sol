@@ -577,8 +577,8 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
 
     function getTargets() public view returns (uint256 lowerTarget, uint256 upperTarget) {
         bytes32 miscData = _getMiscData();
-        lowerTarget = miscData.decodeUint96(_LOWER_TARGET_OFFSET);
-        upperTarget = miscData.decodeUint96(_UPPER_TARGET_OFFSET);
+        lowerTarget = miscData.decodeUint(_LOWER_TARGET_OFFSET, 96);
+        upperTarget = miscData.decodeUint(_UPPER_TARGET_OFFSET, 96);
     }
 
     function _setTargets(
@@ -590,10 +590,10 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
         _require(upperTarget <= _MAX_UPPER_TARGET, Errors.UPPER_TARGET_TOO_HIGH);
 
         // Pack targets as two uint96 values into a single storage slot. This results in targets being capped to 96
-        // bits, but that should be more than enough.
+        // bits, but that should be more than enough. Values are already checked for validity above.
         _setMiscData(
-            WordCodec.encodeUint(lowerTarget, _LOWER_TARGET_OFFSET) |
-                WordCodec.encodeUint(upperTarget, _UPPER_TARGET_OFFSET)
+            WordCodec.encodeUint(lowerTarget, _LOWER_TARGET_OFFSET, 96) |
+                WordCodec.encodeUint(upperTarget, _UPPER_TARGET_OFFSET, 96)
         );
 
         emit TargetsSet(mainToken, lowerTarget, upperTarget);
