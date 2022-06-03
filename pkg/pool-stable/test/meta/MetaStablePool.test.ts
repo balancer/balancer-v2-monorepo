@@ -258,30 +258,8 @@ describe('MetaStablePool', function () {
           await pool.pause();
         });
 
-        context('when the latest change block is an old block', () => {
-          const lastChangeBlockOffset = 1;
-
-          context('when the oracle is enabled', () => {
-            itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
-            itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
-          });
-
-          context('when the oracle is disabled', () => {
-            itDoesNotDoAnythingWhenDisabled(action, lastChangeBlockOffset);
-          });
-        });
-
-        context('when the latest change block is the current block', () => {
-          const lastChangeBlockOffset = 0;
-
-          context('when the oracle is enabled', () => {
-            itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
-            itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
-          });
-
-          context('when the oracle is disabled', () => {
-            itDoesNotDoAnythingWhenDisabled(action, lastChangeBlockOffset);
-          });
+        it('all exits are disabled', async () => {
+          await expect(action(0)).to.be.revertedWith('PAUSED');
         });
       });
 
