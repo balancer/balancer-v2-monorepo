@@ -246,7 +246,7 @@ describe('WordCodec', () => {
         expect(clearedResult).to.equal(clearedWord);
       }
 
-      // We want to be able to use 2 bit values, so we can only go up to offset 254. We only covert part of the offset
+      // We want to be able to use 2 bit values, so we can only go up to offset 254. We only cover part of the offset
       // range to keep test duration reasonable.
       for (const offset of [0, 50, 150, 254]) {
         const MAX_BITS = Math.min(256 - offset, 255);
