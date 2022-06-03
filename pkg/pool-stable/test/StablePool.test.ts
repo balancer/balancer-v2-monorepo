@@ -521,11 +521,11 @@ describe('StablePool', function () {
           await multiExitGivenIn();
         });
 
-        it('does not revert if paused', async () => {
+        it('reverts if paused', async () => {
           await pool.pause();
 
           const bptIn = previousBptBalance.div(2);
-          await expect(pool.multiExitGivenIn({ from: lp, bptIn })).not.to.be.reverted;
+          await expect(pool.multiExitGivenIn({ from: lp, bptIn })).to.be.revertedWith('PAUSED');
         });
       });
 
@@ -843,13 +843,6 @@ describe('StablePool', function () {
             });
 
             expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
-          });
-
-          it('does not charge fee on exit if paused', async () => {
-            await pool.pause();
-
-            const exitResult = await pool.multiExitGivenIn({ from: lp, bptIn: fp(0.5), protocolFeePercentage });
-            expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
           });
         }
       });
