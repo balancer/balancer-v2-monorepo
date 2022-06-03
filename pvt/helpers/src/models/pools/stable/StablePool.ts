@@ -13,7 +13,8 @@ import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import StablePoolDeployer from './StablePoolDeployer';
 import { Account, TxParams } from '../../types/types';
-import { SwapKind, StablePoolEncoder } from '@balancer-labs/balancer-js';
+import { SwapKind, BasePoolEncoder, StablePoolEncoder } from '@balancer-labs/balancer-js';
+import { RecoveryModeExit } from '../base/types';
 import {
   Sample,
   MiscData,
@@ -27,7 +28,6 @@ import {
   SingleExitGivenInStablePool,
   MultiExitGivenInStablePool,
   ExitGivenOutStablePool,
-  RecoveryModeExitStablePool,
   SwapStablePool,
   ExitQueryResult,
   JoinQueryResult,
@@ -554,12 +554,12 @@ export default class StablePool {
     };
   }
 
-  private _buildRecoveryModeExitParams(params: RecoveryModeExitStablePool): JoinExitStablePool {
+  private _buildRecoveryModeExitParams(params: RecoveryModeExit): JoinExitStablePool {
     return {
       from: params.from,
       recipient: params.recipient,
       currentBalances: params.currentBalances,
-      data: StablePoolEncoder.exitRecoveryMode(params.bptIn),
+      data: BasePoolEncoder.exitRecoveryMode(params.bptIn),
     };
   }
 

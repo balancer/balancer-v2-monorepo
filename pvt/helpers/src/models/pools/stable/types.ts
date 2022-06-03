@@ -115,13 +115,6 @@ export type MultiExitGivenInStablePool = {
   lastChangeBlock?: BigNumberish;
 };
 
-export type RecoveryModeExitStablePool = {
-  bptIn: BigNumberish;
-  recipient?: Account;
-  from?: SignerWithAddress;
-  currentBalances?: BigNumberish[];
-};
-
 export type JoinResult = {
   amountsIn: BigNumber[];
   dueProtocolFeeAmounts: BigNumber[];
