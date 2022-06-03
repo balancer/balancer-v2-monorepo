@@ -142,7 +142,7 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
      * @dev This is stored in the MSB 64 bits of the `_miscData`.
      */
     function getSwapFeePercentage() public view returns (uint256) {
-        return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
+        return _miscData.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, 64);
     }
 
     /**
@@ -158,7 +158,7 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
         _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
-        _miscData = _miscData.insertUint64(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET);
+        _miscData = _miscData.insertUint(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET, 64);
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
