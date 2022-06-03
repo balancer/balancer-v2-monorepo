@@ -88,21 +88,20 @@ library StableMath {
 
             for (uint256 j = 0; j < numTokens; j++) {
                 // (D_P * invariant) / (balances[j] * numTokens)
-                D_P = Math.div(Math.mul(D_P, invariant), Math.mul(balances[j], numTokens), false);
+                D_P = Math.divDown(Math.mul(D_P, invariant), Math.mul(balances[j], numTokens));
             }
 
             prevInvariant = invariant;
 
-            invariant = Math.div(
+            invariant = Math.divDown(
                 Math.mul(
                     // (ampTimesTotal * sum) / AMP_PRECISION + D_P * numTokens
-                    (Math.div(Math.mul(ampTimesTotal, sum), _AMP_PRECISION, false).add(Math.mul(D_P, numTokens))),
+                    (Math.divDown(Math.mul(ampTimesTotal, sum), _AMP_PRECISION).add(Math.mul(D_P, numTokens))),
                     invariant
                 ),
                 // ((ampTimesTotal - _AMP_PRECISION) * invariant) / _AMP_PRECISION + (numTokens + 1) * D_P
-                (Math.div(Math.mul((ampTimesTotal - _AMP_PRECISION), invariant), _AMP_PRECISION, false) +
-                    Math.mul((numTokens + 1), D_P)),
-                false
+                (Math.divDown(Math.mul((ampTimesTotal - _AMP_PRECISION), invariant), _AMP_PRECISION) +
+                    Math.mul((numTokens + 1), D_P))
             );
 
             if (invariant > prevInvariant) {
