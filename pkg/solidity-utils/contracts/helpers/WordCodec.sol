@@ -154,7 +154,8 @@ library WordCodec {
     }
 
     /**
-     * @dev Inserts a 192 bit value shifted by an offset into a 256 bit word, replacing the old value. Returns the new word.
+     * @dev Inserts a 192 bit value shifted by an offset into a 256 bit word, replacing the old value.
+     * Returns the new word.
      *
      * Assumes `value` can be represented using 192 bits.
      */
