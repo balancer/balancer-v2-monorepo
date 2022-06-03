@@ -27,7 +27,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "./BalancerPoolToken.sol";
-import "./Recoverable.sol";
+import "./RecoveryMode.sol";
 
 // solhint-disable max-states-count
 
@@ -47,7 +47,7 @@ import "./Recoverable.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPausable, Recoverable {
+abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPausable, RecoveryMode {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using BasePoolUserData for bytes;
@@ -142,7 +142,7 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
      * @dev This is stored in the MSB 64 bits of the `_miscData`.
      */
     function getSwapFeePercentage() public view returns (uint256) {
-        return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
+        return _miscData.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, 64);
     }
 
     /**
@@ -158,7 +158,7 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
         _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
-        _miscData = _miscData.insertUint64(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET);
+        _miscData = _miscData.insertUint(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET, 64);
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
@@ -188,6 +188,10 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
      * @notice Pause the pool: an emergency action which disables all pool functions.
      * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
      * deployment (see `TemporarilyPausable`).
+     *
+     * It also turns on Recovery Mode, which enables a special recovery mode exit that executes as little code
+     * as possible to ensure LPs can always exit proportionally, even if the pool is otherwise non-functional.
+     * Note that `unpause` does not automatically exit recovery mode.
      */
     function pause() external authenticate {
         _setPaused(true);
@@ -309,13 +313,16 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
         uint256 bptAmountIn;
 
         // When a user calls `exitPool`, this is the first point of entry from the Vault.
-        // First check whether this is a Recovery Mode exit; if so, call the special lightweight
-        // `_recoveryModeExit`. Otherwise, use the normal code path.
+        // We first check whether this is a Recovery Mode exit - if so, we proceed using this special lightweight exit
+        // mechanism which avoids computing any complex values, interacting with external contracts, etc., and generally
+        // should always work, even if the Pool's mathematics or a dependency break down.
         if (userData.isRecoveryModeExitKind()) {
             // This exit kind is only available in Recovery Mode.
             _ensureInRecoveryMode();
 
-            // Do not charge protocol fees on emergency exits
+            // Protocol fees are skipped when processing recovery mode exits, since these are pool-agnostic and it
+            // is therefore impossible to know how many fees are due. For consistency, derived pools should not pay
+            // any protocol fees in regular joins and exits if recovery mode is enabled.
             dueProtocolFeeAmounts = new uint256[](balances.length);
 
             (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);

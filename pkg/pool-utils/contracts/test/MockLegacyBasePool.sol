@@ -15,9 +15,13 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
+
 import "../LegacyBasePool.sol";
 
 contract MockLegacyBasePool is LegacyBasePool {
+    using WeightedPoolUserData for bytes;
+
     uint256 private immutable _totalTokens;
 
     constructor(
@@ -57,12 +61,21 @@ contract MockLegacyBasePool is LegacyBasePool {
     }
 
     function _onInitializePool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory scalingFactors,
+        bytes32,
+        address,
+        address,
+        uint256[] memory,
         bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {}
+    ) internal pure override returns (uint256, uint256[] memory) {
+        uint256[] memory amountsIn = userData.initialAmountsIn();
+        uint256 bptAmountOut;
+
+        for (uint256 i = 0; i < amountsIn.length; i++) {
+            bptAmountOut += amountsIn[i];
+        }
+
+        return (bptAmountOut, amountsIn);
+    }
 
     function _onJoinPool(
         bytes32 poolId,

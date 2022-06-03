@@ -86,15 +86,15 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     // Start/end values of the swap fee (The MSB "start" swap fee corresponds to the reserved bits in BasePool,
     // and cannot be written from this contract.)
     // Flags for the LP allowlist and enabling/disabling trading
-    // [ 64 bits  |  1 bit  | 31 bits |   1 bit   |  31 bits  |  64 bits |  32 bits |  32 bits  ]
-    // [ swap fee | LP flag | fee end | swap flag | fee start | end swap | end wgt  | start wgt ]
+    // [ 64 bits  |  1 bit  |   1 bit   |  62 bits | 32 bits |  32 bits  |  32 bits |  32 bits  ]
+    // [ swap fee | LP flag | swap flag | end swap | fee end | fee start | end wgt  | start wgt ]
     // |MSB                                                                                  LSB|
     uint256 private constant _WEIGHT_START_TIME_OFFSET = 0;
     uint256 private constant _WEIGHT_END_TIME_OFFSET = 32;
-    uint256 private constant _END_SWAP_FEE_PERCENTAGE_OFFSET = 64;
-    uint256 private constant _FEE_START_TIME_OFFSET = 128;
-    uint256 private constant _SWAP_ENABLED_OFFSET = 159;
-    uint256 private constant _FEE_END_TIME_OFFSET = 160;
+    uint256 private constant _FEE_START_TIME_OFFSET = 64;
+    uint256 private constant _FEE_END_TIME_OFFSET = 96;
+    uint256 private constant _END_SWAP_FEE_PERCENTAGE_OFFSET = 128;
+    uint256 private constant _SWAP_ENABLED_OFFSET = 190;
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 191;
     uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
 
@@ -314,10 +314,10 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         // Load the current pool state from storage
         bytes32 poolState = _getMiscData();
 
-        startTime = poolState.decodeUint31(_FEE_START_TIME_OFFSET);
-        endTime = poolState.decodeUint31(_FEE_END_TIME_OFFSET);
-        startSwapFeePercentage = poolState.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
-        endSwapFeePercentage = poolState.decodeUint64(_END_SWAP_FEE_PERCENTAGE_OFFSET);
+        startTime = poolState.decodeUint(_FEE_START_TIME_OFFSET, 32);
+        endTime = poolState.decodeUint(_FEE_END_TIME_OFFSET, 32);
+        startSwapFeePercentage = poolState.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, 64);
+        endSwapFeePercentage = poolState.decodeUint(_END_SWAP_FEE_PERCENTAGE_OFFSET, 62);
     }
 
     function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual override {
@@ -325,9 +325,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         uint256 currentTime = block.timestamp;
         bytes32 poolState = _getMiscData();
 
-        uint256 endTime = poolState.decodeUint31(_FEE_END_TIME_OFFSET);
+        uint256 endTime = poolState.decodeUint(_FEE_END_TIME_OFFSET, 32);
         if (currentTime < endTime) {
-            uint256 startTime = poolState.decodeUint31(_FEE_START_TIME_OFFSET);
+            uint256 startTime = poolState.decodeUint(_FEE_START_TIME_OFFSET, 32);
             _revert(
                 currentTime < startTime ? Errors.SET_SWAP_FEE_PENDING_FEE_CHANGE : Errors.SET_SWAP_FEE_DURING_FEE_CHANGE
             );
@@ -366,8 +366,8 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         // Load current pool state from storage
         bytes32 poolState = _getMiscData();
 
-        startTime = poolState.decodeUint32(_WEIGHT_START_TIME_OFFSET);
-        endTime = poolState.decodeUint32(_WEIGHT_END_TIME_OFFSET);
+        startTime = poolState.decodeUint(_WEIGHT_START_TIME_OFFSET, 32);
+        endTime = poolState.decodeUint(_WEIGHT_END_TIME_OFFSET, 32);
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         uint256 totalTokens = tokens.length;
@@ -380,11 +380,11 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             bytes32 state = _tokenState[tokens[i]];
 
             startWeights[i] = _normalizeWeight(
-                state.decodeUint64(_START_DENORM_WEIGHT_OFFSET).decompress(64, _MAX_DENORM_WEIGHT),
+                state.decodeUint(_START_DENORM_WEIGHT_OFFSET, 64).decompress(64, _MAX_DENORM_WEIGHT),
                 denormWeightSum
             );
             endWeights[i] = _normalizeWeight(
-                state.decodeUint64(_END_DENORM_WEIGHT_OFFSET).decompress(64, _MAX_DENORM_WEIGHT),
+                state.decodeUint(_END_DENORM_WEIGHT_OFFSET, 64).decompress(64, _MAX_DENORM_WEIGHT),
                 denormWeightSum
             );
         }
@@ -649,7 +649,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         // tokens to find the minimum weight. We can delay decompressing the weight until after the search.
         uint256 minimumCompressedWeight = type(uint256).max;
         for (uint256 i = 0; i < numTokens; i++) {
-            uint256 newCompressedWeight = _getTokenData(tokens[i]).decodeUint64(_END_DENORM_WEIGHT_OFFSET);
+            uint256 newCompressedWeight = _getTokenData(tokens[i]).decodeUint(_END_DENORM_WEIGHT_OFFSET, 64);
             if (newCompressedWeight < minimumCompressedWeight) {
                 minimumCompressedWeight = newCompressedWeight;
             }
@@ -773,9 +773,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         uint256 currentTime = block.timestamp;
         bytes32 poolState = _getMiscData();
 
-        uint256 endTime = poolState.decodeUint32(_WEIGHT_END_TIME_OFFSET);
+        uint256 endTime = poolState.decodeUint(_WEIGHT_END_TIME_OFFSET, 32);
         if (currentTime < endTime) {
-            uint256 startTime = poolState.decodeUint32(_WEIGHT_START_TIME_OFFSET);
+            uint256 startTime = poolState.decodeUint(_WEIGHT_START_TIME_OFFSET, 32);
             _revert(
                 currentTime < startTime
                     ? Errors.CHANGE_TOKENS_PENDING_WEIGHT_CHANGE
@@ -870,12 +870,12 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
 
     function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
         bytes32 tokenData = _getTokenData(token);
-        uint256 startWeight = tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).decompress(64, _MAX_DENORM_WEIGHT);
-        uint256 endWeight = tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).decompress(64, _MAX_DENORM_WEIGHT);
+        uint256 startWeight = tokenData.decodeUint(_START_DENORM_WEIGHT_OFFSET, 64).decompress(64, _MAX_DENORM_WEIGHT);
+        uint256 endWeight = tokenData.decodeUint(_END_DENORM_WEIGHT_OFFSET, 64).decompress(64, _MAX_DENORM_WEIGHT);
 
         bytes32 poolState = _getMiscData();
-        uint256 startTime = poolState.decodeUint32(_WEIGHT_START_TIME_OFFSET);
-        uint256 endTime = poolState.decodeUint32(_WEIGHT_END_TIME_OFFSET);
+        uint256 startTime = poolState.decodeUint(_WEIGHT_START_TIME_OFFSET, 32);
+        uint256 endTime = poolState.decodeUint(_WEIGHT_END_TIME_OFFSET, 32);
 
         return
             _normalizeWeight(
@@ -893,17 +893,17 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         normalizedWeights = new uint256[](numTokens);
 
         bytes32 poolState = _getMiscData();
-        uint256 startTime = poolState.decodeUint32(_WEIGHT_START_TIME_OFFSET);
-        uint256 endTime = poolState.decodeUint32(_WEIGHT_END_TIME_OFFSET);
+        uint256 startTime = poolState.decodeUint(_WEIGHT_START_TIME_OFFSET, 32);
+        uint256 endTime = poolState.decodeUint(_WEIGHT_END_TIME_OFFSET, 32);
 
         uint256 denormWeightSum = _denormWeightSum;
         for (uint256 i = 0; i < numTokens; i++) {
             bytes32 tokenData = _tokenState[tokens[i]];
-            uint256 startWeight = tokenData.decodeUint64(_START_DENORM_WEIGHT_OFFSET).decompress(
+            uint256 startWeight = tokenData.decodeUint(_START_DENORM_WEIGHT_OFFSET, 64).decompress(
                 64,
                 _MAX_DENORM_WEIGHT
             );
-            uint256 endWeight = tokenData.decodeUint64(_END_DENORM_WEIGHT_OFFSET).decompress(64, _MAX_DENORM_WEIGHT);
+            uint256 endWeight = tokenData.decodeUint(_END_DENORM_WEIGHT_OFFSET, 64).decompress(64, _MAX_DENORM_WEIGHT);
 
             normalizedWeights[i] = _normalizeWeight(
                 GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime),
@@ -1168,9 +1168,10 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
         _setMiscData(
-            _getMiscData().insertUint32(startTime, _WEIGHT_START_TIME_OFFSET).insertUint32(
+            _getMiscData().insertUint(startTime, _WEIGHT_START_TIME_OFFSET, 32).insertUint(
                 endTime,
-                _WEIGHT_END_TIME_OFFSET
+                _WEIGHT_END_TIME_OFFSET,
+                32
             )
         );
 
@@ -1199,9 +1200,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     ) private {
         _setMiscData(
             _getMiscData()
-                .insertUint31(startTime, _FEE_START_TIME_OFFSET)
-                .insertUint31(endTime, _FEE_END_TIME_OFFSET)
-                .insertUint64(endSwapFeePercentage, _END_SWAP_FEE_PERCENTAGE_OFFSET)
+                .insertUint(startTime, _FEE_START_TIME_OFFSET, 32)
+                .insertUint(endTime, _FEE_END_TIME_OFFSET, 32)
+                .insertUint(endSwapFeePercentage, _END_SWAP_FEE_PERCENTAGE_OFFSET, 62)
         );
     }
 
@@ -1219,20 +1220,19 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         // Store decimal difference instead of actual scaling factor
         return
             tokenState
-                .insertUint64(
-                _denormalizeWeight(normalizedStartWeight, denormWeightSum).compress(64, _MAX_DENORM_WEIGHT),
-                _START_DENORM_WEIGHT_OFFSET
-            )
-                .insertUint64(
-                _denormalizeWeight(normalizedEndWeight, denormWeightSum).compress(64, _MAX_DENORM_WEIGHT),
-                _END_DENORM_WEIGHT_OFFSET
-            )
-                .insertUint5(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET);
+                .insertUint(_encodeWeight(normalizedStartWeight, denormWeightSum), _START_DENORM_WEIGHT_OFFSET, 64)
+                .insertUint(_encodeWeight(normalizedEndWeight, denormWeightSum), _END_DENORM_WEIGHT_OFFSET, 64)
+                .insertUint(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET, 5);
+    }
+
+    // Broken out because the stack was too deep
+    function _encodeWeight(uint256 weight, uint256 sum) private pure returns (uint256) {
+        return _denormalizeWeight(weight, sum).compress(64, _MAX_DENORM_WEIGHT);
     }
 
     // Convert a decimal difference value to the scaling factor
     function _readScalingFactor(bytes32 tokenState) private pure returns (uint256) {
-        uint256 decimalsDifference = tokenState.decodeUint5(_DECIMAL_DIFF_OFFSET);
+        uint256 decimalsDifference = tokenState.decodeUint(_DECIMAL_DIFF_OFFSET, 5);
 
         return FixedPoint.ONE * 10**decimalsDifference;
     }
