@@ -189,12 +189,12 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
         // Load current pool state from storage
         bytes32 poolState = _poolState;
 
-        startTime = poolState.decodeUint32(_START_TIME_OFFSET);
-        endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+        startTime = poolState.decodeUint(_START_TIME_OFFSET, 32);
+        endTime = poolState.decodeUint(_END_TIME_OFFSET, 32);
         endWeights = new uint256[](2);
 
-        endWeights[0] = poolState.decodeUint32(_END_WEIGHT_OFFSET).decompress(32);
-        endWeights[1] = poolState.decodeUint32(_END_WEIGHT_OFFSET + 32).decompress(32);
+        endWeights[0] = poolState.decodeUint(_END_WEIGHT_OFFSET, 32).decompress(32);
+        endWeights[1] = poolState.decodeUint(_END_WEIGHT_OFFSET + 32, 32).decompress(32);
     }
 
     /**
@@ -243,8 +243,8 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
     }
 
     function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
-        uint256 startWeight = poolState.decodeUint32(_START_WEIGHT_OFFSET + i * 32).decompress(32);
-        uint256 endWeight = poolState.decodeUint32(_END_WEIGHT_OFFSET + i * 32).decompress(32);
+        uint256 startWeight = poolState.decodeUint(_START_WEIGHT_OFFSET + i * 32, 32).decompress(32);
+        uint256 endWeight = poolState.decodeUint(_END_WEIGHT_OFFSET + i * 32, 32).decompress(32);
 
         uint256 pctProgress = _calculateWeightChangeProgress(poolState);
 
@@ -430,8 +430,8 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
      */
     function _calculateWeightChangeProgress(bytes32 poolState) private view returns (uint256) {
         uint256 currentTime = block.timestamp;
-        uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
-        uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+        uint256 startTime = poolState.decodeUint(_START_TIME_OFFSET, 32);
+        uint256 endTime = poolState.decodeUint(_END_TIME_OFFSET, 32);
 
         if (currentTime > endTime) {
             return FixedPoint.ONE;
@@ -465,15 +465,19 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool, ReentrancyG
             _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             newPoolState = newPoolState
-                .insertUint32(startWeights[i].compress(32), _START_WEIGHT_OFFSET + i * 32)
-                .insertUint32(endWeight.compress(32), _END_WEIGHT_OFFSET + i * 32);
+                .insertUint(startWeights[i].compress(32), _START_WEIGHT_OFFSET + i * 32, 32)
+                .insertUint(endWeight.compress(32), _END_WEIGHT_OFFSET + i * 32, 32);
 
             normalizedSum = normalizedSum.add(endWeight);
         }
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        _poolState = newPoolState.insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET);
+        _poolState = newPoolState.insertUint(startTime, _START_TIME_OFFSET, 32).insertUint(
+            endTime,
+            _END_TIME_OFFSET,
+            32
+        );
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
