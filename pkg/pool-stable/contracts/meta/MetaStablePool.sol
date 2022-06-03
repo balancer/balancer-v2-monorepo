@@ -550,14 +550,14 @@ contract MetaStablePool is StablePool, PoolPriceOracle {
      * @dev Decodes the rate value for a price rate cache
      */
     function _getPriceRateCacheValue(bytes32 cache) private pure returns (uint256) {
-        return cache.decodeUint128(_PRICE_RATE_CACHE_VALUE_OFFSET);
+        return cache.decodeUint(_PRICE_RATE_CACHE_VALUE_OFFSET, 128);
     }
 
     /**
      * @dev Decodes the duration for a price rate cache
      */
     function _getPriceRateCacheDuration(bytes32 cache) private pure returns (uint256) {
-        return cache.decodeUint64(_PRICE_RATE_CACHE_DURATION_OFFSET);
+        return cache.decodeUint(_PRICE_RATE_CACHE_DURATION_OFFSET, 64);
     }
 
     /**
@@ -565,7 +565,7 @@ contract MetaStablePool is StablePool, PoolPriceOracle {
      */
     function _getPriceRateCacheTimestamps(bytes32 cache) private pure returns (uint256 duration, uint256 expires) {
         duration = _getPriceRateCacheDuration(cache);
-        expires = cache.decodeUint64(_PRICE_RATE_CACHE_EXPIRES_OFFSET);
+        expires = cache.decodeUint(_PRICE_RATE_CACHE_EXPIRES_OFFSET, 64);
     }
 
     function _updateToken0PriceRateCache() private {
@@ -608,9 +608,9 @@ contract MetaStablePool is StablePool, PoolPriceOracle {
         _require(rate >> 128 == 0, Errors.PRICE_RATE_OVERFLOW);
 
         cache =
-            WordCodec.encodeUint(uint128(rate), _PRICE_RATE_CACHE_VALUE_OFFSET) |
-            WordCodec.encodeUint(uint64(duration), _PRICE_RATE_CACHE_DURATION_OFFSET) |
-            WordCodec.encodeUint(uint64(block.timestamp + duration), _PRICE_RATE_CACHE_EXPIRES_OFFSET);
+            WordCodec.encodeUint(rate, _PRICE_RATE_CACHE_VALUE_OFFSET, 128) |
+            WordCodec.encodeUint(duration, _PRICE_RATE_CACHE_DURATION_OFFSET, 64) |
+            WordCodec.encodeUint(block.timestamp + duration, _PRICE_RATE_CACHE_EXPIRES_OFFSET, 64);
     }
 
     function _isToken0WithRateProvider(IERC20 token) internal view returns (bool) {
