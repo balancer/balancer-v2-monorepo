@@ -9,7 +9,7 @@ import { MINUTE, advanceTime, currentTimestamp, lastBlockNumber } from '@balance
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { Sample } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
@@ -33,7 +33,7 @@ describe('MetaStablePool', function () {
   });
 
   sharedBeforeEach('deploy pool', async () => {
-    pool = await StablePool.create({ meta: true, tokens, swapFeePercentage, owner });
+    pool = await StablePool.create({ meta: true, tokens, swapFeePercentage, admin, owner });
   });
 
   const initializePool = () => {
@@ -405,6 +405,18 @@ describe('MetaStablePool', function () {
             await expect(pool.enableOracle({ from: owner })).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
 
+          context('in recovery mode', () => {
+            sharedBeforeEach('enter recovery mode', async () => {
+              await pool.enterRecoveryMode(admin);
+
+              expect(await pool.inRecoveryMode()).to.be.true;
+            });
+
+            it('cannot be enabled in recovery mode', async () => {
+              await expect(pool.enableOracle({ from: admin })).to.be.revertedWith('IN_RECOVERY_MODE');
+            });
+          });
+
           itCachesTheLogInvariantAndSupply(action);
         });
       });
@@ -413,6 +425,9 @@ describe('MetaStablePool', function () {
 
   describe('price rates', () => {
     let rateProviders: Contract[], oldPriceRate0: BigNumber, oldPriceRate1: BigNumber;
+    // Use a new pool; it destructively modifies pool, and would otherwise need to be the last test block
+    let prPool: StablePool;
+
     const cacheDurations = [MINUTE, MINUTE * 2];
 
     const scaleRate = (rate: BigNumber, token: Token) => rate.mul(bn(10).pow(18 - token.decimals));
@@ -430,27 +445,28 @@ describe('MetaStablePool', function () {
           await rateProviders[0].mockRate(fp(1).add(fp(delta)));
           await rateProviders[1].mockRate(fp(1).add(fp(delta * 2)));
 
-          pool = await StablePool.create({
+          prPool = await StablePool.create({
             meta: true,
             tokens,
             swapFeePercentage,
             rateProviders,
             priceRateCacheDuration: cacheDurations,
             owner,
+            admin,
           });
         });
       };
 
       const mockNewRatesAndAdvanceTime = (seconds: number) => {
         sharedBeforeEach('advance time', async () => {
-          oldPriceRate0 = (await pool.instance.getPriceRateCache(tokens.first.address)).rate;
-          oldPriceRate1 = (await pool.instance.getPriceRateCache(tokens.second.address)).rate;
+          oldPriceRate0 = (await prPool.instance.getPriceRateCache(tokens.first.address)).rate;
+          oldPriceRate1 = (await prPool.instance.getPriceRateCache(tokens.second.address)).rate;
 
           await rateProviders[0].mockRate(fp(1.1));
           await rateProviders[1].mockRate(fp(1.2));
 
           await advanceTime(seconds);
-          await pool.instance.mockCachePriceRatesIfNecessary();
+          await prPool.instance.mockCachePriceRatesIfNecessary();
         });
       };
 
@@ -460,12 +476,12 @@ describe('MetaStablePool', function () {
           priceRates[0] = scaleRate(priceRates[0], tokens.first);
           priceRates[1] = scaleRate(priceRates[1], tokens.second);
 
-          const scalingFactors = await pool.instance.getScalingFactors();
+          const scalingFactors = await prPool.instance.getScalingFactors();
           expect(scalingFactors[0]).to.be.equal(priceRates[0]);
           expect(scalingFactors[1]).to.be.equal(priceRates[1]);
 
-          expect(await pool.instance.getScalingFactor(tokens.first.address)).to.be.equal(priceRates[0]);
-          expect(await pool.instance.getScalingFactor(tokens.second.address)).to.be.equal(priceRates[1]);
+          expect(await prPool.instance.getScalingFactor(tokens.first.address)).to.be.equal(priceRates[0]);
+          expect(await prPool.instance.getScalingFactor(tokens.second.address)).to.be.equal(priceRates[1]);
         });
       };
 
@@ -473,17 +489,22 @@ describe('MetaStablePool', function () {
         sharedBeforeEach('force update', async () => {
           const priceRates = await Promise.all(rateProviders.map((provider) => provider.getRate()));
 
-          const firstReceipt = await pool.updatePriceRateCache(tokens.first);
-          expectEvent.inIndirectReceipt(await firstReceipt.wait(), pool.instance.interface, 'PriceRateCacheUpdated', {
+          const firstReceipt = await prPool.updatePriceRateCache(tokens.first);
+          expectEvent.inIndirectReceipt(await firstReceipt.wait(), prPool.instance.interface, 'PriceRateCacheUpdated', {
             token: tokens.first.address,
             rate: priceRates[0],
           });
 
-          const secondReceipt = await pool.updatePriceRateCache(tokens.second);
-          expectEvent.inIndirectReceipt(await secondReceipt.wait(), pool.instance.interface, 'PriceRateCacheUpdated', {
-            token: tokens.second.address,
-            rate: priceRates[1],
-          });
+          const secondReceipt = await prPool.updatePriceRateCache(tokens.second);
+          expectEvent.inIndirectReceipt(
+            await secondReceipt.wait(),
+            prPool.instance.interface,
+            'PriceRateCacheUpdated',
+            {
+              token: tokens.second.address,
+              rate: priceRates[1],
+            }
+          );
         });
       };
 
@@ -494,13 +515,13 @@ describe('MetaStablePool', function () {
             itAdaptsTheScalingFactorsCorrectly();
 
             it('initializes correctly', async () => {
-              const cache0 = await pool.instance.getPriceRateCache(tokens.first.address);
+              const cache0 = await prPool.instance.getPriceRateCache(tokens.first.address);
               expect(cache0.duration).to.be.equal(cacheDurations[0]);
 
-              const cache1 = await pool.instance.getPriceRateCache(tokens.second.address);
+              const cache1 = await prPool.instance.getPriceRateCache(tokens.second.address);
               expect(cache1.duration).to.be.equal(cacheDurations[1]);
 
-              const providers = await pool.instance.getRateProviders();
+              const providers = await prPool.instance.getRateProviders();
               expect(providers[0]).to.be.equal(rateProviders[0].address);
               expect(providers[1]).to.be.equal(rateProviders[1].address);
             });
@@ -525,13 +546,13 @@ describe('MetaStablePool', function () {
 
             context('when not forced', () => {
               it('does not update any cache', async () => {
-                const { rate: newPriceRate0 } = await pool.instance.getPriceRateCache(tokens.first.address);
-                const { rate: newPriceRate1 } = await pool.instance.getPriceRateCache(tokens.second.address);
+                const { rate: newPriceRate0 } = await prPool.instance.getPriceRateCache(tokens.first.address);
+                const { rate: newPriceRate1 } = await prPool.instance.getPriceRateCache(tokens.second.address);
 
                 expect(newPriceRate0).to.be.equal(oldPriceRate0);
                 expect(newPriceRate1).to.be.equal(oldPriceRate1);
 
-                const scalingFactors = await pool.instance.getScalingFactors();
+                const scalingFactors = await prPool.instance.getScalingFactors();
                 expect(scalingFactors[0]).to.be.equal(scaleRate(oldPriceRate0, tokens.first));
                 expect(scalingFactors[1]).to.be.equal(scaleRate(oldPriceRate1, tokens.second));
               });
@@ -548,13 +569,13 @@ describe('MetaStablePool', function () {
 
             context('when not forced', () => {
               it('updates only the first cache', async () => {
-                const { rate: newPriceRate0 } = await pool.instance.getPriceRateCache(tokens.first.address);
-                const { rate: newPriceRate1 } = await pool.instance.getPriceRateCache(tokens.second.address);
+                const { rate: newPriceRate0 } = await prPool.instance.getPriceRateCache(tokens.first.address);
+                const { rate: newPriceRate1 } = await prPool.instance.getPriceRateCache(tokens.second.address);
 
                 expect(newPriceRate0).to.be.gt(oldPriceRate0);
                 expect(newPriceRate1).to.be.equal(oldPriceRate1);
 
-                const scalingFactors = await pool.instance.getScalingFactors();
+                const scalingFactors = await prPool.instance.getScalingFactors();
                 expect(scalingFactors[0]).to.be.equal(scaleRate(newPriceRate0, tokens.first));
                 expect(scalingFactors[1]).to.be.equal(scaleRate(oldPriceRate1, tokens.second));
               });
@@ -571,13 +592,13 @@ describe('MetaStablePool', function () {
 
             context('when not forced', () => {
               it('updates both caches', async () => {
-                const { rate: newPriceRate0 } = await pool.instance.getPriceRateCache(tokens.first.address);
-                const { rate: newPriceRate1 } = await pool.instance.getPriceRateCache(tokens.second.address);
+                const { rate: newPriceRate0 } = await prPool.instance.getPriceRateCache(tokens.first.address);
+                const { rate: newPriceRate1 } = await prPool.instance.getPriceRateCache(tokens.second.address);
 
                 expect(newPriceRate0).to.be.gt(oldPriceRate0);
                 expect(newPriceRate1).to.be.gt(oldPriceRate1);
 
-                const scalingFactors = await pool.instance.getScalingFactors();
+                const scalingFactors = await prPool.instance.getScalingFactors();
                 expect(scalingFactors[0]).to.be.equal(scaleRate(newPriceRate0, tokens.first));
                 expect(scalingFactors[1]).to.be.equal(scaleRate(newPriceRate1, tokens.second));
               });
@@ -595,8 +616,8 @@ describe('MetaStablePool', function () {
         createPoolWithInitialRates(0);
 
         sharedBeforeEach('grant role to admin', async () => {
-          const action = await actionId(pool.instance, 'setPriceRateCacheDuration');
-          await pool.vault.grantPermissionsGlobally([action], admin);
+          const action = await actionId(prPool.instance, 'setPriceRateCacheDuration');
+          await prPool.vault.grantPermissionsGlobally([action], admin);
         });
 
         const setNewPriceRateCache = () => {
@@ -606,14 +627,14 @@ describe('MetaStablePool', function () {
           sharedBeforeEach('update price rate cache', async () => {
             forceUpdateAt = await currentTimestamp();
 
-            const firstReceipt = await pool.setPriceRateCacheDuration(tokens.first, newDuration, { from: admin });
+            const firstReceipt = await prPool.setPriceRateCacheDuration(tokens.first, newDuration, { from: admin });
             expectEvent.inReceipt(await firstReceipt.wait(), 'PriceRateProviderSet', {
               token: tokens.first.address,
               provider: rateProviders[0].address,
               cacheDuration: newDuration,
             });
 
-            const secondReceipt = await pool.setPriceRateCacheDuration(tokens.second, newDuration, { from: admin });
+            const secondReceipt = await prPool.setPriceRateCacheDuration(tokens.second, newDuration, { from: admin });
             expectEvent.inReceipt(await secondReceipt.wait(), 'PriceRateProviderSet', {
               token: tokens.second.address,
               provider: rateProviders[1].address,
@@ -622,11 +643,11 @@ describe('MetaStablePool', function () {
           });
 
           it('updates the cache duration', async () => {
-            const cache0 = await pool.instance.getPriceRateCache(tokens.first.address);
+            const cache0 = await prPool.instance.getPriceRateCache(tokens.first.address);
             expect(cache0.duration).to.be.equal(newDuration);
             expect(cache0.expires).to.be.at.least(forceUpdateAt.add(newDuration));
 
-            const cache1 = await pool.instance.getPriceRateCache(tokens.second.address);
+            const cache1 = await prPool.instance.getPriceRateCache(tokens.second.address);
             expect(cache1.duration).to.be.equal(newDuration);
             expect(cache1.expires).to.be.at.least(forceUpdateAt.add(newDuration));
           });
@@ -648,9 +669,9 @@ describe('MetaStablePool', function () {
 
         context('when it is not requested by the admin', () => {
           it('reverts', async () => {
-            await expect(pool.setPriceRateCacheDuration(tokens.first, MINUTE * 10, { from: other })).to.be.revertedWith(
-              'SENDER_NOT_ALLOWED'
-            );
+            await expect(
+              prPool.setPriceRateCacheDuration(tokens.first, MINUTE * 10, { from: other })
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
         });
       });
@@ -659,30 +680,30 @@ describe('MetaStablePool', function () {
     context('with zeroed rate providers', () => {
       sharedBeforeEach('deploy pool', async () => {
         const rateProviders = [ZERO_ADDRESS, ZERO_ADDRESS];
-        pool = await StablePool.create({ meta: true, tokens, swapFeePercentage, rateProviders, owner });
+        prPool = await StablePool.create({ meta: true, tokens, swapFeePercentage, rateProviders, owner, admin });
       });
 
       it('does not affect the scaling factors', async () => {
         const expectedFactor0 = scaleRate(fp(1), tokens.first);
         const expectedFactor1 = scaleRate(fp(1), tokens.second);
 
-        const scalingFactors = await pool.instance.getScalingFactors();
+        const scalingFactors = await prPool.instance.getScalingFactors();
         expect(scalingFactors[0]).to.be.equal(expectedFactor0);
         expect(scalingFactors[1]).to.be.equal(expectedFactor1);
 
-        expect(await pool.instance.getScalingFactor(tokens.first.address)).to.be.equal(expectedFactor0);
-        expect(await pool.instance.getScalingFactor(tokens.second.address)).to.be.equal(expectedFactor1);
+        expect(await prPool.instance.getScalingFactor(tokens.first.address)).to.be.equal(expectedFactor0);
+        expect(await prPool.instance.getScalingFactor(tokens.second.address)).to.be.equal(expectedFactor1);
       });
 
       it('cannot update the price rate cache duration', async () => {
-        const action = await actionId(pool.instance, 'setPriceRateCacheDuration');
-        await pool.vault.grantPermissionsGlobally([action], admin);
+        const action = await actionId(prPool.instance, 'setPriceRateCacheDuration');
+        await prPool.vault.grantPermissionsGlobally([action], admin);
 
-        await expect(pool.setPriceRateCacheDuration(tokens.first, MINUTE * 10, { from: admin })).to.be.revertedWith(
+        await expect(prPool.setPriceRateCacheDuration(tokens.first, MINUTE * 10, { from: admin })).to.be.revertedWith(
           'INVALID_TOKEN'
         );
 
-        await expect(pool.setPriceRateCacheDuration(tokens.second, MINUTE * 10, { from: admin })).to.be.revertedWith(
+        await expect(prPool.setPriceRateCacheDuration(tokens.second, MINUTE * 10, { from: admin })).to.be.revertedWith(
           'INVALID_TOKEN'
         );
       });
@@ -693,6 +714,108 @@ describe('MetaStablePool', function () {
         await expect(
           StablePool.create({ meta: true, tokens, swapFeePercentage, rateProviders: [] })
         ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+      });
+    });
+  });
+
+  describe('recovery mode operation', () => {
+    let mockCompression: Contract;
+    let protocolFeesCollector: Contract;
+
+    initializePool();
+
+    sharedBeforeEach('deploy compression library', async () => {
+      mockCompression = await deploy('MockLogCompression');
+      const vault = await deployedAt('v2-vault/Vault', await pool.getVault());
+      protocolFeesCollector = await deployedAt('v2-vault/ProtocolFeesCollector', vault.getProtocolFeesCollector());
+    });
+
+    sharedBeforeEach('enter recovery mode', async () => {
+      const action = await actionId(pool.instance, 'enterRecoveryMode');
+      await pool.vault.grantPermissionsGlobally([action], admin);
+
+      await pool.enterRecoveryMode(admin);
+
+      expect(await pool.inRecoveryMode()).to.be.true;
+    });
+
+    context('with oracle enabled', () => {
+      it('misc data is updated', async () => {
+        expect(await pool.isOracleEnabled()).to.be.true;
+
+        const N = 5;
+
+        const originalMiscData = await pool.getOracleMiscData();
+        const originalTotalSupply = await pool.totalSupply();
+        const originalInvariant = await mockCompression.fromLowResLog(originalMiscData.logInvariant);
+
+        const bptAmount = await pool.balanceOf(lp);
+        const expectedAmountsOut = initialBalances.map((balance) => balance.div(N));
+        const bptIn = bptAmount.div(N);
+
+        for (let i = 0; i < N - 1; i++) {
+          await advanceTime(MINUTE * 10);
+
+          const result = await pool.recoveryModeExit({ from: lp, bptIn });
+          // Balances are reduced by half because we are returning half of the BPT supply
+          expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.001);
+          const newMiscData = await pool.getOracleMiscData();
+
+          // These two don't change
+          expect(newMiscData.oracleIndex).to.equal(originalMiscData.oracleIndex);
+          expect(newMiscData.oracleSampleCreationTimestamp).to.equal(originalMiscData.oracleSampleCreationTimestamp);
+
+          const newTotalSupply = await mockCompression.fromLowResLog(newMiscData.logTotalSupply);
+          expect(newTotalSupply).to.equalWithError(originalTotalSupply.sub(bptIn.mul(i + 1)), 0.001);
+
+          const newInvariant = await mockCompression.fromLowResLog(newMiscData.logInvariant);
+
+          // With N = 5, we are subtracting 1/5 each time. Only execute the loop 4 times, so that we don't expect 0.
+          expect(newInvariant).to.equalWithError(originalInvariant.mul(N - i - 1).div(N), 0.001);
+        }
+
+        // Now do a swap (still in recovery mode)
+        // Should succeed, and pay no protocol fees
+        const balances = await pool.getBalances();
+        // Ensure we don't violate the ratio (with low-decimal tokens)
+        await pool.swapGivenIn({ in: 0, out: 1, amount: balances[0].div(4), lastChangeBlock: await lastBlockNumber() });
+
+        const currentMiscData = await pool.getOracleMiscData();
+        expect(currentMiscData.oracleIndex).to.equal(originalMiscData.oracleIndex.add(1));
+        expect(currentMiscData.oracleSampleCreationTimestamp).to.equal(await currentTimestamp());
+
+        const feeAmounts = await protocolFeesCollector.getCollectedFeeAmounts([pool.address]);
+        expect(feeAmounts).to.deep.equal([0]);
+      });
+    });
+
+    context('with oracle disabled', () => {
+      sharedBeforeEach('disable oracle', async () => {
+        await pool.instance.mockOracleDisabled();
+
+        expect(await pool.isOracleEnabled()).to.be.false;
+      });
+
+      it('misc data not updated', async () => {
+        const N = 4;
+
+        const originalMiscData = await pool.getOracleMiscData();
+        const bptAmount = await pool.balanceOf(lp);
+        const expectedAmountsOut = initialBalances.map((balance) => balance.div(N));
+
+        for (let i = 0; i < N; i++) {
+          await advanceTime(MINUTE * 10);
+
+          const result = await pool.recoveryModeExit({ from: lp, bptIn: bptAmount.div(N) });
+          // Balances are reduced by half because we are returning half of the BPT supply
+          expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.001);
+          const newMiscData = await pool.getOracleMiscData();
+
+          expect(newMiscData.oracleIndex).to.equal(originalMiscData.oracleIndex);
+          expect(newMiscData.logTotalSupply).to.equal(originalMiscData.logTotalSupply);
+          expect(newMiscData.logInvariant).to.equal(originalMiscData.logInvariant);
+          expect(newMiscData.oracleSampleCreationTimestamp).to.equal(originalMiscData.oracleSampleCreationTimestamp);
+        }
       });
     });
   });

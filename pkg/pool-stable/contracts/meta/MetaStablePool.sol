@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/LogCompression.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
@@ -37,6 +38,7 @@ contract MetaStablePool is StablePool, PoolPriceOracle {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using OracleMiscData for bytes32;
+    using BasePoolUserData for bytes;
 
     IRateProvider private immutable _rateProvider0;
     IRateProvider private immutable _rateProvider1;
@@ -250,8 +252,17 @@ contract MetaStablePool is StablePool, PoolPriceOracle {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public virtual override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
-        _cachePriceRatesIfNecessary();
+        // We are overriding the "top level" exit here, and the recovery mode check hasn't happened yet, so
+        // we need to check it ourselves.
+        if (!userData.isRecoveryModeExitKind()) {
+            // Do not make external calls in recovery mode.
+            // `updatePriceRateCache` can always be called externally, while the pool is in recovery mode.
+            _cachePriceRatesIfNecessary();
+        }
 
+        // In recovery mode, the base class onExitPool will call `_recoveryModeExit` instead of `_onExitPool`.
+        // The special recovery mode exit (defined in StablePool) will update the _lastInvariant, which we
+        // store in the cache below.
         (amountsOut, dueProtocolFeeAmounts) = super.onExitPool(
             poolId,
             sender,
@@ -263,13 +274,15 @@ contract MetaStablePool is StablePool, PoolPriceOracle {
         );
 
         // If the contract is paused, the oracle is not updated to avoid extra calculations and reduce potential errors.
+        // We *do* update it in recovery mode, though. It is not doing anything too complex or iterative that
+        // could fail, and `_recoveryModeExit` will have updated the _lastInvariant.
         if (_isNotPaused()) {
             _cacheInvariantAndSupply();
         }
     }
 
     /**
-     * @dev Update price oracle with the pre-exit balances
+     * @dev Update price oracle with the pre-exit balances. This will not be called in Recovery Mode.
      */
     function _onExitPool(
         bytes32 poolId,
@@ -335,7 +348,7 @@ contract MetaStablePool is StablePool, PoolPriceOracle {
      *
      * Note that the Oracle can only be enabled - it can never be disabled.
      */
-    function enableOracle() external whenNotPaused authenticate {
+    function enableOracle() external whenNotPaused whenNotInRecoveryMode authenticate {
         _setOracleEnabled(true);
 
         // Cache log invariant and supply only if the pool was initialized
