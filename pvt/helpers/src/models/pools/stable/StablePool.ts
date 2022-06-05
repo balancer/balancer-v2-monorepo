@@ -12,9 +12,8 @@ import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import StablePoolDeployer from './StablePoolDeployer';
-import { Account, TxParams } from '../../types/types';
-import { SwapKind, BasePoolEncoder, StablePoolEncoder } from '@balancer-labs/balancer-js';
-import { RecoveryModeExit } from '../base/types';
+import { TxParams } from '../../types/types';
+import { SwapKind, StablePoolEncoder } from '@balancer-labs/balancer-js';
 import {
   Sample,
   MiscData,
@@ -45,6 +44,7 @@ import {
   calculateBptPrice,
 } from './math';
 import { Swap } from '../../vault/types';
+import BasePool from '../base/BasePool';
 
 export enum SWAP_INTERFACE {
   DEFAULT,
@@ -52,15 +52,9 @@ export enum SWAP_INTERFACE {
   MINIMAL_SWAP_INFO,
 }
 
-export default class StablePool {
-  instance: Contract;
-  poolId: string;
-  tokens: TokenList;
-  swapFeePercentage: BigNumberish;
+export default class StablePool extends BasePool {
   amplificationParameter: BigNumberish;
-  vault: Vault;
   meta: boolean;
-  owner?: SignerWithAddress;
 
   static async create(params: RawStablePoolDeployment = {}): Promise<StablePool> {
     return StablePoolDeployer.deploy(params);
@@ -76,50 +70,10 @@ export default class StablePool {
     meta: boolean,
     owner?: SignerWithAddress
   ) {
-    this.instance = instance;
-    this.poolId = poolId;
-    this.vault = vault;
-    this.tokens = tokens;
+    super(instance, poolId, vault, tokens, swapFeePercentage, owner);
+
     this.amplificationParameter = amplificationParameter;
-    this.swapFeePercentage = swapFeePercentage;
     this.meta = meta;
-    this.owner = owner;
-  }
-
-  get address(): string {
-    return this.instance.address;
-  }
-
-  async name(): Promise<string> {
-    return this.instance.name();
-  }
-
-  async symbol(): Promise<string> {
-    return this.instance.symbol();
-  }
-
-  async decimals(): Promise<BigNumber> {
-    return this.instance.decimals();
-  }
-
-  async totalSupply(): Promise<BigNumber> {
-    return this.instance.totalSupply();
-  }
-
-  async balanceOf(account: Account): Promise<BigNumber> {
-    return this.instance.balanceOf(TypesConverter.toAddress(account));
-  }
-
-  async getVault(): Promise<string> {
-    return this.instance.getVault();
-  }
-
-  async getRegisteredInfo(): Promise<{ address: string; specialization: BigNumber }> {
-    return this.vault.getPool(this.poolId);
-  }
-
-  async getPoolId(): Promise<string> {
-    return this.instance.getPoolId();
   }
 
   async getLastInvariant(): Promise<{ lastInvariant: BigNumber; lastInvariantAmp: BigNumber }> {
@@ -140,35 +94,8 @@ export default class StablePool {
     return (await this.getOracleMiscData()).oracleEnabled;
   }
 
-  async getSwapFeePercentage(): Promise<BigNumber> {
-    return this.instance.getSwapFeePercentage();
-  }
-
   async getAmplificationParameter(): Promise<{ value: BigNumber; isUpdating: boolean; precision: BigNumber }> {
     return this.instance.getAmplificationParameter();
-  }
-
-  async getScalingFactors(): Promise<BigNumber[]> {
-    return this.instance.getScalingFactors();
-  }
-
-  async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
-    return this.vault.getPoolTokens(this.poolId);
-  }
-
-  async getBalances(): Promise<BigNumber[]> {
-    const { balances } = await this.getTokens();
-    return balances;
-  }
-
-  async getTokenInfo(
-    token: Token
-  ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
-    return this.vault.getPoolTokenInfo(this.poolId, token);
-  }
-
-  async getRate(): Promise<BigNumber> {
-    return this.instance.getRate();
   }
 
   async enableOracle(txParams: TxParams): Promise<void> {
@@ -383,10 +310,6 @@ export default class StablePool {
     return this.exit(this._buildMultiExitGivenInParams(params));
   }
 
-  async recoveryModeExit(params: MultiExitGivenInStablePool): Promise<ExitResult> {
-    return this.exit(this._buildRecoveryModeExitParams(params));
-  }
-
   async queryMultiExitGivenIn(params: MultiExitGivenInStablePool): Promise<ExitQueryResult> {
     return this.queryExit(this._buildMultiExitGivenInParams(params));
   }
@@ -554,15 +477,6 @@ export default class StablePool {
     };
   }
 
-  private _buildRecoveryModeExitParams(params: RecoveryModeExit): JoinExitStablePool {
-    return {
-      from: params.from,
-      recipient: params.recipient,
-      currentBalances: params.currentBalances,
-      data: BasePoolEncoder.exitRecoveryMode(params.bptIn),
-    };
-  }
-
   private _buildSwapRequest(params: SwapStablePool, kind: SwapKind): Swap {
     return {
       kind,
@@ -576,12 +490,5 @@ export default class StablePool {
       data: params.data ?? '0x',
       amount: params.amount,
     };
-  }
-
-  async pause(): Promise<void> {
-    const pauseAction = await actionId(this.instance, 'pause');
-    const unpauseAction = await actionId(this.instance, 'unpause');
-    await this.vault.grantPermissionsGlobally([pauseAction, unpauseAction]);
-    await this.instance.pause();
   }
 }
