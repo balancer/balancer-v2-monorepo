@@ -1,11 +1,11 @@
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BasePoolEncoder } from '@balancer-labs/balancer-js';
 import { ZERO_ADDRESS } from '../../../constants';
 import * as expectEvent from '../../../test/expectEvent';
 import TypesConverter from '../../types/TypesConverter';
-import { BigNumberish, bn, fp } from '../../../numbers';
-import { Account, TxParams } from '../../types/types';
+import { BigNumberish } from '../../../numbers';
+import { Account } from '../../types/types';
 import TokenList from '../../tokens/TokenList';
 import { actionId } from '../../misc/actions';
 import Token from '../../tokens/Token';
@@ -64,7 +64,7 @@ export default class BasePool {
   async getVault(): Promise<string> {
     return this.instance.getVault();
   }
-  
+
   async getRegisteredInfo(): Promise<{ address: string; specialization: BigNumber }> {
     return this.vault.getPool(this.poolId);
   }
@@ -143,9 +143,31 @@ export default class BasePool {
     await this.instance.unpause();
   }
 
+  async enterRecoveryMode(from: SignerWithAddress): Promise<ContractTransaction> {
+    await this.grantRecoveryPermissions();
+    const pool = this.instance.connect(from);
+    return await pool.enterRecoveryMode();
+  }
+
+  async exitRecoveryMode(from: SignerWithAddress): Promise<ContractTransaction> {
+    await this.grantRecoveryPermissions();
+    const pool = this.instance.connect(from);
+    return await pool.exitRecoveryMode();
+  }
+
+  async inRecoveryMode(): Promise<boolean> {
+    return await this.instance.inRecoveryMode();
+  }
+
   private async grantPausePermissions(): Promise<void> {
     const pauseAction = await actionId(this.instance, 'pause');
     const unpauseAction = await actionId(this.instance, 'unpause');
     await this.vault.grantPermissionsGlobally([pauseAction, unpauseAction]);
+  }
+
+  private async grantRecoveryPermissions(): Promise<void> {
+    const enterRecoveryAction = await actionId(this.instance, 'enterRecoveryMode');
+    const exitRecoveryAction = await actionId(this.instance, 'exitRecoveryMode');
+    await this.vault.grantPermissionsGlobally([enterRecoveryAction, exitRecoveryAction], this.vault.admin);
   }
 }

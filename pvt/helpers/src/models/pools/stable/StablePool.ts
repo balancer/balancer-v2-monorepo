@@ -1,7 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
 
-import { actionId } from '../../misc/actions';
 import { currentTimestamp, DAY } from '../../../time';
 import { BigNumberish, bn, fp } from '../../../numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../constants';
@@ -364,26 +363,6 @@ export default class StablePool extends BasePool {
     const receipt = await (await tx).wait();
     const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
     return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees };
-  }
-
-  async enterRecoveryMode(from: SignerWithAddress): Promise<ContractTransaction> {
-    const enterRecoveryAction = await actionId(this.instance, 'enterRecoveryMode');
-    const exitRecoveryAction = await actionId(this.instance, 'exitRecoveryMode');
-    await this.vault.grantPermissionsGlobally([enterRecoveryAction, exitRecoveryAction], this.vault.admin);
-    const pool = this.instance.connect(from);
-    return await pool.enterRecoveryMode();
-  }
-
-  async exitRecoveryMode(from: SignerWithAddress): Promise<ContractTransaction> {
-    const enterRecoveryAction = await actionId(this.instance, 'enterRecoveryMode');
-    const exitRecoveryAction = await actionId(this.instance, 'exitRecoveryMode');
-    await this.vault.grantPermissionsGlobally([enterRecoveryAction, exitRecoveryAction], this.vault.admin);
-    const pool = this.instance.connect(from);
-    return await pool.exitRecoveryMode();
-  }
-
-  async inRecoveryMode(): Promise<boolean> {
-    return await this.instance.inRecoveryMode();
   }
 
   async setInvariantFailure(invariantFailsToConverge: boolean): Promise<void> {
