@@ -39,13 +39,13 @@ library WeightCompression {
         uint256 bitLength,
         uint256 maxUncompressedValue
     ) internal pure returns (uint256) {
-        // It's not meaningful to compress 1-bit values (2 bits is a bit silly, but theoretically possible).
+        // It's not meaningful to compress 1-bit values (2 bits is also a bit silly, but theoretically possible).
         // 255 would likewise not be very helpful, but is technically valid.
         _require(bitLength >= 2 && bitLength <= 255, Errors.OUT_OF_BOUNDS);
         // The value cannot exceed the input range, or the compression would not "fit" in the output range.
         _require(value <= maxUncompressedValue, Errors.OUT_OF_BOUNDS);
 
-        // There is another way this can fail: maxUncompressedValue * bitLength can overflow, if either or both
+        // There is another way this can fail: maxUncompressedValue * value can overflow, if either or both
         // are too big. Essentially, the maximum bitLength will be about 256 - (# bits needed for maxUncompressedValue).
         // It's not worth it to test for this: the caller is responsible for many things anyway, notably ensuring
         // compress and decompress are called with the same arguments, and packing the resulting value properly
@@ -59,9 +59,9 @@ library WeightCompression {
     /**
      * @dev Reverse a compression operation, and restore the 256 bit value from a compressed value of
      * length `bitLength`. The compressed value is in the range [0, max n-bit value], and we are mapping
-     * it back onto the range [0, maxInputValue].
+     * it back onto the uncompressed range [0, maxUncompressedValue].
      *
-     * It is very important that the bitLength and normalizedTo arguments are the
+     * It is very important that the bitLength and maxUncompressedValue arguments are the
      * same for compress and decompress, or the results will be meaningless. This must be validated
      * externally.
      */
@@ -70,10 +70,12 @@ library WeightCompression {
         uint256 bitLength,
         uint256 maxUncompressedValue
     ) internal pure returns (uint256) {
-        // It's not meaningful to compress 1-bit values (2 bits is a bit silly, but theoretically possible).
+        // It's not meaningful to compress 1-bit values (2 bits is also a bit silly, but theoretically possible).
         // 255 would likewise not be very helpful, but is technically valid.
         _require(bitLength >= 2 && bitLength <= 255, Errors.OUT_OF_BOUNDS);
         uint256 maxCompressedValue = (1 << bitLength) - 1;
+        // The value must not exceed the maximum compressed value (2**(bitLength) - 1), or it will exceed the max
+        // uncompressed value.
         _require(value <= maxCompressedValue, Errors.OUT_OF_BOUNDS);
 
         return value.mulUp(maxUncompressedValue).divDown(maxCompressedValue);
