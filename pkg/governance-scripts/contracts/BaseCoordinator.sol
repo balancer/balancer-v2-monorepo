@@ -82,6 +82,7 @@ abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
         if (getStagesLength() == 0) _registerStages();
 
         uint256 currentStage = getCurrentStage();
+        require(currentStage < getStagesLength(), "All stages completed");
 
         _coordinatorStages[_currentStage]();
 
