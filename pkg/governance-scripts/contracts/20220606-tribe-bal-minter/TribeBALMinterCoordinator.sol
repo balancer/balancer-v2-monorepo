@@ -55,7 +55,7 @@ contract TribeBALMinterCoordinator is BaseCoordinator {
         ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
         bytes32 mintBALRole = BALANCER_TOKEN_ADMIN.getActionId(IBalancerTokenAdmin.mint.selector);
 
-        authorizer.renounceRole(mintBALRole);
+        authorizer.renounceRole(mintBALRole, address(this));
     }
 
     // Internal functions
