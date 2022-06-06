@@ -33,6 +33,7 @@ contract TimelockAuthorizerMigrator {
     IBasicAuthorizer public immutable oldAuthorizer;
     TimelockAuthorizer public immutable newAuthorizer;
 
+    bool private _roleMigrationComplete;
     uint256 public rootChangeExecutionId;
 
     uint256 public existingRolesMigrated;
@@ -96,8 +97,7 @@ contract TimelockAuthorizerMigrator {
      * @notice Returns whether the migration has been completed or not
      */
     function isComplete() public view returns (bool) {
-        // As we set up the revoker roles last we can use them to determine whether the full migration is complete.
-        return revokersMigrated >= revokersData.length;
+        return _roleMigrationComplete;
     }
 
     /**
@@ -138,6 +138,11 @@ contract TimelockAuthorizerMigrator {
         uint256 rolesToMigrate = _migrateExistingRoles(n);
         rolesToMigrate = _setupGranters(rolesToMigrate);
         _setupRevokers(rolesToMigrate);
+
+        // As we set up the revoker roles last we can use them to determine whether the full migration is complete.
+        if (revokersMigrated >= revokersData.length) {
+            _roleMigrationComplete = true;
+        }
     }
 
     /**
