@@ -36,11 +36,11 @@ contract MockWeightCompression {
 
     // If no normalization value is given, assume it is 1.
     function compress(uint256 value, uint256 bitLength) external pure returns (uint256) {
-        return WeightCompression.compress(value, bitLength, FixedPoint.ONE);
+        return WeightCompression.compress(value, bitLength);
     }
 
     // Reverse a compression operation (normalized to 1).
     function decompress(uint256 value, uint256 bitLength) external pure returns (uint256) {
-        return WeightCompression.decompress(value, bitLength, FixedPoint.ONE);
+        return WeightCompression.decompress(value, bitLength);
     }
 }
