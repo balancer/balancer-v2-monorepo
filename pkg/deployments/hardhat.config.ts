@@ -18,7 +18,7 @@ import { checkArtifact, extractArtifact } from './src/artifact';
 import test from './src/test';
 import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
-import { Logger } from './src/logger';
+import logger, { Logger } from './src/logger';
 
 task('deploy', 'Run deployment task')
   .addParam('id', 'Deployment task ID')
@@ -153,19 +153,19 @@ task('action-ids', `Print the action IDs for a particular contract`)
 
         for (const [signature, contractFunction] of contractFunctions) {
           const functionSelector = Interface.getSighash(contractFunction);
-          console.log(`${signature}: ${await contract.getActionId(functionSelector)}`);
+          logger.log(`${signature}: ${await contract.getActionId(functionSelector)}`, '');
         }
       } else {
         const adaptorTask = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY, hre.network.name);
         const authorizerAdaptor = await adaptorTask.deployedInstance('AuthorizerAdaptor');
 
-        console.log('This contract does not use the Authorizer for authentication');
-        console.log('We assume that you are calling these functions through the AuthorizerAdaptor');
-        console.log('');
+        logger.warn(
+          'This contract does not use the Authorizer for authentication. These action ids assume that you are calling these functions through the AuthorizerAdaptor\n'
+        );
 
         for (const [signature, contractFunction] of contractFunctions) {
           const functionSelector = Interface.getSighash(contractFunction);
-          console.log(`${signature}: ${await authorizerAdaptor.getActionId(functionSelector)}`);
+          logger.log(`${signature}: ${await authorizerAdaptor.getActionId(functionSelector)}`, '');
         }
       }
     }
