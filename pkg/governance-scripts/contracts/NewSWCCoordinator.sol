@@ -35,7 +35,7 @@ contract SmartWalletCheckerCoordinator is BaseCoordinator {
         SmartWalletChecker smartWalletChecker
     ) BaseCoordinator(authorizerAdaptor) {
         _votingEscrow = votingEscrow;
-        _smartWalletChecker = smartWalletChecker;        
+        _smartWalletChecker = smartWalletChecker;
     }
 
     // Coordinator Setup

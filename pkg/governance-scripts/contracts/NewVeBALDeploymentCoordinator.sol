@@ -358,6 +358,9 @@ contract veBALDeploymentCoordinator is BaseCoordinator {
         IBALTokenHolder holder = _balTokenHolderFactory.create(name);
         ILiquidityGauge gauge = ILiquidityGauge(_singleRecipientGaugeFactory.create(address(holder)));
         _addGauge(gauge, gaugeType);
-        ICurrentAuthorizer(address(getAuthorizer())).grantRole(holder.getActionId(IBALTokenHolder.withdrawFunds.selector), recipient);
+        ICurrentAuthorizer(address(getAuthorizer())).grantRole(
+            holder.getActionId(IBALTokenHolder.withdrawFunds.selector),
+            recipient
+        );
     }
 }

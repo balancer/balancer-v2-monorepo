@@ -78,7 +78,7 @@ abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
     function performNextStage() external nonReentrant {
         // If nobody has explicitly registered the stages manually before performing the first stage then do so now.
         if (getStagesLength() == 0) _registerStages();
-        
+
         uint256 currentStage = getCurrentStage();
 
         _coordinatorStages[_currentStage]();
@@ -86,7 +86,7 @@ abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
         _advanceCurrentStage(currentStage);
     }
 
-    function _getTimeSinceLastStageActivation() internal view returns (uint256) { 
+    function _getTimeSinceLastStageActivation() internal view returns (uint256) {
         return block.timestamp - getStageActivationTime(_currentStage - 1);
     }
 
