@@ -15,19 +15,34 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGauge.sol";
 
 import "../BaseCoordinator.sol";
 
 contract TribeBALMinterCoordinator is BaseCoordinator {
+    address public constant TRIBE_VEBAL_PCV_DEPOSIT = 0xc4EAc760C2C631eE0b064E39888b89158ff808B2;
+    // Address taken from https://forum.balancer.fi/t/tribe-dao-unclaimable-bal-rewards/3196/5
     address public constant TRIBE_BAL_RECIPIENT = 0xc5bb8F0253776beC6FF450c2B40f092f7e7f5b57;
-    uint256 public constant TRIBE_BAL_MINT_AMOUNT = 34_344e18; // TODO: get more accurate value.
 
-    IBalancerTokenAdmin private immutable _balancerTokenAdmin;
+    // Can be checked by calling `integrate_fraction(TRIBE_VEBAL_PCV_DEPOSIT)` on `FEI_WETH_LIQUIDITY_GAUGE`.
+    // As a double check, simulating minting BAL through performing a `mint` call to the `BalancerMinter` from
+    // `TRIBE_VEBAL_PCV_DEPOSIT` results in the same amount of BAL being minted.
+    uint256 public constant TRIBE_BAL_MINT_AMOUNT = 34343783425791862574551;
 
-    constructor(IAuthorizerAdaptor authorizerAdaptor, IBalancerTokenAdmin balancerTokenAdmin)
-        BaseCoordinator(authorizerAdaptor)
-    {
-        _balancerTokenAdmin = balancerTokenAdmin;
+    IBalancerTokenAdmin public constant BALANCER_TOKEN_ADMIN = IBalancerTokenAdmin(
+        0xf302f9F50958c5593770FDf4d4812309fF77414f
+    );
+    ILiquidityGauge public constant FEI_WETH_LIQUIDITY_GAUGE = ILiquidityGauge(
+        0x4f9463405F5bC7b4C1304222c1dF76EFbD81a407
+    );
+
+    constructor(IAuthorizerAdaptor authorizerAdaptor) BaseCoordinator(authorizerAdaptor) {
+        // We want to check that we're more minting BAL than Tribe is due so read the amount that the gauge reports.
+        // We allow the inequality as someone may deposit LP tokens on Tribe's behalf and checkpoint the gauge.
+        require(
+            FEI_WETH_LIQUIDITY_GAUGE.integrate_fraction(TRIBE_VEBAL_PCV_DEPOSIT) >= 34343783425791862574551,
+            "Mint amount does not match gauge state"
+        );
     }
 
     // Coordinator Setup
@@ -38,14 +53,14 @@ contract TribeBALMinterCoordinator is BaseCoordinator {
 
     function _afterLastStage() internal virtual override {
         ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
-        bytes32 mintBALRole = _balancerTokenAdmin.getActionId(IBalancerTokenAdmin.mint.selector);
-        
+        bytes32 mintBALRole = BALANCER_TOKEN_ADMIN.getActionId(IBalancerTokenAdmin.mint.selector);
+
         authorizer.renounceRole(mintBALRole);
     }
 
     // Internal functions
 
     function _mintBALForTribe() private {
-        _balancerTokenAdmin.mint(TRIBE_BAL_RECIPIENT, TRIBE_BAL_MINT_AMOUNT);
+        BALANCER_TOKEN_ADMIN.mint(TRIBE_BAL_RECIPIENT, TRIBE_BAL_MINT_AMOUNT);
     }
 }
