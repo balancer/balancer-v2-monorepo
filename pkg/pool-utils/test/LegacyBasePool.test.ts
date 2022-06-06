@@ -561,7 +561,7 @@ describe('LegacyBasePool', function () {
       });
 
       context('when not in recovery mode', () => {
-        it('the recovery mode exit can be used', async () => {
+        it('the recovery mode exit reverts', async () => {
           const preExitBPT = await pool.balanceOf(poolOwner.address);
           const exitBPT = preExitBPT.div(3);
 
