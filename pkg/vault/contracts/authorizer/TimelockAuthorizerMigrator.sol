@@ -152,7 +152,7 @@ contract TimelockAuthorizerMigrator {
     /**
      * @notice Migrates listed roles from the old Authorizer to the new TimelockAuthorizer.
      * @dev Attempting to migrate roles in excess of the unmigrated roles results in all remaining roles being migrated.
-     * The amount of unused role migrations is then returned so they can be used for migrating other roles 
+     * The amount of unused role migrations is then returned so they can be used to perform the next migration step.
      * @param rolesToMigrate - The desired number of roles to migrate (may exceed the remaining unmigrated roles).
      * @return remainingRolesToMigrate - The amount of role migrations which were unused in this function.
      */
@@ -172,7 +172,7 @@ contract TimelockAuthorizerMigrator {
     /**
      * @notice Sets up granters for the listed roles on the new TimelockAuthorizer.
      * @dev Attempting to migrate roles in excess of the unmigrated roles results in all remaining roles being migrated.
-     * The amount of unused role migrations is then returned so they can be used for migrating other roles 
+     * The amount of unused role migrations is then returned so they can be used to perform the next migration step.
      * @param rolesToMigrate - The desired number of roles to migrate (may exceed the remaining unmigrated roles).
      * @return remainingRolesToMigrate - The amount of role migrations which were unused in this function.
      */
