@@ -150,7 +150,7 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
     ) internal virtual override whenNotPaused returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, true);
+        uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
         uint256 amountOut = StableMath._calcOutGivenIn(
             currentAmp,
             balances,
@@ -171,7 +171,7 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
     ) internal virtual override whenNotPaused returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, true);
+        uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
         uint256 amountIn = StableMath._calcInGivenOut(
             currentAmp,
             balances,
@@ -268,7 +268,7 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         _upscaleArray(amountsIn, scalingFactors);
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
-        uint256 invariantAfterJoin = StableMath._calculateInvariant(currentAmp, amountsIn, true);
+        uint256 invariantAfterJoin = StableMath._calculateInvariant(currentAmp, amountsIn);
 
         // Set the initial BPT to the value of the invariant.
         uint256 bptAmountOut = invariantAfterJoin;
@@ -610,7 +610,7 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         (uint256 currentAmp, ) = _getAmplificationParameter();
         // This invariant is used only to compute the final balance when calculating the protocol fees. These are
         // rounded down, so we round the invariant up.
-        _updateLastInvariant(StableMath._calculateInvariant(currentAmp, balances, true), currentAmp);
+        _updateLastInvariant(StableMath._calculateInvariant(currentAmp, balances), currentAmp);
     }
 
     /**
@@ -623,7 +623,7 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         (uint256 currentAmp, ) = _getAmplificationParameter();
         // This invariant is used only to compute the final balance when calculating the protocol fees. These are
         // rounded down, so we round the invariant up.
-        _updateLastInvariant(StableMath._calculateInvariant(currentAmp, balances, true), currentAmp);
+        _updateLastInvariant(StableMath._calculateInvariant(currentAmp, balances), currentAmp);
     }
 
     /**

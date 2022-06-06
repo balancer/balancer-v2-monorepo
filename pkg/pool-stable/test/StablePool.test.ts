@@ -35,7 +35,7 @@ describe('StablePool', function () {
   const AMP_PRECISION = 1e3;
   const AMPLIFICATION_PARAMETER = bn(200);
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-  const INITIAL_BALANCES = [fp(1), fp(0.9), fp(0.8), fp(1.1)];
+  const INITIAL_BALANCES = [fp(1), fp(0.9), fp(0.8), fp(1.1), fp(1.5)];
 
   before('setup signers', async () => {
     [, admin, owner, lp, trader, recipient, other] = await ethers.getSigners();
@@ -69,7 +69,7 @@ describe('StablePool', function () {
   });
 
   sharedBeforeEach('deploy tokens', async () => {
-    allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
+    allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT', 'GNO'], { sorted: true });
     await allTokens.mint({ to: [lp, trader], amount: fp(100) });
   });
 
@@ -87,6 +87,14 @@ describe('StablePool', function () {
 
   context('for a 3 token pool', () => {
     itBehavesAsStablePool(3);
+  });
+
+  context('for a 4 token pool', () => {
+    itBehavesAsStablePool(4);
+  });
+
+  context('for a 5 token pool', () => {
+    itBehavesAsStablePool(5);
   });
 
   context('for a too-many token pool', () => {
@@ -863,6 +871,8 @@ describe('StablePool', function () {
               { decimals: 18, symbol: 'MKR' },
               { decimals: 18, symbol: 'DAI' },
               { decimals: 6, symbol: 'USDT' },
+              { decimals: 6, symbol: 'USDC' },
+              { decimals: 8, symbol: 'WBTC' },
             ],
             { sorted: true }
           )
