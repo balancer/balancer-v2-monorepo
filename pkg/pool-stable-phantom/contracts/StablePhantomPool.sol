@@ -230,7 +230,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
             // replace it and reimplement it here to take advantage of that.
 
             (uint256 currentAmp, ) = _getAmplificationParameter();
-            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, true);
+            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
 
             amountOut = StableMath._calcOutGivenIn(
                 currentAmp,
@@ -296,7 +296,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
             // replace it and reimplement it here to take advtange of that.
 
             (uint256 currentAmp, ) = _getAmplificationParameter();
-            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, true);
+            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
 
             amountIn = StableMath._calcInGivenOut(
                 currentAmp,
@@ -410,7 +410,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
 
         // We round down, favoring LP fees.
 
-        uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances, false);
+        uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances);
         uint256 invariantRatio = postSwapInvariant.divDown(previousInvariant);
 
         if (invariantRatio > FixedPoint.ONE) {
@@ -464,7 +464,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         (uint256 amp, ) = _getAmplificationParameter();
         (, uint256[] memory amountsIn) = _dropBptItem(amountsInIncludingBpt);
         // The true argument in the _calculateInvariant call instructs it to round up
-        uint256 invariantAfterJoin = StableMath._calculateInvariant(amp, amountsIn, true);
+        uint256 invariantAfterJoin = StableMath._calculateInvariant(amp, amountsIn);
 
         // Set the initial BPT to the value of the invariant
         uint256 bptAmountOut = invariantAfterJoin;
