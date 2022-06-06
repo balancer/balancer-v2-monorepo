@@ -516,33 +516,20 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         return (bptAmountIn, amountsOut);
     }
 
-    function _doRecoveryModeExit(
-        uint256[] memory balances,
-        uint256 totalSupply,
-        bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = super._doRecoveryModeExit(balances, totalSupply, userData);
-
-        // Maintain the invariant. Since this is a proportional withdrawal, the invariant should decrease
-        // in proportion to the amount of BPT being burned.
-        uint256 proportionBurned = bptAmountIn.divUp(totalSupply);
-        _lastInvariant = _lastInvariant.mulDown(proportionBurned.complement());
-
-        return (bptAmountIn, amountsOut);
-    }
-
     function _setRecoveryMode(bool recoveryMode) internal virtual override {
         super._setRecoveryMode(recoveryMode);
 
-        // Stop any ongoing Amplification Parameter update when entering Recovery Mode.
-        // In Recovery Mode, we are simply scaling the invariant, which is only accurate
-        // if the AMP value is constant.
-        if (recoveryMode) {
-            (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
+        // Entering recovery mode disables payment of protocol fees (though not swap fee collection).
+        // As a consequence, any protocol fees accrued between the last join/exit and the time recovery mode
+        // is entered will be forfeited.
+        //
+        // When exiting recovery mode, "reset" the last invariant to erase any history (i.e., invariant changes
+        // caused by swaps or the amp factor), and cancel any accumulated debt.
+        if (!recoveryMode) {
+            (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+            (uint256 currentAmp, ) = _getAmplificationParameter();
 
-            if (isUpdating) {
-                _setAmplificationData(currentValue);
-            }
+            _updateLastInvariant(StableMath._calculateInvariant(currentAmp, balances), currentAmp);
         }
     }
 
@@ -646,18 +633,12 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
      * underlying tokens. This starts at 1 when the pool is created and grows over time
      */
     function getRate() public view virtual override returns (uint256) {
-        if (inRecoveryMode()) {
-            // We maintain _lastInvariant in recovery mode, and the amp is constant, so we can
-            // compute the rate directly, without recalculating the invariant (which could fail).
-            return _lastInvariant.divDown(totalSupply());
-        } else {
-            (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
-            _upscaleArray(balances, _scalingFactors());
+        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(balances, _scalingFactors());
 
-            (uint256 currentAmp, ) = _getAmplificationParameter();
+        (uint256 currentAmp, ) = _getAmplificationParameter();
 
-            return StableMath._getRate(balances, currentAmp, totalSupply());
-        }
+        return StableMath._getRate(balances, currentAmp, totalSupply());
     }
 
     // Amplification
@@ -668,15 +649,8 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
      *
      * NOTE: Internally, the amplification parameter is represented using higher precision. The values returned by
      * `getAmplificationParameter` have to be corrected to account for this when comparing to `rawEndValue`.
-     *
-     * This is not supported in recovery mode, since it would invalidate the method used to maintain the _lastInvariant
-     * (and therefore the value returned by `getRate`) after recovery mode exits.
      */
-    function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime)
-        external
-        whenNotInRecoveryMode
-        authenticate
-    {
+    function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticate {
         _require(rawEndValue >= StableMath._MIN_AMP, Errors.MIN_AMP);
         _require(rawEndValue <= StableMath._MAX_AMP, Errors.MAX_AMP);
 
