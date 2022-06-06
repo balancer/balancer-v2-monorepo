@@ -102,11 +102,11 @@ contract TimelockAuthorizerMigrator {
 
     /**
      * @dev Migrate roles from the old authorizer to the new one
-     * @param n Number of roles to migrate, use MAX_UINT256 to migrate all the remaining ones
+     * @param rolesToMigrate Number of roles to migrate, use MAX_UINT256 to migrate all the remaining ones
      */
-    function migrate(uint256 n) external {
+    function migrate(uint256 rolesToMigrate) external {
         require(!isComplete(), "MIGRATION_COMPLETE");
-        _migrate(n);
+        _migrate(rolesToMigrate);
         _afterMigrate();
     }
 
@@ -132,10 +132,14 @@ contract TimelockAuthorizerMigrator {
 
     /**
      * @notice Migrates to TimelockAuthorizer by setting up roles from the old Authorizer and new granters/revokers.
-     * @param n The number of permissions to set up on the new TimelockAuthorizer.
+     * @dev Attempting to migrate roles in excess of the amount of unmigrated roles of any particular type results in
+     * all remaining roles of that type being migrated. The unused role migrations will then flow over into the next
+     * "role type".
+     * @param rolesToMigrate The number of permissions to set up on the new TimelockAuthorizer.
      */
-    function _migrate(uint256 n) internal {
-        uint256 rolesToMigrate = _migrateExistingRoles(n);
+    function _migrate(uint256 rolesToMigrate) internal {
+        // Each function returns the amount of unused role migrations which is then fed into the next function.
+        rolesToMigrate = _migrateExistingRoles(rolesToMigrate);
         rolesToMigrate = _setupGranters(rolesToMigrate);
         _setupRevokers(rolesToMigrate);
 
@@ -147,11 +151,15 @@ contract TimelockAuthorizerMigrator {
 
     /**
      * @notice Migrates listed roles from the old Authorizer to the new TimelockAuthorizer.
+     * @dev Attempting to migrate roles in excess of the unmigrated roles results in all remaining roles being migrated.
+     * The amount of unused role migrations is then returned so they can be used for migrating other roles 
+     * @param rolesToMigrate - The desired number of roles to migrate (may exceed the remaining unmigrated roles).
+     * @return remainingRolesToMigrate - The amount of role migrations which were unused in this function.
      */
-    function _migrateExistingRoles(uint256 n) internal returns (uint256 remainingRolesToMigrate) {
+    function _migrateExistingRoles(uint256 rolesToMigrate) internal returns (uint256 remainingRolesToMigrate) {
         uint256 i = existingRolesMigrated;
-        uint256 to = Math.min(i + n, rolesData.length);
-        remainingRolesToMigrate = (i + n) - to;
+        uint256 to = Math.min(i + rolesToMigrate, rolesData.length);
+        remainingRolesToMigrate = (i + rolesToMigrate) - to;
 
         for (; i < to; i++) {
             RoleData memory roleData = rolesData[i];
@@ -163,11 +171,15 @@ contract TimelockAuthorizerMigrator {
 
     /**
      * @notice Sets up granters for the listed roles on the new TimelockAuthorizer.
+     * @dev Attempting to migrate roles in excess of the unmigrated roles results in all remaining roles being migrated.
+     * The amount of unused role migrations is then returned so they can be used for migrating other roles 
+     * @param rolesToMigrate - The desired number of roles to migrate (may exceed the remaining unmigrated roles).
+     * @return remainingRolesToMigrate - The amount of role migrations which were unused in this function.
      */
-    function _setupGranters(uint256 n) internal returns (uint256 remainingRolesToMigrate) {
+    function _setupGranters(uint256 rolesToMigrate) internal returns (uint256 remainingRolesToMigrate) {
         uint256 i = grantersMigrated;
-        uint256 to = Math.min(i + n, grantersData.length);
-        remainingRolesToMigrate = (i + n) - to;
+        uint256 to = Math.min(i + rolesToMigrate, grantersData.length);
+        remainingRolesToMigrate = (i + rolesToMigrate) - to;
 
         for (; i < to; i++) {
             RoleData memory granterData = grantersData[i];
@@ -179,10 +191,12 @@ contract TimelockAuthorizerMigrator {
 
     /**
      * @notice Sets up revokers for the listed roles on the new TimelockAuthorizer.
+     * @dev Attempting to migrate roles in excess of the unmigrated roles results in all remaining roles being migrated.
+     * @param rolesToMigrate - The desired number of roles to migrate (may exceed the remaining unmigrated roles).
      */
-    function _setupRevokers(uint256 n) internal {
+    function _setupRevokers(uint256 rolesToMigrate) internal {
         uint256 i = revokersMigrated;
-        uint256 to = Math.min(i + n, revokersData.length);
+        uint256 to = Math.min(i + rolesToMigrate, revokersData.length);
 
         for (; i < to; i++) {
             RoleData memory revokerData = revokersData[i];
