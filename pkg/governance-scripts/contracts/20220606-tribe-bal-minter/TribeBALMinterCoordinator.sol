@@ -37,7 +37,7 @@ contract TribeBALMinterCoordinator is BaseCoordinator {
     );
 
     constructor(IAuthorizerAdaptor authorizerAdaptor) BaseCoordinator(authorizerAdaptor) {
-        // We want to check that we're more minting BAL than Tribe is due so read the amount that the gauge reports.
+        // We want to check that we're not more minting BAL than Tribe is due so read the amount that the gauge reports.
         // We allow the inequality as someone may deposit LP tokens on Tribe's behalf and checkpoint the gauge.
         require(
             FEI_WETH_LIQUIDITY_GAUGE.integrate_fraction(TRIBE_VEBAL_PCV_DEPOSIT) >= 34343783425791862574551,
