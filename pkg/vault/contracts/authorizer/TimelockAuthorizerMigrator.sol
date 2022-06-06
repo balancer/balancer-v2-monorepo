@@ -86,7 +86,9 @@ contract TimelockAuthorizerMigrator {
             revokersData.push(_revokersData[i]);
         }
 
-        // Enqueue a root change execution in the new authorizer to set it to the desired root address
+        // Enqueue a root change execution in the new authorizer to set it to the desired root address.
+        // We only allow the migrator to execute this transaction to avoid it being triggered too early,
+        // resulting in the migration being cut short.
         rootChangeExecutionId = _newAuthorizer.scheduleRootChange(_root, _arr(address(this)));
     }
 
