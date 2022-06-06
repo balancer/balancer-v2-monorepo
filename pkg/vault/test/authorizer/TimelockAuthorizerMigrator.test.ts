@@ -110,7 +110,7 @@ describe('TimelockAuthorizerMigrator', () => {
         await migrate();
 
         for (const revokerData of revokersData) {
-          expect(await newAuthorizer.isGranter(revokerData.role, revokerData.grantee, revokerData.target)).to.be.true;
+          expect(await newAuthorizer.isRevoker(revokerData.role, revokerData.grantee, revokerData.target)).to.be.true;
         }
       });
 

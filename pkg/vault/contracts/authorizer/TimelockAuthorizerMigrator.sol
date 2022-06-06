@@ -179,7 +179,7 @@ contract TimelockAuthorizerMigrator {
 
         for (; i < to; i++) {
             RoleData memory revokerData = revokersData[i];
-            newAuthorizer.manageGranter(revokerData.role, revokerData.grantee, revokerData.target, true);
+            newAuthorizer.manageRevoker(revokerData.role, revokerData.grantee, revokerData.target, true);
         }
 
         revokersMigrated = i;
