@@ -32,6 +32,8 @@ interface ICurrentAuthorizer is IAuthorizer {
     function grantRole(bytes32 role, address account) external;
 
     function revokeRole(bytes32 role, address account) external;
+
+    function renounceRole(bytes32 role) external;
 }
 
 abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
