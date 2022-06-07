@@ -765,11 +765,13 @@ describe('StablePool', function () {
 
           const maxBalance = currentBalances.reduce((max, balance) => (balance.gt(max) ? balance : max), bn(0));
           const paidTokenIndex = currentBalances.indexOf(maxBalance);
+
           const protocolFeeAmount = await pool.estimateSwapFeeAmount(
             paidTokenIndex,
             protocolFeePercentage,
             currentBalances
           );
+
           expectedDueProtocolFeeAmounts = ZEROS.map((n, i) => (i === paidTokenIndex ? protocolFeeAmount : n));
         });
 
@@ -808,7 +810,7 @@ describe('StablePool', function () {
         });
 
         function itPaysExpectedProtocolFees() {
-          it('pays swap protocol fees on join exact tokens in for BPT out', async () => {
+          it('pays swap protocol fees on join exact tokens in for BPT out (unless in recovery)', async () => {
             const result = await pool.joinGivenIn({
               from: lp,
               amountsIn: fp(1),
@@ -816,10 +818,14 @@ describe('StablePool', function () {
               protocolFeePercentage,
             });
 
-            expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
+            if (await pool.inRecoveryMode()) {
+              expect(result.dueProtocolFeeAmounts).to.be.zeros;
+            } else {
+              expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
+            }
           });
 
-          it('pays swap protocol fees on exit exact BPT in for one token out', async () => {
+          it('pays swap protocol fees on exit exact BPT in for one token out (unless in recovery', async () => {
             const result = await pool.singleExitGivenIn({
               from: lp,
               bptIn: fp(0.5),
@@ -828,10 +834,14 @@ describe('StablePool', function () {
               protocolFeePercentage,
             });
 
-            expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
+            if (await pool.inRecoveryMode()) {
+              expect(result.dueProtocolFeeAmounts).to.be.zeros;
+            } else {
+              expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
+            }
           });
 
-          it('pays swap protocol fees on exit exact BPT in for all tokens out', async () => {
+          it('pays swap protocol fees on exit exact BPT in for all tokens out (unless in recovery', async () => {
             const result = await pool.multiExitGivenIn({
               from: lp,
               bptIn: fp(1),
@@ -839,10 +849,14 @@ describe('StablePool', function () {
               protocolFeePercentage,
             });
 
-            expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
+            if (await pool.inRecoveryMode()) {
+              expect(result.dueProtocolFeeAmounts).to.be.zeros;
+            } else {
+              expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
+            }
           });
 
-          it('pays swap protocol fees on exit BPT In for exact tokens out', async () => {
+          it('pays swap protocol fees on exit BPT In for exact tokens out (unless in recovery)', async () => {
             const result = await pool.exitGivenOut({
               from: lp,
               amountsOut: fp(1),
@@ -850,7 +864,11 @@ describe('StablePool', function () {
               protocolFeePercentage,
             });
 
-            expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
+            if (await pool.inRecoveryMode()) {
+              expect(result.dueProtocolFeeAmounts).to.be.zeros;
+            } else {
+              expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
+            }
           });
 
           it('does not charge fee on exit if paused', async () => {
