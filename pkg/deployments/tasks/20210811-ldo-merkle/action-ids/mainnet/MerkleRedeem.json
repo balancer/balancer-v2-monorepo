@@ -1,0 +1,12 @@
+{
+  "useAdaptor": true,
+  "actionIds": {
+    "claimWeek(address,uint256,uint256,bytes32[])": "0x190215af95d85aed123d88a5a308c3605798a93182fe9aa47e888a456c59b12b",
+    "claimWeeks(address,(uint256,uint256,bytes32[])[])": "0x24248ad6b9be2522d91cae72104629b7c57ac683e9e5bedc9b63bbc54423edab",
+    "claimWeeksToInternalBalance(address,(uint256,uint256,bytes32[])[])": "0x6d36262bcfd476e173efd00cd5be7495d11c6f6f2c1d01d32db5a5b1f162b4fb",
+    "claimWeeksWithCallback(address,address,bytes,(uint256,uint256,bytes32[])[])": "0x88a0b63d1c455206528a698a9e793133b7049bcbb26d1e7c81f04c068eaf8e16",
+    "renounceOwnership()": "0x858742bdbe585ec0acbf6ceb781210df449541e2b00806ecaa2936ad9b152193",
+    "seedAllocations(uint256,bytes32,uint256)": "0x0f7d9db492e826138d1f07e98394f3b70a74c5b8959def367243224610a20b6b",
+    "transferOwnership(address)": "0xa6b1c7cea3e8e35e77cd79fb2e81d17bd8655f01e5f71269cdfb8fac58ad52ea"
+  }
+}

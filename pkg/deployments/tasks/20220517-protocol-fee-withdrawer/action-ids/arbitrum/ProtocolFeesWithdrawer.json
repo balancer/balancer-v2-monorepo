@@ -1,0 +1,8 @@
+{
+  "useAdaptor": false,
+  "actionIds": {
+    "allowlistToken(address)": "0x425681caa28e5b2396da34c8b4ec22b1ab2683d58d6dbc310d8985beeb8812f8",
+    "denylistToken(address)": "0xf2eeb5b536a9b3c485a4815e2bc32d58341045b2c6b8710f2a1e04e856789c3d",
+    "withdrawCollectedFees(address[],uint256[],address)": "0x93b1b7dba9fb074b573d5edb3c983e0490a00925f709289485f0c75988e100cf"
+  }
+}

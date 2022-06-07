@@ -1,0 +1,14 @@
+{
+  "useAdaptor": true,
+  "actionIds": {
+    "mint(address)": "0x4b99b4c639246e5f40ee15ce22303dc04dfcce701efc6ae2c4f7c32b1443917e",
+    "mintFor(address,address)": "0xbf6ea21000214e3cc31ebda92637bd5200364323a5778bc72c4482a9d219ccbc",
+    "mintMany(address[])": "0x18ecba24ca8f9b10e3994ebfe0a2a6424857ef579608307b847215fcb61257f7",
+    "mintManyFor(address[],address)": "0xcb2f2be152fe893a409091099320600046107553c30d3e1bc40973b0c548a446",
+    "mint_for(address,address)": "0x7ea169e78a61bd50b57b3abf2205a2267fe5074a2c4a7ea399d25b392a3a1b4c",
+    "mint_many(address[8])": "0xdee4dd02f4eee8cea0144fc659b727664862677023a9593e82171efc526cd28d",
+    "setMinterApproval(address,bool)": "0xf531d3bbe8603698363ff6180c4053280b563202830610d50354822ad0f75a21",
+    "setMinterApprovalWithSignature(address,bool,address,uint256,uint8,bytes32,bytes32)": "0x489e15b1ce5814f173be8a6b43d0bfd46a22516131efc5ea7c93790b926362e3",
+    "toggle_approve_mint(address)": "0xf0f283eff4307a699fbc54a666dd8b9dfe4afcb685416680b53c8518d3901dc7"
+  }
+}

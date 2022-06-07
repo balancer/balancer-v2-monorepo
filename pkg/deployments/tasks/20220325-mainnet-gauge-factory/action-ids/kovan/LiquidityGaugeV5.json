@@ -1,0 +1,29 @@
+{
+  "useAdaptor": true,
+  "actionIds": {
+    "add_reward(address,address)": "0x44f194ae82750e26b76d40a1a4d7d21a99dd6769da5ca2f8c45e0b2c918b0426",
+    "approve(address,uint256)": "0x65b17c8bea41bb1fcbbf5fe249476598f4145d060e85eb9fbc6cffb695b329f9",
+    "claim_rewards()": "0x731c36242e7249282b67c59a4b173f7ed70e29878a5cc600ca953784b7ea23d8",
+    "claim_rewards(address)": "0x17985a420d6dde95b8d2ddc411b95759b388ba805f0dda349c13c3c3c3b75d71",
+    "claim_rewards(address,address)": "0xfe84b781438164fbd46e2280a3b388ddd346c455fc2d28c38a31b2644b0b4871",
+    "claimable_tokens(address)": "0x05baeeee05246f72147bdd23fe3054535520a4d484a65f309eca4d725c41d58d",
+    "decreaseAllowance(address,uint256)": "0x625d72e210cc6a1e1e39a40592660c9417b97829acb686abb8978ae8cb92c700",
+    "deposit(uint256)": "0xa8e054d2eb87208fabbda99baa3e5b184e572a0bc9d70cecffe487729442d552",
+    "deposit(uint256,address)": "0xd156c79a2673c5656938113391a9594247c136cdbd65772a627f3fcd53ebec6b",
+    "deposit(uint256,address,bool)": "0xc48d6aa3b86d99151faf85467e4952b40c2c72e7bddf097eadc3bb44147d4dc1",
+    "deposit_reward_token(address,uint256)": "0x380e4900ffa07930249f5d5754de2186f21e0faaffdea576de6083d0641d2b8e",
+    "increaseAllowance(address,uint256)": "0x677e0ca9b0b02560c924393e6e18a03de724ce2b93da79447e3845efa30bbeca",
+    "initialize(address)": "0x117bdcda72286f87b5ad9cea2ace6fb7553bfb9b764a3c650ae5ed4adeccf080",
+    "kick(address)": "0x78d652d410a6454a0dade2ef3a2fb0ae75b892db86b82a7b0d4e69deac1d54be",
+    "killGauge()": "0x49c660220049762b7ca32a135c7e418868f1ee37f5b6992cd1234090e156595f",
+    "permit(address,address,uint256,uint256,uint8,bytes32,bytes32)": "0xf13469de2294f7aa8436a9685409848d87be8b19834bd9e4a48564c1fdb6650c",
+    "set_reward_distributor(address,address)": "0x035e04141ed171d52b925e528f15db501f72053dea5f8e978a99607b12477c8a",
+    "set_rewards_receiver(address)": "0x74cdc6b314ef861923271cd3dff01f819b8cad026106c9cb2363bad797f081fe",
+    "transfer(address,uint256)": "0x4368423a53fcef0ba5bc3ba0769bf2b06480bc67472748e0e1df2e5e2444a3e5",
+    "transferFrom(address,address,uint256)": "0x42989e6beff66b432dfe03294489dc3ea0b8fac14bd944b1153838aed900ff1f",
+    "unkillGauge()": "0xde535ee618f494ef56c00907180912e5bc14df5cb268f5c0d4a8ac78688c7f84",
+    "user_checkpoint(address)": "0x7eaa685981a35943ed0c3a9af08c99a64b5f9c6553632b71067325f74f9b4031",
+    "withdraw(uint256)": "0x83c0daa12ccd49b587540e79a5e48347b8bbf7c60ff28dfc6e454a32297cdbe0",
+    "withdraw(uint256,bool)": "0xe257dd6103eceb262e05a3de7c2abf1b19f07080674901fee3328da2281c9b22"
+  }
+}

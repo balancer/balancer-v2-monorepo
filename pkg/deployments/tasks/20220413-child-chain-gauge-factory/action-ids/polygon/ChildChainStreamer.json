@@ -1,0 +1,12 @@
+{
+  "useAdaptor": true,
+  "actionIds": {
+    "add_reward(address,address,uint256)": "0x7cb72b76789ff7bc3d3bf438294fb22e9ab21b8ab33ef92bde5343ffbefae722",
+    "get_reward()": "0x99350d4ed21b0cd23551e116ba11c9076516dae52e72b1e6515f1b814a0a0894",
+    "initialize(address)": "0x649ab732f16542ab55721320b43c5b06b6055eab5064f547eb6f4ddb666a90ea",
+    "notify_reward_amount(address)": "0xf51a91e622462fd20895f082afda26cd4c20640d7492e8ce2840c1e7ee1b437f",
+    "remove_reward(address,address)": "0xdb6cb9008a1484202480ee24439400cf0ffe8c253ffb4b79072cbd38085a3afe",
+    "set_reward_distributor(address,address)": "0x363cf2bd771efe16bd206d33a549d4698c4ad202ea6b5bf693722fbe151140a6",
+    "set_reward_duration(address,uint256)": "0x45033ebb127656beeb1694195c29e319352ca53c6adbc6d5e3938b027b658eb7"
+  }
+}

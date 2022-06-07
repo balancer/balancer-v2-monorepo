@@ -1,0 +1,23 @@
+{
+  "useAdaptor": true,
+  "actionIds": {
+    "approve(address,uint256)": "0x65b17c8bea41bb1fcbbf5fe249476598f4145d060e85eb9fbc6cffb695b329f9",
+    "claim_rewards()": "0x731c36242e7249282b67c59a4b173f7ed70e29878a5cc600ca953784b7ea23d8",
+    "claim_rewards(address)": "0x17985a420d6dde95b8d2ddc411b95759b388ba805f0dda349c13c3c3c3b75d71",
+    "claim_rewards(address,address)": "0xfe84b781438164fbd46e2280a3b388ddd346c455fc2d28c38a31b2644b0b4871",
+    "claimable_reward_write(address,address)": "0x4891177605520684e59c9e5a547c36309af70f1a3797b21dc03c26f13ac094ef",
+    "decreaseAllowance(address,uint256)": "0x625d72e210cc6a1e1e39a40592660c9417b97829acb686abb8978ae8cb92c700",
+    "deposit(uint256)": "0xa8e054d2eb87208fabbda99baa3e5b184e572a0bc9d70cecffe487729442d552",
+    "deposit(uint256,address)": "0xd156c79a2673c5656938113391a9594247c136cdbd65772a627f3fcd53ebec6b",
+    "deposit(uint256,address,bool)": "0xc48d6aa3b86d99151faf85467e4952b40c2c72e7bddf097eadc3bb44147d4dc1",
+    "increaseAllowance(address,uint256)": "0x677e0ca9b0b02560c924393e6e18a03de724ce2b93da79447e3845efa30bbeca",
+    "initialize(address,address,bytes32)": "0xabbeb167a039677d0d59cf056fcaf3c96f365e8dda5ba0fdb602207cd22da69a",
+    "permit(address,address,uint256,uint256,uint8,bytes32,bytes32)": "0xf13469de2294f7aa8436a9685409848d87be8b19834bd9e4a48564c1fdb6650c",
+    "set_rewards(address,bytes32,address[8])": "0xdb37676c042f798daf6c1a557bc92a999b5cf101140ebe47b47925141496abcd",
+    "set_rewards_receiver(address)": "0x74cdc6b314ef861923271cd3dff01f819b8cad026106c9cb2363bad797f081fe",
+    "transfer(address,uint256)": "0x4368423a53fcef0ba5bc3ba0769bf2b06480bc67472748e0e1df2e5e2444a3e5",
+    "transferFrom(address,address,uint256)": "0x42989e6beff66b432dfe03294489dc3ea0b8fac14bd944b1153838aed900ff1f",
+    "withdraw(uint256)": "0x83c0daa12ccd49b587540e79a5e48347b8bbf7c60ff28dfc6e454a32297cdbe0",
+    "withdraw(uint256,bool)": "0xe257dd6103eceb262e05a3de7c2abf1b19f07080674901fee3328da2281c9b22"
+  }
+}

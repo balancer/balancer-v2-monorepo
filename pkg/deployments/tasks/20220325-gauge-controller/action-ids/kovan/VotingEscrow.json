@@ -1,0 +1,13 @@
+{
+  "useAdaptor": true,
+  "actionIds": {
+    "apply_smart_wallet_checker()": "0x039ba0f1e2177b8520755472091c434371a4dba171ae6906c3c531e3245b8106",
+    "checkpoint()": "0x4fbb27e55153169d2cd922017e2ede113f16a42e6f0d0b86196dd0dbb6431f43",
+    "commit_smart_wallet_checker(address)": "0xec77d5b916b8ec7d242bb495848f203096b2ac28585259aa72e73b8f3a9c28e4",
+    "create_lock(uint256,uint256)": "0x07279bfb9500ba9f1a7cce2d52d97b2c3bd3e087ec382d35bae2ef2df58e9ee3",
+    "deposit_for(address,uint256)": "0xa2f020cd2a96b087e3ff6cc5476f691a39003d7263261200c377e154930b547e",
+    "increase_amount(uint256)": "0xbf2cbfe8ce625738fc241f05e503b73366a920b7c3dd1fc460713296b4d78f96",
+    "increase_unlock_time(uint256)": "0xdd46db62c7934c5677145342b062793b15ae7cdcd5706ffe90f926eae6f07e78",
+    "withdraw()": "0x3b85e08d2355d9197cb5317570ca765c0b62351b86f61986ee23b288b676724f"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "useAdaptor": true,
+  "actionIds": {
+    "create(string,string,address[],uint256[],uint256,address)": "0x4d5282066a5fda3f5736198513ee33edf792164c299f2e59fbb6f6c7040ce7ad"
+  }
+}

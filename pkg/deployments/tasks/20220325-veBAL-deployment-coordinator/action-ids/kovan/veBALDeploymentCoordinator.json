@@ -1,0 +1,8 @@
+{
+  "useAdaptor": true,
+  "actionIds": {
+    "performFirstStage()": "0x326375e2c07c3208e1e8ee820d59ecc9661e209a102a4804030d35b99551f749",
+    "performSecondStage()": "0xa9c721be2f866e60ca13006f7d9976e6a9f139be3e31a8e7c1d6c49e9e7ba788",
+    "performThirdStage()": "0x6d5644c6a8a5c69362ee86ea6a15795b0ed800390aa4e29bee781f056a8b9a95"
+  }
+}

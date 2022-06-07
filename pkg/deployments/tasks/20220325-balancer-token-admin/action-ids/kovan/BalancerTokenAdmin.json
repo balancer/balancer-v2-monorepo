@@ -1,0 +1,14 @@
+{
+  "useAdaptor": false,
+  "actionIds": {
+    "activate()": "0x30763732db2e16705da0803a6a34369942c5bd60f650af32b75d8ddcba1ed12e",
+    "futureEpochTimeWrite()": "0x7f8f69317fd57d77b423ddf1978c18ebeec6e92f08d4e8fafa0bdff7a4a8a94f",
+    "future_epoch_time_write()": "0xe61586dafa894598eb3e2bbe94307b01e347f28bae9610e29fe1578ef9dc4b7a",
+    "mint(address,uint256)": "0xc5247e312bb3dcb8385f010b4be8767a8fa52416038be7d3f1122127f8192c63",
+    "snapshot()": "0xf4a560308d668f37e6965ac5e295a53b522637cccb02f9317cb88f206e61318f",
+    "startEpochTimeWrite()": "0x36705bef08a10bf86deabccc2618ad508e9f01884500dddfaef6fec35668c480",
+    "start_epoch_time_write()": "0x7af17ae87e1d220ebc9d6e242a7182c7f1f33b585c6cd44976317401b187739f",
+    "updateMiningParameters()": "0x94e63037e22e9ad4da0112914552fe836ad9ff1ccf66196d6d2bedf632ac763c",
+    "update_mining_parameters()": "0xb6e32d4b03cec94ef0dff4aaf022eddf7267fd33a46c4c36ecd6238308346a7b"
+  }
+}

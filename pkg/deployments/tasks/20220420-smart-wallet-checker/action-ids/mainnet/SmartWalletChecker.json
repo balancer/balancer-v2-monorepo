@@ -1,0 +1,7 @@
+{
+  "useAdaptor": false,
+  "actionIds": {
+    "allowlistAddress(address)": "0x453b670b2708db1ba5df1da1d48add0564558624efac456e43e9c9fff99d51af",
+    "denylistAddress(address)": "0x43cd68bd7db0472f3fac100d3f402a603c8ab62e816feff20dbe3ec6c6e61b89"
+  }
+}

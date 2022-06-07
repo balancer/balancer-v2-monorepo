@@ -1,0 +1,12 @@
+{
+  "useAdaptor": true,
+  "actionIds": {
+    "grantRole(bytes32,address)": "0x3b5aa417f440ce599b5fcebc425f7ea46ff4c105a0c529a180642cb6b1740346",
+    "grantRoles(bytes32[],address)": "0x27a96293b7f504e5fa28c9a799467561bbcb1bc08277f60d3d1140f315e54ec6",
+    "grantRolesToMany(bytes32[],address[])": "0x0a754de8c17cd28fc6dbb29f41c51150449409f1a6ee78e889013d476b890238",
+    "renounceRole(bytes32,address)": "0x46bd31898e4be3efd0e0127e710aa0427308b6220bb5b8286230d4f7a596f0cb",
+    "revokeRole(bytes32,address)": "0x2b2ed92fb51ba70a0a86c61efb68d77cc578f6f7ef30933df5d5506f8bf537b2",
+    "revokeRoles(bytes32[],address)": "0xc89adbc6dae79ab0bb0416f93f4416270b446ecd58147c38b5e923ddca936766",
+    "revokeRolesFromMany(bytes32[],address[])": "0x9ebe3bdeeba42f0d5055085e3f83fabdd85ca79f011278cd51814b75d0f522b3"
+  }
+}

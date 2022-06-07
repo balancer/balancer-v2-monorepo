@@ -1,0 +1,9 @@
+{
+  "useAdaptor": false,
+  "actionIds": {
+    "addArbitrumGauge(address)": "0xe1b75a10f1bc79218d86c8fda276fe931ba11d6b6ccfdf8a044c0c52160f665a",
+    "addEthereumGauge(address)": "0xc2ace9b5e3659c91ffd2bd0e2c9d2d2180cd59750d9f59ed93fb8caf98f93c04",
+    "addGaugeFactory(address,uint8)": "0x715b896ff18cb5612ff48f2973f9b74cfbf9e18379572e21137923c3f971b2ae",
+    "addPolygonGauge(address)": "0x377fb3588c7aea5467ddc6d8900550751fb29f44cebd190eb1679be022392ad9"
+  }
+}

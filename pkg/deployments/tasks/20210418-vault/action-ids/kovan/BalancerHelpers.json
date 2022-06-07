@@ -1,0 +1,7 @@
+{
+  "useAdaptor": true,
+  "actionIds": {
+    "queryExit(bytes32,address,address,(address[],uint256[],bytes,bool))": "0xe013f8082e3cf55b41c063a5b339d3b5c55f7cfb165088bf8362f59747b29f12",
+    "queryJoin(bytes32,address,address,(address[],uint256[],bytes,bool))": "0xc0ed4c4cb57356dbc576565f46e8b311cb258b013cc62548567f42e2a30504d7"
+  }
+}

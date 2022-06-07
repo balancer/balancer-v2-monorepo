@@ -1,0 +1,19 @@
+{
+  "useAdaptor": false,
+  "actionIds": {
+    "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)": "0x1282ab709b2b70070f829c46bc36f76b32ad4989fecb2fcb09a1b3ce00bbfc30",
+    "deregisterTokens(bytes32,address[])": "0xe4f8ff74aa05a4d54a06e035d5e86947bc6474f8d7b166ebeb49fc9178d28551",
+    "exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))": "0xc149e88b59429ded7f601ab52ecd62331cac006ae07c16543439ed138dcb8d34",
+    "flashLoan(address,address[],uint256[],bytes)": "0x96ebe854ca6ab6242ad127dcd7809576513b0c64571e515cedd7b8885612c82d",
+    "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))": "0x78ad1b68d148c070372f8643c4648efbb63c6a8a338f3c24714868e791367653",
+    "managePoolBalance((uint8,bytes32,address,uint256)[])": "0x7275fb98594b03dc36a7de69051058e9e2d05cabeb4fe7d9c87bc69f94d9d084",
+    "manageUserBalance((uint8,address,uint256,address,address)[])": "0xeba777d811cd36c06d540d7ff2ed18ed042fd67bbf7c9afcf88c818c7ee6b498",
+    "queryBatchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool))": "0xf5f701b3adfba2adad8f16a8be5a989593e42a2caa84c5c6e60b22143db65a2f",
+    "registerPool(uint8)": "0x956dfce4343a6be4df20714d3dc413ef59e73fa9995d3d247e7c8d12efd33ac2",
+    "registerTokens(bytes32,address[],address[])": "0xad5bd4a1cc4243b4d772a8a55d24792c1f57cc45eb97ed1291b82d96125a7626",
+    "setAuthorizer(address)": "0x1cbb503dcc0f4acaedf71a098211ff8b15a220fc26a6974a8d9deaab040fa6e0",
+    "setPaused(bool)": "0xb5593fe09464f360ecf835d5b9319ce69900ae1b29d13844b73c250b1f5f92fb",
+    "setRelayerApproval(address,address,bool)": "0x0014a06d322ff07fcc02b12f93eb77bb76e28cdee4fc0670b9dec98d24bbfec8",
+    "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)": "0x7b8a1d293670124924a0f532213753b89db10bde737249d4540e9a03657d1aff"
+  }
+}

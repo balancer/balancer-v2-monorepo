@@ -1,0 +1,10 @@
+{
+  "useAdaptor": true,
+  "actionIds": {
+    "exitBTCStablePool()": "0x084ce57837d80dbf01ac6f56be968aca5e46d8037b0bb4f4f7380ff3c28c68ec",
+    "exitSNXWeightedPool()": "0x5c8eeba60a1b81138b29ec36a6ac3ebd19b4d7ff24bfaa667c6394e3f58c1b9f",
+    "receiveFlashLoan(address[],uint256[],uint256[],bytes)": "0x4ad32c6708690fff4a575b065cb13de4cb090229cd5974027cf30a57764e11fb",
+    "sweepDoubleEntrypointToken(address[])": "0x7187cb62d21139c153655ed00e33c76451d7609e429791486976b3769ffea0e7",
+    "sweepSNXsBTC()": "0xebbe6a11503f907fa7423a02db944e72209332a083cd2cf2c2f33ca95d945452"
+  }
+}

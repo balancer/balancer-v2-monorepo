@@ -1,0 +1,17 @@
+{
+  "useAdaptor": true,
+  "actionIds": {
+    "add_gauge(address,int128)": "0xbac1e51aeb2853e71375139fba427efebaeca4be5002c0e95e7fa51b42a40353",
+    "add_gauge(address,int128,uint256)": "0x9fbd23a93cee00c48183a458ee0f3e369a0c01dc2d3da09ae4ad212c12d444e7",
+    "add_type(string)": "0x18f0484778655024131ced968176c988ed1a72c68334b577af3d1242833e282e",
+    "add_type(string,uint256)": "0xb7e0b67d2fb0f3ee0c15cb668b16d37dd65731b1a8c2dbf29b0b44dd0957f4dd",
+    "change_gauge_weight(address,uint256)": "0xe9d9abf3c1991a6a1ec1a49c9b5af8857d16f66b8279207e9dbad1341c1a0458",
+    "change_type_weight(int128,uint256)": "0xabed190362539cd8b3586a3502dd30250696112df6aa3380d095d7b9002abbde",
+    "checkpoint()": "0x4fbb27e55153169d2cd922017e2ede113f16a42e6f0d0b86196dd0dbb6431f43",
+    "checkpoint_gauge(address)": "0x681b55d0911f82a246c7b1cbc573825071be4a2cc7ff6a0549217a30a90833ce",
+    "gauge_relative_weight_write(address)": "0x5826d3b6e9eb738d1ebf3efbd8b3762cb0948a859230cf22b2b5a1464d13d8d0",
+    "gauge_relative_weight_write(address,uint256)": "0x4effbba2dd7cd962f187d4d4b7adb0aea718c58412a85c5f6c44ce91f07791b4",
+    "vote_for_gauge_weights(address,uint256)": "0x7e5063f67328943935d58a5289b848d9629836753f474b64e993b49716a247fd",
+    "vote_for_many_gauge_weights(address[8],uint256[8])": "0xcdd6eb1750ba878ac5486f981bebd26bff7ea745270953234bf3f019cc2dcc96"
+  }
+}
