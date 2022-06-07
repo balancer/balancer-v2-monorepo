@@ -657,7 +657,7 @@ describe('LegacyBasePool', function () {
     let pool: Contract;
     let sender: SignerWithAddress;
 
-    function pausingEntersRecoveryMode() {
+    function pauseAndRecoveryDoNotInteract() {
       it('pause does not enter recovery mode', async () => {
         await pool.connect(sender).pause();
 
@@ -722,7 +722,7 @@ describe('LegacyBasePool', function () {
             ]);
         });
 
-        pausingEntersRecoveryMode();
+        pauseAndRecoveryDoNotInteract();
       });
     });
 
@@ -771,7 +771,7 @@ describe('LegacyBasePool', function () {
               ]);
           });
 
-          pausingEntersRecoveryMode();
+          pauseAndRecoveryDoNotInteract();
         });
       });
     });
