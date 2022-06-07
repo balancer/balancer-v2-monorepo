@@ -11,35 +11,40 @@ export async function printActionIds(task: Task, contractName: string, contractA
   const contractFunctions = Object.entries(contractInterface.functions).filter(([, func]) =>
     ['nonpayable', 'payable'].includes(func.stateMutability)
   );
+
+  const actionIdSource = await getActionIdSource(task, contractName, contractAddress);
+  const actionIdMap = await getAdaptorActionIds(contractFunctions, actionIdSource);
+
+  for (const [signature, actionId] of Object.entries(actionIdMap)) {
+    logger.log(`${signature}: ${actionId}`, '');
+  }
+}
+
+async function getActionIdSource(task: Task, contractName: string, contractAddress?: string): Promise<Contract> {
+  const artifact = task.artifact(contractName);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const contractInterface = new Interface(artifact.abi as any);
+
   // Not all contracts use the Authorizer directly for authentication.
   // Only if it has the `getActionId` function does it use the Authorizer directly.
   // Contracts without this function either are permissionless or use another method such as the AuthorizerAdaptor.
   const contractIsAuthorizerAware = Object.values(contractInterface.functions).some(
     (func) => func.name === 'getActionId'
   );
-  let actionIdMap: Record<string, string>;
-  if (contractIsAuthorizerAware) {
-    let contract: Contract;
-    if (contractAddress) {
-      contract = await task.instanceAt(contractName, contractAddress);
-    } else {
-      contract = await task.deployedInstance(contractName);
-    }
 
-    actionIdMap = await getAdaptorActionIds(contractFunctions, contract);
+  if (contractIsAuthorizerAware) {
+    if (contractAddress) {
+      return task.instanceAt(contractName, contractAddress);
+    } else {
+      return task.deployedInstance(contractName);
+    }
   } else {
     logger.warn(
       'This contract does not use the Authorizer for authentication. These action ids assume that you are calling these functions through the AuthorizerAdaptor\n'
     );
 
     const adaptorTask = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY, task.network);
-    const authorizerAdaptor = await adaptorTask.deployedInstance('AuthorizerAdaptor');
-
-    actionIdMap = await getAdaptorActionIds(contractFunctions, authorizerAdaptor);
-  }
-
-  for (const [signature, actionId] of Object.entries(actionIdMap)) {
-    logger.log(`${signature}: ${actionId}`, '');
+    return adaptorTask.deployedInstance('AuthorizerAdaptor');
   }
 }
 
