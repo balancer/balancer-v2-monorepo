@@ -1178,6 +1178,37 @@ describe('StablePool', function () {
             const { value, isUpdating, precision } = await pool.getAmplificationParameter();
             expect(value).to.be.lt(AMPLIFICATION_PARAMETER.mul(precision));
             expect(isUpdating).to.be.true;
+
+            await expect(pool.enterRecoveryMode(admin)).to.not.be.reverted;
+          });
+        });
+
+        context('invariant recalculation on exit', () => {
+          let originalInvariant: BigNumber;
+
+          sharedBeforeEach('store invariant and enter recovery mode', async () => {
+            const { lastInvariant } = await pool.getLastInvariant();
+            originalInvariant = lastInvariant;
+
+            await pool.enterRecoveryMode(admin);
+          });
+
+          it('should not update the invariant during recovery mode', async () => {
+            const totalBptBalance = await pool.balanceOf(lp);
+            await pool.recoveryModeExit({ from: lp, bptIn: totalBptBalance });
+
+            const { lastInvariant } = await pool.getLastInvariant();
+            expect(lastInvariant).to.equal(originalInvariant);
+          });
+
+          it('should update the invariant upon exit', async () => {
+            const totalBptBalance = await pool.balanceOf(lp);
+            await pool.recoveryModeExit({ from: lp, bptIn: totalBptBalance });
+
+            await pool.exitRecoveryMode(admin);
+
+            const { lastInvariant } = await pool.getLastInvariant();
+            expect(lastInvariant).to.not.equal(originalInvariant);
           });
         });
       });
