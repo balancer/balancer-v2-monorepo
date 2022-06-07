@@ -919,14 +919,6 @@ describe('StablePool', function () {
 
             expect(result).to.equalWithError(fp(1), 0.0001);
           });
-
-          it('still succeeds if invariant is broken', async () => {
-            await pool.setInvariantFailure(true);
-
-            const result = await pool.getRate();
-
-            expect(result).to.equalWithError(fp(1), 0.0001);
-          });
         });
       });
     });
@@ -1187,35 +1179,6 @@ describe('StablePool', function () {
             expect(value).to.be.lt(AMPLIFICATION_PARAMETER.mul(precision));
             expect(isUpdating).to.be.true;
           });
-
-          it('is halted by entering recovery mode', async () => {
-            await pool.enterRecoveryMode(admin);
-
-            const { value, isUpdating, precision } = await pool.getAmplificationParameter();
-            expect(value).to.be.lt(AMPLIFICATION_PARAMETER.mul(precision));
-            expect(isUpdating).to.be.false;
-          });
-
-          it('cannot start an AMP change in recovery mode', async () => {
-            await pool.enterRecoveryMode(admin);
-
-            await expect(
-              pool.startAmpChange(AMPLIFICATION_PARAMETER.div(2), await fromNow(MONTH), { from: owner })
-            ).to.be.revertedWith('IN_RECOVERY_MODE');
-          });
-
-          it('entering recovery mode emits two events', async () => {
-            const { value } = await pool.getAmplificationParameter();
-            const tx = await pool.enterRecoveryMode(admin);
-            const receipt = await tx.wait();
-
-            expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', {
-              recoveryMode: true,
-            });
-            expectEvent.inReceipt(receipt, 'AmpUpdateStopped', {
-              currentValue: value,
-            });
-          });
         });
       });
 
@@ -1281,15 +1244,6 @@ describe('StablePool', function () {
           }
 
           context('with invariant working', async () => {
-            LPsCanExit();
-            LPsCanExit(true); // with trades in the middle
-          });
-
-          context('with invariant broken', async () => {
-            sharedBeforeEach('break invariant', async () => {
-              await pool.setInvariantFailure(true);
-            });
-
             LPsCanExit();
             LPsCanExit(true); // with trades in the middle
           });
