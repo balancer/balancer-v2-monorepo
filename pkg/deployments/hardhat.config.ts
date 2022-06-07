@@ -8,18 +8,15 @@ import { task, types } from 'hardhat/config';
 import { TASK_TEST } from 'hardhat/builtin-tasks/task-names';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 
-import { Contract } from 'ethers';
-import { Interface } from 'ethers/lib/utils';
-
 import path from 'path';
-import { existsSync, readdirSync, statSync } from 'fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
 
 import { checkArtifact, extractArtifact } from './src/artifact';
 import test from './src/test';
 import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
 import logger, { Logger } from './src/logger';
-import { printActionIds } from './src/actionId';
+import { checkActionIds, saveActionIds } from './src/actionId';
 
 task('deploy', 'Run deployment task')
   .addParam('id', 'Deployment task ID')
@@ -123,18 +120,82 @@ task('check-artifacts', `check that contract artifacts correspond to their build
     }
   });
 
-task('action-ids', `Print the action IDs for a particular contract`)
-  .addParam('id', 'Specific task ID')
-  .addParam('name', 'Contract name')
+task('save-action-ids', `Print the action IDs for a particular contract`)
+  .addOptionalParam('id', 'Specific task ID')
+  .addOptionalParam('name', 'Contract name')
   .addOptionalParam('address', 'Contract address')
   .setAction(
     async (args: { id: string; name: string; address?: string; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
       Logger.setDefaults(false, args.verbose || false);
 
-      const task = new Task(args.id, TaskMode.READ_ONLY, hre.network.name);
-      await printActionIds(task, args.name, args.address);
+      // The user is calculating action IDs for a contract which isn't included in the task outputs.
+      // Most likely this is for a pool which is to be deployed from a factory contract deployed as part of the task.
+      if (args.address) {
+        if (!args.id || !args.name) {
+          throw new Error("Provided a contract address but didn't specify task or contract name.");
+        }
+        const task = new Task(args.id, TaskMode.READ_ONLY, hre.network.name);
+        await saveActionIds(task, args.name, args.address);
+        return;
+      }
+
+      // The user is calculating the action IDs for a particular task or contract within a particular task.
+      if (args.id && args.name) {
+        const task = new Task(args.id, TaskMode.READ_ONLY, hre.network.name);
+        await saveActionIds(task, args.name);
+        return;
+      }
+
+      async function generateActionIdsForTask(taskId: string): Promise<void> {
+        const task = new Task(taskId, TaskMode.READ_ONLY, hre.network.name);
+        const outputDir = path.resolve(task.dir(), 'output');
+        if (existsSync(outputDir) && statSync(outputDir).isDirectory()) {
+          for (const outputFile of readdirSync(outputDir)) {
+            const outputFilePath = path.resolve(outputDir, outputFile);
+            if (outputFile.includes(hre.network.name) && statSync(outputFilePath).isFile()) {
+              const fileContents = JSON.parse(readFileSync(outputFilePath).toString());
+              const contractNames = Object.keys(fileContents).filter((name) => name !== 'timestamp');
+
+              for (const contractName of contractNames) {
+                logger.log(`Generating action IDs for ${contractName} of ${task.id}`, '');
+                await saveActionIds(task, contractName);
+              }
+            }
+          }
+        }
+      }
+
+      if (args.id) {
+        await generateActionIdsForTask(args.id);
+        return;
+      }
+
+      // We're calculating action IDs for whichever contracts we can pull enough information from disk for.
+      // This will calculate action IDs for any contracts which are a named output from a task.
+      const taskDirectory = path.resolve(__dirname, './tasks');
+      for (const taskID of readdirSync(taskDirectory)) {
+        await generateActionIdsForTask(taskID);
+      }
     }
   );
+
+task('check-action-ids', `Check that contract action-ids correspond the expected values`)
+  .addOptionalParam('id', 'Specific task ID')
+  .setAction(async (args: { id?: string; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
+    Logger.setDefaults(false, args.verbose || false);
+
+    if (args.id) {
+      const task = new Task(args.id, TaskMode.READ_ONLY, hre.network.name);
+      await checkActionIds(task);
+    } else {
+      const taskDirectory = path.resolve(__dirname, './tasks');
+
+      for (const taskID of readdirSync(taskDirectory)) {
+        const task = new Task(taskID, TaskMode.READ_ONLY, hre.network.name);
+        await checkActionIds(task);
+      }
+    }
+  });
 
 task(TASK_TEST)
   .addOptionalParam('fork', 'Optional network name to be forked block number to fork in case of running fork tests.')
