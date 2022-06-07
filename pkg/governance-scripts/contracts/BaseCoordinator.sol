@@ -39,8 +39,6 @@ interface ICurrentAuthorizer is IAuthorizer {
 abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
     IAuthorizerAdaptor private immutable _authorizerAdaptor;
 
-    uint256 private _currentStage;
-
     function()[] private _coordinatorStages;
     uint256[] private _stageActivationTime;
 
@@ -84,13 +82,13 @@ abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
         uint256 currentStage = getCurrentStage();
         require(currentStage < getStagesLength(), "All stages completed");
 
-        _coordinatorStages[_currentStage]();
+        _coordinatorStages[currentStage]();
 
         _advanceCurrentStage(currentStage);
     }
 
     function _getTimeSinceLastStageActivation() internal view returns (uint256) {
-        return block.timestamp - getStageActivationTime(_currentStage - 1);
+        return block.timestamp - getStageActivationTime(getCurrentStage() - 1);
     }
 
     function _advanceCurrentStage(uint256 currentStage) internal {
