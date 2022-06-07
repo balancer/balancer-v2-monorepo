@@ -509,6 +509,7 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         // caused by swaps or the amp factor), and cancel any accumulated debt.
         if (!recoveryMode) {
             (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+            _upscaleArray(balances, _scalingFactors());
             (uint256 currentAmp, ) = _getAmplificationParameter();
 
             _updateLastInvariant(StableMath._calculateInvariant(currentAmp, balances), currentAmp);

@@ -659,24 +659,20 @@ describe('LegacyBasePool', function () {
     let pool: Contract;
     let sender: SignerWithAddress;
 
-    function pausingEntersRecoveryMode() {
-      it('pausing enters recovery mode', async () => {
+    function pauseAndRecoveryDoNotInteract() {
+      it('pause does not enter recovery mode', async () => {
         await pool.connect(sender).pause();
 
         const { paused } = await pool.getPausedState();
         expect(paused).to.be.true;
-        expect(await pool.inRecoveryMode()).to.be.true;
-      });
-
-      it('pausing emits events', async () => {
-        const tx = await pool.connect(sender).pause();
-        const receipt = await tx.wait();
-
-        expectEvent.inReceipt(receipt, 'PausedStateChanged', { paused: true });
-        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { recoveryMode: true });
+        expect(await pool.inRecoveryMode()).to.be.false;
       });
 
       it('unpause does not exit recovery mode', async () => {
+        const enterRecoveryAction = await actionId(pool, 'enterRecoveryMode');
+        await authorizer.connect(admin).grantPermissions([enterRecoveryAction], sender.address, [ANY_ADDRESS]);
+
+        await pool.connect(sender).enterRecoveryMode();
         await pool.connect(sender).pause();
         await pool.connect(sender).unpause();
 
@@ -728,7 +724,7 @@ describe('LegacyBasePool', function () {
             ]);
         });
 
-        pausingEntersRecoveryMode();
+        pauseAndRecoveryDoNotInteract();
       });
     });
 
@@ -777,7 +773,7 @@ describe('LegacyBasePool', function () {
               ]);
           });
 
-          pausingEntersRecoveryMode();
+          pauseAndRecoveryDoNotInteract();
         });
       });
     });
@@ -814,81 +810,6 @@ describe('LegacyBasePool', function () {
         const data = `0x${'1'.repeat(i).padStart(64, '0')}`;
         await assertMiscData(data);
       }
-    });
-  });
-
-  describe('recovery mode exit', () => {
-    const RECOVERY_MODE_USER_DATA = 255;
-    let poolId: string;
-    let initialBalances: BigNumber[];
-    let pool: Contract;
-
-    sharedBeforeEach('deploy and initialize pool', async () => {
-      initialBalances = Array(tokens.length).fill(fp(1000));
-      pool = await deployBasePool();
-      poolId = await pool.getPoolId();
-
-      const request: JoinPoolRequest = {
-        assets: tokens.addresses,
-        maxAmountsIn: initialBalances,
-        userData: WeightedPoolEncoder.joinInit(initialBalances),
-        fromInternalBalance: false,
-      };
-
-      await tokens.mint({ to: poolOwner, amount: fp(1000) });
-      await tokens.approve({ from: poolOwner, to: vault });
-
-      await vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, request);
-    });
-
-    context('in recovery mode', () => {
-      sharedBeforeEach('grant permission', async () => {
-        const enterRecoveryAction = await actionId(pool, 'enterRecoveryMode');
-        const exitRecoveryAction = await actionId(pool, 'exitRecoveryMode');
-        await authorizer
-          .connect(admin)
-          .grantPermissions([enterRecoveryAction, exitRecoveryAction], admin.address, [ANY_ADDRESS, ANY_ADDRESS]);
-      });
-
-      it('enter recovery mode, and exit the pool', async () => {
-        await pool.connect(admin).enterRecoveryMode();
-
-        expect(await pool.inRecoveryMode()).to.be.true;
-
-        let bptBalance = await pool.balanceOf(poolOwner.address);
-        // Owner has BPT tokens
-        expect(bptBalance).to.gt(0);
-        // Token balances are now zero, after joining
-        let tokenBalances = await Promise.all(tokens.map(async (token) => await token.balanceOf(poolOwner)));
-        expect(tokenBalances).to.be.zeros;
-
-        const exitUserData = defaultAbiCoder.encode(['uint256', 'uint256'], [RECOVERY_MODE_USER_DATA, bptBalance]);
-
-        const request: ExitPoolRequest = {
-          assets: tokens.addresses,
-          minAmountsOut: Array(tokens.length).fill(0),
-          userData: exitUserData,
-          toInternalBalance: false,
-        };
-
-        await vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, request);
-
-        // BPT balance should now be zero
-        bptBalance = await pool.balanceOf(poolOwner.address);
-        expect(bptBalance).to.be.zero;
-
-        // Vault balances should be near zero (not exactly, because of minimum BPT)
-        tokenBalances = await Promise.all(tokens.map(async (token) => await token.balanceOf(vault)));
-        for (const balance of tokenBalances) {
-          expect(balance).to.lt(fp(0.0001));
-        }
-
-        // Token balances should be restored to the owner
-        tokenBalances = await Promise.all(tokens.map(async (token) => await token.balanceOf(poolOwner)));
-        for (let i = 0; i < tokenBalances.length; i++) {
-          expect(tokenBalances[i]).to.equalWithError(initialBalances[i], 0.000001);
-        }
-      });
     });
   });
 });
