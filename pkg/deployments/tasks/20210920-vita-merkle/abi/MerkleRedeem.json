@@ -110,7 +110,7 @@
   {
     "inputs": [
       {
-        "internalType": "address payable",
+        "internalType": "address",
         "name": "liquidityProvider",
         "type": "address"
       },
@@ -138,7 +138,7 @@
   {
     "inputs": [
       {
-        "internalType": "address payable",
+        "internalType": "address",
         "name": "liquidityProvider",
         "type": "address"
       },
@@ -173,7 +173,7 @@
   {
     "inputs": [
       {
-        "internalType": "address payable",
+        "internalType": "address",
         "name": "liquidityProvider",
         "type": "address"
       },
@@ -208,12 +208,12 @@
   {
     "inputs": [
       {
-        "internalType": "address payable",
+        "internalType": "address",
         "name": "liquidityProvider",
         "type": "address"
       },
       {
-        "internalType": "address payable",
+        "internalType": "contract IDistributorCallback",
         "name": "callbackContract",
         "type": "address"
       },
@@ -246,13 +246,7 @@
       }
     ],
     "name": "claimWeeksWithCallback",
-    "outputs": [
-      {
-        "internalType": "bytes",
-        "name": "",
-        "type": "bytes"
-      }
-    ],
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },

@@ -8,12 +8,14 @@ import { task, types } from 'hardhat/config';
 import { TASK_TEST } from 'hardhat/builtin-tasks/task-names';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 
+import path from 'path';
+import { existsSync, readdirSync, statSync } from 'fs';
+
+import { checkArtifact, extractArtifact } from './src/artifact';
 import test from './src/test';
 import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
 import { Logger } from './src/logger';
-import path from 'path';
-import { existsSync, readdirSync, statSync } from 'fs';
 
 task('deploy', 'Run deployment task')
   .addParam('id', 'Deployment task ID')
@@ -35,14 +37,17 @@ task('verify-contract', `Verify a task's deployment on a block explorer`)
   .addParam('name', 'Contract name')
   .addParam('address', 'Contract address')
   .addParam('args', 'ABI-encoded constructor arguments')
-  .addParam('key', 'Etherscan API key to verify contracts')
+  .addOptionalParam('key', 'Etherscan API key to verify contracts')
   .setAction(
     async (
       args: { id: string; name: string; address: string; key: string; args: string; verbose?: boolean },
       hre: HardhatRuntimeEnvironment
     ) => {
       Logger.setDefaults(false, args.verbose || false);
-      const verifier = args.key ? new Verifier(hre.network, args.key) : undefined;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const apiKey = args.key ?? (hre.config.networks[hre.network.name] as any).verificationAPIKey;
+      const verifier = apiKey ? new Verifier(hre.network, apiKey) : undefined;
 
       await new Task(args.id, TaskMode.READ_ONLY, hre.network.name, verifier).verify(
         args.name,
@@ -51,6 +56,24 @@ task('verify-contract', `Verify a task's deployment on a block explorer`)
       );
     }
   );
+
+task('extract-artifacts', `Extract contract artifacts from their build-info`)
+  .addOptionalParam('id', 'Specific task ID')
+  .setAction(async (args: { id?: string; verbose?: boolean }) => {
+    Logger.setDefaults(false, args.verbose || false);
+
+    if (args.id) {
+      const task = new Task(args.id, TaskMode.READ_ONLY);
+      extractArtifact(task);
+    } else {
+      const taskDirectory = path.resolve(__dirname, './tasks');
+
+      for (const taskID of readdirSync(taskDirectory)) {
+        const task = new Task(taskID, TaskMode.READ_ONLY);
+        extractArtifact(task);
+      }
+    }
+  });
 
 task('check-deployments', `Check that all tasks' deployments correspond to their build-info and inputs`)
   .addOptionalParam('id', 'Specific task ID')
@@ -74,6 +97,24 @@ task('check-deployments', `Check that all tasks' deployments correspond to their
             await new Task(taskID, TaskMode.CHECK, hre.network.name).run(args);
           }
         }
+      }
+    }
+  });
+
+task('check-artifacts', `check that contract artifacts correspond to their build-info`)
+  .addOptionalParam('id', 'Specific task ID')
+  .setAction(async (args: { id?: string; verbose?: boolean }) => {
+    Logger.setDefaults(false, args.verbose || false);
+
+    if (args.id) {
+      const task = new Task(args.id, TaskMode.READ_ONLY);
+      checkArtifact(task);
+    } else {
+      const taskDirectory = path.resolve(__dirname, './tasks');
+
+      for (const taskID of readdirSync(taskDirectory)) {
+        const task = new Task(taskID, TaskMode.READ_ONLY);
+        checkArtifact(task);
       }
     }
   });

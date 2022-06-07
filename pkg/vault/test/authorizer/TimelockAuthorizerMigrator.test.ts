@@ -6,11 +6,11 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { ONES_BYTES32, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('TimelockAuthorizerMigrator', () => {
   let user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress, root: SignerWithAddress;
-  let vault: Contract, oldAuthorizer: Contract, newAuthorizer: Contract, migrator: Contract, EVERYWHERE: string;
+  let vault: Contract, oldAuthorizer: Contract, newAuthorizer: Contract, migrator: Contract;
 
   before('set up signers', async () => {
     [, user1, user2, user3, root] = await ethers.getSigners();
@@ -42,10 +42,9 @@ describe('TimelockAuthorizerMigrator', () => {
     newAuthorizer = await deployedAt('TimelockAuthorizer', await migrator.newAuthorizer());
     const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
     await oldAuthorizer.grantRolesToMany([setAuthorizerActionId], [migrator.address]);
-  });
 
-  sharedBeforeEach('setup constants', async () => {
-    EVERYWHERE = await newAuthorizer.EVERYWHERE();
+    const CHANGE_ROOT_DELAY = await newAuthorizer.getRootTransferDelay();
+    await advanceTime(CHANGE_ROOT_DELAY);
   });
 
   const itMigratesPermissionsProperly = (migrate: () => Promise<unknown>) => {
@@ -70,31 +69,6 @@ describe('TimelockAuthorizerMigrator', () => {
       }
     });
 
-    it('migrates all admin roles properly', async () => {
-      await migrate();
-
-      for (const roleData of rolesData) {
-        const adminRole = await oldAuthorizer.getRoleAdmin(roleData.role);
-        const adminsCount = await oldAuthorizer.getRoleMemberCount(adminRole);
-        for (let i = 0; i < adminsCount; i++) {
-          const admin = await oldAuthorizer.getRoleMember(adminRole, i);
-          expect(await newAuthorizer.isGranter(ONES_BYTES32, admin, roleData.target)).to.be.true;
-          expect(await newAuthorizer.isRevoker(ONES_BYTES32, admin, roleData.target)).to.be.true;
-        }
-      }
-    });
-
-    it('migrates all the default admins properly', async () => {
-      await migrate();
-
-      const adminsCount = await oldAuthorizer.getRoleMemberCount(ZERO_BYTES32);
-      for (let i = 0; i < adminsCount; i++) {
-        const admin = await oldAuthorizer.getRoleMember(ZERO_BYTES32, i);
-        expect(await newAuthorizer.isGranter(ONES_BYTES32, admin, EVERYWHERE)).to.be.true;
-        expect(await newAuthorizer.isRevoker(ONES_BYTES32, admin, EVERYWHERE)).to.be.true;
-      }
-    });
-
     it('does not set the new authorizer immediately', async () => {
       await migrate();
 
@@ -102,25 +76,28 @@ describe('TimelockAuthorizerMigrator', () => {
       expect(await vault.getAuthorizer()).to.be.equal(oldAuthorizer.address);
     });
 
-    it('revokes the admin roles from the migrator', async () => {
-      await migrate();
+    context('finalization', () => {
+      sharedBeforeEach('migrate all roles', async () => {
+        await migrate();
+      });
 
-      expect(await newAuthorizer.isGranter(ONES_BYTES32, migrator.address, EVERYWHERE)).to.be.false;
-      expect(await newAuthorizer.isRevoker(ONES_BYTES32, migrator.address, EVERYWHERE)).to.be.false;
-    });
+      context('when new root has not claimed ownership over TimelockAuthorizer', () => {
+        it('reverts', async () => {
+          await expect(migrator.finalizeMigration()).to.be.revertedWith('ROOT_NOT_CLAIMED_YET');
+        });
+      });
 
-    it('finalizes the migration after the set root delay', async () => {
-      await migrate();
+      context('when new root has claimed ownership over TimelockAuthorizer', () => {
+        sharedBeforeEach('claim root', async () => {
+          await newAuthorizer.connect(root).claimRoot();
+        });
 
-      await expect(migrator.finalizeMigration()).to.be.revertedWith('CANNOT_TRIGGER_ROOT_CHANGE_YET');
+        it('sets the new Authorizer on the Vault', async () => {
+          await migrator.finalizeMigration();
 
-      const CHANGE_ROOT_DELAY = await newAuthorizer.getRootTransferDelay();
-      await advanceTime(CHANGE_ROOT_DELAY);
-
-      await migrator.finalizeMigration();
-      expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
-      expect(await newAuthorizer.isRoot(root.address)).to.be.true;
-      expect(await newAuthorizer.isRoot(migrator.address)).to.be.false;
+          expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
+        });
+      });
     });
   };
 

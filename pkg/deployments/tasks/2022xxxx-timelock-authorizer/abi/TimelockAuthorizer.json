@@ -5,23 +5,20 @@
         "internalType": "address",
         "name": "admin",
         "type": "address"
+      },
+      {
+        "internalType": "contract IAuthentication",
+        "name": "vault",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "rootTransferDelay",
+        "type": "uint256"
       }
     ],
     "stateMutability": "nonpayable",
     "type": "constructor"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "scheduledActionId",
-        "type": "uint256"
-      }
-    ],
-    "name": "ActionCancelled",
-    "type": "event"
   },
   {
     "anonymous": false,
@@ -48,11 +45,24 @@
       {
         "indexed": true,
         "internalType": "uint256",
-        "name": "scheduledActionId",
+        "name": "scheduledExecutionId",
         "type": "uint256"
       }
     ],
-    "name": "ActionExecuted",
+    "name": "ExecutionCancelled",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "scheduledExecutionId",
+        "type": "uint256"
+      }
+    ],
+    "name": "ExecutionExecuted",
     "type": "event"
   },
   {
@@ -67,11 +77,11 @@
       {
         "indexed": true,
         "internalType": "uint256",
-        "name": "scheduledActionId",
+        "name": "scheduledExecutionId",
         "type": "uint256"
       }
     ],
-    "name": "ActionScheduled",
+    "name": "ExecutionScheduled",
     "type": "event"
   },
   {
@@ -125,6 +135,19 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "root",
+        "type": "address"
+      }
+    ],
+    "name": "RootSet",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "EVERYWHERE",
     "outputs": [
@@ -132,6 +155,19 @@
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "EXECUTE_ACTION_ID",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       }
     ],
     "stateMutability": "view",
@@ -190,6 +226,38 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "WHATEVER",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "scheduledExecutionId",
+        "type": "uint256"
+      }
+    ],
+    "name": "canExecute",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -221,8 +289,42 @@
   {
     "inputs": [
       {
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "where",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "how",
+        "type": "bytes32"
+      }
+    ],
+    "name": "canPerformOrWhatever",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
-        "name": "scheduledActionId",
+        "name": "scheduledExecutionId",
         "type": "uint256"
       }
     ],
@@ -254,7 +356,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "scheduledActionId",
+        "name": "scheduledExecutionId",
         "type": "uint256"
       }
     ],
@@ -283,6 +385,56 @@
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "how",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getActionId",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getRootTransferDelay",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getVault",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -344,6 +496,40 @@
     "inputs": [
       {
         "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "where",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "how",
+        "type": "bytes32"
+      }
+    ],
+    "name": "hasPermissionOrWhatever",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
       }
@@ -357,6 +543,81 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "isRoot",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "where",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "allowed",
+        "type": "bool"
+      }
+    ],
+    "name": "manageGrantPermission",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "actionId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "where",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "allowed",
+        "type": "bool"
+      }
+    ],
+    "name": "manageRevokePermission",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -430,6 +691,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "root",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -451,7 +725,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "scheduledActionId",
+        "name": "scheduledExecutionId",
         "type": "uint256"
       }
     ],
@@ -480,7 +754,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "scheduledActionId",
+        "name": "scheduledExecutionId",
         "type": "uint256"
       }
     ],
@@ -514,7 +788,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "scheduledActionId",
+        "name": "scheduledExecutionId",
         "type": "uint256"
       }
     ],
@@ -548,7 +822,31 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "scheduledActionId",
+        "name": "scheduledExecutionId",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newRoot",
+        "type": "address"
+      },
+      {
+        "internalType": "address[]",
+        "name": "executors",
+        "type": "address[]"
+      }
+    ],
+    "name": "scheduleRootChange",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "scheduledExecutionId",
         "type": "uint256"
       }
     ],
@@ -563,7 +861,7 @@
         "type": "uint256"
       }
     ],
-    "name": "scheduledActions",
+    "name": "scheduledExecutions",
     "outputs": [
       {
         "internalType": "address",
@@ -613,6 +911,19 @@
       }
     ],
     "name": "setDelay",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newRoot",
+        "type": "address"
+      }
+    ],
+    "name": "setRoot",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

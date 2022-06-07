@@ -28,10 +28,6 @@ contract TimelockAuthorizerMigrator {
     uint256 public constant CHANGE_ROOT_DELAY = 7 days;
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
-    // solhint-disable var-name-mixedcase
-    bytes32 public immutable GRANT_PERMISSION_ACTION_ID;
-    bytes32 public immutable REVOKE_PERMISSION_ACTION_ID;
-
     IVault public immutable vault;
     address public immutable root;
     IBasicAuthorizer public immutable oldAuthorizer;
@@ -68,9 +64,8 @@ contract TimelockAuthorizerMigrator {
             rolesData.push(OldRoleData(_rolesData[i].role, _rolesData[i].target));
         }
 
-        bytes32 id = bytes32(uint256(address(_newAuthorizer)));
-        GRANT_PERMISSION_ACTION_ID = keccak256(abi.encodePacked(id, TimelockAuthorizer.grantPermissions.selector));
-        REVOKE_PERMISSION_ACTION_ID = keccak256(abi.encodePacked(id, TimelockAuthorizer.revokePermissions.selector));
+        // Enqueue a root change execution in the new authorizer to set it to the desired root address
+        rootChangeExecutionId = _newAuthorizer.scheduleRootChange(_root, _arr(address(this)));
     }
 
     /**
@@ -86,7 +81,6 @@ contract TimelockAuthorizerMigrator {
      */
     function migrate(uint256 n) external {
         require(!isComplete(), "MIGRATION_COMPLETE");
-        _beforeMigrate();
         _migrate(n == 0 ? rolesData.length : n);
         _afterMigrate();
     }
@@ -96,7 +90,9 @@ contract TimelockAuthorizerMigrator {
      */
     function finalizeMigration() external {
         require(isComplete(), "MIGRATION_NOT_COMPLETE");
-        require(newAuthorizer.canExecute(rootChangeExecutionId), "CANNOT_TRIGGER_ROOT_CHANGE_YET");
+        // Safety check to avoid us migrating to a authorizer with an invalid root.
+        // `root` must call `claimRoot` on `newAuthorizer` in order for us to set it on the Vault.
+        require(newAuthorizer.isRoot(root), "ROOT_NOT_CLAIMED_YET");
 
         // Ensure the migrator contract has authority to change the vault's authorizer
         bytes32 setAuthorizerId = IAuthentication(address(vault)).getActionId(IVault.setAuthorizer.selector);
@@ -105,7 +101,6 @@ contract TimelockAuthorizerMigrator {
 
         // Finally change the authorizer in the vault and trigger root change
         vault.setAuthorizer(newAuthorizer);
-        newAuthorizer.execute(rootChangeExecutionId);
     }
 
     function _migrate(uint256 n) internal {
@@ -116,48 +111,26 @@ contract TimelockAuthorizerMigrator {
     }
 
     function _migrate(OldRoleData memory roleData) internal {
-        _migrate(roleData.role, roleData.target);
-        _migrate(oldAuthorizer.getRoleAdmin(roleData.role), roleData.target);
-    }
-
-    function _migrate(bytes32 role, address target) internal {
-        address[] memory wheres = _arr(target);
-        bytes32[] memory actionIds = _arr(role);
-        uint256 membersCount = oldAuthorizer.getRoleMemberCount(role);
+        address[] memory wheres = _arr(roleData.target);
+        bytes32[] memory actionIds = _arr(roleData.role);
+        uint256 membersCount = oldAuthorizer.getRoleMemberCount(roleData.role);
 
         // Iterate over the accounts that had the role granted in the old authorizer, granting
         // the permission for the same role for the specified target in the new authorizer.
         for (uint256 i = 0; i < membersCount; i++) {
-            address member = oldAuthorizer.getRoleMember(role, i);
+            address member = oldAuthorizer.getRoleMember(roleData.role, i);
             newAuthorizer.grantPermissions(actionIds, member, wheres);
         }
-    }
-
-    function _beforeMigrate() internal {
-        // Execute only once before the migration starts
-        if (migratedRoles > 0) return;
-
-        // Enqueue a root change execution in the new authorizer to set it to the desire root address
-        rootChangeExecutionId = newAuthorizer.scheduleRootChange(root, _arr(address(this)));
     }
 
     function _afterMigrate() internal {
         // Execute only once after the migration ends
         if (!isComplete()) return;
 
-        // Grant permissions for `TimelockAuthorizer.grantPermissions` and `TimelockAuthorizer.revokePermissions`
-        // on `TimelockAuthorizer.EVERYWHERE` and `TimelockAuthorizer.WHATEVER` to all the default admins defined
-        // in the old authorizer
-        bytes32 grantWhateverActionId = newAuthorizer.getActionId(GRANT_PERMISSION_ACTION_ID, WHATEVER);
-        bytes32 revokeWhateverActionId = newAuthorizer.getActionId(REVOKE_PERMISSION_ACTION_ID, WHATEVER);
-        bytes32[] memory actionIds = _arr(grantWhateverActionId, revokeWhateverActionId);
-        address[] memory wheres = _arr(EVERYWHERE, EVERYWHERE);
-        uint256 defaultAdminsCount = oldAuthorizer.getRoleMemberCount(DEFAULT_ADMIN_ROLE);
-        for (uint256 i = 0; i < defaultAdminsCount; i++) {
-            address defaultAdmin = oldAuthorizer.getRoleMember(DEFAULT_ADMIN_ROLE, i);
-            newAuthorizer.grantPermissions(actionIds, defaultAdmin, wheres);
-        }
-        newAuthorizer.revokePermissions(actionIds, address(this), wheres);
+        // Finally trigger the first step of transferring root ownership over the TimelockAuthorizer to `root`.
+        // Before the migration can be finalized, `root` must call `claimRoot` on the `TimelockAuthorizer`.
+        require(newAuthorizer.canExecute(rootChangeExecutionId), "CANNOT_TRIGGER_ROOT_CHANGE_YET");
+        newAuthorizer.execute(rootChangeExecutionId);
     }
 
     function _arr(bytes32 a) internal pure returns (bytes32[] memory arr) {
@@ -165,20 +138,8 @@ contract TimelockAuthorizerMigrator {
         arr[0] = a;
     }
 
-    function _arr(bytes32 a, bytes32 b) internal pure returns (bytes32[] memory arr) {
-        arr = new bytes32[](2);
-        arr[0] = a;
-        arr[1] = b;
-    }
-
     function _arr(address a) internal pure returns (address[] memory arr) {
         arr = new address[](1);
         arr[0] = a;
-    }
-
-    function _arr(address a, address b) internal pure returns (address[] memory arr) {
-        arr = new address[](2);
-        arr[0] = a;
-        arr[1] = b;
     }
 }
