@@ -50,6 +50,10 @@ abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
         return _authorizerAdaptor;
     }
 
+    function isComplete() public view returns (bool) {
+        return getCurrentStage() >= getStagesLength();
+    }
+
     function getCurrentStage() public view returns (uint256) {
         // We push the activation time onto the _stageActivationTime array after each stage.
         // We can then use the length of this array as a proxy for the next stage to be performed.
@@ -79,22 +83,22 @@ abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
         // If nobody has explicitly registered the stages manually before performing the first stage then do so now.
         if (getStagesLength() == 0) _registerStages();
 
-        uint256 currentStage = getCurrentStage();
-        require(currentStage < getStagesLength(), "All stages completed");
+        require(!isComplete(), "All stages completed");
 
+        uint256 currentStage = getCurrentStage();
         _coordinatorStages[currentStage]();
 
-        _advanceCurrentStage(currentStage);
+        _advanceCurrentStage();
     }
 
     function _getTimeSinceLastStageActivation() internal view returns (uint256) {
         return block.timestamp - getStageActivationTime(getCurrentStage() - 1);
     }
 
-    function _advanceCurrentStage(uint256 currentStage) private {
+    function _advanceCurrentStage() private {
         _stageActivationTime.push(block.timestamp);
 
-        if (currentStage == getStagesLength() - 1) {
+        if (isComplete()) {
             _afterLastStage();
         }
     }
