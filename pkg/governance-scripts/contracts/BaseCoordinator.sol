@@ -91,7 +91,7 @@ abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
         return block.timestamp - getStageActivationTime(getCurrentStage() - 1);
     }
 
-    function _advanceCurrentStage(uint256 currentStage) internal {
+    function _advanceCurrentStage(uint256 currentStage) private {
         _stageActivationTime.push(block.timestamp);
 
         if (currentStage == getStagesLength() - 1) {
