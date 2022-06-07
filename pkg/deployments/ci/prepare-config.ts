@@ -18,6 +18,12 @@ if (process.env.CI) {
       },
       "optimism": {
         "url": "${process.env.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT}"
+      },
+      "goerli": {
+        "url": "${process.env.ALCHEMY_GOERLI_ARCHIVE_ENDPOINT}"
+      },
+      "kovan": {
+        "url": "${process.env.INFURA_KOVAN_ENDPOINT}"
       }
     },
     "defaultConfig": {
