@@ -11,5 +11,5 @@ export default {
   },
   goerli: {
     wstETH: '0x6320cD32aA674d2898A68ec82e869385Fc5f7E2f',
-  }
+  },
 };
