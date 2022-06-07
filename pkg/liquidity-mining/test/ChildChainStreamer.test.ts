@@ -4,6 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { parseFixed } from '@ethersproject/bignumber';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -76,11 +77,15 @@ describe('ChildChainStreamer', () => {
           streamer.interface.encodeFunctionData('remove_reward', [balToken.address, other.address])
         );
 
-      expectEvent.inIndirectReceipt(await tx.wait(), balToken.instance.interface, 'Transfer', {
-        from: streamer.address,
-        to: other.address,
-        value: tokenBalanceBefore,
-      });
+      expectTransferEvent(
+        await tx.wait(),
+        {
+          from: streamer.address,
+          to: other.address,
+          value: tokenBalanceBefore,
+        },
+        balToken
+      );
     });
   });
 
