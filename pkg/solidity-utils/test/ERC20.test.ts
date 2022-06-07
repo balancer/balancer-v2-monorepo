@@ -108,7 +108,7 @@ describe('ERC20', () => {
 
       it('emits a transfer event', async () => {
         const receipt = await (await token.connect(holder).transfer(to, amount)).wait();
-        expectTransferEvent(receipt, { from: holder.address, to, value: amount });
+        expectTransferEvent(receipt, { from: holder.address, to, value: amount }, token);
       });
     };
 
@@ -209,7 +209,7 @@ describe('ERC20', () => {
               const tx = await token.connect(spender).transferFrom(holder.address, to, amount);
               const receipt = await tx.wait();
 
-              expectTransferEvent(receipt, { from: holder.address, to, value: amount });
+              expectTransferEvent(receipt, { from: holder.address, to, value: amount }, token);
             });
 
             it('decreases the spender allowance', async () => {
@@ -396,7 +396,7 @@ describe('ERC20', () => {
       it('emits a transfer event', async () => {
         const receipt = await (await token.mint(to, amount)).wait();
 
-        expectTransferEvent(receipt, { from: ZERO_ADDRESS, to, value: amount });
+        expectTransferEvent(receipt, { from: ZERO_ADDRESS, to, value: amount }, token);
       });
     };
 
@@ -446,7 +446,7 @@ describe('ERC20', () => {
       it('emits a transfer event', async () => {
         const receipt = await (await token.burn(holder.address, amount)).wait();
 
-        expectTransferEvent(receipt, { from: holder.address, to: ZERO_ADDRESS, value: amount });
+        expectTransferEvent(receipt, { from: holder.address, to: ZERO_ADDRESS, value: amount }, token);
       });
     };
 

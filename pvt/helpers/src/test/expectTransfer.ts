@@ -7,9 +7,12 @@ import TypesConverter from '../models/types/TypesConverter';
 export function expectTransferEvent(
   receipt: ContractReceipt,
   args: { from?: string; to?: string; value?: BigNumberish },
-  token?: Account
+  token: Account
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): any {
+  if (receipt.to === TypesConverter.toAddress(token)) {
+    return expectEvent.inReceipt(receipt, 'Transfer', args);
+  }
   return expectEvent.inIndirectReceipt(
     receipt,
     new Interface(['event Transfer(address indexed from, address indexed to, uint256 value)']),

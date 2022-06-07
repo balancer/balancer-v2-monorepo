@@ -212,11 +212,15 @@ describe('BalancerTokenAdmin', () => {
           const tx = await tokenAdmin.connect(admin).mint(other.address, value);
           const receipt = await tx.wait();
 
-          expectTransferEvent(receipt, {
-            from: ZERO_ADDRESS,
-            to: other.address,
-            value,
-          });
+          expectTransferEvent(
+            receipt,
+            {
+              from: ZERO_ADDRESS,
+              to: other.address,
+              value,
+            },
+            token
+          );
         });
       });
 

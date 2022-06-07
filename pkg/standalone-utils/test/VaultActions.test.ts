@@ -497,11 +497,7 @@ describe('VaultActions', function () {
 
           const {
             args: { value: BPTAmountOut },
-          } = expectTransferEvent(
-            receipt,
-            { from: ZERO_ADDRESS, to: sender.address },
-            await Token.deployedAt(getPoolAddress(poolIdA))
-          );
+          } = expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: sender.address }, getPoolAddress(poolIdA));
 
           await expectChainedReferenceContents(relayer, toChainedReference(0), BPTAmountOut);
         });

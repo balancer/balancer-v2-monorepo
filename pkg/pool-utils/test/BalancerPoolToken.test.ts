@@ -91,7 +91,7 @@ describe('BalancerPoolToken', () => {
             const tx = await token.connect(signer).transferFrom(holder.address, to, amount);
             const receipt = await tx.wait();
 
-            expectTransferEvent(receipt, { from: holder.address, to, value: amount });
+            expectTransferEvent(receipt, { from: holder.address, to, value: amount }, token);
           });
         });
 

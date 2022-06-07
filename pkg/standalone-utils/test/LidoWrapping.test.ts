@@ -809,11 +809,7 @@ describe('LidoWrapping', function () {
         });
 
         // BPT minted to recipient
-        expectTransferEvent(
-          receipt,
-          { from: ZERO_ADDRESS, to: recipientUser.address },
-          await Token.deployedAt(pool.address)
-        );
+        expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, pool);
       });
 
       it('does not take wstETH from the user', async () => {
