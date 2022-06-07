@@ -5,3 +5,7 @@ This contract mints the amount of BAL which would be claimable by the Tribe's [V
 ## Governance proposal
 
 <https://forum.balancer.fi/t/tribe-dao-unclaimable-bal-rewards/3196>
+
+## Deployment
+
+[Deployment task here](../../deployments/tasks/TribeBALMinterCoordinator)
