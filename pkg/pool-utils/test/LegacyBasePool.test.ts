@@ -657,24 +657,20 @@ describe('LegacyBasePool', function () {
     let pool: Contract;
     let sender: SignerWithAddress;
 
-    function pausingEntersRecoveryMode() {
-      it('pausing enters recovery mode', async () => {
+    function pauseAndRecoveryDoNotInteract() {
+      it('pause does not enter recovery mode', async () => {
         await pool.connect(sender).pause();
 
         const { paused } = await pool.getPausedState();
         expect(paused).to.be.true;
-        expect(await pool.inRecoveryMode()).to.be.true;
-      });
-
-      it('pausing emits events', async () => {
-        const tx = await pool.connect(sender).pause();
-        const receipt = await tx.wait();
-
-        expectEvent.inReceipt(receipt, 'PausedStateChanged', { paused: true });
-        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { recoveryMode: true });
+        expect(await pool.inRecoveryMode()).to.be.false;
       });
 
       it('unpause does not exit recovery mode', async () => {
+        const enterRecoveryAction = await actionId(pool, 'enterRecoveryMode');
+        await authorizer.connect(admin).grantPermissions([enterRecoveryAction], sender.address, [ANY_ADDRESS]);
+
+        await pool.connect(sender).enterRecoveryMode();
         await pool.connect(sender).pause();
         await pool.connect(sender).unpause();
 
@@ -726,7 +722,7 @@ describe('LegacyBasePool', function () {
             ]);
         });
 
-        pausingEntersRecoveryMode();
+        pauseAndRecoveryDoNotInteract();
       });
     });
 
@@ -775,7 +771,7 @@ describe('LegacyBasePool', function () {
               ]);
           });
 
-          pausingEntersRecoveryMode();
+          pauseAndRecoveryDoNotInteract();
         });
       });
     });

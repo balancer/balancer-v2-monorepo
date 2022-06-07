@@ -188,14 +188,9 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
      * @notice Pause the pool: an emergency action which disables all pool functions.
      * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
      * deployment (see `TemporarilyPausable`).
-     *
-     * It also turns on Recovery Mode, which enables a special recovery mode exit that executes as little code
-     * as possible to ensure LPs can always exit proportionally, even if the pool is otherwise non-functional.
-     * Note that `unpause` does not automatically exit recovery mode.
      */
     function pause() external authenticate {
         _setPaused(true);
-        _setRecoveryMode(true);
     }
 
     /**
