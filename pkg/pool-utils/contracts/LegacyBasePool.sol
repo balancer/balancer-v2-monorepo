@@ -272,7 +272,7 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
                 recipient,
                 balances,
                 lastChangeBlock,
-                inRecoveryMode() ? 0 : protocolSwapFeePercentage,
+                protocolSwapFeePercentage,
                 scalingFactors,
                 userData
             );
@@ -332,7 +332,7 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
                 recipient,
                 balances,
                 lastChangeBlock,
-                inRecoveryMode() ? 0 : protocolSwapFeePercentage,
+                protocolSwapFeePercentage,
                 scalingFactors,
                 userData
             );

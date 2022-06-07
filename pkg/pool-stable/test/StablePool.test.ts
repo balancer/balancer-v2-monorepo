@@ -17,6 +17,7 @@ import {
   MONTH,
   setNextBlockTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
+import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { range } from 'lodash';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
@@ -243,7 +244,7 @@ describe('StablePool', function () {
 
       context('initialization', () => {
         it('grants the invariant amount of BPT', async () => {
-          const invariant = await pool.estimateInvariant(initialBalances);
+          const invariant = await pool.estimateInvariant(await pool.upscale(initialBalances));
 
           const { amountsIn, dueProtocolFeeAmounts } = await pool.init({ recipient, initialBalances });
 
@@ -288,7 +289,10 @@ describe('StablePool', function () {
 
           sharedBeforeEach('initialize pool', async () => {
             await pool.init({ recipient, initialBalances });
-            expectedBptOut = await pool.estimateBptOut(amountsIn, initialBalances);
+            expectedBptOut = await pool.estimateBptOut(
+              await pool.upscale(amountsIn),
+              await pool.upscale(initialBalances)
+            );
           });
 
           it('grants BPT for exact tokens', async () => {
@@ -810,7 +814,7 @@ describe('StablePool', function () {
         });
 
         function itPaysExpectedProtocolFees() {
-          it('pays swap protocol fees on join exact tokens in for BPT out (unless in recovery)', async () => {
+          it('pays swap protocol fees on join exact tokens in for BPT out', async () => {
             const result = await pool.joinGivenIn({
               from: lp,
               amountsIn: fp(1),
@@ -818,14 +822,10 @@ describe('StablePool', function () {
               protocolFeePercentage,
             });
 
-            if (await pool.inRecoveryMode()) {
-              expect(result.dueProtocolFeeAmounts).to.be.zeros;
-            } else {
-              expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
-            }
+            expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
           });
 
-          it('pays swap protocol fees on exit exact BPT in for one token out (unless in recovery', async () => {
+          it('pays swap protocol fees on exit exact BPT in for one token out', async () => {
             const result = await pool.singleExitGivenIn({
               from: lp,
               bptIn: fp(0.5),
@@ -834,14 +834,10 @@ describe('StablePool', function () {
               protocolFeePercentage,
             });
 
-            if (await pool.inRecoveryMode()) {
-              expect(result.dueProtocolFeeAmounts).to.be.zeros;
-            } else {
-              expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
-            }
+            expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
           });
 
-          it('pays swap protocol fees on exit exact BPT in for all tokens out (unless in recovery', async () => {
+          it('pays swap protocol fees on exit exact BPT in for all tokens out', async () => {
             const result = await pool.multiExitGivenIn({
               from: lp,
               bptIn: fp(1),
@@ -849,14 +845,10 @@ describe('StablePool', function () {
               protocolFeePercentage,
             });
 
-            if (await pool.inRecoveryMode()) {
-              expect(result.dueProtocolFeeAmounts).to.be.zeros;
-            } else {
-              expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
-            }
+            expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
           });
 
-          it('pays swap protocol fees on exit BPT In for exact tokens out (unless in recovery)', async () => {
+          it('pays swap protocol fees on exit BPT In for exact tokens out', async () => {
             const result = await pool.exitGivenOut({
               from: lp,
               amountsOut: fp(1),
@@ -864,11 +856,7 @@ describe('StablePool', function () {
               protocolFeePercentage,
             });
 
-            if (await pool.inRecoveryMode()) {
-              expect(result.dueProtocolFeeAmounts).to.be.zeros;
-            } else {
-              expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
-            }
+            expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.0001);
           });
 
           it('does not charge fee on exit if paused', async () => {
@@ -1157,155 +1145,40 @@ describe('StablePool', function () {
         await pool.init({ initialBalances, recipient: lp });
       });
 
-      context('entering and exiting', () => {
-        it('is not in recovery mode initially', async () => {
-          expect(await pool.inRecoveryMode()).to.be.false;
-        });
+      context('invariant recalculation when exiting recovery mode', () => {
+        let originalInvariant: BigNumber;
 
-        it('non-admin cannot enter recovery mode', async () => {
-          await expect(pool.enterRecoveryMode(lp)).to.be.revertedWith('SENDER_NOT_ALLOWED');
-        });
+        sharedBeforeEach('store invariant and enter recovery mode', async () => {
+          const { lastInvariant } = await pool.getLastInvariant();
+          originalInvariant = lastInvariant;
 
-        it('admin can enter recovery mode', async () => {
           await pool.enterRecoveryMode(admin);
-
-          expect(await pool.inRecoveryMode()).to.be.true;
         });
 
-        it('admin can exit recovery mode', async () => {
-          await pool.enterRecoveryMode(admin);
+        it('should not update the invariant during recovery mode', async () => {
+          const totalBptBalance = await pool.balanceOf(lp);
+          await pool.recoveryModeExit({ from: lp, bptIn: totalBptBalance });
+
+          const { lastInvariant } = await pool.getLastInvariant();
+          expect(lastInvariant).to.equal(originalInvariant);
+        });
+
+        it('should update the invariant upon exit', async () => {
+          const totalBptBalance = await pool.balanceOf(lp);
+          await pool.recoveryModeExit({ from: lp, bptIn: totalBptBalance });
+
           await pool.exitRecoveryMode(admin);
 
-          expect(await pool.inRecoveryMode()).to.be.false;
-        });
+          const { lastInvariant } = await pool.getLastInvariant();
+          expect(lastInvariant).to.not.equal(originalInvariant);
 
-        it('non-admin cannot exit recovery mode', async () => {
-          await pool.enterRecoveryMode(admin);
+          const balances = await pool.getBalances();
+          const upscaledBalances = await pool.upscale(balances);
 
-          await expect(pool.exitRecoveryMode(lp)).to.be.revertedWith('SENDER_NOT_ALLOWED');
-        });
+          const { value } = await pool.getAmplificationParameter();
+          const expectedInvariant = await calculateInvariant(upscaledBalances, value.div(AMP_PRECISION));
 
-        context('when there is an ongoing AMP update', async () => {
-          sharedBeforeEach('start an AMP update', async () => {
-            const newAmplificationParameter = AMPLIFICATION_PARAMETER.div(8);
-            await pool.startAmpChange(newAmplificationParameter, await fromNow(MONTH), { from: owner });
-            await advanceTime(DAY * 3);
-          });
-
-          it('is in the middle of an AMP change', async () => {
-            const { value, isUpdating, precision } = await pool.getAmplificationParameter();
-            expect(value).to.be.lt(AMPLIFICATION_PARAMETER.mul(precision));
-            expect(isUpdating).to.be.true;
-
-            await expect(pool.enterRecoveryMode(admin)).to.not.be.reverted;
-          });
-        });
-
-        context('invariant recalculation on exit', () => {
-          let originalInvariant: BigNumber;
-
-          sharedBeforeEach('store invariant and enter recovery mode', async () => {
-            const { lastInvariant } = await pool.getLastInvariant();
-            originalInvariant = lastInvariant;
-
-            await pool.enterRecoveryMode(admin);
-          });
-
-          it('should not update the invariant during recovery mode', async () => {
-            const totalBptBalance = await pool.balanceOf(lp);
-            await pool.recoveryModeExit({ from: lp, bptIn: totalBptBalance });
-
-            const { lastInvariant } = await pool.getLastInvariant();
-            expect(lastInvariant).to.equal(originalInvariant);
-          });
-
-          it('should update the invariant upon exit', async () => {
-            const totalBptBalance = await pool.balanceOf(lp);
-            await pool.recoveryModeExit({ from: lp, bptIn: totalBptBalance });
-
-            await pool.exitRecoveryMode(admin);
-
-            const { lastInvariant } = await pool.getLastInvariant();
-            expect(lastInvariant).to.not.equal(originalInvariant);
-          });
-        });
-      });
-
-      describe('recovery exit', () => {
-        context('when in recovery mode', () => {
-          sharedBeforeEach('enter recovery mode', async () => {
-            await pool.enterRecoveryMode(admin);
-          });
-
-          it('enters recovery mode', async () => {
-            expect(await pool.inRecoveryMode()).to.be.true;
-          });
-
-          async function LPsCanExit(intersperseTrades = false): Promise<void> {
-            it(`${
-              intersperseTrades
-                ? 'LPs can exit without changing the rate (even if people are also trading)'
-                : 'LPs can exit without changing the rate'
-            }`, async () => {
-              const totalBPT = await pool.totalSupply();
-              const totalBptBalance = await pool.balanceOf(lp);
-              const N = 4; // Number of sequential withdrawals
-              // Remove 1/(N+1) per step, so that we don't go down to zero (keeping rate valid)
-              const expectedAmountsOut = initialBalances.map((balance) => balance.div(N + 1));
-              let currentRate = await pool.getRate();
-              const bptBurnedPerExit = totalBptBalance.div(N + 1);
-
-              // Exit N times, ensuring we get the correct amount out, the tokens are burned, and the rate calculation remains valid
-              for (let i = 1; i <= N; i++) {
-                const result = await pool.recoveryModeExit({ from: lp, bptIn: bptBurnedPerExit });
-
-                // Protocol fees should be zero
-                expect(result.dueProtocolFeeAmounts).to.be.zeros;
-
-                // Balances are reduced by half because we are returning half of the BPT supply
-                expect(result.amountsOut).to.equalWithError(expectedAmountsOut, 0.001);
-
-                // Current BPT balance should have been reduced by half
-                expect(await pool.balanceOf(lp)).to.be.equalWithError(
-                  totalBptBalance.sub(bptBurnedPerExit.mul(i)),
-                  0.001
-                );
-
-                // Total supply should be reduced by half (ensure tokens are burned)
-                expect(await pool.totalSupply()).to.equalWithError(totalBPT.sub(bptBurnedPerExit.mul(i)), 0.000001);
-                expect(await pool.getRate()).to.equalWithError(currentRate, 0.0001);
-
-                if (intersperseTrades) {
-                  if (await pool.instance.invariantConverges()) {
-                    await pool.swapGivenIn({ in: 0, out: 1, amount: fp(100) });
-
-                    // Update the expected rate
-                    currentRate = await pool.getRate();
-                  } else {
-                    // Trade will fail
-                    await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(1) })).to.be.revertedWith(
-                      'STABLE_INVARIANT_DIDNT_CONVERGE'
-                    );
-                  }
-                }
-              }
-            });
-          }
-
-          context('with invariant working', async () => {
-            LPsCanExit();
-            LPsCanExit(true); // with trades in the middle
-          });
-        });
-
-        context('when not in recovery mode', () => {
-          it('is not in recovery mode', async () => {
-            expect(await pool.inRecoveryMode()).to.be.false;
-          });
-
-          it('recovery mode exit is not available', async () => {
-            await expect(pool.recoveryModeExit({ from: lp, bptIn: fp(1) })).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
-          });
+          expect(lastInvariant).to.equalWithError(expectedInvariant, 0.01);
         });
       });
     });
