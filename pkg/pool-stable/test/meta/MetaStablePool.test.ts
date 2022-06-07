@@ -405,18 +405,6 @@ describe('MetaStablePool', function () {
             await expect(pool.enableOracle({ from: owner })).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
 
-          context('in recovery mode', () => {
-            sharedBeforeEach('enter recovery mode', async () => {
-              await pool.enterRecoveryMode(admin);
-
-              expect(await pool.inRecoveryMode()).to.be.true;
-            });
-
-            it('cannot be enabled in recovery mode', async () => {
-              await expect(pool.enableOracle({ from: admin })).to.be.revertedWith('IN_RECOVERY_MODE');
-            });
-          });
-
           itCachesTheLogInvariantAndSupply(action);
         });
       });
@@ -770,8 +758,10 @@ describe('MetaStablePool', function () {
 
           const newInvariant = await mockCompression.fromLowResLog(newMiscData.logInvariant);
 
+          // Invariant doesn't change if it is not tracked in StablePool
+          expect(newInvariant).to.equal(originalInvariant);
           // With N = 5, we are subtracting 1/5 each time. Only execute the loop 4 times, so that we don't expect 0.
-          expect(newInvariant).to.equalWithError(originalInvariant.mul(N - i - 1).div(N), 0.001);
+          //expect(newInvariant).to.equalWithError(originalInvariant.mul(N - i - 1).div(N), 0.001);
         }
 
         // Now do a swap (still in recovery mode)

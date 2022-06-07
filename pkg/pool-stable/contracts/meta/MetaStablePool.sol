@@ -261,8 +261,6 @@ contract MetaStablePool is StablePool, PoolPriceOracle {
         }
 
         // In recovery mode, the base class onExitPool will call `_recoveryModeExit` instead of `_onExitPool`.
-        // The special recovery mode exit (defined in StablePool) will update the _lastInvariant, which we
-        // store in the cache below.
         (amountsOut, dueProtocolFeeAmounts) = super.onExitPool(
             poolId,
             sender,
@@ -274,8 +272,6 @@ contract MetaStablePool is StablePool, PoolPriceOracle {
         );
 
         // If the contract is paused, the oracle is not updated to avoid extra calculations and reduce potential errors.
-        // We *do* update it in recovery mode, though. It is not doing anything too complex or iterative that
-        // could fail, and `_recoveryModeExit` will have updated the _lastInvariant.
         if (_isNotPaused()) {
             _cacheInvariantAndSupply();
         }
@@ -348,7 +344,7 @@ contract MetaStablePool is StablePool, PoolPriceOracle {
      *
      * Note that the Oracle can only be enabled - it can never be disabled.
      */
-    function enableOracle() external whenNotPaused whenNotInRecoveryMode authenticate {
+    function enableOracle() external whenNotPaused authenticate {
         _setOracleEnabled(true);
 
         // Cache log invariant and supply only if the pool was initialized
