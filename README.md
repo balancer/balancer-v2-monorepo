@@ -19,23 +19,40 @@ Active development occurs in this repository, which means some contracts in it m
 ### Packages
 
 - [`v2-deployments`](./pkg/deployments): addresses and ABIs of all Balancer V2 deployed contracts, for mainnet and various test networks.
+- [`v2-interfaces`](./pkg/interfaces): Solidity interfaces for all contracts.
 - [`v2-vault`](./pkg/vault): the [`Vault`](./pkg/vault/contracts/Vault.sol) contract and all core interfaces, including [`IVault`](./pkg/vault/contracts/interfaces/IVault.sol) and the Pool interfaces: [`IBasePool`](./pkg/vault/contracts/interfaces/IBasePool.sol), [`IGeneralPool`](./pkg/vault/contracts/interfaces/IGeneralPool.sol) and [`IMinimalSwapInfoPool`](./pkg/vault/contracts/interfaces/IMinimalSwapInfoPool.sol).
-- [`v2-pool-weighted`](./pkg/pool-weighted): the [`WeightedPool`](./pkg/pool-weighted/contracts/WeightedPool.sol) and [`WeightedPool2Tokens`](./pkg/pool-weighted/contracts/WeightedPool2Tokens.sol) contracts, along with their associated factories.
+- [`v2-pool-weighted`](./pkg/pool-weighted): the [`WeightedPool`](./pkg/pool-weighted/contracts/WeightedPool.sol), [`WeightedPool2Tokens`](./pkg/pool-weighted/contracts/WeightedPool2Tokens.sol) and [`LiquidityBootstrappingPool`](./pkg/pool-weighted/contracts/smart/LiquidityBootstrappingPool.sol) ontracts, along with their associated factories.
+- [`v2-pool-stable`](./pkg/pool-stable): the [`StablePool`](./pkg/pool-weighted/contracts/StablePool.sol) and [`MetaStablePool`](./pkg/pool-weighted/contracts/meta/MetaStablePool.sol) contracts, along with their associated factories.
+- [`v2-pool-linear`](./pkg/pool-linear): the [`AaveLinearPool`](./pkg/pool-linear/contracts/aave/AaveLinearPool.sol) and [`ERC4626LinearPool`](./pkg/pool-linear/contracts/erc4626/ERC4626LinearPool.sol) contracts, along with their associated factories.
 - [`v2-pool-utils`](./pkg/pool-utils): Solidity utilities used to develop Pool contracts.
 - [`v2-solidity-utils`](./pkg/solidity-utils): miscellaneous Solidity helpers and utilities used in many different contracts.
 - [`v2-standalone-utils`](./pkg/standalone-utils): miscellaneous standalone utility contracts.
+- [`v2-liquidity-mining`](./pkg/liquidity-mining): contracts that compose the liquidity mining (veBAL) system.
+- [`v2-governance-scripts`](./pkg/governance-scripts): contracts that execute complex governance actions.
 
 ## Build and Test
 
-On the project root, run:
+Before any tests can be run, the repository needs to be prepared:
 
 ```bash
 $ yarn # install all dependencies
 $ yarn build # compile all contracts
+```
+
+Most tests are standalone and simply require installation of dependencies and compilation. Some packages however have extra requirements. Notably, the [`v2-deployments`](./pkg/deployments) package must have access to mainnet archive nodes in order to perform fork tests. For more details, head to [its readme file](./pkg/deployments/README.md).
+
+In order to run all tests (including those with extra dependencies), run:
+
+```bash
 $ yarn test # run all tests
 ```
 
-This will run all tests in parallel. To run a single workspace's tests, run `yarn test` from within that workspace's directory.
+To instead run a single package's tests, run:
+
+```bash
+$ cd pkg/<package> # e.g. cd pkg/v2-vault
+$ yarn test
+```
 
 You can see a sample report of a test run [here](./audits/test-report.md).
 
