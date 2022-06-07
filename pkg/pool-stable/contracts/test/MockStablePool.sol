@@ -153,11 +153,7 @@ contract MockStablePool is StablePool {
         );
     }
 
-    function getRate() public view virtual override returns (uint256) {
-      if (!inRecoveryMode()) {
-        _ensureInvariantConverges();
-      }
-      
+    function getRate() public view virtual override whenInvariantConverges returns (uint256) {
       return super.getRate();
     }
 }

@@ -24,6 +24,9 @@ contract MockLegacyBasePool is LegacyBasePool {
 
     uint256 private immutable _totalTokens;
 
+    event InnerOnJoinPoolCalled();
+    event InnerOnExitPoolCalled();
+
     constructor(
         IVault vault,
         IVault.PoolSpecialization specialization,
@@ -78,14 +81,14 @@ contract MockLegacyBasePool is LegacyBasePool {
     }
 
     function _onJoinPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory currentBalances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        uint256[] memory scalingFactors,
-        bytes memory userData
+        bytes32,
+        address,
+        address,
+        uint256[] memory balances,
+        uint256,
+        uint256,
+        uint256[] memory,
+        bytes memory
     )
         internal
         override
@@ -94,17 +97,21 @@ contract MockLegacyBasePool is LegacyBasePool {
             uint256[] memory,
             uint256[] memory
         )
-    {}
+    {
+        emit InnerOnJoinPoolCalled();
+
+        return (0, new uint256[](balances.length), new uint256[](balances.length));
+    }
 
     function _onExitPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory currentBalances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        uint256[] memory scalingFactors,
-        bytes memory userData
+        bytes32,
+        address,
+        address,
+        uint256[] memory balances,
+        uint256,
+        uint256,
+        uint256[] memory,
+        bytes memory
     )
         internal
         override
@@ -113,7 +120,11 @@ contract MockLegacyBasePool is LegacyBasePool {
             uint256[] memory,
             uint256[] memory
         )
-    {}
+    {
+        emit InnerOnExitPoolCalled();
+
+        return (0, new uint256[](balances.length), new uint256[](balances.length));
+    }
 
     function _getMaxTokens() internal pure override returns (uint256) {
         return 8;
