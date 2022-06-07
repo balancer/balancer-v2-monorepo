@@ -19,6 +19,7 @@ import test from './src/test';
 import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
 import logger, { Logger } from './src/logger';
+import { printActionIds } from './src/actionId';
 
 task('deploy', 'Run deployment task')
   .addParam('id', 'Deployment task ID')
@@ -131,43 +132,7 @@ task('action-ids', `Print the action IDs for a particular contract`)
       Logger.setDefaults(false, args.verbose || false);
 
       const task = new Task(args.id, TaskMode.READ_ONLY, hre.network.name);
-      const artifact = task.artifact(args.name);
-
-      const contractInterface = new Interface(artifact.abi as any);
-      const contractFunctions = Object.entries(contractInterface.functions).filter(([, func]) =>
-        ['nonpayable', 'payable'].includes(func.stateMutability)
-      );
-      // Not all contracts use the Authorizer directly for authentication.
-      // Only if it has the `getActionId` function does it use the Authorizer directly.
-      // Contracts without this function either are permissionless or use another method such as the AuthorizerAdaptor.
-      const contractIsAuthorizerAware = Object.values(contractInterface.functions).some(
-        (func) => func.name === 'getActionId'
-      );
-      if (contractIsAuthorizerAware) {
-        let contract: Contract;
-        if (args.address) {
-          contract = await task.instanceAt(args.name, args.address);
-        } else {
-          contract = await task.deployedInstance(args.name);
-        }
-
-        for (const [signature, contractFunction] of contractFunctions) {
-          const functionSelector = Interface.getSighash(contractFunction);
-          logger.log(`${signature}: ${await contract.getActionId(functionSelector)}`, '');
-        }
-      } else {
-        const adaptorTask = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY, hre.network.name);
-        const authorizerAdaptor = await adaptorTask.deployedInstance('AuthorizerAdaptor');
-
-        logger.warn(
-          'This contract does not use the Authorizer for authentication. These action ids assume that you are calling these functions through the AuthorizerAdaptor\n'
-        );
-
-        for (const [signature, contractFunction] of contractFunctions) {
-          const functionSelector = Interface.getSighash(contractFunction);
-          logger.log(`${signature}: ${await authorizerAdaptor.getActionId(functionSelector)}`, '');
-        }
-      }
+      await printActionIds(task, args.name, args.address);
     }
   );
 
