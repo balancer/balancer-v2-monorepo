@@ -1,9 +1,9 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
@@ -470,15 +470,6 @@ describe('LegacyBasePool', function () {
         expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { recoveryMode: true });
       });
 
-      it('entering recovery mode does not pause the pool', async () => {
-        await pool.connect(sender).enterRecoveryMode();
-
-        const recoveryMode = await pool.inRecoveryMode();
-        expect(recoveryMode).to.be.true;
-        const { paused } = await pool.getPausedState();
-        expect(paused).to.be.false;
-      });
-
       it('can exit recovery mode', async () => {
         await pool.connect(sender).enterRecoveryMode();
         await pool.connect(sender).exitRecoveryMode();
@@ -597,6 +588,11 @@ describe('LegacyBasePool', function () {
       let initialBalances: BigNumber[];
       let pool: Contract;
 
+      let normalJoin: () => Promise<ContractReceipt>;
+      let normalExit: () => Promise<ContractReceipt>;
+
+      const PROTOCOL_SWAP_FEE_PERCENTAGE = fp(0.3);
+
       sharedBeforeEach('deploy and initialize pool', async () => {
         initialBalances = Array(tokens.length).fill(fp(1000));
         pool = await deployBasePool();
@@ -615,6 +611,47 @@ describe('LegacyBasePool', function () {
         await vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, request);
       });
 
+      sharedBeforeEach('set a non-zero protocol swap fee percentage', async () => {
+        const feesCollector = await deployedAt(
+          'v2-vault/ProtocolFeesCollector',
+          await vault.getProtocolFeesCollector()
+        );
+
+        await authorizer
+          .connect(admin)
+          .grantPermissions([await actionId(feesCollector, 'setSwapFeePercentage')], admin.address, [ANY_ADDRESS]);
+
+        await feesCollector.connect(admin).setSwapFeePercentage(PROTOCOL_SWAP_FEE_PERCENTAGE);
+
+        expect(await feesCollector.getSwapFeePercentage()).to.equal(PROTOCOL_SWAP_FEE_PERCENTAGE);
+      });
+
+      before('prepare normal join and exit', () => {
+        const OTHER_JOIN_KIND = 1;
+
+        const joinRequest: JoinPoolRequest = {
+          assets: tokens.addresses,
+          maxAmountsIn: Array(tokens.length).fill(0),
+          userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
+          fromInternalBalance: false,
+        };
+
+        normalJoin = async () =>
+          (await vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, joinRequest)).wait();
+
+        const OTHER_EXIT_KIND = 1;
+
+        const exitRequest: ExitPoolRequest = {
+          assets: tokens.addresses,
+          minAmountsOut: Array(tokens.length).fill(0),
+          userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
+          toInternalBalance: false,
+        };
+
+        normalExit = async () =>
+          (await vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, exitRequest)).wait();
+      });
+
       context('when not in recovery mode', () => {
         it('the recovery mode exit reverts', async () => {
           const preExitBPT = await pool.balanceOf(poolOwner.address);
@@ -630,6 +667,32 @@ describe('LegacyBasePool', function () {
           await expect(
             vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, request)
           ).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
+        });
+
+        describe('normal joins', () => {
+          it('do not revert', async () => {
+            await expect(normalJoin()).to.not.be.reverted;
+          });
+
+          it('receive the real protocol swap fee percentage value', async () => {
+            const receipt = await normalJoin();
+            expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnJoinPoolCalled', {
+              protocolSwapFeePercentage: PROTOCOL_SWAP_FEE_PERCENTAGE,
+            });
+          });
+        });
+
+        describe('normal exits', () => {
+          it('do not revert', async () => {
+            await expect(normalExit()).to.not.be.reverted;
+          });
+
+          it('receive the real porotocol swap value fee percentage value', async () => {
+            const receipt = await normalExit();
+            expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnExitPoolCalled', {
+              protocolSwapFeePercentage: PROTOCOL_SWAP_FEE_PERCENTAGE,
+            });
+          });
         });
       });
 
@@ -671,38 +734,30 @@ describe('LegacyBasePool', function () {
           expect(afterExitBalance).to.equal(preExitBPT.sub(exitBPT));
         });
 
-        it('other join kinds can be used', async () => {
-          const OTHER_JOIN_KIND = 1;
+        describe('normal joins', () => {
+          it('do not revert', async () => {
+            await expect(normalJoin()).to.not.be.reverted;
+          });
 
-          const request: JoinPoolRequest = {
-            assets: tokens.addresses,
-            maxAmountsIn: Array(tokens.length).fill(0),
-            userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
-            fromInternalBalance: false,
-          };
-
-          const receipt = await (
-            await vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, request)
-          ).wait();
-
-          expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnJoinPoolCalled');
+          it('receive 0 as the protocol swap fee percentage value', async () => {
+            const receipt = await normalJoin();
+            expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnJoinPoolCalled', {
+              protocolSwapFeePercentage: 0,
+            });
+          });
         });
 
-        it('other exit kinds can be used', async () => {
-          const OTHER_EXIT_KIND = 1;
+        describe('normal exits', () => {
+          it('do not revert', async () => {
+            await expect(normalExit()).to.not.be.reverted;
+          });
 
-          const request: ExitPoolRequest = {
-            assets: tokens.addresses,
-            minAmountsOut: Array(tokens.length).fill(0),
-            userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
-            toInternalBalance: false,
-          };
-
-          const receipt = await (
-            await vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, request)
-          ).wait();
-
-          expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnExitPoolCalled');
+          it('receive 0 as the protocol swap fee percentage value', async () => {
+            const receipt = await normalExit();
+            expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnExitPoolCalled', {
+              protocolSwapFeePercentage: 0,
+            });
+          });
         });
       });
     });
