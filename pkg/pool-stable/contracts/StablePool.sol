@@ -422,6 +422,8 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the
         // protocol swap fee amounts due in future joins and exits.
+        // Note that this is not done on recovery mode exits, but that is fine as the pool pays no protocol
+        // fees anyway while recovery mode is active.
         _updateInvariantAfterExit(balances, amountsOut);
 
         return (bptAmountIn, amountsOut, dueProtocolFeeAmounts);
@@ -519,12 +521,11 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
     function _setRecoveryMode(bool recoveryMode) internal virtual override {
         super._setRecoveryMode(recoveryMode);
 
-        // Entering recovery mode disables payment of protocol fees (though not swap fee collection).
-        // As a consequence, any protocol fees accrued between the last join/exit and the time recovery mode
-        // is entered will be forfeited.
-        //
-        // When exiting recovery mode, "reset" the last invariant to erase any history (i.e., invariant changes
-        // caused by swaps or the amp factor), and cancel any accumulated debt.
+        // Entering recovery mode disables payment of protocol fees, forfeiting any fees accumulated between
+        // the last join or exit before activating recovery mode, and it being disabled.
+        // We therefore reset the 'last invariant' when exiting recovery mode (which is typically only done
+        // after joins and exits) to clear any outstanding fees, as if a join or exit had just taken place
+        // and fees had been paid out.
         if (!recoveryMode) {
             (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
             _upscaleArray(balances, _scalingFactors());
