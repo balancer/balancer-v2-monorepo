@@ -1,7 +1,0 @@
-{
-  "useAdaptor": false,
-  "actionIds": {
-    "create(address)": "0x91f73138418e304f7c24e6d7e831c4d7e51d2b871a14fe25d3a8e7b1365f6515",
-    "setArbitrumFees(uint64,uint64,uint64)": "0x8b2c6767a8c426408240798cd82acf7ba6091320da176d0b1ab39e99fd5c409d"
-  }
-}

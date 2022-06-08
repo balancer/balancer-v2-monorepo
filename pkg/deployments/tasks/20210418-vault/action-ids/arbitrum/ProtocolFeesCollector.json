@@ -1,8 +1,0 @@
-{
-  "useAdaptor": false,
-  "actionIds": {
-    "setFlashLoanFeePercentage(uint256)": "0xbe2a180d5cc5d803a8eec4cea569989fc1c593d7eeadd1f262f360a68b0e842e",
-    "setSwapFeePercentage(uint256)": "0xb28b769768735d011b267f781c3be90bce51d5059ba015bc7a28b3e882fb2083",
-    "withdrawCollectedFees(address[],uint256[],address)": "0xb2b6e48fa160a7c887d9d7a68b6a9bb9d47d4953d33e07f3a39e175d75e97796"
-  }
-}

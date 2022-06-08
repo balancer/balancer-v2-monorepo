@@ -1,9 +1,0 @@
-{
-  "useAdaptor": true,
-  "actionIds": {
-    "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)": "0xc3ef0caf01ca4e8de0b09bd7a65cb1eedf3acfb62313e3d430f35fa496adb22d",
-    "exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))": "0x98dcef85670041cd02e471de781cd5158f4d4dece67f3e660db31548d63bff91",
-    "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))": "0x632c55094ef8995a26074905e17db30f937ecdab014cbbdc5839cfe031199405",
-    "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)": "0xa7dcb2573b52b4dcc7de73e0917155f523c796d5012eb817bbad496849602510"
-  }
-}

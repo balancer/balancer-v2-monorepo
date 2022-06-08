@@ -1,7 +1,0 @@
-{
-  "useAdaptor": false,
-  "actionIds": {
-    "killDelegation()": "0x1e6346d5dc7f6399bfeb4850a566d6f6b6bccab293ba37be9040f3e60ce065e6",
-    "setDelegation(address)": "0x1e7afe55a8eede56c8cf472caad6b268ac263ff595a7f2102706377b2ad363a0"
-  }
-}

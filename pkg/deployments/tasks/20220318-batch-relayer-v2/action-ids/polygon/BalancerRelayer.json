@@ -1,6 +1,0 @@
-{
-  "useAdaptor": true,
-  "actionIds": {
-    "multicall(bytes[])": "0xc0821b38b909d4450a0639d4a7e4922284925325006a23c1ae2fa1e729c9b781"
-  }
-}

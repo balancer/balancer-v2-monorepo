@@ -1,8 +1,0 @@
-{
-  "useAdaptor": true,
-  "actionIds": {
-    "scheduleDistribution(address,address,uint256,uint256)": "0x78b9d18aecaef104543c2c0a83f669b307a2caf6916e3f67db526200ff23dadc",
-    "startDistributionForToken(address,address)": "0x0beb101788410c70b157a708569fb30c6f34e8fe821fa8b574dd0cef1900045b",
-    "startDistributions(address)": "0x37818fdb4cb8ffb00dd0ad7286a89f1d12a83269d7af8eb6f915140403fc8f04"
-  }
-}

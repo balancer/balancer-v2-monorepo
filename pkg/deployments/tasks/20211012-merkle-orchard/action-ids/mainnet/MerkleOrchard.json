@@ -1,9 +1,0 @@
-{
-  "useAdaptor": true,
-  "actionIds": {
-    "claimDistributions(address,(uint256,uint256,address,uint256,bytes32[])[],address[])": "0x95ae77365b40f8e7f35e43b7f403fe8a992f08321289678fbef64d8e0cc410c7",
-    "claimDistributionsToInternalBalance(address,(uint256,uint256,address,uint256,bytes32[])[],address[])": "0xb1dd2f16c338f7cecccd5ce613e1ad7cd4f7c5408b675d032cf7c411eba2debf",
-    "claimDistributionsWithCallback(address,(uint256,uint256,address,uint256,bytes32[])[],address[],address,bytes)": "0x860b7842a97ec464ad09199f82fe42aa6d0680bc5797097cc1147660649a5858",
-    "createDistribution(address,bytes32,uint256,uint256)": "0x8bd6f4c1c5052c1d553c85e11bb6addbb2a47edf967f3c9d4f0f9f69b94b9269"
-  }
-}

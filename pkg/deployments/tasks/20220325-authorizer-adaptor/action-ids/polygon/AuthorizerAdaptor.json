@@ -1,6 +1,0 @@
-{
-  "useAdaptor": false,
-  "actionIds": {
-    "performAction(address,bytes)": "0xaa84887ab3d5dc36e15c6c5207e74abbaaf48c3ef86dc273a5952acab745e203"
-  }
-}

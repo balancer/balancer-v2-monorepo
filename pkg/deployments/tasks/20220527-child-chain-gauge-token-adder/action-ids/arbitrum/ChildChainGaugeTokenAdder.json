@@ -1,6 +1,0 @@
-{
-  "useAdaptor": false,
-  "actionIds": {
-    "addTokenToGauge(address,address,address)": "0x00970aa128369a6b7225384e0de035b547a6d56c2faeee4c3f3735de381d1ff7"
-  }
-}

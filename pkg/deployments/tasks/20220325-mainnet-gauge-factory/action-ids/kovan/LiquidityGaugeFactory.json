@@ -1,6 +1,0 @@
-{
-  "useAdaptor": true,
-  "actionIds": {
-    "create(address)": "0xb71c3bfeada8574adbf094931b7f87c662f2834209b296ce31454d73d097801e"
-  }
-}
