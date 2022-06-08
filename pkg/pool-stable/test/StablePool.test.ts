@@ -242,7 +242,7 @@ describe('StablePool', function () {
         await expect(pool.join({ data: wrongUserData })).to.be.revertedWith('Transaction reverted without a reason');
       });
 
-      context('initialization', () => {
+      describe('initialization', () => {
         it('grants the invariant amount of BPT', async () => {
           const invariant = await pool.estimateInvariant(await pool.upscale(initialBalances));
 
@@ -278,8 +278,20 @@ describe('StablePool', function () {
         });
       });
 
-      async function itJoinsGivenInCorrectly(): Promise<void> {
-        context('join exact tokens in for BPT out', () => {
+      describe('join exact tokens in for BPT out', () => {
+        context('not in recovery mode', () => {
+          itJoinsGivenExactTokensInCorrectly();
+        });
+
+        context('in recovery mode', () => {
+          sharedBeforeEach('enter recovery mode', async () => {
+            await pool.enterRecoveryMode(admin);
+          });
+
+          itJoinsGivenExactTokensInCorrectly();
+        });
+
+        function itJoinsGivenExactTokensInCorrectly() {
           it('fails if not initialized', async () => {
             await expect(pool.joinGivenIn({ recipient, amountsIn: initialBalances })).to.be.revertedWith(
               'UNINITIALIZED'
@@ -341,9 +353,23 @@ describe('StablePool', function () {
               await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('PAUSED');
             });
           });
+        }
+      });
+
+      describe('join token in for exact BPT out', () => {
+        context('not in recovery mode', () => {
+          itJoinsExactBPTOutCorrectly();
         });
 
-        context('join token in for exact BPT out', () => {
+        context('in recovery mode', () => {
+          sharedBeforeEach('enter recovery mode', async () => {
+            await pool.enterRecoveryMode(admin);
+          });
+
+          itJoinsExactBPTOutCorrectly();
+        });
+
+        function itJoinsExactBPTOutCorrectly() {
           const token = 0;
           const bptOut = fp(2);
 
@@ -394,19 +420,7 @@ describe('StablePool', function () {
               await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('PAUSED');
             });
           });
-        });
-      }
-
-      context('not in recovery mode', () => {
-        itJoinsGivenInCorrectly();
-      });
-
-      context('in recovery mode', () => {
-        sharedBeforeEach('enter recovery mode', async () => {
-          await pool.enterRecoveryMode(admin);
-        });
-
-        itJoinsGivenInCorrectly();
+        }
       });
     });
 
@@ -435,8 +449,20 @@ describe('StablePool', function () {
         await expect(pool.exit({ data: wrongUserData })).to.be.revertedWith('Transaction reverted without a reason');
       });
 
-      async function itExitsGivenBptProperly(): Promise<void> {
-        context('exit exact BPT in for one token out', () => {
+      describe('exit exact BPT in for one token out', () => {
+        context('not in recovery mode', () => {
+          itExitsExactBptInForOneTokenoutProperly();
+        });
+
+        context('in recovery mode', () => {
+          sharedBeforeEach('enter recovery mode', async () => {
+            await pool.enterRecoveryMode(admin);
+          });
+
+          itExitsExactBptInForOneTokenoutProperly();
+        });
+
+        function itExitsExactBptInForOneTokenoutProperly() {
           const token = 0;
 
           it('grants one token for exact bpt', async () => {
@@ -478,9 +504,23 @@ describe('StablePool', function () {
 
             await expect(pool.singleExitGivenIn({ from: lp, bptIn: fp(1), token })).to.be.revertedWith('PAUSED');
           });
+        }
+      });
+
+      describe('exit exact BPT in for all tokens out', () => {
+        context('not in recovery mode', () => {
+          itExitsExactBptInForAllTokensOutProperly();
         });
 
-        context('exit exact BPT in for all tokens out', () => {
+        context('in recovery mode', () => {
+          sharedBeforeEach('enter recovery mode', async () => {
+            await pool.enterRecoveryMode(admin);
+          });
+
+          itExitsExactBptInForAllTokensOutProperly();
+        });
+
+        function itExitsExactBptInForAllTokensOutProperly() {
           it('grants all tokens for exact bpt', async () => {
             // Exit with half of the BPT balance
             const bptIn = previousBptBalance.div(2);
@@ -536,9 +576,23 @@ describe('StablePool', function () {
             const bptIn = previousBptBalance.div(2);
             await expect(pool.multiExitGivenIn({ from: lp, bptIn })).not.to.be.reverted;
           });
+        }
+      });
+
+      describe('exit BPT in for exact tokens out', () => {
+        context('not in recovery mode', () => {
+          itExitsBptInForExactTokensOutProperly();
         });
 
-        context('exit BPT in for exact tokens out', () => {
+        context('in recovery mode', () => {
+          sharedBeforeEach('enter recovery mode', async () => {
+            await pool.enterRecoveryMode(admin);
+          });
+
+          itExitsBptInForExactTokensOutProperly();
+        });
+
+        function itExitsBptInForExactTokensOutProperly() {
           it('grants exact tokens for bpt', async () => {
             // Request half of the token balances
             const amountsOut = initialBalances.map((balance) => balance.div(2));
@@ -589,19 +643,7 @@ describe('StablePool', function () {
             const amountsOut = initialBalances;
             await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('PAUSED');
           });
-        });
-      }
-
-      context('not in recovery mode', () => {
-        itExitsGivenBptProperly();
-      });
-
-      context('in recovery mode', () => {
-        sharedBeforeEach('enter recovery mode', async () => {
-          await pool.enterRecoveryMode(admin);
-        });
-
-        itExitsGivenBptProperly();
+        }
       });
     });
 
@@ -611,7 +653,7 @@ describe('StablePool', function () {
         await pool.init({ initialBalances });
       });
 
-      async function swapsCorrectly(): Promise<void> {
+      function swapsCorrectly() {
         context('given in', () => {
           async function swapGivenIn(): Promise<void> {
             const amount = fp(0.1);
@@ -735,7 +777,7 @@ describe('StablePool', function () {
       });
 
       context('without balance changes', () => {
-        async function itPaysNoProtocolFeesOnJoinsAndExits(): Promise<void> {
+        function itPaysNoProtocolFeesOnJoinsAndExits() {
           it('joins and exits do not accumulate fees', async () => {
             let joinResult = await pool.joinGivenIn({ from: lp, amountsIn: fp(100), protocolFeePercentage });
             expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
@@ -842,7 +884,7 @@ describe('StablePool', function () {
           });
         }
 
-        async function itPaysProtocolFeesGivenAmpParameter(): Promise<void> {
+        function itPaysProtocolFeesGivenAmpParameter() {
           context('with same amplification parameter', () => {
             itPaysExpectedProtocolFees();
           });
@@ -1162,7 +1204,7 @@ describe('StablePool', function () {
           await pool.enterRecoveryMode(admin);
         });
 
-        it('should not update the invariant during recovery mode', async () => {
+        it('does not update the invariant on recovery mode exits', async () => {
           const totalBptBalance = await pool.balanceOf(lp);
           await pool.recoveryModeExit({ from: lp, bptIn: totalBptBalance });
 
@@ -1170,7 +1212,7 @@ describe('StablePool', function () {
           expect(lastInvariant).to.equal(originalInvariant);
         });
 
-        it('should update the invariant upon exit', async () => {
+        it('updates the invariant when exiting recovery mode', async () => {
           const totalBptBalance = await pool.balanceOf(lp);
           await pool.recoveryModeExit({ from: lp, bptIn: totalBptBalance });
 
