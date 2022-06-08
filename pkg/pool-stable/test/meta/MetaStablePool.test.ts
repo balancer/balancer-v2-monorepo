@@ -253,16 +253,6 @@ describe('MetaStablePool', function () {
 
       initializePool();
 
-      context('when the pool is paused', () => {
-        sharedBeforeEach('pause pool', async () => {
-          await pool.pause();
-        });
-
-        it('all exits are disabled', async () => {
-          await expect(action(0)).to.be.revertedWith('PAUSED');
-        });
-      });
-
       context('when the pool is not paused', () => {
         context('when the latest change block is an old block', () => {
           const lastChangeBlockOffset = 1;
