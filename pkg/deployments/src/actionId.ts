@@ -1,9 +1,13 @@
 import { FunctionFragment, Interface } from '@ethersproject/abi';
 import { Contract } from '@ethersproject/contracts';
-import fs, { existsSync, readdirSync, readFileSync, statSync } from 'fs';
+import fs from 'fs';
 import path from 'path';
 import logger from './logger';
 import Task, { TaskMode } from './task';
+
+const ACTION_ID_DIRECTORY = path.join(__dirname, '../action-ids');
+
+type ContractActionIdData = { useAdaptor: boolean; exampleContractAddress?: string; actionIds: Record<string, string> };
 
 export async function saveActionIds(task: Task, contractName: string, contractAddress?: string): Promise<void> {
   const actionIdsDir = path.join(task.dir(), 'action-ids', task.network);
@@ -11,26 +15,33 @@ export async function saveActionIds(task: Task, contractName: string, contractAd
 
   const { useAdaptor, actionIds } = await getActionIds(task, contractName, contractAddress);
 
-  const filePath = path.join(actionIdsDir, `${contractName}.json`);
-  fs.writeFileSync(
-    filePath,
-    JSON.stringify({ useAdaptor, exampleContractAddress: contractAddress, actionIds }, null, 2)
-  );
+  const filePath = path.join(ACTION_ID_DIRECTORY, `${task.network}.json`);
+  const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+
+  // Load the existing content if any exists.
+  const newFileContents: Record<string, Record<string, ContractActionIdData>> = fileExists
+    ? JSON.parse(fs.readFileSync(filePath).toString())
+    : {};
+
+  // Write the new entry.
+  newFileContents[task.id] = newFileContents[task.id] ?? {};
+  newFileContents[task.id][contractName] = { useAdaptor, exampleContractAddress: contractAddress, actionIds };
+
+  fs.writeFileSync(filePath, JSON.stringify(newFileContents, null, 2));
 }
 
 export async function checkActionIds(task: Task): Promise<void> {
-  const actionIdsDir = path.join(task.dir(), 'action-ids', task.network);
-  if (existsSync(actionIdsDir) && statSync(actionIdsDir).isDirectory()) {
-    for (const actionIdFileName of readdirSync(actionIdsDir)) {
-      const contractName = path.parse(actionIdFileName).name;
-      const actionIdFilePath = path.resolve(actionIdsDir, actionIdFileName);
+  const filePath = path.join(ACTION_ID_DIRECTORY, `${task.network}.json`);
+  const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+  if (fileExists) {
+    const actionIdFileContents: Record<string, Record<string, ContractActionIdData>> = JSON.parse(
+      fs.readFileSync(filePath).toString()
+    );
 
-      const actionIdData: {
-        useAdaptor: boolean;
-        exampleContractAddress: string;
-        actionIds: Record<string, string>;
-      } = JSON.parse(readFileSync(actionIdFilePath).toString());
+    const taskActionIdData = actionIdFileContents[task.id];
+    if (taskActionIdData === undefined) return;
 
+    for (const [contractName, actionIdData] of Object.entries(taskActionIdData)) {
       const { useAdaptor: expectedUseAdaptor, actionIds: expectedActionIds } = await getActionIds(
         task,
         contractName,
