@@ -599,7 +599,7 @@ describe('LegacyBasePool', function () {
 
       sharedBeforeEach('deploy and initialize pool', async () => {
         initialBalances = Array(tokens.length).fill(fp(1000));
-        pool = await deployBasePool();
+        pool = await deployBasePool({ pauseWindowDuration: MONTH });
         poolId = await pool.getPoolId();
 
         const request: JoinPoolRequest = {
@@ -644,33 +644,6 @@ describe('LegacyBasePool', function () {
           await pool.connect(admin).enterRecoveryMode();
         });
 
-        it('the recovery mode exit can be used', async () => {
-          const preExitBPT = await pool.balanceOf(poolOwner.address);
-          const exitBPT = preExitBPT.div(3);
-
-          const request: ExitPoolRequest = {
-            assets: tokens.addresses,
-            minAmountsOut: Array(tokens.length).fill(0),
-            userData: defaultAbiCoder.encode(['uint256', 'uint256'], [RECOVERY_MODE_EXIT_KIND, exitBPT]),
-            toInternalBalance: false,
-          };
-
-          // The sole BPT holder is the owner, so they own the initial balances
-          const expectedChanges = tokens.reduce(
-            (changes, token, i) => ({ ...changes, [token.symbol]: ['very-near', initialBalances[i].div(3)] }),
-            {}
-          );
-          await expectBalanceChange(
-            () => vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, request),
-            tokens,
-            { account: poolOwner, changes: expectedChanges }
-          );
-
-          // Exit BPT was burned
-          const afterExitBalance = await pool.balanceOf(poolOwner.address);
-          expect(afterExitBalance).to.equal(preExitBPT.sub(exitBPT));
-        });
-
         it('other join kinds can be used', async () => {
           const OTHER_JOIN_KIND = 1;
 
@@ -703,6 +676,49 @@ describe('LegacyBasePool', function () {
           ).wait();
 
           expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnExitPoolCalled');
+        });
+
+        function itExitsViaRecoveryModeCorrectly() {
+          it('the recovery mode exit can be used', async () => {
+            const preExitBPT = await pool.balanceOf(poolOwner.address);
+            const exitBPT = preExitBPT.div(3);
+
+            const request: ExitPoolRequest = {
+              assets: tokens.addresses,
+              minAmountsOut: Array(tokens.length).fill(0),
+              userData: defaultAbiCoder.encode(['uint256', 'uint256'], [RECOVERY_MODE_EXIT_KIND, exitBPT]),
+              toInternalBalance: false,
+            };
+
+            // The sole BPT holder is the owner, so they own the initial balances
+            const expectedChanges = tokens.reduce(
+              (changes, token, i) => ({ ...changes, [token.symbol]: ['very-near', initialBalances[i].div(3)] }),
+              {}
+            );
+            await expectBalanceChange(
+              () => vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, request),
+              tokens,
+              { account: poolOwner, changes: expectedChanges }
+            );
+
+            // Exit BPT was burned
+            const afterExitBalance = await pool.balanceOf(poolOwner.address);
+            expect(afterExitBalance).to.equal(preExitBPT.sub(exitBPT));
+          });
+        }
+
+        itExitsViaRecoveryModeCorrectly();
+
+        context('when paused', () => {
+          sharedBeforeEach('pause pool', async () => {
+            await authorizer
+              .connect(admin)
+              .grantPermissions([await actionId(pool, 'pause')], admin.address, [ANY_ADDRESS]);
+
+            await pool.connect(admin).pause();
+          });
+
+          itExitsViaRecoveryModeCorrectly();
         });
       });
     });
