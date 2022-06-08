@@ -256,10 +256,7 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         address,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal virtual override whenNotPaused returns (uint256, uint256[] memory) {
-        // It would be strange for the Pool to be paused before it is initialized, but for consistency we prevent
-        // initialization in this case.
-
+    ) internal virtual override returns (uint256, uint256[] memory) {
         StablePoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == StablePoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
@@ -293,7 +290,6 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         internal
         virtual
         override
-        whenNotPaused
         returns (
             uint256,
             uint256[] memory,
@@ -401,22 +397,13 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
-        // out) remain functional.
+        // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
+        // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
+        // spending gas calculating fee amounts during each individual swap
+        dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(balances, protocolSwapFeePercentage);
 
-        if (_isNotPaused()) {
-            // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
-            // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
-            // spending gas calculating fee amounts during each individual swap
-            dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(balances, protocolSwapFeePercentage);
-
-            // Update current balances by subtracting the protocol fee amounts
-            _mutateAmounts(balances, dueProtocolFeeAmounts, FixedPoint.sub);
-        } else {
-            // If the contract is paused, swap protocol fee amounts are not charged to avoid extra calculations and
-            // reduce the potential for errors.
-            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
-        }
+        // Update current balances by subtracting the protocol fee amounts
+        _mutateAmounts(balances, dueProtocolFeeAmounts, FixedPoint.sub);
 
         (bptAmountIn, amountsOut) = _doExit(balances, scalingFactors, userData);
 
@@ -450,11 +437,8 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
     function _exitExactBPTInForTokenOut(uint256[] memory balances, bytes memory userData)
         private
         view
-        whenNotPaused
         returns (uint256, uint256[] memory)
     {
-        // This exit function is disabled if the contract is paused.
-
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
@@ -482,11 +466,6 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         view
         returns (uint256, uint256[] memory)
     {
-        // This exit function is the only one that is not disabled if the contract is paused: it remains unrestricted
-        // in an attempt to provide users with a mechanism to retrieve their tokens in case of an emergency.
-        // This particular exit function is the only one that remains available because it is the simplest one, and
-        // therefore the one with the lowest likelihood of errors.
-
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
@@ -498,9 +477,7 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         uint256[] memory balances,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) private view whenNotPaused returns (uint256, uint256[] memory) {
-        // This exit function is disabled if the contract is paused.
-
+    ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens());
         _upscaleArray(amountsOut, scalingFactors);
