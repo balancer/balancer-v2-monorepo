@@ -1,15 +1,15 @@
 # Deploying Balancer Contracts
 
-The deployments package aims to provide a robust mechanism to run and verify deployments on multiple networks. This document describes rationale, what guarantees it provides, and how to create and run deployments.
+The deployments package aims to provide a robust mechanism to run and verify deployments on multiple networks. This document describes the rationale, what guarantees it provides, and how to create and run deployments.
 
 ## Overview
 
-Each deployment unit is called a 'task'. Tasks have a unique ID, which is often prefixed with the date in which they were first executed (to e.g. tell apart the deployment of Weighted Pools from April 2021, and the one in July 2022, which might feature widly different behavior).
+Each deployment unit is called a 'task'. Tasks have a unique ID, which is often prefixed with the date on which they were first executed (to e.g. differentiate the April 2021 deployment of Weighted Pools from the one deployed in July 2022, which might have wildly different behavior).
 
 A task is made up of multiple components:
 
-- one or multiplle build information JSON files, located in the `build-info` directory.
-- an `input.ts` file, containing information on dependencies and deployment parameters (which might differ accross networks).
+- one or multiple build information JSON files, located in the `build-info` directory.
+- an `input.ts` file, containing information on dependencies and deployment parameters (which might differ across networks).
 - an `index.ts` file, with the instructions for the actual deployment.
 - the `output`, `abi` and `bytecode` directories, with JSON files containing the deployment addresses of the tasks' contracts in each network as well as additional information.
 - optional fork tests in the `test` directory.
@@ -34,13 +34,13 @@ Hardhat does not generate build information for Vyper contracts - those must be 
 
 ## Verifying Tasks
 
-There's three things to verify from a task:
+There are three things to verify from a task:
 
 - the build information
 - the inputs
 - the deployment script
 
-The last two can be performed with simple manual inspection, that is, reviewing `input.ts` and `index.ts` and checking that inputs are sensible and constructor arguments provided correctly.
+The last two can be performed with simple manual inspection, that is, reviewing `input.ts` and `index.ts` and checking that they have sensible inputs and correct constructor arguments.
 
 In order to check the `build-info` contents, follow these steps:
 
@@ -118,11 +118,11 @@ This can be done manually by running the `check-deployments` Hardhat task (`yarn
 
 ## Running Tests
 
-Some tasks define fork tests, which consist of creating a local form from real network and some block, running the task on said fork, and then performing tests on top.
+Some tasks define fork tests, which consist of creating a local fork from a real network at a given block, running the task on said fork, and then performing tests.
 
 Unlike regular deployments, this requires access to an _archive node_ instead of a regular RPC endpoint. [Alchemy](https://www.alchemy.com/) provides access to these on their free tier. They are configured the same way as [regular deployment endpoints](#prerequisites) (it is possible to simply use the archive endpoint for all purposes, including contract deployment).
 
-Once that is setup, fork tests can be run:
+Once that is set up, fork tests can be run:
 
 ```bash
 $ yarn test
