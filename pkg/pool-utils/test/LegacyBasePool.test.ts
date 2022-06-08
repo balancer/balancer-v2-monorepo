@@ -292,103 +292,143 @@ describe('LegacyBasePool', function () {
 
     let sender: SignerWithAddress;
 
-    describe('set paused', () => {
-      function itCanPause() {
-        it('can pause', async () => {
+    function itCanPause() {
+      it('can pause', async () => {
+        await pool.connect(sender).pause();
+
+        const { paused } = await pool.getPausedState();
+        expect(paused).to.be.true;
+      });
+
+      context('when paused', () => {
+        let poolId: string;
+        let initialBalances: BigNumber[];
+
+        sharedBeforeEach('deploy and initialize pool', async () => {
+          initialBalances = Array(tokens.length).fill(fp(1000));
+          poolId = await pool.getPoolId();
+
+          const request: JoinPoolRequest = {
+            assets: tokens.addresses,
+            maxAmountsIn: initialBalances,
+            userData: WeightedPoolEncoder.joinInit(initialBalances),
+            fromInternalBalance: false,
+          };
+
+          await tokens.mint({ to: poolOwner, amount: fp(1000 + random(1000)) });
+          await tokens.approve({ from: poolOwner, to: vault });
+
+          await vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, request);
+        });
+
+        sharedBeforeEach('pause pool', async () => {
           await pool.connect(sender).pause();
-
-          const { paused } = await pool.getPausedState();
-          expect(paused).to.be.true;
         });
 
-        context('joins and exits revert when paused', () => {
-          let poolId: string;
-          let initialBalances: BigNumber[];
+        it('joins revert', async () => {
+          const OTHER_JOIN_KIND = 1;
 
-          sharedBeforeEach('deploy and initialize pool', async () => {
-            initialBalances = Array(tokens.length).fill(fp(1000));
-            poolId = await pool.getPoolId();
+          const request: JoinPoolRequest = {
+            assets: tokens.addresses,
+            maxAmountsIn: Array(tokens.length).fill(0),
+            userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
+            fromInternalBalance: false,
+          };
 
-            const request: JoinPoolRequest = {
-              assets: tokens.addresses,
-              maxAmountsIn: initialBalances,
-              userData: WeightedPoolEncoder.joinInit(initialBalances),
-              fromInternalBalance: false,
-            };
-
-            await tokens.mint({ to: poolOwner, amount: fp(1000 + random(1000)) });
-            await tokens.approve({ from: poolOwner, to: vault });
-
-            await vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, request);
-          });
-
-          it('joins revert', async () => {
-            await pool.connect(sender).pause();
-
-            const OTHER_JOIN_KIND = 1;
-
-            const request: JoinPoolRequest = {
-              assets: tokens.addresses,
-              maxAmountsIn: Array(tokens.length).fill(0),
-              userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
-              fromInternalBalance: false,
-            };
-
-            await expect(
-              vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, request)
-            ).to.be.revertedWith('PAUSED');
-          });
-
-          it('exits revert', async () => {
-            await pool.connect(sender).pause();
-
-            const OTHER_EXIT_KIND = 1;
-
-            const request: ExitPoolRequest = {
-              assets: tokens.addresses,
-              minAmountsOut: Array(tokens.length).fill(0),
-              userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
-              toInternalBalance: false,
-            };
-
-            await expect(
-              vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, request)
-            ).to.be.revertedWith('PAUSED');
-          });
+          await expect(
+            vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, request)
+          ).to.be.revertedWith('PAUSED');
         });
 
-        it('can unpause', async () => {
-          await pool.connect(sender).pause();
-          await pool.connect(sender).unpause();
+        it('exits revert', async () => {
+          const OTHER_EXIT_KIND = 1;
 
-          const { paused } = await pool.getPausedState();
-          expect(paused).to.be.false;
+          const request: ExitPoolRequest = {
+            assets: tokens.addresses,
+            minAmountsOut: Array(tokens.length).fill(0),
+            userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
+            toInternalBalance: false,
+          };
+
+          await expect(
+            vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, request)
+          ).to.be.revertedWith('PAUSED');
+        });
+      });
+
+      it('can unpause', async () => {
+        await pool.connect(sender).unpause();
+
+        const { paused } = await pool.getPausedState();
+        expect(paused).to.be.false;
+      });
+
+      it('cannot unpause after the pause window', async () => {
+        await advanceTime(PAUSE_WINDOW_DURATION + DAY);
+        await expect(pool.connect(sender).pause()).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
+      });
+    }
+
+    function itRevertsWithUnallowedSender() {
+      it('reverts', async () => {
+        await expect(pool.connect(sender).pause()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(pool.connect(sender).unpause()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+    }
+
+    context('with a delegated owner', () => {
+      const owner = DELEGATE_OWNER;
+
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployBasePool({
+          pauseWindowDuration: PAUSE_WINDOW_DURATION,
+          bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+          owner,
+        });
+      });
+
+      beforeEach('set sender', () => {
+        sender = other;
+      });
+
+      context('when the sender does not have the pause permission in the authorizer', () => {
+        itRevertsWithUnallowedSender();
+      });
+
+      context('when the sender has the pause permission in the authorizer', () => {
+        sharedBeforeEach('grant permission', async () => {
+          const pauseAction = await actionId(pool, 'pause');
+          const unpauseAction = await actionId(pool, 'unpause');
+          await authorizer
+            .connect(admin)
+            .grantPermissions([pauseAction, unpauseAction], sender.address, [ANY_ADDRESS, ANY_ADDRESS]);
         });
 
-        it('cannot unpause after the pause window', async () => {
-          await advanceTime(PAUSE_WINDOW_DURATION + DAY);
-          await expect(pool.connect(sender).pause()).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
+        itCanPause();
+      });
+    });
+
+    context('with an owner', () => {
+      let owner: SignerWithAddress;
+
+      sharedBeforeEach('deploy pool', async () => {
+        owner = poolOwner;
+        pool = await deployBasePool({
+          pauseWindowDuration: PAUSE_WINDOW_DURATION,
+          bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+          owner,
         });
-      }
+      });
 
-      function itRevertsWithUnallowedSender() {
-        it('reverts', async () => {
-          await expect(pool.connect(sender).pause()).to.be.revertedWith('SENDER_NOT_ALLOWED');
-          await expect(pool.connect(sender).unpause()).to.be.revertedWith('SENDER_NOT_ALLOWED');
-        });
-      }
-
-      context('with a delegated owner', () => {
-        const owner = DELEGATE_OWNER;
-
-        sharedBeforeEach('deploy pool', async () => {
-          pool = await deployBasePool({
-            pauseWindowDuration: PAUSE_WINDOW_DURATION,
-            bufferPeriodDuration: BUFFER_PERIOD_DURATION,
-            owner,
-          });
+      context('when the sender is the owner', () => {
+        beforeEach('set sender', () => {
+          sender = owner;
         });
 
+        itRevertsWithUnallowedSender();
+      });
+
+      context('when the sender is not the owner', () => {
         beforeEach('set sender', () => {
           sender = other;
         });
@@ -398,7 +438,7 @@ describe('LegacyBasePool', function () {
         });
 
         context('when the sender has the pause permission in the authorizer', () => {
-          sharedBeforeEach('grant permission', async () => {
+          sharedBeforeEach(async () => {
             const pauseAction = await actionId(pool, 'pause');
             const unpauseAction = await actionId(pool, 'unpause');
             await authorizer
@@ -407,49 +447,6 @@ describe('LegacyBasePool', function () {
           });
 
           itCanPause();
-        });
-      });
-
-      context('with an owner', () => {
-        let owner: SignerWithAddress;
-
-        sharedBeforeEach('deploy pool', async () => {
-          owner = poolOwner;
-          pool = await deployBasePool({
-            pauseWindowDuration: PAUSE_WINDOW_DURATION,
-            bufferPeriodDuration: BUFFER_PERIOD_DURATION,
-            owner,
-          });
-        });
-
-        context('when the sender is the owner', () => {
-          beforeEach('set sender', () => {
-            sender = owner;
-          });
-
-          itRevertsWithUnallowedSender();
-        });
-
-        context('when the sender is not the owner', () => {
-          beforeEach('set sender', () => {
-            sender = other;
-          });
-
-          context('when the sender does not have the pause permission in the authorizer', () => {
-            itRevertsWithUnallowedSender();
-          });
-
-          context('when the sender has the pause permission in the authorizer', () => {
-            sharedBeforeEach(async () => {
-              const pauseAction = await actionId(pool, 'pause');
-              const unpauseAction = await actionId(pool, 'unpause');
-              await authorizer
-                .connect(admin)
-                .grantPermissions([pauseAction, unpauseAction], sender.address, [ANY_ADDRESS, ANY_ADDRESS]);
-            });
-
-            itCanPause();
-          });
         });
       });
     });
