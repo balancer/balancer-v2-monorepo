@@ -184,10 +184,12 @@ describe('StablePool', function () {
       ).to.be.revertedWith('BAL#402');
     });
 
-    it('can perform a recovery mode exit when enabled', async () => {
+    it('can perform a recovery mode exit when enabled (even while paused)', async () => {
       await pool.connect(govMultisig).enterRecoveryMode();
+      const { paused } = await pool.getPausedState();
 
       expect(await pool.inRecoveryMode()).to.be.true;
+      expect(paused).to.be.true;
 
       const bptBalance = await pool.balanceOf(owner.address);
       expect(bptBalance).to.gt(0);
@@ -222,6 +224,15 @@ describe('StablePool', function () {
       await expect(
         factory.create('SP3', 'SPT3', tokens, amplificationParameter, swapFeePercentage, owner.address)
       ).to.be.revertedWith('BAL#211');
+    });
+
+    it('can exit pause and recovery modes', async () => {
+      await pool.connect(govMultisig).exitRecoveryMode();
+      await pool.connect(govMultisig).unpause();
+      const { paused } = await pool.getPausedState();
+
+      expect(await pool.inRecoveryMode()).to.be.false;
+      expect(paused).to.be.false;
     });
   });
 });
