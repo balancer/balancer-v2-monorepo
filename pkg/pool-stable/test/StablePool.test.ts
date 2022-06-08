@@ -264,12 +264,6 @@ describe('StablePool', function () {
           await expect(pool.init({ initialBalances })).to.be.revertedWith('UNHANDLED_JOIN_KIND');
         });
 
-        it('reverts if paused', async () => {
-          await pool.pause();
-
-          await expect(pool.init({ initialBalances })).to.be.revertedWith('PAUSED');
-        });
-
         it('works in recovery mode', async () => {
           await pool.enterRecoveryMode(admin);
 
@@ -334,12 +328,6 @@ describe('StablePool', function () {
 
               await expect(pool.joinGivenIn({ amountsIn, minimumBptOut })).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
             });
-
-            it('reverts if paused', async () => {
-              await pool.pause();
-
-              await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('PAUSED');
-            });
           });
         });
 
@@ -386,12 +374,6 @@ describe('StablePool', function () {
 
             it('can tell how many tokens it will receive', async () => {
               await joinGivenOut();
-            });
-
-            it('reverts if paused', async () => {
-              await pool.pause();
-
-              await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('PAUSED');
             });
           });
         });
@@ -472,12 +454,6 @@ describe('StablePool', function () {
           it('can tell how many tokens it will give in return', async () => {
             await singleExitGivenIn();
           });
-
-          it('reverts if paused', async () => {
-            await pool.pause();
-
-            await expect(pool.singleExitGivenIn({ from: lp, bptIn: fp(1), token })).to.be.revertedWith('PAUSED');
-          });
         });
 
         context('exit exact BPT in for all tokens out', () => {
@@ -529,13 +505,6 @@ describe('StablePool', function () {
           it('can tell how many tokens it will give in return', async () => {
             await multiExitGivenIn();
           });
-
-          it('reverts if paused', async () => {
-            await pool.pause();
-
-            const bptIn = previousBptBalance.div(2);
-            await expect(pool.multiExitGivenIn({ from: lp, bptIn })).be.revertedWith('PAUSED');
-          });
         });
 
         context('exit BPT in for exact tokens out', () => {
@@ -581,13 +550,6 @@ describe('StablePool', function () {
 
           it('can tell how much BPT it will have to receive', async () => {
             await exitGivenOut();
-          });
-
-          it('reverts if paused', async () => {
-            await pool.pause();
-
-            const amountsOut = initialBalances;
-            await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('PAUSED');
           });
         });
       }
@@ -655,12 +617,6 @@ describe('StablePool', function () {
               await expect(pool.swapGivenIn({ in: 1, out: 10, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
             });
           }
-
-          it('reverts if paused', async () => {
-            await pool.pause();
-
-            await expect(pool.swapGivenIn({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('PAUSED');
-          });
         });
 
         context('given out', () => {
@@ -704,12 +660,6 @@ describe('StablePool', function () {
               await expect(pool.swapGivenOut({ in: 1, out: 10, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
             });
           }
-
-          it('reverts if paused', async () => {
-            await pool.pause();
-
-            await expect(pool.swapGivenOut({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('PAUSED');
-          });
         });
       }
 

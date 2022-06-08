@@ -256,10 +256,7 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         address,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal virtual override whenNotPaused returns (uint256, uint256[] memory) {
-        // It would be strange for the Pool to be paused before it is initialized, but for consistency we prevent
-        // initialization in this case.
-
+    ) internal virtual override returns (uint256, uint256[] memory) {
         StablePoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == StablePoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
@@ -293,7 +290,6 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         internal
         virtual
         override
-        whenNotPaused
         returns (
             uint256,
             uint256[] memory,
@@ -395,7 +391,6 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         internal
         virtual
         override
-        whenNotPaused
         returns (
             uint256 bptAmountIn,
             uint256[] memory amountsOut,
