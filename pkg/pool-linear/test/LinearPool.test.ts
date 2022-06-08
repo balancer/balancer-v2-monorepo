@@ -829,7 +829,8 @@ describe('LinearPool', function () {
       });
     });
 
-    context('when paused', () => {
+    // Skipping until recovery mode implemented
+    context.skip('when paused', () => {
       context('one lp', () => {
         sharedBeforeEach('pause pool', async () => {
           await pool.pause();
