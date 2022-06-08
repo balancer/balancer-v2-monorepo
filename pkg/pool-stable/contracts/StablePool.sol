@@ -27,6 +27,13 @@ import "@balancer-labs/v2-pool-utils/contracts/LegacyBaseMinimalSwapInfoPool.sol
 
 import "./StableMath.sol";
 
+/**
+ * @notice Pool designed to hold tokens of similar value.
+ * @dev Stable Pools are designed specifically for assets that are expected to consistently trade at near parity,
+ * such as different varieties of stablecoins or synthetics. Stable Pools use Stable Math (based on StableSwap,
+ * popularized by Curve) which allows for significantly larger trades before encountering substantial price impact,
+ * vastly increasing capital efficiency for like-kind swaps.
+ */
 contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProvider {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
@@ -415,6 +422,8 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the
         // protocol swap fee amounts due in future joins and exits.
+        // Note that this is not done on recovery mode exits, but that is fine as the pool pays no protocol
+        // fees anyway while recovery mode is active.
         _updateInvariantAfterExit(balances, amountsOut);
 
         return (bptAmountIn, amountsOut, dueProtocolFeeAmounts);
@@ -507,6 +516,23 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
         return (bptAmountIn, amountsOut);
+    }
+
+    function _setRecoveryMode(bool recoveryMode) internal virtual override {
+        super._setRecoveryMode(recoveryMode);
+
+        // Entering recovery mode disables payment of protocol fees, forfeiting any fees accumulated between
+        // the last join or exit before activating recovery mode, and it being disabled.
+        // We therefore reset the 'last invariant' when exiting recovery mode (which is typically only done
+        // after joins and exits) to clear any outstanding fees, as if a join or exit had just taken place
+        // and fees had been paid out.
+        if (!recoveryMode) {
+            (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+            _upscaleArray(balances, _scalingFactors());
+            (uint256 currentAmp, ) = _getAmplificationParameter();
+
+            _updateLastInvariant(StableMath._calculateInvariant(currentAmp, balances), currentAmp);
+        }
     }
 
     // Helpers
