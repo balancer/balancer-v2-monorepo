@@ -687,7 +687,7 @@ describe('LegacyBasePool', function () {
             await expect(normalExit()).to.not.be.reverted;
           });
 
-          it('receive the real porotocol swap value fee percentage value', async () => {
+          it('receive the real protocol swap value fee percentage value', async () => {
             const receipt = await normalExit();
             expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnExitPoolCalled', {
               protocolSwapFeePercentage: PROTOCOL_SWAP_FEE_PERCENTAGE,
