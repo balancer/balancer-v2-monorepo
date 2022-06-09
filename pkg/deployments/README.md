@@ -101,3 +101,4 @@ Returns an object with all contracts from a deployment and their addresses.
 | Protocol Fee Withdrawer                              | [`20220517-protocol-fee-withdrawer`](./tasks/20220517-protocol-fee-withdrawer)                       |
 | Child Chain Gauge Token Adder                        | [`20220527-child-chain-gauge-token-adder`](./tasks/20220527-child-chain-gauge-token-adder)           |
 | Preseeded Voting Escrow Delegation                   | [`20220530-preseeded-voting-escrow-delegation`](./tasks/20220530-preseeded-voting-escrow-delegation) |
+| Tribe BAL Minter Coordinator                         | [`20220606-tribe-bal-minter-coordinator`](./tasks/20220606-tribe-bal-minter-coordinator )            |
