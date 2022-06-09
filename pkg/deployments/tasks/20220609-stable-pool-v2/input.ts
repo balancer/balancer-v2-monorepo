@@ -1,6 +1,6 @@
 import Task, { TaskMode } from '../../src/task';
 
-export type StablePoolDeployment = {
+export type StablePoolV2Deployment = {
   Vault: string;
 };
 
