@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { BigNumber, BigNumberish } from '../../../numbers';
 import { Account } from '../../types/types';
 
-export type RecoveryModeExit = {
+export type RecoveryModeExitParams = {
   bptIn: BigNumberish;
   recipient?: Account;
   from?: SignerWithAddress;

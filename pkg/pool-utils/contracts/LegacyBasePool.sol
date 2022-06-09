@@ -196,7 +196,7 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
     /**
      * @notice Reverse a `pause` operation, and restore a pool to normal functionality.
      * @dev This is a permissioned function that will only work on a paused pool within the Buffer Period set during
-     * pool factory deployment (see `TemporarilyPausable`). Note that ny paused pools will automatically unpause after
+     * pool factory deployment (see `TemporarilyPausable`). Note that any paused pools will automatically unpause after
      * the Buffer Period expires.
      */
     function unpause() external authenticate {

@@ -11,7 +11,7 @@ import { actionId } from '../../misc/actions';
 import Token from '../../tokens/Token';
 import Vault from '../../vault/Vault';
 
-import { RecoveryModeExit, ExitResult, MultiExitGivenIn, JoinExitBasePool } from './types';
+import { RecoveryModeExitParams, ExitResult, JoinExitBasePool } from './types';
 
 export default class BasePool {
   instance: Contract;
@@ -109,16 +109,16 @@ export default class BasePool {
   ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
     return this.vault.getPoolTokenInfo(this.poolId, token);
   }
-  async recoveryModeExit(params: MultiExitGivenIn): Promise<ExitResult> {
+  async recoveryModeExit(params: RecoveryModeExitParams): Promise<ExitResult> {
     return this.exit(this._buildRecoveryModeExitParams(params));
   }
 
-  private _buildRecoveryModeExitParams(params: RecoveryModeExit): JoinExitBasePool {
+  private _buildRecoveryModeExitParams(params: RecoveryModeExitParams): JoinExitBasePool {
     return {
       from: params.from,
       recipient: params.recipient,
       currentBalances: params.currentBalances,
-      data: BasePoolEncoder.exitRecoveryMode(params.bptIn),
+      data: BasePoolEncoder.recoveryModeExit(params.bptIn),
     };
   }
 
@@ -153,16 +153,16 @@ export default class BasePool {
     await this.instance.unpause();
   }
 
-  async enterRecoveryMode(from: SignerWithAddress): Promise<ContractTransaction> {
+  async enableRecoveryMode(from: SignerWithAddress): Promise<ContractTransaction> {
     await this.grantRecoveryPermissions();
     const pool = this.instance.connect(from);
-    return await pool.enterRecoveryMode();
+    return await pool.enableRecoveryMode();
   }
 
-  async exitRecoveryMode(from: SignerWithAddress): Promise<ContractTransaction> {
+  async disableRecoveryMode(from: SignerWithAddress): Promise<ContractTransaction> {
     await this.grantRecoveryPermissions();
     const pool = this.instance.connect(from);
-    return await pool.exitRecoveryMode();
+    return await pool.disableRecoveryMode();
   }
 
   async inRecoveryMode(): Promise<boolean> {
@@ -176,8 +176,8 @@ export default class BasePool {
   }
 
   private async grantRecoveryPermissions(): Promise<void> {
-    const enterRecoveryAction = await actionId(this.instance, 'enterRecoveryMode');
-    const exitRecoveryAction = await actionId(this.instance, 'exitRecoveryMode');
-    await this.vault.grantPermissionsGlobally([enterRecoveryAction, exitRecoveryAction], this.vault.admin);
+    const enableRecoveryAction = await actionId(this.instance, 'enableRecoveryMode');
+    const disableRecoveryAction = await actionId(this.instance, 'disableRecoveryMode');
+    await this.vault.grantPermissionsGlobally([enableRecoveryAction, disableRecoveryAction], this.vault.admin);
   }
 }

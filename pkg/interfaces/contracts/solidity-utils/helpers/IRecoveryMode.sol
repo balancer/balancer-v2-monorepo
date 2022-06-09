@@ -21,7 +21,7 @@ interface IRecoveryMode {
     /**
      * @dev Emitted every time the recovery mode changes through `_setRecoveryMode`.
      */
-    event RecoveryModeStateChanged(bool recoveryMode);
+    event RecoveryModeStateChanged(bool enabled);
 
     /**
      * @notice Return whether the pool is in recovery mode.

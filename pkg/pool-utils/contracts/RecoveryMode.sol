@@ -64,22 +64,22 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
     }
 
     /**
-     * @notice Enter recovery mode, which enables a special safe exit path for LPs.
+     * @notice Enable recovery mode, which enables a special safe exit path for LPs.
      * @dev Does not otherwise affect pool operations (beyond deferring payment of protocol fees), though some pools may
      * perform certain operations in a "safer" manner that is less likely to fail, in an attempt to keep the pool
      * running, even in a pathological state. Unlike the Pause operation, which is only available during a short window
-     * after factory deployment, Recovery Mode can always be entered.
+     * after factory deployment, Recovery Mode can always be enableed.
      */
-    function enterRecoveryMode() external authenticate {
+    function enableRecoveryMode() external authenticate {
         _setRecoveryMode(true);
     }
 
     /**
-     * @notice Exit recovery mode, which disables the special safe exit path for LPs.
+     * @notice Disable recovery mode, which disables the special safe exit path for LPs.
      * @dev Protocol fees are not paid while in Recovery Mode, so it should only remain active for as long as strictly
      * necessary.
      */
-    function exitRecoveryMode() external authenticate {
+    function disableRecoveryMode() external authenticate {
         _setRecoveryMode(false);
     }
 
@@ -95,12 +95,12 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
      * if a pool needs to detect when the Recovery Mode state changes.
      *
      * No complex code or external calls that could fail should be placed here, which could jeopardize
-     * the ability to enter and exit Recovery Mode.
+     * the ability to enable and disable Recovery Mode.
      */
-    function _setRecoveryMode(bool recoveryMode) internal virtual {
-        _recoveryMode = recoveryMode;
+    function _setRecoveryMode(bool enabled) internal virtual {
+        _recoveryMode = enabled;
 
-        emit RecoveryModeStateChanged(recoveryMode);
+        emit RecoveryModeStateChanged(enabled);
     }
 
     /**
