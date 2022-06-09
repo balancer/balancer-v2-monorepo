@@ -100,8 +100,11 @@ library StableMath {
                     invariant
                 ),
                 // ((ampTimesTotal - _AMP_PRECISION) * invariant) / _AMP_PRECISION + (numTokens + 1) * D_P
-                (Math.divDown(Math.mul((ampTimesTotal - _AMP_PRECISION), invariant), _AMP_PRECISION) +
-                    Math.mul((numTokens + 1), D_P))
+                (
+                    Math.divDown(Math.mul((ampTimesTotal - _AMP_PRECISION), invariant), _AMP_PRECISION).add(
+                        Math.mul((numTokens + 1), D_P)
+                    )
+                )
             );
 
             if (invariant > prevInvariant) {
