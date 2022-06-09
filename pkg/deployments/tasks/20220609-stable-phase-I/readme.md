@@ -4,8 +4,9 @@ Deployment of the `StablePoolFactory` to meet the Phase I milestone objectives, 
 
 ## Useful Files
 
+- [Ethereum addresses](./output/polygon.json)
 - [Polygon addresses](./output/polygon.json)
-- [Polygon mainnet address](./output/polygon.json)
 - [Arbitrum addresses](./output/arbitrum.json)
 - [Optimism addresses](./output/optimism.json)
 - [`StablePool` ABI](./abi/StablePool.json)
+- [`StablePoolFactory` ABI](./abi/StablePoolFactory.json)
