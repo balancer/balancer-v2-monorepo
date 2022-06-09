@@ -277,7 +277,7 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
                 recipient,
                 balances,
                 lastChangeBlock,
-                protocolSwapFeePercentage,
+                inRecoveryMode() ? 0 : protocolSwapFeePercentage, // Protocol fees are disabled while in recovery mode
                 scalingFactors,
                 userData
             );
@@ -321,8 +321,8 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
             _ensureInRecoveryMode();
 
             // Protocol fees are skipped when processing recovery mode exits, since these are pool-agnostic and it
-            // is therefore impossible to know how many fees are due. For consistency, derived pools should not pay
-            // any protocol fees in regular joins and exits if recovery mode is enabled.
+            // is therefore impossible to know how many fees are due. For consistency, all regular joins and exits are
+            // processed as if the protocol swap fee percentage was zero.
             dueProtocolFeeAmounts = new uint256[](balances.length);
 
             (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
@@ -340,7 +340,7 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
                 recipient,
                 balances,
                 lastChangeBlock,
-                protocolSwapFeePercentage,
+                inRecoveryMode() ? 0 : protocolSwapFeePercentage, // Protocol fees are disabled while in recovery mode
                 scalingFactors,
                 userData
             );
