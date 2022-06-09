@@ -1,7 +1,7 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
-import { BasePoolEncoder, PoolBalanceOpKind, StablePoolEncoder, SwapKind } from '@balancer-labs/balancer-js';
+import { BasePoolEncoder, StablePoolEncoder, SwapKind } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
@@ -13,7 +13,7 @@ import { getSigner, impersonate, impersonateWhale } from '../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-describe.only('StablePoolFactory', function () {
+describe('StablePoolFactory', function () {
   let owner: SignerWithAddress, whale: SignerWithAddress, govMultisig: SignerWithAddress;
   let factory: Contract, vault: Contract, authorizer: Contract, usdc: Contract, dai: Contract, usdt: Contract;
 
@@ -29,6 +29,7 @@ describe.only('StablePoolFactory', function () {
   const initialBalanceDAI = fp(1e6);
   const initialBalanceUSDC = fp(1e6).div(1e12); // 6 digits
   const initialBalances = [initialBalanceDAI, initialBalanceUSDC];
+  const upscaledBalances = [initialBalanceDAI, initialBalanceUSDC.mul(1e12)];
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
@@ -83,7 +84,10 @@ describe.only('StablePoolFactory', function () {
         userData,
       });
 
-      const expectedInvariant = calculateInvariant(initialBalances, amplificationParameter);
+      const { balances } = await vault.getPoolTokens(poolId);
+      expect(balances).to.deep.equal(initialBalances);
+
+      const expectedInvariant = calculateInvariant(upscaledBalances, amplificationParameter);
       expectEqualWithError(await pool.balanceOf(owner.address), expectedInvariant, 0.001);
     });
 
@@ -115,6 +119,7 @@ describe.only('StablePoolFactory', function () {
       const unbalancedBalanceUSDC = fp(1200000000).div(1e12); // 6 digits
       const unbalancedBalanceUSDT = fp(300).div(1e12); // 6 digits
       const unbalancedBalances = [unbalancedBalanceDAI, unbalancedBalanceUSDC, unbalancedBalanceUSDT];
+      const upscaledBalances = [unbalancedBalanceDAI, unbalancedBalanceUSDC.mul(1e12), unbalancedBalanceUSDT.mul(1e12)];
 
       const tx = await factory.create(
         '',
@@ -137,7 +142,7 @@ describe.only('StablePoolFactory', function () {
       const userData = StablePoolEncoder.joinInit(unbalancedBalances);
       await vault.connect(whale).joinPool(poolId, whale.address, owner.address, {
         assets: unbalancedTokens,
-        maxAmountsIn: initialBalances,
+        maxAmountsIn: unbalancedBalances,
         fromInternalBalance: false,
         userData,
       });
@@ -145,7 +150,7 @@ describe.only('StablePoolFactory', function () {
       // The fact that joining the pool did not revert is proof enough that the invariant converges, but we can also
       // explicitly check the last invariant.
 
-      const expectedInvariant = calculateInvariant(unbalancedBalances, amplificationParameter);
+      const expectedInvariant = calculateInvariant(upscaledBalances, amplificationParameter);
       const [lastInvariant] = await pool.getLastInvariant();
       expectEqualWithError(lastInvariant, expectedInvariant, 0.001);
     });
