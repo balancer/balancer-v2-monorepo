@@ -138,7 +138,7 @@
       {
         "indexed": false,
         "internalType": "bool",
-        "name": "recoveryMode",
+        "name": "enabled",
         "type": "bool"
       }
     ],
@@ -302,14 +302,14 @@
   },
   {
     "inputs": [],
-    "name": "enterRecoveryMode",
+    "name": "disableRecoveryMode",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [],
-    "name": "exitRecoveryMode",
+    "name": "enableRecoveryMode",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
