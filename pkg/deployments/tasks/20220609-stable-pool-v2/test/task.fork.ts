@@ -29,7 +29,7 @@ describe('StablePoolFactory', function () {
   const initialBalanceDAI = fp(1e6);
   const initialBalanceUSDC = fp(1e6).div(1e12); // 6 digits
   const initialBalances = [initialBalanceDAI, initialBalanceUSDC];
-  const upscaledBalances = [initialBalanceDAI, initialBalanceUSDC.mul(1e12)];
+  const upscaledInitialBalances = [initialBalanceDAI, initialBalanceUSDC.mul(1e12)];
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
@@ -87,7 +87,7 @@ describe('StablePoolFactory', function () {
       const { balances } = await vault.getPoolTokens(poolId);
       expect(balances).to.deep.equal(initialBalances);
 
-      const expectedInvariant = calculateInvariant(upscaledBalances, amplificationParameter);
+      const expectedInvariant = calculateInvariant(upscaledInitialBalances, amplificationParameter);
       expectEqualWithError(await pool.balanceOf(owner.address), expectedInvariant, 0.001);
     });
 
@@ -119,7 +119,11 @@ describe('StablePoolFactory', function () {
       const unbalancedBalanceUSDC = fp(1200000000).div(1e12); // 6 digits
       const unbalancedBalanceUSDT = fp(300).div(1e12); // 6 digits
       const unbalancedBalances = [unbalancedBalanceDAI, unbalancedBalanceUSDC, unbalancedBalanceUSDT];
-      const upscaledBalances = [unbalancedBalanceDAI, unbalancedBalanceUSDC.mul(1e12), unbalancedBalanceUSDT.mul(1e12)];
+      const upscaledUbalancedBalances = [
+        unbalancedBalanceDAI,
+        unbalancedBalanceUSDC.mul(1e12),
+        unbalancedBalanceUSDT.mul(1e12),
+      ];
 
       const tx = await factory.create(
         '',
@@ -150,7 +154,7 @@ describe('StablePoolFactory', function () {
       // The fact that joining the pool did not revert is proof enough that the invariant converges, but we can also
       // explicitly check the last invariant.
 
-      const expectedInvariant = calculateInvariant(upscaledBalances, amplificationParameter);
+      const expectedInvariant = calculateInvariant(upscaledUbalancedBalances, amplificationParameter);
       const [lastInvariant] = await pool.getLastInvariant();
       expectEqualWithError(lastInvariant, expectedInvariant, 0.001);
     });
