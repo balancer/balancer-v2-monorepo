@@ -17,7 +17,7 @@ describe('StablePool', function () {
   let owner: SignerWithAddress, whale: SignerWithAddress;
   let pool: Contract, factory: Contract, vault: Contract, usdc: Contract, dai: Contract, usdt: Contract;
 
-  const task = new Task('20220608-stable-phase-I', TaskMode.TEST, getForkedNetwork(hre));
+  const task = new Task('20220609-stable-phase-I', TaskMode.TEST, getForkedNetwork(hre));
 
   const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f';
   const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
