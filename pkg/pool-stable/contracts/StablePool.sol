@@ -495,15 +495,15 @@ contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProv
         return (bptAmountIn, amountsOut);
     }
 
-    function _setRecoveryMode(bool recoveryMode) internal virtual override {
-        super._setRecoveryMode(recoveryMode);
+    function _setRecoveryMode(bool enabled) internal virtual override {
+        super._setRecoveryMode(enabled);
 
-        // Entering recovery mode disables payment of protocol fees, forfeiting any fees accumulated between
+        // Enabling recovery mode disables payment of protocol fees, forfeiting any fees accumulated between
         // the last join or exit before activating recovery mode, and it being disabled.
-        // We therefore reset the 'last invariant' when exiting recovery mode (which is typically only done
+        // We therefore reset the 'last invariant' when disabling recovery mode (something that is otherwise only done
         // after joins and exits) to clear any outstanding fees, as if a join or exit had just taken place
         // and fees had been paid out.
-        if (!recoveryMode) {
+        if (!enabled) {
             (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
             _upscaleArray(balances, _scalingFactors());
             (uint256 currentAmp, ) = _getAmplificationParameter();
