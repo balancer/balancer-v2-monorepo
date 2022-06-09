@@ -776,32 +776,34 @@ describe('StablePool', function () {
         await pool.init({ initialBalances, from: lp, protocolFeePercentage });
       });
 
+      function itPaysNoProtocolFeesOnJoinsAndExits() {
+        it('joins and exits do not accumulate fees', async () => {
+          let joinResult = await pool.joinGivenIn({ from: lp, amountsIn: fp(100), protocolFeePercentage });
+          expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
+
+          joinResult = await pool.joinGivenOut({ from: lp, bptOut: fp(1), token: 0, protocolFeePercentage });
+          expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
+
+          let exitResult = await pool.singleExitGivenIn({ from: lp, bptIn: fp(10), token: 0, protocolFeePercentage });
+          expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
+
+          exitResult = await pool.multiExitGivenIn({ from: lp, bptIn: fp(10), protocolFeePercentage });
+          expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
+
+          joinResult = await pool.joinGivenIn({ from: lp, amountsIn: fp(10), protocolFeePercentage });
+          expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
+
+          exitResult = await pool.exitGivenOut({ from: lp, amountsOut: fp(10), protocolFeePercentage });
+          expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
+        });
+      }
+
       context('without balance changes', () => {
-        function itPaysNoProtocolFeesOnJoinsAndExits() {
-          it('joins and exits do not accumulate fees', async () => {
-            let joinResult = await pool.joinGivenIn({ from: lp, amountsIn: fp(100), protocolFeePercentage });
-            expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
+        context('outside of recovery mode', () => {
+          itPaysNoProtocolFeesOnJoinsAndExits();
+        });
 
-            joinResult = await pool.joinGivenOut({ from: lp, bptOut: fp(1), token: 0, protocolFeePercentage });
-            expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
-
-            let exitResult = await pool.singleExitGivenIn({ from: lp, bptIn: fp(10), token: 0, protocolFeePercentage });
-            expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
-
-            exitResult = await pool.multiExitGivenIn({ from: lp, bptIn: fp(10), protocolFeePercentage });
-            expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
-
-            joinResult = await pool.joinGivenIn({ from: lp, amountsIn: fp(10), protocolFeePercentage });
-            expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
-
-            exitResult = await pool.exitGivenOut({ from: lp, amountsOut: fp(10), protocolFeePercentage });
-            expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
-          });
-        }
-
-        itPaysNoProtocolFeesOnJoinsAndExits();
-
-        context('still works in recovery mode', () => {
+        context('in recovery mode', () => {
           sharedBeforeEach('enter recovery mode', async () => {
             await enterRecoveryMode(pool);
           });
@@ -897,7 +899,7 @@ describe('StablePool', function () {
           });
         }
 
-        context('not in recovery mode', () => {
+        context('outside of recovery mode', () => {
           itPaysProtocolFeesGivenAmpParameter();
         });
 
@@ -906,7 +908,7 @@ describe('StablePool', function () {
             await pool.enterRecoveryMode(admin);
           });
 
-          itPaysProtocolFeesGivenAmpParameter();
+          itPaysNoProtocolFeesOnJoinsAndExits();
         });
       });
     });
