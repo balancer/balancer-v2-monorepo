@@ -109,8 +109,8 @@ describe('StablePool', function () {
     });
   });
 
-  async function enterRecoveryMode(pool: StablePool): Promise<void> {
-    await pool.enterRecoveryMode(admin);
+  async function enableRecoveryMode(pool: StablePool): Promise<void> {
+    await pool.enableRecoveryMode(admin);
     expect(await pool.inRecoveryMode()).to.be.true;
   }
 
@@ -271,7 +271,7 @@ describe('StablePool', function () {
         });
 
         it('works in recovery mode', async () => {
-          await pool.enterRecoveryMode(admin);
+          await pool.enableRecoveryMode(admin);
 
           expect(await pool.inRecoveryMode()).to.be.true;
           await expect(pool.init({ initialBalances })).to.not.be.reverted;
@@ -285,7 +285,7 @@ describe('StablePool', function () {
 
         context('in recovery mode', () => {
           sharedBeforeEach('enter recovery mode', async () => {
-            await pool.enterRecoveryMode(admin);
+            await pool.enableRecoveryMode(admin);
           });
 
           itJoinsGivenExactTokensInCorrectly();
@@ -363,7 +363,7 @@ describe('StablePool', function () {
 
         context('in recovery mode', () => {
           sharedBeforeEach('enter recovery mode', async () => {
-            await pool.enterRecoveryMode(admin);
+            await pool.enableRecoveryMode(admin);
           });
 
           itJoinsExactBPTOutCorrectly();
@@ -456,7 +456,7 @@ describe('StablePool', function () {
 
         context('in recovery mode', () => {
           sharedBeforeEach('enter recovery mode', async () => {
-            await pool.enterRecoveryMode(admin);
+            await pool.enableRecoveryMode(admin);
           });
 
           itExitsExactBptInForOneTokenoutProperly();
@@ -514,7 +514,7 @@ describe('StablePool', function () {
 
         context('in recovery mode', () => {
           sharedBeforeEach('enter recovery mode', async () => {
-            await pool.enterRecoveryMode(admin);
+            await pool.enableRecoveryMode(admin);
           });
 
           itExitsExactBptInForAllTokensOutProperly();
@@ -586,7 +586,7 @@ describe('StablePool', function () {
 
         context('in recovery mode', () => {
           sharedBeforeEach('enter recovery mode', async () => {
-            await pool.enterRecoveryMode(admin);
+            await pool.enableRecoveryMode(admin);
           });
 
           itExitsBptInForExactTokensOutProperly();
@@ -761,7 +761,7 @@ describe('StablePool', function () {
 
       context('in recovery mode', () => {
         sharedBeforeEach('enter recovery mode', async () => {
-          await pool.enterRecoveryMode(admin);
+          await pool.enableRecoveryMode(admin);
         });
 
         swapsCorrectly();
@@ -805,7 +805,7 @@ describe('StablePool', function () {
 
         context('in recovery mode', () => {
           sharedBeforeEach('enter recovery mode', async () => {
-            await enterRecoveryMode(pool);
+            await enableRecoveryMode(pool);
           });
 
           itPaysNoProtocolFeesOnJoinsAndExits();
@@ -905,7 +905,7 @@ describe('StablePool', function () {
 
         context('in recovery mode', () => {
           sharedBeforeEach('enter recovery mode', async () => {
-            await pool.enterRecoveryMode(admin);
+            await pool.enableRecoveryMode(admin);
           });
 
           itPaysNoProtocolFeesOnJoinsAndExits();
@@ -961,7 +961,7 @@ describe('StablePool', function () {
 
         context('in recovery mode', () => {
           sharedBeforeEach('enter recovery mode', async () => {
-            await enterRecoveryMode(pool);
+            await enableRecoveryMode(pool);
           });
 
           it('rate equals one', async () => {
@@ -1196,7 +1196,7 @@ describe('StablePool', function () {
           const { lastInvariant } = await pool.getLastInvariant();
           originalInvariant = lastInvariant;
 
-          await pool.enterRecoveryMode(admin);
+          await pool.enableRecoveryMode(admin);
         });
 
         it('does not update the invariant on recovery mode exits', async () => {
@@ -1211,7 +1211,7 @@ describe('StablePool', function () {
           const totalBptBalance = await pool.balanceOf(lp);
           await pool.recoveryModeExit({ from: lp, bptIn: totalBptBalance });
 
-          await pool.exitRecoveryMode(admin);
+          await pool.disableRecoveryMode(admin);
 
           const { lastInvariant } = await pool.getLastInvariant();
           expect(lastInvariant).to.not.equal(originalInvariant);

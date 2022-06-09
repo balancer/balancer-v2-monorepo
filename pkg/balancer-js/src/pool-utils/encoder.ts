@@ -20,6 +20,6 @@ export class BasePoolEncoder {
    * an exact amount of BPT
    * @param bptAmountIn - the amount of BPT to be burned
    */
-  static exitRecoveryMode = (bptAmountIn: BigNumberish): string =>
+  static recoveryModeExit = (bptAmountIn: BigNumberish): string =>
     defaultAbiCoder.encode(['uint256', 'uint256'], [BasePoolExitKind.RECOVERY_MODE, bptAmountIn]);
 }

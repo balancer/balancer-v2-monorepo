@@ -70,7 +70,7 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
      * running, even in a pathological state. Unlike the Pause operation, which is only available during a short window
      * after factory deployment, Recovery Mode can always be entered.
      */
-    function enterRecoveryMode() external authenticate {
+    function enableRecoveryMode() external authenticate {
         _setRecoveryMode(true);
     }
 
@@ -79,7 +79,7 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
      * @dev Protocol fees are not paid while in Recovery Mode, so it should only remain active for as long as strictly
      * necessary.
      */
-    function exitRecoveryMode() external authenticate {
+    function disableRecoveryMode() external authenticate {
         _setRecoveryMode(false);
     }
 
