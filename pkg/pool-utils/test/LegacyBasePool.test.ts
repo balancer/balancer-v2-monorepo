@@ -457,20 +457,20 @@ describe('LegacyBasePool', function () {
     let sender: SignerWithAddress;
 
     function itCanEnableRecoveryMode() {
-      it('can enter recovery mode', async () => {
+      it('can enable recovery mode', async () => {
         await pool.connect(sender).enableRecoveryMode();
 
         const recoveryMode = await pool.inRecoveryMode();
         expect(recoveryMode).to.be.true;
       });
 
-      it('entering recovery mode emits an event', async () => {
+      it('enabling recovery mode emits an event', async () => {
         const tx = await pool.connect(sender).enableRecoveryMode();
         const receipt = await tx.wait();
         expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { recoveryMode: true });
       });
 
-      it('can exit recovery mode', async () => {
+      it('can disable recovery mode', async () => {
         await pool.connect(sender).enableRecoveryMode();
         await pool.connect(sender).disableRecoveryMode();
 
@@ -478,7 +478,7 @@ describe('LegacyBasePool', function () {
         expect(recoveryMode).to.be.false;
       });
 
-      it('exiting recovery mode emits an event', async () => {
+      it('disabling recovery mode emits an event', async () => {
         await pool.connect(sender).enableRecoveryMode();
         const tx = await pool.connect(sender).disableRecoveryMode();
         const receipt = await tx.wait();
@@ -703,7 +703,7 @@ describe('LegacyBasePool', function () {
       });
 
       context('when in recovery mode', () => {
-        sharedBeforeEach('enter recovery mode', async () => {
+        sharedBeforeEach('enable recovery mode', async () => {
           const enableRecoveryAction = await actionId(pool, 'enableRecoveryMode');
           const disableRecoveryAction = await actionId(pool, 'disableRecoveryMode');
           await authorizer

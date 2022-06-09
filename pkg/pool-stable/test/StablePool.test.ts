@@ -284,7 +284,7 @@ describe('StablePool', function () {
         });
 
         context('in recovery mode', () => {
-          sharedBeforeEach('enter recovery mode', async () => {
+          sharedBeforeEach('enable recovery mode', async () => {
             await pool.enableRecoveryMode(admin);
           });
 
@@ -362,7 +362,7 @@ describe('StablePool', function () {
         });
 
         context('in recovery mode', () => {
-          sharedBeforeEach('enter recovery mode', async () => {
+          sharedBeforeEach('enable recovery mode', async () => {
             await pool.enableRecoveryMode(admin);
           });
 
@@ -455,7 +455,7 @@ describe('StablePool', function () {
         });
 
         context('in recovery mode', () => {
-          sharedBeforeEach('enter recovery mode', async () => {
+          sharedBeforeEach('enable recovery mode', async () => {
             await pool.enableRecoveryMode(admin);
           });
 
@@ -513,7 +513,7 @@ describe('StablePool', function () {
         });
 
         context('in recovery mode', () => {
-          sharedBeforeEach('enter recovery mode', async () => {
+          sharedBeforeEach('enable recovery mode', async () => {
             await pool.enableRecoveryMode(admin);
           });
 
@@ -585,7 +585,7 @@ describe('StablePool', function () {
         });
 
         context('in recovery mode', () => {
-          sharedBeforeEach('enter recovery mode', async () => {
+          sharedBeforeEach('enable recovery mode', async () => {
             await pool.enableRecoveryMode(admin);
           });
 
@@ -760,7 +760,7 @@ describe('StablePool', function () {
       });
 
       context('in recovery mode', () => {
-        sharedBeforeEach('enter recovery mode', async () => {
+        sharedBeforeEach('enable recovery mode', async () => {
           await pool.enableRecoveryMode(admin);
         });
 
@@ -804,7 +804,7 @@ describe('StablePool', function () {
         });
 
         context('in recovery mode', () => {
-          sharedBeforeEach('enter recovery mode', async () => {
+          sharedBeforeEach('enable recovery mode', async () => {
             await enableRecoveryMode(pool);
           });
 
@@ -904,7 +904,7 @@ describe('StablePool', function () {
         });
 
         context('in recovery mode', () => {
-          sharedBeforeEach('enter recovery mode', async () => {
+          sharedBeforeEach('enable recovery mode', async () => {
             await pool.enableRecoveryMode(admin);
           });
 
@@ -960,7 +960,7 @@ describe('StablePool', function () {
         });
 
         context('in recovery mode', () => {
-          sharedBeforeEach('enter recovery mode', async () => {
+          sharedBeforeEach('enable recovery mode', async () => {
             await enableRecoveryMode(pool);
           });
 
@@ -1189,10 +1189,10 @@ describe('StablePool', function () {
         await pool.init({ initialBalances, recipient: lp });
       });
 
-      context('invariant recalculation when exiting recovery mode', () => {
+      context('invariant recalculation when disabling recovery mode', () => {
         let originalInvariant: BigNumber;
 
-        sharedBeforeEach('store invariant and enter recovery mode', async () => {
+        sharedBeforeEach('store invariant and enable recovery mode', async () => {
           const { lastInvariant } = await pool.getLastInvariant();
           originalInvariant = lastInvariant;
 
@@ -1207,7 +1207,7 @@ describe('StablePool', function () {
           expect(lastInvariant).to.equal(originalInvariant);
         });
 
-        it('updates the invariant when exiting recovery mode', async () => {
+        it('updates the invariant when disabling recovery mode', async () => {
           const totalBptBalance = await pool.balanceOf(lp);
           await pool.recoveryModeExit({ from: lp, bptIn: totalBptBalance });
 
