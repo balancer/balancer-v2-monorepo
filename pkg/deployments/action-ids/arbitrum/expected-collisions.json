@@ -1,0 +1,100 @@
+{
+  "0xd92c40d5daec019bee17f4b61c6f29905e23bb7ef406cc751700baffc82b3a30": [
+    {
+      "taskId": "20210913-bal-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeek(address,uint256,uint256,bytes32[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20210928-mcb-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeek(address,uint256,uint256,bytes32[])",
+      "useAdaptor": true
+    }
+  ],
+  "0xad0225b8f36d108a0b4b94fcefc162bb866b854df809f5745281c8694e6d37bc": [
+    {
+      "taskId": "20210913-bal-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeeks(address,(uint256,uint256,bytes32[])[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20210928-mcb-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeeks(address,(uint256,uint256,bytes32[])[])",
+      "useAdaptor": true
+    }
+  ],
+  "0x1a71f3e5ef203c4123a068cfbe8e002a0b22fe777cc507eb928430feb1cadbcf": [
+    {
+      "taskId": "20210913-bal-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeeksToInternalBalance(address,(uint256,uint256,bytes32[])[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20210928-mcb-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeeksToInternalBalance(address,(uint256,uint256,bytes32[])[])",
+      "useAdaptor": true
+    }
+  ],
+  "0xec1217f9c0d96fa75a9d6a62a38724780247f3de54e41e48952440369708c4d3": [
+    {
+      "taskId": "20210913-bal-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeeksWithCallback(address,address,bytes,(uint256,uint256,bytes32[])[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20210928-mcb-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeeksWithCallback(address,address,bytes,(uint256,uint256,bytes32[])[])",
+      "useAdaptor": true
+    }
+  ],
+  "0xf75a63a20471dc46da3192be9d76e8f140a4f5507773da6d1384877662708caa": [
+    {
+      "taskId": "20210913-bal-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "renounceOwnership()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20210928-mcb-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "renounceOwnership()",
+      "useAdaptor": true
+    }
+  ],
+  "0x9bdc90c1a0da348c425f5a7f90163eaeec5bce689bdd65f6da637b5243714080": [
+    {
+      "taskId": "20210913-bal-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "seedAllocations(uint256,bytes32,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20210928-mcb-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "seedAllocations(uint256,bytes32,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xc72ba8d6ded981d8f10ffe2bc3dbec65b5d9f5af87846080a8cface849d4198d": [
+    {
+      "taskId": "20210913-bal-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "transferOwnership(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20210928-mcb-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "transferOwnership(address)",
+      "useAdaptor": true
+    }
+  ]
+}

@@ -16,7 +16,7 @@ import test from './src/test';
 import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
 import logger, { Logger } from './src/logger';
-import { checkActionIds, saveActionIds } from './src/actionId';
+import { checkActionIds, checkActionIdUniqueness, saveActionIds } from './src/actionId';
 
 task('deploy', 'Run deployment task')
   .addParam('id', 'Deployment task ID')
@@ -195,6 +195,7 @@ task('check-action-ids', `Check that contract action-ids correspond the expected
         await checkActionIds(task);
       }
     }
+    checkActionIdUniqueness(hre.network.name);
   });
 
 task(TASK_TEST)
