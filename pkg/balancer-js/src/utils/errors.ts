@@ -121,6 +121,8 @@ const balancerErrorCodes: Record<string, string> = {
   '434': 'ERC20_BURN_EXCEEDS_BALANCE',
   '435': 'INVALID_OPERATION',
   '436': 'CODEC_OVERFLOW',
+  '437': 'IN_RECOVERY_MODE',
+  '438': 'NOT_IN_RECOVERY_MODE',
   '500': 'INVALID_POOL_ID',
   '501': 'CALLER_NOT_POOL',
   '502': 'SENDER_NOT_ASSET_MANAGER',
