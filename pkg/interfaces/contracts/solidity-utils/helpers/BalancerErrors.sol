@@ -207,6 +207,8 @@ library Errors {
     uint256 internal constant ERC20_BURN_EXCEEDS_BALANCE = 434;
     uint256 internal constant INVALID_OPERATION = 435;
     uint256 internal constant CODEC_OVERFLOW = 436;
+    uint256 internal constant IN_RECOVERY_MODE = 437;
+    uint256 internal constant NOT_IN_RECOVERY_MODE = 438;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;

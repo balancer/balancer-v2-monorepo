@@ -262,10 +262,7 @@ contract MetaStablePool is StablePool, PoolPriceOracle {
             userData
         );
 
-        // If the contract is paused, the oracle is not updated to avoid extra calculations and reduce potential errors.
-        if (_isNotPaused()) {
-            _cacheInvariantAndSupply();
-        }
+        _cacheInvariantAndSupply();
     }
 
     /**
@@ -290,10 +287,7 @@ contract MetaStablePool is StablePool, PoolPriceOracle {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        // If the contract is paused, the oracle is not updated to avoid extra calculations and reduce potential errors.
-        if (_isNotPaused()) {
-            _updateOracle(lastChangeBlock, balances[0], balances[1]);
-        }
+        _updateOracle(lastChangeBlock, balances[0], balances[1]);
 
         return
             super._onExitPool(
