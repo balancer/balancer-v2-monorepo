@@ -21,9 +21,10 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
 /**
+ * @author Balancer Labs
  * @title Protocol Fees Withdrawer
  * @notice Safety layer around the Protocol Fees Collector which allows withdrawals of specific tokens to be blocked.
- * This is useful for the case in which tokens which shouldn't be distributed are unexpectedly paid into the Protocol
+ * This is useful for the case where tokens that shouldn't be distributed are unexpectedly paid into the Protocol
  * Fees Collector.
  */
 contract ProtocolFeesWithdrawer is IProtocolFeesWithdrawer, SingletonAuthentication {

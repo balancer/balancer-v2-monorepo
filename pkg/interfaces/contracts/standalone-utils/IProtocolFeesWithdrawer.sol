@@ -17,9 +17,10 @@ pragma solidity ^0.7.0;
 import "../vault/IProtocolFeesCollector.sol";
 
 /**
+ * @author Balancer Labs
  * @title Protocol Fees Withdrawer
  * @notice Safety layer around the Protocol Fees Collector which allows withdrawals of specific tokens to be blocked.
- * This is useful for the case in which tokens which shouldn't be distributed are unexpectedly paid into the Protocol
+ * This is useful for the case in where tokens that shouldn't be distributed are unexpectedly paid into the Protocol
  * Fees Collector.
  */
 interface IProtocolFeesWithdrawer is IAuthentication {
