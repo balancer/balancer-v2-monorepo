@@ -23,7 +23,7 @@ import "../vault/IProtocolFeesCollector.sol";
  * This is useful for the case in where tokens that shouldn't be distributed are unexpectedly paid into the Protocol
  * Fees Collector.
  */
-interface IProtocolFeesWithdrawer is IAuthentication {
+interface IProtocolFeesWithdrawer {
     event TokenAllowlisted(IERC20 token);
     event TokenDenylisted(IERC20 token);
 
