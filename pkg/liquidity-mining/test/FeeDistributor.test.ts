@@ -1,12 +1,12 @@
 import { ethers } from 'hardhat';
-import { BigNumber, Contract, ContractReceipt, ContractTransaction } from 'ethers';
+import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { advanceToTimestamp, currentTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
+import { advanceToTimestamp, currentTimestamp, DAY, receiptTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { parseFixed } from '@ethersproject/bignumber';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
@@ -26,12 +26,6 @@ const advanceToNextWeek = async (): Promise<void> => {
   const nextWeek = roundUpTimestamp(await currentTimestamp());
   await advanceToTimestamp(nextWeek);
 };
-
-async function getReceiptTimestamp(receipt: ContractReceipt | Promise<ContractReceipt>): Promise<number> {
-  const blockHash = (await receipt).blockHash;
-  const block = await ethers.provider.getBlock(blockHash);
-  return block.timestamp;
-}
 
 function expectTimestampsMatch(timestamp: BigNumberish, expectedTimestamp: BigNumberish): void {
   const weekNumber = BigNumber.from(timestamp).div(WEEK).toNumber();
@@ -134,7 +128,7 @@ describe('FeeDistributor', () => {
             // We checkpoint the contract so that the next time
             // we call this function there will be no update to perform.
             const tx = await feeDistributor.checkpoint();
-            nextWeek = roundUpTimestamp(await getReceiptTimestamp(tx.wait()));
+            nextWeek = roundUpTimestamp(await receiptTimestamp(tx.wait()));
           });
 
           it('nothing happens', async () => {
@@ -171,7 +165,7 @@ describe('FeeDistributor', () => {
 
               const tx = await feeDistributor.checkpoint();
 
-              const txTimestamp = await getReceiptTimestamp(tx.wait());
+              const txTimestamp = await receiptTimestamp(tx.wait());
               // Add 1 as if the transaction falls exactly on the beginning of the week
               // then we also go to the end of the week as we can read the current balance
               const nextWeek = roundUpTimestamp(txTimestamp + 1);
@@ -234,7 +228,7 @@ describe('FeeDistributor', () => {
               // We checkpoint the contract so that the next time
               // we call this function there will be no update to perform.
               const tx = await feeDistributor.checkpointUser(user1.address);
-              nextWeek = roundUpTimestamp(await getReceiptTimestamp(tx.wait()));
+              nextWeek = roundUpTimestamp(await receiptTimestamp(tx.wait()));
             });
 
             it('nothing happens', async () => {
@@ -277,7 +271,7 @@ describe('FeeDistributor', () => {
 
                 const tx = await feeDistributor.checkpointUser(user.address);
 
-                const txTimestamp = await getReceiptTimestamp(tx.wait());
+                const txTimestamp = await receiptTimestamp(tx.wait());
                 // Add 1 as if the transaction falls exactly on the beginning of the week
                 // then we also go to the end of the week as we can read the current balance
                 const nextWeek = roundUpTimestamp(txTimestamp + 1);
@@ -353,7 +347,7 @@ describe('FeeDistributor', () => {
 
             for (const token of tokens.addresses) {
               const tokenTimeCursor = await feeDistributor.getTokenTimeCursor(token);
-              const txTimestamp = await getReceiptTimestamp(tx.wait());
+              const txTimestamp = await receiptTimestamp(tx.wait());
               expectTimestampsMatch(tokenTimeCursor, txTimestamp);
             }
           });
@@ -461,7 +455,7 @@ describe('FeeDistributor', () => {
 
           // Token
           // This only works as it is the first token checkpoint. Calls for the next day won't checkpoint
-          const txTimestamp = await getReceiptTimestamp(tx.wait());
+          const txTimestamp = await receiptTimestamp(tx.wait());
           for (const token of tokens.addresses) {
             const tokenTimeCursor = await feeDistributor.getTokenTimeCursor(token);
             expectTimestampsMatch(tokenTimeCursor, txTimestamp);
