@@ -59,7 +59,7 @@ export default {
           from,
           libraries: { QueryProcessor: (await deploy('QueryProcessor')).address },
         })
-      : deploy('v2-pool-stable/StablePool', {
+      : deploy('v2-pool-stable/MockStablePool', {
           args: [
             vault.address,
             NAME,
