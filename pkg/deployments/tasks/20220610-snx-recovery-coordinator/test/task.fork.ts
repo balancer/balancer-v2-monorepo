@@ -13,7 +13,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { Interface } from 'ethers/lib/utils';
 import { StablePoolEncoder, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 
-describe.only('SNXRecoveryCoordinator', function () {
+describe('SNXRecoveryCoordinator', function () {
   let govMultisig: SignerWithAddress;
   let coordinator: Contract;
 
