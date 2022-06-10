@@ -467,7 +467,7 @@ describe('LegacyBasePool', function () {
       it('enabling recovery mode emits an event', async () => {
         const tx = await pool.connect(sender).enableRecoveryMode();
         const receipt = await tx.wait();
-        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { recoveryMode: true });
+        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: true });
       });
 
       it('can disable recovery mode', async () => {
@@ -482,7 +482,7 @@ describe('LegacyBasePool', function () {
         await pool.connect(sender).enableRecoveryMode();
         const tx = await pool.connect(sender).disableRecoveryMode();
         const receipt = await tx.wait();
-        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { recoveryMode: false });
+        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: false });
 
         const recoveryMode = await pool.inRecoveryMode();
         expect(recoveryMode).to.be.false;
