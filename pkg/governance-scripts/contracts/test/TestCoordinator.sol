@@ -17,12 +17,12 @@ pragma solidity ^0.7.0;
 import "../BaseCoordinator.sol";
 
 contract TestCoordinator is BaseCoordinator {
-
     event StagesRegistered();
     event StagePerformed(uint256 stageNumber);
     event AfterLastStageHookExecuted();
-   
+
     constructor(IAuthorizerAdaptor authorizerAdaptor) BaseCoordinator(authorizerAdaptor) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     // Coordinator Setup
