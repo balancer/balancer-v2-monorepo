@@ -14,6 +14,7 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeesWithdrawer.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
@@ -25,11 +26,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.so
  * This is useful for the case in which tokens which shouldn't be distributed are unexpectedly paid into the Protocol
  * Fees Collector.
  */
-contract ProtocolFeesWithdrawer is SingletonAuthentication {
+contract ProtocolFeesWithdrawer is IProtocolFeesWithdrawer, SingletonAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
-
-    event TokenAllowlisted(IERC20 token);
-    event TokenDenylisted(IERC20 token);
 
     IProtocolFeesCollector private immutable _protocolFeesCollector;
 
@@ -47,14 +45,14 @@ contract ProtocolFeesWithdrawer is SingletonAuthentication {
     /**
      * @notice Returns the address of the Protocol Fee Collector.
      */
-    function getProtocolFeesCollector() external view returns (IProtocolFeesCollector) {
+    function getProtocolFeesCollector() external view override returns (IProtocolFeesCollector) {
         return _protocolFeesCollector;
     }
 
     /**
      * @notice Returns whether the provided token may be withdrawn from the Protocol Fee Collector
      */
-    function isWithdrawableToken(IERC20 token) public view returns (bool) {
+    function isWithdrawableToken(IERC20 token) public view override returns (bool) {
         return !_denylistedTokens.contains(address(token));
     }
 
@@ -62,7 +60,7 @@ contract ProtocolFeesWithdrawer is SingletonAuthentication {
      * @notice Returns whether the provided array of tokens may be withdrawn from the Protocol Fee Collector
      * @dev Returns false if any token is denylisted.
      */
-    function isWithdrawableTokens(IERC20[] calldata tokens) public view returns (bool) {
+    function isWithdrawableTokens(IERC20[] calldata tokens) public view override returns (bool) {
         uint256 tokensLength = tokens.length;
         for (uint256 i = 0; i < tokensLength; ++i) {
             if (!isWithdrawableToken(tokens[i])) return false;
@@ -73,14 +71,14 @@ contract ProtocolFeesWithdrawer is SingletonAuthentication {
     /**
      * @notice Returns the denylisted token at the given `index`.
      */
-    function getDenylistedToken(uint256 index) external view returns (IERC20) {
+    function getDenylistedToken(uint256 index) external view override returns (IERC20) {
         return IERC20(_denylistedTokens.at(index));
     }
 
     /**
      * @notice Returns the number of denylisted tokens.
      */
-    function getDenylistedTokensLength() external view returns (uint256) {
+    function getDenylistedTokensLength() external view override returns (uint256) {
         return _denylistedTokens.length();
     }
 
@@ -95,7 +93,7 @@ contract ProtocolFeesWithdrawer is SingletonAuthentication {
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient
-    ) external authenticate {
+    ) external override authenticate {
         require(isWithdrawableTokens(tokens), "Attempting to withdraw denylisted token");
 
         // We delegate checking of inputs and reentrancy protection to the ProtocolFeesCollector.
@@ -105,14 +103,14 @@ contract ProtocolFeesWithdrawer is SingletonAuthentication {
     /**
      * @notice Marks the provided token as ineligible for withdrawal from the Protocol Fee Collector
      */
-    function denylistToken(IERC20 token) external authenticate {
+    function denylistToken(IERC20 token) external override authenticate {
         _denylistToken(token);
     }
 
     /**
      * @notice Marks the provided token as eligible for withdrawal from the Protocol Fee Collector
      */
-    function allowlistToken(IERC20 token) external authenticate {
+    function allowlistToken(IERC20 token) external override authenticate {
         require(_denylistedTokens.remove(address(token)), "Token is not denylisted");
         emit TokenAllowlisted(token);
     }
