@@ -83,9 +83,7 @@ export function itBehavesAsWeightedPool(
       it('sets the asset managers', async () => {
         await tokens.asyncEach(async (token) => {
           const info = await pool.getTokenInfo(token);
-          expect(info.assetManager).to.equal(
-            poolType == WeightedPoolType.ORACLE_WEIGHTED_POOL ? ZERO_ADDRESS : assetManager.address
-          );
+          expect(info.assetManager).to.equal(assetManager.address);
         });
       });
 
@@ -107,13 +105,11 @@ export function itBehavesAsWeightedPool(
     });
 
     context('when the creation fails', () => {
-      if (poolType != WeightedPoolType.ORACLE_WEIGHTED_POOL) {
-        it('reverts if the number of tokens and weights do not match', async () => {
-          const badWeights = weights.slice(1);
+      it('reverts if the number of tokens and weights do not match', async () => {
+        const badWeights = weights.slice(1);
 
-          await expect(deployPool({ weights: badWeights })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-        });
-      }
+        await expect(deployPool({ weights: badWeights })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+      });
 
       it('reverts if there are repeated tokens', async () => {
         const badTokens = new TokenList(Array(numberOfTokens).fill(tokens.first));
@@ -606,15 +602,13 @@ export function itBehavesAsWeightedPool(
         await expect(pool.swapGivenIn({ in: 1, out: 0, amount })).to.be.revertedWith('MAX_IN_RATIO');
       });
 
-      if (poolType != WeightedPoolType.ORACLE_WEIGHTED_POOL) {
-        it('reverts if token in is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
-        });
+      it('reverts if token in is not in the pool', async () => {
+        await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+      });
 
-        it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
-        });
-      }
+      it('reverts if token out is not in the pool', async () => {
+        await expect(pool.swapGivenIn({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+      });
 
       it('reverts if paused', async () => {
         await pool.pause();
@@ -668,15 +662,13 @@ export function itBehavesAsWeightedPool(
         await expect(pool.swapGivenOut({ in: 1, out: 0, amount })).to.be.revertedWith('MAX_OUT_RATIO');
       });
 
-      if (poolType != WeightedPoolType.ORACLE_WEIGHTED_POOL) {
-        it('reverts if token in is not in the pool when given out', async () => {
-          await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
-        });
+      it('reverts if token in is not in the pool when given out', async () => {
+        await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+      });
 
-        it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenOut({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
-        });
-      }
+      it('reverts if token out is not in the pool', async () => {
+        await expect(pool.swapGivenOut({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+      });
 
       it('reverts if paused', async () => {
         await pool.pause();
