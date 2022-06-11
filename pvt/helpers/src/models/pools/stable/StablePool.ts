@@ -14,8 +14,6 @@ import StablePoolDeployer from './StablePoolDeployer';
 import { TxParams } from '../../types/types';
 import { SwapKind, StablePoolEncoder } from '@balancer-labs/balancer-js';
 import {
-  Sample,
-  MiscData,
   JoinExitStablePool,
   InitStablePool,
   JoinGivenInStablePool,
@@ -39,8 +37,6 @@ import {
   calcOutGivenIn,
   calculateOneTokenSwapFeeAmount,
   calcInGivenOut,
-  calculateSpotPrice,
-  calculateBptPrice,
 } from './math';
 import { Swap } from '../../vault/types';
 import BasePool from '../base/BasePool';
@@ -53,7 +49,6 @@ export enum SWAP_INTERFACE {
 
 export default class StablePool extends BasePool {
   amplificationParameter: BigNumberish;
-  meta: boolean;
 
   static async create(params: RawStablePoolDeployment = {}): Promise<StablePool> {
     return StablePoolDeployer.deploy(params);
@@ -66,56 +61,20 @@ export default class StablePool extends BasePool {
     tokens: TokenList,
     amplificationParameter: BigNumberish,
     swapFeePercentage: BigNumberish,
-    meta: boolean,
     owner?: SignerWithAddress
   ) {
     super(instance, poolId, vault, tokens, swapFeePercentage, owner);
 
     this.amplificationParameter = amplificationParameter;
-    this.meta = meta;
   }
 
   async getLastInvariant(): Promise<{ lastInvariant: BigNumber; lastInvariantAmp: BigNumber }> {
     return this.instance.getLastInvariant();
   }
 
-  async getOracleMiscData(): Promise<MiscData> {
-    if (!this.meta) throw Error('Cannot query misc data for non-meta stable pool');
-    return this.instance.getOracleMiscData();
-  }
-
-  async getOracleSample(oracleIndex?: BigNumberish): Promise<Sample> {
-    if (!oracleIndex) oracleIndex = (await this.getOracleMiscData()).oracleIndex;
-    return this.instance.getSample(oracleIndex);
-  }
-
-  async isOracleEnabled(): Promise<boolean> {
-    return (await this.getOracleMiscData()).oracleEnabled;
-  }
 
   async getAmplificationParameter(): Promise<{ value: BigNumber; isUpdating: boolean; precision: BigNumber }> {
     return this.instance.getAmplificationParameter();
-  }
-
-  async enableOracle(txParams: TxParams): Promise<void> {
-    if (!this.meta) throw Error('Cannot enable oracle for non-meta stable pool');
-    const pool = txParams.from ? this.instance.connect(txParams.from) : this.instance;
-    await pool.enableOracle();
-  }
-
-  async setPriceRateCacheDuration(
-    token: Token,
-    duration: BigNumberish,
-    { from }: TxParams = {}
-  ): Promise<ContractTransaction> {
-    if (!this.meta) throw Error('Cannot set price rate cache duration for non-meta stable pool');
-    const pool = from ? this.instance.connect(from) : this.instance;
-    return pool.setPriceRateCacheDuration(token.address, duration);
-  }
-
-  async updatePriceRateCache(token: Token): Promise<ContractTransaction> {
-    if (!this.meta) throw Error('Cannot update price rate cache for non-meta stable pool');
-    return this.instance.updatePriceRateCache(token.address);
   }
 
   async startAmpChange(
@@ -133,19 +92,6 @@ export default class StablePool extends BasePool {
     const sender = txParams.from || this.owner;
     const pool = sender ? this.instance.connect(sender) : this.instance;
     return pool.stopAmplificationParameterUpdate();
-  }
-
-  async estimateSpotPrice(currentBalances?: BigNumberish[]): Promise<BigNumber> {
-    if (!this.meta) throw Error('Spot price estimation is only available for meta stable pools');
-    if (!currentBalances) currentBalances = await this.getBalances();
-    return calculateSpotPrice(this.amplificationParameter, currentBalances);
-  }
-
-  async estimateBptPrice(currentBalances?: BigNumberish[], currentSupply?: BigNumberish): Promise<BigNumber> {
-    if (!this.meta) throw Error('BPT price estimation is only available for meta stable pools');
-    if (!currentBalances) currentBalances = await this.getBalances();
-    if (!currentSupply) currentSupply = await this.totalSupply();
-    return calculateBptPrice(this.amplificationParameter, currentBalances, currentSupply);
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {

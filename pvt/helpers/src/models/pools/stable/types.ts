@@ -21,8 +21,6 @@ export type RawStablePoolDeployment = {
   from?: SignerWithAddress;
   vault?: Vault;
   fromFactory?: boolean;
-  oracleEnabled?: boolean;
-  meta?: boolean;
 };
 
 export type StablePoolDeployment = {
@@ -33,8 +31,6 @@ export type StablePoolDeployment = {
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
-  oracleEnabled: boolean;
-  meta: boolean;
   owner?: SignerWithAddress;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -136,21 +132,3 @@ export type ExitQueryResult = {
 };
 
 export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
-
-export type MiscData = {
-  oracleEnabled: boolean;
-  oracleIndex: BigNumber;
-  oracleSampleCreationTimestamp: BigNumber;
-  logTotalSupply: BigNumber;
-  logInvariant: BigNumber;
-};
-
-export type Sample = {
-  logPairPrice: BigNumber;
-  accLogPairPrice: BigNumber;
-  logBptPrice: BigNumber;
-  accLogBptPrice: BigNumber;
-  logInvariant: BigNumber;
-  accLogInvariant: BigNumber;
-  timestamp: BigNumber;
-};
