@@ -23,8 +23,8 @@ async function main() {
 
   console.log(`\n# Weighted Pools with 2 tokens`);
 
-  await singlePair(() => getWeightedPool(vault, tokens, 2), false, true);
-  await singlePair(() => getWeightedPool(vault, tokens, 2), true, true);
+  await singlePair(() => getWeightedPool(vault, tokens, 2), false);
+  await singlePair(() => getWeightedPool(vault, tokens, 2), true);
 
   console.log(`\n# Weighted Pools with 4 tokens`);
 
@@ -52,7 +52,7 @@ async function main() {
   await singlePair(() => getStablePool(vault, tokens, 4), true);
 }
 
-async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: boolean, measureOracle = false) {
+async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: boolean) {
   console.log(`\n## ${useInternalBalance ? 'Using Internal Balance' : 'Sending and receiving tokens'}`);
 
   const funds: FundManagement = {
@@ -90,17 +90,7 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
 
       const first = await (await swap()).wait();
 
-      if (measureOracle) {
-        const second = await (await swap()).wait();
-        console.log(`${poolAmount} pools:`);
-        console.log(`  - buffer update: ${printGas(first.gasUsed)} (single swap)`);
-        console.log(`  - buffer re-use: ${printGas(second.gasUsed)} (single swap)`);
-      } else {
-        console.log(`${poolAmount} pools: ${printGas(first.gasUsed)} (simple swap)`);
-      }
-
-      // advance time to force batch swap use another oracle sample
-      await advanceTime(MINUTE * 5);
+      console.log(`${poolAmount} pools: ${printGas(first.gasUsed)} (simple swap)`);
     }
 
     const [tokenAddresses, swaps] = getTokensSwaps(
@@ -124,14 +114,7 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
 
     const first = await (await batchSwap()).wait();
 
-    if (measureOracle) {
-      const second = await (await batchSwap()).wait();
-      console.log(`${poolAmount} pools:`);
-      console.log(`  - buffer update: ${printGas(first.gasUsed)} (${printGas(first.gasUsed / poolAmount)} per pool)`);
-      console.log(`  - buffer re-use: ${printGas(second.gasUsed)} (${printGas(second.gasUsed / poolAmount)} per pool)`);
-    } else {
-      console.log(`${poolAmount} pools: ${printGas(first.gasUsed)} (${printGas(first.gasUsed / poolAmount)} per pool)`);
-    }
+    console.log(`${poolAmount} pools: ${printGas(first.gasUsed)} (${printGas(first.gasUsed / poolAmount)} per pool)`);
   }
 }
 

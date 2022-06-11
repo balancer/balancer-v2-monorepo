@@ -73,7 +73,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
   let pool: Contract;
   let joinUserData: string;
 
-  if (poolName == 'WeightedPool' || poolName == 'OracleWeightedPool' || poolName == 'ManagedPool') {
+  if (poolName == 'WeightedPool' || poolName == 'ManagedPool') {
     const WEIGHTS = range(10000, 10000 + tokens.length);
     const weights = toNormalizedWeights(WEIGHTS.map(bn)); // Equal weights for all tokens
     const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
@@ -116,10 +116,6 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
         };
 
         params = [newPoolParams, basePoolRights, managedPoolRights, DAY, creator.address];
-        break;
-      }
-      case 'OracleWeightedPool': {
-        params = [tokens.addresses, weights, swapFeePercentage, true];
         break;
       }
       default: {
@@ -166,11 +162,8 @@ export async function getWeightedPool(
   tokens: TokenList,
   size: number,
   offset = 0,
-  useOracle = true
 ): Promise<string> {
-  return size === 2 && useOracle
-    ? deployPool(vault, tokens.subset(size, offset), 'OracleWeightedPool')
-    : size > 20
+  return size > 20
     ? deployPool(vault, tokens.subset(size, offset), 'ManagedPool')
     : deployPool(vault, tokens.subset(size, offset), 'WeightedPool');
 }
@@ -194,7 +187,7 @@ export async function getSigners(): Promise<{
   return { admin, creator, trader, others };
 }
 
-type PoolName = 'WeightedPool' | 'OracleWeightedPool' | 'StablePool' | 'ManagedPool';
+type PoolName = 'WeightedPool' | 'StablePool' | 'ManagedPool';
 
 async function deployPoolFromFactory(
   vault: Vault,
@@ -202,16 +195,12 @@ async function deployPoolFromFactory(
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
   const fullName = `${poolName == 'StablePool' ? 'v2-pool-stable' : 'v2-pool-weighted'}/${poolName}`;
-  const libraries =
-    poolName == 'OracleWeightedPool'
-      ? { QueryProcessor: await (await deploy('v2-pool-utils/QueryProcessor')).address }
-      : undefined;
   let factory: Contract;
   if (poolName == 'ManagedPool') {
     const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', { args: [vault.address] });
     factory = await deploy(`${fullName}Factory`, { args: [baseFactory.address] });
   } else {
-    factory = await deploy(`${fullName}Factory`, { args: [vault.address], libraries });
+    factory = await deploy(`${fullName}Factory`, { args: [vault.address] });
   }
 
   // We could reuse this factory if we saved it across pool deployments
