@@ -196,7 +196,7 @@ describe('StablePoolFactory', function () {
       const vaultUSDCBalanceBeforeExit = await usdc.balanceOf(vault.address);
       const ownerUSDCBalanceBeforeExit = await usdc.balanceOf(owner.address);
 
-      const userData = BasePoolEncoder.exitRecoveryMode(bptBalance);
+      const userData = BasePoolEncoder.recoveryModeExit(bptBalance);
       await vault.connect(owner).exitPool(poolId, owner.address, owner.address, {
         assets: tokens,
         minAmountsOut: Array(tokens.length).fill(0),
