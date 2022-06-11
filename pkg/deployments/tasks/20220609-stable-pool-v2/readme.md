@@ -8,7 +8,7 @@ Deployment of a new version `StablePoolFactory` to corresponding to the [Phase I
 
 ## Useful Files
 
-- [Ethereum addresses](./output/polygon.json)
+- [Ethereum addresses](./output/ethereum.json)
 - [Polygon addresses](./output/polygon.json)
 - [Arbitrum addresses](./output/arbitrum.json)
 - [Optimism addresses](./output/optimism.json)
