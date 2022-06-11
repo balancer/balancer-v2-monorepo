@@ -119,7 +119,7 @@ describe('StablePoolFactory', function () {
       const unbalancedBalanceUSDC = fp(1200000000).div(1e12); // 6 digits
       const unbalancedBalanceUSDT = fp(300).div(1e12); // 6 digits
       const unbalancedBalances = [unbalancedBalanceDAI, unbalancedBalanceUSDC, unbalancedBalanceUSDT];
-      const upscaledUbalancedBalances = [
+      const upscaledUnbalancedBalances = [
         unbalancedBalanceDAI,
         unbalancedBalanceUSDC.mul(1e12),
         unbalancedBalanceUSDT.mul(1e12),
@@ -154,7 +154,7 @@ describe('StablePoolFactory', function () {
       // The fact that joining the pool did not revert is proof enough that the invariant converges, but we can also
       // explicitly check the last invariant.
 
-      const expectedInvariant = calculateInvariant(upscaledUbalancedBalances, amplificationParameter);
+      const expectedInvariant = calculateInvariant(upscaledUnbalancedBalances, amplificationParameter);
       const [lastInvariant] = await pool.getLastInvariant();
       expectEqualWithError(lastInvariant, expectedInvariant, 0.001);
     });
