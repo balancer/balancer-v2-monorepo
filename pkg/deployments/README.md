@@ -103,3 +103,4 @@ Returns an object with all contracts from a deployment and their addresses.
 | Preseeded Voting Escrow Delegation                   | [`20220530-preseeded-voting-escrow-delegation`](./tasks/20220530-preseeded-voting-escrow-delegation) |
 | Tribe BAL Minter Coordinator                         | [`20220606-tribe-bal-minter-coordinator`](./tasks/20220606-tribe-bal-minter-coordinator)             |
 | Stable Pools V2 of up to 5 tokens                    | [`20220609-stable-pool-v2`](./tasks/20220609-stable-pool-v2)                                         |
+| Coordination of the double entrypoint issue fix      | [`20220610-snx-recovery-coordinator`](./tasks/20220610-snx-recovery-coordinator)                     |
