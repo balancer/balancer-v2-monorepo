@@ -119,7 +119,7 @@ describe('StablePoolFactory', function () {
       const unbalancedBalanceUSDC = fp(1200000000).div(1e12); // 6 digits
       const unbalancedBalanceUSDT = fp(300).div(1e12); // 6 digits
       const unbalancedBalances = [unbalancedBalanceDAI, unbalancedBalanceUSDC, unbalancedBalanceUSDT];
-      const upscaledUbalancedBalances = [
+      const upscaledUnbalancedBalances = [
         unbalancedBalanceDAI,
         unbalancedBalanceUSDC.mul(1e12),
         unbalancedBalanceUSDT.mul(1e12),
@@ -154,7 +154,7 @@ describe('StablePoolFactory', function () {
       // The fact that joining the pool did not revert is proof enough that the invariant converges, but we can also
       // explicitly check the last invariant.
 
-      const expectedInvariant = calculateInvariant(upscaledUbalancedBalances, amplificationParameter);
+      const expectedInvariant = calculateInvariant(upscaledUnbalancedBalances, amplificationParameter);
       const [lastInvariant] = await pool.getLastInvariant();
       expectEqualWithError(lastInvariant, expectedInvariant, 0.001);
     });
@@ -184,8 +184,8 @@ describe('StablePoolFactory', function () {
     });
 
     before('enter recovery mode', async () => {
-      await authorizer.connect(govMultisig).grantRole(await actionId(pool, 'enterRecoveryMode'), govMultisig.address);
-      await pool.connect(govMultisig).enterRecoveryMode();
+      await authorizer.connect(govMultisig).grantRole(await actionId(pool, 'enableRecoveryMode'), govMultisig.address);
+      await pool.connect(govMultisig).enableRecoveryMode();
       expect(await pool.inRecoveryMode()).to.be.true;
     });
 
@@ -196,7 +196,7 @@ describe('StablePoolFactory', function () {
       const vaultUSDCBalanceBeforeExit = await usdc.balanceOf(vault.address);
       const ownerUSDCBalanceBeforeExit = await usdc.balanceOf(owner.address);
 
-      const userData = BasePoolEncoder.exitRecoveryMode(bptBalance);
+      const userData = BasePoolEncoder.recoveryModeExit(bptBalance);
       await vault.connect(owner).exitPool(poolId, owner.address, owner.address, {
         assets: tokens,
         minAmountsOut: Array(tokens.length).fill(0),
