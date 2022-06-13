@@ -10,7 +10,7 @@ export function expectTransferEvent(
   token: Account
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): any {
-  if (receipt.to === TypesConverter.toAddress(token)) {
+  if (receipt.to.toLowerCase() === TypesConverter.toAddress(token).toLowerCase()) {
     return expectEvent.inReceipt(receipt, 'Transfer', args);
   }
   return expectEvent.inIndirectReceipt(
