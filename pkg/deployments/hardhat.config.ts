@@ -157,7 +157,6 @@ task('save-action-ids', `Print the action IDs for a particular contract`)
               const contractNames = Object.keys(fileContents).filter((name) => name !== 'timestamp');
 
               for (const contractName of contractNames) {
-                logger.log(`Generating action IDs for ${contractName} of ${task.id}`, '');
                 await saveActionIds(task, contractName);
               }
             }

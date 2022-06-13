@@ -23,6 +23,8 @@ function safeReadJsonFile<T>(filePath: string): Record<string, T> {
 }
 
 export async function saveActionIds(task: Task, contractName: string, contractAddress?: string): Promise<void> {
+  logger.log(`Generating action IDs for ${contractName} of ${task.id}`, '');
+
   const { useAdaptor, actionIds } = await getActionIds(task, contractName, contractAddress);
 
   const actionIdsDir = path.join(ACTION_ID_DIRECTORY, task.network);
