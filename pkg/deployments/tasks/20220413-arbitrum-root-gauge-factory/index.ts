@@ -16,7 +16,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
 
   const factory = await task.deployAndVerify('ArbitrumRootGaugeFactory', args, from, force);
 
-  const implementation = await await factory.getGaugeImplementation();
+  const implementation = await factory.getGaugeImplementation();
   await task.verify('ArbitrumRootGauge', implementation, [input.BalancerMinter, input.GatewayRouter]);
   await task.save({ ArbitrumRootGauge: implementation });
 };
