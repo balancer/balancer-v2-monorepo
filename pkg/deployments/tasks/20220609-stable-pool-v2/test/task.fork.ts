@@ -184,8 +184,8 @@ describe('StablePoolFactory', function () {
     });
 
     before('enter recovery mode', async () => {
-      await authorizer.connect(govMultisig).grantRole(await actionId(pool, 'enterRecoveryMode'), govMultisig.address);
-      await pool.connect(govMultisig).enterRecoveryMode();
+      await authorizer.connect(govMultisig).grantRole(await actionId(pool, 'enableRecoveryMode'), govMultisig.address);
+      await pool.connect(govMultisig).enableRecoveryMode();
       expect(await pool.inRecoveryMode()).to.be.true;
     });
 
