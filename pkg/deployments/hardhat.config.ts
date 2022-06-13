@@ -49,11 +49,8 @@ task('verify-contract', `Verify a task's deployment on a block explorer`)
       const apiKey = args.key ?? (hre.config.networks[hre.network.name] as any).verificationAPIKey;
       const verifier = apiKey ? new Verifier(hre.network, apiKey) : undefined;
 
-      await new Task(args.id, TaskMode.READ_ONLY, hre.network.name, verifier).verify(
-        args.name,
-        args.address,
-        args.args
-      );
+      // Contracts can only be verified in Live mode
+      await new Task(args.id, TaskMode.LIVE, hre.network.name, verifier).verify(args.name, args.address, args.args);
     }
   );
 
