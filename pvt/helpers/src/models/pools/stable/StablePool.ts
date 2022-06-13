@@ -162,6 +162,7 @@ export default class StablePool extends BasePool {
     if (!currentBalances) currentBalances = await this.getBalances();
     const lastInvariant = await this.estimateInvariant();
     const paidTokenIndex = this.tokens.indexOf(paidToken);
+
     const feeAmount = calculateOneTokenSwapFeeAmount(
       currentBalances,
       this.amplificationParameter,
@@ -175,15 +176,33 @@ export default class StablePool extends BasePool {
   async estimateGivenIn(params: SwapStablePool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {
     if (!currentBalances) currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
+    const scalingFactors = await this.getScalingFactors();
 
-    return bn(calcOutGivenIn(currentBalances, this.amplificationParameter, tokenIn, tokenOut, params.amount));
+    return bn(
+      calcOutGivenIn(
+        await this.upscaleArray(currentBalances),
+        this.amplificationParameter,
+        tokenIn,
+        tokenOut,
+        this.upscale(params.amount, scalingFactors[tokenIn])
+      )
+    );
   }
 
   async estimateGivenOut(params: SwapStablePool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {
     if (!currentBalances) currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
+    const scalingFactors = await this.getScalingFactors();
 
-    return bn(calcInGivenOut(currentBalances, this.amplificationParameter, tokenIn, tokenOut, params.amount));
+    return bn(
+      calcInGivenOut(
+        await this.upscaleArray(currentBalances),
+        this.amplificationParameter,
+        tokenIn,
+        tokenOut,
+        this.upscale(params.amount, scalingFactors[tokenOut])
+      )
+    );
   }
 
   async estimateBptOut(
@@ -215,7 +234,7 @@ export default class StablePool extends BasePool {
 
     return calcTokenInGivenExactBptOut(
       tokenIndex,
-      currentBalances,
+      await this.upscaleArray(currentBalances),
       this.amplificationParameter,
       bptOut,
       supply,
@@ -235,7 +254,7 @@ export default class StablePool extends BasePool {
 
     return calcTokenOutGivenExactBptIn(
       tokenIndex,
-      currentBalances,
+      await this.upscaleArray(currentBalances),
       this.amplificationParameter,
       bptIn,
       supply,

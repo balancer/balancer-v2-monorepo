@@ -70,7 +70,7 @@ describe('StablePool', function () {
   });
 
   sharedBeforeEach('deploy tokens', async () => {
-    allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT', 'GNO'], { sorted: true });
+    allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT', 'GNO'], { sorted: true, varyDecimals: true });
     await allTokens.mint({ to: [lp, trader], amount: fp(100) });
   });
 
@@ -244,7 +244,7 @@ describe('StablePool', function () {
 
       describe('initialization', () => {
         it('grants the invariant amount of BPT', async () => {
-          const invariant = await pool.estimateInvariant(await pool.upscale(initialBalances));
+          const invariant = await pool.estimateInvariant(await pool.upscaleArray(initialBalances));
 
           const { amountsIn, dueProtocolFeeAmounts } = await pool.init({ recipient, initialBalances });
 
@@ -305,8 +305,8 @@ describe('StablePool', function () {
             sharedBeforeEach('initialize pool', async () => {
               await pool.init({ recipient, initialBalances });
               expectedBptOut = await pool.estimateBptOut(
-                await pool.upscale(amountsIn),
-                await pool.upscale(initialBalances)
+                await pool.upscaleArray(amountsIn),
+                await pool.upscaleArray(initialBalances)
               );
             });
 
@@ -387,9 +387,10 @@ describe('StablePool', function () {
               const expectedAmountIn = await pool.estimateTokenIn(token, bptOut, initialBalances);
 
               const result = await pool.joinGivenOut({ recipient, bptOut, token });
+              const upscaledResult = await pool.upscaleArray(result.amountsIn);
 
               // Only token in should be the one transferred
-              expect(result.amountsIn[token]).to.be.equalWithError(expectedAmountIn, 0.001);
+              expect(upscaledResult[token]).to.be.equalWithError(expectedAmountIn, 0.001);
               expect(result.amountsIn.filter((_, i) => i != token)).to.be.zeros;
 
               // Protocol fees should be zero
@@ -406,7 +407,9 @@ describe('StablePool', function () {
               const result = await pool.queryJoinGivenOut({ bptOut, token });
 
               expect(result.bptOut).to.be.equal(bptOut);
-              expect(result.amountsIn[token]).to.be.equalWithError(expectedAmountIn, 0.001);
+              const upscaledAmountsIn = await pool.upscaleArray(result.amountsIn);
+
+              expect(upscaledAmountsIn[token]).to.be.equalWithError(expectedAmountIn, 0.001);
               expect(result.amountsIn.filter((_, i) => i != token)).to.be.zeros;
             }
 
@@ -477,7 +480,9 @@ describe('StablePool', function () {
             expect(result.dueProtocolFeeAmounts).to.be.zeros;
 
             // Only token out should be the one transferred
-            expect(result.amountsOut[token]).to.be.equalWithError(expectedTokenOut, 0.0001);
+            const amountsOutScaled = await pool.upscaleArray(result.amountsOut);
+
+            expect(amountsOutScaled[token]).to.be.equalWithError(expectedTokenOut, 0.0001);
             expect(result.amountsOut.filter((_, i) => i != token)).to.be.zeros;
 
             // Current BPT balance should decrease
@@ -492,7 +497,8 @@ describe('StablePool', function () {
 
             expect(result.bptIn).to.equal(bptIn);
             expect(result.amountsOut.filter((_, i) => i != token)).to.be.zeros;
-            expect(result.amountsOut[token]).to.be.equalWithError(expectedTokenOut, 0.0001);
+            const amountsOutScaled = await pool.upscaleArray(result.amountsOut);
+            expect(amountsOutScaled[token]).to.be.equalWithError(expectedTokenOut, 0.0001);
           }
 
           it('can tell how many tokens it will give in return', async () => {
@@ -659,11 +665,12 @@ describe('StablePool', function () {
             const amount = fp(0.1);
             const amountWithFees = amount.mul(POOL_SWAP_FEE_PERCENTAGE.add(fp(1))).div(fp(1));
             const expectedAmountOut = await pool.estimateGivenIn({ in: 1, out: 0, amount: amountWithFees });
+            const scalingFactors = await pool.getScalingFactors();
 
             const result = await pool.swapGivenIn({ in: 1, out: 0, amount: amountWithFees });
 
             //TODO: review small relative error
-            expect(result).to.be.equalWithError(expectedAmountOut, 0.1);
+            expect(pool.upscale(result, scalingFactors[0])).to.be.equalWithError(expectedAmountOut, 0.1);
           }
 
           it('calculates amount out', async () => {
@@ -711,8 +718,9 @@ describe('StablePool', function () {
             const expectedAmountIn = await pool.estimateGivenOut({ in: 1, out: 0, amount });
 
             const result = await pool.swapGivenOut({ in: 1, out: 0, amount });
+            const scalingFactors = await pool.getScalingFactors();
 
-            expect(result).to.be.equalWithError(expectedAmountIn, 0.1);
+            expect(pool.upscale(result, scalingFactors[1])).to.be.equalWithError(expectedAmountIn, 0.1);
           }
 
           it('calculates amount in', async () => {
@@ -772,7 +780,8 @@ describe('StablePool', function () {
       const protocolFeePercentage = fp(0.1); // 10 %
 
       sharedBeforeEach('deploy and join pool', async () => {
-        await deployPool({ admin, owner });
+        const tokens = await TokenList.create(numberOfTokens, { sorted: true });
+        await deployPool({ tokens, admin, owner });
         await pool.init({ initialBalances, from: lp, protocolFeePercentage });
       });
 
@@ -820,8 +829,11 @@ describe('StablePool', function () {
           // hook, so we don't need to actually perform any swaps
           currentBalances = initialBalances.map((balance) => balance.mul(4).div(3));
 
-          const maxBalance = currentBalances.reduce((max, balance) => (balance.gt(max) ? balance : max), bn(0));
-          const paidTokenIndex = currentBalances.indexOf(maxBalance);
+          // Need to scale up for max comparison to match the contract
+          const upscaledBalances = await pool.upscaleArray(currentBalances);
+
+          const maxBalance = upscaledBalances.reduce((max, balance) => (bn(balance).gt(max) ? balance : max), bn(0));
+          const paidTokenIndex = upscaledBalances.indexOf(maxBalance);
 
           const protocolFeeAmount = await pool.estimateSwapFeeAmount(
             paidTokenIndex,
@@ -1217,7 +1229,7 @@ describe('StablePool', function () {
           expect(lastInvariant).to.not.equal(originalInvariant);
 
           const balances = await pool.getBalances();
-          const upscaledBalances = await pool.upscale(balances);
+          const upscaledBalances = await pool.upscaleArray(balances);
 
           const { value } = await pool.getAmplificationParameter();
           const expectedInvariant = await calculateInvariant(upscaledBalances, value.div(AMP_PRECISION));
