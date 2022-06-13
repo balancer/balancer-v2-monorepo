@@ -14,3 +14,4 @@ This directory the reports of audits performed on Balancer smart contracts by di
 | Vault                             | Certora       | [`2021-04-19`](./certora/2021-04-19.pdf)       |
 | MultiRewards, Stable Pool         | OpenZeppelin  | [`2021-10-09`](./openzeppelin/2021-10-09.pdf)  |
 | Linear Pool, Stable Phantom Pool  | Trail Of Bits | [`2021-12-22`](./trail-of-bits/2021-12-22.pdf) |
+| Timelock Authorizer               | ABDK          | [`2022-04-15`](./abdk/2022-04-15.pdf)          |
