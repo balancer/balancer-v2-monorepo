@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { Contract, ContractReceipt } from 'ethers';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { parseFixed } from '@ethersproject/bignumber';
 
@@ -9,16 +9,10 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { advanceTime, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, DAY, receiptTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { expect } from 'chai';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
-
-async function getReceiptTimestamp(receipt: ContractReceipt | Promise<ContractReceipt>): Promise<number> {
-  const blockHash = (await receipt).blockHash;
-  const block = await ethers.provider.getBlock(blockHash);
-  return block.timestamp;
-}
 
 describe('ChildChainStreamer', () => {
   let vault: Vault;
@@ -108,7 +102,7 @@ describe('ChildChainStreamer', () => {
         const tx = await streamer.get_reward();
         const lastUpdateTime = await streamer.last_update_time();
 
-        expect(lastUpdateTime).to.be.eq(await getReceiptTimestamp(tx.wait()));
+        expect(lastUpdateTime).to.be.eq(await receiptTimestamp(tx.wait()));
       });
     }
 
