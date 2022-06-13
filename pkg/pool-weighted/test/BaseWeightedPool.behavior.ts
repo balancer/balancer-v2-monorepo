@@ -4,7 +4,6 @@ import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { ManagedPoolEncoder, PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
