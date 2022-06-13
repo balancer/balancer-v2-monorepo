@@ -72,7 +72,6 @@ export default class StablePool extends BasePool {
     return this.instance.getLastInvariant();
   }
 
-
   async getAmplificationParameter(): Promise<{ value: BigNumber; isUpdating: boolean; precision: BigNumber }> {
     return this.instance.getAmplificationParameter();
   }

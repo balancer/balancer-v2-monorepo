@@ -34,19 +34,19 @@ export default {
     } = params;
 
     return deploy('v2-pool-stable/MockStablePool', {
-          args: [
-            vault.address,
-            NAME,
-            SYMBOL,
-            tokens.addresses,
-            amplificationParameter,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            TypesConverter.toAddress(params.owner),
-          ],
-          from,
-        });
+      args: [
+        vault.address,
+        NAME,
+        SYMBOL,
+        tokens.addresses,
+        amplificationParameter,
+        swapFeePercentage,
+        pauseWindowDuration,
+        bufferPeriodDuration,
+        TypesConverter.toAddress(params.owner),
+      ],
+      from,
+    });
   },
 
   async _deployFromFactory(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
