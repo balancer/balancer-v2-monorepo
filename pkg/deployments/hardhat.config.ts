@@ -15,7 +15,7 @@ import { checkArtifact, extractArtifact } from './src/artifact';
 import test from './src/test';
 import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
-import logger, { Logger } from './src/logger';
+import { Logger } from './src/logger';
 import { checkActionIds, checkActionIdUniqueness, saveActionIds } from './src/actionId';
 
 task('deploy', 'Run deployment task')
