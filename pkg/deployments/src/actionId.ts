@@ -122,7 +122,7 @@ export async function getActionIds(
     .sort(([sigA], [sigB]) => (sigA < sigB ? -1 : 1)); // Sort functions alphabetically.
 
   const { useAdaptor, actionIdSource } = await getActionIdSource(task, contractName, contractAddress);
-  const actionIds = await getAdaptorActionIds(contractFunctions, actionIdSource);
+  const actionIds = await getActionIdsFromSource(contractFunctions, actionIdSource);
 
   return { useAdaptor, actionIds };
 }
@@ -155,7 +155,7 @@ async function getActionIdSource(
   }
 }
 
-async function getAdaptorActionIds(
+async function getActionIdsFromSource(
   contractFunctions: [string, FunctionFragment][],
   actionIdSource: Contract
 ): Promise<Record<string, string>> {
