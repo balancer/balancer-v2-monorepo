@@ -337,10 +337,7 @@ export default class Task {
   }
 
   private _findTaskId(idAlias: string): string {
-    const matches = [
-      ...fs.readdirSync(TASKS_DIRECTORY),
-      ...fs.readdirSync(DEPRECATED_DIRECTORY),
-    ].filter((taskDirName) => taskDirName.includes(idAlias));
+    const matches = Task.getAllTaskIds().filter((taskDirName) => taskDirName.includes(idAlias));
 
     if (matches.length == 1) {
       return matches[0];
@@ -353,5 +350,9 @@ export default class Task {
         );
       }
     }
+  }
+
+  static getAllTaskIds(): string[] {
+    return [...fs.readdirSync(TASKS_DIRECTORY), ...fs.readdirSync(DEPRECATED_DIRECTORY)];
   }
 }
