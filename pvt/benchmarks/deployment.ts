@@ -15,8 +15,6 @@ async function main() {
 
   await measureDeployment('v2-pool-weighted/LiquidityBootstrappingPoolFactory');
 
-  await measureDeployment('v2-pool-stable/meta/MetaStablePool');
-
   await measureDeployment('v2-pool-weighted/ManagedPoolFactory');
 }
 

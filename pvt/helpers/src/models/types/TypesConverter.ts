@@ -116,8 +116,6 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      oracleEnabled,
-      meta,
     } = params;
 
     if (!tokens) tokens = new TokenList();
@@ -127,8 +125,6 @@ export default {
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    if (!oracleEnabled) oracleEnabled = true;
-    if (!meta) meta = false;
 
     return {
       tokens,
@@ -138,8 +134,6 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      oracleEnabled,
-      meta,
       owner: params.owner,
     };
   },
