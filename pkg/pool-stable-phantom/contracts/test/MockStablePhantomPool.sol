@@ -24,11 +24,18 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function mockCacheTokenRateIfNecessary(IERC20 token) external {
+    function mockCacheTokenRateIfNecessary(IERC20 token) external whenNotInFailureMode(FailureMode.PRICE_RATE) {
         _cacheTokenRateIfNecessary(token);
     }
 
-    function getRate() public view virtual override whenInvariantConverges returns (uint256) {
+    function getRate()
+        public
+        view
+        virtual
+        override
+        whenNotInFailureMode(FailureMode.INVARIANT)
+        whenNotInFailureMode(FailureMode.PRICE_RATE)
+    returns (uint256) {
         return super.getRate();
     }
 
@@ -37,7 +44,13 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenInvariantConverges returns (uint256 amountOut) {
+    )
+        internal
+        virtual
+        override
+        whenNotInFailureMode(FailureMode.INVARIANT)
+        whenNotInFailureMode(FailureMode.PRICE_RATE)
+    returns (uint256 amountOut) {
         return super._onSwapGivenIn(request, balancesIncludingBpt, indexIn, indexOut);
     }
 
@@ -46,7 +59,13 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenInvariantConverges returns (uint256 amountIn) {
+    )
+        internal
+        virtual
+        override
+        whenNotInFailureMode(FailureMode.INVARIANT)
+        whenNotInFailureMode(FailureMode.PRICE_RATE)
+    returns (uint256 amountIn) {
         return super._onSwapGivenOut(request, balancesIncludingBpt, indexIn, indexOut);
     }
 }

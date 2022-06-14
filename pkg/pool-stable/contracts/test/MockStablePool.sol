@@ -54,7 +54,7 @@ contract MockStablePool is StablePool, MockFailureModes {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenInvariantConverges returns (uint256) {
+    ) internal virtual override whenNotInFailureMode(FailureMode.INVARIANT) returns (uint256) {
       return super ._onSwapGivenIn(swapRequest, balances, indexIn, indexOut);
     }
 
@@ -63,7 +63,7 @@ contract MockStablePool is StablePool, MockFailureModes {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenInvariantConverges returns (uint256) {
+    ) internal virtual override whenNotInFailureMode(FailureMode.INVARIANT) returns (uint256) {
       return super._onSwapGivenOut(swapRequest, balances, indexIn, indexOut);
     }
 
@@ -80,7 +80,7 @@ contract MockStablePool is StablePool, MockFailureModes {
         internal
         virtual
         override
-        whenInvariantConverges
+        whenNotInFailureMode(FailureMode.INVARIANT)
         returns (
             uint256,
             uint256[] memory,
@@ -113,7 +113,7 @@ contract MockStablePool is StablePool, MockFailureModes {
         internal
         virtual
         override
-        whenInvariantConverges
+        whenNotInFailureMode(FailureMode.INVARIANT)
         returns (
             uint256 bptAmountIn,
             uint256[] memory amountsOut,
@@ -133,7 +133,7 @@ contract MockStablePool is StablePool, MockFailureModes {
         );
     }
 
-    function getRate() public view virtual override whenInvariantConverges returns (uint256) {
+    function getRate() public view virtual override whenNotInFailureMode(FailureMode.INVARIANT) returns (uint256) {
       return super.getRate();
     }
 }

@@ -18,25 +18,40 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 abstract contract MockFailureModes {
-    bool private _simulateInvariantFailure;
+    enum FailureMode { INVARIANT, PRICE_RATE }
 
-    modifier whenInvariantConverges {
-        _ensureInvariantConverges();
+    // Set to true to simulate a given failure mode
+    mapping(FailureMode => bool) private _failureState;
+
+    // Error message to return in simulated failure mode
+    mapping(FailureMode => uint256) private _failureCode;
+
+    modifier whenNotInFailureMode(FailureMode mode) {
+        _ensureNotFailed(mode);
         _;
     }
 
-    // Simulate failure of the invariant to converge
-    function setInvariantFailure(bool invariantFailsToConverge) external {
-        _simulateInvariantFailure = invariantFailsToConverge;
+    constructor() {
+        // Initialize error messages
+        _failureCode[FailureMode.INVARIANT] = Errors.STABLE_INVARIANT_DIDNT_CONVERGE;
+        _failureCode[FailureMode.PRICE_RATE] = Errors.LOW_LEVEL_CALL_FAILED;
     }
 
-    function invariantConverges() external view returns (bool) {
-        return !_simulateInvariantFailure;
+    // Simulate a failure by turning on the associated failure mode flag
+    function setFailureMode(FailureMode mode, bool failed) external {
+        _failureState[mode] = failed;
     }
 
-    function _ensureInvariantConverges() internal view {
-        if (_simulateInvariantFailure) {
-            _revert(Errors.STABLE_INVARIANT_DIDNT_CONVERGE);
+    // It is *possible* for the same failure state to generate different error messages in different situations
+    // (though ideally this would not be the case). Allow for updating the associated code here.
+    function setFailureCode(FailureMode mode, uint256 errorCode) external {
+        _failureCode[mode] = errorCode;
+    }
+
+    // Revert with the associated message if this failure mode is activated
+    function _ensureNotFailed(FailureMode mode) private view {
+        if (_failureState[mode]) {
+            _revert(_failureCode[mode]);
         }
     }
 }
