@@ -106,6 +106,10 @@ Returns an object with all contracts from a deployment and their addresses.
 
 ## Deprecated Deployments
 
+These deployments have been depreacted because they're either oudated and have been replaced by newer versions, or because they no longer form part of the current infrastructure. **In almost all cases they should no longer be used.**
+
+Go to each deprecated deployment's readme file to learn more about why it is deprecated, and what the replacement deployment is (if any).
+
 | Description                    | Task ID                                                           |
 | ------------------------------ | ----------------------------------------------------------------- |
 | Stable Pools of up to 5 tokens | [`20210624-stable-pool`](./tasks/deprecated-20210624-stable-pool) |
