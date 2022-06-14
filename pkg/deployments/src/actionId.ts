@@ -8,7 +8,7 @@ import Task, { TaskMode } from './task';
 
 const ACTION_ID_DIRECTORY = path.join(__dirname, '../action-ids');
 
-type ContractActionIdData = { useAdaptor: boolean; factoryImplementation?: string; actionIds: Record<string, string> };
+type ContractActionIdData = { useAdaptor: boolean; factoryProduct?: string; actionIds: Record<string, string> };
 type ActionIdInfo = {
   taskId: string;
   contractName: string;
@@ -22,10 +22,10 @@ function safeReadJsonFile<T>(filePath: string): Record<string, T> {
   return fileExists ? JSON.parse(fs.readFileSync(filePath).toString()) : {};
 }
 
-export async function saveActionIds(task: Task, contractName: string, factoryImplementation?: string): Promise<void> {
+export async function saveActionIds(task: Task, contractName: string, factoryProduct?: string): Promise<void> {
   logger.log(`Generating action IDs for ${contractName} of ${task.id}`, '');
 
-  const { useAdaptor, actionIds } = await getActionIds(task, contractName, factoryImplementation);
+  const { useAdaptor, actionIds } = await getActionIds(task, contractName, factoryProduct);
 
   const actionIdsDir = path.join(ACTION_ID_DIRECTORY, task.network);
   if (!fs.existsSync(actionIdsDir)) fs.mkdirSync(actionIdsDir, { recursive: true });
@@ -37,7 +37,7 @@ export async function saveActionIds(task: Task, contractName: string, factoryImp
 
   // Write the new entry.
   newFileContents[task.id] = newFileContents[task.id] ?? {};
-  newFileContents[task.id][contractName] = { useAdaptor, factoryImplementation, actionIds };
+  newFileContents[task.id][contractName] = { useAdaptor, factoryProduct, actionIds };
 
   fs.writeFileSync(filePath, JSON.stringify(newFileContents, null, 2));
 }
@@ -53,7 +53,7 @@ export async function checkActionIds(task: Task): Promise<void> {
     const { useAdaptor: expectedUseAdaptor, actionIds: expectedActionIds } = await getActionIds(
       task,
       contractName,
-      actionIdData.factoryImplementation
+      actionIdData.factoryProduct
     );
 
     const adaptorUsageMatch = actionIdData.useAdaptor === expectedUseAdaptor;
@@ -113,7 +113,7 @@ export function checkActionIdUniqueness(network: string): void {
 export async function getActionIds(
   task: Task,
   contractName: string,
-  factoryImplementation?: string
+  factoryProduct?: string
 ): Promise<{ useAdaptor: boolean; actionIds: Record<string, string> }> {
   const artifact = task.artifact(contractName);
 
@@ -123,7 +123,7 @@ export async function getActionIds(
     .filter(([, func]) => ['nonpayable', 'payable'].includes(func.stateMutability))
     .sort(([sigA], [sigB]) => (sigA < sigB ? -1 : 1)); // Sort functions alphabetically.
 
-  const { useAdaptor, actionIdSource } = await getActionIdSource(task, contractName, factoryImplementation);
+  const { useAdaptor, actionIdSource } = await getActionIdSource(task, contractName, factoryProduct);
   const actionIds = await getActionIdsFromSource(contractFunctions, actionIdSource);
 
   return { useAdaptor, actionIds };
@@ -132,7 +132,7 @@ export async function getActionIds(
 async function getActionIdSource(
   task: Task,
   contractName: string,
-  factoryImplementation?: string
+  factoryProduct?: string
 ): Promise<{ useAdaptor: boolean; actionIdSource: Contract }> {
   const artifact = task.artifact(contractName);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -146,9 +146,9 @@ async function getActionIdSource(
   );
 
   if (contractIsAuthorizerAware) {
-    if (factoryImplementation) {
-      await checkFactoryImplementation(task, contractName, factoryImplementation);
-      return { useAdaptor: false, actionIdSource: await task.instanceAt(contractName, factoryImplementation) };
+    if (factoryProduct) {
+      await checkFactoryProduct(task, contractName, factoryProduct);
+      return { useAdaptor: false, actionIdSource: await task.instanceAt(contractName, factoryProduct) };
     } else {
       return { useAdaptor: false, actionIdSource: await task.deployedInstance(contractName) };
     }
@@ -199,14 +199,14 @@ function getDuplicateActionIds(
   return duplicateActionIdsMapping;
 }
 
-async function checkFactoryImplementation(task: Task, contractName: string, factoryImplementation: string) {
-  // We must check that the factory implementation is actually an instance of the expected contract type. This is
+async function checkFactoryProduct(task: Task, contractName: string, factoryProduct: string) {
+  // We must check that the factory product is actually an instance of the expected contract type. This is
   // not trivial due to usage of immutable and lack of knowledge of constructor arguments. However, this scenario
   // only arises with Pools created from factories, all of which share a useful property: their factory contract
   // name is <contractName>Factory, and they all have a function called 'isPoolFromFactory' we can use for this.
 
   const factory = await task.deployedInstance(`${contractName}Factory`);
-  if (!(await factory.isPoolFromFactory(factoryImplementation))) {
-    throw Error(`The contract at ${factoryImplementation} is not an instance of a ${contractName}`);
+  if (!(await factory.isPoolFromFactory(factoryProduct))) {
+    throw Error(`The contract at ${factoryProduct} is not an instance of a ${contractName}`);
   }
 }
