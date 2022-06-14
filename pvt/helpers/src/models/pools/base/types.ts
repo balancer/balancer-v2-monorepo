@@ -6,12 +6,14 @@ export type RecoveryModeExitParams = {
   bptIn: BigNumberish;
   recipient?: Account;
   from?: SignerWithAddress;
+  tokens?: string[];
   currentBalances?: BigNumberish[];
 };
 
 export type JoinExitBasePool = {
   recipient?: Account;
   currentBalances?: BigNumberish[];
+  tokens?: string[];
   lastChangeBlock?: BigNumberish;
   protocolFeePercentage?: BigNumberish;
   data?: string;

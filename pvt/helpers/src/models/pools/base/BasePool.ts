@@ -126,6 +126,7 @@ export default class BasePool {
     return {
       from: params.from,
       recipient: params.recipient,
+      tokens: params.tokens,
       currentBalances: params.currentBalances,
       data: BasePoolEncoder.recoveryModeExit(params.bptIn),
     };
@@ -140,7 +141,7 @@ export default class BasePool {
       poolId: this.poolId,
       recipient: to,
       currentBalances,
-      tokens: this.tokens.addresses,
+      tokens: params.tokens ?? this.tokens.addresses,
       lastChangeBlock: params.lastChangeBlock ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',

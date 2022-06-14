@@ -1161,19 +1161,16 @@ describe('StablePhantomPool', () => {
 
       sharedBeforeEach('deploy pool', async () => {
         await deployPool();
-        sender = (await ethers.getSigners())[0];
-
-        const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) =>
-          i == bptIndex ? bn(0) : fp(100)
-        );
-        await pool.init({ recipient: sender, initialBalances: equalBalances });
+        await pool.init({ recipient, initialBalances });
       });
 
       context('when not in recovery mode', () => {
         it('reverts', async () => {
           const totalBptBalance = await pool.balanceOf(lp);
+          const { tokens: allTokens } = await pool.getTokens();
+
           await expect(
-            pool.recoveryModeExit({ from: lp, currentBalances: initialBalances, bptIn: totalBptBalance })
+            pool.recoveryModeExit({ from: lp, tokens: allTokens, currentBalances: initialBalances, bptIn: totalBptBalance })
           ).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
         });
       });
